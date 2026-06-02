@@ -1,0 +1,12 @@
+.DS_Store
+.next/
+.vercel/
+node_modules/
+out/
+coverage/
+*.tsbuildinfo
+tmp_*/
+.env
+.env.*
+!.env.example
+*.local

@@ -1,0 +1,5 @@
+scenario,total_daily_budget,website_leads_daily,instant_forms_daily,retargeting_daily,commercial_daily,when_to_use
+Validation,100,50,35,15,0,"First 3 days or while tracking is being confirmed"
+Heavy Launch,175,75,50,25,25,"Default launch once pixel, form, and phone tracking are verified"
+Scale,250,115,70,35,30,"Use after lead quality is acceptable and at least one campaign has 3+ qualified leads"
+Aggressive Scale,350,165,100,50,35,"Use only if booked consultations and follow-up capacity can handle volume"

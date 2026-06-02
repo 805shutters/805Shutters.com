@@ -1,0 +1,79 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://www.805shutters.com/free-window-treatment-consultation/#webpage",
+      "url": "https://www.805shutters.com/free-window-treatment-consultation/",
+      "name": "Free Window Treatment Consultation in Ventura County | 805 Shutters",
+      "description": "Request a free in-home consultation for custom shutters, shades, blinds, and commercial window coverings in Ventura County.",
+      "isPartOf": {
+        "@id": "https://www.805shutters.com/#website"
+      },
+      "about": {
+        "@id": "https://www.805shutters.com/#organization"
+      }
+    },
+    {
+      "@type": "Service",
+      "@id": "https://www.805shutters.com/free-window-treatment-consultation/#service",
+      "name": "Free In-Home Window Treatment Consultation",
+      "serviceType": "Window treatment consultation and installation",
+      "provider": {
+        "@id": "https://www.805shutters.com/#organization"
+      },
+      "areaServed": [
+        "Camarillo CA",
+        "Thousand Oaks CA",
+        "Ventura CA",
+        "Oxnard CA",
+        "Simi Valley CA",
+        "Moorpark CA",
+        "Ojai CA",
+        "Santa Rosa Valley CA",
+        "Port Hueneme CA",
+        "Santa Paula CA",
+        "Oak Park CA",
+        "Fillmore CA"
+      ],
+      "availableChannel": {
+        "@type": "ServiceChannel",
+        "servicePhone": {
+          "@type": "ContactPoint",
+          "telephone": "+1-805-806-9344",
+          "contactType": "customer service"
+        }
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.805shutters.com/free-window-treatment-consultation/#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Do you serve my area?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "805 Shutters serves Ventura County and nearby communities, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Oak Park, and Fillmore."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can you help me compare shutters, shades, and blinds?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The consultation helps customers compare product types, materials, privacy, light control, room style, cleaning needs, and budget before choosing a window treatment."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do you handle commercial projects?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. 805 Shutters installs commercial roller shades and window coverings for offices, retail spaces, restaurants, schools, medical spaces, and shared facilities."
+          }
+        }
+      ]
+    }
+  ]
+}

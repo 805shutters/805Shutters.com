@@ -1,0 +1,33 @@
+{
+  "name": "805-shutters-vercel-rebuild",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "audit:site": "python3 scripts/audit_site.py --base-url https://www.805shutters.com --output reports/site-audit.json --markdown reports/site-audit.md --post-sample 20 --workers 8",
+    "migration:inventory": "python3 scripts/generate_migration_inventory.py"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "next": "16.2.7",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "overrides": {
+    "postcss": "8.5.15"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.2",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "typescript": "6.0.3"
+  }
+}
