@@ -176,6 +176,16 @@ export function PageSections({ page }: { page: SitePage }) {
         </div>
       </section>
 
+      {page.gallery?.length ? (
+        <section className="content-wrap page-gallery" aria-label={`${page.h1} photos`}>
+          {page.gallery.map((item) => (
+            <figure className="page-gallery-item" key={item.image}>
+              <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
+            </figure>
+          ))}
+        </section>
+      ) : null}
+
       {page.path === "/" ? <ServiceGrid /> : null}
 
       <section className="content-wrap section-stack">

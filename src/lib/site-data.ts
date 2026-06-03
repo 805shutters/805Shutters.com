@@ -22,6 +22,10 @@ export type SitePage = {
   intro: string;
   image: string;
   imageAlt: string;
+  gallery?: {
+    image: string;
+    imageAlt: string;
+  }[];
   sections: PageSection[];
   cta?: string;
   form?: boolean;
@@ -562,45 +566,376 @@ const supportPages: SitePage[] = [
     h1: "Recent Local Window Treatment Projects",
     eyebrow: "Project proof",
     intro:
-      "Recent project pages help customers see what different products look like in real Ventura County spaces.",
-    image: images.project,
-    imageAlt: "Recent custom window treatment project in Ventura County",
+      "Recent project pages help customers see what shutters and shades look like in real Ventura County spaces.",
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
+    imageAlt: "White plantation shutters installed in a Ventura County dining room",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
+        imageAlt: "White plantation shutters installed in a Ventura County dining room"
+      },
+      {
+        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
+        imageAlt: "Dark wood plantation shutters installed in a Ventura County reading room"
+      },
+      {
+        image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
+        imageAlt: "Custom arched plantation shutters installed in Ventura County"
+      },
+      {
+        image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
+        imageAlt: "Layered window shades installed on a Ventura County bedroom window"
+      },
+      {
+        image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
+        imageAlt: "Roller shade covering a large Ventura County window"
+      },
+      {
+        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
+        imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
+      }
+    ],
     sections: [
       {
-        heading: "Use Projects For SEO And Trust",
+        heading: "Recent local project examples",
         body:
-          "Project pages should include the product type, room, city when accurate, installation details, alt text, and links back to the relevant service page."
+          "Browse recent plantation shutter, arched shutter, roller shade, layered shade, and sliding door shutter projects completed for Ventura County homes."
       }
     ]
   }
 ];
 
+const projectServiceArea =
+  "805 Shutters, Shades & Blinds serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities.";
+
+const projectCompanyProof =
+  "805 Shutters, Shades & Blinds is a family-owned local business with over 30 years of experience measuring and installing custom shutters, shades, blinds, commercial roller shades, and window coverings across Ventura County and nearby communities.";
+
 const recentProjectPages: SitePage[] = [
-  ["arched-plantation-shutters-ventura-county", "Custom Arched Plantation Shutters in Ventura County"],
-  ["dark-wood-plantation-shutters-ventura-county", "Dark Wood Plantation Shutters in Ventura County"],
-  ["layered-window-shades-ventura-county", "Layered Window Shades in Ventura County"],
-  ["plantation-shutters-ventura-county-project", "Plantation Shutters Installed in a Ventura County Home"],
-  ["roller-shades-large-window-ventura-county", "Roller Shades for Large Windows in Ventura County"],
-  ["sliding-door-shutters-ventura-county", "Sliding Door Shutters in Ventura County"]
-].map(([slug, title]) => ({
-  path: `/recent-projects/${slug}/`,
-  title: `${title} | 805 Shutters`,
-  description: `${title} by 805 Shutters, Shades & Blinds in Ventura County.`,
-  h1: title,
-  eyebrow: "Recent project",
-  intro:
-    "This project page is reserved for install photos, room details, product notes, and links to the matching service page during the rebuild.",
-  image: images.project,
-  imageAlt: `${title} by 805 Shutters`,
-  noIndex: true,
-  sections: [
-    {
-      heading: "Migration Note",
-      body:
-        "Before launch, replace this starter copy with the actual project image set, city, product, installation notes, and internal links."
-    }
-  ]
-}));
+  {
+    path: "/recent-projects/sliding-door-shutters-ventura-county/",
+    title: "Sliding Door Shutters in Ventura County | 805 Shutters",
+    description:
+      "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
+    h1: "Sliding Door Shutters in Ventura County",
+    eyebrow: "Recent project",
+    intro:
+      "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
+    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
+    imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
+        imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This project used shutters for a bedroom sliding door opening. The main goals were privacy, light control, easy access, and a clean built-in look.",
+        bullets: ["Product: shutters for sliding doors", "Application: bedroom sliding door opening", "Benefits: privacy, light control, easy access, and a clean built-in look"]
+      },
+      {
+        heading: "Why this window treatment worked",
+        body:
+          "Custom shutters for sliding doors can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around a bedroom sliding door opening."
+      },
+      {
+        heading: "Local service area",
+        body: projectServiceArea
+      },
+      {
+        heading: "Can shutters be installed on sliding doors?",
+        body:
+          "Yes. Custom shutter solutions can be designed for many sliding door openings depending on the size, access needs, and room layout."
+      },
+      {
+        heading: "Who installs sliding door shutters in Ventura County?",
+        body:
+          "805 Shutters, Shades & Blinds installs custom shutters and window coverings for sliding doors throughout Ventura County."
+      },
+      {
+        heading: "Can you help compare shutters, shades, and blinds for a sliding door?",
+        body:
+          "Yes. During a free consultation, 805 Shutters can help compare practical options for privacy, light control, and daily use."
+      }
+    ]
+  },
+  {
+    path: "/recent-projects/roller-shades-large-window-ventura-county/",
+    title: "Roller Shades for Large Windows in Ventura County | 805 Shutters",
+    description:
+      "A recent roller shade project showing a clean shade solution for a wide window opening with privacy and glare control.",
+    h1: "Roller Shades for Large Windows in Ventura County",
+    eyebrow: "Recent project",
+    intro:
+      "A recent roller shade project showing a clean shade solution for a wide window opening with privacy and glare control.",
+    image: "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg",
+    imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
+        imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This project used roller shades on a large window opening. The goals were privacy, glare control, clean lines, and easy daily use.",
+        bullets: ["Product: roller shades", "Application: large window opening", "Benefits: privacy, glare control, clean lines, and easy daily use"]
+      },
+      {
+        heading: "Why this window treatment worked",
+        body:
+          "Roller shades for large windows can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around wide window openings."
+      },
+      {
+        heading: "Local service area",
+        body: projectServiceArea
+      },
+      {
+        heading: "Are roller shades a good choice for large windows?",
+        body:
+          "Yes. Roller shades work well on many large window openings because they provide broad coverage with a clean, minimal look."
+      },
+      {
+        heading: "Does 805 Shutters install roller shades in Ventura County?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds installs roller shades for homes and businesses throughout Ventura County."
+      },
+      {
+        heading: "Do you install commercial roller shades?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds also installs commercial roller shades and commercial window coverings."
+      }
+    ]
+  },
+  {
+    path: "/recent-projects/layered-window-shades-ventura-county/",
+    title: "Layered Window Shades in Ventura County | 805 Shutters",
+    description:
+      "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
+    h1: "Layered Window Shades in Ventura County",
+    eyebrow: "Recent project",
+    intro:
+      "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
+    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg",
+    imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
+        imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This local shade project used layered window shades on a bedroom window. The goals were privacy, filtered light, soft style, and a clean window opening.",
+        bullets: ["Product: layered window shades", "Application: bedroom window", "Benefits: privacy, filtered light, soft style, and a clean window opening"]
+      },
+      {
+        heading: "Why this window treatment worked",
+        body:
+          "Layered window shades can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around bedroom windows."
+      },
+      {
+        heading: "Local service area",
+        body: projectServiceArea
+      },
+      {
+        heading: "Are layered shades good for bedrooms?",
+        body:
+          "Yes. Layered shades can soften sunlight, improve privacy, and create a clean finished look for bedroom windows."
+      },
+      {
+        heading: "Does 805 Shutters install custom shades in Ventura County?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds installs custom shades throughout Ventura County and nearby communities."
+      },
+      {
+        heading: "Can I compare shades and shutters during one visit?",
+        body:
+          "Yes. A free in-home consultation can cover shutters, shades, blinds, and window covering options."
+      }
+    ]
+  },
+  {
+    path: "/recent-projects/arched-plantation-shutters-ventura-county/",
+    title: "Custom Arched Plantation Shutters in Ventura County | 805 Shutters",
+    description:
+      "A recent specialty-window project showing custom arched plantation shutters measured to fit curved window openings.",
+    h1: "Custom Arched Plantation Shutters in Ventura County",
+    eyebrow: "Recent project",
+    intro:
+      "A recent specialty-window project showing custom arched plantation shutters measured to fit curved window openings.",
+    image: "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg",
+    imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
+        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds."
+      },
+      {
+        image: "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg",
+        imageAlt: "Specialty arch window shutters with custom fit in Ventura County by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This specialty-window project used custom arched plantation shutters for curved window openings. The goals were exact fit, architectural style, privacy, and light control.",
+        bullets: ["Product: custom arched plantation shutters", "Application: specialty arched windows", "Benefits: exact fit, architectural style, privacy, and light control"]
+      },
+      {
+        heading: "Why this window treatment worked",
+        body:
+          "Custom arched plantation shutters can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around arched living room and dining room windows."
+      },
+      {
+        heading: "Local service area",
+        body: projectServiceArea
+      },
+      {
+        heading: "Can plantation shutters be made for arched windows?",
+        body:
+          "Yes. Plantation shutters can be custom measured and built for specialty arched windows and other non-standard window shapes."
+      },
+      {
+        heading: "Who installs arched shutters in Ventura County?",
+        body:
+          "805 Shutters, Shades & Blinds installs custom shutters for arched and specialty windows throughout Ventura County and nearby communities."
+      },
+      {
+        heading: "Do specialty shutters require an in-home measurement?",
+        body:
+          "Yes. Specialty shapes should be measured in person so the shutters fit the opening correctly."
+      }
+    ]
+  },
+  {
+    path: "/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+    title: "Dark Wood Plantation Shutters in Ventura County | 805 Shutters",
+    description:
+      "A recent local plantation shutter project showing dark wood shutters used for privacy, light control, and a warmer finished-room look.",
+    h1: "Dark Wood Plantation Shutters in Ventura County",
+    eyebrow: "Recent project",
+    intro:
+      "A recent local plantation shutter project showing dark wood shutters used for privacy, light control, and a warmer finished-room look.",
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg",
+    imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
+        imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters Shades and Blinds."
+      },
+      {
+        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
+        imageAlt: "Dark wood plantation shutters across living room windows in Ventura County by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This local plantation shutter project used dark wood plantation shutters for residential living spaces. The goals were privacy, light control, room warmth, and a finished built-in look.",
+        bullets: ["Product: dark wood plantation shutters", "Application: residential living spaces", "Benefits: privacy, light control, room warmth, and a finished built-in look"]
+      },
+      {
+        heading: "Why this window treatment worked",
+        body:
+          "Dark wood plantation shutters can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around reading room and living room windows."
+      },
+      {
+        heading: "Local service area",
+        body: projectServiceArea
+      },
+      {
+        heading: "Can 805 Shutters install dark wood plantation shutters in Ventura County?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds installs custom plantation shutters for Ventura County homes, including dark wood looks and other finish options."
+      },
+      {
+        heading: "Why choose dark wood shutters?",
+        body:
+          "Dark wood shutters can add contrast, warmth, privacy, and stronger visual definition around the window opening."
+      },
+      {
+        heading: "Do you offer free in-home consultations?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds offers free in-home consultations for shutters, shades, blinds, and window coverings."
+      }
+    ]
+  },
+  {
+    path: "/recent-projects/plantation-shutters-ventura-county-project/",
+    title: "Plantation Shutters Installed in a Ventura County Home | 805 Shutters",
+    description:
+      "White plantation shutters installed for a Ventura County home with better privacy, flexible light control, and custom fit for multiple window shapes.",
+    h1: "Plantation Shutters Installed in a Ventura County Home",
+    eyebrow: "Recent project",
+    intro:
+      "This local project shows white plantation shutters installed for a Ventura County home by 805 Shutters, Shades & Blinds. The goal was a clean, finished look with better privacy, flexible light control, and a custom fit for multiple window shapes.",
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
+    imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters Shades and Blinds.",
+    gallery: [
+      {
+        image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
+        imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters Shades and Blinds."
+      },
+      {
+        image: "/images/portfolio-enhanced/arched-plantation-shutters-living-room-card.jpg",
+        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds."
+      }
+    ],
+    sections: [
+      {
+        heading: "Project details",
+        body:
+          "This project included custom measuring and plantation shutter installation. The rooms shown include dining room and living room windows in Ventura County.",
+        bullets: [
+          "Service: custom measuring and plantation shutter installation",
+          "Product type: white plantation shutters",
+          "Rooms shown: dining room and living room windows",
+          "Area: Ventura County",
+          "Company: family-owned local window treatment installer with over 30 years of experience"
+        ]
+      },
+      {
+        heading: "Why plantation shutters worked well here",
+        body:
+          "Plantation shutters are a strong choice for homeowners who want a permanent window treatment with a built-in look. They help manage privacy, reduce glare, control natural light, and create a clean frame around each window."
+      },
+      {
+        heading: "Custom shutters for standard and arched windows",
+        body:
+          "Homes throughout Ventura County often have a mix of standard rectangular windows and specialty shapes. 805 Shutters, Shades & Blinds measures each opening carefully so the finished shutters fit the architecture instead of looking like an afterthought."
+      },
+      {
+        heading: "Local experience",
+        body: projectCompanyProof
+      },
+      {
+        heading: "Who installs plantation shutters in Ventura County?",
+        body:
+          "805 Shutters, Shades & Blinds installs custom plantation shutters for homeowners throughout Ventura County and nearby communities."
+      },
+      {
+        heading: "Can plantation shutters be made for arched windows?",
+        body:
+          "Yes. Plantation shutters can be custom measured and fitted for specialty windows, including arched windows and other non-standard openings."
+      },
+      {
+        heading: "Do you offer free in-home consultations?",
+        body:
+          "Yes. 805 Shutters, Shades & Blinds offers free in-home consultations for shutters, shades, blinds, commercial roller shades, and other window coverings."
+      }
+    ]
+  }
+];
 
 const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, city]) => {
   const windowTreatmentPath = `/window-treatments/${caSlug}/`;
@@ -702,7 +1037,7 @@ function cityProductPage({
 }
 
 function searchDepthSections(page: SitePage): PageSection[] {
-  if (page.noIndex) {
+  if (page.noIndex || page.path.startsWith("/recent-projects/")) {
     return page.sections;
   }
   const existingHeadings = new Set(page.sections.map((section) => section.heading));

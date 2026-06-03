@@ -287,6 +287,27 @@ img {
   object-fit: cover;
 }
 
+.page-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: clamp(14px, 2vw, 24px);
+  padding: clamp(32px, 5vw, 64px) 0 0;
+}
+
+.page-gallery-item {
+  margin: 0;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.page-gallery-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
 .home-editorial {
   padding: 0;
   background: var(--paper);
