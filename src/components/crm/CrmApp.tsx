@@ -13,31 +13,17 @@ import {
   CrmDashboardData,
   CrmJob,
   CrmJobStatus,
-  CrmProfileRole,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "va" | "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar";
+type CrmTab = "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar";
 
 type CrmUser = {
   email: string;
   displayName: string | null;
-  role: CrmProfileRole;
-  allowedEmails?: string[];
-  vaEmails?: string[];
-};
-
-type CrmWorkspaceConfig = {
-  kind: "standard" | "va";
-  personName?: string;
-  defaultOwner?: string;
-  redirectPath?: string;
-  defaultTab?: CrmTab;
-  title?: string;
-  eyebrow?: string;
 };
 
 const jobColumns: Array<{ status: CrmJobStatus; label: string }> = [
@@ -51,7 +37,7 @@ const jobColumns: Array<{ status: CrmJobStatus; label: string }> = [
 ];
 
 const productOptions = ["Shutters", "Shades", "Blinds", "Drapery", "Exterior Shades", "Mixed"];
-const baseOwnerOptions = ["Mike", "Jessica", "Unassigned"];
+const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> = [
   { value: "zelle", label: "Zelle" },
   { value: "cash", label: "Cash" },
@@ -59,13 +45,6 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
 ];
-
-function buildOwnerOptions(defaultOwner?: string) {
-  const owner = defaultOwner?.trim();
-  if (!owner || baseOwnerOptions.includes(owner)) return baseOwnerOptions;
-
-  return [...baseOwnerOptions.filter((item) => item !== "Unassigned"), owner, "Unassigned"];
-}
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
@@ -121,27 +100,16 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   return body as T;
 }
 
-export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> } = {}) {
-  const workspaceConfig: CrmWorkspaceConfig = {
-    kind: workspace?.kind || "standard",
-    personName: workspace?.personName,
-    defaultOwner: workspace?.defaultOwner,
-    redirectPath: workspace?.redirectPath || "/crm",
-    defaultTab: workspace?.defaultTab || (workspace?.kind === "va" ? "va" : "command"),
-    title: workspace?.title || "CRM Command",
-    eyebrow: workspace?.eyebrow || "805 Shutters"
-  };
+export function CrmApp() {
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
-  const [activeTab, setActiveTab] = useState<CrmTab>(workspaceConfig.defaultTab || "command");
+  const [activeTab, setActiveTab] = useState<CrmTab>("command");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
-  const [googleLoginUrl, setGoogleLoginUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const isVaWorkspace = workspaceConfig.kind === "va";
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
   const quotes = useMemo(() => data?.quotes || [], [data]);
@@ -149,35 +117,16 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
-  const ownerOptions = useMemo(() => buildOwnerOptions(workspaceConfig.defaultOwner), [workspaceConfig.defaultOwner]);
 
   async function signIn() {
     if (!supabase) return;
-    if (googleLoginUrl) {
-      window.location.assign(googleLoginUrl);
-      return;
-    }
 
-    setMessage(null);
-    const { data: oauthData, error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}${workspaceConfig.redirectPath || "/crm"}`,
-        skipBrowserRedirect: true
+        redirectTo: `${window.location.origin}/crm`
       }
     });
-
-    if (error) {
-      setMessage(error.message || "Google login could not be started.");
-      return;
-    }
-
-    if (!oauthData.url) {
-      setMessage("Google login could not be started from the dedicated Supabase project.");
-      return;
-    }
-
-    window.location.assign(oauthData.url);
   }
 
   async function signOut() {
@@ -246,37 +195,6 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
     };
   }, [supabase]);
 
-  useEffect(() => {
-    if (!supabase || session || loading) return;
-
-    let mounted = true;
-    setGoogleLoginUrl(null);
-
-    supabase.auth
-      .signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}${workspaceConfig.redirectPath || "/crm"}`,
-          skipBrowserRedirect: true
-        }
-      })
-      .then(({ data: oauthData, error }) => {
-        if (!mounted) return;
-        if (error) {
-          setMessage(error.message || "Google login could not be prepared.");
-          return;
-        }
-        setGoogleLoginUrl(oauthData.url || null);
-      })
-      .catch(() => {
-        if (mounted) setMessage("Google login could not be prepared.");
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [loading, session, supabase, workspaceConfig.redirectPath]);
-
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
@@ -295,7 +213,7 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
           city: formString(formData, "city"),
           address: formString(formData, "address"),
           product_interest: formString(formData, "product_interest").toLowerCase(),
-          sales_owner: formString(formData, "sales_owner") || workspaceConfig.defaultOwner || "Unassigned",
+          sales_owner: formString(formData, "sales_owner"),
           priority: formString(formData, "priority") || "normal",
           next_action: formString(formData, "next_action") || "Call customer",
           next_action_due: formString(formData, "next_action_due") || null,
@@ -467,7 +385,7 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
           job_id: jobId || null,
           title: formString(formData, "title") || (job ? `${job.customer_name} consultation` : "Sales appointment"),
           event_type: formString(formData, "event_type") || "sales_consult",
-          assigned_to: formString(formData, "assigned_to") || workspaceConfig.defaultOwner || "Unassigned",
+          assigned_to: formString(formData, "assigned_to") || "Unassigned",
           start_at: start.toISOString(),
           end_at: end.toISOString(),
           location: formString(formData, "location") || job?.address,
@@ -510,21 +428,12 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">{isVaWorkspace ? `${workspaceConfig.personName} VA Access` : "Private CRM"}</p>
-          <h1>{isVaWorkspace ? `${workspaceConfig.personName} VA login.` : "Google login only."}</h1>
-          <p>
-            Use an approved 805 Shutters Google account to access sales jobs, quotes, bookkeeping, calendar, and
-            accountability.
-          </p>
-          {googleLoginUrl ? (
-            <a className="button primary" href={googleLoginUrl}>
-              Continue with Google
-            </a>
-          ) : (
-            <button type="button" onClick={signIn}>
-              Continue with Google
-            </button>
-          )}
+          <p className="eyebrow">Private CRM</p>
+          <h1>Google login only.</h1>
+          <p>Use an approved 805 Shutters Google account to access sales jobs, quotes, bookkeeping, and calendar.</p>
+          <button type="button" onClick={signIn}>
+            Continue with Google
+          </button>
         </section>
       </div>
     );
@@ -545,22 +454,12 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
     );
   }
 
-  const crmTabs: Array<[CrmTab, string]> = [
-    ...(isVaWorkspace ? ([["va", `${workspaceConfig.personName || "VA"} Desk`]] as Array<[CrmTab, string]>) : []),
-    ["command", "Command Center"],
-    ["customers", "Customer Files"],
-    ["jobs", "Sales Jobs"],
-    ["bookkeeping", "Bookkeeping"],
-    ["orders", "Orders"],
-    ["calendar", "Calendar"]
-  ];
-
   return (
     <div className="crm-app-shell">
       <header className="crm-topbar">
         <div>
-          <p className="eyebrow">{workspaceConfig.eyebrow}</p>
-          <h1>{workspaceConfig.title}</h1>
+          <p className="eyebrow">805 Shutters</p>
+          <h1>CRM Command</h1>
         </div>
         <div className="crm-user">
           <span>{user?.displayName || user?.email}</span>
@@ -575,16 +474,6 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
 
       {message ? <p className="crm-alert">{message}</p> : null}
 
-      {isVaWorkspace && data ? (
-        <VaSetupStrip
-          user={user}
-          personName={workspaceConfig.personName || "VA"}
-          jobs={jobs}
-          events={events}
-          accountability={accountability}
-        />
-      ) : null}
-
       <section className="crm-metrics" aria-label="CRM summary">
         <Metric label="Open Jobs" value={data?.summary.openJobs || 0} />
         <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} />
@@ -598,7 +487,14 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
       </section>
 
       <nav className="crm-tabs" aria-label="CRM sections">
-        {crmTabs.map(([tab, label]) => (
+        {[
+          ["command", "Command Center"],
+          ["customers", "Customer Files"],
+          ["jobs", "Sales Jobs"],
+          ["bookkeeping", "Bookkeeping"],
+          ["orders", "Orders"],
+          ["calendar", "Calendar"]
+        ].map(([tab, label]) => (
           <button
             type="button"
             key={tab}
@@ -609,15 +505,6 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
           </button>
         ))}
       </nav>
-
-      {activeTab === "va" ? (
-        <VaWorkbench
-          personName={workspaceConfig.personName || "VA"}
-          jobs={jobs}
-          events={events}
-          accountability={accountability}
-        />
-      ) : null}
 
       {activeTab === "command" ? (
         <section className="crm-command-grid">
@@ -664,7 +551,7 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
                 </label>
                 <label>
                   Owner
-                  <select name="sales_owner" defaultValue={workspaceConfig.defaultOwner || "Unassigned"}>
+                  <select name="sales_owner" defaultValue="Unassigned">
                     {ownerOptions.map((item) => (
                       <option key={item}>{item}</option>
                     ))}
@@ -971,7 +858,7 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
                 </label>
                 <label>
                   Assigned
-                  <select name="assigned_to" defaultValue={workspaceConfig.defaultOwner || "Unassigned"}>
+                  <select name="assigned_to" defaultValue="Unassigned">
                     {ownerOptions.map((item) => (
                       <option key={item}>{item}</option>
                     ))}
@@ -996,162 +883,6 @@ export function CrmApp({ workspace }: { workspace?: Partial<CrmWorkspaceConfig> 
         </section>
       ) : null}
     </div>
-  );
-}
-
-function matchesPerson(value: string | null | undefined, personName: string) {
-  return (value || "").trim().toLowerCase() === personName.trim().toLowerCase();
-}
-
-function VaSetupStrip({
-  user,
-  personName,
-  jobs,
-  events,
-  accountability
-}: {
-  user: CrmUser | null;
-  personName: string;
-  jobs: CrmJob[];
-  events: CrmCalendarEvent[];
-  accountability: CrmAccountabilityItem[];
-}) {
-  const assignedJobs = jobs.filter((job) => matchesPerson(job.sales_owner, personName));
-  const assignedEvents = events.filter((event) => matchesPerson(event.assigned_to, personName));
-  const checks = [
-    {
-      label: "Google Login",
-      detail: user?.email || "No active session",
-      status: user ? "Ready" : "Waiting",
-      warning: !user
-    },
-    {
-      label: "VA Profile",
-      detail: user?.role === "va" ? `${personName} is set as VA` : `Current role: ${user?.role || "none"}`,
-      status: user?.role === "va" ? "Ready" : "Needs Role",
-      warning: user?.role !== "va"
-    },
-    {
-      label: "Scheduling",
-      detail: `${assignedEvents.length} assigned event${assignedEvents.length === 1 ? "" : "s"}`,
-      status: "Ready",
-      warning: false
-    },
-    {
-      label: "Accountability",
-      detail: `${accountability.length} open item${accountability.length === 1 ? "" : "s"}`,
-      status: "Ready",
-      warning: false
-    },
-    {
-      label: "Sales Queue",
-      detail: `${assignedJobs.length} assigned job${assignedJobs.length === 1 ? "" : "s"}`,
-      status: "Ready",
-      warning: false
-    }
-  ];
-
-  return (
-    <section className="crm-va-setup" aria-label={`${personName} setup status`}>
-      {checks.map((check) => (
-        <article className={check.warning ? "warning" : ""} key={check.label}>
-          <span>{check.label}</span>
-          <strong>{check.status}</strong>
-          <p>{check.detail}</p>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function VaWorkbench({
-  personName,
-  jobs,
-  events,
-  accountability
-}: {
-  personName: string;
-  jobs: CrmJob[];
-  events: CrmCalendarEvent[];
-  accountability: CrmAccountabilityItem[];
-}) {
-  const activeStatuses = new Set<CrmJobStatus>(["new", "follow_up", "scheduled", "quoted"]);
-  const assignedEvents = events.filter((event) => matchesPerson(event.assigned_to, personName)).slice(0, 10);
-  const followUpJobs = jobs
-    .filter((job) => activeStatuses.has(job.status))
-    .filter((job) => matchesPerson(job.sales_owner, personName) || job.sales_owner === "Unassigned")
-    .slice(0, 12);
-  const vaAccountability = accountability.slice(0, 12);
-
-  return (
-    <section className="crm-va-grid">
-      <section className="crm-ledger">
-        <div className="crm-section-head">
-          <div>
-            <p className="eyebrow">{personName}</p>
-            <h2>Assigned Schedule</h2>
-          </div>
-          <strong>{assignedEvents.length}</strong>
-        </div>
-        <div className="crm-agenda">
-          {assignedEvents.map((event) => (
-            <article className="crm-event-card" key={event.id}>
-              <time>{formatDate(event.start_at)}</time>
-              <div>
-                <h3>{event.title}</h3>
-                <p>{event.customer_name || event.location || "805 Shutters"}</p>
-              </div>
-              <span>{event.status}</span>
-            </article>
-          ))}
-          {!assignedEvents.length ? <p className="crm-empty">No assigned calendar events yet.</p> : null}
-        </div>
-      </section>
-
-      <section className="crm-ledger">
-        <div className="crm-section-head">
-          <div>
-            <p className="eyebrow">VA Follow-Up</p>
-            <h2>Sales Queue</h2>
-          </div>
-          <strong>{followUpJobs.length}</strong>
-        </div>
-        <div className="crm-va-list">
-          {followUpJobs.map((job) => (
-            <article key={job.id}>
-              <div>
-                <strong>{job.customer_name}</strong>
-                <span>{job.next_action || "Call customer"}</span>
-              </div>
-              <em>{job.next_action_due || "Open"}</em>
-            </article>
-          ))}
-          {!followUpJobs.length ? <p className="crm-empty">No open VA follow-up jobs.</p> : null}
-        </div>
-      </section>
-
-      <section className="crm-ledger">
-        <div className="crm-section-head">
-          <div>
-            <p className="eyebrow">Accountability</p>
-            <h2>Open Work</h2>
-          </div>
-          <strong>{vaAccountability.length}</strong>
-        </div>
-        <div className="crm-accountability-list">
-          {vaAccountability.map((item) => (
-            <article className={`crm-accountability-card ${item.urgency}`} key={item.id}>
-              <div>
-                <span>{item.label}</span>
-                <h3>{item.detail}</h3>
-              </div>
-              <strong>{item.owner}</strong>
-            </article>
-          ))}
-          {!vaAccountability.length ? <p className="crm-empty">No accountability items. The board is clean.</p> : null}
-        </div>
-      </section>
-    </section>
   );
 }
 

@@ -27,7 +27,6 @@ export const crmQuoteStatuses = [
 
 export type CrmJobStatus = (typeof crmJobStatuses)[number];
 export type CrmQuoteStatus = (typeof crmQuoteStatuses)[number];
-export type CrmProfileRole = "owner" | "admin" | "sales" | "bookkeeping" | "va";
 export type CrmBookkeepingPaymentType = "zelle" | "cash" | "check" | "credit_card" | "other";
 export type CrmBookkeepingEntrySource = "crm_quote" | "legacy_sheet" | "manual";
 export type CrmBookkeepingPaymentSource = "crm_quote" | "legacy_sheet" | "manual";
