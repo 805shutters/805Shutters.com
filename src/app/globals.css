@@ -623,6 +623,12 @@ button {
   color: var(--white);
 }
 
+.page-editorial .hero-phone {
+  border-color: var(--ink);
+  background: var(--white);
+  color: var(--ink);
+}
+
 .button:hover,
 button:hover {
   transform: translateY(-1px);
@@ -2003,20 +2009,111 @@ body:has(.crm-app-shell) {
     overflow-x: hidden;
   }
 
+  .content-wrap,
+  .narrow {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .site-header-shell {
+    position: relative;
+  }
+
   .promo-strip {
-    font-size: 12px;
+    min-height: 32px;
+    gap: 7px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+
+  .site-masthead {
+    position: relative;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    justify-items: center;
+    gap: 7px 8px;
+    padding: 8px 14px 10px;
+  }
+
+  .masthead-contact-left {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+    align-self: start;
+    padding-top: 4px;
+  }
+
+  .social-links {
+    gap: 7px;
+  }
+
+  .social-links a {
+    width: 24px;
+    height: 24px;
+  }
+
+  .social-links svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .brand {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: center;
   }
 
   .masthead-actions {
+    grid-column: 1 / -1;
+    grid-row: 2;
     display: grid;
-    gap: 10px;
+    justify-self: center;
+    width: 100%;
+    gap: 4px;
+  }
+
+  .phone-stack {
+    gap: 4px;
+  }
+
+  .phone-stack .masthead-email {
+    margin-bottom: 0;
+    font-size: 11px;
+    letter-spacing: 0.03em;
+  }
+
+  .header-phone {
+    font-size: 25px;
+  }
+
+  .phone-note {
+    font-size: 10px;
+    letter-spacing: 0.18em;
   }
 
   .category-nav {
     max-width: 100vw;
-    overflow: hidden;
-    gap: 12px 18px;
-    font-size: 14px;
+    flex-wrap: nowrap;
+    justify-content: center;
+    min-height: 42px;
+    overflow-x: auto;
+    gap: 5px;
+    padding: 10px 6px;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-dot {
+    flex: 0 0 auto;
+    font-size: 9px;
+  }
+
+  .category-nav a {
+    flex: 0 0 auto;
   }
 
   .brand-wordmark {
@@ -2032,7 +2129,7 @@ body:has(.crm-app-shell) {
   }
 
   .brand-logo {
-    height: 104px;
+    height: 84px;
   }
 
   .service-grid,
@@ -2041,23 +2138,44 @@ body:has(.crm-app-shell) {
   }
 
   h1 {
-    font-size: 39px;
+    font-size: 36px;
+    line-height: 1.04;
+  }
+
+  h2 {
+    font-size: 29px;
+  }
+
+  .hero-actions {
+    display: grid;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .button,
+  button {
+    width: 100%;
+    min-height: 46px;
+    padding: 13px 16px;
+    text-align: center;
   }
 
   .home-editorial-panel {
     max-width: 100vw;
     width: 100%;
-    padding: 34px 18px;
+    padding: 24px 14px 0;
   }
 
   .home-editorial-panel h1 {
-    max-width: calc(100vw - 36px);
-    font-size: 38px;
+    max-width: 320px;
+    margin-bottom: 18px;
+    font-size: 25px;
+    line-height: 1.22;
   }
 
   .home-intro {
-    max-width: calc(100vw - 36px);
-    font-size: 18px;
+    max-width: 320px;
+    font-size: 25px;
   }
 
   .home-hero-media {
@@ -2066,8 +2184,19 @@ body:has(.crm-app-shell) {
     margin-inline: calc(50% - 50vw);
   }
 
+  .home-hero-media img {
+    aspect-ratio: 4 / 5;
+    object-position: center;
+  }
+
+  .home-hero-actions {
+    width: 100%;
+    margin-top: 18px;
+    margin-bottom: 28px;
+  }
+
   .portfolio-story-panel {
-    min-height: 560px;
+    min-height: min(620px, 84svh);
   }
 
   .portfolio-story-media::after {
@@ -2078,7 +2207,7 @@ body:has(.crm-app-shell) {
 
   .portfolio-story-copy {
     width: min(calc(100% - 28px), 440px);
-    margin-bottom: 18px;
+    margin-bottom: 24px;
   }
 
   .portfolio-story-copy p {
@@ -2097,6 +2226,7 @@ body:has(.crm-app-shell) {
 
   .installed-portfolio-grid {
     grid-template-columns: 1fr;
+    gap: 18px;
   }
 
   .installed-portfolio-head {
@@ -2110,11 +2240,37 @@ body:has(.crm-app-shell) {
 
   .page-editorial-panel {
     width: 100%;
-    padding: 30px 18px;
+    gap: 20px;
+    padding: 24px 14px;
   }
 
   .page-editorial-copy h1 {
-    font-size: 36px;
+    font-size: 34px;
+  }
+
+  .page-editorial-copy .lede {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .page-editorial-media img {
+    aspect-ratio: 1.16 / 1;
+  }
+
+  .service-section,
+  .section-stack,
+  .form-band,
+  .cta-band {
+    padding: 36px 0;
+  }
+
+  .service-grid {
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .service-card div {
+    padding: 18px;
   }
 
   .lead-form,
@@ -2122,9 +2278,29 @@ body:has(.crm-app-shell) {
     padding: 18px;
   }
 
+  .tag-list {
+    gap: 8px;
+  }
+
+  .tag-list li {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  .cta-layout {
+    display: grid;
+    justify-items: stretch;
+  }
+
   .home-crm-login {
     display: grid;
-    justify-items: start;
+    justify-items: stretch;
+    gap: 14px;
+    padding: 22px 14px;
+  }
+
+  .home-crm-login h2 {
+    font-size: 15px;
   }
 
   .crm-topbar h1,
@@ -2167,24 +2343,42 @@ body:has(.crm-app-shell) {
   }
 
   .booking-modal {
-    padding: 10px;
+    align-items: stretch;
+    padding: 8px;
+  }
+
+  .booking-panel {
+    width: 100%;
+    max-height: calc(100dvh - 16px);
   }
 
   .booking-panel__head {
-    padding: 18px;
+    gap: 12px;
+    padding: 16px;
   }
 
   .booking-panel__head h2 {
-    font-size: 22px;
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  .booking-close {
+    width: 44px;
+    flex: 0 0 44px;
   }
 
   .booking-calendar-head {
-    grid-template-columns: 54px 1fr 54px;
-    min-height: 74px;
+    grid-template-columns: 48px 1fr 48px;
+    min-height: 64px;
   }
 
   .booking-calendar-head h3 {
-    font-size: 24px;
+    font-size: 22px;
+  }
+
+  .booking-calendar-head button {
+    min-height: 64px;
+    font-size: 34px;
   }
 
   .booking-weekdays {
@@ -2193,20 +2387,50 @@ body:has(.crm-app-shell) {
 
   .booking-days {
     min-height: auto;
-    padding: 8px;
+    padding: 6px;
   }
 
   .booking-day,
   .booking-day--empty {
-    min-height: 58px;
-    font-size: 20px;
+    min-height: 48px;
+    font-size: 18px;
   }
 
   .booking-detail-panel {
-    padding: 18px;
+    padding: 16px;
   }
 
   .booking-slots {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .brand-logo {
+    height: 78px;
+  }
+
+  .phone-stack .masthead-email {
+    font-size: 10px;
+  }
+
+  .header-phone {
+    font-size: 23px;
+  }
+
+  .category-nav {
+    gap: 4px;
+    padding-inline: 5px;
+    font-size: 8.8px;
+    letter-spacing: 0.08em;
+  }
+
+  .home-editorial-panel h1,
+  .home-intro {
+    font-size: 23px;
+  }
+
+  .portfolio-story-copy h2 {
+    font-size: 35px;
   }
 }

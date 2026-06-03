@@ -8,6 +8,7 @@ coverage/
 tmp_*/
 tmp/
 reports/screenshots/
+reports/mobile-qa/
 reports/local-rebuild-audit.*
 .env
 .env.*
