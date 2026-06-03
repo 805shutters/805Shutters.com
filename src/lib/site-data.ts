@@ -1037,11 +1037,16 @@ function cityProductPage({
 }
 
 function searchDepthSections(page: SitePage): PageSection[] {
-  if (page.noIndex || page.path.startsWith("/recent-projects/")) {
+  if (page.noIndex || (page.path.startsWith("/recent-projects/") && page.path !== "/recent-projects/")) {
     return page.sections;
   }
   const existingHeadings = new Set(page.sections.map((section) => section.heading));
   const additions: PageSection[] = [
+    {
+      heading: "Before A Project Is Ordered",
+      body:
+        "Before any shutter, shade, blind, drapery, or commercial window covering is ordered, 805 Shutters confirms opening size, mount location, frame or bracket details, material and color choices, control side, child-safety needs, room-darkening goals, and access around doors, trim, handles, and furniture. That checklist helps prevent reorders, protects the installation schedule, and gives each customer a clear record of what is being built for every room. It also makes it easier to compare product options, lead times, care requirements, and long-term value before the order moves forward."
+    },
     {
       heading: "What We Review",
       body: `${page.h1} consultations include measurements, mounting details, privacy goals, sun exposure, room use, color direction, material options, controls, cleaning needs, and installation timing. 805 Shutters uses that information to recommend products that fit the room instead of pushing one default answer.`

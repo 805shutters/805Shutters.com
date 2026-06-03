@@ -245,7 +245,7 @@ function HomePageSections({ page }: { page: SitePage }) {
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <p className="home-intro">Proudly serving Ventura County for the last 30 years</p>
+          <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
           <div className="home-hero-media">
             <img src={page.image} alt={page.imageAlt} />
           </div>
