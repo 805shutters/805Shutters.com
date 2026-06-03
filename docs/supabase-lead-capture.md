@@ -39,8 +39,8 @@ Optional fields:
 - `pagePath`
 - UTM fields
 
-The API stores the lead in Supabase and optionally forwards to
-`LEAD_WEBHOOK_URL` if configured.
+The API stores the lead in Supabase, optionally forwards to `LEAD_WEBHOOK_URL`,
+and can send a Meta Conversions API Lead event when Meta env vars are configured.
 
 ## Environment variables
 
@@ -49,11 +49,18 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 LEAD_WEBHOOK_URL=
+NEXT_PUBLIC_META_PIXEL_ID=
+META_PIXEL_ID=
+META_CAPI_ACCESS_TOKEN=
+META_CAPI_TEST_EVENT_CODE=
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` must be set only in server environments, such as
 Vercel environment variables. It must never be committed or exposed in client
 components.
+
+`META_CAPI_ACCESS_TOKEN` must also remain server-only. `META_CAPI_TEST_EVENT_CODE`
+is for Events Manager testing and should be removed for production traffic.
 
 ## Local verification
 

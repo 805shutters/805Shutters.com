@@ -50,11 +50,15 @@ conversions, redirects, and DNS ownership have been verified.
   campaign structure.
 - `docs/facebook-heavy-launch-plan.md` - heavy Meta launch structure, budgets,
   gates, and optimization rules.
+- `docs/meta-ads-manager-build-steps.md` - click-by-click Meta Ads Manager
+  launch guide.
 - `content/wordpress/` - WordPress-ready copy, H1s, and metadata updates.
 - `content/ads/` - Meta/Facebook/Instagram ad copy and campaign setup.
 - `scripts/audit_site.py` - dependency-free crawler/auditor for the live site.
 - `scripts/generate_migration_inventory.py` - converts audit output into
   migration CSVs.
+- `scripts/generate_meta_creatives.mjs` - generates starter Meta ad creative
+  exports into `public/ads/`.
 - `scripts/publish_wp_page.py` - authenticated WordPress REST helper for
   creating/updating a page from local HTML.
 - `reports/lighthouse-home-mobile.json` - Lighthouse baseline for the homepage.
@@ -71,6 +75,14 @@ python3 scripts/audit_site.py --base-url https://www.805shutters.com --output re
 ```bash
 npm run migration:inventory
 ```
+
+## Generate starter Meta ad creatives
+
+```bash
+node scripts/generate_meta_creatives.mjs
+```
+
+Outputs are written to `public/ads/` in 4:5, 1:1, and 9:16 ratios.
 
 ## Rerun Lighthouse
 

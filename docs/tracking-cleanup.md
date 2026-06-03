@@ -13,6 +13,36 @@ The homepage source currently shows:
 - Google Ads tag: `AW-1009321066`
 - Mobile call button tracking exists for `tel:805-806-9344`
 
+## Rebuild tracking implementation
+
+The Next.js rebuild now supports:
+
+- Browser Meta Pixel PageView from `NEXT_PUBLIC_META_PIXEL_ID`.
+- Route-change PageView tracking for client-side navigation.
+- Browser Meta `Lead` event after a successful `/api/leads/` submission.
+- Browser Meta `Contact` event for tracked phone clicks.
+- GA4 `generate_lead` event after a successful lead submission.
+- GA4 `phone_click` event for tracked phone clicks.
+- Optional Google Ads lead and phone conversion labels.
+- Optional server-side Meta Conversions API `Lead` event from `/api/leads/`,
+  deduplicated with the browser event by lead ID.
+
+Production env vars:
+
+```text
+NEXT_PUBLIC_GA4_ID=
+NEXT_PUBLIC_GOOGLE_ADS_ID=
+NEXT_PUBLIC_GOOGLE_ADS_LEAD_CONVERSION_LABEL=
+NEXT_PUBLIC_GOOGLE_ADS_PHONE_CONVERSION_LABEL=
+NEXT_PUBLIC_META_PIXEL_ID=
+META_PIXEL_ID=
+META_CAPI_ACCESS_TOKEN=
+META_CAPI_TEST_EVENT_CODE=
+```
+
+`META_CAPI_TEST_EVENT_CODE` is only for Events Manager testing and should be
+removed before normal production traffic.
+
 ## Immediate decision
 
 Pick one source of truth for each platform:
@@ -51,6 +81,8 @@ Pick one source of truth for each platform:
 1. Open the site in an incognito browser with Meta Pixel Helper.
 2. Visit homepage, service page, consultation page, and contact page.
 3. Click the phone link and verify one Contact/phone event.
-4. Submit a test form and verify one Lead/generate_lead event.
-5. Check GA4 Realtime for source/medium and event name.
-6. Check Meta Events Manager test events.
+4. Submit a test form and verify one browser Lead/generate_lead event.
+5. In Meta Events Manager, verify the matching server Lead event is deduplicated
+   with the same event ID.
+6. Check GA4 Realtime for source/medium and event name.
+7. Confirm the user lands on `/thank-you/` after submit.

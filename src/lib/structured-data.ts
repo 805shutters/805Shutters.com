@@ -20,6 +20,7 @@ export function localBusinessJsonLd() {
       "Custom shutters",
       "Custom window shades",
       "Custom blinds",
+      "Custom drapery",
       "Commercial window coverings"
     ]
   };

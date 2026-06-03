@@ -30,6 +30,7 @@ Do not scale budget until these are confirmed:
 5. Events Manager receives one `Contact` event for a test phone click.
 6. GA4 Realtime shows `generate_lead` and `phone_click`.
 7. UTMs appear in GA4 traffic acquisition.
+8. `/privacy-policy/` is live and linked from the lead form and footer.
 
 ## Budget recommendation
 
@@ -133,6 +134,12 @@ Required aspect ratios:
 - 4:5 feed creative: 1080 x 1350.
 - 1:1 square fallback: 1080 x 1080.
 - 9:16 Stories/Reels: 1080 x 1920.
+
+Starter exports are generated in `public/ads/` by:
+
+```bash
+node scripts/generate_meta_creatives.mjs
+```
 
 ## Offer
 

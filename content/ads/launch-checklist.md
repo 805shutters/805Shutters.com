@@ -15,9 +15,10 @@ Date: 2026-06-01
 ## Website setup
 
 - `/free-window-treatment-consultation/` live.
-- Forminator form `1607` embedded or equivalent form added.
+- Rebuild lead form or Forminator form `1607` embedded.
 - Form redirects to `/thank-you/`.
 - Thank-you page noindexed if it should not rank.
+- `/privacy-policy/` is live and linked from the form and footer.
 - Phone links use `tel:8058069344`.
 - UTMs preserved through landing page and form submission where possible.
 
@@ -27,6 +28,7 @@ Date: 2026-06-01
 - Duplicate legacy pixel reviewed.
 - `Lead` fires once on form submit or thank-you page.
 - `Contact` fires once on phone click.
+- Optional server-side Meta Conversions API Lead event is deduplicated.
 - GA4 sees `generate_lead` and `phone_click`.
 - Google Ads conversions do not double-count the same lead.
 

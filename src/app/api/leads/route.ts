@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sendMetaLeadEvent } from "@/lib/meta-capi";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -16,10 +17,15 @@ type LeadPayload = {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  company?: string;
 };
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as LeadPayload;
+
+  if (payload.company?.trim()) {
+    return NextResponse.json({ message: "Lead received." });
+  }
 
   if (!payload.name || !payload.phone) {
     return NextResponse.json(
@@ -71,17 +77,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (process.env.LEAD_WEBHOOK_URL) {
-    await fetch(process.env.LEAD_WEBHOOK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        id: data.id,
-        ...leadRecord
-      })
+  try {
+    await sendMetaLeadEvent(request, {
+      eventId: data.id,
+      email: leadRecord.email,
+      phone: leadRecord.phone,
+      city: leadRecord.city,
+      interest: leadRecord.interest,
+      pagePath: leadRecord.page_path
     });
+  } catch (error) {
+    console.error(error);
+  }
+
+  if (process.env.LEAD_WEBHOOK_URL) {
+    try {
+      await fetch(process.env.LEAD_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          id: data.id,
+          ...leadRecord
+        })
+      });
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   return NextResponse.json({ id: data.id, message: "Lead received." });

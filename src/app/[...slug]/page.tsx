@@ -31,6 +31,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     alternates: {
       canonical: page.path
     },
+    robots: page.noIndex ? { index: false, follow: false } : undefined,
     openGraph: {
       title: page.title,
       description: page.description,

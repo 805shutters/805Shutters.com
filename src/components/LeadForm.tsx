@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { trackLeadEvent } from "@/lib/client-tracking";
 
 type FormState = "idle" | "submitting" | "sent" | "error";
 
@@ -33,13 +34,23 @@ export function LeadForm() {
         },
         body: JSON.stringify(payload)
       });
-      const result = (await response.json()) as { message?: string };
+      const result = (await response.json()) as { id?: string; message?: string };
       if (!response.ok) {
         throw new Error(result.message || "Lead request failed.");
       }
       setState("sent");
       setMessage("Request received. We will follow up soon.");
+      trackLeadEvent({
+        eventId: result.id,
+        interest: String(formData.get("interest") || "consultation"),
+        city: String(formData.get("city") || ""),
+        pagePath: window.location.pathname
+      });
       event.currentTarget.reset();
+      window.setTimeout(() => {
+        const leadParam = result.id ? `?lead_id=${encodeURIComponent(result.id)}` : "";
+        window.location.assign(`/thank-you/${leadParam}`);
+      }, 500);
     } catch (error) {
       setState("error");
       setMessage(error instanceof Error ? error.message : "Lead request failed.");
@@ -48,6 +59,10 @@ export function LeadForm() {
 
   return (
     <form className="lead-form" onSubmit={submitLead}>
+      <label className="honeypot-field" aria-hidden="true">
+        Company
+        <input name="company" autoComplete="off" tabIndex={-1} />
+      </label>
       <div className="field-row">
         <label>
           Name
@@ -85,6 +100,10 @@ export function LeadForm() {
       <button type="submit" disabled={state === "submitting"}>
         {state === "submitting" ? "Sending..." : "Request Consultation"}
       </button>
+      <p className="privacy-note">
+        By submitting this form, you agree that 805 Shutters may contact you about your
+        project. See our <a href="/privacy-policy/">Privacy Policy</a>.
+      </p>
       {message ? <p className={`form-message ${state}`}>{message}</p> : null}
     </form>
   );

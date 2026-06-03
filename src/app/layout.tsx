@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { site } from "@/lib/site-data";
 import { localBusinessJsonLd } from "@/lib/structured-data";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         <TrackingScripts />
+        <RouteTracking />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

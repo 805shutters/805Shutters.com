@@ -6,7 +6,11 @@ out/
 coverage/
 *.tsbuildinfo
 tmp_*/
+tmp/
+reports/screenshots/
+reports/local-rebuild-audit.*
 .env
 .env.*
 !.env.example
 *.local
+.vercel

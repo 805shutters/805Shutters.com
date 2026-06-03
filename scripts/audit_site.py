@@ -161,11 +161,36 @@ def get_json(url: str) -> Any:
     status, body = fetch(url)
     if status is None or status >= 400:
         return None
-    return json.loads(body)
+    try:
+        return json.loads(body)
+    except json.JSONDecodeError:
+        return None
 
 
 def sitemap_urls(base_url: str) -> list[str]:
-    index_url = urllib.parse.urljoin(base_url, "/sitemap_index.xml")
+    urls = sitemap_urls_from_path(base_url, "/sitemap_index.xml")
+    if urls:
+        return urls
+    return sitemap_urls_from_path(base_url, "/sitemap.xml")
+
+
+def rewrite_url_to_base(url: str, base_url: str) -> str:
+    parsed_url = urllib.parse.urlparse(url)
+    parsed_base = urllib.parse.urlparse(base_url)
+    return urllib.parse.urlunparse(
+        (
+            parsed_base.scheme,
+            parsed_base.netloc,
+            parsed_url.path,
+            "",
+            parsed_url.query,
+            "",
+        )
+    )
+
+
+def sitemap_urls_from_path(base_url: str, path: str) -> list[str]:
+    index_url = urllib.parse.urljoin(base_url, path)
     status, body = fetch(index_url)
     if status is None or status >= 400:
         return []
@@ -173,14 +198,22 @@ def sitemap_urls(base_url: str) -> list[str]:
     ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     root = ET.fromstring(body)
     sitemap_locs = [node.text or "" for node in root.findall(".//sm:sitemap/sm:loc", ns)]
-    urls: list[str] = []
+    urls = [
+        rewrite_url_to_base(node.text or "", base_url)
+        for node in root.findall(".//sm:url/sm:loc", ns)
+        if node.text
+    ]
 
     for loc in sitemap_locs:
-        status, sitemap = fetch(loc)
+        status, sitemap = fetch(rewrite_url_to_base(loc, base_url))
         if status is None or status >= 400:
             continue
         child = ET.fromstring(sitemap)
-        urls.extend(node.text or "" for node in child.findall(".//sm:url/sm:loc", ns))
+        urls.extend(
+            rewrite_url_to_base(node.text or "", base_url)
+            for node in child.findall(".//sm:url/sm:loc", ns)
+            if node.text
+        )
     return sorted(set(url for url in urls if url))
 
 

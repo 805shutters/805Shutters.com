@@ -93,3 +93,14 @@ Use this structure:
 805_room-reveal_4x5_v01.jpg
 805_room-reveal_9x16_v01.mp4
 ```
+
+## Generated starter assets
+
+Run:
+
+```bash
+node scripts/generate_meta_creatives.mjs
+```
+
+Starter assets are written to `public/ads/` and mapped in
+`content/ads/generated-creative-map.csv`.

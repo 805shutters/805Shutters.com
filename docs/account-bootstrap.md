@@ -8,10 +8,13 @@ codes, or service-role keys in git, chat, or Codex memory.
 
 ## Target ownership
 
-- Email identity: `805shutters@gmail.com`
+- Bootstrap Google account: `805shutters@gmail.com`
+- Target Google Workspace domain email: `@805shutters.com`
 - GitHub account: new account owned by `805shutters@gmail.com`
 - Supabase project: new project owned by the 805 account/team
 - Vercel project: new project connected to the 805 GitHub repository
+
+For the domain email cutover, use `docs/google-workspace-setup.md`.
 
 ## Local repo setup already done
 

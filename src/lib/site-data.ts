@@ -25,13 +25,20 @@ export type SitePage = {
   sections: PageSection[];
   cta?: string;
   form?: boolean;
+  noIndex?: boolean;
 };
 
 export const site = {
-  name: "805 Shutters, Shades & Blinds",
+  name: "805 Shutters",
   shortName: "805 Shutters",
   phone: "805-806-9344",
   phoneHref: "tel:8058069344",
+  email: "hello@805shutters.com",
+  emailHref: "mailto:hello@805shutters.com",
+  social: {
+    facebook: "https://www.facebook.com/805shutters",
+    instagram: "https://www.instagram.com/805shutters/"
+  },
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com",
   serviceArea: "Ventura County",
   areas: [
@@ -51,16 +58,14 @@ export const site = {
 };
 
 export const images = {
-  hero:
-    "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2016/10/shutters-eclipse4.jpg?w=1600&ssl=1",
+  hero: "/images/805-hero-window-treatments.png",
   shutters:
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2016/10/shutters-eclipse4.jpg?w=900&ssl=1",
-  shades:
-    "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2016/10/Shades-Honeycomb.jpg?w=900&ssl=1",
-  blinds:
-    "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2016/10/blinds-vert2.jpg?w=900&ssl=1",
+  shades: "/images/805-portfolio-shades-bedroom.jpg",
+  blinds: "/images/805-portfolio-blinds-office.jpg",
+  drapery: "/images/805-portfolio-drapery-living-room.jpg",
   project:
-    "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2016/10/Shades-Honeycomb.jpg?w=1200&ssl=1"
+    "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
 
 export const services: Service[] = [
@@ -90,6 +95,15 @@ export const services: Service[] = [
       "Wood, faux wood, aluminum, vertical, and softwood blinds measured and installed for local homes and businesses.",
     image: images.blinds,
     imageAlt: "Vertical blinds installed on a large sliding door"
+  },
+  {
+    title: "Custom Drapery",
+    shortTitle: "Drapery",
+    slug: "drapery",
+    description:
+      "Soft drapery and fabric window treatment planning for rooms that need warmth, privacy, light control, and a finished designer look.",
+    image: images.drapery,
+    imageAlt: "Soft fabric window treatments in a Ventura County living room"
   },
   {
     title: "Commercial Window Coverings",
@@ -201,6 +215,54 @@ const parentPages: SitePage[] = [
         heading: "Local Installation",
         body:
           "Our team confirms measurements, mounting details, control options, and product fit before installation."
+      }
+    ]
+  },
+  {
+    path: "/drapery/",
+    title: "Custom Drapery Ventura County | 805 Shutters",
+    description:
+      "Custom drapery and fabric window treatment planning for Ventura County homes. Compare soft treatments, privacy, light control, and room style.",
+    h1: "Custom Drapery in Ventura County",
+    eyebrow: "Soft window treatments",
+    intro:
+      "805 Shutters helps Ventura County customers plan custom drapery and fabric window treatments that soften rooms, add privacy, and complete the design around shutters, shades, or blinds.",
+    image: images.drapery,
+    imageAlt: "Custom drapery and shades in a Ventura County living room",
+    sections: [
+      {
+        heading: "Layered Window Treatment Design",
+        body:
+          "Drapery can add warmth, texture, room-darkening support, privacy, and a finished look alongside shutters, shades, or blinds."
+      },
+      {
+        heading: "Local Planning",
+        body:
+          "The consultation covers room goals, fabric direction, privacy, light control, hardware, measurements, and how drapery fits with the rest of the home."
+      }
+    ]
+  },
+  {
+    path: "/exterior-shades/",
+    title: "Exterior Shades Ventura County | Outdoor Shades | 805 Shutters",
+    description:
+      "Exterior shades and outdoor shade planning for Ventura County patios, sun exposure, glare control, privacy, and outdoor living spaces.",
+    h1: "Exterior Shades in Ventura County",
+    eyebrow: "Outdoor light control",
+    intro:
+      "805 Shutters helps Ventura County customers plan exterior shades for patios, large openings, sun exposure, glare control, privacy, and more comfortable outdoor living.",
+    image: images.hero,
+    imageAlt: "Exterior shade planning for a bright Ventura County home",
+    sections: [
+      {
+        heading: "Shade For Outdoor Living",
+        body:
+          "Exterior shades can help manage heat, glare, privacy, and sun exposure around patios, sliding doors, outdoor rooms, and large window openings."
+      },
+      {
+        heading: "Measured For The Opening",
+        body:
+          "The consultation covers the opening, mounting conditions, exposure, fabric direction, operation preferences, and how the shade should perform throughout the day."
       }
     ]
   },
@@ -354,6 +416,78 @@ const supportPages: SitePage[] = [
     ]
   },
   {
+    path: "/thank-you/",
+    title: "Thank You | 805 Shutters",
+    description:
+      "Thank you for contacting 805 Shutters. Our Ventura County window treatment team will follow up soon.",
+    h1: "Thank You",
+    eyebrow: "Request received",
+    intro:
+      "Thanks for reaching out to 805 Shutters. We will follow up soon about your shutters, shades, blinds, drapery, or commercial window covering project.",
+    image: images.shutters,
+    imageAlt: "Finished custom shutters in a Ventura County home",
+    noIndex: true,
+    sections: [
+      {
+        heading: "Prefer To Talk Now?",
+        body:
+          "Call 805-806-9344 if you want to talk through your project right away. We can help compare products, service areas, timing, and next steps."
+      },
+      {
+        heading: "What Happens Next",
+        body:
+          "We will review your request, confirm the best way to reach you, and help schedule a free consultation for the rooms or windows you want to update."
+      }
+    ],
+    cta: "Explore window treatment options"
+  },
+  {
+    path: "/privacy-policy/",
+    title: "Privacy Policy | 805 Shutters",
+    description:
+      "Privacy policy and notice at collection for 805 Shutters website visitors and consultation requests.",
+    h1: "Privacy Policy",
+    eyebrow: "Notice at collection",
+  intro:
+      "This privacy policy explains how 805 Shutters collects and uses information submitted through this website, advertising forms, phone calls, and consultation requests.",
+    image: images.shutters,
+    imageAlt: "Custom shutters installed in a Ventura County home",
+    noIndex: true,
+    sections: [
+      {
+        heading: "Information We Collect",
+        body:
+          "We may collect your name, phone number, email address, city, project interest, notes you submit, page path, advertising campaign details, referral source, device/browser information, and similar website analytics information."
+      },
+      {
+        heading: "How We Use Information",
+        body:
+          "We use this information to respond to consultation requests, schedule appointments, provide window treatment recommendations, improve advertising, measure website performance, prevent spam, and operate the business."
+      },
+      {
+        heading: "Advertising And Analytics",
+        body:
+          "The website may use analytics and advertising tools, including Google and Meta technologies, to understand campaign performance and show relevant ads. These tools may use cookies or similar identifiers."
+      },
+      {
+        heading: "Sharing",
+        body:
+          "We do not sell customer lead information. We may share information with service providers that help operate the website, lead database, advertising, analytics, hosting, email, scheduling, and customer follow-up."
+      },
+      {
+        heading: "Your Choices",
+        body:
+          "You may request access, correction, or deletion of information you submitted by contacting 805 Shutters. California residents may have additional rights under California privacy law depending on how the law applies to the business."
+      },
+      {
+        heading: "Contact",
+        body:
+          "For privacy requests or questions, call 805-806-9344 or use the contact form on this website."
+      }
+    ],
+    cta: "Request a free consultation"
+  },
+  {
     path: "/faq/",
     title: "Shutters, Shades & Blinds FAQ | 805 Shutters",
     description:
@@ -458,6 +592,7 @@ const recentProjectPages: SitePage[] = [
     "This project page is reserved for install photos, room details, product notes, and links to the matching service page during the rebuild.",
   image: images.project,
   imageAlt: `${title} by 805 Shutters`,
+  noIndex: true,
   sections: [
     {
       heading: "Migration Note",
@@ -547,9 +682,61 @@ function cityProductPage({
         heading: "Local consultation",
         body:
           "The consultation covers window measurements, product fit, material choices, color, control options, installation details, and next steps."
+      },
+      {
+        heading: "Room-by-room recommendations",
+        body: `For ${city} projects, 805 Shutters reviews how each room is used before recommending ${label}. Bedrooms may need more privacy or room darkening, living areas may need glare control without losing natural light, and sliding doors or large windows may need products that stay easy to operate every day.`
+      },
+      {
+        heading: "Products compared during the visit",
+        body:
+          "The same appointment can compare plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, vertical blinds, drapery, and commercial roller shades. That makes it easier to choose the right product for the room instead of guessing from pictures alone."
+      },
+      {
+        heading: "Ventura County installation support",
+        body: `805 Shutters serves ${city} and nearby Ventura County communities with measuring, product guidance, ordering, and professional installation. The goal is to help you understand cost, timing, materials, controls, and long-term maintenance before the project moves forward.`
       }
     ],
     cta: "Schedule a free in-home consultation"
+  };
+}
+
+function searchDepthSections(page: SitePage): PageSection[] {
+  if (page.noIndex) {
+    return page.sections;
+  }
+  const existingHeadings = new Set(page.sections.map((section) => section.heading));
+  const additions: PageSection[] = [
+    {
+      heading: "What We Review",
+      body: `${page.h1} consultations include measurements, mounting details, privacy goals, sun exposure, room use, color direction, material options, controls, cleaning needs, and installation timing. 805 Shutters uses that information to recommend products that fit the room instead of pushing one default answer.`
+    },
+    {
+      heading: "Compare Options In One Visit",
+      body:
+        "Many homes need more than one window treatment type. Shutters may be right for structure and long-term durability, shades may be better for softness or glare control, blinds can offer flexible adjustment, and drapery can finish a room with fabric and warmth."
+    },
+    {
+      heading: "Local Service Area",
+      body:
+        "805 Shutters works throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
+    },
+    {
+      heading: "Free Consultation Next Step",
+      body:
+        "A free consultation is the fastest way to turn product research into a clear plan. The visit helps confirm measurements, room priorities, product tradeoffs, installation details, and the best next step before a quote or order is finalized."
+    }
+  ];
+  return [
+    ...page.sections,
+    ...additions.filter((section) => !existingHeadings.has(section.heading))
+  ];
+}
+
+function withSearchDepth(page: SitePage): SitePage {
+  return {
+    ...page,
+    sections: searchDepthSections(page)
   };
 }
 
@@ -604,22 +791,22 @@ const specialtyPages: SitePage[] = [
   })
 ];
 
-export const homePage: SitePage = {
+export const homePage: SitePage = withSearchDepth({
   path: "/",
-  title: "Custom Shutters, Shades & Blinds Ventura County | 805 Shutters",
+  title: "Custom Shutters, Blinds, Shades & Drapery Ventura County | 805 Shutters",
   description:
-    "805 Shutters installs custom shutters, shades, blinds, and commercial window coverings across Ventura County. Free in-home consultation. Call 805-806-9344.",
-  h1: "Custom Shutters, Shades & Blinds in Ventura County",
+    "805 Shutters installs custom shutters, blinds, shades, drapery, and commercial window coverings across Ventura County. Free in-home consultation.",
+  h1: "Custom Shutters, Blinds, Shades & Drapery in Ventura County",
   eyebrow: "Family-owned since 1995",
   intro:
-    "805 Shutters, Shades & Blinds helps Ventura County homeowners and businesses choose custom window treatments that fit their rooms, light, privacy, and budget.",
+    "805 Shutters helps Ventura County homeowners and businesses choose custom window treatments that fit their rooms, light, privacy, and budget.",
   image: images.hero,
-  imageAlt: "Custom white shutters installed in a Ventura County living room",
+  imageAlt: "Custom shades and drapery in a bright Ventura County living room",
   sections: [
     {
       heading: "Local Window Treatment Installation",
-      body:
-        "Our local team measures, recommends, and installs plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, vertical blinds, and commercial window coverings across Ventura County."
+        body:
+        "Our local team measures, recommends, and installs plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, drapery, vertical blinds, and commercial window coverings across Ventura County."
     },
     {
       heading: "Popular Service Areas",
@@ -629,7 +816,7 @@ export const homePage: SitePage = {
     }
   ],
   cta: "Schedule a free in-home consultation"
-};
+});
 
 export const allPages = [
   homePage,
@@ -638,7 +825,7 @@ export const allPages = [
   ...generatedCityPages,
   ...specialtyPages,
   ...recentProjectPages
-];
+].map(withSearchDepth);
 
 export function normalizePath(path: string) {
   if (path === "/") {

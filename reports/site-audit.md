@@ -1,6 +1,6 @@
 # 805 Shutters site audit
 
-Generated: 2026-06-01T23:03:39Z
+Generated: 2026-06-02T20:47:34Z
 Base URL: https://www.805shutters.com
 
 ## Summary
