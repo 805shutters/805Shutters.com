@@ -1,0 +1,3511 @@
+{
+  "candidate_base": "https://805-one.vercel.app",
+  "comparisons": [
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/",
+        "description": "805 Shutters installs custom shutters, blinds, shades, drapery, and commercial window coverings across Ventura County. Free in-home consultation.",
+        "error": null,
+        "h1": [
+          "Proudly serving Ventura County for the last 30 years"
+        ],
+        "missing_alt_count": 0,
+        "path": "/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shutters, Blinds, Shades & Drapery Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/",
+        "word_count": 675
+      },
+      "candidate_word_count": 675,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/",
+        "description": "805 Shutters, Shades & Blinds installs custom shutters, shades, blinds, and commercial window coverings across Ventura County. Family-owned, 5-star Yelp-rated, with over 30 years of local experience.",
+        "error": null,
+        "h1": [
+          "Don\u2019t take our word for it\u2026"
+        ],
+        "missing_alt_count": 28,
+        "path": "/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shutters, Shades & Blinds Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/",
+        "word_count": 167
+      },
+      "live_word_count": 167,
+      "path": "/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/about/",
+        "description": "Learn about 805 Shutters, a family-owned Ventura County company installing shutters, shades, blinds, and commercial window coverings.",
+        "error": null,
+        "h1": [
+          "Family-Owned Window Treatment Company"
+        ],
+        "missing_alt_count": 0,
+        "path": "/about/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "About 805 Shutters | Family-Owned Ventura County Window Treatments",
+        "url": "https://805-one.vercel.app/about/",
+        "word_count": 352
+      },
+      "candidate_word_count": 352,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/about/",
+        "description": "Learn about 805 Shutters, Shades & Blinds, a family-owned Ventura County window treatment company with over 30 years of local experience and 5-star Yelp reviews.",
+        "error": null,
+        "h1": [
+          "About 805 Shutters, Shades & Blinds"
+        ],
+        "missing_alt_count": 0,
+        "path": "/about/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "About 805 Shutters | Family-Owned Ventura County Window Treatments",
+        "url": "https://www.805shutters.com/about/",
+        "word_count": 266
+      },
+      "live_word_count": 266,
+      "path": "/about/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/",
+        "description": "Shop custom blinds in Ventura County including wood, faux wood, aluminum, and vertical blinds. Free local consultation and professional installation.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds Ventura County | Wood, Faux Wood and Vertical Blinds",
+        "url": "https://805-one.vercel.app/blinds/",
+        "word_count": 370
+      },
+      "candidate_word_count": 370,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/",
+        "description": "Custom wood, faux wood, vertical, and aluminum blinds installed across Ventura County. Local service, measuring, and installation by 805 Shutters.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 46,
+        "path": "/blinds/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Custom Blinds Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/blinds/",
+        "word_count": 214
+      },
+      "live_word_count": 214,
+      "path": "/blinds/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/camarillo-ca/",
+        "description": "Custom Blinds in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/camarillo-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Camarillo CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/camarillo-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/camarillo-ca/",
+        "description": "We provide the best blinds near Camarillo, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Camarillo CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/camarillo-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Camarillo CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/camarillo-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/camarillo-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/fillmore-ca/",
+        "description": "Custom Blinds in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/fillmore-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Fillmore CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/fillmore-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/fillmore-ca/",
+        "description": "We provide the best blinds near Fillmore, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Fillmore CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/fillmore-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Fillmore CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/fillmore-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/fillmore-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/moorpark-ca/",
+        "description": "Custom Blinds in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/moorpark-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Moorpark CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/moorpark-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/moorpark-ca/",
+        "description": "We provide the best blinds near Moorpark, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Moorpark CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/moorpark-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Moorpark CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/moorpark-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/moorpark-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/oak-park-ca/",
+        "description": "Custom Blinds in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Oak Park"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/oak-park-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Oak Park CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/oak-park-ca/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/oak-park-ca/",
+        "description": "We provide the best blinds near Oak Park, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Oak Park CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/oak-park-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Oak Park CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/oak-park-ca/",
+        "word_count": 837
+      },
+      "live_word_count": 837,
+      "path": "/blinds/oak-park-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/ojai-ca/",
+        "description": "Custom Blinds in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/ojai-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Ojai CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/ojai-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/ojai-ca/",
+        "description": "We provide the best blinds near Ojai, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Ojai CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/ojai-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Ojai CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/ojai-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/ojai-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/oxnard-ca/",
+        "description": "Custom Blinds in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/oxnard-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Oxnard CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/oxnard-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/oxnard-ca/",
+        "description": "We provide the best blinds near Oxnard, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Oxnard CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/oxnard-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Oxnard CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/oxnard-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/oxnard-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/port-hueneme-ca/",
+        "description": "Custom Blinds in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/port-hueneme-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Port Hueneme CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/port-hueneme-ca/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/port-hueneme-ca/",
+        "description": "We provide the best blinds near Port Hueneme, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Port Hueneme CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/port-hueneme-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Port Hueneme CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/port-hueneme-ca/",
+        "word_count": 837
+      },
+      "live_word_count": 837,
+      "path": "/blinds/port-hueneme-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/santa-paula-ca/",
+        "description": "Custom Blinds in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/santa-paula-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Santa Paula CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/santa-paula-ca/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/santa-paula-ca/",
+        "description": "We provide the best blinds near Santa Paula, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Santa Paula CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/santa-paula-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Santa Paula CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/santa-paula-ca/",
+        "word_count": 837
+      },
+      "live_word_count": 837,
+      "path": "/blinds/santa-paula-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/santa-rosa-valley-ca/",
+        "description": "Custom Blinds in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/santa-rosa-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Santa Rosa Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/santa-rosa-valley-ca/",
+        "word_count": 522
+      },
+      "candidate_word_count": 522,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/santa-rosa-valley-ca/",
+        "description": "We provide the best blinds near Santa Rosa Valley, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Santa Rosa Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/santa-rosa-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Santa Rosa Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/santa-rosa-valley-ca/",
+        "word_count": 846
+      },
+      "live_word_count": 846,
+      "path": "/blinds/santa-rosa-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/simi-valley-ca/",
+        "description": "Custom Blinds in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/simi-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Simi Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/simi-valley-ca/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/simi-valley-ca/",
+        "description": "We provide the best blinds near Simi Valley, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Simi Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/simi-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Simi Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/simi-valley-ca/",
+        "word_count": 837
+      },
+      "live_word_count": 837,
+      "path": "/blinds/simi-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/thousand-oaks-ca/",
+        "description": "Custom Blinds in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/thousand-oaks-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Thousand Oaks CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/thousand-oaks-ca/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/thousand-oaks-ca/",
+        "description": "We provide the best blinds near Thousand Oaks, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Thousand Oaks CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/thousand-oaks-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Thousand Oaks CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/thousand-oaks-ca/",
+        "word_count": 837
+      },
+      "live_word_count": 837,
+      "path": "/blinds/thousand-oaks-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/ventura-ca/",
+        "description": "Custom Blinds in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/ventura-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Blinds in Ventura CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/ventura-ca/",
+        "word_count": 510
+      },
+      "candidate_word_count": 510,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/ventura-ca/",
+        "description": "We provide the best blinds near Ventura, California. Our window covering company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Blinds near Ventura CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/ventura-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Blinds near Ventura CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/blinds/ventura-ca/",
+        "word_count": 828
+      },
+      "live_word_count": 828,
+      "path": "/blinds/ventura-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/blinds/ventura-county/",
+        "description": "Custom Blinds in Ventura County measured and installed by 805 Shutters. Free consultation for Ventura County homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Blinds in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/blinds/ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Ventura County Blinds | Custom Blinds | 805 Shutters",
+        "url": "https://805-one.vercel.app/blinds/ventura-county/",
+        "word_count": 516
+      },
+      "candidate_word_count": 516,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/blinds/ventura-county/",
+        "description": "Custom blinds for Ventura County homes, including wood, faux wood, vertical, and aluminum options. Local measuring and installation by 805 Shutters.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/blinds/ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Ventura County Blinds | Custom Blinds | 805 Shutters",
+        "url": "https://www.805shutters.com/blinds/ventura-county/",
+        "word_count": 675
+      },
+      "live_word_count": 675,
+      "path": "/blinds/ventura-county/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/commercial-roller-shades/",
+        "description": "Commercial roller shades for Ventura County offices, storefronts, schools, medical spaces, restaurants, and shared facilities.",
+        "error": null,
+        "h1": [
+          "Commercial Roller Shades in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/commercial-roller-shades/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Commercial Roller Shades Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/commercial-roller-shades/",
+        "word_count": 351
+      },
+      "candidate_word_count": 351,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/commercial-roller-shades/",
+        "description": "Commercial roller shades for Camarillo, Ventura, Oxnard, Thousand Oaks, Simi Valley, Moorpark, Ojai, and nearby Ventura County communities.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/commercial-roller-shades/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Commercial Roller Shades Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/commercial-roller-shades/",
+        "word_count": 393
+      },
+      "live_word_count": 393,
+      "path": "/commercial-roller-shades/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/commercial-window-coverings/",
+        "description": "Commercial window coverings for offices, storefronts, restaurants, schools, and medical spaces in Ventura County.",
+        "error": null,
+        "h1": [
+          "Commercial Window Coverings in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/commercial-window-coverings/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Commercial Window Coverings Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/commercial-window-coverings/",
+        "word_count": 355
+      },
+      "candidate_word_count": 355,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/commercial-window-coverings/",
+        "description": "Commercial window coverings for offices, storefronts, schools, and local businesses across Ventura County. Call 805 Shutters at (805) 806-9344.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/commercial-window-coverings/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Commercial Window Coverings Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/commercial-window-coverings/",
+        "word_count": 598
+      },
+      "live_word_count": 598,
+      "path": "/commercial-window-coverings/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/contact/",
+        "description": "Contact 805 Shutters for a free in-home consultation for custom shutters, shades, blinds, and commercial window coverings in Ventura County.",
+        "error": null,
+        "h1": [
+          "Contact 805 Shutters"
+        ],
+        "missing_alt_count": 0,
+        "path": "/contact/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Contact 805 Shutters | Free In-Home Consultation",
+        "url": "https://805-one.vercel.app/contact/",
+        "word_count": 400
+      },
+      "candidate_word_count": 400,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/contact/",
+        "description": "Contact 805 Shutters, Shades & Blinds for a free in-home consultation in Camarillo, Ventura, Oxnard, Thousand Oaks, Simi Valley, and nearby areas.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/contact/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Contact 805 Shutters | Free In-Home Consultation",
+        "url": "https://www.805shutters.com/contact/",
+        "word_count": 108
+      },
+      "live_word_count": 108,
+      "path": "/contact/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/drapery/",
+        "description": "Custom drapery and fabric window treatment planning for Ventura County homes. Compare soft treatments, privacy, light control, and room style.",
+        "error": null,
+        "h1": [
+          "Custom Drapery in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/drapery/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Drapery Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/drapery/",
+        "word_count": 383
+      },
+      "candidate_word_count": 383,
+      "description_changed": false,
+      "flags": [],
+      "live": null,
+      "live_word_count": 0,
+      "path": "/drapery/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/exterior-shades/",
+        "description": "Exterior shades and outdoor shade planning for Ventura County patios, sun exposure, glare control, privacy, and outdoor living spaces.",
+        "error": null,
+        "h1": [
+          "Exterior Shades in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/exterior-shades/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Exterior Shades Ventura County | Outdoor Shades | 805 Shutters",
+        "url": "https://805-one.vercel.app/exterior-shades/",
+        "word_count": 384
+      },
+      "candidate_word_count": 384,
+      "description_changed": false,
+      "flags": [],
+      "live": null,
+      "live_word_count": 0,
+      "path": "/exterior-shades/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/faq/",
+        "description": "Answers to common questions about custom shutters, shades, blinds, consultations, installation, and service areas in Ventura County.",
+        "error": null,
+        "h1": [
+          "Shutters, Shades and Blinds FAQ"
+        ],
+        "missing_alt_count": 0,
+        "path": "/faq/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters, Shades & Blinds FAQ | 805 Shutters",
+        "url": "https://805-one.vercel.app/faq/",
+        "word_count": 410
+      },
+      "candidate_word_count": 410,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/faq/",
+        "description": "Answers about custom shutters, shades, blinds, measurements, installation, service areas, and free in-home consultations from 805 Shutters in Ventura County.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/faq/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters, Shades & Blinds FAQ | 805 Shutters",
+        "url": "https://www.805shutters.com/faq/",
+        "word_count": 608
+      },
+      "live_word_count": 608,
+      "path": "/faq/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/free-window-treatment-consultation/",
+        "description": "Request a free in-home consultation for custom shutters, shades, blinds, or commercial window coverings in Ventura County.",
+        "error": null,
+        "h1": [
+          "Free In-Home Window Treatment Consultation"
+        ],
+        "missing_alt_count": 0,
+        "path": "/free-window-treatment-consultation/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Free Window Treatment Consultation in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/free-window-treatment-consultation/",
+        "word_count": 456
+      },
+      "candidate_word_count": 456,
+      "description_changed": false,
+      "flags": [],
+      "live": null,
+      "live_word_count": 0,
+      "path": "/free-window-treatment-consultation/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/gallery/",
+        "description": "Browse examples of shutters, shades, blinds, and window coverings installed by 805 Shutters in Ventura County.",
+        "error": null,
+        "h1": [
+          "Window Treatment Gallery"
+        ],
+        "missing_alt_count": 0,
+        "path": "/gallery/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatment Gallery Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/gallery/",
+        "word_count": 348
+      },
+      "candidate_word_count": 348,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/gallery/",
+        "description": "Project photos and product examples for custom shutters, shades, blinds, and window coverings installed by 805 Shutters across Ventura County.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 130,
+        "path": "/gallery/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatment Gallery Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/gallery/",
+        "word_count": 125
+      },
+      "live_word_count": 125,
+      "path": "/gallery/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/",
+        "description": "Recent custom shutter, shade, blind, and window covering projects completed by 805 Shutters in Ventura County.",
+        "error": null,
+        "h1": [
+          "Recent Local Window Treatment Projects"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Recent Window Treatment Projects | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/",
+        "word_count": 351
+      },
+      "candidate_word_count": 351,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/",
+        "description": "See real shutter, shade, blind, and commercial window covering installations completed by 805 Shutters, Shades & Blinds for local Ventura County homes and",
+        "error": null,
+        "h1": [
+          "Recent Window Covering Projects"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Recent Projects - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/",
+        "word_count": 252
+      },
+      "live_word_count": 252,
+      "path": "/recent-projects/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/arched-plantation-shutters-ventura-county/",
+        "description": "A recent specialty-window project showing custom arched plantation shutters measured to fit curved window openings.",
+        "error": null,
+        "h1": [
+          "Custom Arched Plantation Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/arched-plantation-shutters-ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Arched Plantation Shutters in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/arched-plantation-shutters-ventura-county/",
+        "word_count": 249
+      },
+      "candidate_word_count": 249,
+      "description_changed": false,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/arched-plantation-shutters-ventura-county/",
+        "description": "A recent specialty-window project showing custom arched plantation shutters measured to fit curved window openings.",
+        "error": null,
+        "h1": [
+          "Custom Arched Plantation Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/arched-plantation-shutters-ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Arched Plantation Shutters in Ventura County - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/arched-plantation-shutters-ventura-county/",
+        "word_count": 257
+      },
+      "live_word_count": 257,
+      "path": "/recent-projects/arched-plantation-shutters-ventura-county/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "description": "A recent local plantation shutter project showing dark wood shutters used for privacy, light control, and a warmer finished-room look.",
+        "error": null,
+        "h1": [
+          "Dark Wood Plantation Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Dark Wood Plantation Shutters in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "word_count": 261
+      },
+      "candidate_word_count": 261,
+      "description_changed": false,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "description": "A recent local plantation shutter project showing dark wood shutters used for privacy, light control, and a warmer finished-room look.",
+        "error": null,
+        "h1": [
+          "Dark Wood Plantation Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Dark Wood Plantation Shutters in Ventura County - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+        "word_count": 265
+      },
+      "live_word_count": 265,
+      "path": "/recent-projects/dark-wood-plantation-shutters-ventura-county/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/layered-window-shades-ventura-county/",
+        "description": "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
+        "error": null,
+        "h1": [
+          "Layered Window Shades in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/layered-window-shades-ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Layered Window Shades in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/layered-window-shades-ventura-county/",
+        "word_count": 244
+      },
+      "candidate_word_count": 244,
+      "description_changed": false,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/layered-window-shades-ventura-county/",
+        "description": "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
+        "error": null,
+        "h1": [
+          "Layered Window Shades in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/layered-window-shades-ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Layered Window Shades in Ventura County - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/layered-window-shades-ventura-county/",
+        "word_count": 250
+      },
+      "live_word_count": 250,
+      "path": "/recent-projects/layered-window-shades-ventura-county/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/plantation-shutters-ventura-county-project/",
+        "description": "White plantation shutters installed for a Ventura County home with better privacy, flexible light control, and custom fit for multiple window shapes.",
+        "error": null,
+        "h1": [
+          "Plantation Shutters Installed in a Ventura County Home"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/plantation-shutters-ventura-county-project/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Plantation Shutters Installed in a Ventura County Home | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/plantation-shutters-ventura-county-project/",
+        "word_count": 345
+      },
+      "candidate_word_count": 345,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/plantation-shutters-ventura-county-project/",
+        "description": "This local project shows white plantation shutters installed for a Ventura County home by 805 Shutters, Shades & Blinds. The goal was a clean, finished",
+        "error": null,
+        "h1": [
+          "Plantation Shutters Installed in a Ventura County Home"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/plantation-shutters-ventura-county-project/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Plantation Shutters Installed in a Ventura County Home - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/plantation-shutters-ventura-county-project/",
+        "word_count": 383
+      },
+      "live_word_count": 383,
+      "path": "/recent-projects/plantation-shutters-ventura-county-project/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/roller-shades-large-window-ventura-county/",
+        "description": "A recent roller shade project showing a clean shade solution for a wide window opening with privacy and glare control.",
+        "error": null,
+        "h1": [
+          "Roller Shades for Large Windows in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/roller-shades-large-window-ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Roller Shades for Large Windows in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/roller-shades-large-window-ventura-county/",
+        "word_count": 249
+      },
+      "candidate_word_count": 249,
+      "description_changed": false,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/roller-shades-large-window-ventura-county/",
+        "description": "A recent roller shade project showing a clean shade solution for a wide window opening with privacy and glare control.",
+        "error": null,
+        "h1": [
+          "Roller Shades for Large Windows in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/roller-shades-large-window-ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Roller Shades for Large Windows in Ventura County - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/roller-shades-large-window-ventura-county/",
+        "word_count": 258
+      },
+      "live_word_count": 258,
+      "path": "/recent-projects/roller-shades-large-window-ventura-county/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/recent-projects/sliding-door-shutters-ventura-county/",
+        "description": "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
+        "error": null,
+        "h1": [
+          "Sliding Door Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/sliding-door-shutters-ventura-county/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Sliding Door Shutters in Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/recent-projects/sliding-door-shutters-ventura-county/",
+        "word_count": 269
+      },
+      "candidate_word_count": 269,
+      "description_changed": false,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/recent-projects/sliding-door-shutters-ventura-county/",
+        "description": "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
+        "error": null,
+        "h1": [
+          "Sliding Door Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/recent-projects/sliding-door-shutters-ventura-county/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Sliding Door Shutters in Ventura County - 805 Shutters-Shades-Blinds",
+        "url": "https://www.805shutters.com/recent-projects/sliding-door-shutters-ventura-county/",
+        "word_count": 275
+      },
+      "live_word_count": 275,
+      "path": "/recent-projects/sliding-door-shutters-ventura-county/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/reviews/",
+        "description": "Read reviews for 805 Shutters, Shades & Blinds serving Ventura County with custom shutters, shades, blinds, and professional installation.",
+        "error": null,
+        "h1": [
+          "805 Shutters Reviews"
+        ],
+        "missing_alt_count": 0,
+        "path": "/reviews/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "805 Shutters Reviews | Ventura County Window Treatments",
+        "url": "https://805-one.vercel.app/reviews/",
+        "word_count": 354
+      },
+      "candidate_word_count": 354,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/reviews/",
+        "description": "Read about 805 Shutters, Shades & Blinds reviews and public profiles. Family-owned Ventura County window treatment company with 5-star Yelp reputation.",
+        "error": null,
+        "h1": [
+          "805 Shutters Reviews"
+        ],
+        "missing_alt_count": 0,
+        "path": "/reviews/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "805 Shutters Reviews | 5-Star Yelp-Rated Window Treatments",
+        "url": "https://www.805shutters.com/reviews/",
+        "word_count": 157
+      },
+      "live_word_count": 157,
+      "path": "/reviews/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/",
+        "description": "Custom roller shades, honeycomb shades, woven wood shades, Roman shades, and motorized shades for Ventura County homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Window Shades Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/",
+        "word_count": 376
+      },
+      "candidate_word_count": 376,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/",
+        "description": "Custom roller, Roman, cellular, woven, and motorized shades for Ventura County homes and businesses. Local measuring, sales, and installation from 805 Shutters.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 66,
+        "path": "/shades/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Custom Shades Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/shades/",
+        "word_count": 151
+      },
+      "live_word_count": 151,
+      "path": "/shades/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/camarillo-ca/",
+        "description": "Custom Window Shades in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/camarillo-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Camarillo CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/camarillo-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/camarillo-ca/",
+        "description": "We provide the best shades near Camarillo, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Camarillo CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/camarillo-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Camarillo CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/camarillo-ca/",
+        "word_count": 481
+      },
+      "live_word_count": 481,
+      "path": "/shades/camarillo-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/fillmore-ca/",
+        "description": "Custom Window Shades in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/fillmore-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Fillmore CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/fillmore-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/fillmore-ca/",
+        "description": "We provide the best shades near Fillmore, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Fillmore CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/fillmore-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Fillmore CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/fillmore-ca/",
+        "word_count": 481
+      },
+      "live_word_count": 481,
+      "path": "/shades/fillmore-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/moorpark-ca/",
+        "description": "Custom Window Shades in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/moorpark-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Moorpark CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/moorpark-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/moorpark-ca/",
+        "description": "We provide the best shades near Moorpark, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Moorpark CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/moorpark-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Moorpark CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/moorpark-ca/",
+        "word_count": 481
+      },
+      "live_word_count": 481,
+      "path": "/shades/moorpark-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/oak-park-ca/",
+        "description": "Custom Window Shades in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Oak Park"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/oak-park-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Oak Park CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/oak-park-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/oak-park-ca/",
+        "description": "We provide the best shades near Oak Park, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Oak Park CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/oak-park-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Oak Park CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/oak-park-ca/",
+        "word_count": 487
+      },
+      "live_word_count": 487,
+      "path": "/shades/oak-park-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/ojai-ca/",
+        "description": "Custom Window Shades in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/ojai-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Ojai CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/ojai-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/ojai-ca/",
+        "description": "We provide the best shades near Ojai, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Ojai CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/ojai-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Ojai CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/ojai-ca/",
+        "word_count": 477
+      },
+      "live_word_count": 477,
+      "path": "/shades/ojai-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/oxnard-ca/",
+        "description": "Custom Window Shades in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/oxnard-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Oxnard CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/oxnard-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/oxnard-ca/",
+        "description": "We provide the best shades near Oxnard, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Oxnard CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/oxnard-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Oxnard CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/oxnard-ca/",
+        "word_count": 481
+      },
+      "live_word_count": 481,
+      "path": "/shades/oxnard-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/port-hueneme-ca/",
+        "description": "Custom Window Shades in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/port-hueneme-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Port Hueneme CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/port-hueneme-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/port-hueneme-ca/",
+        "description": "We provide the best shades near Port Hueneme, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Port Hueneme CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/port-hueneme-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Port Hueneme CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/port-hueneme-ca/",
+        "word_count": 487
+      },
+      "live_word_count": 487,
+      "path": "/shades/port-hueneme-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/santa-paula-ca/",
+        "description": "Custom Window Shades in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/santa-paula-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Santa Paula CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/santa-paula-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/santa-paula-ca/",
+        "description": "We provide the best shades near Santa Paula, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Santa Paula CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/santa-paula-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Santa Paula CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/santa-paula-ca/",
+        "word_count": 487
+      },
+      "live_word_count": 487,
+      "path": "/shades/santa-paula-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/santa-rosa-valley-ca/",
+        "description": "Custom Window Shades in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/santa-rosa-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Santa Rosa Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/santa-rosa-valley-ca/",
+        "word_count": 524
+      },
+      "candidate_word_count": 524,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/santa-rosa-valley-ca/",
+        "description": "We provide the best shades near Santa Rosa Valley, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Santa Rosa Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/santa-rosa-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Santa Rosa Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/santa-rosa-valley-ca/",
+        "word_count": 493
+      },
+      "live_word_count": 493,
+      "path": "/shades/santa-rosa-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/simi-valley-ca/",
+        "description": "Custom Window Shades in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/simi-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Simi Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/simi-valley-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/simi-valley-ca/",
+        "description": "We provide the best shades near Simi Valley, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Simi Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/simi-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Simi Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/simi-valley-ca/",
+        "word_count": 487
+      },
+      "live_word_count": 487,
+      "path": "/shades/simi-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/thousand-oaks-ca/",
+        "description": "Custom Window Shades in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/thousand-oaks-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Thousand Oaks CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/thousand-oaks-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/thousand-oaks-ca/",
+        "description": "We provide the best shades near Thousand Oaks, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Thousand Oaks CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/thousand-oaks-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Thousand Oaks CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/thousand-oaks-ca/",
+        "word_count": 487
+      },
+      "live_word_count": 487,
+      "path": "/shades/thousand-oaks-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shades/ventura-ca/",
+        "description": "Custom Window Shades in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Window Shades in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/ventura-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shades in Ventura CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/shades/ventura-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shades/ventura-ca/",
+        "description": "We provide the best shades near Ventura, California. Our window shade company offers sales and quality installation service. Reach out today.",
+        "error": null,
+        "h1": [
+          "Shades near Ventura CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shades/ventura-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shades near Ventura CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/shades/ventura-ca/",
+        "word_count": 481
+      },
+      "live_word_count": 481,
+      "path": "/shades/ventura-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/",
+        "description": "Custom shutters and plantation shutters for Ventura County homes. Local measuring, installation, and free in-home consultations from 805 Shutters.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Custom Shutters Ventura County | Plantation Shutters | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/",
+        "word_count": 411
+      },
+      "candidate_word_count": 411,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/",
+        "description": "Custom interior and plantation shutters for Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, and nearby Ventura County homes. Free in-home consultations.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 50,
+        "path": "/shutters/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Custom Shutters Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/",
+        "word_count": 219
+      },
+      "live_word_count": 219,
+      "path": "/shutters/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/camarillo/",
+        "description": "Custom Shutters in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/camarillo/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Camarillo | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/camarillo/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/camarillo/",
+        "description": "For the best Camarillo shutters, call 805 Shutters! We sell, install and repair window shutters throughout Camarillo and beyond. Contact us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/camarillo/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Camarillo | Camarillo Window Shutter Installation and Repair | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/camarillo/",
+        "word_count": 537
+      },
+      "live_word_count": 537,
+      "path": "/shutters/camarillo/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/fillmore/",
+        "description": "Custom Shutters in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/fillmore/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Fillmore | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/fillmore/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/fillmore/",
+        "description": "For the top Fillmore shutters available, contact 805 Shutters! We sell, install and repair window shutters across Fillmore and beyond. Call now.",
+        "error": null,
+        "h1": [
+          "Shutters in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/fillmore/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Fillmore | Fillmore Window Shutter Installation and Repair | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/fillmore/",
+        "word_count": 663
+      },
+      "live_word_count": 663,
+      "path": "/shutters/fillmore/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/interior-shutters-camarillo/",
+        "description": "Interior Shutters in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Interior Shutters in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/interior-shutters-camarillo/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Interior Shutters Camarillo | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/interior-shutters-camarillo/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/interior-shutters-camarillo/",
+        "description": "For the best Camarillo interior shutters, call 805 Shutters! We sell, install, and repair window shutters throughout Ventura County and beyond.",
+        "error": null,
+        "h1": [
+          "Interior Shutters Camarillo"
+        ],
+        "missing_alt_count": 4,
+        "path": "/shutters/interior-shutters-camarillo/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Interior Shutters Camarillo | Interior Shutter Installation | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/interior-shutters-camarillo/",
+        "word_count": 357
+      },
+      "live_word_count": 357,
+      "path": "/shutters/interior-shutters-camarillo/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/moorpark/",
+        "description": "Custom Shutters in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/moorpark/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Moorpark | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/moorpark/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/moorpark/",
+        "description": "We sell, install and repair shutters in Moorpark CA and throughout Ventura County. You won't find better Moorpark window shutters anywhere else.",
+        "error": null,
+        "h1": [
+          "Shutters in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/moorpark/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Moorpark | Moorpark Shutter Installation and Repair 93021 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/moorpark/",
+        "word_count": 615
+      },
+      "live_word_count": 615,
+      "path": "/shutters/moorpark/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/oak-park/",
+        "description": "Custom Shutters in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Oak Park"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/oak-park/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Oak Park | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/oak-park/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/oak-park/",
+        "description": "805 Shutters sells, installs and repairs shutters in Oak Park, California as well as all across Ventura County. We're experienced and knowledgeable.",
+        "error": null,
+        "h1": [
+          "Shutters in Oak Park CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/oak-park/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Oak Park CA | Oak Park Shutter Installation and Repair 91377 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/oak-park/",
+        "word_count": 607
+      },
+      "live_word_count": 607,
+      "path": "/shutters/oak-park/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/ojai/",
+        "description": "Custom Shutters in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/ojai/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Ojai | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/ojai/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/ojai/",
+        "description": "We provide industry-leading window shutters in Ojai along with shutter repair and installation services throughout the Ojai area. Call us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/ojai/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Ojai | Ojai Shutter Installation and Repair 93023 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/ojai/",
+        "word_count": 594
+      },
+      "live_word_count": 594,
+      "path": "/shutters/ojai/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/oxnard/",
+        "description": "Custom Shutters in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/oxnard/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Oxnard | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/oxnard/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/oxnard/",
+        "description": "For the best Oxnard shutters, call 805 Shutters! We sell, install and repair window shutters in Oxnard and throughout Ventura County. Contact us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/oxnard/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Oxnard | Oxnard Shutter Installation and Repair 93033 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/oxnard/",
+        "word_count": 586
+      },
+      "live_word_count": 586,
+      "path": "/shutters/oxnard/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/plantation/",
+        "description": "Plantation Shutters in Ventura County measured and installed by 805 Shutters. Free consultation for Ventura County homes and businesses.",
+        "error": null,
+        "h1": [
+          "Plantation Shutters in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/plantation/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Plantation Shutters | Plantation Shutter Installation | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/plantation/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/plantation/",
+        "description": "For the best Camarillo plantation shutters, call 805 Shutters! We sell, install, and repair window shutters throughout Camarillo and beyond.",
+        "error": null,
+        "h1": [
+          "Plantation Shutters"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/plantation/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Plantation Shutters | Plantation Shutter Installation | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/plantation/",
+        "word_count": 378
+      },
+      "live_word_count": 378,
+      "path": "/shutters/plantation/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/port-hueneme/",
+        "description": "Custom Shutters in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/port-hueneme/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Port Hueneme | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/port-hueneme/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/port-hueneme/",
+        "description": "For the best Port Hueneme shutters, call 805 Shutters! We sell, install and repair window shutters in Port Hueneme and throughout Ventura County.",
+        "error": null,
+        "h1": [
+          "Shutters in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/port-hueneme/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Port Hueneme | Port Hueneme Shutter Installation and Repair 93041 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/port-hueneme/",
+        "word_count": 588
+      },
+      "live_word_count": 588,
+      "path": "/shutters/port-hueneme/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/santa-paula/",
+        "description": "Custom Shutters in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/santa-paula/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Santa Paula | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/santa-paula/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/santa-paula/",
+        "description": "For the best Santa Paula shutters, call 805 Shutters! We sell, install and repair window shutters in Santa Paula and throughout Ventura County. Contact us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/santa-paula/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Santa Paula | Santa Paula Shutter Installation and Repair 93060 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/santa-paula/",
+        "word_count": 623
+      },
+      "live_word_count": 623,
+      "path": "/shutters/santa-paula/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/santa-rosa-valley/",
+        "description": "Custom Shutters in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/santa-rosa-valley/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Santa Rosa Valley | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/santa-rosa-valley/",
+        "word_count": 524
+      },
+      "candidate_word_count": 524,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/santa-rosa-valley/",
+        "description": "For the best Santa Rosa Valley shutters, call 805 Shutters! We sell, install and repair window shutters in Santa Rosa Valley and beyond. Contact us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/santa-rosa-valley/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Santa Rosa Valley | Santa Rosa Valley Shutter Installation and Repair 93012 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/santa-rosa-valley/",
+        "word_count": 581
+      },
+      "live_word_count": 581,
+      "path": "/shutters/santa-rosa-valley/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/simi-valley/",
+        "description": "Custom Shutters in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/simi-valley/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Simi Valley | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/simi-valley/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/simi-valley/",
+        "description": "For the best Simi Valley shutters, call 805 Shutters! We sell, install and repair window shutters in Simi Valley and across Ventura County. Contact us today.",
+        "error": null,
+        "h1": [
+          "Shutters in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/simi-valley/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Simi Valley | Simi Valley Shutter Installation and Repair 93065 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/simi-valley/",
+        "word_count": 553
+      },
+      "live_word_count": 553,
+      "path": "/shutters/simi-valley/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/thousand-oaks/",
+        "description": "Custom Shutters in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/thousand-oaks/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Thousand Oaks | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/thousand-oaks/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/thousand-oaks/",
+        "description": "805 Shutters provides the best Thousand Oaks shutters along with shutter repair and installation in Thousand Oaks and throughout Ventura County.",
+        "error": null,
+        "h1": [
+          "Shutters in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/thousand-oaks/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Thousand Oaks | Thousand Oaks Shutter Installation and Repair | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/thousand-oaks/",
+        "word_count": 573
+      },
+      "live_word_count": 573,
+      "path": "/shutters/thousand-oaks/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/ventura/",
+        "description": "Custom Shutters in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.",
+        "error": null,
+        "h1": [
+          "Custom Shutters in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/ventura/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Shutters in Ventura | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/ventura/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/ventura/",
+        "description": "We have the best shutters in Ventura, California. Our experienced team offers window shutter installation and repair in Ventura and throughout Ventura County.",
+        "error": null,
+        "h1": [
+          "Shutters in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/ventura/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Shutters in Ventura CA | Ventura Shutter Installation and Repair 93003 | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/ventura/",
+        "word_count": 792
+      },
+      "live_word_count": 792,
+      "path": "/shutters/ventura/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/shutters/wood-shutters-camarillo/",
+        "description": "Wood Shutters in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Wood Shutters in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/shutters/wood-shutters-camarillo/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Wood Shutters Camarillo | 805 Shutters",
+        "url": "https://805-one.vercel.app/shutters/wood-shutters-camarillo/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/shutters/wood-shutters-camarillo/",
+        "description": "For the best Camarillo wooden shutters, call 805 Shutters! We sell, install, and repair window shutters throughout Camarillo and beyond.",
+        "error": null,
+        "h1": [
+          "Wood Shutters Camarillo"
+        ],
+        "missing_alt_count": 4,
+        "path": "/shutters/wood-shutters-camarillo/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Wood Shutters Camarillo | Wooden Shutter Installation | 805 Shutters",
+        "url": "https://www.805shutters.com/shutters/wood-shutters-camarillo/",
+        "word_count": 374
+      },
+      "live_word_count": 374,
+      "path": "/shutters/wood-shutters-camarillo/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "description": "Ventura County Window Treatments measured and installed by 805 Shutters. Free consultation for Ventura County homes and businesses.",
+        "error": null,
+        "h1": [
+          "Ventura County Window Treatments"
+        ],
+        "missing_alt_count": 0,
+        "path": "/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Ventura County Window Treatments | 805 Shutters",
+        "url": "https://805-one.vercel.app/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "word_count": 517
+      },
+      "candidate_word_count": 517,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "description": "Free in-home consultations for custom shutters, shades, blinds, and window treatments across Ventura County. Family-owned 805 Shutters, Shades & Blinds.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 6,
+        "path": "/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Ventura County Window Treatments | 805 Shutters",
+        "url": "https://www.805shutters.com/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+        "word_count": 874
+      },
+      "live_word_count": 874,
+      "path": "/ventura-county-window-treatments-camarillo-blinds-shades-shutters/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/",
+        "description": "Custom window coverings for Ventura County homes and businesses including shutters, shades, blinds, and commercial roller shades.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings Ventura County | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/",
+        "word_count": 354
+      },
+      "candidate_word_count": 354,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/",
+        "description": "Local window coverings in Ventura County, including shutters, shades, blinds, and commercial roller shades. Family-owned 805 Shutters, Shades & Blinds.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 22,
+        "path": "/window-coverings/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/window-coverings/",
+        "word_count": 65
+      },
+      "live_word_count": 65,
+      "path": "/window-coverings/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/camarillo-ca/",
+        "description": "Window Coverings in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/camarillo-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Camarillo CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/camarillo-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/camarillo-ca/",
+        "description": "We offer the best window coverings near Camarillo, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Camarillo CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/camarillo-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Camarillo CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/camarillo-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/camarillo-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/fillmore-ca/",
+        "description": "Window Coverings in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/fillmore-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Fillmore CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/fillmore-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/fillmore-ca/",
+        "description": "We offer the best window coverings near Fillmore, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Fillmore CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/fillmore-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Fillmore CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/fillmore-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/fillmore-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/moorpark-ca/",
+        "description": "Window Coverings in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/moorpark-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Moorpark CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/moorpark-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/moorpark-ca/",
+        "description": "We offer the best window coverings near Moorpark, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Moorpark CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/moorpark-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Moorpark CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/moorpark-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/moorpark-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/oak-park-ca/",
+        "description": "Window Coverings in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Oak Park"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/oak-park-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Oak Park CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/oak-park-ca/",
+        "word_count": 521
+      },
+      "candidate_word_count": 521,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/oak-park-ca/",
+        "description": "We offer the best window coverings near Oak Park, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Oak Park CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/oak-park-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Oak Park CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/oak-park-ca/",
+        "word_count": 864
+      },
+      "live_word_count": 864,
+      "path": "/window-coverings/oak-park-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/ojai-ca/",
+        "description": "Window Coverings in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/ojai-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Ojai CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/ojai-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/ojai-ca/",
+        "description": "We offer the best window coverings near Ojai, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Ojai CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/ojai-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Ojai CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/ojai-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/ojai-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/oxnard-ca/",
+        "description": "Window Coverings in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/oxnard-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Oxnard CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/oxnard-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/oxnard-ca/",
+        "description": "We offer the best window coverings near Oxnard, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Oxnard CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/oxnard-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Oxnard CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/oxnard-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/oxnard-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/port-hueneme-ca/",
+        "description": "Window Coverings in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/port-hueneme-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Port Hueneme CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/port-hueneme-ca/",
+        "word_count": 521
+      },
+      "candidate_word_count": 521,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/port-hueneme-ca/",
+        "description": "We offer the best window coverings near Port Hueneme, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Port Hueneme CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/port-hueneme-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Port Hueneme CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/port-hueneme-ca/",
+        "word_count": 864
+      },
+      "live_word_count": 864,
+      "path": "/window-coverings/port-hueneme-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/santa-paula-ca/",
+        "description": "Window Coverings in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/santa-paula-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Santa Paula CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/santa-paula-ca/",
+        "word_count": 521
+      },
+      "candidate_word_count": 521,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/santa-paula-ca/",
+        "description": "We offer the best window coverings near Santa Paula, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Santa Paula CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/santa-paula-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Santa Paula CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/santa-paula-ca/",
+        "word_count": 864
+      },
+      "live_word_count": 864,
+      "path": "/window-coverings/santa-paula-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/santa-rosa-valley-ca/",
+        "description": "Window Coverings in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/santa-rosa-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Santa Rosa Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/santa-rosa-valley-ca/",
+        "word_count": 527
+      },
+      "candidate_word_count": 527,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/santa-rosa-valley-ca/",
+        "description": "We offer the best window coverings near Santa Rosa Valley, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Santa Rosa Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/santa-rosa-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Santa Rosa Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/santa-rosa-valley-ca/",
+        "word_count": 873
+      },
+      "live_word_count": 873,
+      "path": "/window-coverings/santa-rosa-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/simi-valley-ca/",
+        "description": "Window Coverings in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/simi-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Simi Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/simi-valley-ca/",
+        "word_count": 521
+      },
+      "candidate_word_count": 521,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/simi-valley-ca/",
+        "description": "We offer the best window coverings near Simi Valley, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Simi Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/simi-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Simi Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/simi-valley-ca/",
+        "word_count": 864
+      },
+      "live_word_count": 864,
+      "path": "/window-coverings/simi-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/thousand-oaks-ca/",
+        "description": "Window Coverings in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/thousand-oaks-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Thousand Oaks CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/thousand-oaks-ca/",
+        "word_count": 521
+      },
+      "candidate_word_count": 521,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/thousand-oaks-ca/",
+        "description": "We offer the best window coverings near Thousand Oaks, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Thousand Oaks CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/thousand-oaks-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings near Thousand Oaks CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/thousand-oaks-ca/",
+        "word_count": 542
+      },
+      "live_word_count": 542,
+      "path": "/window-coverings/thousand-oaks-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-coverings/ventura-ca/",
+        "description": "Window Coverings in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Coverings in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/ventura-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Coverings in Ventura CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-coverings/ventura-ca/",
+        "word_count": 515
+      },
+      "candidate_word_count": 515,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-coverings/ventura-ca/",
+        "description": "We offer the best window coverings near Ventura, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Coverings near Ventura CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-coverings/ventura-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Coverings near Ventura CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-coverings/ventura-ca/",
+        "word_count": 855
+      },
+      "live_word_count": 855,
+      "path": "/window-coverings/ventura-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/",
+        "description": "Compare custom shutters, shades, blinds, and window coverings from a local Ventura County installer. Free in-home consultation from 805 Shutters.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Ventura County"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments Ventura County | Shutters, Shades and Blinds",
+        "url": "https://805-one.vercel.app/window-treatments/",
+        "word_count": 358
+      },
+      "candidate_word_count": 358,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/",
+        "description": "Custom window treatments for Ventura County homes and businesses, including shutters, shades, blinds, and commercial coverings from 805 Shutters.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 22,
+        "path": "/window-treatments/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments Ventura County | 805 Shutters",
+        "url": "https://www.805shutters.com/window-treatments/",
+        "word_count": 65
+      },
+      "live_word_count": 65,
+      "path": "/window-treatments/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/camarillo-ca/",
+        "description": "Window Treatments in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Camarillo"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/camarillo-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Camarillo CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/camarillo-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/camarillo-ca/",
+        "description": "We offer the best window treatments near Camarillo, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Camarillo CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/camarillo-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Camarillo CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/camarillo-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/camarillo-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/camarillo/",
+        "description": "Window Treatments in Camarillo CA measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Camarillo CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/camarillo/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments Camarillo CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/camarillo/",
+        "word_count": 513
+      },
+      "candidate_word_count": 513,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/camarillo/",
+        "description": "Custom shutters, shades, blinds, and window treatments for Camarillo homes. Free in-home consultations from 805 Shutters, Shades & Blinds.",
+        "error": null,
+        "h1": [],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/camarillo/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments Camarillo CA | 805 Shutters",
+        "url": "https://www.805shutters.com/window-treatments/camarillo/",
+        "word_count": 601
+      },
+      "live_word_count": 601,
+      "path": "/window-treatments/camarillo/",
+      "title_changed": false
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/fillmore-ca/",
+        "description": "Window Treatments in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Fillmore"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/fillmore-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Fillmore CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/fillmore-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/fillmore-ca/",
+        "description": "We offer the best window treatments near Fillmore, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Fillmore CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/fillmore-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Fillmore CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/fillmore-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/fillmore-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/moorpark-ca/",
+        "description": "Window Treatments in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Moorpark"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/moorpark-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Moorpark CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/moorpark-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/moorpark-ca/",
+        "description": "We offer the best window treatments near Moorpark, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Moorpark CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/moorpark-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Moorpark CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/moorpark-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/moorpark-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/oak-park-ca/",
+        "description": "Window Treatments in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Oak Park"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/oak-park-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Oak Park CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/oak-park-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/oak-park-ca/",
+        "description": "We offer the best window treatments near Oak Park, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Oak Park CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/oak-park-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Oak Park CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/oak-park-ca/",
+        "word_count": 897
+      },
+      "live_word_count": 897,
+      "path": "/window-treatments/oak-park-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/ojai-ca/",
+        "description": "Window Treatments in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Ojai"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/ojai-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Ojai CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/ojai-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/ojai-ca/",
+        "description": "We offer the best window treatments near Ojai, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Ojai CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/ojai-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Ojai CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/ojai-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/ojai-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/oxnard-ca/",
+        "description": "Window Treatments in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Oxnard"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/oxnard-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Oxnard CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/oxnard-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/oxnard-ca/",
+        "description": "We offer the best window treatments near Oxnard, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Oxnard CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/oxnard-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Oxnard CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/oxnard-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/oxnard-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/port-hueneme-ca/",
+        "description": "Window Treatments in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Port Hueneme"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/port-hueneme-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Port Hueneme CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/port-hueneme-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/port-hueneme-ca/",
+        "description": "We offer the best window treatments near Port Hueneme, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Port Hueneme CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/port-hueneme-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Port Hueneme CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/port-hueneme-ca/",
+        "word_count": 897
+      },
+      "live_word_count": 897,
+      "path": "/window-treatments/port-hueneme-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/santa-paula-ca/",
+        "description": "Window Treatments in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Santa Paula"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/santa-paula-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Santa Paula CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/santa-paula-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/santa-paula-ca/",
+        "description": "We offer the best window treatments near Santa Paula, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Santa Paula CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/santa-paula-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Santa Paula CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/santa-paula-ca/",
+        "word_count": 897
+      },
+      "live_word_count": 897,
+      "path": "/window-treatments/santa-paula-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/santa-rosa-valley-ca/",
+        "description": "Window Treatments in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Santa Rosa Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/santa-rosa-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Santa Rosa Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/santa-rosa-valley-ca/",
+        "word_count": 524
+      },
+      "candidate_word_count": 524,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/santa-rosa-valley-ca/",
+        "description": "We offer the best window treatments near Santa Rosa Valley, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Santa Rosa Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/santa-rosa-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Santa Rosa Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/santa-rosa-valley-ca/",
+        "word_count": 904
+      },
+      "live_word_count": 904,
+      "path": "/window-treatments/santa-rosa-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/simi-valley-ca/",
+        "description": "Window Treatments in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Simi Valley"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/simi-valley-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Simi Valley CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/simi-valley-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/simi-valley-ca/",
+        "description": "We offer the best window treatments near Simi Valley, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Simi Valley CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/simi-valley-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Simi Valley CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/simi-valley-ca/",
+        "word_count": 897
+      },
+      "live_word_count": 897,
+      "path": "/window-treatments/simi-valley-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/thousand-oaks-ca/",
+        "description": "Window Treatments in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Thousand Oaks"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/thousand-oaks-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Thousand Oaks CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/thousand-oaks-ca/",
+        "word_count": 518
+      },
+      "candidate_word_count": 518,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/thousand-oaks-ca/",
+        "description": "We offer the best window treatments near Thousand Oaks, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Thousand Oaks CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/thousand-oaks-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Thousand Oaks CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/thousand-oaks-ca/",
+        "word_count": 897
+      },
+      "live_word_count": 897,
+      "path": "/window-treatments/thousand-oaks-ca/",
+      "title_changed": true
+    },
+    {
+      "candidate": {
+        "canonical": "https://www.805shutters.com/window-treatments/ventura-ca/",
+        "description": "Window Treatments in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.",
+        "error": null,
+        "h1": [
+          "Window Treatments in Ventura"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/ventura-ca/",
+        "robots": "",
+        "status": 200,
+        "structured_data_count": 1,
+        "title": "Window Treatments in Ventura CA | 805 Shutters",
+        "url": "https://805-one.vercel.app/window-treatments/ventura-ca/",
+        "word_count": 512
+      },
+      "candidate_word_count": 512,
+      "description_changed": true,
+      "flags": [],
+      "live": {
+        "canonical": "https://www.805shutters.com/window-treatments/ventura-ca/",
+        "description": "We offer the best window treatments near Ventura, California. Sales and installation services for shutters, shades, and blinds. Contact us today.",
+        "error": null,
+        "h1": [
+          "Window Treatments near Ventura CA"
+        ],
+        "missing_alt_count": 0,
+        "path": "/window-treatments/ventura-ca/",
+        "robots": "follow, index, max-snippet:-1, max-video-preview:-1, max-image-preview:large",
+        "status": 200,
+        "structured_data_count": 0,
+        "title": "Window Treatments near Ventura CA - 805 Shutters Shades & Blinds",
+        "url": "https://www.805shutters.com/window-treatments/ventura-ca/",
+        "word_count": 890
+      },
+      "live_word_count": 890,
+      "path": "/window-treatments/ventura-ca/",
+      "title_changed": true
+    }
+  ],
+  "extra_candidate_paths": [
+    "/drapery/",
+    "/exterior-shades/",
+    "/free-window-treatment-consultation/"
+  ],
+  "generated_at": "2026-06-03T15:59:12Z",
+  "live_base": "https://www.805shutters.com",
+  "missing_candidate_paths": [],
+  "summary": {
+    "blocking_flagged_pages": 0,
+    "candidate_sitemap_paths": 89,
+    "description_changed_pages": 81,
+    "extra_candidate_paths": 3,
+    "live_sitemap_paths": 86,
+    "missing_candidate_paths": 0,
+    "title_changed_pages": 75
+  }
+}

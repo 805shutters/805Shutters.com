@@ -1,0 +1,208 @@
+# 805 Shutters SEO parity audit
+
+Generated: 2026-06-03T15:59:12Z
+Live base: https://www.805shutters.com
+Candidate base: https://805-one.vercel.app
+
+## Summary
+
+- live_sitemap_paths: 86
+- candidate_sitemap_paths: 89
+- missing_candidate_paths: 0
+- extra_candidate_paths: 3
+- blocking_flagged_pages: 0
+- title_changed_pages: 75
+- description_changed_pages: 81
+
+## Missing Candidate Paths
+
+- None
+
+## Extra Candidate Paths
+
+- /drapery/
+- /exterior-shades/
+- /free-window-treatment-consultation/
+
+## Blocking SEO Flags
+
+- None
+
+## Metadata Changes
+
+- /
+  - live title: Custom Shutters, Shades & Blinds Ventura County | 805 Shutters
+  - candidate title: Custom Shutters, Blinds, Shades & Drapery Ventura County | 805 Shutters
+  - live description: 805 Shutters, Shades & Blinds installs custom shutters, shades, blinds, and commercial window coverings across Ventura County. Family-owned, 5-star Yelp-rated, with over 30 years of local experience.
+  - candidate description: 805 Shutters installs custom shutters, blinds, shades, drapery, and commercial window coverings across Ventura County. Free in-home consultation.
+- /about/
+  - live description: Learn about 805 Shutters, Shades & Blinds, a family-owned Ventura County window treatment company with over 30 years of local experience and 5-star Yelp reviews.
+  - candidate description: Learn about 805 Shutters, a family-owned Ventura County company installing shutters, shades, blinds, and commercial window coverings.
+- /blinds/
+  - live title: Custom Blinds Ventura County | 805 Shutters
+  - candidate title: Custom Blinds Ventura County | Wood, Faux Wood and Vertical Blinds
+  - live description: Custom wood, faux wood, vertical, and aluminum blinds installed across Ventura County. Local service, measuring, and installation by 805 Shutters.
+  - candidate description: Shop custom blinds in Ventura County including wood, faux wood, aluminum, and vertical blinds. Free local consultation and professional installation.
+- /blinds/camarillo-ca/
+  - live title: Blinds near Camarillo CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Camarillo CA | 805 Shutters
+  - live description: We provide the best blinds near Camarillo, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.
+- /blinds/fillmore-ca/
+  - live title: Blinds near Fillmore CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Fillmore CA | 805 Shutters
+  - live description: We provide the best blinds near Fillmore, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.
+- /blinds/moorpark-ca/
+  - live title: Blinds near Moorpark CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Moorpark CA | 805 Shutters
+  - live description: We provide the best blinds near Moorpark, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.
+- /blinds/oak-park-ca/
+  - live title: Blinds near Oak Park CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Oak Park CA | 805 Shutters
+  - live description: We provide the best blinds near Oak Park, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.
+- /blinds/ojai-ca/
+  - live title: Blinds near Ojai CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Ojai CA | 805 Shutters
+  - live description: We provide the best blinds near Ojai, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.
+- /blinds/oxnard-ca/
+  - live title: Blinds near Oxnard CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Oxnard CA | 805 Shutters
+  - live description: We provide the best blinds near Oxnard, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.
+- /blinds/port-hueneme-ca/
+  - live title: Blinds near Port Hueneme CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Port Hueneme CA | 805 Shutters
+  - live description: We provide the best blinds near Port Hueneme, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.
+- /blinds/santa-paula-ca/
+  - live title: Blinds near Santa Paula CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Santa Paula CA | 805 Shutters
+  - live description: We provide the best blinds near Santa Paula, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.
+- /blinds/santa-rosa-valley-ca/
+  - live title: Blinds near Santa Rosa Valley CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Santa Rosa Valley CA | 805 Shutters
+  - live description: We provide the best blinds near Santa Rosa Valley, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.
+- /blinds/simi-valley-ca/
+  - live title: Blinds near Simi Valley CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Simi Valley CA | 805 Shutters
+  - live description: We provide the best blinds near Simi Valley, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.
+- /blinds/thousand-oaks-ca/
+  - live title: Blinds near Thousand Oaks CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Thousand Oaks CA | 805 Shutters
+  - live description: We provide the best blinds near Thousand Oaks, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Thousand Oaks measured and installed by 805 Shutters. Free consultation for Thousand Oaks homes and businesses.
+- /blinds/ventura-ca/
+  - live title: Blinds near Ventura CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Blinds in Ventura CA | 805 Shutters
+  - live description: We provide the best blinds near Ventura, California. Our window covering company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Blinds in Ventura measured and installed by 805 Shutters. Free consultation for Ventura homes and businesses.
+- /blinds/ventura-county/
+  - live description: Custom blinds for Ventura County homes, including wood, faux wood, vertical, and aluminum options. Local measuring and installation by 805 Shutters.
+  - candidate description: Custom Blinds in Ventura County measured and installed by 805 Shutters. Free consultation for Ventura County homes and businesses.
+- /commercial-roller-shades/
+  - live description: Commercial roller shades for Camarillo, Ventura, Oxnard, Thousand Oaks, Simi Valley, Moorpark, Ojai, and nearby Ventura County communities.
+  - candidate description: Commercial roller shades for Ventura County offices, storefronts, schools, medical spaces, restaurants, and shared facilities.
+- /commercial-window-coverings/
+  - live description: Commercial window coverings for offices, storefronts, schools, and local businesses across Ventura County. Call 805 Shutters at (805) 806-9344.
+  - candidate description: Commercial window coverings for offices, storefronts, restaurants, schools, and medical spaces in Ventura County.
+- /contact/
+  - live description: Contact 805 Shutters, Shades & Blinds for a free in-home consultation in Camarillo, Ventura, Oxnard, Thousand Oaks, Simi Valley, and nearby areas.
+  - candidate description: Contact 805 Shutters for a free in-home consultation for custom shutters, shades, blinds, and commercial window coverings in Ventura County.
+- /faq/
+  - live description: Answers about custom shutters, shades, blinds, measurements, installation, service areas, and free in-home consultations from 805 Shutters in Ventura County.
+  - candidate description: Answers to common questions about custom shutters, shades, blinds, consultations, installation, and service areas in Ventura County.
+- /gallery/
+  - live description: Project photos and product examples for custom shutters, shades, blinds, and window coverings installed by 805 Shutters across Ventura County.
+  - candidate description: Browse examples of shutters, shades, blinds, and window coverings installed by 805 Shutters in Ventura County.
+- /recent-projects/
+  - live title: Recent Projects - 805 Shutters-Shades-Blinds
+  - candidate title: Recent Window Treatment Projects | 805 Shutters
+  - live description: See real shutter, shade, blind, and commercial window covering installations completed by 805 Shutters, Shades & Blinds for local Ventura County homes and
+  - candidate description: Recent custom shutter, shade, blind, and window covering projects completed by 805 Shutters in Ventura County.
+- /recent-projects/arched-plantation-shutters-ventura-county/
+  - live title: Custom Arched Plantation Shutters in Ventura County - 805 Shutters-Shades-Blinds
+  - candidate title: Custom Arched Plantation Shutters in Ventura County | 805 Shutters
+- /recent-projects/dark-wood-plantation-shutters-ventura-county/
+  - live title: Dark Wood Plantation Shutters in Ventura County - 805 Shutters-Shades-Blinds
+  - candidate title: Dark Wood Plantation Shutters in Ventura County | 805 Shutters
+- /recent-projects/layered-window-shades-ventura-county/
+  - live title: Layered Window Shades in Ventura County - 805 Shutters-Shades-Blinds
+  - candidate title: Layered Window Shades in Ventura County | 805 Shutters
+- /recent-projects/plantation-shutters-ventura-county-project/
+  - live title: Plantation Shutters Installed in a Ventura County Home - 805 Shutters-Shades-Blinds
+  - candidate title: Plantation Shutters Installed in a Ventura County Home | 805 Shutters
+  - live description: This local project shows white plantation shutters installed for a Ventura County home by 805 Shutters, Shades & Blinds. The goal was a clean, finished
+  - candidate description: White plantation shutters installed for a Ventura County home with better privacy, flexible light control, and custom fit for multiple window shapes.
+- /recent-projects/roller-shades-large-window-ventura-county/
+  - live title: Roller Shades for Large Windows in Ventura County - 805 Shutters-Shades-Blinds
+  - candidate title: Roller Shades for Large Windows in Ventura County | 805 Shutters
+- /recent-projects/sliding-door-shutters-ventura-county/
+  - live title: Sliding Door Shutters in Ventura County - 805 Shutters-Shades-Blinds
+  - candidate title: Sliding Door Shutters in Ventura County | 805 Shutters
+- /reviews/
+  - live title: 805 Shutters Reviews | 5-Star Yelp-Rated Window Treatments
+  - candidate title: 805 Shutters Reviews | Ventura County Window Treatments
+  - live description: Read about 805 Shutters, Shades & Blinds reviews and public profiles. Family-owned Ventura County window treatment company with 5-star Yelp reputation.
+  - candidate description: Read reviews for 805 Shutters, Shades & Blinds serving Ventura County with custom shutters, shades, blinds, and professional installation.
+- /shades/
+  - live title: Custom Shades Ventura County | 805 Shutters
+  - candidate title: Custom Window Shades Ventura County | 805 Shutters
+  - live description: Custom roller, Roman, cellular, woven, and motorized shades for Ventura County homes and businesses. Local measuring, sales, and installation from 805 Shutters.
+  - candidate description: Custom roller shades, honeycomb shades, woven wood shades, Roman shades, and motorized shades for Ventura County homes and businesses.
+- /shades/camarillo-ca/
+  - live title: Shades near Camarillo CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Camarillo CA | 805 Shutters
+  - live description: We provide the best shades near Camarillo, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Camarillo measured and installed by 805 Shutters. Free consultation for Camarillo homes and businesses.
+- /shades/fillmore-ca/
+  - live title: Shades near Fillmore CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Fillmore CA | 805 Shutters
+  - live description: We provide the best shades near Fillmore, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Fillmore measured and installed by 805 Shutters. Free consultation for Fillmore homes and businesses.
+- /shades/moorpark-ca/
+  - live title: Shades near Moorpark CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Moorpark CA | 805 Shutters
+  - live description: We provide the best shades near Moorpark, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Moorpark measured and installed by 805 Shutters. Free consultation for Moorpark homes and businesses.
+- /shades/oak-park-ca/
+  - live title: Shades near Oak Park CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Oak Park CA | 805 Shutters
+  - live description: We provide the best shades near Oak Park, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Oak Park measured and installed by 805 Shutters. Free consultation for Oak Park homes and businesses.
+- /shades/ojai-ca/
+  - live title: Shades near Ojai CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Ojai CA | 805 Shutters
+  - live description: We provide the best shades near Ojai, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Ojai measured and installed by 805 Shutters. Free consultation for Ojai homes and businesses.
+- /shades/oxnard-ca/
+  - live title: Shades near Oxnard CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Oxnard CA | 805 Shutters
+  - live description: We provide the best shades near Oxnard, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Oxnard measured and installed by 805 Shutters. Free consultation for Oxnard homes and businesses.
+- /shades/port-hueneme-ca/
+  - live title: Shades near Port Hueneme CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Port Hueneme CA | 805 Shutters
+  - live description: We provide the best shades near Port Hueneme, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Port Hueneme measured and installed by 805 Shutters. Free consultation for Port Hueneme homes and businesses.
+- /shades/santa-paula-ca/
+  - live title: Shades near Santa Paula CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Santa Paula CA | 805 Shutters
+  - live description: We provide the best shades near Santa Paula, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Santa Paula measured and installed by 805 Shutters. Free consultation for Santa Paula homes and businesses.
+- /shades/santa-rosa-valley-ca/
+  - live title: Shades near Santa Rosa Valley CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Santa Rosa Valley CA | 805 Shutters
+  - live description: We provide the best shades near Santa Rosa Valley, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Santa Rosa Valley measured and installed by 805 Shutters. Free consultation for Santa Rosa Valley homes and businesses.
+- /shades/simi-valley-ca/
+  - live title: Shades near Simi Valley CA - 805 Shutters Shades & Blinds
+  - candidate title: Custom Shades in Simi Valley CA | 805 Shutters
+  - live description: We provide the best shades near Simi Valley, California. Our window shade company offers sales and quality installation service. Reach out today.
+  - candidate description: Custom Window Shades in Simi Valley measured and installed by 805 Shutters. Free consultation for Simi Valley homes and businesses.
