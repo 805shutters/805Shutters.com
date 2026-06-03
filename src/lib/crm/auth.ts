@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
+import { CrmProfileRole } from "@/lib/crm/types";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 const defaultAllowedEmails = [
   "805shutters@gmail.com",
   "hello@805shutters.com",
   "805@805shutters.com",
-  "jessica@805shutters.com"
+  "jessica@805shutters.com",
+  "mark@805shutters.com"
 ];
+
+const defaultVaEmails = ["mark@805shutters.com"];
+const crmProfileRoles = new Set<CrmProfileRole>(["owner", "admin", "sales", "bookkeeping", "va"]);
 
 export class CrmAuthError extends Error {
   status: number;
@@ -26,6 +31,14 @@ export function getAllowedCrmEmails() {
   return configured?.length ? configured : defaultAllowedEmails;
 }
 
+export function getVaCrmEmails() {
+  const configured = process.env.CRM_VA_EMAILS?.split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+  return configured?.length ? configured : defaultVaEmails;
+}
+
 function getAllowedCrmDomains() {
   return (process.env.CRM_ALLOWED_DOMAINS || "805shutters.com")
     .split(",")
@@ -38,6 +51,20 @@ function isAllowedCrmEmail(email: string) {
   const domain = normalized.split("@")[1] || "";
 
   return getAllowedCrmEmails().includes(normalized) || getAllowedCrmDomains().includes(domain);
+}
+
+function getConfiguredCrmRole(email: string): CrmProfileRole {
+  return getVaCrmEmails().includes(email.trim().toLowerCase()) ? "va" : "sales";
+}
+
+function normalizeProfileRole(value: unknown): CrmProfileRole | null {
+  return typeof value === "string" && crmProfileRoles.has(value as CrmProfileRole)
+    ? (value as CrmProfileRole)
+    : null;
+}
+
+function getDefaultDisplayName(email: string) {
+  return getVaCrmEmails().includes(email) && email.split("@")[0] === "mark" ? "Mark" : null;
 }
 
 function getBearerToken(request: NextRequest) {
@@ -90,21 +117,36 @@ export async function requireCrmUser(request: NextRequest) {
   }
 
   const displayName =
-    typeof user.user_metadata?.full_name === "string"
+    getDefaultDisplayName(email) ||
+    (typeof user.user_metadata?.full_name === "string"
       ? user.user_metadata.full_name
       : typeof user.user_metadata?.name === "string"
         ? user.user_metadata.name
-        : null;
+        : null);
 
-  const { error } = await supabase.from("crm_profiles").upsert(
-    {
-      id: user.id,
-      email,
-      display_name: displayName,
-      last_seen_at: new Date().toISOString()
-    },
-    { onConflict: "id" }
-  );
+  const configuredRole = getConfiguredCrmRole(email);
+  const { data: existingProfile } = await supabase
+    .from("crm_profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  const role = configuredRole === "va" ? "va" : normalizeProfileRole(existingProfile?.role) || configuredRole;
+  const profile = {
+    id: user.id,
+    email,
+    display_name: displayName,
+    role,
+    last_seen_at: new Date().toISOString()
+  };
+
+  let { error } = await supabase.from("crm_profiles").upsert(profile, { onConflict: "id" });
+
+  if (error && role === "va") {
+    const fallback = await supabase
+      .from("crm_profiles")
+      .upsert({ ...profile, role: "sales" }, { onConflict: "id" });
+    error = fallback.error;
+  }
 
   if (error) {
     throw new CrmAuthError(502, "CRM profile setup failed. Run the 805 CRM Supabase migration.");
@@ -114,7 +156,8 @@ export async function requireCrmUser(request: NextRequest) {
     supabase,
     user,
     email,
-    displayName
+    displayName,
+    role
   };
 }
 

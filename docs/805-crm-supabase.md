@@ -10,8 +10,9 @@ Create `.env.local` with the dedicated 805 project values:
 NEXT_PUBLIC_SUPABASE_URL=https://<805-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<805-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<805-service-role-key>
-CRM_ALLOWED_EMAILS=805shutters@gmail.com,hello@805shutters.com,805@805shutters.com,jessica@805shutters.com
+CRM_ALLOWED_EMAILS=805shutters@gmail.com,hello@805shutters.com,805@805shutters.com,jessica@805shutters.com,mark@805shutters.com
 CRM_ALLOWED_DOMAINS=805shutters.com
+CRM_VA_EMAILS=mark@805shutters.com
 BOOKING_ALERT_WEBHOOK_URL=<optional-alert-webhook>
 ```
 
@@ -28,6 +29,7 @@ This applies:
 
 - `leads` and `lead_events` for website lead capture.
 - `crm_profiles` for Google-authenticated CRM users.
+- Mark's VA profile is created through Google login when his email is present in `CRM_VA_EMAILS`.
 - `crm_jobs` for the sales job organizer.
 - `crm_quotes` and `crm_quote_items` for quote/bookkeeping work.
 - `crm_quote_bookkeeping_entries` for the transferred bookkeeping spreadsheet rows.
@@ -107,6 +109,10 @@ https://www.805shutters.com/crm
 ```
 
 The public site only exposes the CRM login block at the bottom of the homepage. The CRM itself lives at `/crm` and requires an allowed Google account.
+
+Mark's VA entry point lives at `/crm/va/mark`. It uses the same Google login and CRM APIs as `/crm`, redirects back to the VA route after OAuth, defaults new jobs and calendar events to Mark, and shows VA setup health, assigned scheduling, and accountability work.
+
+The app maps emails in `CRM_VA_EMAILS` to VA access even before the `va` database role migration is pushed. Push all migrations when project access is available so `crm_profiles.role` can store `va` directly.
 
 ## Public self-booking
 

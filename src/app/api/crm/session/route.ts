@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { crmAuthErrorResponse, getAllowedCrmEmails, requireCrmUser } from "@/lib/crm/auth";
+import { crmAuthErrorResponse, getAllowedCrmEmails, getVaCrmEmails, requireCrmUser } from "@/lib/crm/auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
-    const { email, displayName } = await requireCrmUser(request);
+    const { email, displayName, role } = await requireCrmUser(request);
 
     return NextResponse.json({
       email,
       displayName,
-      allowedEmails: getAllowedCrmEmails()
+      role,
+      allowedEmails: getAllowedCrmEmails(),
+      vaEmails: getVaCrmEmails()
     });
   } catch (error) {
     return crmAuthErrorResponse(error);
