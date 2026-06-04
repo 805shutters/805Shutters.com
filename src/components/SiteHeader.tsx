@@ -39,7 +39,7 @@ export function SiteHeader() {
         <Link className="brand" href="/" aria-label={site.name}>
           <img
             className="brand-logo"
-            src="/brand/805-shutters-logo-header.png"
+            src="/brand/805-shutters-logo-header-transparent.png"
             alt="805 Shutters"
             width={227}
             height={148}
