@@ -285,8 +285,7 @@ img {
 
 .page-editorial-media img {
   width: 100%;
-  aspect-ratio: 1.34 / 1;
-  object-fit: cover;
+  height: auto;
 }
 
 .page-gallery {
@@ -306,8 +305,7 @@ img {
 .page-gallery-item img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+  height: auto;
 }
 
 .home-editorial {
@@ -317,13 +315,12 @@ img {
 
 .home-editorial-panel {
   position: relative;
-  display: grid;
+  display: block;
   width: 100%;
-  min-height: calc(100svh - 240px);
+  min-height: 0;
   margin: 0;
-  padding: clamp(42px, 6vw, 92px) clamp(24px, 5vw, 72px);
-  overflow: hidden;
-  place-items: center;
+  padding: 0;
+  overflow: visible;
   background: #11100e;
   border: 0;
   text-align: center;
@@ -334,6 +331,7 @@ img {
   inset: 0;
   z-index: 1;
   content: "";
+  pointer-events: none;
   background:
     linear-gradient(180deg, rgba(17, 16, 14, 0.5), rgba(17, 16, 14, 0.18) 44%, rgba(17, 16, 14, 0.55)),
     linear-gradient(90deg, rgba(17, 16, 14, 0.32), rgba(17, 16, 14, 0.08) 52%, rgba(17, 16, 14, 0.32));
@@ -363,8 +361,7 @@ img {
 }
 
 .home-hero-media {
-  position: absolute;
-  inset: 0;
+  position: relative;
   z-index: 0;
   width: 100%;
   margin: 0;
@@ -374,17 +371,20 @@ img {
 .home-hero-media img {
   display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
+  object-fit: contain;
   object-position: center;
 }
 
 .home-hero-overlay {
-  position: relative;
+  position: absolute;
+  inset: 0;
   z-index: 2;
   display: grid;
   width: min(980px, 100%);
+  margin: auto;
   gap: clamp(18px, 3vw, 30px);
+  align-content: center;
   justify-items: center;
   color: var(--white);
   text-shadow: 0 2px 28px rgba(0, 0, 0, 0.5);
@@ -420,23 +420,23 @@ img {
 .portfolio-story-panel {
   position: relative;
   display: grid;
-  min-height: clamp(620px, calc(100vh - 120px), 920px);
   align-items: end;
   isolation: isolate;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .portfolio-story-media {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
+  position: relative;
+  z-index: 0;
+  grid-area: 1 / 1;
+  overflow: visible;
   background: #17130f;
 }
 
 .portfolio-story-media::after {
   position: absolute;
   inset: 0;
+  z-index: 1;
   content: "";
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.04), transparent 44%),
@@ -445,14 +445,16 @@ img {
 }
 
 .portfolio-story-media img {
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scale(1.06);
-  will-change: transform;
+  height: auto;
 }
 
 .portfolio-story-copy {
+  position: relative;
+  z-index: 2;
+  grid-area: 1 / 1;
+  align-self: end;
   display: grid;
   justify-items: center;
   width: min(680px, calc(100% - 36px));
@@ -537,8 +539,7 @@ img {
 .installed-portfolio-card video {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  object-fit: cover;
+  height: auto;
 }
 
 .installed-portfolio-card figcaption {
@@ -696,8 +697,7 @@ button:hover {
 
 .service-card img {
   width: 100%;
-  aspect-ratio: 1.2 / 1;
-  object-fit: cover;
+  height: auto;
 }
 
 .service-card div {
@@ -849,18 +849,16 @@ textarea {
 
 @media (prefers-reduced-motion: no-preference) {
   .portfolio-story-media img {
-    transition: transform 1200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition: none;
   }
 
   .portfolio-story-panel:hover .portfolio-story-media img {
-    transform: scale(1.09);
+    transform: none;
   }
 
   @supports (animation-timeline: view()) {
     .portfolio-story-media img {
-      animation: portfolio-image-roll linear both;
-      animation-timeline: view();
-      animation-range: entry -18% exit 112%;
+      animation: none;
     }
 
     .portfolio-story-copy {
@@ -868,16 +866,6 @@ textarea {
       animation-timeline: view();
       animation-range: entry 0% exit 100%;
     }
-  }
-}
-
-@keyframes portfolio-image-roll {
-  from {
-    transform: scale(1.06) translateY(-2.5%);
-  }
-
-  to {
-    transform: scale(1.12) translateY(2.5%);
   }
 }
 
@@ -2201,8 +2189,8 @@ body:has(.crm-app-shell) {
 
   .home-editorial-panel {
     width: 100%;
-    min-height: calc(100svh - 244px);
-    padding: 30px 14px;
+    min-height: 0;
+    padding: 0;
   }
 
   .home-editorial-panel h1 {
@@ -2223,14 +2211,12 @@ body:has(.crm-app-shell) {
   }
 
   .home-hero-media img {
-    height: 100%;
+    height: auto;
     object-position: center;
   }
 
   .home-hero-overlay {
-    align-self: start;
     gap: 16px;
-    padding-top: clamp(12px, 4svh, 38px);
   }
 
   .home-hero-actions {
@@ -2240,7 +2226,7 @@ body:has(.crm-app-shell) {
   }
 
   .portfolio-story-panel {
-    min-height: min(620px, 84svh);
+    min-height: 0;
   }
 
   .portfolio-story-media::after {
@@ -2298,7 +2284,7 @@ body:has(.crm-app-shell) {
   }
 
   .page-editorial-media img {
-    aspect-ratio: 1.16 / 1;
+    height: auto;
   }
 
   .service-section,
