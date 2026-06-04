@@ -247,28 +247,6 @@ body:has(.home-editorial) .category-nav {
   border-bottom: 0;
 }
 
-body:has(.home-editorial) .category-nav {
-  justify-content: center;
-  width: calc(100% - 40px);
-  min-height: 86px;
-  margin: 0 auto;
-  gap: clamp(14px, 1.7vw, 26px);
-  padding: 18px clamp(14px, 2vw, 32px);
-  background: rgba(251, 250, 247, 0.18);
-  border: 1px solid rgba(251, 250, 247, 0.28);
-  font-size: 30px;
-  letter-spacing: 0.08em;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-body:has(.home-editorial) .category-dot {
-  display: inline-flex;
-  align-items: center;
-  color: var(--accent);
-  font-size: 16px;
-}
-
 body:has(.home-editorial) .promo-strip,
 body:has(.home-editorial) .masthead-link,
 body:has(.home-editorial) .header-phone,
@@ -2468,23 +2446,6 @@ body:has(.crm-app-shell) {
 
   .booking-calendar-head h3 {
     font-size: 22px;
-  }
-
-  body:has(.home-editorial) .category-nav {
-    width: calc(100% - 20px);
-    flex-wrap: wrap;
-    justify-content: center;
-    min-height: 54px;
-    padding: 10px 12px;
-    background: rgba(251, 250, 247, 0.22);
-    font-size: 19px;
-    line-height: 1.05;
-    letter-spacing: 0.06em;
-    overflow-x: hidden;
-  }
-
-  body:has(.home-editorial) .category-dot {
-    font-size: 10px;
   }
 
   .booking-calendar-head button {
