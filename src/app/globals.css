@@ -109,6 +109,8 @@ img {
   width: auto;
   height: 109px;
   object-fit: contain;
+  transform: scale(1.2);
+  transform-origin: center;
 }
 
 .masthead-link {
