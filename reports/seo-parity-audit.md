@@ -1,6 +1,6 @@
 # 805 Shutters SEO parity audit
 
-Generated: 2026-06-03T15:59:12Z
+Generated: 2026-06-04T03:04:01Z
 Live base: https://www.805shutters.com
 Candidate base: https://805-one.vercel.app
 
