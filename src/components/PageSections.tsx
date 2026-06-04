@@ -245,15 +245,17 @@ function HomePageSections({ page }: { page: SitePage }) {
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
           <div className="home-hero-media">
             <img src={page.image} alt={page.imageAlt} />
           </div>
-          <div className="home-hero-actions">
-            <AppointmentBooking />
-            <TrackedPhoneLink className="button secondary" location="home hero">
-              Call {site.phone}
-            </TrackedPhoneLink>
+          <div className="home-hero-overlay">
+            <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
+            <div className="home-hero-actions">
+              <AppointmentBooking />
+              <TrackedPhoneLink className="button secondary" location="home hero">
+                Call {site.phone}
+              </TrackedPhoneLink>
+            </div>
           </div>
         </div>
       </section>
