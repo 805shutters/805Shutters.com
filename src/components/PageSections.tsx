@@ -249,7 +249,6 @@ function HomePageSections({ page }: { page: SitePage }) {
             <img src={page.image} alt={page.imageAlt} />
           </div>
           <div className="home-hero-overlay">
-            <p className="home-hero-kicker">805 Shutters</p>
             <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
             <p className="home-hero-subline">Custom shutters, shades, blinds, and drapery</p>
             <div className="home-hero-actions">
