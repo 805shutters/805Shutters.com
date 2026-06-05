@@ -4,6 +4,7 @@ import { ServiceGrid } from "./ServiceGrid";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
+import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { SitePage, site } from "@/lib/site-data";
 
 type PortfolioStory = {
@@ -137,6 +138,22 @@ const portfolioStories: PortfolioStory[] = [
     image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg",
     imageAlt: "Dark wood plantation shutters in a Ventura County reading room",
     href: "/shutters/"
+  }
+];
+
+const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
+  {
+    image: page.image,
+    imageAlt: page.imageAlt
+  },
+  {
+    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
+    imageAlt: "Live roller shades installed in a Ventura County bedroom",
+    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4"
+  },
+  {
+    image: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg",
+    imageAlt: "Outdoor roller shades on a bright ocean terrace"
   }
 ];
 
@@ -331,9 +348,7 @@ function HomePageSections({ page }: { page: SitePage }) {
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <div className="home-hero-media">
-            <img src={page.image} alt={page.imageAlt} />
-          </div>
+          <HomeHeroCarousel slides={homeHeroSlides(page)} />
           <div className="home-hero-overlay">
             <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
             <div className="home-hero-actions">
