@@ -471,10 +471,10 @@ body:has(.home-editorial) .social-links a:hover {
   margin: 0;
   color: var(--white);
   font-family: var(--font-display);
-  font-size: clamp(44px, 5.5vw, 96px);
+  font-size: clamp(30px, 2.8vw, 48px);
   font-weight: 400;
-  line-height: 0.96;
-  letter-spacing: 0.08em;
+  line-height: 1.08;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -483,7 +483,7 @@ body:has(.home-editorial) .social-links a:hover {
   max-width: 1180px;
   margin: 0;
   color: rgba(255, 255, 255, 0.94);
-  line-height: 0.96;
+  line-height: 1.08;
 }
 
 .home-hero-subline {
