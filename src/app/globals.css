@@ -303,15 +303,16 @@ body:has(.home-editorial) .site-header-shell {
 body:has(.home-editorial) .site-header-shell::before {
   content: "";
   position: absolute;
-  inset: 0 0 -88px;
+  inset: 0 0 -110px;
   z-index: 0;
   pointer-events: none;
   background:
     linear-gradient(
       180deg,
       rgba(16, 12, 9, 0.62) 0%,
-      rgba(16, 12, 9, 0.5) 46%,
-      rgba(16, 12, 9, 0.26) 72%,
+      rgba(16, 12, 9, 0.52) 48%,
+      rgba(16, 12, 9, 0.34) 76%,
+      rgba(16, 12, 9, 0.12) 90%,
       rgba(16, 12, 9, 0) 100%
     );
   transition: opacity 320ms ease, background 320ms ease;
