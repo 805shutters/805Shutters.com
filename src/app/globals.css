@@ -291,16 +291,16 @@ body:has(.home-editorial) .category-nav {
 }
 
 body:has(.home-editorial) .site-masthead {
-  min-height: 84px;
-  padding: 0 clamp(34px, 6vw, 72px);
+  min-height: 146px;
+  padding: 12px clamp(34px, 6vw, 72px) 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 body:has(.home-editorial) .brand {
   position: relative;
   display: grid;
-  min-width: 185px;
-  min-height: 84px;
+  min-width: 278px;
+  min-height: 118px;
   align-content: center;
   justify-items: center;
   color: var(--white);
@@ -319,7 +319,7 @@ body:has(.home-editorial) .brand-logo {
 body:has(.home-editorial) .brand::before {
   content: "805";
   font-family: var(--font-logo-number);
-  font-size: 72px;
+  font-size: 108px;
   font-weight: 400;
   line-height: 0.78;
   letter-spacing: 0.02em;
@@ -328,9 +328,9 @@ body:has(.home-editorial) .brand::before {
 
 body:has(.home-editorial) .brand::after {
   content: "SHUTTERS";
-  margin-top: 7px;
+  margin-top: 11px;
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.34em;
