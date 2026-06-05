@@ -14,17 +14,6 @@ const categoryItems = [
 export function SiteHeader() {
   return (
     <header className="site-header-shell">
-      <div className="promo-strip">
-        <Link href="/free-window-treatment-consultation/">
-          Free Measure
-        </Link>
-        <span aria-hidden="true">|</span>
-        <Link href="/free-window-treatment-consultation/">
-          Free Consultation
-        </Link>
-        <span aria-hidden="true">›</span>
-      </div>
-
       <div className="site-masthead">
         <div className="masthead-contact-left">
           <div className="social-links" aria-label="Social links">

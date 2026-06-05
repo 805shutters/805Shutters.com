@@ -47,20 +47,6 @@ img {
   backdrop-filter: blur(12px);
 }
 
-.promo-strip {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 44px;
-  background: #d4cec4;
-  color: var(--ink);
-  font-size: 15px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.promo-strip a,
 .masthead-link,
 .category-nav a {
   text-decoration: none;
@@ -177,7 +163,6 @@ img {
   fill: currentColor;
 }
 
-.promo-strip a:hover,
 .masthead-link:hover,
 .category-nav a:hover,
 .header-phone:hover,
@@ -242,7 +227,6 @@ body:has(.home-editorial) .site-header-shell {
   backdrop-filter: none;
 }
 
-body:has(.home-editorial) .promo-strip,
 body:has(.home-editorial) .site-masthead,
 body:has(.home-editorial) .category-nav {
   border-color: rgba(255, 255, 255, 0.13);
@@ -250,13 +234,6 @@ body:has(.home-editorial) .category-nav {
   color: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-}
-
-body:has(.home-editorial) .promo-strip {
-  min-height: 48px;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
 }
 
 body:has(.home-editorial) .site-masthead {
@@ -349,7 +326,6 @@ body:has(.home-editorial) .category-dot {
 }
 
 body:has(.home-editorial) .category-nav a:hover,
-body:has(.home-editorial) .promo-strip a:hover,
 body:has(.home-editorial) .masthead-link:hover,
 body:has(.home-editorial) .header-phone:hover,
 body:has(.home-editorial) .social-links a:hover {
@@ -2198,13 +2174,6 @@ body:has(.crm-app-shell) {
     position: relative;
   }
 
-  .promo-strip {
-    min-height: 32px;
-    gap: 7px;
-    font-size: 11px;
-    letter-spacing: 0.04em;
-  }
-
   .site-masthead {
     position: relative;
     grid-template-columns: 42px minmax(0, 1fr) 42px;
@@ -2595,17 +2564,6 @@ body:has(.crm-app-shell) {
     border-bottom: 1px solid var(--line);
     color: var(--ink);
     backdrop-filter: blur(12px);
-  }
-
-  body:has(.home-editorial) .promo-strip {
-    min-height: 32px;
-    background: #d4cec4;
-    color: var(--ink);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 
   body:has(.home-editorial) .site-masthead {
