@@ -6,6 +6,9 @@ export function HeaderScrollState() {
   useEffect(() => {
     let frame = 0;
     let lastScrollY = window.scrollY;
+    const isHomePage = Boolean(document.querySelector(".home-editorial"));
+
+    document.body.classList.toggle("home-page-active", isHomePage);
 
     function updateHeaderState() {
       frame = 0;
@@ -38,6 +41,7 @@ export function HeaderScrollState() {
       window.removeEventListener("resize", scheduleUpdate);
       document.body.classList.remove("site-header-solid");
       document.body.classList.remove("site-header-hidden");
+      document.body.classList.remove("home-page-active");
     };
   }, []);
 

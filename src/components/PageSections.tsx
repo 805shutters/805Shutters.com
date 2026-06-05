@@ -143,7 +143,7 @@ const portfolioStories: PortfolioStory[] = [
 
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
-    image: page.image,
+    image: "/images/805-hero-window-treatments.jpg",
     imageAlt: page.imageAlt
   },
   {
@@ -152,8 +152,8 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     video: "/videos/ventura-county-roller-shades-bedroom-live.mp4"
   },
   {
-    image: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg",
-    imageAlt: "Outdoor roller shades on a bright ocean terrace"
+    image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg",
+    imageAlt: "Exterior shades filtering sunset light over an ocean-view patio"
   }
 ];
 

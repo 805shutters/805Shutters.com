@@ -664,7 +664,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #11100e;
+  background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   border: 0;
   text-align: center;
 }
@@ -729,7 +729,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
   width: 100%;
   height: 100%;
   margin: 0;
-  background: #11100e;
+  background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
 }
 
 .home-hero-slide {
@@ -746,11 +746,20 @@ body:has(.home-editorial).site-header-solid .category-dot {
   opacity: 1;
 }
 
-.home-hero-slide img,
+.home-hero-image,
 .home-hero-slide video {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.home-hero-image {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.home-hero-slide video {
   object-fit: cover;
   object-position: center;
 }
@@ -3240,14 +3249,14 @@ body:has(.crm-app-shell) {
     display: block;
     min-height: 100svh;
     overflow: hidden;
-    background: #11100e;
+    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
   .home-editorial-panel::after {
     display: block;
     background:
-      linear-gradient(180deg, rgba(17, 12, 8, 0.08), rgba(17, 12, 8, 0.02) 38%, rgba(17, 12, 8, 0.1) 100%),
-      linear-gradient(90deg, rgba(17, 12, 8, 0.08), transparent 52%, rgba(17, 12, 8, 0.08));
+      linear-gradient(180deg, rgba(17, 12, 8, 0.36), rgba(17, 12, 8, 0.2) 34%, rgba(17, 12, 8, 0.5) 68%, rgba(17, 12, 8, 0.44) 100%),
+      linear-gradient(90deg, rgba(17, 12, 8, 0.24), transparent 48%, rgba(17, 12, 8, 0.24));
   }
 
   .home-editorial-panel h1,
@@ -3293,11 +3302,19 @@ body:has(.crm-app-shell) {
     height: 100%;
     aspect-ratio: auto;
     margin: 0;
+    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
-  .home-hero-slide img,
+  .home-hero-image,
   .home-hero-slide video {
     height: 100%;
+  }
+
+  .home-hero-image {
+    background-position: 44% center;
+  }
+
+  .home-hero-slide video {
     object-fit: cover;
     object-position: center center;
   }
@@ -3331,6 +3348,277 @@ body:has(.crm-app-shell) {
   }
 }
 
+@media (max-width: 620px) {
+  body.home-page-active .site-header-shell {
+    position: fixed;
+    inset: 0 0 auto;
+    background: transparent;
+    border-bottom: 0;
+    color: rgba(255, 255, 255, 0.94);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  body.home-page-active .site-header-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 -118px;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(17, 12, 8, 0.56) 0%,
+        rgba(17, 12, 8, 0.4) 47%,
+        rgba(17, 12, 8, 0.18) 76%,
+        rgba(17, 12, 8, 0) 100%
+      );
+  }
+
+  body.home-page-active .site-masthead {
+    display: block;
+    min-height: 170px;
+    padding: 0;
+    background: transparent;
+    border-bottom: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  body.home-page-active .mobile-header-tools {
+    position: absolute;
+    top: 56px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: clamp(18px, 5.8vw, 28px);
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.42);
+  }
+
+  body.home-page-active .mobile-header-tools--left {
+    left: 20px;
+    top: 112px;
+  }
+
+  body.home-page-active .mobile-header-tools--right {
+    right: 20px;
+  }
+
+  body.home-page-active .mobile-header-icon {
+    width: clamp(31px, 8vw, 38px);
+    height: clamp(31px, 8vw, 38px);
+  }
+
+  body.home-page-active .mobile-book-link {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    background: rgba(58, 39, 27, 0.46);
+    color: rgba(255, 255, 255, 0.96);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-transform: uppercase;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+
+  body.home-page-active .mobile-book-link svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
+  }
+
+  body.home-page-active .masthead-contact-left,
+  body.home-page-active .masthead-actions,
+  body.home-page-active .category-nav {
+    display: none;
+  }
+
+  body.home-page-active .brand {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    display: grid;
+    align-content: start;
+    justify-items: center;
+    transform: translateX(-50%);
+    min-width: 0;
+    min-height: 0;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.32),
+      0 12px 28px rgba(0, 0, 0, 0.3);
+  }
+
+  body.home-page-active .brand::before,
+  body.home-page-active .brand::after {
+    content: none;
+  }
+
+  body.home-page-active .brand-logo {
+    display: none;
+  }
+
+  body.home-page-active .brand-text-logo {
+    display: grid;
+    color: inherit;
+  }
+
+  body.home-page-active .brand-text-logo-number {
+    font-size: clamp(70px, 20vw, 92px);
+    line-height: 0.78;
+  }
+
+  body.home-page-active .brand-text-logo-name {
+    margin-top: 8px;
+    font-size: clamp(12px, 3.5vw, 15px);
+    letter-spacing: 0.34em;
+  }
+
+  body.home-page-active.site-header-solid .site-header-shell {
+    background: rgba(251, 250, 247, 0.97);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  body.home-page-active.site-header-solid .site-header-shell::before {
+    opacity: 0;
+  }
+
+  body.home-page-active.site-header-solid .site-masthead {
+    min-height: 122px;
+    background: transparent;
+  }
+
+  body.home-page-active.site-header-solid .brand,
+  body.home-page-active.site-header-solid .mobile-header-tools {
+    color: var(--ink);
+    text-shadow: none;
+  }
+
+  body.home-page-active.site-header-solid .mobile-header-tools {
+    top: 38px;
+  }
+
+  body.home-page-active.site-header-solid .mobile-header-tools--left {
+    top: 40px;
+  }
+
+  body.home-page-active.site-header-solid .mobile-book-link {
+    border-color: var(--line);
+    background: transparent;
+    color: var(--ink);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  body.home-page-active.site-header-solid .brand-text-logo-number {
+    font-size: clamp(58px, 16vw, 74px);
+  }
+
+  body.home-page-active.site-header-solid .brand-text-logo-name {
+    font-size: clamp(11px, 3.2vw, 14px);
+  }
+
+  body.home-page-active .home-editorial {
+    background: #11100e;
+  }
+
+  body.home-page-active .home-editorial-panel {
+    display: block;
+    min-height: 100svh;
+    overflow: hidden;
+    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+  }
+
+  body.home-page-active .home-editorial-panel::after {
+    display: block;
+    background:
+      linear-gradient(180deg, rgba(17, 12, 8, 0.36), rgba(17, 12, 8, 0.2) 34%, rgba(17, 12, 8, 0.5) 68%, rgba(17, 12, 8, 0.44) 100%),
+      linear-gradient(90deg, rgba(17, 12, 8, 0.24), transparent 48%, rgba(17, 12, 8, 0.24));
+  }
+
+  body.home-page-active .home-editorial-panel h1,
+  body.home-page-active .home-intro {
+    max-width: min(100%, 330px);
+    color: rgba(255, 255, 255, 0.96);
+    font-size: clamp(25px, 7vw, 34px);
+    line-height: 1.04;
+    letter-spacing: 0.052em;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 8px 24px rgba(0, 0, 0, 0.38);
+    text-transform: uppercase;
+  }
+
+  body.home-page-active .home-hero-overlay {
+    position: absolute;
+    inset: 0;
+    width: min(100% - 28px, 460px);
+    padding: max(186px, 23svh) 0 50px;
+    gap: 16px;
+    justify-content: center;
+    background: transparent;
+    color: var(--white);
+    text-shadow: 0 2px 28px rgba(0, 0, 0, 0.42);
+  }
+
+  body.home-page-active .home-hero-media {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    margin: 0;
+    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+  }
+
+  body.home-page-active .home-hero-image,
+  body.home-page-active .home-hero-slide video {
+    height: 100%;
+  }
+
+  body.home-page-active .home-hero-image {
+    background-position: 44% center;
+  }
+
+  body.home-page-active .home-hero-slide video {
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  body.home-page-active .home-hero-actions {
+    width: min(100%, 310px);
+    margin-top: 6px;
+  }
+
+  body.home-page-active .home-hero-actions .button,
+  body.home-page-active .home-hero-actions button,
+  body.home-page-active .home-hero-actions .button.secondary {
+    min-height: 52px;
+    border-color: rgba(255, 255, 255, 0.8);
+    background: rgba(58, 39, 27, 0.9);
+    color: var(--white);
+    padding-inline: 12px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+  }
+}
 @media (max-width: 380px) {
   .brand-logo {
     height: 94px;
