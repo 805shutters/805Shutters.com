@@ -28,17 +28,6 @@ export function CrmHomeLogin() {
     };
   }, [supabase]);
 
-  async function signIn() {
-    if (!supabase) return;
-
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/crm`
-      }
-    });
-  }
-
   return (
     <section className="home-crm-login" aria-label="Private CRM login">
       <div>
@@ -50,9 +39,17 @@ export function CrmHomeLogin() {
           Open CRM
         </a>
       ) : (
-        <button type="button" onClick={signIn} disabled={!configured}>
-          Google Login
-        </button>
+        <>
+          {configured ? (
+            <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm">
+              Google Login
+            </a>
+          ) : (
+            <button type="button" disabled>
+              Google Login
+            </button>
+          )}
+        </>
       )}
     </section>
   );

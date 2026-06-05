@@ -81,6 +81,18 @@ function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
+function crmAuthErrorMessage(code: string | null) {
+  if (code === "google-provider-disabled") {
+    return "Google login is not enabled in the 805 Supabase project. Enable Google under Supabase Authentication providers, then add the Google OAuth client ID and secret.";
+  }
+
+  if (code === "supabase-auth-not-configured") {
+    return "Supabase auth is not configured yet. Add the 805 Supabase URL and anon key before using CRM login.";
+  }
+
+  return null;
+}
+
 async function crmFetch<T>(session: Session, path: string, init: RequestInit = {}) {
   const response = await fetch(path, {
     ...init,
@@ -108,6 +120,7 @@ export function CrmApp() {
   const [activeTab, setActiveTab] = useState<CrmTab>("command");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [authSetupMessage, setAuthSetupMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const configured = Boolean(supabase);
@@ -117,17 +130,6 @@ export function CrmApp() {
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
-
-  async function signIn() {
-    if (!supabase) return;
-
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/crm`
-      }
-    });
-  }
 
   async function signOut() {
     if (!supabase) return;
@@ -152,6 +154,8 @@ export function CrmApp() {
   }
 
   useEffect(() => {
+    setAuthSetupMessage(crmAuthErrorMessage(new URLSearchParams(window.location.search).get("crmAuthError")));
+
     if (!supabase) {
       setLoading(false);
       return;
@@ -431,9 +435,10 @@ export function CrmApp() {
           <p className="eyebrow">Private CRM</p>
           <h1>Google login only.</h1>
           <p>Use an approved 805 Shutters Google account to access sales jobs, quotes, bookkeeping, and calendar.</p>
-          <button type="button" onClick={signIn}>
+          {authSetupMessage ? <p className="crm-alert">{authSetupMessage}</p> : null}
+          <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm">
             Continue with Google
-          </button>
+          </a>
         </section>
       </div>
     );

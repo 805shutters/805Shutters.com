@@ -36,6 +36,29 @@ This applies:
 - `crm_accountability_tasks` for durable job-management follow-up work.
 - `crm_calendar_events` for sales calendar appointments.
 - Public self-booking reads `crm_calendar_events` for unavailable slots and writes booked appointments through the server API.
+- `crm_activity_events` for backend audit records when jobs, quotes, bookkeeping rows, and calendar events are created or updated.
+
+## Backend readiness
+
+The CRM backend runs through Next.js API routes under `/api/crm/*`. Browser code only sends the Supabase Google access token; the server verifies that token, checks the allow-list, and then uses the dedicated service-role key for database writes.
+
+Use this local readiness check after adding environment values and migrations:
+
+```bash
+curl http://127.0.0.1:3000/api/crm/health/
+```
+
+The backend is ready when the response has:
+
+- `authConfigured: true`
+- `databaseConfigured: true`
+- `googleProviderEnabled: true`
+- `migrationsReady: true`
+- `ready: true`
+
+If `databaseConfigured` is false, `SUPABASE_SERVICE_ROLE_KEY` is missing or empty. Google login can start, but CRM data loading and booking writes will not work until the service-role key is present.
+
+If `googleProviderEnabled` is false, the CRM login button will route back to `/crm?crmAuthError=google-provider-disabled` instead of sending the user to Supabase's raw validation error.
 
 The 805 bookkeeping ledger mirrors the MTS CRM spreadsheet fields:
 
@@ -96,7 +119,19 @@ The import is keyed by the original MTS ids, so it can be rerun without duplicat
 
 ## Google login
 
-In the dedicated Supabase project, enable Google under Authentication providers.
+In the dedicated Supabase project, enable Google under Authentication providers. The current 805 project URL is:
+
+```text
+https://evuxqsaucmvgyuvjpqlo.supabase.co
+```
+
+In Google Cloud, create an OAuth client for the Supabase callback URL:
+
+```text
+https://evuxqsaucmvgyuvjpqlo.supabase.co/auth/v1/callback
+```
+
+Then paste that Google client ID and client secret into Supabase Auth > Providers > Google and enable the provider.
 
 Add these redirect URLs:
 
@@ -105,6 +140,14 @@ http://127.0.0.1:3000/crm
 http://localhost:3000/crm
 https://www.805shutters.com/crm
 ```
+
+After enabling Google, confirm the hosted provider is active:
+
+```bash
+curl http://127.0.0.1:3000/api/crm/health/
+```
+
+The response should show `googleProviderEnabled: true`.
 
 The public site only exposes the CRM login block at the bottom of the homepage. The CRM itself lives at `/crm` and requires an allowed Google account.
 
