@@ -253,7 +253,7 @@ function HomePageSections({ page }: { page: SitePage }) {
             <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
             <p className="home-hero-subline">Custom shutters, shades, blinds, and drapery</p>
             <div className="home-hero-actions">
-              <AppointmentBooking />
+              <AppointmentBooking label="Free In-Home Consultations" />
               <TrackedPhoneLink className="button secondary" location="home hero">
                 Call {site.phone}
               </TrackedPhoneLink>

@@ -43,7 +43,13 @@ function formatSelectedDate(date: string | null) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
-export function AppointmentBooking({ className = "button primary" }: { className?: string }) {
+export function AppointmentBooking({
+  className = "button primary",
+  label = "Book an appointment here"
+}: {
+  className?: string;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(currentMonth());
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
@@ -124,7 +130,7 @@ export function AppointmentBooking({ className = "button primary" }: { className
   return (
     <>
       <button type="button" className={className} onClick={() => setOpen(true)}>
-        Book an appointment here
+        {label}
       </button>
       {open ? (
         <div className="booking-modal" role="dialog" aria-modal="true" aria-label="Book an appointment">
