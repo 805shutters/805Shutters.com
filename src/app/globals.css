@@ -596,7 +596,8 @@ body:has(.home-editorial) .social-links a:hover {
     linear-gradient(90deg, rgba(13, 12, 10, 0.2), transparent 30%, transparent 70%, rgba(13, 12, 10, 0.18));
 }
 
-.portfolio-story-media img {
+.portfolio-story-media img,
+.portfolio-story-media video {
   display: block;
   width: 100%;
   height: auto;

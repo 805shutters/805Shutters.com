@@ -8,13 +8,14 @@ import { SitePage, site } from "@/lib/site-data";
 
 const portfolioStories = [
   {
-    eyebrow: "Shutters",
-    title: "Warm wood, clean control.",
+    eyebrow: "Shades",
+    title: "Quiet shade movement, real install.",
     body:
-      "Wood shutters add depth while the louvers tune privacy, light, and shadow across the room.",
-    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
-    imageAlt: "Dark wood plantation shutters across living room windows in Ventura County",
-    href: "/shutters/"
+      "Live Ventura County footage shows roller shades softening the room while keeping the garden view calm.",
+    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
+    imageAlt: "Roller shades installed in a Ventura County bedroom with a garden view",
+    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4",
+    href: "/shades/"
   },
   {
     eyebrow: "Shutters",
@@ -265,12 +266,26 @@ function HomePageSections({ page }: { page: SitePage }) {
         {portfolioStories.map((story, index) => (
           <article className="portfolio-story-panel" key={story.title}>
             <div className="portfolio-story-media">
-              <img
-                src={story.image}
-                alt={story.imageAlt}
-                loading={index === 0 ? "eager" : "lazy"}
-                decoding="async"
-              />
+              {"video" in story ? (
+                <video
+                  aria-label={story.imageAlt}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster={story.image}
+                  preload={index === 0 ? "auto" : "metadata"}
+                >
+                  <source src={story.video} type="video/mp4" />
+                </video>
+              ) : (
+                <img
+                  src={story.image}
+                  alt={story.imageAlt}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                />
+              )}
             </div>
             <div className="portfolio-story-copy">
               <p>{story.eyebrow}</p>
