@@ -741,6 +741,10 @@ body:has(.home-editorial).site-header-solid .category-dot {
   -webkit-backdrop-filter: blur(5px);
 }
 
+.home-hero-actions .button.primary {
+  background: rgba(58, 39, 27, 0.92);
+}
+
 .home-hero-actions .button.secondary {
   border-color: rgba(255, 255, 255, 0.78);
   background: rgba(17, 16, 14, 0.24);
@@ -3090,6 +3094,10 @@ body:has(.crm-app-shell) {
   .home-hero-actions .button.secondary {
     background: var(--white);
     color: var(--ink);
+  }
+
+  .home-hero-actions .button.primary {
+    background: rgba(58, 39, 27, 0.92);
   }
 }
 
