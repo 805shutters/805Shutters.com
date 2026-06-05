@@ -22,16 +22,6 @@ type PortfolioStory = {
 
 const portfolioStories: PortfolioStory[] = [
   {
-    eyebrow: "Shades",
-    title: "Quiet shade movement, real install.",
-    body:
-      "Live Ventura County footage shows roller shades softening the room while keeping the garden view calm.",
-    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
-    imageAlt: "Roller shades installed in a Ventura County bedroom with a garden view",
-    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4",
-    href: "/shades/"
-  },
-  {
     eyebrow: "Exterior Shades",
     title: "Outdoor rooms, filtered beautifully.",
     body:
@@ -42,6 +32,16 @@ const portfolioStories: PortfolioStory[] = [
     imageHeight: 871,
     href: "/exterior-shades/",
     tone: "bright"
+  },
+  {
+    eyebrow: "Shades",
+    title: "Quiet shade movement, real install.",
+    body:
+      "Live Ventura County footage shows roller shades softening the room while keeping the garden view calm.",
+    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
+    imageAlt: "Roller shades installed in a Ventura County bedroom with a garden view",
+    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4",
+    href: "/shades/"
   },
   {
     eyebrow: "Shades",
@@ -56,6 +56,15 @@ const portfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
+    eyebrow: "Shutters",
+    title: "Dining rooms with a better line.",
+    body:
+      "Plantation shutters make repeated windows feel intentional, balanced, and finished.",
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
+    imageAlt: "White plantation shutters installed in a Ventura County dining room",
+    href: "/shutters/"
+  },
+  {
     eyebrow: "Drapery",
     title: "Bedrooms made lighter.",
     body:
@@ -66,6 +75,15 @@ const portfolioStories: PortfolioStory[] = [
     imageHeight: 893,
     href: "/drapery/",
     tone: "bright"
+  },
+  {
+    eyebrow: "Shades",
+    title: "One large shade, quietly done.",
+    body:
+      "A single roller shade softens the room, controls glare, and keeps the opening visually calm.",
+    image: "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg",
+    imageAlt: "Roller shade covering a large Ventura County window",
+    href: "/shades/"
   },
   {
     eyebrow: "Outdoor",
@@ -80,6 +98,15 @@ const portfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
+    eyebrow: "Shutters",
+    title: "Specialty shapes, measured precisely.",
+    body:
+      "Arched openings need custom planning so the shutter follows the room instead of fighting it.",
+    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
+    imageAlt: "Specialty arch window shutters custom fit in a Ventura County home",
+    href: "/shutters/"
+  },
+  {
     eyebrow: "Woven Shades",
     title: "Warm texture at every window.",
     body:
@@ -92,6 +119,15 @@ const portfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
+    eyebrow: "Shutters",
+    title: "Reading rooms with warmth.",
+    body:
+      "Dark wood shutters make a smaller room feel grounded while keeping daylight adjustable.",
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg",
+    imageAlt: "Dark wood plantation shutters in a Ventura County reading room",
+    href: "/shutters/"
+  },
+  {
     eyebrow: "Roller Shades",
     title: "Clean lines, endless view.",
     body:
@@ -102,42 +138,6 @@ const portfolioStories: PortfolioStory[] = [
     imageHeight: 941,
     href: "/shades/",
     tone: "bright"
-  },
-  {
-    eyebrow: "Shutters",
-    title: "Dining rooms with a better line.",
-    body:
-      "Plantation shutters make repeated windows feel intentional, balanced, and finished.",
-    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-    imageAlt: "White plantation shutters installed in a Ventura County dining room",
-    href: "/shutters/"
-  },
-  {
-    eyebrow: "Shades",
-    title: "One large shade, quietly done.",
-    body:
-      "A single roller shade softens the room, controls glare, and keeps the opening visually calm.",
-    image: "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg",
-    imageAlt: "Roller shade covering a large Ventura County window",
-    href: "/shades/"
-  },
-  {
-    eyebrow: "Shutters",
-    title: "Specialty shapes, measured precisely.",
-    body:
-      "Arched openings need custom planning so the shutter follows the room instead of fighting it.",
-    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
-    imageAlt: "Specialty arch window shutters custom fit in a Ventura County home",
-    href: "/shutters/"
-  },
-  {
-    eyebrow: "Shutters",
-    title: "Reading rooms with warmth.",
-    body:
-      "Dark wood shutters make a smaller room feel grounded while keeping daylight adjustable.",
-    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg",
-    imageAlt: "Dark wood plantation shutters in a Ventura County reading room",
-    href: "/shutters/"
   }
 ];
 
