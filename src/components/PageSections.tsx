@@ -340,9 +340,6 @@ function HomePageSections({ page }: { page: SitePage }) {
               <Link className="button primary" href="/book-consultation/">
                 Free In-Home Consultations
               </Link>
-              <TrackedPhoneLink className="button secondary" location="home hero">
-                Call {site.phone}
-              </TrackedPhoneLink>
             </div>
           </div>
         </div>
