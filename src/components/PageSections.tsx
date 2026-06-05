@@ -6,7 +6,20 @@ import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { SitePage, site } from "@/lib/site-data";
 
-const portfolioStories = [
+type PortfolioStory = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  image: string;
+  imageAlt: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  href: string;
+  tone?: "bright";
+  video?: string;
+};
+
+const portfolioStories: PortfolioStory[] = [
   {
     eyebrow: "Shades",
     title: "Quiet shade movement, real install.",
@@ -16,6 +29,78 @@ const portfolioStories = [
     imageAlt: "Roller shades installed in a Ventura County bedroom with a garden view",
     video: "/videos/ventura-county-roller-shades-bedroom-live.mp4",
     href: "/shades/"
+  },
+  {
+    eyebrow: "Exterior Shades",
+    title: "Outdoor rooms, filtered beautifully.",
+    body:
+      "Exterior shades soften coastal glare while keeping the view wide open and relaxed.",
+    image: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg",
+    imageAlt: "Bright ocean terrace with exterior shades and sheer drapery",
+    imageWidth: 1806,
+    imageHeight: 871,
+    href: "/exterior-shades/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Shades",
+    title: "Color, softness, daylight.",
+    body:
+      "Woven shades and linen drapery keep the room glowing while the garden stays part of the scene.",
+    image: "/images/editorial-scroll/garden-living-woven-shades.jpg",
+    imageAlt: "Bright living room with woven shades, linen drapery, and a garden view",
+    imageWidth: 1798,
+    imageHeight: 875,
+    href: "/shades/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Drapery",
+    title: "Bedrooms made lighter.",
+    body:
+      "Layered drapery and roller shades create privacy without losing the clean poolside view.",
+    image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg",
+    imageAlt: "Poolside bedroom with roller shades and white drapery",
+    imageWidth: 1761,
+    imageHeight: 893,
+    href: "/drapery/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Outdoor",
+    title: "Sunset comfort, all year.",
+    body:
+      "Filtered exterior shade turns hot afternoon light into a room you can live in longer.",
+    image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg",
+    imageAlt: "Sunset patio with exterior shades and ocean views",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/exterior-shades/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Woven Shades",
+    title: "Warm texture at every window.",
+    body:
+      "Natural woven shades bring texture, control, and softness into open kitchens and breakfast rooms.",
+    image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg",
+    imageAlt: "Breakfast room with woven shades and warm natural light",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/shades/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Roller Shades",
+    title: "Clean lines, endless view.",
+    body:
+      "Wide roller shades keep ocean-facing glass composed, functional, and quietly luxurious.",
+    image: "/images/editorial-scroll/coastal-living-roller-shades.jpg",
+    imageAlt: "Coastal living room with wide roller shades and ocean view",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/shades/",
+    tone: "bright"
   },
   {
     eyebrow: "Shutters",
@@ -265,9 +350,12 @@ function HomePageSections({ page }: { page: SitePage }) {
 
       <section className="portfolio-scroll" aria-label="805 Shutters portfolio scenes">
         {portfolioStories.map((story, index) => (
-          <article className="portfolio-story-panel" key={story.title}>
+          <article
+            className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
+            key={story.title}
+          >
             <div className="portfolio-story-media">
-              {"video" in story ? (
+              {story.video ? (
                 <video
                   aria-label={story.imageAlt}
                   autoPlay
@@ -283,6 +371,8 @@ function HomePageSections({ page }: { page: SitePage }) {
                 <img
                   src={story.image}
                   alt={story.imageAlt}
+                  width={story.imageWidth}
+                  height={story.imageHeight}
                   loading={index === 0 ? "eager" : "lazy"}
                   decoding="async"
                 />

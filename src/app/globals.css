@@ -744,6 +744,40 @@ body:has(.home-editorial).site-header-solid .category-dot {
   text-underline-offset: 7px;
 }
 
+.portfolio-story-panel--bright .portfolio-story-media {
+  background: #e6ddd1;
+}
+
+.portfolio-story-panel--bright .portfolio-story-media::after {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(13, 12, 10, 0.02), rgba(13, 12, 10, 0.2) 50%, rgba(13, 12, 10, 0.36)),
+    linear-gradient(90deg, rgba(13, 12, 10, 0.1), transparent 28%, transparent 72%, rgba(13, 12, 10, 0.1));
+}
+
+.portfolio-story-panel--bright .portfolio-story-copy {
+  align-self: center;
+  width: min(800px, calc(100% - 36px));
+  margin: 0 auto;
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 2px 26px rgba(40, 32, 22, 0.42);
+}
+
+.portfolio-story-panel--bright .portfolio-story-copy p {
+  font-weight: 500;
+  letter-spacing: 0.2em;
+}
+
+.portfolio-story-panel--bright .portfolio-story-copy h2 {
+  color: rgba(255, 255, 255, 0.97);
+  font-size: clamp(48px, 6.8vw, 104px);
+}
+
+.portfolio-story-panel--bright .portfolio-story-copy span {
+  max-width: 560px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .installed-portfolio {
   padding: clamp(48px, 7vw, 86px) 0;
   background: var(--paper);
@@ -2521,9 +2555,20 @@ body:has(.crm-app-shell) {
       linear-gradient(90deg, rgba(13, 12, 10, 0.24), transparent 68%);
   }
 
+  .portfolio-story-panel--bright .portfolio-story-media::after {
+    background:
+      radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08), transparent 40%),
+      linear-gradient(180deg, rgba(13, 12, 10, 0.08), rgba(13, 12, 10, 0.24) 48%, rgba(13, 12, 10, 0.48));
+  }
+
   .portfolio-story-copy {
     width: min(calc(100% - 28px), 440px);
     margin-bottom: 24px;
+  }
+
+  .portfolio-story-panel--bright .portfolio-story-copy {
+    align-self: center;
+    margin: 0 auto;
   }
 
   .portfolio-story-copy p {
@@ -2534,6 +2579,10 @@ body:has(.crm-app-shell) {
   .portfolio-story-copy h2 {
     font-size: 39px;
     line-height: 0.98;
+  }
+
+  .portfolio-story-panel--bright .portfolio-story-copy h2 {
+    font-size: clamp(32px, 8.6vw, 44px);
   }
 
   .portfolio-story-copy span {
