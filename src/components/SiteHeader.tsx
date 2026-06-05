@@ -17,6 +17,12 @@ export function SiteHeader() {
     <header className="site-header-shell">
       <HeaderScrollState />
       <div className="site-masthead">
+        <div className="mobile-header-tools mobile-header-tools--left" aria-label="Mobile navigation">
+          <Link className="mobile-book-link" href="/book-consultation/" aria-label="Book an appointment">
+            <CalendarIcon />
+            <span>Book Here</span>
+          </Link>
+        </div>
         <div className="masthead-contact-left">
           <div className="social-links" aria-label="Social links">
             <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
@@ -40,6 +46,11 @@ export function SiteHeader() {
             height={148}
           />
         </Link>
+        <div className="mobile-header-tools mobile-header-tools--right" aria-label="Mobile contact actions">
+          <TrackedPhoneLink ariaLabel="Call 805 Shutters" className="mobile-header-icon" location="mobile header">
+            <PhoneIcon />
+          </TrackedPhoneLink>
+        </div>
         <div className="masthead-actions">
           <Link className="header-calendar-link" href="/book-consultation/" aria-label="Book a free in-home consultation">
             <CalendarIcon />
@@ -57,7 +68,7 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <nav className="category-nav" aria-label="Primary navigation">
+      <nav id="primary-categories" className="category-nav" aria-label="Primary navigation">
         {categoryItems.map(([label, href], index) => (
           <Fragment key={href}>
             {index > 0 ? <span className="category-dot" aria-hidden="true">•</span> : null}
@@ -79,6 +90,14 @@ function CalendarIcon() {
       <path d="M4 9h16" />
       <path d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
       <path d="M8 13h3v3H8z" />
+    </svg>
+  );
+}
+
+function PhoneIcon() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <path d="M10.7 5.2 7.4 7.8c-.8.6-1.1 1.8-.7 2.7 3 7.1 7.7 11.8 14.8 14.8.9.4 2.1.1 2.7-.7l2.6-3.3c.5-.7.4-1.7-.2-2.3l-3.4-3.1c-.6-.5-1.5-.6-2.1-.2l-2.5 1.5c-1.9-1-3.4-2.5-4.4-4.4l1.5-2.5c.4-.7.3-1.5-.2-2.1l-3.1-3.4c-.6-.6-1.6-.7-2.3-.2z" />
     </svg>
   );
 }
