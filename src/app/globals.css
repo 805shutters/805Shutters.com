@@ -93,7 +93,7 @@ img {
 
 .brand-logo {
   width: auto;
-  height: 109px;
+  height: 131px;
   object-fit: contain;
   transform: scale(1.2);
   transform-origin: center;
@@ -237,7 +237,7 @@ body:has(.home-editorial) .category-nav {
 }
 
 body:has(.home-editorial) .site-masthead {
-  min-height: 70px;
+  min-height: 84px;
   padding: 0 clamp(34px, 6vw, 72px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -245,8 +245,8 @@ body:has(.home-editorial) .site-masthead {
 body:has(.home-editorial) .brand {
   position: relative;
   display: grid;
-  min-width: 154px;
-  min-height: 70px;
+  min-width: 185px;
+  min-height: 84px;
   align-content: center;
   justify-items: center;
   color: var(--white);
@@ -264,7 +264,7 @@ body:has(.home-editorial) .brand-logo {
 body:has(.home-editorial) .brand::before {
   content: "805";
   font-family: var(--font-logo-number);
-  font-size: 60px;
+  font-size: 72px;
   font-weight: 400;
   line-height: 0.78;
   letter-spacing: 0.02em;
@@ -273,9 +273,9 @@ body:has(.home-editorial) .brand::before {
 
 body:has(.home-editorial) .brand::after {
   content: "SHUTTERS";
-  margin-top: 6px;
+  margin-top: 7px;
   font-family: var(--font-display);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1;
   letter-spacing: 0.34em;
@@ -2096,7 +2096,7 @@ body:has(.crm-app-shell) {
   }
 
   .brand-logo {
-    height: 112px;
+    height: 134px;
   }
 
   .brand-number {
@@ -2278,7 +2278,7 @@ body:has(.crm-app-shell) {
   }
 
   .brand-logo {
-    height: 84px;
+    height: 101px;
   }
 
   .service-grid,
@@ -2560,6 +2560,7 @@ body:has(.crm-app-shell) {
 @media (max-width: 620px) {
   body:has(.home-editorial) .site-header-shell {
     position: relative;
+    inset: auto;
     background: rgba(251, 250, 247, 0.98);
     border-bottom: 1px solid var(--line);
     color: var(--ink);
@@ -2590,7 +2591,7 @@ body:has(.crm-app-shell) {
 
   body:has(.home-editorial) .brand-logo {
     width: auto;
-    height: 84px;
+    height: 101px;
     opacity: 1;
     transform: scale(1.2);
   }
@@ -2702,7 +2703,7 @@ body:has(.crm-app-shell) {
 
 @media (max-width: 380px) {
   .brand-logo {
-    height: 78px;
+    height: 94px;
   }
 
   .phone-stack .masthead-email {
