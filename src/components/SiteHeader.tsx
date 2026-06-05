@@ -28,6 +28,10 @@ export function SiteHeader() {
           </div>
         </div>
         <Link className="brand" href="/" aria-label={site.name}>
+          <span className="brand-text-logo" aria-hidden="true">
+            <span className="brand-text-logo-number">805</span>
+            <span className="brand-text-logo-name">SHUTTERS</span>
+          </span>
           <img
             className="brand-logo"
             src="/brand/805-shutters-logo-header.png"

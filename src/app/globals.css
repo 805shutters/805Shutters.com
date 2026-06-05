@@ -64,10 +64,38 @@ img {
 }
 
 .brand {
-  display: inline-flex;
+  display: inline-grid;
   justify-content: center;
   align-items: center;
+  justify-items: center;
   text-decoration: none;
+}
+
+.brand-text-logo {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  color: var(--ink);
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.brand-text-logo-number {
+  font-family: var(--font-logo-number);
+  font-size: 111px;
+  font-weight: 400;
+  line-height: 0.78;
+  letter-spacing: 0.02em;
+}
+
+.brand-text-logo-name {
+  margin-top: 11px;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.34em;
 }
 
 .brand-wordmark {
@@ -92,11 +120,7 @@ img {
 }
 
 .brand-logo {
-  width: auto;
-  height: 131px;
-  object-fit: contain;
-  transform: scale(1.2);
-  transform-origin: center;
+  display: none;
 }
 
 .masthead-link {
@@ -314,6 +338,10 @@ body:has(.home-editorial) .brand-logo {
   height: 0;
   opacity: 0;
   transform: none;
+}
+
+body:has(.home-editorial) .brand-text-logo {
+  display: none;
 }
 
 body:has(.home-editorial) .brand::before {
@@ -2338,6 +2366,15 @@ body:has(.crm-app-shell) {
     height: 134px;
   }
 
+  .brand-text-logo-number {
+    font-size: 86px;
+  }
+
+  .brand-text-logo-name {
+    margin-top: 9px;
+    font-size: 20px;
+  }
+
   .brand-number {
     font-size: 58px;
   }
@@ -2531,6 +2568,15 @@ body:has(.crm-app-shell) {
 
   .brand-logo {
     height: 101px;
+  }
+
+  .brand-text-logo-number {
+    font-size: 70px;
+  }
+
+  .brand-text-logo-name {
+    margin-top: 8px;
+    font-size: 16px;
   }
 
   .service-grid,
@@ -2875,10 +2921,12 @@ body:has(.crm-app-shell) {
   }
 
   body:has(.home-editorial) .brand-logo {
-    width: auto;
-    height: 101px;
-    opacity: 1;
-    transform: scale(1.2);
+    display: none;
+  }
+
+  body:has(.home-editorial) .brand-text-logo {
+    display: grid;
+    color: var(--ink);
   }
 
   body:has(.home-editorial) .masthead-link,
