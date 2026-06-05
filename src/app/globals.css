@@ -265,11 +265,15 @@ body:has(.home-editorial) .site-header-shell {
   background: transparent;
   color: rgba(255, 255, 255, 0.92);
   backdrop-filter: none;
+  opacity: 1;
+  transform: translateY(0);
   transition:
     background 320ms ease,
     border-color 320ms ease,
     color 320ms ease,
-    backdrop-filter 320ms ease;
+    backdrop-filter 320ms ease,
+    opacity 280ms ease,
+    transform 320ms ease;
 }
 
 body:has(.home-editorial) .site-masthead,
@@ -445,6 +449,14 @@ body:has(.home-editorial).site-header-solid .category-nav {
 
 body:has(.home-editorial).site-header-solid .category-dot {
   display: inline;
+}
+
+@media (min-width: 621px) {
+  body:has(.home-editorial).site-header-hidden .site-header-shell {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-18px);
+  }
 }
 
 .page-hero {

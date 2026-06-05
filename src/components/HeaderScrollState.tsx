@@ -5,10 +5,22 @@ import { useEffect } from "react";
 export function HeaderScrollState() {
   useEffect(() => {
     let frame = 0;
+    let lastScrollY = window.scrollY;
 
     function updateHeaderState() {
       frame = 0;
-      document.body.classList.toggle("site-header-solid", window.scrollY > 48);
+      const currentScrollY = Math.max(window.scrollY, 0);
+      const scrollDelta = currentScrollY - lastScrollY;
+
+      document.body.classList.toggle("site-header-solid", currentScrollY > 48);
+
+      if (currentScrollY <= 96 || scrollDelta < -4) {
+        document.body.classList.remove("site-header-hidden");
+      } else if (scrollDelta > 6) {
+        document.body.classList.add("site-header-hidden");
+      }
+
+      lastScrollY = currentScrollY;
     }
 
     function scheduleUpdate() {
@@ -25,6 +37,7 @@ export function HeaderScrollState() {
       window.removeEventListener("scroll", scheduleUpdate);
       window.removeEventListener("resize", scheduleUpdate);
       document.body.classList.remove("site-header-solid");
+      document.body.classList.remove("site-header-hidden");
     };
   }, []);
 
