@@ -68,6 +68,7 @@ export const images = {
   shades: "/images/805-portfolio-shades-bedroom.jpg",
   blinds: "/images/805-portfolio-blinds-office.jpg",
   drapery: "/images/805-portfolio-drapery-living-room.jpg",
+  exteriorShades: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg",
   project:
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
@@ -255,8 +256,8 @@ const parentPages: SitePage[] = [
     eyebrow: "Outdoor light control",
     intro:
       "805 Shutters helps Ventura County customers plan exterior shades for patios, large openings, sun exposure, glare control, privacy, and more comfortable outdoor living.",
-    image: images.hero,
-    imageAlt: "Exterior shade planning for a bright Ventura County home",
+    image: images.exteriorShades,
+    imageAlt: "Exterior solar shades across a bright outdoor living opening with ocean views",
     sections: [
       {
         heading: "Shade For Outdoor Living",
