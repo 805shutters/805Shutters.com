@@ -757,19 +757,27 @@ body:has(.home-editorial).site-header-solid .category-dot {
 }
 
 .portfolio-story-panel--bright .portfolio-story-media {
+  min-height: 100svh;
   background: #e6ddd1;
 }
 
 .portfolio-story-panel--bright .portfolio-story-media::after {
   background:
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08), transparent 42%),
-    linear-gradient(180deg, rgba(13, 12, 10, 0.02), rgba(13, 12, 10, 0.2) 50%, rgba(13, 12, 10, 0.36)),
-    linear-gradient(90deg, rgba(13, 12, 10, 0.1), transparent 28%, transparent 72%, rgba(13, 12, 10, 0.1));
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.1), transparent 44%),
+    linear-gradient(180deg, rgba(13, 12, 10, 0.01), rgba(13, 12, 10, 0.1) 50%, rgba(13, 12, 10, 0.22)),
+    linear-gradient(90deg, rgba(13, 12, 10, 0.06), transparent 28%, transparent 72%, rgba(13, 12, 10, 0.06));
+}
+
+.portfolio-story-panel--bright .portfolio-story-media img {
+  height: 100%;
+  min-height: 100svh;
+  object-fit: cover;
+  filter: saturate(1.18) contrast(1.06) brightness(1.05);
 }
 
 .portfolio-story-panel--bright .portfolio-story-copy {
   align-self: center;
-  width: min(800px, calc(100% - 36px));
+  width: min(640px, calc(100% - 36px));
   margin: 0 auto;
   color: rgba(255, 255, 255, 0.94);
   text-shadow: 0 2px 26px rgba(40, 32, 22, 0.42);
@@ -782,11 +790,11 @@ body:has(.home-editorial).site-header-solid .category-dot {
 
 .portfolio-story-panel--bright .portfolio-story-copy h2 {
   color: rgba(255, 255, 255, 0.97);
-  font-size: clamp(48px, 6.8vw, 104px);
+  font-size: clamp(42px, 5.4vw, 82px);
 }
 
 .portfolio-story-panel--bright .portfolio-story-copy span {
-  max-width: 560px;
+  max-width: 480px;
   color: rgba(255, 255, 255, 0.88);
 }
 
@@ -2569,8 +2577,8 @@ body:has(.crm-app-shell) {
 
   .portfolio-story-panel--bright .portfolio-story-media::after {
     background:
-      radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.08), transparent 40%),
-      linear-gradient(180deg, rgba(13, 12, 10, 0.08), rgba(13, 12, 10, 0.24) 48%, rgba(13, 12, 10, 0.48));
+      radial-gradient(circle at 50% 48%, rgba(255, 255, 255, 0.1), transparent 40%),
+      linear-gradient(180deg, rgba(13, 12, 10, 0.04), rgba(13, 12, 10, 0.16) 48%, rgba(13, 12, 10, 0.36));
   }
 
   .portfolio-story-copy {
