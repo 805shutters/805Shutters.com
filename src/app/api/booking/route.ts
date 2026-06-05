@@ -37,6 +37,80 @@ async function sendBookingAlert(payload: Record<string, unknown>) {
   }
 }
 
+function normalizeSmsPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return phone.startsWith("+") ? phone : "";
+}
+
+function formatAppointmentForSms(startAt: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(startAt));
+}
+
+async function sendSmsConfirmation({
+  phone,
+  startAt
+}: {
+  phone: string;
+  startAt: string;
+}) {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromPhone = process.env.TWILIO_FROM_PHONE;
+  const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+  const toPhone = normalizeSmsPhone(phone);
+
+  if (!accountSid || !authToken || (!fromPhone && !messagingServiceSid) || !toPhone) {
+    return false;
+  }
+
+  const body = [
+    "Thank you for your inquiry and interest in 805 Shutters.",
+    `Your free in-home consultation is confirmed for ${formatAppointmentForSms(startAt)}.`,
+    "We look forward to meeting you."
+  ].join(" ");
+
+  const form = new URLSearchParams({
+    To: toPhone,
+    Body: body
+  });
+
+  if (messagingServiceSid) {
+    form.set("MessagingServiceSid", messagingServiceSid);
+  } else if (fromPhone) {
+    form.set("From", fromPhone);
+  }
+
+  try {
+    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString("base64")}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: form.toString()
+    });
+
+    if (!response.ok) {
+      console.error(await response.text());
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as BookingPayload;
   const date = clean(payload.date);
@@ -52,9 +126,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Choose an appointment date and time." }, { status: 400 });
   }
 
-  if (!name || !phone || !address || !windowCount) {
+  if (!name || !phone || !address) {
     return NextResponse.json(
-      { message: "Name, phone, address, and number of windows are required." },
+      { message: "Full name, phone, and address are required." },
       { status: 400 }
     );
   }
@@ -92,7 +166,7 @@ export async function POST(request: NextRequest) {
   const endAt = bookingEndIso(date, time);
   const bookingNotes = [
     `Self-booked appointment.`,
-    `Windows: ${windowCount}`,
+    windowCount ? `Windows: ${windowCount}` : null,
     notes ? `Customer notes: ${notes}` : null
   ]
     .filter(Boolean)
@@ -111,7 +185,7 @@ export async function POST(request: NextRequest) {
       page_path: "/",
       meta: {
         address,
-        windowCount,
+        windowCount: windowCount || null,
         appointmentDate: date,
         appointmentTime: time,
         userAgent: request.headers.get("user-agent"),
@@ -145,7 +219,7 @@ export async function POST(request: NextRequest) {
       appointment_end: endAt,
       notes: bookingNotes,
       meta: {
-        windowCount,
+        windowCount: windowCount || null,
         bookingSource: "website"
       }
     })
@@ -169,7 +243,7 @@ export async function POST(request: NextRequest) {
       location: address,
       notes: bookingNotes,
       meta: {
-        windowCount,
+        windowCount: windowCount || null,
         bookingSource: "website"
       }
     })
@@ -179,6 +253,11 @@ export async function POST(request: NextRequest) {
   if (calendarError) {
     return NextResponse.json({ message: "Calendar booking could not be saved." }, { status: 502 });
   }
+
+  const smsConfirmationSent = await sendSmsConfirmation({
+    phone,
+    startAt
+  });
 
   await sendBookingAlert({
     type: "805_self_booking",
@@ -191,13 +270,15 @@ export async function POST(request: NextRequest) {
     address,
     windowCount,
     appointmentStart: startAt,
-    appointmentEnd: endAt
+    appointmentEnd: endAt,
+    smsConfirmationSent
   });
 
   return NextResponse.json({
     message: "Appointment booked.",
     leadId: lead.id,
     jobId: job.id,
-    calendarEventId: calendarEvent.id
+    calendarEventId: calendarEvent.id,
+    smsConfirmationSent
   });
 }

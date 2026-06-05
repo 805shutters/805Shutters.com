@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { site } from "@/lib/site-data";
+import { HeaderScrollState } from "./HeaderScrollState";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 
 const categoryItems = [
@@ -14,6 +15,7 @@ const categoryItems = [
 export function SiteHeader() {
   return (
     <header className="site-header-shell">
+      <HeaderScrollState />
       <div className="site-masthead">
         <div className="masthead-contact-left">
           <div className="social-links" aria-label="Social links">
@@ -35,6 +37,10 @@ export function SiteHeader() {
           />
         </Link>
         <div className="masthead-actions">
+          <Link className="header-calendar-link" href="/book-consultation/" aria-label="Book a free in-home consultation">
+            <CalendarIcon />
+            <span>Calendar</span>
+          </Link>
           <div className="phone-stack">
             <Link className="masthead-link masthead-email" href={site.emailHref}>
               {site.email}
@@ -58,6 +64,18 @@ export function SiteHeader() {
         ))}
       </nav>
     </header>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M7 2v4" />
+      <path d="M17 2v4" />
+      <path d="M4 9h16" />
+      <path d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+      <path d="M8 13h3v3H8z" />
+    </svg>
   );
 }
 

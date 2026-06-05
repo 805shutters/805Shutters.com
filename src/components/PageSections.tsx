@@ -252,7 +252,9 @@ function HomePageSections({ page }: { page: SitePage }) {
           <div className="home-hero-overlay">
             <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
             <div className="home-hero-actions">
-              <AppointmentBooking label="Free In-Home Consultations" />
+              <Link className="button primary" href="/book-consultation/">
+                Free In-Home Consultations
+              </Link>
               <TrackedPhoneLink className="button secondary" location="home hero">
                 Call {site.phone}
               </TrackedPhoneLink>
