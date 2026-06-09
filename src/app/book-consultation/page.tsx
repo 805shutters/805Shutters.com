@@ -16,6 +16,26 @@ export default function BookConsultationPage() {
       <div className="booking-page__intro">
         <p className="eyebrow">805 Shutters</p>
         <h1>Book a Free In-Home Consultation</h1>
+        <p>
+          Select an available date and time for a Ventura County window treatment consultation. 805 Shutters can help compare
+          custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings for privacy, light
+          control, color, materials, measurements, and installation planning.
+        </p>
+        <p>
+          After you choose a time, share your name, phone number, address, and project details so the appointment can be
+          reserved on the CRM calendar and followed up by the 805 Shutters team.
+        </p>
+        <p>
+          The appointment is used to confirm window measurements, mounting conditions, product fit, privacy goals, sun
+          exposure, room-darkening needs, child-safety requirements, color direction, and whether manual or motorized controls
+          make the most sense. Customers can use the same visit to compare plantation shutters, wood blinds, faux wood blinds,
+          vertical blinds, roller shades, honeycomb shades, woven shades, drapery, and outdoor shade options.
+        </p>
+        <p>
+          805 Shutters serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa
+          Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby Ventura County communities. If you are not sure which window
+          covering is best, book the consultation and the team will help narrow the choices before anything is quoted or ordered.
+        </p>
       </div>
       <BookingCalendar className="booking-panel booking-panel--page" />
     </section>

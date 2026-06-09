@@ -149,6 +149,87 @@ const productFit = {
     "Window treatments are selected around the room, light exposure, privacy needs, material preference, and the level of daily use."
 };
 
+function legacyProductSections(product: keyof typeof productFit, city: string, label: string): PageSection[] {
+  if (product === "blinds") {
+    return [
+      {
+        heading: "Light, Privacy, And View Control",
+        body: `Custom blinds in ${city} help control the amount of light entering a room without forcing the window to be fully open or fully covered. Slats can be tilted, opened, or closed so a home or business can keep privacy, reduce glare, protect furniture, and still make use of natural daylight.`
+      },
+      {
+        heading: "Wood, Faux Wood, Aluminum, Vertical, And Softwood Options",
+        body:
+          "During the consultation, 805 Shutters reviews wood blinds, faux wood blinds, aluminum blinds, vertical blinds, softwood blinds, colors, finishes, and control options. The goal is to match the product to the property, the overall look of the room, the level of daily use, and the budget for the project."
+      },
+      {
+        heading: "A Practical Upgrade For Homes And Businesses",
+        body: `For ${city} properties, blinds remain a practical option when customers want top quality light control, a cleaner window appearance, and a flexible price point. We compare the benefits of each blind style before ordering so the finished installation works with trim, doors, furniture, and everyday use.`
+      }
+    ];
+  }
+
+  if (product === "shutters") {
+    return [
+      {
+        heading: "Installation, Repair Review, And Replacement Planning",
+        body: `805 Shutters helps ${city} customers with shutter installation, replacement planning, and review of existing shutter issues. If an older shutter system needs attention, the consultation can help determine whether adjustment, replacement panels, new frames, or a new custom installation is the better long-term path.`
+      },
+      {
+        heading: "Privacy, Security, Ventilation, And Temperature",
+        body:
+          "Plantation shutters can improve privacy, help reduce glare, support airflow through adjustable louvers, and add a more finished architectural look. We review louver size, frame style, materials, color, room temperature concerns, sun exposure, and how the shutters should perform when opened, closed, or tilted."
+      },
+      {
+        heading: "Interior, Wood, Composite, And Specialty Shutters",
+        body: `For ${city} homes, shutter recommendations can include interior shutters, wood shutters, composite shutters, specialty shapes, sliding door shutters, and whole-home shutter plans. The final choice is based on the design of the house, window shape, durability needs, cleaning expectations, and the quality of the finished look.`
+      }
+    ];
+  }
+
+  if (product === "window-coverings") {
+    return [
+      {
+        heading: "Personalized Window Covering Consultation",
+        body: `805 Shutters provides in-home and in-office consultations for ${city} customers comparing a wide range of window coverings. The visit can include shutters, shades, blinds, drapery, exterior shades, and commercial roller shades so customers can see which product best fits the window, the room, and the way the space is used.`
+      },
+      {
+        heading: "Premium Materials, Colors, And Controls",
+        body:
+          "Window coverings should be selected around quality, privacy, light control, color, maintenance, and daily operation. We review available colors, fabrics, frame and bracket details, cordless or motorized controls, and the amount of natural light customers want to keep or block."
+      },
+      {
+        heading: "For Homes, Offices, And Commercial Spaces",
+        body: `Window covering projects in ${city} may involve bedrooms, living rooms, sliding doors, storefronts, offices, schools, medical spaces, restaurants, and shared workspaces. 805 Shutters helps clients compare products before ordering so the finished installation looks intentional and performs well over time.`
+      }
+    ];
+  }
+
+  if (product === "window-treatments") {
+    return [
+      {
+        heading: "Complete Window Treatment Planning",
+        body: `Window treatments in ${city} can include shutters, shades, blinds, wood blinds, draperies, woven shades, roller shades, honeycomb shades, exterior shades, and commercial coverings. 805 Shutters helps customers compare these choices by privacy, light intake, temperature control, color, material, room design, and budget. Customers can also discuss existing coverings, replacement goals, product maintenance, and whether the project should be completed room by room or across the whole home.`
+      },
+      {
+        heading: "Designs, Benefits, And Product Tradeoffs",
+        body:
+          "Every product has different benefits. Shutters add structure and long-term durability, shades soften light and glare, blinds provide adjustable slat control, and draperies add fabric, warmth, and a finished designer look. We walk through the available designs and explain what each option will do for the room."
+      },
+      {
+        heading: "Residential And Business Window Treatment Support",
+        body: `805 Shutters works with ${city} homeowners and businesses that want quality window treatments without guessing from pictures alone. A consultation helps confirm measurements, colors, mounting details, controls, privacy goals, light exposure, and the best product mix before the order is placed.`
+      }
+    ];
+  }
+
+  return [
+    {
+      heading: `More ${label} Options To Compare`,
+      body: `805 Shutters helps ${city} customers compare quality materials, colors, controls, privacy levels, light control, maintenance needs, and installation details before choosing custom ${label}.`
+    }
+  ];
+}
+
 const parentPages: SitePage[] = [
   {
     path: "/shutters/",
@@ -287,6 +368,16 @@ const parentPages: SitePage[] = [
         heading: "One Consultation, Multiple Options",
         body:
           "We help match the product to the room: shutters for structure, shades for softness and glare control, blinds for flexible adjustment, and commercial coverings for larger spaces."
+      },
+      {
+        heading: "In-Home Or In-Office Consultation",
+        body:
+          "805 Shutters offers personalized consultation for customers comparing window treatments, window coverings, shutters, shades, blinds, drapery, and commercial roller shades. The goal is to understand the room, the amount of light entering the space, privacy needs, color direction, available products, and which design will work best before anything is ordered."
+      },
+      {
+        heading: "Privacy, Light Intake, And Temperature",
+        body:
+          "Quality shutters, shades, blinds, and draperies can help beautify a living space while giving better control over home privacy, light intake, glare, and temperature. We explain the benefits and tradeoffs of each option so customers can make a confident choice."
       }
     ]
   },
@@ -306,6 +397,16 @@ const parentPages: SitePage[] = [
         heading: "Residential And Commercial",
         body:
           "From plantation shutters and roller shades to vertical blinds and commercial roller shades, the recommendation is based on light, privacy, maintenance, durability, and design."
+      },
+      {
+        heading: "Wide Range Of Window Coverings",
+        body:
+          "805 Shutters provides in-home and in-office consultations on a wide range of window coverings, including shutters, shades, blinds, draperies, woven shades, roller shades, exterior shades, and commercial products. Customers can compare colors, materials, controls, and mounting details in one visit."
+      },
+      {
+        heading: "Premium Quality For Local Clients",
+        body:
+          "The consultation focuses on premium quality, practical options, and the final appearance of the room. We help clients consider privacy, sun exposure, the amount of natural light, maintenance, price, and the product style that will make the window covering look like it belongs in the space."
       }
     ]
   },
@@ -325,6 +426,16 @@ const parentPages: SitePage[] = [
         heading: "Built For Workspaces",
         body:
           "We help offices, storefronts, restaurants, schools, medical spaces, and shared facilities select window coverings that hold up to daily use."
+      },
+      {
+        heading: "Interior And Exterior Roller Shade Uses",
+        body:
+          "Commercial buildings, offices, warehouses, storefronts, and public-facing spaces can benefit from interior or exterior roller shades that reduce glare, improve privacy, help with heat, and create a more professional appearance. The same planning also helps residential customers who want cleaner light control over large windows and doors."
+      },
+      {
+        heading: "Colors, Controls, And Building Requirements",
+        body:
+          "We review fabric openness, color, manual or motorized controls, mounting conditions, window size, employee comfort, customer-facing appearance, cleaning needs, and how the shades should work across the entire building."
       }
     ]
   },
@@ -518,6 +629,11 @@ const supportPages: SitePage[] = [
         heading: "Do you handle commercial projects?",
         body:
           "Yes. 805 Shutters installs commercial roller shades and window coverings for offices, retail spaces, restaurants, schools, medical spaces, and shared facilities."
+      },
+      {
+        heading: "What are your business hours?",
+        body:
+          "Business hours are Monday through Saturday from 8:00 AM to 6:00 PM. Sunday is closed."
       }
     ]
   },
@@ -743,6 +859,16 @@ const recentProjectPages: SitePage[] = [
           "Layered window shades can help Ventura County homeowners improve privacy, manage natural light, reduce glare, and create a more finished look around bedroom windows."
       },
       {
+        heading: "Shade planning details",
+        body:
+          "For layered shade projects, the consultation reviews fabric opacity, color, privacy, view-through, light filtering, room-darkening needs, control side, mounting depth, window trim, and the way the shade will look from both inside and outside the room. Those details help the finished product feel custom instead of generic."
+      },
+      {
+        heading: "When layered shades are a strong fit",
+        body:
+          "Layered shades are often a good fit when a customer wants the softness of a shade with more flexible light control than a single flat fabric. They can work well in bedrooms, sitting rooms, and living spaces where privacy, filtered daylight, glare control, and a clean designer look all matter at the same time."
+      },
+      {
         heading: "Local service area",
         body: projectServiceArea
       },
@@ -916,6 +1042,11 @@ const recentProjectPages: SitePage[] = [
           "Homes throughout Ventura County often have a mix of standard rectangular windows and specialty shapes. 805 Shutters, Shades & Blinds measures each opening carefully so the finished shutters fit the architecture instead of looking like an afterthought."
       },
       {
+        heading: "Measured before ordering",
+        body:
+          "Before shutters are ordered, the team checks frame depth, trim, sill conditions, louver clearance, panel swing, color, room use, and privacy goals. That detail helps the finished plantation shutters look built in and operate correctly after installation."
+      },
+      {
         heading: "Local experience",
         body: projectCompanyProof
       },
@@ -945,7 +1076,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/shutters/${shutterSlug}/`,
       city,
       product: "shutters",
-      title: `Shutters in ${city} | 805 Shutters`,
+      title: `Shutters in ${city} CA | ${city} Shutter Installation and Repair | 805 Shutters`,
       h1: `Custom Shutters in ${city}`,
       image: images.shutters
     }),
@@ -953,7 +1084,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/shades/${caSlug}/`,
       city,
       product: "shades",
-      title: `Custom Shades in ${city} CA | 805 Shutters`,
+      title: `Shades near ${city} CA - 805 Shutters Shades & Blinds`,
       h1: `Custom Window Shades in ${city}`,
       image: images.shades
     }),
@@ -961,7 +1092,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/blinds/${caSlug}/`,
       city,
       product: "blinds",
-      title: `Custom Blinds in ${city} CA | 805 Shutters`,
+      title: `Blinds near ${city} CA - 805 Shutters Shades & Blinds`,
       h1: `Custom Blinds in ${city}`,
       image: images.blinds
     }),
@@ -969,7 +1100,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/window-coverings/${caSlug}/`,
       city,
       product: "window-coverings",
-      title: `Window Coverings in ${city} CA | 805 Shutters`,
+      title: `Window Coverings near ${city} CA - 805 Shutters Shades & Blinds`,
       h1: `Window Coverings in ${city}`,
       image: images.hero
     }),
@@ -977,7 +1108,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: windowTreatmentPath,
       city,
       product: "window-treatments",
-      title: `Window Treatments in ${city} CA | 805 Shutters`,
+      title: `Window Treatments near ${city} CA - 805 Shutters Shades & Blinds`,
       h1: `Window Treatments in ${city}`,
       image: images.hero
     })
@@ -1003,7 +1134,7 @@ function cityProductPage({
   return {
     path,
     title,
-    description: `${h1} measured and installed by 805 Shutters. Free consultation for ${city} homes and businesses.`,
+    description: `${h1} measured and installed by 805 Shutters, Shades & Blinds. Compare privacy, light control, colors, materials, controls, and local installation.`,
     h1,
     eyebrow: `${city} service area`,
     intro: `805 Shutters helps ${city} homeowners and businesses compare custom ${label} options for privacy, light control, room style, and budget.`,
@@ -1028,6 +1159,7 @@ function cityProductPage({
         body:
           "The same appointment can compare plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, vertical blinds, drapery, and commercial roller shades. That makes it easier to choose the right product for the room instead of guessing from pictures alone."
       },
+      ...legacyProductSections(product, city, label),
       {
         heading: "Ventura County installation support",
         body: `805 Shutters serves ${city} and nearby Ventura County communities with measuring, product guidance, ordering, and professional installation. The goal is to help you understand cost, timing, materials, controls, and long-term maintenance before the project moves forward.`
@@ -1061,6 +1193,11 @@ function searchDepthSections(page: SitePage): PageSection[] {
       heading: "Local Service Area",
       body:
         "805 Shutters works throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
+    },
+    {
+      heading: "Product Details That Affect The Quote",
+      body:
+        "The final recommendation depends on more than window size. We review whether the space is a home, office, storefront, medical space, restaurant, school, rental, or specialty room; whether the customer wants privacy, light filtering, room darkening, heat control, glare reduction, ventilation, security, appeal, or a designer finish; and whether wood, faux wood, composite, aluminum, woven fabric, roller fabric, drapery, or exterior shade material is the best fit. We also discuss how the treatment should look from inside, outside, and alongside nearby furniture or doors."
     },
     {
       heading: "Free Consultation Next Step",
