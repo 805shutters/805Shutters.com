@@ -17,6 +17,7 @@ import {
   CrmCustomerProduct,
   CrmDashboardData,
   CrmJob,
+  CrmJobExpense,
   CrmJobStatus,
   CrmQuote,
   CrmQuoteStatus,
@@ -101,6 +102,7 @@ const allowedEntryPatchFields = new Set([
   "total_amount",
   "payment_type",
   "cogs_amount",
+  "ken_cut_override",
   "sales_owner",
   "installation_invoice_document_id",
   "installation_invoice_amount",
@@ -120,6 +122,14 @@ const allowedEntryPatchFields = new Set([
 export function toMoney(value: unknown) {
   const amount = Number(value || 0);
   return Number.isFinite(amount) ? Math.max(amount, 0) : 0;
+}
+
+// Nullable money: empty/absent means "no override", a number (including 0) is
+// an explicit amount.
+function toMoneyOrNull(value: unknown) {
+  if (value === undefined || value === null || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? Math.max(amount, 0) : null;
 }
 
 function optionalText(value: unknown) {
@@ -188,6 +198,7 @@ export async function recordCrmActivity(
       | "quote"
       | "bookkeeping_entry"
       | "bookkeeping_payment"
+      | "expense"
       | "calendar_event"
       | "customer"
       | "session"
@@ -300,7 +311,8 @@ export function buildDashboardData({
   contracts,
   entries,
   payments,
-  credits
+  credits,
+  expenses = []
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -311,13 +323,14 @@ export function buildDashboardData({
   entries: CrmBookkeepingEntry[];
   payments: CrmBookkeepingPayment[];
   credits: CrmBookkeepingCredit[];
+  expenses?: CrmJobExpense[];
 }): CrmDashboardData {
   const quotesByJob = new Map<string, number>();
   for (const quote of quotes) {
     quotesByJob.set(quote.job_id, Math.max(quotesByJob.get(quote.job_id) || 0, toMoney(quote.quote_total)));
   }
 
-  const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits });
+  const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
   const customerFiles = buildCustomerFiles({
@@ -344,6 +357,7 @@ export function buildDashboardData({
     bookkeepingEntries: entries,
     bookkeepingPayments: payments,
     bookkeepingCredits: credits,
+    bookkeepingExpenses: expenses,
     bookkeepingRows,
     bookkeepingTotals,
     accountability,
@@ -374,7 +388,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     contractsResult,
     entriesResult,
     paymentsResult,
-    creditsResult
+    creditsResult,
+    expensesResult
   ] = await Promise.all([
     supabase.from("crm_jobs").select("*").order("created_at", { ascending: false }).limit(120),
     supabase.from("crm_quotes").select("*").order("created_at", { ascending: false }).limit(120),
@@ -393,7 +408,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .order("sold_date", { ascending: false, nullsFirst: false })
       .limit(500),
     supabase.from("crm_quote_bookkeeping_payments").select("*").order("paid_at", { ascending: false }).limit(800),
-    supabase.from("crm_quote_bookkeeping_credits").select("*").order("credit_date", { ascending: false }).limit(500)
+    supabase.from("crm_quote_bookkeeping_credits").select("*").order("credit_date", { ascending: false }).limit(500),
+    supabase.from("crm_job_expenses").select("*").order("incurred_on", { ascending: false }).limit(1000)
   ]);
 
   if (
@@ -405,7 +421,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     contractsResult.error ||
     entriesResult.error ||
     paymentsResult.error ||
-    creditsResult.error
+    creditsResult.error ||
+    expensesResult.error
   ) {
     throw new CrmAuthError(502, "CRM data failed to load. Run the 805 CRM Supabase migrations.");
   }
@@ -419,6 +436,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const entries = (entriesResult.data || []) as CrmBookkeepingEntry[];
   const payments = (paymentsResult.data || []) as CrmBookkeepingPayment[];
   const credits = (creditsResult.data || []) as CrmBookkeepingCredit[];
+  const expenses = (expensesResult.data || []) as CrmJobExpense[];
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
   return buildDashboardData({
@@ -433,7 +451,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     contracts,
     entries,
     payments,
-    credits
+    credits,
+    expenses
   });
 }
 
@@ -611,6 +630,23 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
   const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
   const now = new Date().toISOString();
 
+  const { data: parentJob, error: parentJobError } = await supabase
+    .from("crm_jobs")
+    .select("id,customer_name,sales_owner")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (parentJobError || !parentJob) throw new CrmAuthError(404, "Job for this quote was not found.");
+
+  // Every sold job needs a salesperson: fall back to the job's assigned owner
+  // when the quote form leaves "Sold By" empty or Unassigned.
+  const soldByInput = optionalText(payload.sold_by);
+  const soldBy =
+    soldByInput && normalizeOwner(soldByInput)
+      ? soldByInput
+      : normalizeOwner(parentJob.sales_owner)
+        ? parentJob.sales_owner
+        : soldByInput;
+
   const record = {
     job_id: jobId,
     quote_number: optionalText(payload.quote_number),
@@ -622,7 +658,7 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     tax: toMoney(payload.tax),
     deposit_required: depositPaid,
     balance_due: Math.max(quoteTotal - depositPaid - balancePaid, 0),
-    sold_by: optionalText(payload.sold_by),
+    sold_by: soldBy,
     sold_at: status === "sold" || status === "approved" ? payload.sold_at || now : null,
     approved_at: status === "approved" ? payload.approved_at || now : null,
     ordered_at: status === "ordered" ? payload.ordered_at || now : null,
@@ -661,17 +697,19 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     if (paymentError) throw new CrmAuthError(502, "Quote was saved, but payments failed to save.");
   }
 
+  const entrySalesOwner = normalizeOwner(soldBy);
   const { error: entryError } = await supabase.from("crm_quote_bookkeeping_entries").insert({
     quote_id: data.id,
     job_id: jobId,
     source: "crm_quote",
-    customer_name: optionalText(payload.customer_name) || "Linked job",
+    customer_name: optionalText(payload.customer_name) || parentJob.customer_name || "Linked job",
     sold_date: payload.sold_at || (status === "draft" || status === "sent" ? null : now.slice(0, 10)),
     total_amount: quoteTotal,
     payment_type: paymentType,
     cogs_amount: toMoney(payload.materials_cost),
-    sales_owner: normalizeOwner(payload.sold_by),
-    sales_owner_set_at: payload.sold_by ? now : null,
+    ken_cut_override: toMoneyOrNull(payload.ken_cut_override),
+    sales_owner: entrySalesOwner,
+    sales_owner_set_at: entrySalesOwner ? now : null,
     manufacturer_name: optionalText(payload.manufacturer_name),
     manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
     manufacturer_order_url: optionalText(payload.manufacturer_order_url),
@@ -682,13 +720,19 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
 
   if (entryError) throw new CrmAuthError(502, "Quote was saved, but bookkeeping failed to save.");
 
+  const jobPatch: Record<string, unknown> = {
+    status: getJobStatusForQuote(status),
+    estimated_total: quoteTotal,
+    deposit_paid: depositPaid
+  };
+  // Keep the job's salesperson in sync with who sold the quote.
+  if (entrySalesOwner) {
+    jobPatch.sales_owner = entrySalesOwner === "jessica" ? "Jessica" : "Mike";
+  }
+
   const { data: job } = await supabase
     .from("crm_jobs")
-    .update({
-      status: getJobStatusForQuote(status),
-      estimated_total: quoteTotal,
-      deposit_paid: depositPaid
-    })
+    .update(jobPatch)
     .eq("id", jobId)
     .select("*")
     .maybeSingle();
@@ -776,23 +820,44 @@ export async function updateCrmQuote(
     if (paymentError) throw new CrmAuthError(502, "Quote was updated, but payment failed to save.");
   }
 
+  // Merge into the linked bookkeeping entry without stomping values that
+  // bookkeeping owns: only overwrite a field when this update touched it or
+  // the entry has nothing yet. The quote always owns the sale price.
+  const { data: existingEntry } = await supabase
+    .from("crm_quote_bookkeeping_entries")
+    .select("*")
+    .eq("quote_id", id)
+    .maybeSingle();
+
+  const touched = (key: string) => key in payload;
+  const nextSalesOwner = touched("sold_by")
+    ? normalizeOwner(quote.sold_by)
+    : (existingEntry?.sales_owner as string | null) ?? normalizeOwner(quote.sold_by);
+  const salesOwnerChanged = nextSalesOwner !== (existingEntry?.sales_owner ?? null);
+
   const { error: entryError } = await supabase.from("crm_quote_bookkeeping_entries").upsert(
     {
       quote_id: id,
       job_id: quote.job_id,
       source: "crm_quote",
-      customer_name: optionalText(payload.customer_name) || "Linked job",
-      sold_date: quote.sold_at ? String(quote.sold_at).slice(0, 10) : null,
+      customer_name:
+        optionalText(payload.customer_name) || existingEntry?.customer_name || "Linked job",
+      sold_date: quote.sold_at ? String(quote.sold_at).slice(0, 10) : existingEntry?.sold_date || null,
       total_amount: toMoney(quote.quote_total),
-      payment_type: paymentType,
-      cogs_amount: toMoney(quote.materials_cost),
-      sales_owner: normalizeOwner(quote.sold_by),
-      sales_owner_set_at: quote.sold_by ? now : null,
-      manufacturer_name: quote.manufacturer_name || null,
-      manufacturer_order_ref: quote.manufacturer_order_ref || null,
-      manufacturer_order_url: quote.manufacturer_order_url || null,
-      manufacturer_document_url: quote.manufacturer_document_url || null,
-      notes: quote.notes || null,
+      payment_type: optionalText(payload.payment_type)
+        ? paymentType
+        : (existingEntry?.payment_type ?? null),
+      cogs_amount: touched("materials_cost")
+        ? toMoney(quote.materials_cost)
+        : (existingEntry?.cogs_amount ?? toMoney(quote.materials_cost)),
+      sales_owner: nextSalesOwner,
+      sales_owner_set_at: salesOwnerChanged ? now : (existingEntry?.sales_owner_set_at ?? null),
+      manufacturer_name: quote.manufacturer_name || existingEntry?.manufacturer_name || null,
+      manufacturer_order_ref: quote.manufacturer_order_ref || existingEntry?.manufacturer_order_ref || null,
+      manufacturer_order_url: quote.manufacturer_order_url || existingEntry?.manufacturer_order_url || null,
+      manufacturer_document_url:
+        quote.manufacturer_document_url || existingEntry?.manufacturer_document_url || null,
+      notes: quote.notes || existingEntry?.notes || null,
       meta: { lastUpdatedBy: actor.email }
     },
     { onConflict: "quote_id" }
@@ -800,13 +865,18 @@ export async function updateCrmQuote(
 
   if (entryError) throw new CrmAuthError(502, "Quote was updated, but bookkeeping failed to update.");
 
+  const jobPatch: Record<string, unknown> = {
+    status: getJobStatusForQuote(String(quote.status || payload.status)),
+    estimated_total: toMoney(quote.quote_total),
+    deposit_paid: toMoney(quote.deposit_required)
+  };
+  if (touched("sold_by") && nextSalesOwner) {
+    jobPatch.sales_owner = nextSalesOwner === "jessica" ? "Jessica" : "Mike";
+  }
+
   const { data: job } = await supabase
     .from("crm_jobs")
-    .update({
-      status: getJobStatusForQuote(String(quote.status || payload.status)),
-      estimated_total: toMoney(quote.quote_total),
-      deposit_paid: toMoney(quote.deposit_required)
-    })
+    .update(jobPatch)
     .eq("id", quote.job_id)
     .select("*")
     .maybeSingle();
@@ -844,6 +914,7 @@ export async function createCrmBookkeepingEntry(
       total_amount: toMoney(payload.total_amount),
       payment_type: paymentType,
       cogs_amount: toMoney(payload.cogs_amount),
+      ken_cut_override: toMoneyOrNull(payload.ken_cut_override),
       sales_owner: normalizeOwner(payload.sales_owner),
       sales_owner_auth_user_id: normalizeOwner(payload.sales_owner) ? actor.userId || null : null,
       sales_owner_set_at: normalizeOwner(payload.sales_owner) ? now : null,
@@ -922,6 +993,8 @@ export async function updateCrmBookkeepingEntry(
     } else if (key === "sales_owner") {
       patch.sales_owner = normalizeOwner(value);
       patch.sales_owner_set_at = now;
+    } else if (key === "ken_cut_override") {
+      patch.ken_cut_override = toMoneyOrNull(value);
     } else if (["total_amount", "cogs_amount", "installation_invoice_amount"].includes(key)) {
       patch[key] = toMoney(value);
     } else {
@@ -989,4 +1062,85 @@ export async function updateCrmBookkeepingEntry(
   });
 
   return entry as CrmBookkeepingEntry;
+}
+
+const expenseCategories = new Set([
+  "materials",
+  "installation_extra",
+  "processing_fee",
+  "permit",
+  "repair",
+  "referral",
+  "other"
+]);
+
+export async function createCrmJobExpense(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const label = requiredText(payload.label, "Expense label is required.");
+  const amount = toMoney(payload.amount);
+  if (amount <= 0) throw new CrmAuthError(400, "Expense amount must be greater than zero.");
+
+  let entryId = optionalText(payload.bookkeeping_entry_id);
+  let quoteId = optionalText(payload.quote_id);
+  let jobId = optionalText(payload.job_id);
+
+  // Resolve the sale the expense belongs to so it always lands on the same
+  // bookkeeping row the profit calculation reads.
+  if (entryId) {
+    const { data: entry } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select("id,quote_id,job_id")
+      .eq("id", entryId)
+      .maybeSingle();
+    if (!entry) throw new CrmAuthError(404, "Bookkeeping row for this expense was not found.");
+    quoteId = quoteId || entry.quote_id;
+    jobId = jobId || entry.job_id;
+  } else if (quoteId) {
+    const { data: quote } = await supabase
+      .from("crm_quotes")
+      .select("id,job_id")
+      .eq("id", quoteId)
+      .maybeSingle();
+    if (!quote) throw new CrmAuthError(404, "Quote for this expense was not found.");
+    jobId = jobId || quote.job_id;
+    const { data: linkedEntry } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select("id")
+      .eq("quote_id", quoteId)
+      .maybeSingle();
+    entryId = linkedEntry?.id || null;
+  } else if (!jobId) {
+    throw new CrmAuthError(400, "An expense needs a bookkeeping row, quote, or job to attach to.");
+  }
+
+  const { data: expense, error } = await supabase
+    .from("crm_job_expenses")
+    .insert({
+      bookkeeping_entry_id: entryId,
+      quote_id: quoteId,
+      job_id: jobId,
+      label,
+      category: normalizeEnum(payload.category, expenseCategories, "other", "Invalid expense category."),
+      amount,
+      incurred_on: payload.incurred_on || new Date().toISOString().slice(0, 10),
+      notes: optionalText(payload.notes),
+      source: "manual",
+      meta: { createdBy: actor.email }
+    })
+    .select("*")
+    .single();
+
+  if (error || !expense) throw new CrmAuthError(502, "Expense could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "expense",
+    entityId: expense.id,
+    action: "create",
+    after: expense
+  });
+
+  return expense as CrmJobExpense;
 }
