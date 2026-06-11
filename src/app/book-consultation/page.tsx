@@ -32,9 +32,10 @@ export default function BookConsultationPage() {
           vertical blinds, roller shades, honeycomb shades, woven shades, drapery, and outdoor shade options.
         </p>
         <p>
-          805 Shutters serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa
-          Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby Ventura County communities. If you are not sure which window
-          covering is best, book the consultation and the team will help narrow the choices before anything is quoted or ordered.
+          805 Shutters serves Camarillo, Thousand Oaks, Westlake Village, Agoura, Calabasas, Malibu, Ventura, Oxnard, Simi
+          Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby Ventura County
+          communities. If you are not sure which window covering is best, book the consultation and the team will help narrow
+          the choices before anything is quoted or ordered.
         </p>
       </div>
       <BookingCalendar className="booking-panel booking-panel--page" />
