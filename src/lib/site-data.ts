@@ -66,7 +66,7 @@ export const site = {
 };
 
 export const images = {
-  hero: "/images/805-hero-window-treatments.png",
+  hero: "/images/blackout-honeycomb-shades-bedroom-hero.png",
   shutters: "/images/editorial-scroll/ai-shutters-arched-dining-room.jpg",
   shades: "/images/805-portfolio-shades-bedroom.jpg",
   blinds: "/images/805-portfolio-blinds-office.jpg",
@@ -1282,7 +1282,7 @@ export const homePage: SitePage = withSearchDepth({
   intro:
     "805 Shutters helps Ventura County homeowners and businesses choose custom window treatments that fit their rooms, light, privacy, and budget.",
   image: images.hero,
-  imageAlt: "Custom shades and drapery in a bright Ventura County living room",
+  imageAlt: "Blackout honeycomb shades in a warm bedroom with a slate blue bedspread",
   sections: [
     {
       heading: "Local Window Treatment Installation",

@@ -343,6 +343,61 @@ export type CrmAccountabilityItem = {
   jobId?: string | null;
 };
 
+export type CrmSalesOpportunity = {
+  id: string;
+  customerName: string;
+  phone: string;
+  city: string | null;
+  productInterest: string;
+  owner: string;
+  status: CrmJobStatus;
+  priority: CrmJob["priority"];
+  value: number;
+  ageDays: number;
+  nextAction: string;
+  dueDate: string | null;
+  dueBucket: "overdue" | "today" | "upcoming" | "unscheduled";
+  score: number;
+  signal: string;
+  blockers: string[];
+};
+
+export type CrmOrderTrackerLane =
+  | "ready_to_order"
+  | "awaiting_product"
+  | "ready_to_install"
+  | "installed_collect"
+  | "financial_review"
+  | "complete";
+
+export type CrmOrderTracker = {
+  id: string;
+  quoteId: string | null;
+  jobId: string | null;
+  customerName: string;
+  quoteNumber: string | null;
+  status: CrmBookkeepingRow["status"];
+  lane: CrmOrderTrackerLane;
+  laneLabel: string;
+  urgency: "normal" | "warning" | "urgent" | "complete";
+  ageDays: number;
+  stageDate: string | null;
+  productInterest: string | null;
+  salesOwner: CrmBookkeepingSalesOwner | null;
+  total: number;
+  paidTotal: number;
+  balance: number;
+  cogs: number;
+  mikeProfit: number;
+  jessicaCommissionOwed: number;
+  manufacturerName: string | null;
+  manufacturerOrderRef: string | null;
+  manufacturerOrderUrl: string | null;
+  manufacturerDocumentUrl: string | null;
+  nextAction: string;
+  blockers: string[];
+};
+
 export type CrmCalendarEvent = {
   id: string;
   created_at: string;
@@ -356,6 +411,7 @@ export type CrmCalendarEvent = {
   end_at: string;
   location: string | null;
   notes: string | null;
+  meta: Record<string, unknown>;
   customer_name?: string;
 };
 
@@ -374,6 +430,28 @@ export type CrmSummary = {
   contracts: number;
 };
 
+export type CrmSalesSystemSummary = {
+  opportunities: number;
+  hot: number;
+  overdue: number;
+  today: number;
+  quoteNeeded: number;
+  unscheduled: number;
+  pipelineValue: number;
+};
+
+export type CrmOrderSystemSummary = {
+  openOrders: number;
+  readyToOrder: number;
+  awaitingProduct: number;
+  readyToInstall: number;
+  installedCollect: number;
+  financialReview: number;
+  complete: number;
+  orderValue: number;
+  balanceAtRisk: number;
+};
+
 export type CrmDashboardData = {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -389,5 +467,9 @@ export type CrmDashboardData = {
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
   accountability: CrmAccountabilityItem[];
+  salesOpportunities: CrmSalesOpportunity[];
+  salesSystemSummary: CrmSalesSystemSummary;
+  orderTrackers: CrmOrderTracker[];
+  orderSystemSummary: CrmOrderSystemSummary;
   summary: CrmSummary;
 };

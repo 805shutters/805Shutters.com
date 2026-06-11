@@ -5,6 +5,7 @@ import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
+import { PortfolioBrowser } from "./PortfolioBrowser";
 import { SitePage, site } from "@/lib/site-data";
 
 type PortfolioStory = {
@@ -145,111 +146,8 @@ const portfolioStories: PortfolioStory[] = [
 
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
-    image: "/images/805-hero-window-treatments.jpg",
+    image: page.image,
     imageAlt: page.imageAlt
-  },
-  {
-    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
-    imageAlt: "Live roller shades installed in a Ventura County bedroom",
-    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4"
-  },
-  {
-    image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg",
-    imageAlt: "Exterior shades filtering sunset light over an ocean-view patio"
-  }
-];
-
-const installedPortfolioPhotos = [
-  {
-    category: "Shades",
-    title: "Layered Bedroom Shades",
-    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
-  },
-  {
-    category: "Shades",
-    title: "Motorized Roller Shades",
-    image: "/images/video-posters/motorized-roller-shades-patio-view.jpg",
-    imageAlt: "Motorized roller shades installed over patio-view windows",
-    video: "/videos/motorized-roller-shades-patio-view-loop.m4v"
-  },
-  {
-    category: "Shades",
-    title: "Corner Cellular Shades",
-    image: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-card.jpg",
-    imageAlt: "Cellular shades installed on two corner windows in a Ventura County home"
-  },
-  {
-    category: "Shades",
-    title: "Bedroom Cellular Shades",
-    image: "/images/portfolio-enhanced/uploaded-bedroom-cellular-shades-card.jpg",
-    imageAlt: "Cellular shades installed on two bedroom windows beside a door"
-  },
-  {
-    category: "Shades",
-    title: "Twin Cellular Shades",
-    image: "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg",
-    imageAlt: "Twin cellular shades installed on side-by-side bedroom windows"
-  },
-  {
-    category: "Shutters",
-    title: "Office Plantation Shutters",
-    image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-card.jpg",
-    imageAlt: "White plantation shutters installed over office corner windows"
-  },
-  {
-    category: "Shades",
-    title: "Corner Room Cellular Shades",
-    image: "/images/portfolio-enhanced/uploaded-corner-room-cellular-shades-card.jpg",
-    imageAlt: "Cellular shades installed across a corner room window grouping"
-  },
-  {
-    category: "Shades",
-    title: "Full-Height Cellular Shades",
-    image: "/images/portfolio-enhanced/uploaded-full-height-cellular-shades-card.jpg",
-    imageAlt: "Full-height cellular shades installed on corner room windows"
-  },
-  {
-    category: "Shutters",
-    title: "Arched Window Shutters",
-    image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
-    imageAlt: "Custom arched plantation shutters in a Ventura County living room"
-  },
-  {
-    category: "Shutters",
-    title: "Bedroom Sliding Door Shutters",
-    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
-  },
-  {
-    category: "Shutters",
-    title: "Arched Shutter Detail",
-    image: "/images/portfolio-enhanced/uploaded-arched-shutter-detail-card.jpg",
-    imageAlt: "Custom arched shutter installed in a Ventura County room"
-  },
-  {
-    category: "Shutters",
-    title: "Single Arch Shutter",
-    image: "/images/portfolio-enhanced/uploaded-single-arch-shutter-card.jpg",
-    imageAlt: "Single arched plantation shutter installed in a Ventura County home"
-  },
-  {
-    category: "Shutters",
-    title: "Shutter Panel Detail",
-    image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-card.jpg",
-    imageAlt: "Close detail of a custom shutter panel beside a door in a Ventura County home"
-  },
-  {
-    category: "Shutters",
-    title: "Two-Story Living Room Shutters",
-    image: "/images/portfolio-enhanced/uploaded-two-story-living-room-shutters-card.jpg",
-    imageAlt: "Two-story living room windows fitted with custom plantation shutters"
-  },
-  {
-    category: "Shutters",
-    title: "Stacked Arch Shutters",
-    image: "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-card.jpg",
-    imageAlt: "Stacked arched and rectangular shutters installed on tall living room windows"
   }
 ];
 
@@ -290,6 +188,8 @@ export function PageSections({ page }: { page: SitePage }) {
           ))}
         </section>
       ) : null}
+
+      {page.path === "/gallery/" ? <PortfolioBrowser /> : null}
 
       {page.path === "/" ? <ServiceGrid /> : null}
 
@@ -352,7 +252,7 @@ function HomePageSections({ page }: { page: SitePage }) {
         <div className="home-editorial-panel">
           <HomeHeroCarousel slides={homeHeroSlides(page)} />
           <div className="home-hero-overlay">
-            <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
+            <h1 className="home-intro">Darken your space for true relaxation</h1>
             <div className="home-hero-actions">
               <Link className="button primary" href="/book-consultation/">
                 Free In-Home Consultations
@@ -402,37 +302,7 @@ function HomePageSections({ page }: { page: SitePage }) {
         ))}
       </section>
 
-      <section className="installed-portfolio">
-        <div className="content-wrap installed-portfolio-head">
-          <p className="eyebrow">Installed Portfolio</p>
-          <h2>Shutters and shades from recent Ventura County projects</h2>
-        </div>
-        <div className="content-wrap installed-portfolio-grid">
-          {installedPortfolioPhotos.map((photo) => (
-            <figure className="installed-portfolio-card" key={photo.title}>
-              {photo.video ? (
-                <video
-                  aria-label={photo.imageAlt}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster={photo.image}
-                  preload="auto"
-                >
-                  <source src={photo.video} type="video/mp4" />
-                </video>
-              ) : (
-                <img src={photo.image} alt={photo.imageAlt} loading="lazy" decoding="async" />
-              )}
-              <figcaption>
-                <span>{photo.category}</span>
-                <strong>{photo.title}</strong>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      <PortfolioBrowser />
 
       <ServiceGrid />
 

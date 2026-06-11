@@ -6,6 +6,18 @@ import {
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
+import {
+  buildOrderTrackers,
+  buildSalesOpportunities,
+  summarizeOrderSystem,
+  summarizeSalesSystem
+} from "@/lib/crm/sales-system";
+import { dispatchCrmAppointmentAlerts } from "@/lib/crm/appointment-alerts";
+import {
+  dispatch805InvoiceNoteNotification,
+  dispatch805SoldQuoteNotification
+} from "@/lib/crm/bookkeeping-alerts";
+import { syncCrmCalendarEventToGoogle } from "@/lib/crm/google-calendar";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
   CrmBookkeepingCredit,
@@ -51,6 +63,10 @@ const quoteStatusSet = new Set<string>(crmQuoteStatuses);
 const prioritySet = new Set(["low", "normal", "high", "urgent"]);
 const calendarEventTypes = new Set(["sales_consult", "measure", "install", "follow_up", "block"]);
 const calendarStatuses = new Set(["scheduled", "complete", "canceled", "rescheduled"]);
+
+function isSoldQuoteStatus(status: unknown) {
+  return status === "sold" || status === "approved";
+}
 
 const allowedJobPatchFields = new Set([
   "status",
@@ -345,6 +361,12 @@ export function buildDashboardData({
     ...job,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
+  const salesOpportunities = buildSalesOpportunities(jobsWithQuotes);
+  const orderTrackers = buildOrderTrackers({
+    rows: bookkeepingRows,
+    jobs: jobsWithQuotes,
+    quotes
+  });
 
   return {
     jobs: jobsWithQuotes,
@@ -361,6 +383,10 @@ export function buildDashboardData({
     bookkeepingRows,
     bookkeepingTotals,
     accountability,
+    salesOpportunities,
+    salesSystemSummary: summarizeSalesSystem(salesOpportunities),
+    orderTrackers,
+    orderSystemSummary: summarizeOrderSystem(orderTrackers),
     summary: {
       openJobs: jobsWithQuotes.filter((job) => openStatuses.has(job.status)).length,
       scheduledJobs: jobsWithQuotes.filter((job) => job.status === "scheduled").length,
@@ -396,9 +422,9 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     supabase
       .from("crm_calendar_events")
       .select("*")
-      .gte("start_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 14).toISOString())
+      .gte("start_at", new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString())
       .order("start_at", { ascending: true })
-      .limit(120),
+      .limit(600),
     supabase.from("crm_customers").select("*").order("latest_sold_date", { ascending: false }).limit(800),
     supabase.from("crm_customer_products").select("*").order("created_at", { ascending: false }).limit(1600),
     supabase.from("crm_customer_contracts").select("*").order("created_at", { ascending: false }).limit(1000),
@@ -592,6 +618,7 @@ export async function createCrmCalendarEvent(
 
   const { data, error } = await supabase.from("crm_calendar_events").insert(record).select("*").single();
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be saved.");
+  let calendarEvent = data as CrmCalendarEvent;
 
   if (payload.job_id) {
     const { data: job } = await supabase
@@ -610,15 +637,46 @@ export async function createCrmCalendarEvent(
 
   await recordCrmActivity(supabase, actor, {
     entityType: "calendar_event",
-    entityId: data.id,
+    entityId: calendarEvent.id,
     action: "create",
-    after: data,
+    after: calendarEvent,
     metadata: {
       jobId: payload.job_id || null
     }
   });
 
-  return data as CrmCalendarEvent;
+  const googleSync = await syncCrmCalendarEventToGoogle(supabase, calendarEvent);
+  calendarEvent = googleSync.event;
+
+  if (googleSync.configured) {
+    await recordCrmActivity(supabase, actor, {
+      entityType: "calendar_event",
+      entityId: calendarEvent.id,
+      action: "google_calendar_sync",
+      metadata: {
+        jobId: payload.job_id || null,
+        synced: googleSync.synced,
+        skippedReason: googleSync.skippedReason || null,
+        googleEventId: googleSync.googleEventId || null,
+        error: googleSync.error || null
+      }
+    });
+  }
+
+  if (payload.suppress_alerts !== true) {
+    const alertResult = await dispatchCrmAppointmentAlerts(calendarEvent);
+    await recordCrmActivity(supabase, actor, {
+      entityType: "calendar_event",
+      entityId: calendarEvent.id,
+      action: "appointment_alert",
+      metadata: {
+        jobId: payload.job_id || null,
+        ...alertResult
+      }
+    });
+  }
+
+  return calendarEvent;
 }
 
 export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
@@ -748,6 +806,19 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
       jobId
     }
   });
+
+  if (isSoldQuoteStatus(data.status)) {
+    const alertResult = await dispatch805SoldQuoteNotification(supabase, data as CrmQuote, {
+      customerName: optionalText(payload.customer_name),
+      contractUrl: optionalText(payload.contract_url)
+    });
+    await recordCrmActivity(supabase, actor, {
+      entityType: "quote",
+      entityId: data.id,
+      action: "sold_quote_alert",
+      metadata: alertResult
+    });
+  }
 
   return data as CrmQuote;
 }
@@ -891,6 +962,33 @@ export async function updateCrmQuote(
     after: quote
   });
 
+  if (!isSoldQuoteStatus(existing.status) && isSoldQuoteStatus(quote.status)) {
+    const alertResult = await dispatch805SoldQuoteNotification(supabase, quote as CrmQuote, {
+      customerName: optionalText(payload.customer_name),
+      contractUrl: optionalText(payload.contract_url)
+    });
+    await recordCrmActivity(supabase, actor, {
+      entityType: "quote",
+      entityId: id,
+      action: "sold_quote_alert",
+      metadata: alertResult
+    });
+  }
+
+  if (Object.prototype.hasOwnProperty.call(payload, "notes")) {
+    const alertResult = await dispatch805InvoiceNoteNotification({
+      customerName: optionalText(payload.customer_name) || quote.customer_name || "Linked job",
+      note: quote.notes,
+      previousNote: existing.notes
+    });
+    await recordCrmActivity(supabase, actor, {
+      entityType: "quote",
+      entityId: id,
+      action: "invoice_note_alert",
+      metadata: alertResult
+    });
+  }
+
   return quote as CrmQuote;
 }
 
@@ -966,6 +1064,20 @@ export async function createCrmBookkeepingEntry(
     action: "create",
     after: entry
   });
+
+  const noteAlertResult = await dispatch805InvoiceNoteNotification({
+    customerName: entry.customer_name,
+    note: entry.notes,
+    previousNote: null
+  });
+  if (!noteAlertResult.skipped || noteAlertResult.reason !== "Note is blank.") {
+    await recordCrmActivity(supabase, actor, {
+      entityType: "bookkeeping_entry",
+      entityId: entry.id,
+      action: "invoice_note_alert",
+      metadata: noteAlertResult
+    });
+  }
 
   return entry as CrmBookkeepingEntry;
 }
@@ -1073,6 +1185,20 @@ export async function updateCrmBookkeepingEntry(
     before: existing,
     after: entry
   });
+
+  if (Object.prototype.hasOwnProperty.call(payload, "notes")) {
+    const noteAlertResult = await dispatch805InvoiceNoteNotification({
+      customerName: entry.customer_name,
+      note: entry.notes,
+      previousNote: existing.notes
+    });
+    await recordCrmActivity(supabase, actor, {
+      entityType: "bookkeeping_entry",
+      entityId: id,
+      action: "invoice_note_alert",
+      metadata: noteAlertResult
+    });
+  }
 
   return entry as CrmBookkeepingEntry;
 }
