@@ -1272,6 +1272,18 @@ body:has(.home-editorial).site-header-solid .category-dot {
   }
 }
 
+@keyframes portfolio-backdrop-fade {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .content-wrap {
   width: min(1180px, calc(100% - 36px));
   margin: 0 auto;
