@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildBookingAvailability, losAngelesDateString, monthRangeUtc } from "@/lib/booking/availability";
+import {
+  bookingAvailabilityOwner,
+  buildBookingAvailability,
+  losAngelesDateString,
+  monthRangeUtc,
+  type BookingAvailabilitySlot
+} from "@/lib/booking/availability";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmCalendarEvent } from "@/lib/crm/types";
 
@@ -25,20 +31,41 @@ export async function GET(request: NextRequest) {
   }
 
   const range = monthRangeUtc(month);
-  const { data, error } = await supabase
-    .from("crm_calendar_events")
-    .select("*")
-    .gte("start_at", range.start)
-    .lt("start_at", range.end)
-    .neq("status", "canceled")
-    .order("start_at", { ascending: true });
+  const [eventsResult, slotsResult] = await Promise.all([
+    supabase
+      .from("crm_calendar_events")
+      .select("*")
+      .lt("start_at", range.end)
+      .gt("end_at", range.start)
+      .neq("status", "canceled")
+      .order("start_at", { ascending: true }),
+    supabase
+      .from("crm_availability_slots")
+      .select("*")
+      .eq("owner", bookingAvailabilityOwner)
+      .eq("status", "available")
+      .gte("start_at", range.start)
+      .lt("start_at", range.end)
+      .order("start_at", { ascending: true })
+  ]);
 
-  if (error) {
+  if (slotsResult.error?.code === "PGRST205") {
+    return NextResponse.json({
+      configured: false,
+      ...buildBookingAvailability(month, (eventsResult.data || []) as CrmCalendarEvent[], [])
+    });
+  }
+
+  if (eventsResult.error || slotsResult.error) {
     return NextResponse.json({ message: "Availability could not be loaded." }, { status: 502 });
   }
 
   return NextResponse.json({
     configured: true,
-    ...buildBookingAvailability(month, (data || []) as CrmCalendarEvent[])
+    ...buildBookingAvailability(
+      month,
+      (eventsResult.data || []) as CrmCalendarEvent[],
+      (slotsResult.data || []) as BookingAvailabilitySlot[]
+    )
   });
 }

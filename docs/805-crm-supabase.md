@@ -13,6 +13,23 @@ SUPABASE_SERVICE_ROLE_KEY=<805-service-role-key>
 CRM_ALLOWED_EMAILS=805shutters@gmail.com,hello@805shutters.com,805@805shutters.com,jessica@805shutters.com
 CRM_ALLOWED_DOMAINS=805shutters.com
 BOOKING_ALERT_WEBHOOK_URL=<optional-alert-webhook>
+BOOKING_EMAIL_FROM="805 Shutters <appointments@805shutters.com>"
+BOOKING_EMAIL_REPLY_TO=805@805shutters.com
+CRM_APPOINTMENT_ALERT_SMS_NUMBERS=<optional-comma-separated-admin-numbers>
+JESSICA_805_SALES_SMS_NUMBER=+18059144917
+MIKE_805_SALES_SMS_NUMBER=<optional-mike-sales-number>
+CRM_SOLD_QUOTE_SMS_NUMBERS=805-630-0848,805-298-5555
+CRM_BOOKKEEPING_NOTE_SMS_NUMBERS=805-630-0848
+TWILIO_ACCOUNT_SID=<twilio-account-sid>
+TWILIO_AUTH_TOKEN=<twilio-auth-token>
+TWILIO_FROM_PHONE=<twilio-from-number>
+TWILIO_MESSAGING_SERVICE_SID=<optional-twilio-messaging-service>
+RESEND_API_KEY=<resend-api-key>
+GOOGLE_CALENDAR_ID=805@805shutters.com
+GOOGLE_CALENDAR_TIME_ZONE=America/Los_Angeles
+GOOGLE_CALENDAR_CLIENT_ID=<google-oauth-client-id>
+GOOGLE_CALENDAR_CLIENT_SECRET=<google-oauth-client-secret>
+GOOGLE_CALENDAR_REFRESH_TOKEN=<805-calendar-refresh-token>
 ```
 
 ## Database
@@ -197,6 +214,24 @@ curl http://127.0.0.1:3000/api/crm/health/
 The response should show `googleProviderEnabled: true`.
 
 The public site only exposes the CRM login block at the bottom of the homepage. The CRM itself lives at `/crm` and requires an allowed Google account.
+
+## Google Calendar sync
+
+When `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, and `GOOGLE_CALENDAR_REFRESH_TOKEN` are set, new website self-bookings and CRM-created calendar appointments are also created in the Google Calendar configured by `GOOGLE_CALENDAR_ID`.
+
+Use the Google OAuth scope:
+
+```text
+https://www.googleapis.com/auth/calendar.events
+```
+
+Recommended calendar target:
+
+```text
+805@805shutters.com
+```
+
+The CRM stores the created Google event id and HTML link in `crm_calendar_events.meta` as `googleCalendarEventId` and `googleCalendarHtmlLink`. Google Calendar sync is intentionally non-blocking: if Google credentials are missing or the Calendar API rejects a request, the website booking and CRM event still save in Supabase and the sync outcome is recorded in CRM activity metadata.
 
 ## Public self-booking
 

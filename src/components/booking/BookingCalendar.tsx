@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { trackLeadEvent } from "@/lib/client-tracking";
 
 type AvailabilitySlot = {
@@ -25,6 +25,16 @@ type AvailabilityResponse = {
 };
 
 type InquiryState = "idle" | "submitting" | "sent" | "error";
+
+const productInterestOptions = [
+  { value: "shutters", label: "Shutters" },
+  { value: "shades", label: "Shades" },
+  { value: "blinds", label: "Blinds" },
+  { value: "drapery", label: "Drapery" },
+  { value: "exterior_shades", label: "Exterior shades" },
+  { value: "commercial", label: "Commercial coverings" },
+  { value: "unknown", label: "Unknown" }
+];
 
 type BookingCalendarProps = {
   active?: boolean;
@@ -55,7 +65,25 @@ function formatSelectedDate(date: string | null) {
 }
 
 function isErrorMessage(message: string) {
-  return message.includes("could") || message.includes("requires") || message.includes("longer available");
+  return (
+    message.includes("Choose") ||
+    message.includes("could") ||
+    message.includes("requires") ||
+    message.includes("longer available")
+  );
+}
+
+function productInterestLabel(value: string) {
+  return productInterestOptions.find((option) => option.value === value)?.label || "Unknown";
+}
+
+function scrollToElement(element: HTMLElement | null) {
+  window.setTimeout(() => {
+    element?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }, 80);
 }
 
 export function BookingCalendar({
@@ -76,6 +104,10 @@ export function BookingCalendar({
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [inquiryState, setInquiryState] = useState<InquiryState>("idle");
   const [inquiryMessage, setInquiryMessage] = useState<string | null>(null);
+  const [productStepVisible, setProductStepVisible] = useState(false);
+  const [selectedProductInterest, setSelectedProductInterest] = useState("");
+  const customerInfoRef = useRef<HTMLDivElement>(null);
+  const productQuestionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -103,6 +135,8 @@ export function BookingCalendar({
   function resetCalendar() {
     setSelectedDate(null);
     setSelectedTime(null);
+    setProductStepVisible(false);
+    setSelectedProductInterest("");
     setComplete(false);
     setMessage(null);
   }
@@ -112,11 +146,44 @@ export function BookingCalendar({
     onDone?.();
   }
 
+  function handleDateSelect(date: string) {
+    setSelectedDate(date);
+    setSelectedTime(null);
+    setProductStepVisible(false);
+    setSelectedProductInterest("");
+    setMessage(null);
+  }
+
+  function handleTimeSelect(time: string) {
+    setSelectedTime(time);
+    setProductStepVisible(false);
+    setSelectedProductInterest("");
+    setMessage(null);
+    scrollToElement(customerInfoRef.current);
+  }
+
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedDate || !selectedTime) return;
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+
+    if (!productStepVisible) {
+      if (!form.reportValidity()) return;
+      setProductStepVisible(true);
+      setMessage(null);
+      scrollToElement(productQuestionRef.current);
+      return;
+    }
+
+    if (!selectedProductInterest) {
+      setMessage("Choose the product type you are most interested in.");
+      scrollToElement(productQuestionRef.current);
+      return;
+    }
+
+    const formData = new FormData(form);
+    const productInterest = String(formData.get("productInterest") || selectedProductInterest);
     setSubmitting(true);
     setMessage(null);
 
@@ -134,15 +201,21 @@ export function BookingCalendar({
           address: String(formData.get("address") || ""),
           windowCount: String(formData.get("windowCount") || ""),
           email: String(formData.get("email") || ""),
-          notes: String(formData.get("notes") || "")
+          notes: String(formData.get("notes") || ""),
+          productInterest,
+          productInterestLabel: productInterestLabel(productInterest)
         })
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "Appointment could not be booked.");
+      const confirmations = [
+        body.emailConfirmationSent ? "a confirmation email" : null,
+        body.smsConfirmationSent ? "a confirmation text" : null
+      ].filter(Boolean);
       setComplete(true);
       setMessage(
-        body.smsConfirmationSent
-          ? "Your appointment is booked. We sent a confirmation text to your phone."
+        confirmations.length
+          ? `Your appointment is booked. We sent ${confirmations.join(" and ")}.`
           : "Your appointment is booked. 805 Shutters will follow up shortly."
       );
     } catch (error) {
@@ -227,6 +300,11 @@ export function BookingCalendar({
 
       {complete ? (
         <div className="booking-complete">
+          <div className="booking-confirm-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </div>
           <h3>Appointment booked.</h3>
           <p>{message}</p>
           <button type="button" onClick={handleDone}>
@@ -260,16 +338,13 @@ export function BookingCalendar({
                   key={day.date}
                   className={[
                     "booking-day",
-                    day.available ? "" : "booking-day--disabled",
+                    day.available ? "booking-day--available" : "booking-day--disabled",
                     selectedDate === day.date ? "booking-day--selected" : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   disabled={!day.available}
-                  onClick={() => {
-                    setSelectedDate(day.date);
-                    setSelectedTime(null);
-                  }}
+                  onClick={() => handleDateSelect(day.date)}
                 >
                   {day.day}
                 </button>
@@ -295,7 +370,7 @@ export function BookingCalendar({
                   key={slot.time}
                   disabled={!slot.available}
                   className={selectedTime === slot.time ? "active" : ""}
-                  onClick={() => setSelectedTime(slot.time)}
+                  onClick={() => handleTimeSelect(slot.time)}
                 >
                   {slot.label}
                 </button>
@@ -304,38 +379,77 @@ export function BookingCalendar({
             </div>
 
             <form className="booking-form" onSubmit={submitBooking}>
-              <p className="eyebrow">Step 2</p>
-              <div className="field-row">
+              <div ref={customerInfoRef} className="booking-customer-section">
+                <p className="eyebrow">Step 2</p>
+                <h3>Customer information</h3>
+                <div className="field-row">
+                  <label>
+                    Full name
+                    <input name="name" autoComplete="name" required disabled={!selectedTime} />
+                  </label>
+                  <label>
+                    Phone
+                    <input name="phone" autoComplete="tel" required disabled={!selectedTime} />
+                  </label>
+                </div>
                 <label>
-                  Full name
-                  <input name="name" autoComplete="name" required disabled={!selectedTime} />
-                </label>
-                <label>
-                  Phone
-                  <input name="phone" autoComplete="tel" required disabled={!selectedTime} />
-                </label>
-              </div>
-              <label>
-                Address
-                <input name="address" autoComplete="street-address" required disabled={!selectedTime} />
-              </label>
-              <div className="field-row">
-                <label>
-                  Number of windows
-                  <input name="windowCount" type="number" min="1" disabled={!selectedTime} />
+                  Address
+                  <input name="address" autoComplete="street-address" required disabled={!selectedTime} />
                 </label>
                 <label>
                   Email
-                  <input name="email" type="email" autoComplete="email" disabled={!selectedTime} />
+                  <input name="email" type="email" autoComplete="email" required disabled={!selectedTime} />
                 </label>
+                <div className="field-row">
+                  <label>
+                    Number of windows
+                    <input name="windowCount" type="number" min="1" disabled={!selectedTime} />
+                  </label>
+                  <label>
+                    Notes
+                    <textarea name="notes" rows={3} disabled={!selectedTime} />
+                  </label>
+                </div>
               </div>
-              <label>
-                Notes
-                <textarea name="notes" rows={3} disabled={!selectedTime} />
-              </label>
+
+              {productStepVisible ? (
+                <div ref={productQuestionRef} className="booking-product-question">
+                  <p className="eyebrow">Step 3</p>
+                  <h3>What type of products are you interested in?</h3>
+                  <div className="booking-product-grid" role="radiogroup" aria-label="Product interest">
+                    {productInterestOptions.map((option) => (
+                      <label
+                        key={option.value}
+                        className={[
+                          "booking-product-option",
+                          selectedProductInterest === option.value ? "active" : ""
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
+                      >
+                        <input
+                          type="radio"
+                          name="productInterest"
+                          value={option.value}
+                          checked={selectedProductInterest === option.value}
+                          onChange={() => setSelectedProductInterest(option.value)}
+                          required
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedProductInterest === "unknown" ? (
+                    <p className="booking-product-note">
+                      Perfect. We are excited to help you design and beautify your home.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               {message ? <p className={`booking-message ${isErrorMessage(message) ? "error" : ""}`}>{message}</p> : null}
               <button type="submit" disabled={!selectedTime || submitting}>
-                {submitting ? "Booking..." : "Confirm Appointment"}
+                {submitting ? "Scheduling..." : productStepVisible ? "Schedule Appointment" : "Schedule"}
               </button>
             </form>
 
