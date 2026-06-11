@@ -258,6 +258,93 @@ export function CrmApp() {
     }
   }
 
+  async function updateJobOwner(job: CrmJob, salesOwner: string) {
+    if (!session) return;
+
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            jobs: current.jobs.map((item) => (item.id === job.id ? { ...item, sales_owner: salesOwner } : item))
+          }
+        : current
+    );
+
+    try {
+      await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${job.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ sales_owner: salesOwner })
+      });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "CRM job could not be updated.");
+      await refresh();
+    }
+  }
+
+  async function assignRowSalesOwner(
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null; customerName?: string },
+    owner: "mike" | "jessica"
+  ) {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (target.source === "crm_quote" && target.quoteId) {
+        await crmFetch<{ quote: CrmQuote }>(session, `/api/crm/quotes/${target.quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            sold_by: owner === "jessica" ? "Jessica" : "Mike",
+            ...(target.customerName && target.customerName !== "Linked job"
+              ? { customer_name: target.customerName }
+              : {})
+          })
+        });
+      } else {
+        await crmFetch<{ entry: unknown }>(session, `/api/crm/bookkeeping/${target.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ sales_owner: owner })
+        });
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Salesperson could not be assigned.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function createExpense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    const [targetKind, targetId] = formString(formData, "target").split(":");
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch<{ expense: unknown }>(session, "/api/crm/expenses", {
+        method: "POST",
+        body: JSON.stringify({
+          [targetKind === "quote" ? "quote_id" : "bookkeeping_entry_id"]: targetId,
+          label: formString(formData, "label"),
+          category: formString(formData, "category") || "other",
+          amount: Number(formString(formData, "amount") || 0),
+          incurred_on: formString(formData, "incurred_on") || null,
+          notes: formString(formData, "notes")
+        })
+      });
+      event.currentTarget.reset();
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Expense could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
@@ -317,6 +404,7 @@ export function CrmApp() {
           balance_paid: Number(formString(formData, "balance_paid") || 0),
           payment_type: formString(formData, "payment_type"),
           cogs_amount: Number(formString(formData, "cogs_amount") || 0),
+          ken_cut_override: formString(formData, "ken_cut_override") || null,
           sales_owner: formString(formData, "sales_owner"),
           manufacturer_name: formString(formData, "manufacturer_name"),
           manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
@@ -346,11 +434,14 @@ export function CrmApp() {
     setMessage(null);
 
     try {
+      // Only send COGS when the field was filled so an empty input cannot
+      // zero out a value bookkeeping already entered.
+      const materialsCost = formString(formData, "materials_cost");
       await crmFetch<{ quote: CrmQuote }>(session, `/api/crm/quotes/${quote.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           status: formString(formData, "status"),
-          materials_cost: Number(formString(formData, "materials_cost") || 0),
+          ...(materialsCost ? { materials_cost: Number(materialsCost) } : {}),
           manufacturer_name: formString(formData, "manufacturer_name"),
           manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
           manufacturer_order_url: formString(formData, "manufacturer_order_url"),
@@ -488,7 +579,8 @@ export function CrmApp() {
         <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} />
         <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} />
         <Metric label="Customer Files" value={data?.summary.customerFiles || 0} />
-        <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} />
+        <Metric label="Net Profit" value={toCurrency(data?.bookkeepingTotals.netProfit)} />
+        <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaShareOwed)} />
       </section>
 
       <nav className="crm-tabs" aria-label="CRM sections">
@@ -513,7 +605,7 @@ export function CrmApp() {
 
       {activeTab === "command" ? (
         <section className="crm-command-grid">
-          <AccountabilityBoard items={accountability} />
+          <AccountabilityBoard items={accountability} onAssignOwner={assignRowSalesOwner} busy={busy} />
           <BookkeepingSnapshot rows={rows} />
         </section>
       ) : null}
@@ -607,7 +699,7 @@ export function CrmApp() {
                   {jobs
                     .filter((job) => job.status === column.status)
                     .map((job) => (
-                      <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} />
+                      <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onOwnerChange={updateJobOwner} />
                     ))}
                 </div>
               </section>
@@ -677,6 +769,16 @@ export function CrmApp() {
                   </select>
                 </label>
               </div>
+              <label>
+                Ken Cut Override
+                <input
+                  name="ken_cut_override"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Auto: 10%, Jessica jobs exempt"
+                />
+              </label>
               <div className="crm-field-row">
                 <label>
                   Manufacturer
@@ -717,9 +819,67 @@ export function CrmApp() {
                 Save Row
               </button>
             </form>
+
+            <h2>Add Job Expense</h2>
+            <form className="crm-form" onSubmit={createExpense}>
+              <label>
+                Job / Row
+                <select name="target" required>
+                  <option value="">Choose sale</option>
+                  {rows.map((row) => (
+                    <option
+                      value={row.source === "crm_quote" ? `quote:${row.quoteId}` : `entry:${row.id}`}
+                      key={`expense-target-${row.id}`}
+                    >
+                      {row.customerName} - {formatShortDate(row.soldDate)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="crm-field-row">
+                <label>
+                  Amount
+                  <input name="amount" type="number" min="0.01" step="0.01" required />
+                </label>
+                <label>
+                  Category
+                  <select name="category" defaultValue="other">
+                    <option value="materials">Materials</option>
+                    <option value="installation_extra">Install extra</option>
+                    <option value="processing_fee">Card/processing fee</option>
+                    <option value="permit">Permit</option>
+                    <option value="repair">Repair</option>
+                    <option value="referral">Referral</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+              </div>
+              <div className="crm-field-row">
+                <label>
+                  Label
+                  <input name="label" required placeholder="What was this expense?" />
+                </label>
+                <label>
+                  Date
+                  <input name="incurred_on" type="date" defaultValue={todayInputValue()} />
+                </label>
+              </div>
+              <label>
+                Notes
+                <input name="notes" placeholder="Optional details" />
+              </label>
+              <button type="submit" disabled={busy}>
+                Add Expense
+              </button>
+            </form>
           </aside>
 
-          <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} />
+          <BookkeepingSpreadsheet
+            rows={rows}
+            totals={data?.bookkeepingTotals}
+            onAssignOwner={assignRowSalesOwner}
+            busy={busy}
+          />
         </section>
       ) : null}
 
@@ -752,10 +912,10 @@ export function CrmApp() {
                 </label>
                 <label>
                   Sold By
-                  <select name="sold_by" defaultValue="Mike">
-                    {ownerOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
+                  <select name="sold_by" defaultValue="">
+                    <option value="">Job&apos;s salesperson</option>
+                    <option value="Mike">Mike</option>
+                    <option value="Jessica">Jessica</option>
                   </select>
                 </label>
               </div>
@@ -900,7 +1060,18 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
+function AccountabilityBoard({
+  items,
+  onAssignOwner,
+  busy
+}: {
+  items: CrmAccountabilityItem[];
+  onAssignOwner: (
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null },
+    owner: "mike" | "jessica"
+  ) => void;
+  busy: boolean;
+}) {
   const featured = items.slice(0, 18);
 
   return (
@@ -918,6 +1089,45 @@ function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
             <div>
               <span>{item.label}</span>
               <h3>{item.detail}</h3>
+              {item.type === "assign_sales_owner" && item.rowId ? (
+                <span className="crm-assign-actions">
+                  <button
+                    type="button"
+                    className="crm-assign-button"
+                    disabled={busy}
+                    onClick={() =>
+                      onAssignOwner(
+                        {
+                          id: item.rowId as string,
+                          // Quote-backed ledger rows use the quote id as the row id.
+                          source: item.quoteId && item.quoteId === item.rowId ? "crm_quote" : "manual",
+                          quoteId: item.quoteId ?? null
+                        },
+                        "jessica"
+                      )
+                    }
+                  >
+                    Assign Jessica
+                  </button>
+                  <button
+                    type="button"
+                    className="crm-assign-button crm-assign-button-alt"
+                    disabled={busy}
+                    onClick={() =>
+                      onAssignOwner(
+                        {
+                          id: item.rowId as string,
+                          source: item.quoteId && item.quoteId === item.rowId ? "crm_quote" : "manual",
+                          quoteId: item.quoteId ?? null
+                        },
+                        "mike"
+                      )
+                    }
+                  >
+                    Assign Mike
+                  </button>
+                </span>
+              ) : null}
             </div>
             <strong>{item.owner}</strong>
           </article>
@@ -1092,10 +1302,12 @@ function SnapshotColumn({
 
 function JobCard({
   job,
-  onStatusChange
+  onStatusChange,
+  onOwnerChange
 }: {
   job: CrmJob;
   onStatusChange: (job: CrmJob, status: CrmJobStatus) => void;
+  onOwnerChange: (job: CrmJob, salesOwner: string) => void;
 }) {
   return (
     <article className="crm-job-card">
@@ -1111,7 +1323,19 @@ function JobCard({
         </div>
         <div>
           <dt>Owner</dt>
-          <dd>{job.sales_owner}</dd>
+          <dd>
+            <select
+              value={ownerOptions.includes(job.sales_owner) ? job.sales_owner : "Unassigned"}
+              onChange={(event) => onOwnerChange(job, event.target.value)}
+              aria-label={`Salesperson for ${job.customer_name}`}
+            >
+              {ownerOptions.map((item) => (
+                <option value={item} key={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </dd>
         </div>
         <div>
           <dt>Next</dt>
@@ -1138,10 +1362,17 @@ function JobCard({
 
 function BookkeepingSpreadsheet({
   rows,
-  totals
+  totals,
+  onAssignOwner,
+  busy
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  onAssignOwner: (
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null; customerName?: string },
+    owner: "mike" | "jessica"
+  ) => void;
+  busy: boolean;
 }) {
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
@@ -1151,15 +1382,27 @@ function BookkeepingSpreadsheet({
           <h2>805 Spreadsheet</h2>
         </div>
         <div className="crm-ledger-totals">
-          <span>Total {toCurrency(totals?.total)}</span>
+          <span>Total Sales {toCurrency(totals?.total)}</span>
+          <span>Open Balance {toCurrency(totals?.balance)}</span>
           <span>Paid {toCurrency(totals?.paidTotal)}</span>
-          <span>Balance {toCurrency(totals?.balance)}</span>
           <span>COGS {toCurrency(totals?.cogs)}</span>
-          <span>Ken {toCurrency(totals?.kenCut)}</span>
-          <span>Mike {toCurrency(totals?.mikeProfit)}</span>
-          <span>Jessica {toCurrency(totals?.jessicaCommissionOwed)}</span>
+          <span>Installation {toCurrency(totals?.installationAmount)}</span>
+          <span>Expenses {toCurrency(totals?.expenses)}</span>
+          <span>Ken Total Profit {toCurrency(totals?.kenCut)}</span>
+          <span>Total Profit {toCurrency(totals?.grossProfit)}</span>
+          <span>Profit Margin {totals ? `${totals.profitMargin.toFixed(1)}%` : "0.0%"}</span>
+          <span>Net Profit {toCurrency(totals?.netProfit)}</span>
+          <span>Mike 50% {toCurrency(totals?.mikeShare)}</span>
+          <span>Jessica 50% {toCurrency(totals?.jessicaShare)}</span>
+          <span>Jessica Paid {toCurrency(totals?.jessicaSharePaid)}</span>
+          <span>Jessica Owed {toCurrency(totals?.jessicaShareOwed)}</span>
         </div>
       </div>
+      {totals && totals.missingCogs > 0 ? (
+        <p className="crm-alert">
+          {totals.missingCogs} {totals.missingCogs === 1 ? "row" : "rows"} missing COGS.
+        </p>
+      ) : null}
       <div className="crm-bookkeeping-table-wrap">
         <table className="crm-bookkeeping-table">
           <thead>
@@ -1177,10 +1420,12 @@ function BookkeepingSpreadsheet({
               <th>COGS</th>
               <th>Balance</th>
               <th>Ken Cut</th>
-              <th>Mike Profit</th>
+              <th>Expenses</th>
+              <th>Net Profit</th>
+              <th>Mike 50%</th>
+              <th>Jessica 50%</th>
               <th>Sales Owner</th>
               <th>Installation</th>
-              <th>Jessica</th>
               <th>Jessica Owed</th>
               <th>Manufacturer</th>
               <th>Order Ref</th>
@@ -1207,14 +1452,45 @@ function BookkeepingSpreadsheet({
                 <td className={row.cogs <= 0 ? "crm-warning-cell" : ""}>{row.cogs <= 0 ? "Missing" : toCurrency(row.cogs)}</td>
                 <td className={row.balance > 0 ? "crm-warning-cell" : "crm-complete-cell"}>{toCurrency(row.balance)}</td>
                 <td>{toCurrency(row.kenCut)}</td>
-                <td>{toCurrency(row.mikeProfit)}</td>
-                <td>{row.salesOwner || "Unassigned"}</td>
+                <td>{toCurrency(row.expensesTotal)}</td>
+                <td className={row.isProfitFinal ? "crm-complete-cell" : ""}>
+                  <strong>{toCurrency(row.netProfit)}</strong>
+                  <span>{row.isProfitFinal ? "Final" : "Projected"}</span>
+                </td>
+                <td>{toCurrency(row.mikeShare)}</td>
+                <td>{toCurrency(row.jessicaShare)}</td>
+                <td className={row.salesOwner ? "" : "crm-warning-cell"}>
+                  <strong>
+                    {row.salesOwner === "mike" ? "Mike" : row.salesOwner === "jessica" ? "Jessica" : "Unassigned"}
+                  </strong>
+                  <span className="crm-assign-actions">
+                    {row.salesOwner !== "jessica" ? (
+                      <button
+                        type="button"
+                        className="crm-assign-button"
+                        disabled={busy}
+                        onClick={() => onAssignOwner(row, "jessica")}
+                      >
+                        Assign Jessica
+                      </button>
+                    ) : null}
+                    {row.salesOwner !== "mike" ? (
+                      <button
+                        type="button"
+                        className="crm-assign-button crm-assign-button-alt"
+                        disabled={busy}
+                        onClick={() => onAssignOwner(row, "mike")}
+                      >
+                        Assign Mike
+                      </button>
+                    ) : null}
+                  </span>
+                </td>
                 <td>
                   <strong>{toCurrency(row.installationInvoiceAmount)}</strong>
                   <span>{row.isInstallationComplete ? "Complete" : row.installationMatchStatus}</span>
                 </td>
-                <td>{toCurrency(row.jessicaCommission)}</td>
-                <td className={row.jessicaCommissionOwed > 0 ? "crm-warning-cell" : ""}>{toCurrency(row.jessicaCommissionOwed)}</td>
+                <td className={row.jessicaShareOwed > 0 ? "crm-warning-cell" : ""}>{toCurrency(row.jessicaShareOwed)}</td>
                 <td>{row.manufacturerName || "Open"}</td>
                 <td>{row.manufacturerOrderRef || "Needs order"}</td>
                 <td>{row.status}</td>
