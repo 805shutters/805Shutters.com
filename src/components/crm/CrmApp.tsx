@@ -81,6 +81,13 @@ function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
+function ownerLabel(value: string | null | undefined): "Mike" | "Jessica" | "" {
+  const lower = (value || "").toLowerCase();
+  if (lower.includes("jessica")) return "Jessica";
+  if (lower.includes("mike")) return "Mike";
+  return "";
+}
+
 function crmAuthErrorMessage(code: string | null) {
   if (code === "google-provider-disabled") {
     return "Google login is not enabled in the 805 Supabase project. Enable Google under Supabase Authentication providers, then add the Google OAuth client ID and secret.";
@@ -435,12 +442,16 @@ export function CrmApp() {
 
     try {
       // Only send COGS when the field was filled so an empty input cannot
-      // zero out a value bookkeeping already entered.
+      // zero out a value bookkeeping already entered. Likewise sold_by is
+      // only sent when actually changed, so a routine order update cannot
+      // undo a reassignment made from the bookkeeping screen.
       const materialsCost = formString(formData, "materials_cost");
+      const soldBy = formString(formData, "sold_by");
       await crmFetch<{ quote: CrmQuote }>(session, `/api/crm/quotes/${quote.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           status: formString(formData, "status"),
+          ...(soldBy !== ownerLabel(quote.sold_by) ? { sold_by: soldBy } : {}),
           ...(materialsCost ? { materials_cost: Number(materialsCost) } : {}),
           manufacturer_name: formString(formData, "manufacturer_name"),
           manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
@@ -1545,10 +1556,18 @@ function OrderBoard({
                   </select>
                 </label>
                 <label>
-                  COGS
-                  <input name="materials_cost" type="number" min="0" step="0.01" defaultValue={quote.materials_cost || ""} />
+                  Sold By
+                  <select name="sold_by" defaultValue={ownerLabel(quote.sold_by)}>
+                    <option value="">Unassigned</option>
+                    <option value="Mike">Mike</option>
+                    <option value="Jessica">Jessica</option>
+                  </select>
                 </label>
               </div>
+              <label>
+                COGS
+                <input name="materials_cost" type="number" min="0" step="0.01" defaultValue={quote.materials_cost || ""} />
+              </label>
               <div className="crm-field-row">
                 <label>
                   Manufacturer
