@@ -3,6 +3,7 @@ import { Bodoni_Moda } from "next/font/google";
 import "./globals.css";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { MessagingAssistantWidget } from "@/components/MessagingAssistantWidget";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { site } from "@/lib/site-data";
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SiteHeader />
         <main>{children}</main>
         <SiteFooter />
+        <MessagingAssistantWidget />
       </body>
     </html>
   );
