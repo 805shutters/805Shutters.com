@@ -2460,6 +2460,54 @@ body:has(.crm-app-shell) {
   font-weight: 800;
 }
 
+.booking-inquiry {
+  display: grid;
+  gap: 12px;
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.booking-inquiry__head {
+  display: grid;
+  gap: 6px;
+}
+
+.booking-inquiry__head h3 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.booking-inquiry__head p:not(.eyebrow) {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.booking-inquiry-toggle {
+  width: 100%;
+  background: var(--white);
+  color: var(--ink);
+}
+
+.booking-inquiry-form {
+  display: grid;
+  gap: 10px;
+}
+
+.booking-inquiry-form textarea {
+  min-height: 84px;
+}
+
+.booking-inquiry-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
 .booking-complete {
   grid-column: 1 / -1;
   display: grid;

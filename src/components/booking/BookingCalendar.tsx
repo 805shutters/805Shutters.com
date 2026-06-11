@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { trackLeadEvent } from "@/lib/client-tracking";
 
 type AvailabilitySlot = {
   time: string;
@@ -22,6 +23,8 @@ type AvailabilityResponse = {
   startsOn: number;
   days: AvailabilityDay[];
 };
+
+type InquiryState = "idle" | "submitting" | "sent" | "error";
 
 type BookingCalendarProps = {
   active?: boolean;
@@ -70,6 +73,9 @@ export function BookingCalendar({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
+  const [inquiryState, setInquiryState] = useState<InquiryState>("idle");
+  const [inquiryMessage, setInquiryMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -146,6 +152,65 @@ export function BookingCalendar({
     }
   }
 
+  async function submitInquiry(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const urlParams = new URLSearchParams(window.location.search);
+    const city = String(formData.get("city") || "");
+
+    setInquiryState("submitting");
+    setInquiryMessage(null);
+
+    try {
+      const response = await fetch("/api/leads/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          leadContext: "booking_fallback",
+          interest: "schedule_request",
+          projectInterest: String(formData.get("projectInterest") || "consultation"),
+          name: String(formData.get("name") || ""),
+          phone: String(formData.get("phone") || ""),
+          email: String(formData.get("email") || ""),
+          city,
+          address: String(formData.get("address") || ""),
+          preferredTimes: String(formData.get("preferredTimes") || ""),
+          notes: String(formData.get("notes") || ""),
+          requestedDate: selectedDate || undefined,
+          requestedTime: selectedTime || undefined,
+          pagePath: window.location.pathname,
+          company: String(formData.get("company") || ""),
+          utm_source: urlParams.get("utm_source") || undefined,
+          utm_medium: urlParams.get("utm_medium") || undefined,
+          utm_campaign: urlParams.get("utm_campaign") || undefined,
+          utm_content: urlParams.get("utm_content") || undefined,
+          utm_term: urlParams.get("utm_term") || undefined
+        })
+      });
+      const result = (await response.json()) as { id?: string; message?: string };
+      if (!response.ok) {
+        throw new Error(result.message || "Request could not be sent.");
+      }
+
+      setInquiryState("sent");
+      setInquiryMessage("Request received. We will call or text you with the closest available time.");
+      trackLeadEvent({
+        eventId: result.id,
+        interest: "schedule_request",
+        city,
+        pagePath: window.location.pathname
+      });
+      form.reset();
+    } catch (error) {
+      setInquiryState("error");
+      setInquiryMessage(error instanceof Error ? error.message : "Request could not be sent.");
+    }
+  }
+
   return (
     <div className={className}>
       <div className="booking-panel__head">
@@ -213,7 +278,7 @@ export function BookingCalendar({
             {loading ? <p className="booking-helper">Loading available appointments.</p> : null}
             {availability && !availability.configured ? (
               <p className="booking-helper error">
-                Dedicated Supabase service-role key is needed before live bookings can be accepted.
+                Appointment availability is controlled from the CRM. No live slots are published yet.
               </p>
             ) : null}
           </div>
@@ -273,6 +338,101 @@ export function BookingCalendar({
                 {submitting ? "Booking..." : "Confirm Appointment"}
               </button>
             </form>
+
+            <div className="booking-inquiry">
+              <div className="booking-inquiry__head">
+                <p className="eyebrow">Need a different time?</p>
+                <h3>Request another appointment time</h3>
+                <p>
+                  Tell us what day or time you were hoping for and we will call or text you with the closest
+                  available option.
+                </p>
+              </div>
+
+              {!inquiryOpen && inquiryState !== "sent" ? (
+                <button
+                  type="button"
+                  className="booking-inquiry-toggle"
+                  onClick={() => setInquiryOpen(true)}
+                  aria-expanded={inquiryOpen}
+                >
+                  Request a Different Time
+                </button>
+              ) : null}
+
+              {inquiryOpen && inquiryState !== "sent" ? (
+                <form className="booking-inquiry-form" onSubmit={submitInquiry}>
+                  <label className="honeypot-field" aria-hidden="true">
+                    Company
+                    <input name="company" autoComplete="off" tabIndex={-1} />
+                  </label>
+                  <div className="field-row">
+                    <label>
+                      Full name
+                      <input name="name" autoComplete="name" required />
+                    </label>
+                    <label>
+                      Phone
+                      <input name="phone" autoComplete="tel" required />
+                    </label>
+                  </div>
+                  <div className="field-row">
+                    <label>
+                      Email
+                      <input name="email" type="email" autoComplete="email" />
+                    </label>
+                    <label>
+                      City
+                      <input name="city" autoComplete="address-level2" />
+                    </label>
+                  </div>
+                  <label>
+                    Address
+                    <input name="address" autoComplete="street-address" />
+                  </label>
+                  <label>
+                    Project
+                    <select name="projectInterest" defaultValue="consultation">
+                      <option value="consultation">Free consultation</option>
+                      <option value="shutters">Shutters</option>
+                      <option value="shades">Shades</option>
+                      <option value="blinds">Blinds</option>
+                      <option value="commercial">Commercial window coverings</option>
+                    </select>
+                  </label>
+                  <label>
+                    Preferred days or times
+                    <textarea
+                      name="preferredTimes"
+                      rows={3}
+                      required
+                      placeholder="E.g. next Friday after 2 PM, weekday mornings, or Saturday if available"
+                    />
+                  </label>
+                  <label>
+                    Notes
+                    <textarea name="notes" rows={3} />
+                  </label>
+                  {inquiryMessage ? (
+                    <p className={`booking-message ${inquiryState === "error" ? "error" : ""}`}>
+                      {inquiryMessage}
+                    </p>
+                  ) : null}
+                  <div className="booking-inquiry-actions">
+                    <button type="submit" disabled={inquiryState === "submitting"}>
+                      {inquiryState === "submitting" ? "Sending..." : "Send Time Request"}
+                    </button>
+                    <button type="button" className="button secondary" onClick={() => setInquiryOpen(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : null}
+
+              {inquiryState === "sent" && inquiryMessage ? (
+                <p className="booking-message">{inquiryMessage}</p>
+              ) : null}
+            </div>
           </div>
         </>
       )}
