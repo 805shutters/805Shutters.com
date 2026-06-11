@@ -60,8 +60,10 @@ const portfolioStories: PortfolioStory[] = [
     title: "Dining rooms with a better line.",
     body:
       "Plantation shutters make repeated windows feel intentional, balanced, and finished.",
-    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-    imageAlt: "White plantation shutters installed in a Ventura County dining room",
+    image: "/images/editorial-scroll/ai-shutters-arched-dining-room.jpg",
+    imageAlt: "Arched dining room windows with custom plantation shutters and warm coastal light",
+    imageWidth: 1672,
+    imageHeight: 941,
     href: "/shutters/"
   },
   {
