@@ -44,7 +44,7 @@ export function MessagingAssistantWidget() {
       id: "welcome",
       role: "assistant",
       content:
-        "Hi, I can help with shutters, shades, blinds, commercial window coverings, service areas, and scheduling questions. Please do not enter phone numbers, emails, or addresses here."
+        "Hi, I can help compare products, explain service areas, and answer scheduling questions."
     }
   ]);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -140,9 +140,7 @@ export function MessagingAssistantWidget() {
             </button>
           </div>
 
-          <div className="assistant-privacy-note">
-            Product and scheduling help only. Contact details belong in the booking form or a direct call.
-          </div>
+          <div className="assistant-privacy-note">No contact details here. Use booking or phone when ready.</div>
 
           <div className="assistant-messages" ref={messageListRef} aria-live="polite">
             {messages.map((message) => (
