@@ -6,10 +6,13 @@ import { createClient } from "@supabase/supabase-js";
 
 const DEFAULT_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
 const IMPORT_SOURCE = "mts_805_bookkeeping";
+const ACTIVE_QUOTE_STATUSES = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"]);
+const KEN_CUT_JESSICA_EXEMPTION_DATE = "2026-06-10";
 
 loadEnv(".env.local");
 
 const dryRun = process.argv.includes("--dry-run");
+const verifyOnly = process.argv.includes("--verify");
 const mtsUrl = process.env.MTS_SUPABASE_URL;
 const mtsKey = process.env.MTS_SUPABASE_SERVICE_ROLE_KEY;
 const targetUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,6 +47,7 @@ console.log(
   JSON.stringify(
     {
       dryRun,
+      verifyOnly,
       accountId,
       quotes: quotes.length,
       entries: entries.length,
@@ -58,6 +62,11 @@ console.log(
 );
 
 if (dryRun) process.exit(0);
+
+if (verifyOnly) {
+  await printLedgerComparison();
+  process.exit(0);
+}
 
 const designsByLineItemId = groupBy(designs, "line_item_id");
 const customerByName = new Map();
@@ -176,20 +185,21 @@ for (const entry of entries) {
     external_id: `entry:${entry.id}`,
     quote_id: targetQuoteId,
     job_id: targetJobId,
-    source: entry.source,
+    source: normalizeEntrySource(entry.source),
     customer_name: customerName,
     sold_date: entry.sold_date || null,
     total_amount: money(entry.total_amount),
-    payment_type: entry.payment_type || null,
+    payment_type: normalizePaymentTypeValue(entry.payment_type),
     cogs_amount: money(entry.cogs_amount),
-    sales_owner: entry.sales_owner || null,
+    ken_cut_override: entry.ken_cut_override === undefined || entry.ken_cut_override === null ? null : money(entry.ken_cut_override),
+    sales_owner: normalizeSalesOwnerValue(entry.sales_owner),
     sales_owner_auth_user_id: null,
     sales_owner_set_at: entry.sales_owner_set_at || null,
     installation_invoice_document_id: entry.installation_invoice_document_id || null,
     installation_invoice_amount: money(entry.installation_invoice_amount),
     installation_invoice_number: entry.installation_invoice_number || null,
     installation_invoice_url: entry.installation_invoice_url || null,
-    installation_match_status: entry.installation_match_status || "unmatched",
+    installation_match_status: normalizeMatchStatus(entry.installation_match_status),
     installation_matched_at: entry.installation_matched_at || null,
     jessica_commission_paid_at: entry.jessica_commission_paid_at || null,
     manufacturer_name: entry.manufacturer_name || null,
@@ -229,11 +239,11 @@ for (const payment of payments) {
     job_id: payment.quote_id ? jobIdByMtsQuoteId.get(payment.quote_id) || null : null,
     bookkeeping_entry_id: payment.bookkeeping_entry_id ? entryIdByMtsEntryId.get(payment.bookkeeping_entry_id) || null : null,
     payment_label: payment.payment_label || "Payment",
-    payment_type: payment.payment_type || "other",
+    payment_type: normalizePaymentTypeValue(payment.payment_type) || "other",
     amount: money(payment.amount),
     paid_at: payment.paid_at || null,
     notes: payment.notes || null,
-    source: payment.source || "manual",
+    source: normalizeEntrySource(payment.source),
     meta: { mts_payment_id: payment.id, account_id: payment.account_id }
   });
 }
@@ -254,6 +264,7 @@ for (const credit of credits) {
 }
 
 console.log("805 CRM import complete.");
+await printLedgerComparison();
 
 async function upsertCustomer({ name, phone, email, address, firstSoldDate, latestSoldDate, latestStatus, lifetimeValue, openBalance, notes }) {
   const normalizedName = normalizeName(name);
@@ -341,10 +352,238 @@ async function upsertContractForQuote(customerId, quoteId, jobId, quote) {
 async function upsertOne(table, row, onConflict = "external_source,external_id") {
   const { data, error } = await target.from(table).upsert(row, { onConflict }).select("*").single();
   if (error) {
-    console.error(`Failed to upsert ${table}`, error);
+    console.error(
+      `Failed to upsert ${table} (${row.external_id || row.normalized_name || "row"}): ${error.message}`
+    );
+    console.error(JSON.stringify(row, null, 2));
     process.exit(1);
   }
   return data;
+}
+
+// --- Ledger verification -----------------------------------------------
+// Maps both databases into the same row shape and totals them with the same
+// rules as src/lib/crm/bookkeeping.ts, so any difference is missing or
+// mistranslated data rather than formula drift.
+
+async function printLedgerComparison() {
+  const mtsSummary = summarizeLedger(
+    buildLedgerRows({
+      entries,
+      quotes: quotes.map((quote) => ({
+        ...quote,
+        status: mapQuoteStatus(quote.status),
+        quote_total: quote.total_amount,
+        materials_cost: quote.manufacturer_cost,
+        sold_at: quote.signed_at || null
+      })),
+      payments,
+      credits,
+      expenses: []
+    })
+  );
+
+  const [tEntries, tQuotes, tPayments, tCredits, tExpenses] = await Promise.all([
+    queryAll(target.from("crm_quote_bookkeeping_entries").select("*").order("created_at")),
+    queryAll(target.from("crm_quotes").select("*").order("created_at")),
+    queryAll(target.from("crm_quote_bookkeeping_payments").select("*").order("created_at")),
+    queryAll(target.from("crm_quote_bookkeeping_credits").select("*").order("created_at")),
+    queryAll(target.from("crm_job_expenses").select("*").order("created_at"))
+  ]);
+
+  const targetSummary = summarizeLedger(
+    buildLedgerRows({ entries: tEntries, quotes: tQuotes, payments: tPayments, credits: tCredits, expenses: tExpenses })
+  );
+
+  const metrics = [
+    ["rows", "Ledger rows", false],
+    ["totalSales", "Total sales", true],
+    ["paid", "Paid", true],
+    ["openBalance", "Open balance", true],
+    ["cogs", "COGS", true],
+    ["installation", "Installation", true],
+    ["expenses", "Job expenses", true],
+    ["kenCut", "Ken total profit", true],
+    ["grossProfit", "Total profit", true],
+    ["netProfit", "Net profit (after Ken)", true],
+    ["missingCogs", "Rows missing COGS", false]
+  ];
+
+  console.log("\nMTS source vs 805 backend");
+  console.log("metric                      | MTS source     | 805 backend    | delta");
+  console.log("----------------------------+----------------+----------------+----------");
+  let mismatches = 0;
+  for (const [key, label, isMoney] of metrics) {
+    const left = mtsSummary[key];
+    const right = targetSummary[key];
+    const delta = money(right - left);
+    if (Math.abs(delta) >= 0.01) mismatches += 1;
+    const fmt = (value) => (isMoney ? formatUsd(value) : String(value));
+    console.log(
+      `${label.padEnd(27)} | ${fmt(left).padStart(14)} | ${fmt(right).padStart(14)} | ${
+        Math.abs(delta) < 0.01 ? "match" : fmt(delta)
+      }`
+    );
+  }
+  console.log(
+    mismatches
+      ? `\n${mismatches} metric(s) differ. The 805 backend may also contain rows created outside this import.`
+      : "\nAll ledger metrics match."
+  );
+}
+
+function buildLedgerRows({ entries, quotes, payments, credits, expenses }) {
+  const paymentsByEntry = groupBy(payments.filter((p) => p.bookkeeping_entry_id), "bookkeeping_entry_id");
+  const paymentsByQuote = groupBy(payments.filter((p) => p.quote_id), "quote_id");
+  const expensesByEntry = groupBy(expenses.filter((e) => e.bookkeeping_entry_id), "bookkeeping_entry_id");
+  const expensesByQuote = groupBy(expenses.filter((e) => e.quote_id), "quote_id");
+  const creditsToEntry = groupBy(credits.filter((c) => c.to_bookkeeping_entry_id), "to_bookkeeping_entry_id");
+  const creditsFromEntry = groupBy(credits.filter((c) => c.from_bookkeeping_entry_id), "from_bookkeeping_entry_id");
+  const creditsToQuote = groupBy(credits.filter((c) => c.to_quote_id), "to_quote_id");
+  const creditsFromQuote = groupBy(credits.filter((c) => c.from_quote_id), "from_quote_id");
+  const metaEntryByQuote = new Map(
+    entries.filter((entry) => entry.source === "crm_quote" && entry.quote_id).map((entry) => [entry.quote_id, entry])
+  );
+  const standalone = entries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
+  const linkedQuoteIds = new Set(standalone.map((entry) => entry.quote_id).filter(Boolean));
+
+  const rows = standalone.map((entry) => ({
+    total: money(entry.total_amount),
+    cogs: money(entry.cogs_amount),
+    installation: money(entry.installation_invoice_amount),
+    soldDate: entry.sold_date || null,
+    salesOwner: normalizeSalesOwnerValue(entry.sales_owner),
+    kenOverride: entry.ken_cut_override === undefined || entry.ken_cut_override === null ? null : money(entry.ken_cut_override),
+    payments: dedupeRows([
+      ...(paymentsByEntry.get(entry.id) || []),
+      ...(entry.quote_id ? paymentsByQuote.get(entry.quote_id) || [] : [])
+    ]),
+    creditsIn: dedupeRows([
+      ...(creditsToEntry.get(entry.id) || []),
+      ...(entry.quote_id ? creditsToQuote.get(entry.quote_id) || [] : [])
+    ]),
+    creditsOut: dedupeRows([
+      ...(creditsFromEntry.get(entry.id) || []),
+      ...(entry.quote_id ? creditsFromQuote.get(entry.quote_id) || [] : [])
+    ]),
+    expenses: dedupeRows([
+      ...(expensesByEntry.get(entry.id) || []),
+      ...(entry.quote_id ? expensesByQuote.get(entry.quote_id) || [] : [])
+    ])
+  }));
+
+  for (const quote of quotes) {
+    if (!ACTIVE_QUOTE_STATUSES.has(quote.status) || linkedQuoteIds.has(quote.id)) continue;
+    const meta = metaEntryByQuote.get(quote.id) || null;
+    rows.push({
+      total: money(quote.quote_total),
+      cogs: money(meta?.cogs_amount ?? quote.materials_cost),
+      installation: money(meta?.installation_invoice_amount),
+      soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at || null,
+      salesOwner: normalizeSalesOwnerValue(meta?.sales_owner || quote.sold_by),
+      kenOverride: meta?.ken_cut_override === undefined || meta?.ken_cut_override === null ? null : money(meta.ken_cut_override),
+      payments: paymentsByQuote.get(quote.id) || [],
+      creditsIn: creditsToQuote.get(quote.id) || [],
+      creditsOut: creditsFromQuote.get(quote.id) || [],
+      expenses: dedupeRows([
+        ...(expensesByQuote.get(quote.id) || []),
+        ...(meta ? expensesByEntry.get(meta.id) || [] : [])
+      ])
+    });
+  }
+
+  return rows;
+}
+
+function summarizeLedger(rows) {
+  const summary = {
+    rows: rows.length,
+    totalSales: 0,
+    paid: 0,
+    openBalance: 0,
+    cogs: 0,
+    installation: 0,
+    expenses: 0,
+    kenCut: 0,
+    grossProfit: 0,
+    netProfit: 0,
+    missingCogs: 0
+  };
+
+  for (const row of rows) {
+    const paid = sumAmounts(row.payments);
+    const creditIn = sumAmounts(row.creditsIn);
+    const creditOut = sumAmounts(row.creditsOut);
+    const expensesTotal = sumAmounts(row.expenses);
+    const kenCut = resolveKenCut(row);
+    const grossProfit = money(row.total - row.cogs - row.installation - expensesTotal);
+
+    summary.totalSales = money(summary.totalSales + row.total);
+    summary.paid = money(summary.paid + paid);
+    summary.openBalance = money(summary.openBalance + (row.total - paid - creditIn + creditOut));
+    summary.cogs = money(summary.cogs + row.cogs);
+    summary.installation = money(summary.installation + row.installation);
+    summary.expenses = money(summary.expenses + expensesTotal);
+    summary.kenCut = money(summary.kenCut + kenCut);
+    summary.grossProfit = money(summary.grossProfit + grossProfit);
+    summary.netProfit = money(summary.netProfit + grossProfit - kenCut);
+    if (row.cogs <= 0) summary.missingCogs += 1;
+  }
+
+  return summary;
+}
+
+function resolveKenCut(row) {
+  if (row.kenOverride !== null && Number.isFinite(row.kenOverride)) return money(Math.max(row.kenOverride, 0));
+  const soldUnderNewPolicy = row.soldDate
+    ? Date.parse(row.soldDate) >= Date.parse(KEN_CUT_JESSICA_EXEMPTION_DATE)
+    : true;
+  if (soldUnderNewPolicy && row.salesOwner === "jessica") return 0;
+  return money(row.total * 0.1);
+}
+
+function sumAmounts(rows) {
+  return money(rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0));
+}
+
+function dedupeRows(rows) {
+  const seen = new Set();
+  return rows.filter((row) => {
+    if (seen.has(row.id)) return false;
+    seen.add(row.id);
+    return true;
+  });
+}
+
+function formatUsd(value) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
+}
+
+function normalizeSalesOwnerValue(value) {
+  const lower = String(value || "").toLowerCase();
+  if (lower.includes("jessica")) return "jessica";
+  if (lower.includes("mike")) return "mike";
+  return null;
+}
+
+function normalizePaymentTypeValue(value) {
+  const lower = String(value || "").toLowerCase();
+  if (!lower) return null;
+  if (lower.includes("zelle")) return "zelle";
+  if (lower.includes("cash")) return "cash";
+  if (lower.includes("check") || lower === "ck") return "check";
+  if (lower.includes("card") || lower.includes("credit") || lower === "cc") return "credit_card";
+  return "other";
+}
+
+function normalizeMatchStatus(value) {
+  const lower = String(value || "").toLowerCase();
+  return ["unmatched", "matched", "needs_review"].includes(lower) ? lower : "unmatched";
+}
+
+function normalizeEntrySource(value) {
+  const lower = String(value || "").toLowerCase();
+  return ["crm_quote", "legacy_sheet", "manual"].includes(lower) ? lower : "manual";
 }
 
 async function queryAll(builder, pageSize = 1000) {

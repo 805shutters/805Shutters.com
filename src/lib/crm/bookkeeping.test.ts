@@ -436,6 +436,45 @@ describe("buildBookkeepingRows - quote rows", () => {
   });
 });
 
+describe("buildBookkeepingRows - imported entries linked to quotes", () => {
+  it("absorbs quote-linked payments into a standalone entry row", () => {
+    const entry = makeEntry({
+      id: "entry-import",
+      source: "legacy_sheet",
+      quote_id: "quote-mts",
+      total_amount: 10000
+    });
+    const quote = makeQuote({ id: "quote-mts", status: "installed" });
+    const quotePayment = makePayment({ id: "p-quote", quote_id: "quote-mts", payment_label: "Deposit", amount: 5000 });
+    const entryPayment = makePayment({
+      id: "p-entry",
+      bookkeeping_entry_id: "entry-import",
+      payment_label: "Balance payment",
+      amount: 2000
+    });
+    const both = makePayment({
+      id: "p-both",
+      quote_id: "quote-mts",
+      bookkeeping_entry_id: "entry-import",
+      payment_label: "Balance payment",
+      amount: 1000
+    });
+
+    const rows = buildBookkeepingRows({
+      quotes: [quote],
+      entries: [entry],
+      payments: [quotePayment, entryPayment, both]
+    });
+
+    // The entry suppresses the quote row and owns all of its money.
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.depositPaid).toBe(5000);
+    expect(rows[0]?.balancePaid).toBe(3000);
+    expect(rows[0]?.paidTotal).toBe(8000);
+    expect(rows[0]?.balance).toBe(2000);
+  });
+});
+
 describe("sumBookkeepingRows", () => {
   it("aggregates the split so Mike + Jessica always equals net profit", () => {
     const entries = [
@@ -453,6 +492,31 @@ describe("sumBookkeepingRows", () => {
     expect(totals.missingSalesOwner).toBe(1);
     expect(totals.projectedRows).toBe(3);
     expect(totals.kenCut).toBe(1000 + 0 + 600);
+  });
+
+  it("reproduces the legacy MTS dashboard math (screenshot parity)", () => {
+    // Mirrors the MTS CRM totals strip: $105,202.33 sales, $53,788.13 COGS,
+    // $2,953.27 installation -> Total Profit $48,460.93, Ken $10,520.23,
+    // MTS (net) profit $37,940.70, margin 46.1%.
+    const entry = makeEntry({
+      source: "legacy_sheet",
+      sold_date: BEFORE_POLICY,
+      total_amount: 105202.33,
+      cogs_amount: 53788.13,
+      installation_invoice_amount: 2953.27,
+      installation_match_status: "matched"
+    });
+
+    const totals = sumBookkeepingRows(buildBookkeepingRows({ quotes: [], entries: [entry], payments: [] }));
+
+    expect(totals.total).toBe(105202.33);
+    expect(totals.cogs).toBe(53788.13);
+    expect(totals.installationAmount).toBe(2953.27);
+    expect(totals.grossProfit).toBe(48460.93);
+    expect(totals.kenCut).toBe(10520.23);
+    expect(totals.netProfit).toBe(37940.7);
+    expect(totals.profitMargin).toBe(46.1);
+    expect(totals.mikeShare + totals.jessicaShare).toBeCloseTo(37940.7, 2);
   });
 
   it("counts Jessica's paid and owed shares separately", () => {

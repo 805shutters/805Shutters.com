@@ -102,6 +102,31 @@ Implemented in `src/lib/crm/bookkeeping.ts` and covered by `npm test`:
   installation amounts are always deducted so projections are not overstated.
 - Sold rows without a salesperson surface an "Assign salesperson" task in the
   accountability queue and a "Missing sales owner" count in totals.
+- The bookkeeping totals strip mirrors the legacy MTS CRM cards: Total Sales,
+  Open Balance, COGS, Installation, Ken Total Profit, Total Profit (gross,
+  before Ken), Profit Margin, Net Profit (after Ken), Mike 50%, Jessica 50%,
+  Jessica Paid, and Jessica Owed.
+
+## Importing the MTS CRM data
+
+All numbers from the MTS CRM (mtsinstallationsandrepairs.lovable.app) migrate
+into this backend with `scripts/import_mts_bookkeeping_to_805.mjs`. It needs
+`.env.local` with `MTS_SUPABASE_URL`, `MTS_SUPABASE_SERVICE_ROLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+
+```bash
+node scripts/import_mts_bookkeeping_to_805.mjs --dry-run   # row counts only
+node scripts/import_mts_bookkeeping_to_805.mjs             # import + verify report
+node scripts/import_mts_bookkeeping_to_805.mjs --verify    # compare without writing
+```
+
+The import is idempotent (rows carry `external_source`/`external_id` keys, so
+re-runs update instead of duplicating). After importing - and any time the
+sites look out of sync - run `--verify`: it totals both databases with the
+same ledger rules as the CRM and prints a metric-by-metric MTS vs 805 table
+(Total Sales, Open Balance, COGS, Installation, Ken, Total Profit, Net
+Profit, rows missing COGS) with deltas, so a mismatch points at exactly what
+is missing.
 
 ## Customer file transfer
 

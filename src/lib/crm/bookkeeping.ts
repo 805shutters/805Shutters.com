@@ -118,13 +118,28 @@ export function buildBookkeepingRows({
   const standaloneEntries = entries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
   const linkedQuoteIds = new Set(standaloneEntries.map((entry) => entry.quote_id).filter(Boolean));
 
+  // A standalone entry that references a quote absorbs that quote's payments,
+  // credits, and expenses too - imported rows often link money to the quote
+  // while the ledger row is the entry.
   const entryRows = standaloneEntries.map((entry) =>
     buildEntryRow(
       entry,
-      paymentsByEntryId.get(entry.id) || [],
-      creditsToEntryId.get(entry.id) || [],
-      creditsFromEntryId.get(entry.id) || [],
-      expensesByEntryId.get(entry.id) || []
+      dedupeById([
+        ...(paymentsByEntryId.get(entry.id) || []),
+        ...(entry.quote_id ? paymentsByQuoteId.get(entry.quote_id) || [] : [])
+      ]),
+      dedupeById([
+        ...(creditsToEntryId.get(entry.id) || []),
+        ...(entry.quote_id ? creditsToQuoteId.get(entry.quote_id) || [] : [])
+      ]),
+      dedupeById([
+        ...(creditsFromEntryId.get(entry.id) || []),
+        ...(entry.quote_id ? creditsFromQuoteId.get(entry.quote_id) || [] : [])
+      ]),
+      dedupeById([
+        ...(expensesByEntryId.get(entry.id) || []),
+        ...(entry.quote_id ? expensesByQuoteId.get(entry.quote_id) || [] : [])
+      ])
     )
   );
 
@@ -156,7 +171,7 @@ export function buildBookkeepingRows({
 }
 
 export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTotals {
-  return rows.reduce<CrmBookkeepingTotals>(
+  const totals = rows.reduce<CrmBookkeepingTotals>(
     (totals, row) => {
       totals.rows += 1;
       totals.total = roundCents(totals.total + row.total);
@@ -191,6 +206,8 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       kenCut: 0,
       expenses: 0,
       installationAmount: 0,
+      grossProfit: 0,
+      profitMargin: 0,
       netProfit: 0,
       mikeShare: 0,
       jessicaShare: 0,
@@ -201,6 +218,13 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       projectedRows: 0
     }
   );
+
+  // Gross profit matches the legacy MTS "Total Profit": sale total minus
+  // COGS, installation, and expenses - before the Ken cut and the 50/50 split.
+  totals.grossProfit = roundCents(totals.netProfit + totals.kenCut);
+  totals.profitMargin = totals.total > 0 ? Math.round((totals.grossProfit / totals.total) * 1000) / 10 : 0;
+
+  return totals;
 }
 
 export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccountabilityItem[] {

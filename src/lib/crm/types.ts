@@ -311,6 +311,8 @@ export type CrmBookkeepingTotals = {
   kenCut: number;
   expenses: number;
   installationAmount: number;
+  grossProfit: number;
+  profitMargin: number;
   netProfit: number;
   mikeShare: number;
   jessicaShare: number;

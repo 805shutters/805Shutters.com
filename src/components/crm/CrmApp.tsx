@@ -1287,19 +1287,27 @@ function BookkeepingSpreadsheet({
           <h2>805 Spreadsheet</h2>
         </div>
         <div className="crm-ledger-totals">
-          <span>Total {toCurrency(totals?.total)}</span>
+          <span>Total Sales {toCurrency(totals?.total)}</span>
+          <span>Open Balance {toCurrency(totals?.balance)}</span>
           <span>Paid {toCurrency(totals?.paidTotal)}</span>
-          <span>Balance {toCurrency(totals?.balance)}</span>
           <span>COGS {toCurrency(totals?.cogs)}</span>
-          <span>Install {toCurrency(totals?.installationAmount)}</span>
+          <span>Installation {toCurrency(totals?.installationAmount)}</span>
           <span>Expenses {toCurrency(totals?.expenses)}</span>
-          <span>Ken {toCurrency(totals?.kenCut)}</span>
+          <span>Ken Total Profit {toCurrency(totals?.kenCut)}</span>
+          <span>Total Profit {toCurrency(totals?.grossProfit)}</span>
+          <span>Profit Margin {totals ? `${totals.profitMargin.toFixed(1)}%` : "0.0%"}</span>
           <span>Net Profit {toCurrency(totals?.netProfit)}</span>
           <span>Mike 50% {toCurrency(totals?.mikeShare)}</span>
           <span>Jessica 50% {toCurrency(totals?.jessicaShare)}</span>
+          <span>Jessica Paid {toCurrency(totals?.jessicaSharePaid)}</span>
           <span>Jessica Owed {toCurrency(totals?.jessicaShareOwed)}</span>
         </div>
       </div>
+      {totals && totals.missingCogs > 0 ? (
+        <p className="crm-alert">
+          {totals.missingCogs} {totals.missingCogs === 1 ? "row" : "rows"} missing COGS.
+        </p>
+      ) : null}
       <div className="crm-bookkeeping-table-wrap">
         <table className="crm-bookkeeping-table">
           <thead>
