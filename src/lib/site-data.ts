@@ -63,8 +63,7 @@ export const site = {
 
 export const images = {
   hero: "/images/805-hero-window-treatments.png",
-  shutters:
-    "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+  shutters: "/images/editorial-scroll/ai-shutters-arched-dining-room.jpg",
   shades: "/images/805-portfolio-shades-bedroom.jpg",
   blinds: "/images/805-portfolio-blinds-office.jpg",
   drapery: "/images/805-portfolio-drapery-living-room.jpg",
@@ -81,7 +80,7 @@ export const services: Service[] = [
     description:
       "Plantation shutters, wood shutters, specialty shapes, sliding door shutters, and whole-home shutter upgrades.",
     image: images.shutters,
-    imageAlt: "Stacked arched and rectangular shutters installed on tall living room windows"
+    imageAlt: "Arched dining room windows with custom plantation shutters and warm coastal light"
   },
   {
     title: "Custom Window Shades",
@@ -241,7 +240,7 @@ const parentPages: SitePage[] = [
     intro:
       "805 Shutters measures and installs custom shutters for Ventura County homes, from classic plantation shutters to specialty shapes, sliding door shutters, and whole-home upgrades.",
     image: images.shutters,
-    imageAlt: "Stacked arched and rectangular shutters installed on tall living room windows",
+    imageAlt: "Arched dining room windows with custom plantation shutters and warm coastal light",
     sections: [
       {
         heading: "Built For The Room",
