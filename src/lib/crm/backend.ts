@@ -1033,6 +1033,19 @@ export async function updateCrmBookkeepingEntry(
 
     if (result.error || !result.data) throw new CrmAuthError(502, "Bookkeeping row could not be updated.");
     entry = result.data;
+
+    // Keep the job card in sync when the ledger row's salesperson changes.
+    if ("sales_owner" in patch && entry.job_id) {
+      const ownerLabel =
+        patch.sales_owner === "jessica" ? "Jessica" : patch.sales_owner === "mike" ? "Mike" : "Unassigned";
+      const { data: linkedJob } = await supabase
+        .from("crm_jobs")
+        .update({ sales_owner: ownerLabel })
+        .eq("id", entry.job_id)
+        .select("*")
+        .maybeSingle();
+      if (linkedJob) await syncCustomerFromJob(supabase, linkedJob);
+    }
   }
 
   const paymentAmount = toMoney(payload.payment_amount);

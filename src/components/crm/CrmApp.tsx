@@ -282,6 +282,39 @@ export function CrmApp() {
     }
   }
 
+  async function assignRowSalesOwner(
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null; customerName?: string },
+    owner: "mike" | "jessica"
+  ) {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (target.source === "crm_quote" && target.quoteId) {
+        await crmFetch<{ quote: CrmQuote }>(session, `/api/crm/quotes/${target.quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            sold_by: owner === "jessica" ? "Jessica" : "Mike",
+            ...(target.customerName && target.customerName !== "Linked job"
+              ? { customer_name: target.customerName }
+              : {})
+          })
+        });
+      } else {
+        await crmFetch<{ entry: unknown }>(session, `/api/crm/bookkeeping/${target.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ sales_owner: owner })
+        });
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Salesperson could not be assigned.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createExpense(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
@@ -572,7 +605,7 @@ export function CrmApp() {
 
       {activeTab === "command" ? (
         <section className="crm-command-grid">
-          <AccountabilityBoard items={accountability} />
+          <AccountabilityBoard items={accountability} onAssignOwner={assignRowSalesOwner} busy={busy} />
           <BookkeepingSnapshot rows={rows} />
         </section>
       ) : null}
@@ -841,7 +874,12 @@ export function CrmApp() {
             </form>
           </aside>
 
-          <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} />
+          <BookkeepingSpreadsheet
+            rows={rows}
+            totals={data?.bookkeepingTotals}
+            onAssignOwner={assignRowSalesOwner}
+            busy={busy}
+          />
         </section>
       ) : null}
 
@@ -1022,7 +1060,18 @@ function Metric({ label, value }: { label: string; value: number | string }) {
   );
 }
 
-function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
+function AccountabilityBoard({
+  items,
+  onAssignOwner,
+  busy
+}: {
+  items: CrmAccountabilityItem[];
+  onAssignOwner: (
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null },
+    owner: "mike" | "jessica"
+  ) => void;
+  busy: boolean;
+}) {
   const featured = items.slice(0, 18);
 
   return (
@@ -1040,6 +1089,45 @@ function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
             <div>
               <span>{item.label}</span>
               <h3>{item.detail}</h3>
+              {item.type === "assign_sales_owner" && item.rowId ? (
+                <span className="crm-assign-actions">
+                  <button
+                    type="button"
+                    className="crm-assign-button"
+                    disabled={busy}
+                    onClick={() =>
+                      onAssignOwner(
+                        {
+                          id: item.rowId as string,
+                          // Quote-backed ledger rows use the quote id as the row id.
+                          source: item.quoteId && item.quoteId === item.rowId ? "crm_quote" : "manual",
+                          quoteId: item.quoteId ?? null
+                        },
+                        "jessica"
+                      )
+                    }
+                  >
+                    Assign Jessica
+                  </button>
+                  <button
+                    type="button"
+                    className="crm-assign-button crm-assign-button-alt"
+                    disabled={busy}
+                    onClick={() =>
+                      onAssignOwner(
+                        {
+                          id: item.rowId as string,
+                          source: item.quoteId && item.quoteId === item.rowId ? "crm_quote" : "manual",
+                          quoteId: item.quoteId ?? null
+                        },
+                        "mike"
+                      )
+                    }
+                  >
+                    Assign Mike
+                  </button>
+                </span>
+              ) : null}
             </div>
             <strong>{item.owner}</strong>
           </article>
@@ -1274,10 +1362,17 @@ function JobCard({
 
 function BookkeepingSpreadsheet({
   rows,
-  totals
+  totals,
+  onAssignOwner,
+  busy
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  onAssignOwner: (
+    target: { id: string; source: CrmBookkeepingRow["source"]; quoteId: string | null; customerName?: string },
+    owner: "mike" | "jessica"
+  ) => void;
+  busy: boolean;
 }) {
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
@@ -1365,7 +1460,31 @@ function BookkeepingSpreadsheet({
                 <td>{toCurrency(row.mikeShare)}</td>
                 <td>{toCurrency(row.jessicaShare)}</td>
                 <td className={row.salesOwner ? "" : "crm-warning-cell"}>
-                  {row.salesOwner === "mike" ? "Mike" : row.salesOwner === "jessica" ? "Jessica" : "Unassigned"}
+                  <strong>
+                    {row.salesOwner === "mike" ? "Mike" : row.salesOwner === "jessica" ? "Jessica" : "Unassigned"}
+                  </strong>
+                  <span className="crm-assign-actions">
+                    {row.salesOwner !== "jessica" ? (
+                      <button
+                        type="button"
+                        className="crm-assign-button"
+                        disabled={busy}
+                        onClick={() => onAssignOwner(row, "jessica")}
+                      >
+                        Assign Jessica
+                      </button>
+                    ) : null}
+                    {row.salesOwner !== "mike" ? (
+                      <button
+                        type="button"
+                        className="crm-assign-button crm-assign-button-alt"
+                        disabled={busy}
+                        onClick={() => onAssignOwner(row, "mike")}
+                      >
+                        Assign Mike
+                      </button>
+                    ) : null}
+                  </span>
                 </td>
                 <td>
                   <strong>{toCurrency(row.installationInvoiceAmount)}</strong>
