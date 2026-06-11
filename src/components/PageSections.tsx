@@ -262,6 +262,8 @@ function HomePageSections({ page }: { page: SitePage }) {
         </div>
       </section>
 
+      <PortfolioBrowser />
+
       <section className="portfolio-scroll" aria-label="805 Shutters portfolio scenes">
         {portfolioStories.map((story, index) => (
           <article
@@ -301,8 +303,6 @@ function HomePageSections({ page }: { page: SitePage }) {
           </article>
         ))}
       </section>
-
-      <PortfolioBrowser />
 
       <ServiceGrid />
 
