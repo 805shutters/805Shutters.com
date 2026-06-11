@@ -41,7 +41,7 @@ export function CrmHomeLogin() {
       ) : (
         <>
           {configured ? (
-            <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm">
+            <a className="button primary" href="/api/crm/oauth/google/?redirectTo=%2Fcrm">
               Google Login
             </a>
           ) : (

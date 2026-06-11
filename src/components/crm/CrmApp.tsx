@@ -436,7 +436,7 @@ export function CrmApp() {
           <h1>Google login only.</h1>
           <p>Use an approved 805 Shutters Google account to access sales jobs, quotes, bookkeeping, and calendar.</p>
           {authSetupMessage ? <p className="crm-alert">{authSetupMessage}</p> : null}
-          <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm">
+          <a className="button primary" href="/api/crm/oauth/google/?redirectTo=%2Fcrm">
             Continue with Google
           </a>
         </section>
