@@ -489,6 +489,10 @@ export function PortfolioBrowser() {
     setPreviewProductId(category.products[0].id);
   };
 
+  const previewProductById = (productId: string) => {
+    setPreviewProductId(productId);
+  };
+
   const selectProduct = (productId: string) => {
     setSelectedProductId(productId);
     setPreviewProductId(productId);
@@ -509,6 +513,10 @@ export function PortfolioBrowser() {
               onClick={() => previewCategory(category)}
               onFocus={() => previewCategory(category)}
               onMouseEnter={() => previewCategory(category)}
+              onMouseMove={() => previewCategory(category)}
+              onPointerDown={() => previewCategory(category)}
+              onPointerEnter={() => previewCategory(category)}
+              onPointerMove={() => previewCategory(category)}
               type="button"
             >
               {category.label}
@@ -525,8 +533,12 @@ export function PortfolioBrowser() {
                 }`}
                 key={product.id}
                 onClick={() => selectProduct(product.id)}
-                onFocus={() => setPreviewProductId(product.id)}
-                onMouseEnter={() => setPreviewProductId(product.id)}
+                onFocus={() => previewProductById(product.id)}
+                onMouseEnter={() => previewProductById(product.id)}
+                onMouseMove={() => previewProductById(product.id)}
+                onPointerDown={() => previewProductById(product.id)}
+                onPointerEnter={() => previewProductById(product.id)}
+                onPointerMove={() => previewProductById(product.id)}
                 type="button"
               >
                 {product.label}
