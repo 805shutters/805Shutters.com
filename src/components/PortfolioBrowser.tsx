@@ -474,15 +474,31 @@ function portfolioPhotoAspect(photo: PortfolioPhoto): PortfolioPhotoStyle {
 export function PortfolioBrowser() {
   const [activeCategoryId, setActiveCategoryId] = useState<PortfolioCategoryId>("blinds");
   const [selectedProductId, setSelectedProductId] = useState("faux-wood");
+  const [previewProductId, setPreviewProductId] = useState("faux-wood");
   const activeCategory = portfolioCategories.find((category) => category.id === activeCategoryId) || portfolioCategories[0];
   const activeCategoryIndex = portfolioCategories.findIndex((category) => category.id === activeCategory.id);
   const { category: selectedCategory, product: selectedProduct } = productSelection(selectedProductId);
+  const { product: previewProduct } = productSelection(previewProductId);
+  const previewPhoto = previewProduct.photos.find((photo) => photo.sourceLabel === "AI concept") || previewProduct.photos[0];
   const dropStyle: PortfolioDropStyle = {
     "--portfolio-column": activeCategoryIndex + 1
   };
 
+  const previewCategory = (category: PortfolioCategory) => {
+    setActiveCategoryId(category.id);
+    setPreviewProductId(category.products[0].id);
+  };
+
+  const selectProduct = (productId: string) => {
+    setSelectedProductId(productId);
+    setPreviewProductId(productId);
+  };
+
   return (
     <section className="portfolio-browser" id="portfolio" aria-label="Window covering portfolio">
+      <div className="portfolio-browser-backdrop" aria-hidden="true">
+        <img key={previewPhoto.image} src={previewPhoto.image} alt="" />
+      </div>
       <div className="portfolio-browser-menu">
         <div className="portfolio-category-row" aria-label="Portfolio categories">
           {portfolioCategories.map((category) => (
@@ -490,9 +506,9 @@ export function PortfolioBrowser() {
               aria-expanded={category.id === activeCategory.id}
               className={`portfolio-category-button${category.id === activeCategory.id ? " active" : ""}`}
               key={category.id}
-              onClick={() => setActiveCategoryId(category.id)}
-              onFocus={() => setActiveCategoryId(category.id)}
-              onMouseEnter={() => setActiveCategoryId(category.id)}
+              onClick={() => previewCategory(category)}
+              onFocus={() => previewCategory(category)}
+              onMouseEnter={() => previewCategory(category)}
               type="button"
             >
               {category.label}
@@ -504,9 +520,13 @@ export function PortfolioBrowser() {
           <div className="portfolio-product-list" key={activeCategory.id}>
             {activeCategory.products.map((product) => (
               <button
-                className={`portfolio-product-button${product.id === selectedProduct.id ? " active" : ""}`}
+                className={`portfolio-product-button${product.id === selectedProduct.id ? " active" : ""}${
+                  product.id === previewProductId ? " preview" : ""
+                }`}
                 key={product.id}
-                onClick={() => setSelectedProductId(product.id)}
+                onClick={() => selectProduct(product.id)}
+                onFocus={() => setPreviewProductId(product.id)}
+                onMouseEnter={() => setPreviewProductId(product.id)}
                 type="button"
               >
                 {product.label}
