@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 type PortfolioCategoryId = "blinds" | "shades" | "drapery" | "shutters" | "exterior";
 
@@ -472,6 +472,7 @@ function portfolioPhotoAspect(photo: PortfolioPhoto): PortfolioPhotoStyle {
 }
 
 export function PortfolioBrowser() {
+  const browserRef = useRef<HTMLElement>(null);
   const [activeCategoryId, setActiveCategoryId] = useState<PortfolioCategoryId>("blinds");
   const [selectedProductId, setSelectedProductId] = useState("faux-wood");
   const [previewProductId, setPreviewProductId] = useState("faux-wood");
@@ -483,6 +484,59 @@ export function PortfolioBrowser() {
   const dropStyle: PortfolioDropStyle = {
     "--portfolio-column": activeCategoryIndex + 1
   };
+
+  useEffect(() => {
+    const browser = browserRef.current;
+
+    if (!browser) {
+      return;
+    }
+
+    const previewFromTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const productButton = target.closest<HTMLButtonElement>("[data-portfolio-product-id]");
+
+      if (productButton && browser.contains(productButton)) {
+        const productId = productButton.dataset.portfolioProductId;
+
+        if (productId) {
+          setPreviewProductId(productId);
+        }
+
+        return;
+      }
+
+      const categoryButton = target.closest<HTMLButtonElement>("[data-portfolio-category-id]");
+
+      if (categoryButton && browser.contains(categoryButton)) {
+        const category = portfolioCategories.find((item) => item.id === categoryButton.dataset.portfolioCategoryId);
+
+        if (category) {
+          setActiveCategoryId(category.id);
+          setPreviewProductId(category.products[0].id);
+        }
+      }
+    };
+
+    const handlePointerPreview = (event: MouseEvent | PointerEvent) => {
+      previewFromTarget(event.target);
+    };
+
+    browser.addEventListener("mouseover", handlePointerPreview, true);
+    browser.addEventListener("mousemove", handlePointerPreview, true);
+    browser.addEventListener("pointerover", handlePointerPreview, true);
+    browser.addEventListener("pointermove", handlePointerPreview, true);
+
+    return () => {
+      browser.removeEventListener("mouseover", handlePointerPreview, true);
+      browser.removeEventListener("mousemove", handlePointerPreview, true);
+      browser.removeEventListener("pointerover", handlePointerPreview, true);
+      browser.removeEventListener("pointermove", handlePointerPreview, true);
+    };
+  }, []);
 
   const previewCategory = (category: PortfolioCategory) => {
     setActiveCategoryId(category.id);
@@ -499,7 +553,7 @@ export function PortfolioBrowser() {
   };
 
   return (
-    <section className="portfolio-browser" id="portfolio" aria-label="Window covering portfolio">
+    <section className="portfolio-browser" id="portfolio" aria-label="Window covering portfolio" ref={browserRef}>
       <div className="portfolio-browser-backdrop" aria-hidden="true">
         <img key={previewPhoto.image} src={previewPhoto.image} alt="" />
       </div>
@@ -509,14 +563,17 @@ export function PortfolioBrowser() {
             <button
               aria-expanded={category.id === activeCategory.id}
               className={`portfolio-category-button${category.id === activeCategory.id ? " active" : ""}`}
+              data-portfolio-category-id={category.id}
               key={category.id}
               onClick={() => previewCategory(category)}
               onFocus={() => previewCategory(category)}
               onMouseEnter={() => previewCategory(category)}
               onMouseMove={() => previewCategory(category)}
+              onMouseOver={() => previewCategory(category)}
               onPointerDown={() => previewCategory(category)}
               onPointerEnter={() => previewCategory(category)}
               onPointerMove={() => previewCategory(category)}
+              onPointerOver={() => previewCategory(category)}
               type="button"
             >
               {category.label}
@@ -531,14 +588,18 @@ export function PortfolioBrowser() {
                 className={`portfolio-product-button${product.id === selectedProduct.id ? " active" : ""}${
                   product.id === previewProductId ? " preview" : ""
                 }`}
+                data-portfolio-product-id={product.id}
                 key={product.id}
                 onClick={() => selectProduct(product.id)}
                 onFocus={() => previewProductById(product.id)}
                 onMouseEnter={() => previewProductById(product.id)}
                 onMouseMove={() => previewProductById(product.id)}
+                onMouseOver={() => previewProductById(product.id)}
                 onPointerDown={() => previewProductById(product.id)}
                 onPointerEnter={() => previewProductById(product.id)}
                 onPointerMove={() => previewProductById(product.id)}
+                onPointerOver={() => previewProductById(product.id)}
+                onTouchStart={() => previewProductById(product.id)}
                 type="button"
               >
                 {product.label}
