@@ -3,10 +3,10 @@
 This repo is a working area for rebuilding and improving 805shutters.com search
 visibility, conversion tracking, and paid social readiness.
 
-The live site is WordPress at https://www.805shutters.com/. This checkout does
-not contain the WordPress theme, plugin, or database source. The current rebuild
-target is a Next.js App Router site deployed on Vercel while WordPress remains
-live until cutover.
+This checkout is the source for the new Next.js App Router site deployed on
+Vercel. Use `https://805-one.vercel.app` to verify the new site. The old
+`https://www.805shutters.com/` WordPress site may still exist separately, but it
+is not the deployment target for normal code changes in this repo.
 
 ## Rebuild workflow
 
@@ -15,6 +15,7 @@ npm install
 npm run dev
 npm run typecheck
 npm run build
+npm run deploy:vercel
 npm run migration:inventory
 npm run supabase:start
 npm run supabase:reset
@@ -31,8 +32,21 @@ npm run supabase:reset
   Supabase, and Vercel ownership.
 - `docs/supabase-lead-capture.md` - lead-capture schema and API route notes.
 
-Production deployment is not ready until lead delivery, analytics, ad
-conversions, redirects, and DNS ownership have been verified.
+Production deploys for this repo go to the Vercel project `805`. The stable
+verification URL is `https://805-one.vercel.app`.
+
+## Deploy to Vercel
+
+The deploy command validates the app, pushes `main`, waits for the GitHub-backed
+Vercel production build for the current commit, and verifies the public Vercel
+URL.
+
+```bash
+npm run deploy:vercel
+```
+
+It intentionally deploys from GitHub/Vercel instead of uploading the local
+working tree, so untracked local files are not accidentally published.
 
 ## Current artifacts
 
