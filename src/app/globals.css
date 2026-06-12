@@ -356,7 +356,7 @@ img {
 .category-nav-product-list {
   display: grid;
   justify-items: center;
-  gap: clamp(10px, 1.2vw, 18px);
+  gap: clamp(20px, 2.4vw, 36px);
 }
 
 .category-nav-product-button {
@@ -374,7 +374,10 @@ img {
   letter-spacing: 0;
   line-height: 1.1;
   text-align: center;
-  text-shadow: inherit;
+  text-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.82),
+    0 0 18px rgba(0, 0, 0, 0.72),
+    0 10px 30px rgba(0, 0, 0, 0.58);
   white-space: nowrap;
   transition:
     color 180ms ease,
