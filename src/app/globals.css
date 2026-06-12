@@ -297,16 +297,10 @@ body.commercial-mode .brand-text-logo-name {
 }
 
 .social-links .social-link-yelp {
-  width: 82px;
-  height: 34px;
-  padding: 3px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.1);
+  width: 64px;
+  height: 28px;
+  color: inherit;
   transition:
-    border-color 180ms ease,
-    box-shadow 180ms ease,
     transform 180ms ease;
 }
 
@@ -318,15 +312,66 @@ body.commercial-mode .brand-text-logo-name {
 
 .social-link-yelp:hover,
 .social-link-yelp:focus-visible {
-  border-color: #d32323;
-  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.18);
   transform: translateY(-1px);
 }
 
-.yelp-wordmark {
-  display: block;
-  width: 68px;
-  height: auto;
+body:has(.home-editorial) .social-links .social-link-yelp {
+  color: var(--white);
+}
+
+.yelp-text-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.yelp-text {
+  color: currentColor;
+  font-family: var(--font-body);
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: lowercase;
+}
+
+.yelp-burst {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  color: #ff1a1a;
+}
+
+.yelp-burst span {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 11px;
+  height: 5px;
+  border-radius: 9px 2px 9px 9px;
+  background: currentColor;
+  transform-origin: 2px 2px;
+}
+
+.yelp-burst span:nth-child(1) {
+  transform: rotate(-98deg) translateX(1px);
+}
+
+.yelp-burst span:nth-child(2) {
+  transform: rotate(-24deg) translateX(1px);
+}
+
+.yelp-burst span:nth-child(3) {
+  transform: rotate(48deg) translateX(1px);
+}
+
+.yelp-burst span:nth-child(4) {
+  transform: rotate(120deg) translateX(1px);
+}
+
+.yelp-burst span:nth-child(5) {
+  transform: rotate(192deg) translateX(1px);
 }
 
 .yelp-review-popover {

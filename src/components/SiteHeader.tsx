@@ -208,13 +208,16 @@ export function SiteHeader() {
                 target="_blank"
                 rel="noreferrer"
               >
-                <img
-                  className="yelp-wordmark"
-                  src="/brand/yelp-wordmark.png"
-                  alt=""
-                  width={206}
-                  height={86}
-                />
+                <span className="yelp-text-mark" aria-hidden="true">
+                  <span className="yelp-text">yelp</span>
+                  <span className="yelp-burst">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </span>
               </a>
               <span className="yelp-review-popover" id="yelp-review-preview">
                 <span className="yelp-review-title">Yelp reviews</span>
