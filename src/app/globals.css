@@ -180,14 +180,14 @@ img {
 }
 
 .commercial-mode-badge {
-  min-height: 34px;
-  padding: 8px 11px;
+  min-height: 41px;
+  padding: 10px 13px;
   border: 1px solid var(--ink);
   background: var(--ink);
   color: var(--white);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.12em;
   line-height: 1;
   text-transform: uppercase;
   box-shadow: 0 12px 26px rgba(17, 17, 17, 0.1);
@@ -511,7 +511,7 @@ body:has(.home-editorial) .category-nav {
 
 body:has(.home-editorial) .site-masthead {
   min-height: 146px;
-  padding: 12px clamp(34px, 6vw, 72px) 16px;
+  padding: 8px clamp(22px, 3.5vw, 46px) 16px;
   border-bottom: 0;
 }
 
@@ -566,7 +566,7 @@ body.commercial-mode:has(.home-editorial) .brand::after {
 }
 
 body:has(.home-editorial) .masthead-contact-left {
-  align-self: center;
+  align-self: start;
   padding-top: 0;
 }
 
@@ -2840,10 +2840,10 @@ body:has(.crm-app-shell) {
   }
 
   .commercial-mode-badge {
-    min-height: 32px;
-    padding: 7px 8px;
-    font-size: 8px;
-    letter-spacing: 0.08em;
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
   }
 
   body.commercial-mode .brand-text-logo-name {
@@ -3679,8 +3679,8 @@ body:has(.crm-app-shell) {
   }
 
   body.home-page-active .mobile-header-tools--left {
-    left: 20px;
-    top: 112px;
+    left: 12px;
+    top: 106px;
   }
 
   body.home-page-active .mobile-header-tools--right {

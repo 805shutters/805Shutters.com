@@ -11,7 +11,7 @@ export function ServiceGrid({ commercialMode = false }: { commercialMode?: boole
       <h2>{commercialMode ? "Commercial Window Covering Services" : "Custom Window Treatment Services"}</h2>
       <div className="service-grid">
         {activeServices.map((service) => (
-          <article className="service-card" key={service.slug}>
+          <article className="service-card" key={`${service.slug}-${service.title}`}>
             <img src={service.image} alt={service.imageAlt} />
             <div>
               <h3>{service.title}</h3>

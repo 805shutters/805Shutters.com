@@ -58,7 +58,7 @@ export function CommercialModeBadge() {
       onClick={toggleCommercialMode}
       type="button"
     >
-      {isCommercialMode ? "Residential" : "Commercial"}
+      {isCommercialMode ? "Residential" : "805 Commercial"}
     </button>
   );
 }
