@@ -273,7 +273,7 @@ export function SiteHeader() {
             <TrackedPhoneLink className="header-phone" location="header">
               {site.phone}
             </TrackedPhoneLink>
-            <span className="phone-note">CALL * TEXT</span>
+            <span className="phone-note">CALL * TEXT * EMAIL</span>
           </div>
         </div>
       </div>

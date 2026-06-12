@@ -781,21 +781,25 @@ body:has(.home-editorial) .header-calendar-link {
 }
 
 body:has(.home-editorial) .phone-stack {
-  gap: 5px;
+  gap: 4px;
 }
 
 body:has(.home-editorial) .phone-stack .masthead-email {
   color: rgba(255, 255, 255, 0.82);
   font-size: 11px;
   letter-spacing: 0.08em;
+  transform: translateY(-7px);
 }
 
 body:has(.home-editorial) .header-phone {
-  font-size: 27.5px;
+  font-size: 33px;
+  line-height: 0.86;
 }
 
 body:has(.home-editorial) .phone-note {
   font-size: 10px;
+  margin-top: 7px;
+  letter-spacing: 0.13em;
 }
 
 body:has(.home-editorial) .category-nav {
