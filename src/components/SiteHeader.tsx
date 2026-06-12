@@ -3,7 +3,9 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { commercialBrand, commercialModeImages } from "@/lib/commercial-mode-data";
 import { site } from "@/lib/site-data";
+import { CommercialModeBadge, useCommercialMode } from "./CommercialModeProvider";
 import { HeaderScrollState } from "./HeaderScrollState";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 
@@ -64,9 +66,61 @@ const categoryItems = [
   }
 ];
 
+const commercialCategoryItems = [
+  {
+    label: "Roller Shades",
+    href: "/commercial-roller-shades/",
+    products: [
+      { label: "Office Roller Shades", image: commercialModeImages.hero },
+      { label: "Lobby Solar Shades", image: commercialModeImages.lobby },
+      { label: "Tenant Improvement Shades", image: commercialModeImages.conference }
+    ]
+  },
+  {
+    label: "Solar Shades",
+    href: "/commercial-window-coverings/",
+    products: [
+      { label: "Glare Control", image: commercialModeImages.storefront },
+      { label: "Heat Control", image: commercialModeImages.lobby },
+      { label: "Street-Facing Glass", image: commercialModeImages.storefront }
+    ]
+  },
+  {
+    label: "Blackout",
+    href: "/commercial-window-coverings/",
+    products: [
+      { label: "Conference Rooms", image: commercialModeImages.conference },
+      { label: "Medical Privacy", image: commercialModeImages.medical },
+      { label: "Presentation Rooms", image: commercialModeImages.conference }
+    ]
+  },
+  {
+    label: "Motorized",
+    href: "/commercial-roller-shades/",
+    products: [
+      { label: "Tall Glass", image: commercialModeImages.lobby },
+      { label: "Hard-To-Reach Windows", image: commercialModeImages.hero },
+      { label: "Multi-Window Spaces", image: commercialModeImages.storefront }
+    ]
+  },
+  {
+    label: "Shade Audit",
+    href: "/commercial-window-coverings/",
+    products: [
+      { label: "Property Managers", image: commercialModeImages.lobby },
+      { label: "Schools And Facilities", image: commercialModeImages.classroom },
+      { label: "Medical Offices", image: commercialModeImages.medical }
+    ]
+  }
+];
+
 export function SiteHeader() {
   const pathname = usePathname();
+  const { isCommercialMode } = useCommercialMode();
   const isHome = pathname === "/";
+  const activeCategoryItems = isCommercialMode ? commercialCategoryItems : categoryItems;
+  const brandName = isCommercialMode ? commercialBrand.name : site.name;
+  const brandLabel = isCommercialMode ? commercialBrand.label : "SHUTTERS";
 
   const showHeroPreview = (image: string) => {
     if (!isHome) {
@@ -87,12 +141,14 @@ export function SiteHeader() {
       <HeaderScrollState />
       <div className="site-masthead">
         <div className="mobile-header-tools mobile-header-tools--left" aria-label="Mobile navigation">
+          <CommercialModeBadge />
           <Link className="mobile-book-link" href="/book-consultation/" aria-label="Book an appointment">
             <CalendarIcon />
             <span>Book Here</span>
           </Link>
         </div>
         <div className="masthead-contact-left">
+          <CommercialModeBadge />
           <div className="social-links" aria-label="Social links">
             <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
               <FacebookIcon />
@@ -102,10 +158,10 @@ export function SiteHeader() {
             </a>
           </div>
         </div>
-        <Link className="brand" href="/" aria-label={site.name}>
+        <Link className="brand" href="/" aria-label={brandName}>
           <span className="brand-text-logo" aria-hidden="true">
             <span className="brand-text-logo-number">805</span>
-            <span className="brand-text-logo-name">SHUTTERS</span>
+            <span className="brand-text-logo-name">{brandLabel}</span>
           </span>
           <img
             className="brand-logo"
@@ -148,8 +204,8 @@ export function SiteHeader() {
           }
         }}
       >
-        {categoryItems.map((item, index) => (
-          <Fragment key={item.href}>
+        {activeCategoryItems.map((item, index) => (
+          <Fragment key={`${item.label}-${item.href}`}>
             {index > 0 ? <span className="category-dot" aria-hidden="true">•</span> : null}
             <span className="category-nav-item">
               <Link href={item.href}>{item.label}</Link>

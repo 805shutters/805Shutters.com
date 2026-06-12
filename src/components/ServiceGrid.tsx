@@ -1,13 +1,16 @@
 import Link from "next/link";
+import { commercialServices } from "@/lib/commercial-mode-data";
 import { services } from "@/lib/site-data";
 
-export function ServiceGrid() {
+export function ServiceGrid({ commercialMode = false }: { commercialMode?: boolean }) {
+  const activeServices = commercialMode ? commercialServices : services;
+
   return (
     <section className="content-wrap service-section">
-      <p className="eyebrow">Popular services</p>
-      <h2>Custom Window Treatment Services</h2>
+      <p className="eyebrow">{commercialMode ? "Commercial services" : "Popular services"}</p>
+      <h2>{commercialMode ? "Commercial Window Covering Services" : "Custom Window Treatment Services"}</h2>
       <div className="service-grid">
-        {services.map((service) => (
+        {activeServices.map((service) => (
           <article className="service-card" key={service.slug}>
             <img src={service.image} alt={service.imageAlt} />
             <div>

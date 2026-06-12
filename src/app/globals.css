@@ -29,6 +29,13 @@ body {
   font-family: var(--font-body);
 }
 
+body.commercial-mode {
+  --accent: #557568;
+  --line: #cfd8d3;
+  --paper: #f7f8f6;
+  --soft: #e8eeea;
+}
+
 a {
   color: inherit;
 }
@@ -170,6 +177,35 @@ img {
   justify-self: start;
   align-self: start;
   padding-top: 10px;
+}
+
+.commercial-mode-badge {
+  min-height: 34px;
+  padding: 8px 11px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--white);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 12px 26px rgba(17, 17, 17, 0.1);
+  white-space: nowrap;
+}
+
+.commercial-mode-badge.active {
+  border-color: #557568;
+  background: #557568;
+}
+
+.commercial-mode-badge:hover {
+  transform: translateY(-1px);
+}
+
+body.commercial-mode .brand-text-logo-name {
+  font-size: 21px;
+  letter-spacing: 0.2em;
 }
 
 .masthead-email {
@@ -521,9 +557,30 @@ body:has(.home-editorial) .brand::after {
   letter-spacing: 0.34em;
 }
 
+body.commercial-mode:has(.home-editorial) .brand::after {
+  content: "COMMERCIAL";
+  font-size: 21px;
+  letter-spacing: 0.2em;
+}
+
 body:has(.home-editorial) .masthead-contact-left {
   align-self: center;
   padding-top: 0;
+}
+
+body:has(.home-editorial) .commercial-mode-badge {
+  border-color: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+body:has(.home-editorial) .commercial-mode-badge.active {
+  border-color: rgba(214, 232, 221, 0.82);
+  background: rgba(85, 117, 104, 0.88);
+  color: var(--white);
 }
 
 body:has(.home-editorial) .masthead-link,
@@ -628,6 +685,20 @@ body:has(.home-editorial).site-header-solid .header-calendar-link:hover {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--white);
+}
+
+body:has(.home-editorial).site-header-solid .commercial-mode-badge {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+  text-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body:has(.home-editorial).site-header-solid .commercial-mode-badge.active {
+  border-color: #557568;
+  background: #557568;
 }
 
 body:has(.home-editorial).site-header-solid .category-nav {
@@ -785,7 +856,7 @@ body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-v
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+  background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
   border: 0;
   text-align: center;
 }
@@ -850,7 +921,7 @@ body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-v
   width: 100%;
   height: 100%;
   margin: 0;
-  background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+  background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
 }
 
 .home-hero-slide {
@@ -903,13 +974,6 @@ body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-v
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .category-nav-products,
-  .category-nav-item:hover .category-nav-products,
-  .category-nav-item:focus-within .category-nav-products {
-    animation: none;
-    transition: none;
-  }
-
   .home-hero-slide {
     transition: none;
   }
@@ -1545,6 +1609,31 @@ textarea {
   width: 132px;
   height: auto;
   border-radius: 0;
+}
+
+.footer-commercial-wordmark {
+  display: grid;
+  justify-items: start;
+  width: fit-content;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.footer-commercial-wordmark span {
+  font-family: var(--font-logo-number);
+  font-size: 60px;
+  font-weight: 400;
+  line-height: 0.78;
+  letter-spacing: 0.02em;
+}
+
+.footer-commercial-wordmark strong {
+  margin-top: 8px;
+  font-family: var(--font-logo);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.2em;
 }
 
 .footer-links {
@@ -2730,7 +2819,7 @@ body:has(.crm-app-shell) {
 
   .site-masthead {
     position: relative;
-    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    grid-template-columns: 84px minmax(0, 1fr) 42px;
     justify-items: center;
     gap: 7px 8px;
     padding: 8px 14px 10px;
@@ -2742,6 +2831,22 @@ body:has(.crm-app-shell) {
     justify-self: start;
     align-self: start;
     padding-top: 4px;
+  }
+
+  .masthead-contact-left .social-links {
+    display: none;
+  }
+
+  .commercial-mode-badge {
+    min-height: 32px;
+    padding: 7px 8px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+
+  body.commercial-mode .brand-text-logo-name {
+    font-size: 13px;
+    letter-spacing: 0.16em;
   }
 
   .social-links {
@@ -3320,6 +3425,11 @@ body:has(.crm-app-shell) {
     letter-spacing: 0.34em;
   }
 
+  body.commercial-mode:has(.home-editorial) .brand-text-logo-name {
+    font-size: clamp(10px, 3vw, 13px);
+    letter-spacing: 0.16em;
+  }
+
   body:has(.home-editorial) .masthead-link,
   body:has(.home-editorial) .header-phone,
   body:has(.home-editorial) .phone-note,
@@ -3402,6 +3512,10 @@ body:has(.crm-app-shell) {
     font-size: clamp(11px, 3.2vw, 14px);
   }
 
+  body.commercial-mode:has(.home-editorial).site-header-solid .brand-text-logo-name {
+    font-size: clamp(10px, 2.9vw, 12px);
+  }
+
   .home-editorial {
     background: #11100e;
   }
@@ -3410,7 +3524,7 @@ body:has(.crm-app-shell) {
     display: block;
     min-height: 100svh;
     overflow: hidden;
-    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+    background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
   }
 
   .home-editorial-panel::after {
@@ -3463,7 +3577,12 @@ body:has(.crm-app-shell) {
     height: 100%;
     aspect-ratio: auto;
     margin: 0;
-    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+    background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+  }
+
+  body.commercial-mode .home-hero-media,
+  body.commercial-mode .home-editorial-panel {
+    background-image: url("/images/commercial-mode/commercial-office-roller-shades.png");
   }
 
   .home-hero-image,
@@ -3647,6 +3766,11 @@ body:has(.crm-app-shell) {
     letter-spacing: 0.34em;
   }
 
+  body.commercial-mode.home-page-active .brand-text-logo-name {
+    font-size: clamp(10px, 3vw, 13px);
+    letter-spacing: 0.16em;
+  }
+
   body.home-page-active.site-header-solid .site-header-shell {
     background: rgba(251, 250, 247, 0.97);
     border-bottom: 1px solid var(--line);
@@ -3694,6 +3818,10 @@ body:has(.crm-app-shell) {
     font-size: clamp(11px, 3.2vw, 14px);
   }
 
+  body.commercial-mode.home-page-active.site-header-solid .brand-text-logo-name {
+    font-size: clamp(10px, 2.9vw, 12px);
+  }
+
   body.home-page-active .home-editorial {
     background: #11100e;
   }
@@ -3702,7 +3830,7 @@ body:has(.crm-app-shell) {
     display: block;
     min-height: 100svh;
     overflow: hidden;
-    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+    background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
   }
 
   body.home-page-active .home-editorial-panel::after {
@@ -3744,7 +3872,12 @@ body:has(.crm-app-shell) {
     height: 100%;
     aspect-ratio: auto;
     margin: 0;
-    background: #11100e url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
+    background: #11100e url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+  }
+
+  body.commercial-mode.home-page-active .home-hero-media,
+  body.commercial-mode.home-page-active .home-editorial-panel {
+    background-image: url("/images/commercial-mode/commercial-office-roller-shades.png");
   }
 
   body.home-page-active .home-hero-image,

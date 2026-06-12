@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useCommercialMode } from "./CommercialModeProvider";
 import { LeadForm } from "./LeadForm";
 import { ServiceGrid } from "./ServiceGrid";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
@@ -6,6 +9,7 @@ import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { SitePage, site } from "@/lib/site-data";
+import { commercialHomeSections, commercialModeImages, commercializePage } from "@/lib/commercial-mode-data";
 
 type PortfolioStory = {
   eyebrow: string;
@@ -17,6 +21,14 @@ type PortfolioStory = {
   imageHeight?: number;
   href: string;
   tone?: "bright";
+  video?: string;
+};
+
+type InstalledPortfolioPhoto = {
+  category: string;
+  title: string;
+  image: string;
+  imageAlt: string;
   video?: string;
 };
 
@@ -141,9 +153,82 @@ const portfolioStories: PortfolioStory[] = [
   }
 ];
 
+const commercialPortfolioStories: PortfolioStory[] = [
+  {
+    eyebrow: "Commercial Roller Shades",
+    title: "Workspaces with controlled daylight.",
+    body:
+      "Neutral roller shades reduce glare and heat while keeping offices clean, bright, and professional.",
+    image: commercialModeImages.hero,
+    imageAlt: "Commercial office windows fitted with neutral roller shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-roller-shades/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Storefronts",
+    title: "Street-facing glass, handled cleanly.",
+    body:
+      "Solar shades soften exposure, protect interiors, and keep retail and lobby spaces usable during bright hours.",
+    image: commercialModeImages.storefront,
+    imageAlt: "Commercial storefront interior with solar roller shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-window-coverings/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Medical Offices",
+    title: "Privacy without making rooms feel closed.",
+    body:
+      "Commercial privacy shades help waiting rooms, treatment areas, and office suites feel calmer and more controlled.",
+    image: commercialModeImages.medical,
+    imageAlt: "Medical office waiting area with commercial privacy shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-window-coverings/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Schools And Facilities",
+    title: "Durable shade plans for daily use.",
+    body:
+      "Cordless commercial shades support classrooms, shared rooms, and facilities that need practical light control.",
+    image: commercialModeImages.classroom,
+    imageAlt: "School facility room fitted with commercial roller shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-window-coverings/"
+  },
+  {
+    eyebrow: "Lobbies",
+    title: "Common areas that stay comfortable.",
+    body:
+      "Tall commercial windows can keep their architectural look while solar shades cut glare and afternoon heat.",
+    image: commercialModeImages.lobby,
+    imageAlt: "Commercial office lobby with tall windows and solar shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-window-coverings/",
+    tone: "bright"
+  },
+  {
+    eyebrow: "Conference Rooms",
+    title: "Presentation-ready privacy.",
+    body:
+      "Blackout and solar shade combinations make meetings, screens, and video calls easier to control.",
+    image: commercialModeImages.conference,
+    imageAlt: "Commercial conference room with blackout roller shades",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-roller-shades/"
+  }
+];
+
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
-    image: "/images/805-hero-window-treatments.jpg",
+    image: page.image,
     imageAlt: page.imageAlt
   },
   {
@@ -157,7 +242,22 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   }
 ];
 
-const installedPortfolioPhotos = [
+const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
+  {
+    image: commercialModeImages.hero,
+    imageAlt: "Commercial office windows fitted with neutral roller shades"
+  },
+  {
+    image: commercialModeImages.conference,
+    imageAlt: "Commercial conference room with dark blackout roller shades"
+  },
+  {
+    image: commercialModeImages.storefront,
+    imageAlt: "Commercial storefront fitted with solar roller shades"
+  }
+];
+
+const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
     category: "Shades",
     title: "Layered Bedroom Shades",
@@ -251,9 +351,51 @@ const installedPortfolioPhotos = [
   }
 ];
 
+const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
+  {
+    category: "Office Shades",
+    title: "Commercial Office Roller Shades",
+    image: commercialModeImages.hero,
+    imageAlt: "Commercial office windows fitted with neutral roller shades"
+  },
+  {
+    category: "Storefronts",
+    title: "Solar Shades For Street-Facing Glass",
+    image: commercialModeImages.storefront,
+    imageAlt: "Retail storefront interior with commercial solar shades"
+  },
+  {
+    category: "Medical Offices",
+    title: "Privacy Shades For Waiting Areas",
+    image: commercialModeImages.medical,
+    imageAlt: "Medical office waiting area with privacy roller shades"
+  },
+  {
+    category: "Schools",
+    title: "Cordless Facility Roller Shades",
+    image: commercialModeImages.classroom,
+    imageAlt: "School facility room with cordless commercial roller shades"
+  },
+  {
+    category: "Lobbies",
+    title: "Solar Shades For Common Areas",
+    image: commercialModeImages.lobby,
+    imageAlt: "Commercial office lobby fitted with solar shades"
+  },
+  {
+    category: "Conference Rooms",
+    title: "Blackout Shades For Presentations",
+    image: commercialModeImages.conference,
+    imageAlt: "Commercial conference room with blackout roller shades"
+  }
+];
+
 export function PageSections({ page }: { page: SitePage }) {
-  if (page.path === "/") {
-    return <HomePageSections page={page} />;
+  const { isCommercialMode } = useCommercialMode();
+  const activePage = isCommercialMode ? commercializePage(page) : page;
+
+  if (activePage.path === "/") {
+    return <HomePageSections page={activePage} commercialMode={isCommercialMode} />;
   }
 
   return (
@@ -261,27 +403,27 @@ export function PageSections({ page }: { page: SitePage }) {
       <section className="page-editorial">
         <div className="content-wrap page-editorial-panel">
           <div className="page-editorial-copy">
-            <p className="eyebrow">{page.eyebrow}</p>
-            <h1>{page.h1}</h1>
-            <p className="lede">{page.intro}</p>
+            <p className="eyebrow">{activePage.eyebrow}</p>
+            <h1>{activePage.h1}</h1>
+            <p className="lede">{activePage.intro}</p>
             <div className="hero-actions">
               <Link className="button primary" href="/free-window-treatment-consultation/">
                 Free Consultation
               </Link>
-              <TrackedPhoneLink className="button secondary hero-phone" location={`${page.path} hero`}>
+              <TrackedPhoneLink className="button secondary hero-phone" location={`${activePage.path} hero`}>
                 Call {site.phone}
               </TrackedPhoneLink>
             </div>
           </div>
           <div className="page-editorial-media">
-            <img src={page.image} alt={page.imageAlt} />
+            <img src={activePage.image} alt={activePage.imageAlt} />
           </div>
         </div>
       </section>
 
-      {page.gallery?.length ? (
-        <section className="content-wrap page-gallery" aria-label={`${page.h1} photos`}>
-          {page.gallery.map((item) => (
+      {activePage.gallery?.length ? (
+        <section className="content-wrap page-gallery" aria-label={`${activePage.h1} photos`}>
+          {activePage.gallery.map((item) => (
             <figure className="page-gallery-item" key={item.image}>
               <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
             </figure>
@@ -289,10 +431,10 @@ export function PageSections({ page }: { page: SitePage }) {
         </section>
       ) : null}
 
-      {page.path === "/" ? <ServiceGrid /> : null}
+      {activePage.path === "/" ? <ServiceGrid commercialMode={isCommercialMode} /> : null}
 
       <section className="content-wrap section-stack">
-        {page.sections.map((section) => (
+        {activePage.sections.map((section) => (
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
             <p>{section.body}</p>
@@ -307,15 +449,15 @@ export function PageSections({ page }: { page: SitePage }) {
         ))}
       </section>
 
-      {page.form ? (
+      {activePage.form ? (
         <section className="form-band">
           <div className="content-wrap form-layout">
             <div>
               <p className="eyebrow">Start here</p>
               <h2>Request Your Free Consultation</h2>
               <p>
-                Send the project details and 805 Shutters will follow up. Prefer to talk now?{" "}
-                <TrackedPhoneLink location={`${page.path} form copy`}>Call {site.phone}</TrackedPhoneLink>.
+                Send the project details and {isCommercialMode ? "805 Commercial" : "805 Shutters"} will follow up. Prefer to talk now?{" "}
+                <TrackedPhoneLink location={`${activePage.path} form copy`}>Call {site.phone}</TrackedPhoneLink>.
               </p>
             </div>
             <LeadForm />
@@ -326,13 +468,13 @@ export function PageSections({ page }: { page: SitePage }) {
           <div className="content-wrap cta-layout">
             <div>
               <p className="eyebrow">Next step</p>
-              <h2>{page.cta || "Schedule a free consultation"}</h2>
+              <h2>{activePage.cta || "Schedule a free consultation"}</h2>
             </div>
             <div className="hero-actions">
               <Link className="button primary" href="/free-window-treatment-consultation/">
                 Free Consultation
               </Link>
-              <TrackedPhoneLink className="button secondary" location={`${page.path} cta`}>
+              <TrackedPhoneLink className="button secondary" location={`${activePage.path} cta`}>
                 Call {site.phone}
               </TrackedPhoneLink>
             </div>
@@ -343,25 +485,33 @@ export function PageSections({ page }: { page: SitePage }) {
   );
 }
 
-function HomePageSections({ page }: { page: SitePage }) {
+function HomePageSections({ page, commercialMode }: { page: SitePage; commercialMode: boolean }) {
+  const stories = commercialMode ? commercialPortfolioStories : portfolioStories;
+  const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : installedPortfolioPhotos;
+  const sections = commercialMode ? commercialHomeSections : page.sections;
+  const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
+  const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
+  const heroCta = commercialMode ? "Commercial Shade Audit" : "Free In-Home Consultations";
+  const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
+
   return (
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={homeHeroSlides(page)} />
+          <HomeHeroCarousel slides={heroSlides} />
           <div className="home-hero-overlay">
-            <h1 className="home-intro">Proudly serving Ventura County for the last 30 years</h1>
+            <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">
-              <Link className="button primary" href="/book-consultation/">
-                Free In-Home Consultations
+              <Link className="button primary" href={heroHref}>
+                {heroCta}
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="portfolio-scroll" aria-label="805 Shutters portfolio scenes">
-        {portfolioStories.map((story, index) => (
+      <section className="portfolio-scroll" aria-label={commercialMode ? "805 Commercial portfolio scenes" : "805 Shutters portfolio scenes"}>
+        {stories.map((story, index) => (
           <article
             className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
             key={story.title}
@@ -402,11 +552,11 @@ function HomePageSections({ page }: { page: SitePage }) {
 
       <section className="installed-portfolio">
         <div className="content-wrap installed-portfolio-head">
-          <p className="eyebrow">Installed Portfolio</p>
-          <h2>Shutters and shades from recent Ventura County projects</h2>
+          <p className="eyebrow">{commercialMode ? "Commercial Portfolio" : "Installed Portfolio"}</p>
+          <h2>{commercialMode ? "Commercial shade applications for business spaces" : "Shutters and shades from recent Ventura County projects"}</h2>
         </div>
         <div className="content-wrap installed-portfolio-grid">
-          {installedPortfolioPhotos.map((photo) => (
+          {installedPhotos.map((photo) => (
             <figure className="installed-portfolio-card" key={photo.title}>
               {photo.video ? (
                 <video
@@ -432,10 +582,10 @@ function HomePageSections({ page }: { page: SitePage }) {
         </div>
       </section>
 
-      <ServiceGrid />
+      <ServiceGrid commercialMode={commercialMode} />
 
       <section className="content-wrap section-stack">
-        {page.sections.map((section) => (
+        {sections.map((section) => (
           <article className="copy-block" key={section.heading}>
             <h2>{section.heading}</h2>
             <p>{section.body}</p>
@@ -457,7 +607,7 @@ function HomePageSections({ page }: { page: SitePage }) {
             <h2>{page.cta || "Schedule a free consultation"}</h2>
           </div>
           <div className="hero-actions">
-            <AppointmentBooking />
+            <AppointmentBooking label={commercialMode ? "Book a commercial shade audit" : "Book an appointment here"} />
             <TrackedPhoneLink className="button secondary" location="home cta">
               Call {site.phone}
             </TrackedPhoneLink>
