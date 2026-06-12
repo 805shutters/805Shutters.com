@@ -162,7 +162,6 @@ export type CrmBookkeepingEntry = {
   total_amount: number;
   payment_type: CrmBookkeepingPaymentType | null;
   cogs_amount: number;
-  ken_cut_override: number | null;
   sales_owner: CrmBookkeepingSalesOwner | null;
   sales_owner_auth_user_id: string | null;
   sales_owner_set_at: string | null;
@@ -209,30 +208,6 @@ export type CrmBookkeepingCredit = {
   note: string | null;
 };
 
-export type CrmJobExpenseCategory =
-  | "materials"
-  | "installation_extra"
-  | "processing_fee"
-  | "permit"
-  | "repair"
-  | "referral"
-  | "other";
-
-export type CrmJobExpense = {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  bookkeeping_entry_id: string | null;
-  quote_id: string | null;
-  job_id: string | null;
-  label: string;
-  category: CrmJobExpenseCategory;
-  amount: number;
-  incurred_on: string | null;
-  notes: string | null;
-  source: CrmBookkeepingEntrySource;
-};
-
 export type CrmBookkeepingRow = {
   id: string;
   source: CrmBookkeepingEntrySource | "crm_quote";
@@ -252,13 +227,7 @@ export type CrmBookkeepingRow = {
   cogs: number;
   balance: number;
   kenCut: number;
-  kenCutOverride: number | null;
-  expensesTotal: number;
-  expenses: CrmJobExpense[];
-  netProfit: number;
-  mikeShare: number;
-  jessicaShare: number;
-  isProfitFinal: boolean;
+  mikeProfit: number;
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationInvoiceDocumentId: string | null;
   installationInvoiceAmount: number;
@@ -267,8 +236,10 @@ export type CrmBookkeepingRow = {
   installationMatchStatus: CrmInstallationMatchStatus;
   installationMatchedAt: string | null;
   isInstallationComplete: boolean;
-  jessicaSharePaidAt: string | null;
-  jessicaShareOwed: number;
+  remainingProfitBeforeJessica: number;
+  jessicaCommission: number;
+  jessicaCommissionPaidAt: string | null;
+  jessicaCommissionOwed: number;
   manufacturerName: string | null;
   manufacturerOrderRef: string | null;
   manufacturerOrderUrl: string | null;
@@ -309,18 +280,12 @@ export type CrmBookkeepingTotals = {
   cogs: number;
   balance: number;
   kenCut: number;
-  expenses: number;
+  mikeProfit: number;
   installationAmount: number;
-  grossProfit: number;
-  profitMargin: number;
-  netProfit: number;
-  mikeShare: number;
-  jessicaShare: number;
-  jessicaSharePaid: number;
-  jessicaShareOwed: number;
+  jessicaCommission: number;
+  jessicaCommissionPaid: number;
+  jessicaCommissionOwed: number;
   missingCogs: number;
-  missingSalesOwner: number;
-  projectedRows: number;
 };
 
 export type CrmAccountabilityItem = {
@@ -328,7 +293,6 @@ export type CrmAccountabilityItem = {
   type:
     | "needs_order"
     | "missing_cogs"
-    | "assign_sales_owner"
     | "payment_due"
     | "awaiting_product"
     | "ready_to_install"
@@ -341,61 +305,6 @@ export type CrmAccountabilityItem = {
   rowId?: string;
   quoteId?: string | null;
   jobId?: string | null;
-};
-
-export type CrmSalesOpportunity = {
-  id: string;
-  customerName: string;
-  phone: string;
-  city: string | null;
-  productInterest: string;
-  owner: string;
-  status: CrmJobStatus;
-  priority: CrmJob["priority"];
-  value: number;
-  ageDays: number;
-  nextAction: string;
-  dueDate: string | null;
-  dueBucket: "overdue" | "today" | "upcoming" | "unscheduled";
-  score: number;
-  signal: string;
-  blockers: string[];
-};
-
-export type CrmOrderTrackerLane =
-  | "ready_to_order"
-  | "awaiting_product"
-  | "ready_to_install"
-  | "installed_collect"
-  | "financial_review"
-  | "complete";
-
-export type CrmOrderTracker = {
-  id: string;
-  quoteId: string | null;
-  jobId: string | null;
-  customerName: string;
-  quoteNumber: string | null;
-  status: CrmBookkeepingRow["status"];
-  lane: CrmOrderTrackerLane;
-  laneLabel: string;
-  urgency: "normal" | "warning" | "urgent" | "complete";
-  ageDays: number;
-  stageDate: string | null;
-  productInterest: string | null;
-  salesOwner: CrmBookkeepingSalesOwner | null;
-  total: number;
-  paidTotal: number;
-  balance: number;
-  cogs: number;
-  mikeProfit: number;
-  jessicaCommissionOwed: number;
-  manufacturerName: string | null;
-  manufacturerOrderRef: string | null;
-  manufacturerOrderUrl: string | null;
-  manufacturerDocumentUrl: string | null;
-  nextAction: string;
-  blockers: string[];
 };
 
 export type CrmCalendarEvent = {
@@ -411,7 +320,6 @@ export type CrmCalendarEvent = {
   end_at: string;
   location: string | null;
   notes: string | null;
-  meta: Record<string, unknown>;
   customer_name?: string;
 };
 
@@ -430,28 +338,6 @@ export type CrmSummary = {
   contracts: number;
 };
 
-export type CrmSalesSystemSummary = {
-  opportunities: number;
-  hot: number;
-  overdue: number;
-  today: number;
-  quoteNeeded: number;
-  unscheduled: number;
-  pipelineValue: number;
-};
-
-export type CrmOrderSystemSummary = {
-  openOrders: number;
-  readyToOrder: number;
-  awaitingProduct: number;
-  readyToInstall: number;
-  installedCollect: number;
-  financialReview: number;
-  complete: number;
-  orderValue: number;
-  balanceAtRisk: number;
-};
-
 export type CrmDashboardData = {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -463,13 +349,8 @@ export type CrmDashboardData = {
   bookkeepingEntries: CrmBookkeepingEntry[];
   bookkeepingPayments: CrmBookkeepingPayment[];
   bookkeepingCredits: CrmBookkeepingCredit[];
-  bookkeepingExpenses: CrmJobExpense[];
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
   accountability: CrmAccountabilityItem[];
-  salesOpportunities: CrmSalesOpportunity[];
-  salesSystemSummary: CrmSalesSystemSummary;
-  orderTrackers: CrmOrderTracker[];
-  orderSystemSummary: CrmOrderSystemSummary;
   summary: CrmSummary;
 };

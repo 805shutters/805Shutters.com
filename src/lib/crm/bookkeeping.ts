@@ -7,24 +7,11 @@ import {
   CrmBookkeepingRow,
   CrmBookkeepingSalesOwner,
   CrmBookkeepingTotals,
-  CrmInstallationMatchStatus,
-  CrmJobExpense,
   CrmQuote,
   CrmQuoteStatus
 } from "@/lib/crm/types";
 
-// Profit rules (confirmed 2026-06-10):
-// * Net profit = sale total - COGS - Ken cut - installation invoice - job expenses.
-// * Every job's net profit splits 50/50 between Mike and Jessica regardless of
-//   who sold it. The assigned salesperson earns no extra commission; the
-//   assignment drives accountability and the Ken-cut exemption.
-// * Ken cut is 10% of the sale total, except jobs sold on/after the exemption
-//   date that are assigned to Jessica. Rows can pin an explicit override.
-// * Profit is "final" (and Jessica's share owed) only after the installation
-//   invoice is settled and COGS is entered - expenses must be complete before
-//   the split pays out.
-export const KEN_CUT_RATE = 0.1;
-export const KEN_CUT_JESSICA_EXEMPTION_DATE = "2026-06-10";
+export const OWNER_COMMISSION_RATE = 0.1;
 
 const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "sold",
@@ -36,81 +23,23 @@ const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "paid"
 ]);
 
-export function resolveKenCut({
-  total,
-  salesOwner,
-  soldDate,
-  kenCutOverride
-}: {
-  total: number;
-  salesOwner: CrmBookkeepingSalesOwner | null;
-  soldDate: string | null;
-  kenCutOverride: number | null;
-}): number {
-  if (kenCutOverride !== null && Number.isFinite(kenCutOverride)) {
-    return roundCents(Math.max(kenCutOverride, 0));
-  }
-
-  // Undated rows are treated as new sales; historical rows keep the legacy
-  // 10% so imported sheet math never changes retroactively.
-  const soldUnderNewPolicy = soldDate
-    ? Date.parse(soldDate) >= Date.parse(KEN_CUT_JESSICA_EXEMPTION_DATE)
-    : true;
-
-  if (soldUnderNewPolicy && salesOwner === "jessica") return 0;
-  return roundCents(total * KEN_CUT_RATE);
-}
-
-export function calculateJobProfit({
-  total,
-  cogs,
-  kenCut,
-  installationAmount,
-  expensesTotal,
-  installationMatchStatus
-}: {
-  total: number;
-  cogs: number;
-  kenCut: number;
-  installationAmount: number;
-  expensesTotal: number;
-  installationMatchStatus: CrmInstallationMatchStatus;
-}) {
-  const netProfit = roundCents(total - cogs - kenCut - installationAmount - expensesTotal);
-
-  // Integer-cent split so Mike + Jessica always equals net profit exactly.
-  const netCents = Math.round(netProfit * 100);
-  const mikeCents = Math.trunc(netCents / 2);
-  const mikeShare = mikeCents / 100;
-  const jessicaShare = (netCents - mikeCents) / 100;
-
-  const isInstallationSettled = installationMatchStatus === "matched";
-  const isProfitFinal = isInstallationSettled && cogs > 0;
-
-  return { netProfit, mikeShare, jessicaShare, isProfitFinal, isInstallationSettled };
-}
-
 export function buildBookkeepingRows({
   quotes,
   entries,
   payments,
-  credits = [],
-  expenses = []
+  credits = []
 }: {
   quotes: CrmQuote[];
   entries: CrmBookkeepingEntry[];
   payments: CrmBookkeepingPayment[];
   credits?: CrmBookkeepingCredit[];
-  expenses?: CrmJobExpense[];
 }): CrmBookkeepingRow[] {
-  const paymentsByEntryId = groupBy(payments, "bookkeeping_entry_id");
-  const paymentsByQuoteId = groupBy(payments, "quote_id");
-  const creditsToEntryId = groupBy(credits, "to_bookkeeping_entry_id");
-  const creditsFromEntryId = groupBy(credits, "from_bookkeeping_entry_id");
-  const creditsToQuoteId = groupBy(credits, "to_quote_id");
-  const creditsFromQuoteId = groupBy(credits, "from_quote_id");
-  const expensesByEntryId = groupBy(expenses, "bookkeeping_entry_id");
-  const expensesByQuoteId = groupBy(expenses, "quote_id");
+  const paymentsByEntryId = groupPayments(payments, "bookkeeping_entry_id");
+  const paymentsByQuoteId = groupPayments(payments, "quote_id");
+  const creditsToEntryId = groupCredits(credits, "to_bookkeeping_entry_id");
+  const creditsFromEntryId = groupCredits(credits, "from_bookkeeping_entry_id");
+  const creditsToQuoteId = groupCredits(credits, "to_quote_id");
+  const creditsFromQuoteId = groupCredits(credits, "from_quote_id");
   const quoteMetadataEntries = entries.filter((entry) => entry.source === "crm_quote" && entry.quote_id);
   const quoteMetadataByQuoteId = new Map(
     quoteMetadataEntries.map((entry) => [entry.quote_id as string, entry])
@@ -118,50 +47,27 @@ export function buildBookkeepingRows({
   const standaloneEntries = entries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
   const linkedQuoteIds = new Set(standaloneEntries.map((entry) => entry.quote_id).filter(Boolean));
 
-  // A standalone entry that references a quote absorbs that quote's payments,
-  // credits, and expenses too - imported rows often link money to the quote
-  // while the ledger row is the entry.
   const entryRows = standaloneEntries.map((entry) =>
     buildEntryRow(
       entry,
-      dedupeById([
-        ...(paymentsByEntryId.get(entry.id) || []),
-        ...(entry.quote_id ? paymentsByQuoteId.get(entry.quote_id) || [] : [])
-      ]),
-      dedupeById([
-        ...(creditsToEntryId.get(entry.id) || []),
-        ...(entry.quote_id ? creditsToQuoteId.get(entry.quote_id) || [] : [])
-      ]),
-      dedupeById([
-        ...(creditsFromEntryId.get(entry.id) || []),
-        ...(entry.quote_id ? creditsFromQuoteId.get(entry.quote_id) || [] : [])
-      ]),
-      dedupeById([
-        ...(expensesByEntryId.get(entry.id) || []),
-        ...(entry.quote_id ? expensesByQuoteId.get(entry.quote_id) || [] : [])
-      ])
+      paymentsByEntryId.get(entry.id) || [],
+      creditsToEntryId.get(entry.id) || [],
+      creditsFromEntryId.get(entry.id) || []
     )
   );
 
   const quoteRows = quotes
     .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quote.status))
     .filter((quote) => !linkedQuoteIds.has(quote.id))
-    .map((quote) => {
-      const entry = quoteMetadataByQuoteId.get(quote.id) || null;
-      const quoteExpenses = dedupeById([
-        ...(expensesByQuoteId.get(quote.id) || []),
-        ...(entry ? expensesByEntryId.get(entry.id) || [] : [])
-      ]);
-
-      return buildQuoteRow(
+    .map((quote) =>
+      buildQuoteRow(
         quote,
         paymentsByQuoteId.get(quote.id) || [],
         creditsToQuoteId.get(quote.id) || [],
         creditsFromQuoteId.get(quote.id) || [],
-        entry,
-        quoteExpenses
-      );
-    });
+        quoteMetadataByQuoteId.get(quote.id) || null
+      )
+    );
 
   return [...entryRows, ...quoteRows].sort((a, b) => {
     const at = a.soldDate ? Date.parse(a.soldDate) : 0;
@@ -171,7 +77,7 @@ export function buildBookkeepingRows({
 }
 
 export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTotals {
-  const totals = rows.reduce<CrmBookkeepingTotals>(
+  return rows.reduce<CrmBookkeepingTotals>(
     (totals, row) => {
       totals.rows += 1;
       totals.total = roundCents(totals.total + row.total);
@@ -181,18 +87,18 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       totals.cogs = roundCents(totals.cogs + row.cogs);
       totals.balance = roundCents(totals.balance + row.balance);
       totals.kenCut = roundCents(totals.kenCut + row.kenCut);
-      totals.expenses = roundCents(totals.expenses + row.expensesTotal);
-      totals.installationAmount = roundCents(totals.installationAmount + row.installationInvoiceAmount);
-      totals.netProfit = roundCents(totals.netProfit + row.netProfit);
-      totals.mikeShare = roundCents(totals.mikeShare + row.mikeShare);
-      totals.jessicaShare = roundCents(totals.jessicaShare + row.jessicaShare);
-      totals.jessicaSharePaid = roundCents(
-        totals.jessicaSharePaid + (row.jessicaSharePaidAt ? Math.max(row.jessicaShare, 0) : 0)
+      totals.mikeProfit = roundCents(totals.mikeProfit + row.mikeProfit);
+      totals.installationAmount = roundCents(
+        totals.installationAmount + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)
       );
-      totals.jessicaShareOwed = roundCents(totals.jessicaShareOwed + row.jessicaShareOwed);
+      totals.jessicaCommission = roundCents(totals.jessicaCommission + row.jessicaCommission);
+      totals.jessicaCommissionPaid = roundCents(
+        totals.jessicaCommissionPaid + (row.jessicaCommissionPaidAt ? row.jessicaCommission : 0)
+      );
+      totals.jessicaCommissionOwed = roundCents(
+        totals.jessicaCommissionOwed + row.jessicaCommissionOwed
+      );
       if (row.cogs <= 0) totals.missingCogs += 1;
-      if (!row.salesOwner) totals.missingSalesOwner += 1;
-      if (!row.isProfitFinal) totals.projectedRows += 1;
       return totals;
     },
     {
@@ -204,27 +110,14 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       cogs: 0,
       balance: 0,
       kenCut: 0,
-      expenses: 0,
+      mikeProfit: 0,
       installationAmount: 0,
-      grossProfit: 0,
-      profitMargin: 0,
-      netProfit: 0,
-      mikeShare: 0,
-      jessicaShare: 0,
-      jessicaSharePaid: 0,
-      jessicaShareOwed: 0,
-      missingCogs: 0,
-      missingSalesOwner: 0,
-      projectedRows: 0
+      jessicaCommission: 0,
+      jessicaCommissionPaid: 0,
+      jessicaCommissionOwed: 0,
+      missingCogs: 0
     }
   );
-
-  // Gross profit matches the legacy MTS "Total Profit": sale total minus
-  // COGS, installation, and expenses - before the Ken cut and the 50/50 split.
-  totals.grossProfit = roundCents(totals.netProfit + totals.kenCut);
-  totals.profitMargin = totals.total > 0 ? Math.round((totals.grossProfit / totals.total) * 1000) / 10 : 0;
-
-  return totals;
 }
 
 export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccountabilityItem[] {
@@ -233,20 +126,6 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
   for (const row of rows) {
     const owner = row.salesOwner === "jessica" ? "Jessica" : row.salesOwner === "mike" ? "Mike" : "Sales";
     const status = String(row.status);
-
-    if (!row.salesOwner && status !== "legacy") {
-      items.push({
-        id: `${row.id}-assign-owner`,
-        type: "assign_sales_owner",
-        label: "Assign salesperson",
-        detail: `${row.customerName} has no salesperson assigned. Assign Mike or Jessica so the Ken cut and split are correct.`,
-        owner: "Sales",
-        urgency: "warning",
-        rowId: row.id,
-        quoteId: row.quoteId,
-        jobId: row.jobId
-      });
-    }
 
     if ((status === "sold" || status === "approved") && !row.manufacturerOrderRef) {
       items.push({
@@ -319,15 +198,15 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
       });
     }
 
-    if (row.jessicaShareOwed > 0) {
+    if (row.jessicaCommissionOwed > 0) {
       items.push({
         id: `${row.id}-jessica-owed`,
         type: "commission_due",
-        label: "Jessica 50% share owed",
-        detail: `${row.customerName} has ${formatMoney(row.jessicaShareOwed)} owed to Jessica.`,
+        label: "Jessica commission owed",
+        detail: `${row.customerName} has ${formatMoney(row.jessicaCommissionOwed)} owed to Jessica.`,
         owner: "Bookkeeping",
         urgency: "warning",
-        amount: row.jessicaShareOwed,
+        amount: row.jessicaCommissionOwed,
         rowId: row.id,
         quoteId: row.quoteId,
         jobId: row.jobId
@@ -362,33 +241,24 @@ function buildEntryRow(
   entry: CrmBookkeepingEntry,
   payments: CrmBookkeepingPayment[],
   creditsIn: CrmBookkeepingCredit[],
-  creditsOut: CrmBookkeepingCredit[],
-  expenses: CrmJobExpense[]
+  creditsOut: CrmBookkeepingCredit[]
 ): CrmBookkeepingRow {
   const total = Number(entry.total_amount) || 0;
-  const depositPaid = sumAmounts(payments.filter(isDepositPayment));
-  const balancePaid = sumAmounts(payments.filter((payment) => !isDepositPayment(payment)));
+  const depositPaid = sumPayments(payments.filter(isDepositPayment));
+  const balancePaid = sumPayments(payments.filter((payment) => !isDepositPayment(payment)));
   const paidTotal = roundCents(depositPaid + balancePaid);
-  const creditIn = sumAmounts(creditsIn);
-  const creditOut = sumAmounts(creditsOut);
+  const creditIn = sumCredits(creditsIn);
+  const creditOut = sumCredits(creditsOut);
   const cogs = Number(entry.cogs_amount) || 0;
-  const expensesTotal = sumAmounts(expenses);
-  const installationInvoiceAmount = roundCents(Number(entry.installation_invoice_amount) || 0);
-  const kenCutOverride = entry.ken_cut_override === null ? null : Number(entry.ken_cut_override);
-  const salesOwner = entry.sales_owner;
-  const kenCut = resolveKenCut({
-    total,
-    salesOwner,
-    soldDate: entry.sold_date,
-    kenCutOverride
-  });
-  const profit = calculateJobProfit({
+  const kenCut = roundCents(total * OWNER_COMMISSION_RATE);
+  const installation = getInstallationFields(entry);
+  const profit = calculateBookkeepingProfit({
     total,
     cogs,
     kenCut,
-    installationAmount: installationInvoiceAmount,
-    expensesTotal,
-    installationMatchStatus: entry.installation_match_status
+    salesOwner: entry.sales_owner,
+    installationAmount: installation.invoiceAmount,
+    isInstallationComplete: installation.isComplete
   });
 
   return {
@@ -410,23 +280,19 @@ function buildEntryRow(
     cogs,
     balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
     kenCut,
-    kenCutOverride,
-    expensesTotal,
-    expenses,
-    netProfit: profit.netProfit,
-    mikeShare: profit.mikeShare,
-    jessicaShare: profit.jessicaShare,
-    isProfitFinal: profit.isProfitFinal,
-    salesOwner,
+    mikeProfit: profit.mikeProfit,
+    salesOwner: entry.sales_owner,
     installationInvoiceDocumentId: entry.installation_invoice_document_id,
-    installationInvoiceAmount,
+    installationInvoiceAmount: installation.invoiceAmount,
     installationInvoiceNumber: entry.installation_invoice_number,
     installationInvoiceUrl: entry.installation_invoice_url,
     installationMatchStatus: entry.installation_match_status,
     installationMatchedAt: entry.installation_matched_at,
-    isInstallationComplete: profit.isInstallationSettled,
-    jessicaSharePaidAt: entry.jessica_commission_paid_at,
-    jessicaShareOwed: jessicaShareOwed(profit, entry.jessica_commission_paid_at),
+    isInstallationComplete: installation.isComplete,
+    remainingProfitBeforeJessica: profit.remainingProfitBeforeJessica,
+    jessicaCommission: profit.jessicaCommission,
+    jessicaCommissionPaidAt: entry.jessica_commission_paid_at,
+    jessicaCommissionOwed: entry.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
     manufacturerName: entry.manufacturer_name,
     manufacturerOrderRef: entry.manufacturer_order_ref,
     manufacturerOrderUrl: entry.manufacturer_order_url,
@@ -444,35 +310,28 @@ function buildQuoteRow(
   payments: CrmBookkeepingPayment[],
   creditsIn: CrmBookkeepingCredit[],
   creditsOut: CrmBookkeepingCredit[],
-  entry: CrmBookkeepingEntry | null,
-  expenses: CrmJobExpense[]
+  entry: CrmBookkeepingEntry | null
 ): CrmBookkeepingRow {
   const total = Number(quote.quote_total) || 0;
   const cogs = Number(entry?.cogs_amount ?? quote.materials_cost) || 0;
-  const explicitDepositPaid = sumAmounts(payments.filter(isDepositPayment));
-  const explicitBalancePaid = sumAmounts(payments.filter((payment) => !isDepositPayment(payment)));
-  // Only assume the required deposit was collected when no payments are
-  // recorded at all; otherwise the recorded payments are the truth.
-  const depositPaid = payments.length ? explicitDepositPaid : Number(quote.deposit_required) || 0;
-  const balancePaid = explicitBalancePaid;
+  const explicitPaid = sumPayments(payments);
+  const explicitDepositPaid = sumPayments(payments.filter(isDepositPayment));
+  const explicitBalancePaid = sumPayments(payments.filter((payment) => !isDepositPayment(payment)));
+  const depositPaid = explicitPaid > 0 && explicitDepositPaid > 0 ? explicitDepositPaid : Number(quote.deposit_required) || 0;
+  const balancePaid = explicitPaid > 0 ? explicitBalancePaid : 0;
   const paidTotal = roundCents(depositPaid + balancePaid);
-  const creditIn = sumAmounts(creditsIn);
-  const creditOut = sumAmounts(creditsOut);
-  const expensesTotal = sumAmounts(expenses);
-  const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
+  const creditIn = sumCredits(creditsIn);
+  const creditOut = sumCredits(creditsOut);
+  const kenCut = roundCents(total * OWNER_COMMISSION_RATE);
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
-  const installationInvoiceAmount = roundCents(Number(entry?.installation_invoice_amount) || 0);
-  const installationMatchStatus = entry?.installation_match_status || "unmatched";
-  const kenCutOverride =
-    entry && entry.ken_cut_override !== null ? Number(entry.ken_cut_override) : null;
-  const kenCut = resolveKenCut({ total, salesOwner, soldDate, kenCutOverride });
-  const profit = calculateJobProfit({
+  const installation = getInstallationFields(entry);
+  const profit = calculateBookkeepingProfit({
     total,
     cogs,
     kenCut,
-    installationAmount: installationInvoiceAmount,
-    expensesTotal,
-    installationMatchStatus
+    salesOwner,
+    installationAmount: installation.invoiceAmount,
+    isInstallationComplete: installation.isComplete
   });
 
   return {
@@ -482,7 +341,7 @@ function buildQuoteRow(
     jobId: quote.job_id,
     customerName: quote.customer_name || entry?.customer_name || "Linked job",
     quoteNumber: quote.quote_number,
-    soldDate,
+    soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at,
     total,
     depositDue: roundCents(total * 0.5),
     depositPaid,
@@ -494,23 +353,19 @@ function buildQuoteRow(
     cogs,
     balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
     kenCut,
-    kenCutOverride,
-    expensesTotal,
-    expenses,
-    netProfit: profit.netProfit,
-    mikeShare: profit.mikeShare,
-    jessicaShare: profit.jessicaShare,
-    isProfitFinal: profit.isProfitFinal,
+    mikeProfit: profit.mikeProfit,
     salesOwner,
     installationInvoiceDocumentId: entry?.installation_invoice_document_id || null,
-    installationInvoiceAmount,
+    installationInvoiceAmount: installation.invoiceAmount,
     installationInvoiceNumber: entry?.installation_invoice_number || null,
     installationInvoiceUrl: entry?.installation_invoice_url || null,
-    installationMatchStatus,
+    installationMatchStatus: entry?.installation_match_status || "unmatched",
     installationMatchedAt: entry?.installation_matched_at || null,
-    isInstallationComplete: profit.isInstallationSettled,
-    jessicaSharePaidAt: entry?.jessica_commission_paid_at || null,
-    jessicaShareOwed: jessicaShareOwed(profit, entry?.jessica_commission_paid_at || null),
+    isInstallationComplete: installation.isComplete,
+    remainingProfitBeforeJessica: profit.remainingProfitBeforeJessica,
+    jessicaCommission: profit.jessicaCommission,
+    jessicaCommissionPaidAt: entry?.jessica_commission_paid_at || null,
+    jessicaCommissionOwed: entry?.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
     manufacturerName: entry?.manufacturer_name || quote.manufacturer_name,
     manufacturerOrderRef: entry?.manufacturer_order_ref || quote.manufacturer_order_ref,
     manufacturerOrderUrl: entry?.manufacturer_order_url || quote.manufacturer_order_url,
@@ -523,36 +378,37 @@ function buildQuoteRow(
   };
 }
 
-function jessicaShareOwed(
-  profit: ReturnType<typeof calculateJobProfit>,
-  paidAt: string | null
-): number {
-  if (!profit.isProfitFinal || paidAt) return 0;
-  return Math.max(profit.jessicaShare, 0);
-}
-
-function groupBy<T extends Record<string, unknown>>(items: T[], key: keyof T) {
-  return items.reduce<Map<string, T[]>>((map, item) => {
-    const value = item[key];
-    if (typeof value !== "string" || !value) return map;
+function groupPayments(payments: CrmBookkeepingPayment[], key: "bookkeeping_entry_id" | "quote_id") {
+  return payments.reduce<Map<string, CrmBookkeepingPayment[]>>((map, payment) => {
+    const value = payment[key];
+    if (!value) return map;
     const current = map.get(value) || [];
-    current.push(item);
+    current.push(payment);
     map.set(value, current);
     return map;
   }, new Map());
 }
 
-function dedupeById<T extends { id: string }>(items: T[]): T[] {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
+function groupCredits(
+  credits: CrmBookkeepingCredit[],
+  key: "from_bookkeeping_entry_id" | "from_quote_id" | "to_bookkeeping_entry_id" | "to_quote_id"
+) {
+  return credits.reduce<Map<string, CrmBookkeepingCredit[]>>((map, credit) => {
+    const value = credit[key];
+    if (!value) return map;
+    const current = map.get(value) || [];
+    current.push(credit);
+    map.set(value, current);
+    return map;
+  }, new Map());
 }
 
-function sumAmounts(items: Array<{ amount: number }>) {
-  return roundCents(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0));
+function sumPayments(payments: CrmBookkeepingPayment[]) {
+  return roundCents(payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0));
+}
+
+function sumCredits(credits: CrmBookkeepingCredit[]) {
+  return roundCents(credits.reduce((sum, credit) => sum + (Number(credit.amount) || 0), 0));
 }
 
 function isDepositPayment(payment: CrmBookkeepingPayment) {
@@ -561,6 +417,44 @@ function isDepositPayment(payment: CrmBookkeepingPayment) {
 
 function calculateAppliedRevenue(paidTotal: number, creditIn: number, creditOut: number) {
   return roundCents(paidTotal + creditIn - creditOut);
+}
+
+function getInstallationFields(entry: CrmBookkeepingEntry | null) {
+  const invoiceAmount = roundCents(Number(entry?.installation_invoice_amount) || 0);
+  const isComplete =
+    Boolean(entry?.installation_invoice_document_id || invoiceAmount > 0) &&
+    entry?.installation_match_status === "matched";
+
+  return { invoiceAmount, isComplete };
+}
+
+function calculateBookkeepingProfit({
+  total,
+  cogs,
+  kenCut,
+  salesOwner,
+  installationAmount,
+  isInstallationComplete
+}: {
+  total: number;
+  cogs: number;
+  kenCut: number;
+  salesOwner: CrmBookkeepingSalesOwner | null;
+  installationAmount: number;
+  isInstallationComplete: boolean;
+}) {
+  const installationCost = isInstallationComplete ? installationAmount : 0;
+  const remainingProfitBeforeJessica = roundCents(total - cogs - kenCut - installationCost);
+  const jessicaCommission =
+    salesOwner === "jessica" && isInstallationComplete
+      ? roundCents(Math.max(remainingProfitBeforeJessica, 0) * 0.5)
+      : 0;
+
+  return {
+    remainingProfitBeforeJessica,
+    jessicaCommission,
+    mikeProfit: roundCents(remainingProfitBeforeJessica - jessicaCommission)
+  };
 }
 
 function normalizeSalesOwner(value: string | null | undefined): CrmBookkeepingSalesOwner | null {
@@ -583,5 +477,5 @@ function formatMoney(value: number) {
 }
 
 function roundCents(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
+  return Math.round(n * 100) / 100;
 }

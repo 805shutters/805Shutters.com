@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  bookingAvailabilityOwner,
-  bookingEndIso,
-  buildBookingAvailability,
-  monthRangeUtc,
-  zonedTimeToUtc,
-  type BookingAvailabilitySlot
-} from "@/lib/booking/availability";
+import { bookingEndIso, buildBookingAvailability, monthRangeUtc, zonedTimeToUtc } from "@/lib/booking/availability";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmCalendarEvent } from "@/lib/crm/types";
-import { dispatchCrmAppointmentAlerts } from "@/lib/crm/appointment-alerts";
-import { recordCrmActivity } from "@/lib/crm/backend";
-import { syncCrmCalendarEventToGoogle } from "@/lib/crm/google-calendar";
 
 export const runtime = "nodejs";
 
@@ -24,30 +14,10 @@ type BookingPayload = {
   windowCount?: string | number;
   email?: string;
   notes?: string;
-  productInterest?: string;
-  productInterestLabel?: string;
-};
-
-const productInterestLabels: Record<string, string> = {
-  shutters: "Shutters",
-  shades: "Shades",
-  blinds: "Blinds",
-  drapery: "Drapery",
-  exterior_shades: "Exterior shades",
-  commercial: "Commercial coverings",
-  unknown: "Unknown"
 };
 
 function clean(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeProductInterest(value: string) {
-  return productInterestLabels[value] ? value : "";
-}
-
-function labelForProductInterest(value: string, fallback: string) {
-  return productInterestLabels[value] || fallback || "Unknown";
 }
 
 async function sendBookingAlert(payload: Record<string, unknown>) {
@@ -83,69 +53,6 @@ function formatAppointmentForSms(startAt: string) {
     hour: "numeric",
     minute: "2-digit"
   }).format(new Date(startAt));
-}
-
-async function sendEmailConfirmation({
-  email,
-  name,
-  startAt,
-  address,
-  productInterestLabel
-}: {
-  email: string;
-  name: string;
-  startAt: string;
-  address: string;
-  productInterestLabel: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.BOOKING_EMAIL_FROM;
-  const replyTo = process.env.BOOKING_EMAIL_REPLY_TO;
-
-  if (!apiKey || !fromEmail || !email) {
-    return false;
-  }
-
-  const appointmentTime = formatAppointmentForSms(startAt);
-  const text = [
-    `Hi ${name},`,
-    "",
-    `Your free in-home consultation with 805 Shutters is confirmed for ${appointmentTime}.`,
-    `Address: ${address}`,
-    `Product interest: ${productInterestLabel}`,
-    "",
-    "We will review your goals, measurements, product fit, privacy needs, light control, and design direction.",
-    "If anything changes, reply to this email or call/text 805-806-9344.",
-    "",
-    "805 Shutters"
-  ].join("\n");
-
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [email],
-        subject: "Your 805 Shutters consultation is confirmed",
-        text,
-        reply_to: replyTo || undefined
-      })
-    });
-
-    if (!response.ok) {
-      console.error(await response.text());
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
 }
 
 async function sendSmsConfirmation({
@@ -214,22 +121,16 @@ export async function POST(request: NextRequest) {
   const email = clean(payload.email);
   const notes = clean(payload.notes);
   const windowCount = Number(payload.windowCount || 0);
-  const productInterest = normalizeProductInterest(clean(payload.productInterest));
-  const productInterestLabel = labelForProductInterest(productInterest, clean(payload.productInterestLabel));
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return NextResponse.json({ message: "Choose an appointment date and time." }, { status: 400 });
   }
 
-  if (!name || !phone || !address || !email) {
+  if (!name || !phone || !address) {
     return NextResponse.json(
-      { message: "Full name, phone, address, and email are required." },
+      { message: "Full name, phone, and address are required." },
       { status: 400 }
     );
-  }
-
-  if (!productInterest) {
-    return NextResponse.json({ message: "Choose a product type for the consultation." }, { status: 400 });
   }
 
   const supabase = getSupabaseServiceClient();
@@ -242,31 +143,18 @@ export async function POST(request: NextRequest) {
 
   const month = date.slice(0, 7);
   const range = monthRangeUtc(month);
-  const [eventsResult, slotsResult] = await Promise.all([
-    supabase
-      .from("crm_calendar_events")
-      .select("*")
-      .lt("start_at", range.end)
-      .gt("end_at", range.start)
-      .neq("status", "canceled"),
-    supabase
-      .from("crm_availability_slots")
-      .select("*")
-      .eq("owner", bookingAvailabilityOwner)
-      .eq("status", "available")
-      .gte("start_at", range.start)
-      .lt("start_at", range.end)
-  ]);
+  const { data: existingEvents, error: eventsError } = await supabase
+    .from("crm_calendar_events")
+    .select("*")
+    .gte("start_at", range.start)
+    .lt("start_at", range.end)
+    .neq("status", "canceled");
 
-  if (eventsResult.error || slotsResult.error) {
+  if (eventsError) {
     return NextResponse.json({ message: "Calendar could not be checked." }, { status: 502 });
   }
 
-  const availability = buildBookingAvailability(
-    month,
-    (eventsResult.data || []) as CrmCalendarEvent[],
-    (slotsResult.data || []) as BookingAvailabilitySlot[]
-  );
+  const availability = buildBookingAvailability(month, (existingEvents || []) as CrmCalendarEvent[]);
   const selectedDay = availability.days.find((day) => day.date === date);
   const selectedSlot = selectedDay?.slots.find((slot) => slot.time === time);
 
@@ -278,7 +166,6 @@ export async function POST(request: NextRequest) {
   const endAt = bookingEndIso(date, time);
   const bookingNotes = [
     `Self-booked appointment.`,
-    `Product interest: ${productInterestLabel}`,
     windowCount ? `Windows: ${windowCount}` : null,
     notes ? `Customer notes: ${notes}` : null
   ]
@@ -292,15 +179,13 @@ export async function POST(request: NextRequest) {
       status: "booked",
       name,
       phone,
-      email,
-      interest: productInterest,
+      email: email || null,
+      interest: "appointment",
       notes: bookingNotes,
       page_path: "/",
       meta: {
         address,
         windowCount: windowCount || null,
-        productInterest,
-        productInterestLabel,
         appointmentDate: date,
         appointmentTime: time,
         userAgent: request.headers.get("user-agent"),
@@ -324,9 +209,9 @@ export async function POST(request: NextRequest) {
       priority: "high",
       customer_name: name,
       phone,
-      email,
+      email: email || null,
       address,
-      product_interest: productInterest,
+      product_interest: "consultation",
       sales_owner: "Unassigned",
       next_action: "Review self-booking and prepare appointment",
       next_action_due: date,
@@ -335,8 +220,6 @@ export async function POST(request: NextRequest) {
       notes: bookingNotes,
       meta: {
         windowCount: windowCount || null,
-        productInterest,
-        productInterestLabel,
         bookingSource: "website"
       }
     })
@@ -354,95 +237,48 @@ export async function POST(request: NextRequest) {
       title: `${name} consultation`,
       event_type: "sales_consult",
       status: "scheduled",
-      assigned_to: bookingAvailabilityOwner,
+      assigned_to: "Unassigned",
       start_at: startAt,
       end_at: endAt,
       location: address,
       notes: bookingNotes,
       meta: {
         windowCount: windowCount || null,
-        bookingSource: "website",
-        availabilityOwner: bookingAvailabilityOwner,
-        productInterest,
-        productInterestLabel,
-        customer_name: name,
-        customer_phone: phone
+        bookingSource: "website"
       }
     })
-    .select("*")
+    .select("id")
     .single();
 
   if (calendarError) {
     return NextResponse.json({ message: "Calendar booking could not be saved." }, { status: 502 });
   }
 
-  let savedCalendarEvent = calendarEvent as CrmCalendarEvent;
-  const googleSync = await syncCrmCalendarEventToGoogle(supabase, savedCalendarEvent);
-  savedCalendarEvent = googleSync.event;
-
-  if (googleSync.configured) {
-    await recordCrmActivity(supabase, { email: "website@805shutters.com" }, {
-      entityType: "calendar_event",
-      entityId: savedCalendarEvent.id,
-      action: "google_calendar_sync",
-      metadata: {
-        jobId: job.id,
-        source: "website_self_booking",
-        synced: googleSync.synced,
-        skippedReason: googleSync.skippedReason || null,
-        googleEventId: googleSync.googleEventId || null,
-        error: googleSync.error || null
-      }
-    });
-  }
-
   const smsConfirmationSent = await sendSmsConfirmation({
     phone,
     startAt
   });
-  const emailConfirmationSent = await sendEmailConfirmation({
-    email,
-    name,
-    startAt,
-    address,
-    productInterestLabel
-  });
-  const internalAlertResult = await dispatchCrmAppointmentAlerts(savedCalendarEvent);
 
   await sendBookingAlert({
     type: "805_self_booking",
     leadId: lead.id,
     jobId: job.id,
-    calendarEventId: savedCalendarEvent.id,
+    calendarEventId: calendarEvent.id,
     name,
     phone,
     email,
     address,
     windowCount,
-    productInterest,
-    productInterestLabel,
     appointmentStart: startAt,
     appointmentEnd: endAt,
-    smsConfirmationSent,
-    emailConfirmationSent,
-    internalAlertResult,
-    googleCalendarSync: {
-      configured: googleSync.configured,
-      synced: googleSync.synced,
-      skippedReason: googleSync.skippedReason || null,
-      googleEventId: googleSync.googleEventId || null,
-      error: googleSync.error || null
-    }
+    smsConfirmationSent
   });
 
   return NextResponse.json({
     message: "Appointment booked.",
     leadId: lead.id,
     jobId: job.id,
-    calendarEventId: savedCalendarEvent.id,
-    smsConfirmationSent,
-    emailConfirmationSent,
-    internalSmsAlertsSent: internalAlertResult.smsSent,
-    googleCalendarSynced: googleSync.synced
+    calendarEventId: calendarEvent.id,
+    smsConfirmationSent
   });
 }

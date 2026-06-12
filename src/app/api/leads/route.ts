@@ -9,14 +9,8 @@ type LeadPayload = {
   phone?: string;
   email?: string;
   city?: string;
-  address?: string;
   interest?: string;
-  projectInterest?: string;
   notes?: string;
-  preferredTimes?: string;
-  requestedDate?: string;
-  requestedTime?: string;
-  leadContext?: string;
   pagePath?: string;
   utm_source?: string;
   utm_medium?: string;
@@ -26,10 +20,6 @@ type LeadPayload = {
   company?: string;
 };
 
-function clean(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as LeadPayload;
 
@@ -37,20 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Lead received." });
   }
 
-  const name = clean(payload.name);
-  const phone = clean(payload.phone);
-  const email = clean(payload.email);
-  const city = clean(payload.city);
-  const address = clean(payload.address);
-  const notes = clean(payload.notes);
-  const preferredTimes = clean(payload.preferredTimes);
-  const requestedDate = clean(payload.requestedDate);
-  const requestedTime = clean(payload.requestedTime);
-  const projectInterest = clean(payload.projectInterest);
-  const isBookingFallback = payload.leadContext === "booking_fallback";
-  const interest = clean(payload.interest) || (isBookingFallback ? "schedule_request" : "consultation");
-
-  if (!name || !phone) {
+  if (!payload.name || !payload.phone) {
     return NextResponse.json(
       { message: "Name and phone are required." },
       { status: 400 }
@@ -65,23 +42,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const schedulingNotes = [
-    notes || null,
-    isBookingFallback && preferredTimes ? `Preferred days/times: ${preferredTimes}` : null,
-    isBookingFallback && requestedDate ? `Calendar date viewed: ${requestedDate}` : null,
-    isBookingFallback && requestedTime ? `Calendar time viewed: ${requestedTime}` : null
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-
   const leadRecord = {
-    source: isBookingFallback ? "booking_fallback" : "website",
-    name,
-    phone,
-    email: email || null,
-    city: city || null,
-    interest,
-    notes: schedulingNotes || null,
+    source: "website",
+    name: payload.name.trim(),
+    phone: payload.phone.trim(),
+    email: payload.email?.trim() || null,
+    city: payload.city?.trim() || null,
+    interest: payload.interest || "consultation",
+    notes: payload.notes?.trim() || null,
     page_path: payload.pagePath || null,
     utm_source: payload.utm_source || null,
     utm_medium: payload.utm_medium || null,
@@ -92,13 +60,7 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent"),
       referrer: request.headers.get("referer"),
       source: "805shutters.com",
-      receivedAt: new Date().toISOString(),
-      leadContext: payload.leadContext || null,
-      address: address || null,
-      preferredTimes: preferredTimes || null,
-      requestedDate: requestedDate || null,
-      requestedTime: requestedTime || null,
-      projectInterest: projectInterest || null
+      receivedAt: new Date().toISOString()
     }
   };
 
@@ -113,62 +75,6 @@ export async function POST(request: NextRequest) {
       { message: "Lead storage failed." },
       { status: 502 }
     );
-  }
-
-  let crmJobId: string | null = null;
-
-  if (isBookingFallback) {
-    const { data: job, error: jobError } = await supabase
-      .from("crm_jobs")
-      .insert({
-        source: "booking_fallback",
-        lead_id: data.id,
-        status: "follow_up",
-        priority: "high",
-        customer_name: name,
-        phone,
-        email: email || null,
-        address: address || null,
-        city: city || null,
-        product_interest: projectInterest || "consultation",
-        sales_owner: "Unassigned",
-        next_action: "Call/text customer to find a consultation time",
-        next_action_due: new Date().toISOString().slice(0, 10),
-        notes: schedulingNotes || "Customer did not find a calendar time that worked.",
-        meta: {
-          preferredTimes: preferredTimes || null,
-          requestedDate: requestedDate || null,
-          requestedTime: requestedTime || null,
-          bookingFallback: true
-        }
-      })
-      .select("id")
-      .single();
-
-    if (jobError) {
-      console.error(jobError);
-    } else {
-      crmJobId = job.id;
-    }
-
-    const { error: eventError } = await supabase
-      .from("lead_events")
-      .insert({
-        lead_id: data.id,
-        event_type: "booking_fallback_request",
-        note: "Customer requested help finding a consultation time.",
-        meta: {
-          crmJobId,
-          preferredTimes: preferredTimes || null,
-          requestedDate: requestedDate || null,
-          requestedTime: requestedTime || null,
-          projectInterest: projectInterest || null
-        }
-      });
-
-    if (eventError) {
-      console.error(eventError);
-    }
   }
 
   try {
@@ -193,7 +99,6 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           id: data.id,
-          crmJobId,
           ...leadRecord
         })
       });
@@ -202,5 +107,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ id: data.id, crmJobId, message: "Lead received." });
+  return NextResponse.json({ id: data.id, message: "Lead received." });
 }

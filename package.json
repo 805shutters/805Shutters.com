@@ -11,7 +11,7 @@
     "deploy:vercel": "node scripts/deploy_vercel.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
     "audit:site": "python3 scripts/audit_site.py --base-url https://www.805shutters.com --output reports/site-audit.json --markdown reports/site-audit.md --post-sample 20 --workers 8",

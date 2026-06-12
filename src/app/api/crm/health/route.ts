@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllowedCrmEmails } from "@/lib/crm/auth";
-import { getGoogleCalendarStatus } from "@/lib/crm/google-calendar";
 import { getCrmGoogleOAuthStatus } from "@/lib/crm/oauth";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -14,7 +13,6 @@ const requiredTables = [
   "crm_quote_bookkeeping_payments",
   "crm_quote_bookkeeping_credits",
   "crm_calendar_events",
-  "crm_availability_slots",
   "crm_customers",
   "crm_customer_products",
   "crm_customer_contracts",
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   if (supabase) {
     for (const table of requiredTables) {
-      const { error } = await supabase.from(table).select("id").limit(1);
+      const { error } = await supabase.from(table).select("*", { count: "exact", head: true });
       tableChecks.push({
         table,
         ready: !error,
@@ -40,7 +38,6 @@ export async function GET(request: NextRequest) {
   }
 
   const googleOAuth = await getCrmGoogleOAuthStatus(new URL("/crm", request.nextUrl.origin).toString());
-  const googleCalendar = getGoogleCalendarStatus();
 
   const authConfigured = Boolean(supabaseUrl && anonKey);
   const databaseConfigured = Boolean(supabaseUrl && serviceRoleKey);
@@ -52,8 +49,6 @@ export async function GET(request: NextRequest) {
     databaseConfigured,
     googleProviderEnabled: googleOAuth.enabled,
     googleProviderError: googleOAuth.error,
-    googleCalendarConfigured: googleCalendar.configured,
-    googleCalendarId: googleCalendar.calendarId,
     migrationsReady,
     supabaseHost: supabaseUrl ? new URL(supabaseUrl).hostname : null,
     allowedEmailsConfigured: getAllowedCrmEmails().length > 0,
