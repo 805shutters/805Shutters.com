@@ -356,13 +356,14 @@ body.commercial-mode .brand-text-logo-name {
 }
 
 .category-nav-products {
+  --category-product-gap: clamp(20px, 2.4vw, 36px);
   position: absolute;
   top: calc(50% + 0.85em);
   left: 50%;
   z-index: 5;
   width: max-content;
   min-width: 0;
-  padding-top: 20px;
+  padding-top: var(--category-product-gap);
   color: rgba(255, 255, 255, 0.92);
   opacity: 0;
   pointer-events: none;
@@ -391,7 +392,7 @@ body.commercial-mode .brand-text-logo-name {
 .category-nav-product-list {
   display: grid;
   justify-items: center;
-  gap: clamp(20px, 2.4vw, 36px);
+  gap: var(--category-product-gap);
 }
 
 .category-nav-product-button {
@@ -407,6 +408,7 @@ body.commercial-mode .brand-text-logo-name {
   color: inherit;
   cursor: pointer;
   font: inherit;
+  font-size: 1.5em;
   letter-spacing: inherit;
   line-height: inherit;
   text-align: center;
@@ -425,18 +427,18 @@ body.commercial-mode .brand-text-logo-name {
 .category-nav-product-button::before {
   content: "";
   position: absolute;
-  inset: -0.32em -0.68em;
+  inset: -0.38em -0.78em;
   z-index: -1;
   border-radius: 999px;
   background:
     radial-gradient(
       ellipse at center,
-      rgba(10, 8, 6, 0.58) 0%,
-      rgba(10, 8, 6, 0.42) 42%,
+      rgba(10, 8, 6, 0.66) 0%,
+      rgba(10, 8, 6, 0.5) 42%,
       rgba(10, 8, 6, 0) 78%
     );
-  filter: blur(10px);
-  opacity: 0.95;
+  filter: blur(14px);
+  opacity: 1;
   pointer-events: none;
 }
 
