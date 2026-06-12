@@ -15,6 +15,7 @@ type HomeHeroCarouselProps = {
 export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [freezeOnFirstSlide, setFreezeOnFirstSlide] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,6 +65,25 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
     });
   }, [activeIndex, freezeOnFirstSlide]);
 
+  useEffect(() => {
+    const showPreview = (event: Event) => {
+      const image = (event as CustomEvent<{ image?: string }>).detail?.image;
+
+      if (image) {
+        setPreviewImage(image);
+      }
+    };
+    const clearPreview = () => setPreviewImage(null);
+
+    window.addEventListener("805:hero-preview", showPreview);
+    window.addEventListener("805:hero-preview-clear", clearPreview);
+
+    return () => {
+      window.removeEventListener("805:hero-preview", showPreview);
+      window.removeEventListener("805:hero-preview-clear", clearPreview);
+    };
+  }, []);
+
   const renderedSlides = freezeOnFirstSlide ? slides.slice(0, 1) : slides;
 
   return (
@@ -79,6 +99,11 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
           )}
         </div>
       ))}
+      <div
+        className={`home-hero-preview${previewImage ? " is-active" : ""}`}
+        key={previewImage || "empty-preview"}
+        style={previewImage ? { backgroundImage: `url(${previewImage})` } : undefined}
+      />
     </div>
   );
 }

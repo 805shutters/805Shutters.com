@@ -1,18 +1,87 @@
+"use client";
+
 import { Fragment } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { site } from "@/lib/site-data";
 import { HeaderScrollState } from "./HeaderScrollState";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 
 const categoryItems = [
-  ["Blinds", "/blinds/"],
-  ["Shades", "/shades/"],
-  ["Drapery", "/drapery/"],
-  ["Shutters", "/shutters/"],
-  ["Exterior Shades", "/exterior-shades/"]
+  {
+    label: "Blinds",
+    href: "/blinds/",
+    products: [
+      { label: "Faux Wood", image: "/images/805-portfolio-blinds-office.jpg" },
+      { label: "Premium Wood", image: "/ads/805-custom-blinds-1x1.jpg" },
+      { label: "Vertical Blinds", image: "/ads/805-custom-blinds-9x16.jpg" },
+      { label: "Aluminum Blinds", image: "/images/805-portfolio-blinds-office.jpg" }
+    ]
+  },
+  {
+    label: "Shades",
+    href: "/shades/",
+    products: [
+      { label: "Roller Shades", image: "/images/editorial-scroll/coastal-living-roller-shades.jpg" },
+      { label: "Honeycomb Shades", image: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-wide.jpg" },
+      { label: "Layered Shades", image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg" },
+      { label: "Roman Shades", image: "/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-20-roman-shades-white-living-room.jpg" },
+      { label: "Natural Shades", image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg" },
+      { label: "Bamboo Shades", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" },
+      { label: "Sheer Shades", image: "/images/805-portfolio-shades-bedroom.jpg" }
+    ]
+  },
+  {
+    label: "Drapery",
+    href: "/drapery/",
+    products: [
+      { label: "Ripplefold Drapery", image: "/images/805-portfolio-drapery-living-room.jpg" },
+      { label: "Pinch Pleat Drapery", image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg" },
+      { label: "French Pleat Drapery", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" },
+      { label: "Grommet Drapery", image: "/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-19-roman-shades-coastal-striped.jpg" },
+      { label: "Rod Pocket Drapery", image: "/images/805-portfolio-drapery-living-room.jpg" },
+      { label: "Goblet Pleat Drapery", image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg" },
+      { label: "Inverted Box Pleat Drapery", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" }
+    ]
+  },
+  {
+    label: "Shutters",
+    href: "/shutters/",
+    products: [
+      { label: "Premium Stained Wood", image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg" },
+      { label: "Painted Wood", image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg" },
+      { label: "Poly Composite", image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg" },
+      { label: "MDF Composite", image: "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg" }
+    ]
+  },
+  {
+    label: "Exterior Shades",
+    href: "/exterior-shades/",
+    products: [
+      { label: "Motorized Patio", image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg" },
+      { label: "Non Motorized Patio", image: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg" }
+    ]
+  }
 ];
 
 export function SiteHeader() {
+  const pathname = usePathname();
+  const isHome = pathname === "/";
+
+  const showHeroPreview = (image: string) => {
+    if (!isHome) {
+      return;
+    }
+
+    window.dispatchEvent(new CustomEvent("805:hero-preview", { detail: { image } }));
+  };
+
+  const clearHeroPreview = () => {
+    if (isHome) {
+      window.dispatchEvent(new CustomEvent("805:hero-preview-clear"));
+    }
+  };
+
   return (
     <header className="site-header-shell">
       <HeaderScrollState />
@@ -68,13 +137,57 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <nav id="primary-categories" className="category-nav" aria-label="Primary navigation">
-        {categoryItems.map(([label, href], index) => (
-          <Fragment key={href}>
+      <nav
+        id="primary-categories"
+        className="category-nav category-nav--portfolio"
+        aria-label="Primary navigation"
+        onMouseLeave={clearHeroPreview}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            clearHeroPreview();
+          }
+        }}
+      >
+        {categoryItems.map((item, index) => (
+          <Fragment key={item.href}>
             {index > 0 ? <span className="category-dot" aria-hidden="true">•</span> : null}
-            <Link href={href}>
-              {label}
-            </Link>
+            <span
+              className="category-nav-item"
+              onMouseEnter={() => {
+                showHeroPreview(item.products[0].image);
+              }}
+              onPointerEnter={() => {
+                showHeroPreview(item.products[0].image);
+              }}
+            >
+              <Link
+                href={item.href}
+                onFocus={() => {
+                  showHeroPreview(item.products[0].image);
+                }}
+              >
+                {item.label}
+              </Link>
+              {isHome ? (
+                <span className="category-nav-products" aria-label={`${item.label} product types`}>
+                  <span className="category-nav-product-list">
+                    {item.products.map((product) => (
+                      <button
+                        className="category-nav-product-button"
+                        key={product.label}
+                        type="button"
+                        onClick={() => showHeroPreview(product.image)}
+                        onFocus={() => showHeroPreview(product.image)}
+                        onMouseEnter={() => showHeroPreview(product.image)}
+                        onPointerEnter={() => showHeroPreview(product.image)}
+                      >
+                        {product.label}
+                      </button>
+                    ))}
+                  </span>
+                </span>
+              ) : null}
+            </span>
           </Fragment>
         ))}
       </nav>
