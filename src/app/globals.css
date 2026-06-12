@@ -1221,6 +1221,10 @@ body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-v
   background: rgba(58, 39, 27, 0.92);
 }
 
+body.commercial-mode .home-hero-actions .button.primary {
+  background: #050505;
+}
+
 .home-hero-actions .button.secondary {
   border-color: rgba(255, 255, 255, 0.78);
   background: rgba(17, 16, 14, 0.24);
