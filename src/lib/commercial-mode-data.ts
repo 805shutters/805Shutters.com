@@ -12,7 +12,7 @@ export const commercialModeImages = {
   medical: "/images/commercial-mode/commercial-medical-privacy-shades.png",
   classroom: "/images/commercial-mode/commercial-classroom-roller-shades.png",
   storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png",
-  honeycomb: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-wide.jpg",
+  honeycomb: "/images/commercial-mode/commercial-office-honeycomb-shades.png",
   fauxWood: "/images/805-portfolio-blinds-office.jpg"
 };
 
@@ -51,7 +51,7 @@ export const commercialServices: Service[] = [
     description:
       "Insulating cellular shades for offices, schools, medical suites, and rooms that need softer light and privacy.",
     image: commercialModeImages.honeycomb,
-    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+    imageAlt: "Commercial office windows fitted with honeycomb cellular shades"
   },
   {
     title: "Faux Wood Blinds For Commercial Spaces",
@@ -118,7 +118,7 @@ export const commercialGallery = [
   },
   {
     image: commercialModeImages.honeycomb,
-    imageAlt: "Honeycomb cellular shades in a commercial office setting"
+    imageAlt: "Commercial office windows fitted with honeycomb cellular shades"
   },
   {
     image: commercialModeImages.fauxWood,

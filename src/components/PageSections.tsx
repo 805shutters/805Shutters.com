@@ -196,7 +196,7 @@ const commercialPortfolioStories: PortfolioStory[] = [
     body:
       "Honeycomb shades give offices, schools, and medical suites a softer look with practical privacy and temperature control.",
     image: commercialModeImages.honeycomb,
-    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows",
+    imageAlt: "Commercial office windows fitted with honeycomb cellular shades",
     imageWidth: 1600,
     imageHeight: 900,
     href: "/commercial-window-coverings/",
@@ -281,7 +281,7 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   },
   {
     image: commercialModeImages.honeycomb,
-    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+    imageAlt: "Commercial office windows fitted with honeycomb cellular shades"
   },
   {
     image: commercialModeImages.fauxWood,
@@ -412,7 +412,7 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
     category: "Honeycomb Shades",
     title: "Cellular Shades For Offices",
     image: commercialModeImages.honeycomb,
-    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+    imageAlt: "Commercial office windows fitted with honeycomb cellular shades"
   },
   {
     category: "Faux Wood Blinds",
