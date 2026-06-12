@@ -15,9 +15,10 @@ CRM_ALLOWED_DOMAINS=805shutters.com
 BOOKING_ALERT_WEBHOOK_URL=<optional-alert-webhook>
 BOOKING_EMAIL_FROM="805 Shutters <appointments@805shutters.com>"
 BOOKING_EMAIL_REPLY_TO=805@805shutters.com
+BOOKING_STAFF_EMAIL=805@805shutters.com
 CRM_APPOINTMENT_ALERT_SMS_NUMBERS=<optional-comma-separated-admin-numbers>
 JESSICA_805_SALES_SMS_NUMBER=+18059144917
-MIKE_805_SALES_SMS_NUMBER=<optional-mike-sales-number>
+MIKE_805_SALES_SMS_NUMBER=+18052985555
 CRM_SOLD_QUOTE_SMS_NUMBERS=805-630-0848,805-298-5555
 CRM_BOOKKEEPING_NOTE_SMS_NUMBERS=805-630-0848
 TWILIO_ACCOUNT_SID=<twilio-account-sid>
@@ -241,12 +242,14 @@ The homepage button opens a date/time picker. Customers choose date and time fir
 - phone
 - address
 - number of windows
-- optional email and notes
+- optional email, product interest, and notes
 
 When the dedicated service-role key is present, `/api/booking` creates:
 
 - a booked `leads` row
 - a scheduled `crm_jobs` row
 - a scheduled `crm_calendar_events` row
+
+After the CRM calendar event is saved, `/api/booking` attempts customer SMS confirmation when Twilio is configured, customer email confirmation when an email is supplied and Resend is configured, a staff email to `805@805shutters.com`, staff texts to Jessica and Mike, and the optional booking webhook alert. Notification failures are logged but do not cancel a successfully saved booking.
 
 Unavailable dates and times are greyed out based on existing CRM calendar events. Sundays and past dates are not bookable by default.

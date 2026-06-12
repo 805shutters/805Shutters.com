@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 export default function BookConsultationPage() {
   return (
     <section className="booking-page">
+      <BookingCalendar className="booking-panel booking-panel--page" />
       <div className="booking-page__intro">
         <p className="eyebrow">805 Shutters</p>
         <h1>Book a Free In-Home Consultation</h1>
@@ -37,7 +38,6 @@ export default function BookConsultationPage() {
           covering is best, book the consultation and the team will help narrow the choices before anything is quoted or ordered.
         </p>
       </div>
-      <BookingCalendar className="booking-panel booking-panel--page" />
     </section>
   );
 }

@@ -2437,7 +2437,7 @@ body:has(.crm-app-shell) {
 
 .booking-page {
   min-height: 100vh;
-  padding: clamp(38px, 6vw, 78px) 0 clamp(54px, 8vw, 96px);
+  padding: clamp(12px, 2vw, 24px) 0 clamp(54px, 8vw, 96px);
   background:
     linear-gradient(180deg, rgba(17, 17, 17, 0.03), transparent 220px),
     #efebe4;
@@ -2448,7 +2448,7 @@ body:has(.crm-app-shell) {
   justify-items: center;
   gap: 10px;
   width: min(100% - 40px, 940px);
-  margin: 0 auto clamp(24px, 4vw, 42px);
+  margin: clamp(34px, 5vw, 64px) auto 0;
   text-align: center;
 }
 
@@ -2457,18 +2457,40 @@ body:has(.crm-app-shell) {
   margin: 0;
   color: #5e5850;
   font-family: var(--font-display);
-  font-size: clamp(42px, 5vw, 82px);
+  font-size: clamp(34px, 4vw, 58px);
   font-weight: 400;
-  line-height: 0.95;
+  line-height: 1;
   letter-spacing: 0.02em;
 }
 
-.booking-panel--page {
+.booking-panel.booking-panel--page {
   width: min(1180px, calc(100% - 40px));
   max-height: none;
   margin: 0 auto;
   border-color: #d8d1c5;
+  grid-template-columns: 1fr;
+  overflow: visible;
   box-shadow: 0 26px 80px rgba(73, 61, 47, 0.18);
+}
+
+.booking-panel--page .booking-calendar-shell {
+  border-bottom: 1px solid #e4ded4;
+}
+
+.booking-panel--page .booking-detail-panel {
+  border-left: 0;
+  border-top: 0;
+  padding: 0;
+}
+
+.booking-panel--page .booking-step,
+.booking-panel--page .booking-form {
+  padding: clamp(22px, 4vw, 38px);
+  scroll-margin-top: 210px;
+}
+
+.booking-panel--page .booking-form {
+  border-top: 1px solid #e4ded4;
 }
 
 .booking-modal {
@@ -2585,29 +2607,55 @@ body:has(.crm-app-shell) {
   display: grid;
   min-height: 76px;
   place-items: center;
-  border: 1px solid transparent;
-  background: var(--white);
-  color: #8da0ba;
+  border: 1px solid #ece5da;
+  background: #f2eee6;
+  color: #afa79b;
+  cursor: pointer;
   font-family: var(--font-body);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.booking-day--available {
+  border-color: #d5c296;
+  background: #fffdf8;
+  color: #2d2820;
+  font-weight: 800;
+  box-shadow:
+    inset 0 0 0 1px rgba(154, 125, 88, 0.12),
+    0 0 16px rgba(154, 125, 88, 0.24);
 }
 
 .booking-day:not(:disabled):hover,
 .booking-day--selected {
-  border-color: #7eb2ff;
-  color: #1f3f91;
-  box-shadow: inset 0 0 0 1px #7eb2ff;
+  border-color: #9a7d58;
+  background: #fff7e7;
+  color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(154, 125, 88, 0.45),
+    0 0 24px rgba(154, 125, 88, 0.34);
 }
 
 .booking-day--disabled {
-  background: #f5f7fb;
-  color: #c8d0dc;
+  background: #e7e2d9;
+  color: #bab1a4;
   cursor: not-allowed;
+  opacity: 0.62;
 }
 
 .booking-day--empty {
   min-height: 76px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .booking-helper {
@@ -2626,10 +2674,15 @@ body:has(.crm-app-shell) {
 .booking-detail-panel {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 20px;
   padding: 24px 28px;
   background: #f7f6f2;
   border-left: 1px solid #e2e8f0;
+}
+
+.booking-step {
+  display: grid;
+  gap: 14px;
 }
 
 .booking-detail-panel h3,
@@ -2637,6 +2690,12 @@ body:has(.crm-app-shell) {
   margin-bottom: 6px;
   font-family: var(--font-body);
   font-size: 22px;
+  font-weight: 800;
+}
+
+.booking-selection-summary {
+  margin: -2px 0 4px;
+  color: #5e5850;
   font-weight: 800;
 }
 
@@ -2675,6 +2734,53 @@ body:has(.crm-app-shell) {
 .booking-form {
   display: grid;
   gap: 10px;
+}
+
+.booking-product-options {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.booking-product-options legend {
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.booking-optional {
+  color: #7a7268;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: lowercase;
+}
+
+.booking-product-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.booking-product-grid button {
+  min-height: 42px;
+  padding: 0 14px;
+  background: var(--white);
+  color: var(--ink);
+}
+
+.booking-product-grid button.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.booking-product-grid button:disabled {
+  background: #eceff4;
+  border-color: #d4d9e1;
+  color: #9ca9ba;
+  cursor: not-allowed;
 }
 
 .booking-message {

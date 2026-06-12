@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type AvailabilitySlot = {
   time: string;
@@ -30,6 +30,8 @@ type BookingCalendarProps = {
   showClose?: boolean;
   onClose?: () => void;
 };
+
+const productOptions = ["Shutters", "Shades", "Blinds", "Drapery", "Exterior shades"];
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -70,6 +72,9 @@ export function BookingCalendar({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [complete, setComplete] = useState(false);
+  const [selectedProductTypes, setSelectedProductTypes] = useState<string[]>([]);
+  const slotsRef = useRef<HTMLDivElement>(null);
+  const customerInfoRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (!active) return;
@@ -97,6 +102,7 @@ export function BookingCalendar({
   function resetCalendar() {
     setSelectedDate(null);
     setSelectedTime(null);
+    setSelectedProductTypes([]);
     setComplete(false);
     setMessage(null);
   }
@@ -104,6 +110,47 @@ export function BookingCalendar({
   function handleDone() {
     resetCalendar();
     onDone?.();
+  }
+
+  function scrollToStep(ref: React.RefObject<HTMLElement | null>) {
+    window.requestAnimationFrame(() => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function chooseDate(date: string) {
+    setSelectedDate(date);
+    setSelectedTime(null);
+    scrollToStep(slotsRef);
+  }
+
+  function chooseTime(time: string) {
+    setSelectedTime(time);
+    scrollToStep(customerInfoRef);
+  }
+
+  function toggleProductType(productType: string) {
+    setSelectedProductTypes((current) =>
+      current.includes(productType)
+        ? current.filter((item) => item !== productType)
+        : [...current, productType]
+    );
+  }
+
+  function confirmationMessage(body: {
+    smsConfirmationSent?: boolean;
+    emailConfirmationSent?: boolean;
+  }) {
+    const channels = [
+      body.smsConfirmationSent ? "text" : null,
+      body.emailConfirmationSent ? "email" : null
+    ].filter(Boolean);
+
+    if (channels.length) {
+      return `Your appointment is booked. We sent your confirmation by ${channels.join(" and ")}.`;
+    }
+
+    return "Your appointment is booked. 805 Shutters will follow up shortly.";
   }
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
@@ -128,17 +175,14 @@ export function BookingCalendar({
           address: String(formData.get("address") || ""),
           windowCount: String(formData.get("windowCount") || ""),
           email: String(formData.get("email") || ""),
+          productTypes: selectedProductTypes,
           notes: String(formData.get("notes") || "")
         })
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "Appointment could not be booked.");
       setComplete(true);
-      setMessage(
-        body.smsConfirmationSent
-          ? "Your appointment is booked. We sent a confirmation text to your phone."
-          : "Your appointment is booked. 805 Shutters will follow up shortly."
-      );
+      setMessage(confirmationMessage(body));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointment could not be booked.");
     } finally {
@@ -195,16 +239,13 @@ export function BookingCalendar({
                   key={day.date}
                   className={[
                     "booking-day",
-                    day.available ? "" : "booking-day--disabled",
+                    day.available ? "booking-day--available" : "booking-day--disabled",
                     selectedDate === day.date ? "booking-day--selected" : ""
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   disabled={!day.available}
-                  onClick={() => {
-                    setSelectedDate(day.date);
-                    setSelectedTime(null);
-                  }}
+                  onClick={() => chooseDate(day.date)}
                 >
                   {day.day}
                 </button>
@@ -219,27 +260,37 @@ export function BookingCalendar({
           </div>
 
           <div className="booking-detail-panel">
-            <div>
-              <p className="eyebrow">Step 1</p>
-              <h3>{selectedDate ? formatSelectedDate(selectedDate) : "Choose a date"}</h3>
-            </div>
-            <div className="booking-slots">
-              {selectedDay?.slots.map((slot) => (
-                <button
-                  type="button"
-                  key={slot.time}
-                  disabled={!slot.available}
-                  className={selectedTime === slot.time ? "active" : ""}
-                  onClick={() => setSelectedTime(slot.time)}
-                >
-                  {slot.label}
-                </button>
-              ))}
-              {!selectedDay ? <p>Available times show after you pick a date.</p> : null}
+            <div className="booking-step booking-step--times" ref={slotsRef}>
+              <div>
+                <p className="eyebrow">Available Times</p>
+                <h3>{selectedDate ? formatSelectedDate(selectedDate) : "Choose a date"}</h3>
+              </div>
+              <div className="booking-slots">
+                {selectedDay?.slots.map((slot) => (
+                  <button
+                    type="button"
+                    key={slot.time}
+                    disabled={!slot.available}
+                    className={selectedTime === slot.time ? "active" : ""}
+                    onClick={() => chooseTime(slot.time)}
+                  >
+                    {slot.label}
+                  </button>
+                ))}
+                {!selectedDay ? <p>Available times show after you pick a date.</p> : null}
+              </div>
             </div>
 
-            <form className="booking-form" onSubmit={submitBooking}>
-              <p className="eyebrow">Step 2</p>
+            <form className="booking-form" onSubmit={submitBooking} ref={customerInfoRef}>
+              <div>
+                <p className="eyebrow">Customer Information</p>
+                <h3>{selectedTime ? "Tell us where to meet you" : "Choose a time to finish booking"}</h3>
+              </div>
+              {selectedDate && selectedTime ? (
+                <p className="booking-selection-summary">
+                  {formatSelectedDate(selectedDate)} at {selectedDay?.slots.find((slot) => slot.time === selectedTime)?.label}
+                </p>
+              ) : null}
               <div className="field-row">
                 <label>
                   Full name
@@ -256,21 +307,40 @@ export function BookingCalendar({
               </label>
               <div className="field-row">
                 <label>
-                  Number of windows
+                  Approx. quantity of windows
                   <input name="windowCount" type="number" min="1" disabled={!selectedTime} />
                 </label>
                 <label>
-                  Email
+                  Email <span className="booking-optional">optional</span>
                   <input name="email" type="email" autoComplete="email" disabled={!selectedTime} />
                 </label>
               </div>
+              <fieldset className="booking-product-options" disabled={!selectedTime}>
+                <legend>
+                  Product interest <span className="booking-optional">optional</span>
+                </legend>
+                <div className="booking-product-grid">
+                  {productOptions.map((productType) => (
+                    <button
+                      type="button"
+                      key={productType}
+                      className={selectedProductTypes.includes(productType) ? "active" : ""}
+                      aria-pressed={selectedProductTypes.includes(productType)}
+                      disabled={!selectedTime}
+                      onClick={() => toggleProductType(productType)}
+                    >
+                      {productType}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <label>
-                Notes
+                Notes <span className="booking-optional">optional</span>
                 <textarea name="notes" rows={3} disabled={!selectedTime} />
               </label>
               {message ? <p className={`booking-message ${isErrorMessage(message) ? "error" : ""}`}>{message}</p> : null}
               <button type="submit" disabled={!selectedTime || submitting}>
-                {submitting ? "Booking..." : "Confirm Appointment"}
+                {submitting ? "Booking..." : "Submit Appointment"}
               </button>
             </form>
           </div>
