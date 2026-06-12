@@ -9,8 +9,8 @@
   --accent: #9a7d58;
   --white: #ffffff;
   --shadow: 0 18px 45px rgba(17, 17, 17, 0.12);
-  --font-display: Didot, "Bodoni 72", "Bodoni 72 Oldstyle", "Times New Roman", serif;
-  --font-logo-number: Didot, "Bodoni 72", "Bodoni 72 Oldstyle", "Times New Roman", serif;
+  --font-display: Didot, "Bodoni 72", "Bodoni 72 Oldstyle", var(--font-bodoni-moda, "Bodoni Moda"), "Times New Roman", serif;
+  --font-logo-number: Didot, "Bodoni 72", "Bodoni 72 Oldstyle", var(--font-bodoni-moda, "Bodoni Moda"), "Times New Roman", serif;
   --font-body: "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -1931,7 +1931,7 @@ textarea {
 
 .footer-commercial-wordmark strong {
   margin-top: 8px;
-  font-family: var(--font-logo);
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 400;
   line-height: 1;

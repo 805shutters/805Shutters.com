@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Bodoni_Moda } from "next/font/google";
 import "./globals.css";
 import { CommercialModeProvider } from "@/components/CommercialModeProvider";
 import { MessagingAssistantWidget } from "@/components/MessagingAssistantWidget";
@@ -8,6 +9,13 @@ import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { site } from "@/lib/site-data";
 import { localBusinessJsonLd } from "@/lib/structured-data";
+
+const bodoniModa = Bodoni_Moda({
+  subsets: ["latin"],
+  axes: ["opsz"],
+  display: "swap",
+  variable: "--font-bodoni-moda"
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.baseUrl),
@@ -24,7 +32,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={bodoniModa.variable}>
       <body>
         <TrackingScripts />
         <RouteTracking />
