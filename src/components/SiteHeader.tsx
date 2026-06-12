@@ -72,7 +72,8 @@ const commercialCategoryItems = [
     href: "/commercial-roller-shades/",
     products: [
       { label: "Office Roller Shades", image: commercialModeImages.hero },
-      { label: "Lobby Solar Shades", image: commercialModeImages.lobby },
+      { label: "Blackout Roller Shades", image: commercialModeImages.conference },
+      { label: "Motorized Roller Shades", image: commercialModeImages.lobby },
       { label: "Tenant Improvement Shades", image: commercialModeImages.conference }
     ]
   },
@@ -86,21 +87,21 @@ const commercialCategoryItems = [
     ]
   },
   {
-    label: "Blackout",
+    label: "Honeycomb",
     href: "/commercial-window-coverings/",
     products: [
-      { label: "Conference Rooms", image: commercialModeImages.conference },
-      { label: "Medical Privacy", image: commercialModeImages.medical },
-      { label: "Presentation Rooms", image: commercialModeImages.conference }
+      { label: "Office Honeycomb Shades", image: commercialModeImages.honeycomb },
+      { label: "Room-Darkening Honeycomb", image: commercialModeImages.honeycomb },
+      { label: "Privacy Cellular Shades", image: commercialModeImages.medical }
     ]
   },
   {
-    label: "Motorized",
-    href: "/commercial-roller-shades/",
+    label: "Faux Wood",
+    href: "/commercial-window-coverings/",
     products: [
-      { label: "Tall Glass", image: commercialModeImages.lobby },
-      { label: "Hard-To-Reach Windows", image: commercialModeImages.hero },
-      { label: "Multi-Window Spaces", image: commercialModeImages.storefront }
+      { label: "Office Faux Wood Blinds", image: commercialModeImages.fauxWood },
+      { label: "Rental Turn Blinds", image: commercialModeImages.fauxWood },
+      { label: "Staff Area Blinds", image: commercialModeImages.classroom }
     ]
   },
   {
@@ -109,7 +110,8 @@ const commercialCategoryItems = [
     products: [
       { label: "Property Managers", image: commercialModeImages.lobby },
       { label: "Schools And Facilities", image: commercialModeImages.classroom },
-      { label: "Medical Offices", image: commercialModeImages.medical }
+      { label: "Medical Offices", image: commercialModeImages.medical },
+      { label: "Product Mix Review", image: commercialModeImages.fauxWood }
     ]
   }
 ];

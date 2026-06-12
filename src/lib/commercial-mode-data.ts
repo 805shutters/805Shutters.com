@@ -11,7 +11,9 @@ export const commercialModeImages = {
   conference: "/images/commercial-mode/commercial-conference-blackout-shades.png",
   medical: "/images/commercial-mode/commercial-medical-privacy-shades.png",
   classroom: "/images/commercial-mode/commercial-classroom-roller-shades.png",
-  storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png"
+  storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png",
+  honeycomb: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-wide.jpg",
+  fauxWood: "/images/805-portfolio-blinds-office.jpg"
 };
 
 export const commercialServices: Service[] = [
@@ -43,6 +45,24 @@ export const commercialServices: Service[] = [
     imageAlt: "Commercial conference room fitted with dark blackout roller shades"
   },
   {
+    title: "Commercial Honeycomb Shades",
+    shortTitle: "Honeycomb Shades",
+    slug: "commercial-window-coverings",
+    description:
+      "Insulating cellular shades for offices, schools, medical suites, and rooms that need softer light and privacy.",
+    image: commercialModeImages.honeycomb,
+    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+  },
+  {
+    title: "Faux Wood Blinds For Commercial Spaces",
+    shortTitle: "Faux Wood Blinds",
+    slug: "commercial-window-coverings",
+    description:
+      "Durable, wipeable faux wood blinds for offices, rentals, multifamily turns, staff areas, and budget-conscious properties.",
+    image: commercialModeImages.fauxWood,
+    imageAlt: "Faux wood blinds installed in a professional office setting"
+  },
+  {
     title: "Motorized Commercial Shades",
     shortTitle: "Motorized",
     slug: "commercial-roller-shades",
@@ -72,8 +92,8 @@ export const commercialHomeSections: PageSection[] = [
   {
     heading: "Built For Workspaces",
     body:
-      "The commercial mode focuses on roller shades, solar shades, blackout shades, motorized systems, vertical blinds, and replacement programs that fit daily-use business spaces.",
-    bullets: ["Offices", "Storefronts", "Schools", "Medical spaces", "Tenant improvements"]
+      "The commercial mode includes roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized systems, vertical blinds, and replacement programs that fit daily-use business spaces.",
+    bullets: ["Offices", "Storefronts", "Schools", "Medical spaces", "Tenant improvements", "Rental turns"]
   },
   {
     heading: "GC And Property Manager Ready",
@@ -95,6 +115,14 @@ export const commercialGallery = [
   {
     image: commercialModeImages.medical,
     imageAlt: "Medical office waiting area with privacy roller shades"
+  },
+  {
+    image: commercialModeImages.honeycomb,
+    imageAlt: "Honeycomb cellular shades in a commercial office setting"
+  },
+  {
+    image: commercialModeImages.fauxWood,
+    imageAlt: "Faux wood blinds installed in a professional office setting"
   }
 ];
 
@@ -106,11 +134,11 @@ export function commercializePage(page: SitePage): SitePage {
     ...page,
     title: page.title.replaceAll("805 Shutters", commercialBrand.name),
     description:
-      "Commercial roller shades, solar shades, blackout shades, motorized shades, and window coverings for offices, storefronts, schools, medical spaces, and property managers.",
+      "Commercial roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized shades, and window coverings for offices, storefronts, schools, medical spaces, and property managers.",
     h1: page.path === "/" ? "Commercial Shade Systems" : h1,
     eyebrow: "805 Commercial",
     intro:
-      "Commercial window-covering help for offices, storefronts, schools, medical spaces, property managers, and tenant-improvement teams that need practical shade systems installed cleanly.",
+      "Commercial window-covering help for offices, storefronts, schools, medical spaces, property managers, and tenant-improvement teams that need practical shade systems, honeycomb shades, or faux wood blinds installed cleanly.",
     image: commercialModeImages.hero,
     imageAlt: "Commercial office windows fitted with neutral roller shades",
     gallery: commercialGallery,

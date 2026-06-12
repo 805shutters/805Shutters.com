@@ -191,6 +191,18 @@ const commercialPortfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
+    eyebrow: "Honeycomb Shades",
+    title: "Soft privacy and insulation for work rooms.",
+    body:
+      "Honeycomb shades give offices, schools, and medical suites a softer look with practical privacy and temperature control.",
+    image: commercialModeImages.honeycomb,
+    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows",
+    imageWidth: 1600,
+    imageHeight: 900,
+    href: "/commercial-window-coverings/",
+    tone: "bright"
+  },
+  {
     eyebrow: "Schools And Facilities",
     title: "Durable shade plans for daily use.",
     body:
@@ -200,6 +212,18 @@ const commercialPortfolioStories: PortfolioStory[] = [
     imageWidth: 1672,
     imageHeight: 941,
     href: "/commercial-window-coverings/"
+  },
+  {
+    eyebrow: "Faux Wood Blinds",
+    title: "Durable blinds for practical commercial spaces.",
+    body:
+      "Faux wood blinds work well for offices, rental turns, staff rooms, and budget-conscious properties that still need a finished look.",
+    image: commercialModeImages.fauxWood,
+    imageAlt: "Faux wood blinds installed in a professional office setting",
+    imageWidth: 1672,
+    imageHeight: 941,
+    href: "/commercial-window-coverings/",
+    tone: "bright"
   },
   {
     eyebrow: "Lobbies",
@@ -254,6 +278,14 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   {
     image: commercialModeImages.storefront,
     imageAlt: "Commercial storefront fitted with solar roller shades"
+  },
+  {
+    image: commercialModeImages.honeycomb,
+    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+  },
+  {
+    image: commercialModeImages.fauxWood,
+    imageAlt: "Faux wood blinds installed in a professional office setting"
   }
 ];
 
@@ -375,6 +407,18 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
     title: "Cordless Facility Roller Shades",
     image: commercialModeImages.classroom,
     imageAlt: "School facility room with cordless commercial roller shades"
+  },
+  {
+    category: "Honeycomb Shades",
+    title: "Cellular Shades For Offices",
+    image: commercialModeImages.honeycomb,
+    imageAlt: "Honeycomb cellular shades installed on commercial-style office windows"
+  },
+  {
+    category: "Faux Wood Blinds",
+    title: "Durable Blinds For Property Turns",
+    image: commercialModeImages.fauxWood,
+    imageAlt: "Faux wood blinds installed in a professional office setting"
   },
   {
     category: "Lobbies",
@@ -553,7 +597,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
       <section className="installed-portfolio">
         <div className="content-wrap installed-portfolio-head">
           <p className="eyebrow">{commercialMode ? "Commercial Portfolio" : "Installed Portfolio"}</p>
-          <h2>{commercialMode ? "Commercial shade applications for business spaces" : "Shutters and shades from recent Ventura County projects"}</h2>
+          <h2>{commercialMode ? "Commercial window covering applications for business spaces" : "Shutters and shades from recent Ventura County projects"}</h2>
         </div>
         <div className="content-wrap installed-portfolio-grid">
           {installedPhotos.map((photo) => (
