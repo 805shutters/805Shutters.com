@@ -107,6 +107,13 @@ export function SiteHeader() {
             <span className="brand-text-logo-number">805</span>
             <span className="brand-text-logo-name">SHUTTERS</span>
           </span>
+          <img
+            className="brand-logo"
+            src="/brand/805-shutters-logo-header.png"
+            alt="805 Shutters"
+            width={227}
+            height={148}
+          />
         </Link>
         <div className="mobile-header-tools mobile-header-tools--right" aria-label="Mobile contact actions">
           <TrackedPhoneLink ariaLabel="Call 805 Shutters" className="mobile-header-icon" location="mobile header">
@@ -144,23 +151,8 @@ export function SiteHeader() {
         {categoryItems.map((item, index) => (
           <Fragment key={item.href}>
             {index > 0 ? <span className="category-dot" aria-hidden="true">•</span> : null}
-            <span
-              className="category-nav-item"
-              onMouseEnter={() => {
-                showHeroPreview(item.products[0].image);
-              }}
-              onPointerEnter={() => {
-                showHeroPreview(item.products[0].image);
-              }}
-            >
-              <Link
-                href={item.href}
-                onFocus={() => {
-                  showHeroPreview(item.products[0].image);
-                }}
-              >
-                {item.label}
-              </Link>
+            <span className="category-nav-item">
+              <Link href={item.href}>{item.label}</Link>
               {isHome ? (
                 <span className="category-nav-products" aria-label={`${item.label} product types`}>
                   <span className="category-nav-product-list">
