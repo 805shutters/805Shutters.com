@@ -160,9 +160,9 @@ const commercialPortfolioStories: PortfolioStory[] = [
     body:
       "Neutral roller shades reduce glare and heat while keeping offices clean, bright, and professional.",
     image: commercialModeImages.hero,
-    imageAlt: "Commercial office windows fitted with neutral roller shades",
-    imageWidth: 1672,
-    imageHeight: 941,
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows",
+    imageWidth: 1920,
+    imageHeight: 1080,
     href: "/commercial-roller-shades/",
     tone: "bright"
   },
@@ -207,10 +207,10 @@ const commercialPortfolioStories: PortfolioStory[] = [
     title: "Durable shade plans for daily use.",
     body:
       "Cordless commercial shades support classrooms, shared rooms, and facilities that need practical light control.",
-    image: commercialModeImages.classroom,
-    imageAlt: "School facility room fitted with commercial roller shades",
-    imageWidth: 1672,
-    imageHeight: 941,
+    image: commercialModeImages.school,
+    imageAlt: "Southern California school campus with palms at golden hour",
+    imageWidth: 1920,
+    imageHeight: 1080,
     href: "/commercial-window-coverings/"
   },
   {
@@ -226,14 +226,14 @@ const commercialPortfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
-    eyebrow: "Lobbies",
-    title: "Common areas that stay comfortable.",
+    eyebrow: "Warehouses And Industrial",
+    title: "Shade programs built for working buildings.",
     body:
-      "Tall commercial windows can keep their architectural look while solar shades cut glare and afternoon heat.",
-    image: commercialModeImages.lobby,
-    imageAlt: "Commercial office lobby with tall windows and solar shades",
-    imageWidth: 1672,
-    imageHeight: 941,
+      "High window bands, office build-outs, and staff areas in warehouses and industrial parks get practical, durable light control.",
+    image: commercialModeImages.industrialWarehouse,
+    imageAlt: "Bright industrial warehouse interior with high window bands",
+    imageWidth: 1920,
+    imageHeight: 1080,
     href: "/commercial-window-coverings/",
     tone: "bright"
   },
@@ -269,7 +269,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
 const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   {
     image: commercialModeImages.hero,
-    imageAlt: "Commercial office windows fitted with neutral roller shades"
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows"
   },
   {
     image: commercialModeImages.conference,
@@ -405,8 +405,8 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
     category: "Schools",
     title: "Cordless Facility Roller Shades",
-    image: commercialModeImages.classroom,
-    imageAlt: "School facility room with cordless commercial roller shades"
+    image: commercialModeImages.school,
+    imageAlt: "Southern California school campus with palms at golden hour"
   },
   {
     category: "Honeycomb Shades",
@@ -421,10 +421,10 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
     imageAlt: "Commercial office windows fitted with faux wood blinds"
   },
   {
-    category: "Lobbies",
-    title: "Solar Shades For Common Areas",
-    image: commercialModeImages.lobby,
-    imageAlt: "Commercial office lobby fitted with solar shades"
+    category: "Warehouses",
+    title: "Shade Programs For Industrial Space",
+    image: commercialModeImages.industrialWarehouse,
+    imageAlt: "Bright industrial warehouse interior with high window bands"
   },
   {
     category: "Conference Rooms",

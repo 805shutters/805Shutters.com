@@ -5,12 +5,24 @@ export const commercialBrand = {
   label: "COMMERCIAL"
 };
 
+/**
+ * Commercial photos must read as Southern California (palms, stucco, dry
+ * light, tilt-up/industrial) and cover realistic applications — small
+ * offices and storefronts alongside larger offices and warehouses. Licensed
+ * fill-ins live in /images/product-previews/ (see its manifest.json);
+ * replace with brand photos as real installs or SoCal AI shots are added.
+ */
 export const commercialModeImages = {
-  hero: "/images/commercial-mode/commercial-office-roller-shades.png",
-  lobby: "/images/commercial-mode/commercial-lobby-solar-shades.png",
+  hero: "/images/product-previews/commercial-socal-office-hero.jpg",
+  smallOffice: "/images/product-previews/commercial-small-office-roller-shades.jpg",
+  motorized: "/images/product-previews/commercial-motorized-tall-glass.jpg",
+  warehouseTenantImprovement: "/images/product-previews/commercial-warehouse-tenant-improvement.jpg",
+  industrialWarehouse: "/images/product-previews/commercial-industrial-warehouse.jpg",
+  school: "/images/product-previews/commercial-socal-school.jpg",
+  propertyExterior: "/images/product-previews/commercial-socal-property-managers.jpg",
+  storefrontCorner: "/images/product-previews/commercial-socal-storefront-corner.jpg",
   conference: "/images/commercial-mode/commercial-conference-blackout-shades.png",
   medical: "/images/commercial-mode/commercial-medical-privacy-shades.png",
-  classroom: "/images/commercial-mode/commercial-classroom-roller-shades.png",
   storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png",
   honeycomb: "/images/commercial-mode/commercial-office-honeycomb-shades.png",
   fauxWood: "/images/commercial-mode/commercial-office-faux-wood-blinds.png"
@@ -22,9 +34,9 @@ export const commercialServices: Service[] = [
     shortTitle: "Roller Shades",
     slug: "commercial-roller-shades",
     description:
-      "Clean roller-shade systems for offices, storefronts, tenant improvements, schools, and shared spaces.",
+      "Clean roller-shade systems for small offices, storefronts, warehouse offices, tenant improvements, schools, and shared spaces.",
     image: commercialModeImages.hero,
-    imageAlt: "Commercial office windows fitted with neutral roller shades"
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows"
   },
   {
     title: "Solar Shade Systems",
@@ -68,17 +80,17 @@ export const commercialServices: Service[] = [
     slug: "commercial-roller-shades",
     description:
       "Motorized shade planning for tall glass, hard-to-reach openings, boardrooms, and multi-window spaces.",
-    image: commercialModeImages.lobby,
-    imageAlt: "Commercial lobby with tall windows and motorized solar shades"
+    image: commercialModeImages.motorized,
+    imageAlt: "Tall glass office partitions filtering warm afternoon sun"
   },
   {
     title: "Property Replacement Programs",
     shortTitle: "Replacement",
     slug: "commercial-window-coverings",
     description:
-      "Phased replacement plans for damaged blinds, glare complaints, tenant turns, common areas, and facilities.",
-    image: commercialModeImages.classroom,
-    imageAlt: "School facility room with cordless commercial roller shades"
+      "Phased replacement plans for damaged blinds, glare complaints, tenant turns, common areas, warehouses, and facilities.",
+    image: commercialModeImages.industrialWarehouse,
+    imageAlt: "Bright industrial warehouse interior with high window bands"
   }
 ];
 
@@ -86,14 +98,14 @@ export const commercialHomeSections: PageSection[] = [
   {
     heading: "Commercial Shade Audits",
     body:
-      "805 Commercial helps property managers, general contractors, offices, schools, storefronts, and medical spaces identify glare, heat, privacy, safety, and damaged-covering issues before choosing a product.",
+      "805 Commercial helps property managers, general contractors, small offices, larger workplaces, schools, storefronts, warehouses, and medical spaces identify glare, heat, privacy, safety, and damaged-covering issues before choosing a product.",
     bullets: ["Free shade audit", "Site walks", "Budget direction", "Phased replacements"]
   },
   {
     heading: "Built For Workspaces",
     body:
-      "The commercial mode includes roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized systems, vertical blinds, and replacement programs that fit daily-use business spaces.",
-    bullets: ["Offices", "Storefronts", "Schools", "Medical spaces", "Tenant improvements", "Rental turns"]
+      "The commercial mode includes roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized systems, vertical blinds, and replacement programs that fit daily-use business spaces — from single-suite offices and storefronts to warehouses and industrial buildings.",
+    bullets: ["Small offices", "Storefronts", "Warehouses", "Schools", "Medical spaces", "Tenant improvements", "Rental turns"]
   },
   {
     heading: "GC And Property Manager Ready",
@@ -105,12 +117,12 @@ export const commercialHomeSections: PageSection[] = [
 
 export const commercialGallery = [
   {
-    image: commercialModeImages.lobby,
-    imageAlt: "Commercial office lobby fitted with solar roller shades"
+    image: commercialModeImages.storefront,
+    imageAlt: "Retail storefront interior with commercial solar shades and palm-lined street"
   },
   {
-    image: commercialModeImages.storefront,
-    imageAlt: "Retail storefront interior with commercial solar shades"
+    image: commercialModeImages.industrialWarehouse,
+    imageAlt: "Bright industrial warehouse interior with high window bands"
   },
   {
     image: commercialModeImages.medical,
@@ -123,6 +135,10 @@ export const commercialGallery = [
   {
     image: commercialModeImages.fauxWood,
     imageAlt: "Commercial office windows fitted with faux wood blinds"
+  },
+  {
+    image: commercialModeImages.propertyExterior,
+    imageAlt: "Spanish-style Southern California commercial buildings with palms"
   }
 ];
 
@@ -134,13 +150,13 @@ export function commercializePage(page: SitePage): SitePage {
     ...page,
     title: page.title.replaceAll("805 Shutters", commercialBrand.name),
     description:
-      "Commercial roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized shades, and window coverings for offices, storefronts, schools, medical spaces, and property managers.",
+      "Commercial roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, motorized shades, and window coverings for small offices, storefronts, warehouses, schools, medical spaces, and property managers.",
     h1: page.path === "/" ? "Commercial Shade Systems" : h1,
     eyebrow: "805 Commercial",
     intro:
-      "Commercial window-covering help for offices, storefronts, schools, medical spaces, property managers, and tenant-improvement teams that need practical shade systems, honeycomb shades, or faux wood blinds installed cleanly.",
+      "Commercial window-covering help for small offices, larger workplaces, storefronts, warehouses, schools, medical spaces, property managers, and tenant-improvement teams that need practical shade systems, honeycomb shades, or faux wood blinds installed cleanly.",
     image: commercialModeImages.hero,
-    imageAlt: "Commercial office windows fitted with neutral roller shades",
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows",
     gallery: commercialGallery,
     sections: commercialHomeSections,
     cta: "Schedule a free commercial shade audit"

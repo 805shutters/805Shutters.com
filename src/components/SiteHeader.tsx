@@ -1,121 +1,14 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { commercialBrand, commercialModeImages } from "@/lib/commercial-mode-data";
+import { commercialBrand } from "@/lib/commercial-mode-data";
+import { commercialCategoryItems, residentialCategoryItems } from "@/lib/product-preview-data";
 import { site } from "@/lib/site-data";
 import { CommercialModeBadge, useCommercialMode } from "./CommercialModeProvider";
 import { HeaderScrollState } from "./HeaderScrollState";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
-
-const categoryItems = [
-  {
-    label: "Blinds",
-    href: "/blinds/",
-    products: [
-      { label: "Faux Wood", image: "/images/805-portfolio-blinds-office.jpg" },
-      { label: "Premium Wood", image: "/ads/805-custom-blinds-1x1.jpg" },
-      { label: "Vertical Blinds", image: "/ads/805-custom-blinds-9x16.jpg" },
-      { label: "Aluminum Blinds", image: "/images/805-portfolio-blinds-office.jpg" }
-    ]
-  },
-  {
-    label: "Shades",
-    href: "/shades/",
-    products: [
-      { label: "Roller Shades", image: "/images/editorial-scroll/coastal-living-roller-shades.jpg" },
-      { label: "Honeycomb Shades", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
-      { label: "Room Darkening", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
-      { label: "Layered Shades", image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg" },
-      { label: "Roman Shades", image: "/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-20-roman-shades-white-living-room.jpg" },
-      { label: "Natural Shades", image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg" },
-      { label: "Bamboo Shades", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" },
-      { label: "Sheer Shades", image: "/images/805-portfolio-shades-bedroom.jpg" }
-    ]
-  },
-  {
-    label: "Drapery",
-    href: "/drapery/",
-    products: [
-      { label: "Ripplefold Drapery", image: "/images/805-portfolio-drapery-living-room.jpg" },
-      { label: "Pinch Pleat Drapery", image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg" },
-      { label: "French Pleat Drapery", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" },
-      { label: "Grommet Drapery", image: "/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-19-roman-shades-coastal-striped.jpg" },
-      { label: "Rod Pocket Drapery", image: "/images/805-portfolio-drapery-living-room.jpg" },
-      { label: "Goblet Pleat Drapery", image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg" },
-      { label: "Inverted Box Pleat Drapery", image: "/images/editorial-scroll/garden-living-woven-shades.jpg" }
-    ]
-  },
-  {
-    label: "Shutters",
-    href: "/shutters/",
-    products: [
-      { label: "Premium Stained Wood", image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg" },
-      { label: "Painted Wood", image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg" },
-      { label: "Poly Composite", image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg" },
-      { label: "MDF Composite", image: "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg" }
-    ]
-  },
-  {
-    label: "Exterior Shades",
-    href: "/exterior-shades/",
-    products: [
-      { label: "Motorized Patio", image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg" },
-      { label: "Non Motorized Patio", image: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg" }
-    ]
-  }
-];
-
-const commercialCategoryItems = [
-  {
-    label: "Roller Shades",
-    href: "/commercial-roller-shades/",
-    products: [
-      { label: "Office Roller Shades", image: commercialModeImages.hero },
-      { label: "Blackout Roller Shades", image: commercialModeImages.conference },
-      { label: "Motorized Roller Shades", image: commercialModeImages.lobby },
-      { label: "Tenant Improvement Shades", image: commercialModeImages.conference }
-    ]
-  },
-  {
-    label: "Solar Shades",
-    href: "/commercial-window-coverings/",
-    products: [
-      { label: "Glare Control", image: commercialModeImages.storefront },
-      { label: "Heat Control", image: commercialModeImages.lobby },
-      { label: "Street-Facing Glass", image: commercialModeImages.storefront }
-    ]
-  },
-  {
-    label: "Honeycomb",
-    href: "/commercial-window-coverings/",
-    products: [
-      { label: "Office Honeycomb Shades", image: commercialModeImages.honeycomb },
-      { label: "Room-Darkening Honeycomb", image: commercialModeImages.honeycomb },
-      { label: "Privacy Cellular Shades", image: commercialModeImages.medical }
-    ]
-  },
-  {
-    label: "Faux Wood",
-    href: "/commercial-window-coverings/",
-    products: [
-      { label: "Office Faux Wood Blinds", image: commercialModeImages.fauxWood },
-      { label: "Rental Turn Blinds", image: commercialModeImages.fauxWood },
-      { label: "Staff Area Blinds", image: commercialModeImages.classroom }
-    ]
-  },
-  {
-    label: "Shade Audit",
-    href: "/commercial-window-coverings/",
-    products: [
-      { label: "Property Managers", image: commercialModeImages.lobby },
-      { label: "Schools And Facilities", image: commercialModeImages.classroom },
-      { label: "Medical Offices", image: commercialModeImages.medical },
-      { label: "Product Mix Review", image: commercialModeImages.fauxWood }
-    ]
-  }
-];
 
 type YelpReview = {
   id: string;
@@ -135,8 +28,9 @@ export function SiteHeader() {
   const pathname = usePathname();
   const { isCommercialMode } = useCommercialMode();
   const isHome = pathname === "/";
-  const activeCategoryItems = isCommercialMode ? commercialCategoryItems : categoryItems;
+  const activeCategoryItems = isCommercialMode ? commercialCategoryItems : residentialCategoryItems;
   const brandName = isCommercialMode ? commercialBrand.name : site.name;
+  const preloadedCategories = useRef(new Set<string>());
   const brandLabel = isCommercialMode ? commercialBrand.label : "SHUTTERS";
   const [yelpReviews, setYelpReviews] = useState<YelpReview[]>([]);
   const [yelpReviewStatus, setYelpReviewStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
@@ -165,8 +59,8 @@ export function SiteHeader() {
       });
   };
 
-  const showHeroPreview = (image: string) => {
-    if (!isHome) {
+  const showHeroPreview = (image?: string) => {
+    if (!isHome || !image) {
       return;
     }
 
@@ -177,6 +71,23 @@ export function SiteHeader() {
     if (isHome) {
       window.dispatchEvent(new CustomEvent("805:hero-preview-clear"));
     }
+  };
+
+  // Warm the browser cache for a category's preview photos as soon as the
+  // visitor reaches its nav item, so the first hero preview doesn't pop in.
+  const preloadCategoryImages = (categoryLabel: string, products: { image?: string }[]) => {
+    if (!isHome || preloadedCategories.current.has(categoryLabel)) {
+      return;
+    }
+
+    preloadedCategories.current.add(categoryLabel);
+    products.forEach((product) => {
+      if (product.image) {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = product.image;
+      }
+    });
   };
 
   return (
@@ -292,7 +203,11 @@ export function SiteHeader() {
         {activeCategoryItems.map((item, index) => (
           <Fragment key={`${item.label}-${item.href}`}>
             {index > 0 ? <span className="category-dot" aria-hidden="true">•</span> : null}
-            <span className="category-nav-item">
+            <span
+              className="category-nav-item"
+              onMouseEnter={() => preloadCategoryImages(item.label, item.products)}
+              onFocus={() => preloadCategoryImages(item.label, item.products)}
+            >
               <Link href={item.href}>{item.label}</Link>
               {isHome ? (
                 <span className="category-nav-products" aria-label={`${item.label} product types`}>

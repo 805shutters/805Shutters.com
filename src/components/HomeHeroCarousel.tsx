@@ -12,10 +12,21 @@ type HomeHeroCarouselProps = {
   slides: HomeHeroSlide[];
 };
 
+type PreviewLayer = {
+  image: string;
+  key: number;
+};
+
+type PreviewState = {
+  layers: PreviewLayer[];
+  active: boolean;
+};
+
 export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [freezeOnFirstSlide, setFreezeOnFirstSlide] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewState>({ layers: [], active: false });
+  const previewKeyRef = useRef(0);
   const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -69,11 +80,27 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
     const showPreview = (event: Event) => {
       const image = (event as CustomEvent<{ image?: string }>).detail?.image;
 
-      if (image) {
-        setPreviewImage(image);
+      if (!image) {
+        return;
       }
+
+      setPreview((current) => {
+        const top = current.layers[current.layers.length - 1];
+
+        if (current.active && top?.image === image) {
+          return current;
+        }
+
+        // Keep the still-visible top layer beneath the incoming one so
+        // consecutive previews crossfade instead of flashing the hero.
+        const layers = top?.image === image
+          ? current.layers.slice(-1)
+          : [...current.layers.slice(-1), { image, key: ++previewKeyRef.current }];
+
+        return { layers, active: true };
+      });
     };
-    const clearPreview = () => setPreviewImage(null);
+    const clearPreview = () => setPreview((current) => (current.active ? { ...current, active: false } : current));
 
     window.addEventListener("805:hero-preview", showPreview);
     window.addEventListener("805:hero-preview-clear", clearPreview);
@@ -83,6 +110,35 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
       window.removeEventListener("805:hero-preview-clear", clearPreview);
     };
   }, []);
+
+  useEffect(() => {
+    if (preview.active || preview.layers.length === 0) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPreview((current) => (current.active ? current : { layers: [], active: false }));
+    }, 360);
+
+    return () => window.clearTimeout(timeout);
+  }, [preview]);
+
+  // Once the top layer's fade-in has finished covering the previous one,
+  // drop the hidden lower layer. A timer (rather than animationend) keeps
+  // this reliable when animations are skipped, e.g. reduced motion.
+  useEffect(() => {
+    if (preview.layers.length < 2) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPreview((current) =>
+        current.layers.length > 1 ? { ...current, layers: current.layers.slice(-1) } : current
+      );
+    }, 420);
+
+    return () => window.clearTimeout(timeout);
+  }, [preview.layers]);
 
   const renderedSlides = freezeOnFirstSlide ? slides.slice(0, 1) : slides;
 
@@ -99,11 +155,13 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
           )}
         </div>
       ))}
-      <div
-        className={`home-hero-preview${previewImage ? " is-active" : ""}`}
-        key={previewImage || "empty-preview"}
-        style={previewImage ? { backgroundImage: `url(${previewImage})` } : undefined}
-      />
+      {preview.layers.map((layer) => (
+        <div
+          className={`home-hero-preview${preview.active ? " is-active" : ""}`}
+          key={layer.key}
+          style={{ backgroundImage: `url(${layer.image})` }}
+        />
+      ))}
     </div>
   );
 }

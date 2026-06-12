@@ -91,7 +91,7 @@ export const services: Service[] = [
     description:
       "Roller shades, honeycomb shades, Roman shades, woven wood shades, layered shades, and motorized options.",
     image: images.shades,
-    imageAlt: "Honeycomb window shades installed in a Ventura County living room"
+    imageAlt: "Relaxed Roman shades over a wide bedroom window in a Ventura County home"
   },
   {
     title: "Custom Blinds",
@@ -100,7 +100,7 @@ export const services: Service[] = [
     description:
       "Wood, faux wood, aluminum, vertical, and softwood blinds measured and installed for local homes and businesses.",
     image: images.blinds,
-    imageAlt: "Vertical blinds installed on a large sliding door"
+    imageAlt: "Warm wood blinds filtering light in a Ventura County home office"
   },
   {
     title: "Custom Drapery",
@@ -117,8 +117,8 @@ export const services: Service[] = [
     slug: "commercial-window-coverings",
     description:
       "Commercial roller shades and window treatments for offices, storefronts, schools, medical spaces, and shared workspaces.",
-    image: images.shades,
-    imageAlt: "Commercial roller shades installed in a Ventura County office"
+    image: "/images/product-previews/commercial-socal-office-hero.jpg",
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows"
   }
 ];
 
@@ -267,7 +267,7 @@ const parentPages: SitePage[] = [
     intro:
       "805 Shutters helps Ventura County customers choose custom shades for privacy, glare control, insulation, style, and motorized convenience.",
     image: images.shades,
-    imageAlt: "Custom honeycomb shades installed in a Ventura County sitting room",
+    imageAlt: "Relaxed Roman shades over a wide bedroom window in a Ventura County home",
     sections: [
       {
         heading: "Shade Options",
@@ -291,7 +291,7 @@ const parentPages: SitePage[] = [
     intro:
       "805 Shutters installs custom blinds for Ventura County homes and businesses, including wood, faux wood, aluminum, vertical, and softwood options.",
     image: images.blinds,
-    imageAlt: "Vertical blinds installed on a large Ventura County sliding door",
+    imageAlt: "Warm wood blinds filtering light in a Ventura County home office",
     sections: [
       {
         heading: "Practical Light Control",
