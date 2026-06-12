@@ -13,7 +13,7 @@ export const commercialModeImages = {
   classroom: "/images/commercial-mode/commercial-classroom-roller-shades.png",
   storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png",
   honeycomb: "/images/commercial-mode/commercial-office-honeycomb-shades.png",
-  fauxWood: "/images/805-portfolio-blinds-office.jpg"
+  fauxWood: "/images/commercial-mode/commercial-office-faux-wood-blinds.png"
 };
 
 export const commercialServices: Service[] = [
@@ -60,7 +60,7 @@ export const commercialServices: Service[] = [
     description:
       "Durable, wipeable faux wood blinds for offices, rentals, multifamily turns, staff areas, and budget-conscious properties.",
     image: commercialModeImages.fauxWood,
-    imageAlt: "Faux wood blinds installed in a professional office setting"
+    imageAlt: "Commercial office windows fitted with faux wood blinds"
   },
   {
     title: "Motorized Commercial Shades",
@@ -122,7 +122,7 @@ export const commercialGallery = [
   },
   {
     image: commercialModeImages.fauxWood,
-    imageAlt: "Faux wood blinds installed in a professional office setting"
+    imageAlt: "Commercial office windows fitted with faux wood blinds"
   }
 ];
 

@@ -219,7 +219,7 @@ const commercialPortfolioStories: PortfolioStory[] = [
     body:
       "Faux wood blinds work well for offices, rental turns, staff rooms, and budget-conscious properties that still need a finished look.",
     image: commercialModeImages.fauxWood,
-    imageAlt: "Faux wood blinds installed in a professional office setting",
+    imageAlt: "Commercial office windows fitted with faux wood blinds",
     imageWidth: 1672,
     imageHeight: 941,
     href: "/commercial-window-coverings/",
@@ -285,7 +285,7 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   },
   {
     image: commercialModeImages.fauxWood,
-    imageAlt: "Faux wood blinds installed in a professional office setting"
+    imageAlt: "Commercial office windows fitted with faux wood blinds"
   }
 ];
 
@@ -418,7 +418,7 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
     category: "Faux Wood Blinds",
     title: "Durable Blinds For Property Turns",
     image: commercialModeImages.fauxWood,
-    imageAlt: "Faux wood blinds installed in a professional office setting"
+    imageAlt: "Commercial office windows fitted with faux wood blinds"
   },
   {
     category: "Lobbies",
