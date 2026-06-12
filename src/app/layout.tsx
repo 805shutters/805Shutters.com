@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { CommercialModeProvider } from "@/components/CommercialModeProvider";
+import { MessagingAssistantWidget } from "@/components/MessagingAssistantWidget";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { RouteTracking } from "@/components/RouteTracking";
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <main>{children}</main>
           <SiteFooter />
         </CommercialModeProvider>
+        <MessagingAssistantWidget />
       </body>
     </html>
   );
