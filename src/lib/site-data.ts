@@ -41,7 +41,8 @@ export const site = {
   emailHref: "mailto:805@805shutters.com",
   social: {
     facebook: "https://www.facebook.com/805shutters",
-    instagram: "https://www.instagram.com/805shutters/"
+    instagram: "https://www.instagram.com/805shutters/",
+    yelp: "https://www.yelp.com/biz/805-shutters-camarillo-2"
   },
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com",
   serviceArea: "Ventura County",

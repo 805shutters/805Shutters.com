@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { commercialBrand, commercialModeImages } from "@/lib/commercial-mode-data";
@@ -25,7 +25,8 @@ const categoryItems = [
     href: "/shades/",
     products: [
       { label: "Roller Shades", image: "/images/editorial-scroll/coastal-living-roller-shades.jpg" },
-      { label: "Honeycomb Shades", image: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-wide.jpg" },
+      { label: "Honeycomb Shades", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
+      { label: "Room Darkening", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
       { label: "Layered Shades", image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg" },
       { label: "Roman Shades", image: "/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-20-roman-shades-white-living-room.jpg" },
       { label: "Natural Shades", image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg" },
@@ -116,6 +117,20 @@ const commercialCategoryItems = [
   }
 ];
 
+type YelpReview = {
+  id: string;
+  rating: number;
+  text: string;
+  url: string;
+  timeCreated: string;
+  userName: string;
+  userImageUrl?: string;
+};
+
+type YelpReviewsResponse = {
+  reviews?: YelpReview[];
+};
+
 export function SiteHeader() {
   const pathname = usePathname();
   const { isCommercialMode } = useCommercialMode();
@@ -123,6 +138,32 @@ export function SiteHeader() {
   const activeCategoryItems = isCommercialMode ? commercialCategoryItems : categoryItems;
   const brandName = isCommercialMode ? commercialBrand.name : site.name;
   const brandLabel = isCommercialMode ? commercialBrand.label : "SHUTTERS";
+  const [yelpReviews, setYelpReviews] = useState<YelpReview[]>([]);
+  const [yelpReviewStatus, setYelpReviewStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+
+  const loadYelpReviews = () => {
+    if (yelpReviewStatus !== "idle") {
+      return;
+    }
+
+    setYelpReviewStatus("loading");
+    fetch("/api/yelp/reviews")
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Yelp reviews request failed");
+        }
+
+        return (await response.json()) as YelpReviewsResponse;
+      })
+      .then((payload) => {
+        setYelpReviews(payload.reviews || []);
+        setYelpReviewStatus("loaded");
+      })
+      .catch((error) => {
+        console.error(error);
+        setYelpReviewStatus("error");
+      });
+  };
 
   const showHeroPreview = (image: string) => {
     if (!isHome) {
@@ -158,6 +199,39 @@ export function SiteHeader() {
             <a href={site.social.instagram} aria-label="805 Shutters on Instagram" target="_blank" rel="noreferrer">
               <InstagramIcon />
             </a>
+            <span className="social-link-with-panel" onMouseEnter={loadYelpReviews} onFocus={loadYelpReviews}>
+              <a
+                className="social-link-yelp"
+                href={site.social.yelp}
+                aria-label="805 Shutters on Yelp"
+                aria-describedby="yelp-review-preview"
+                target="_blank"
+                rel="noreferrer"
+              >
+                <YelpIcon />
+              </a>
+              <span className="yelp-review-popover" id="yelp-review-preview">
+                <span className="yelp-review-title">Yelp reviews</span>
+                {yelpReviewStatus === "loading" ? (
+                  <span className="yelp-review-note">Loading review excerpts...</span>
+                ) : yelpReviews.length ? (
+                  <span className="yelp-review-list">
+                    {yelpReviews.map((review) => (
+                      <span className="yelp-review-item" key={review.id}>
+                        <span className="yelp-review-stars" aria-label={`${review.rating} star Yelp review`}>
+                          {"★".repeat(Math.max(0, Math.min(5, review.rating)))}
+                        </span>
+                        <span className="yelp-review-text">{review.text}</span>
+                        <span className="yelp-review-author">{review.userName}</span>
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="yelp-review-note">Open Yelp for current customer reviews.</span>
+                )}
+                <span className="yelp-review-footer">View every review on Yelp</span>
+              </span>
+            </span>
           </div>
         </div>
         <Link className="brand" href="/" aria-label={brandName}>
@@ -272,6 +346,18 @@ function InstagramIcon() {
       <path d="M7.5 2.8h9c2.6 0 4.7 2.1 4.7 4.7v9c0 2.6-2.1 4.7-4.7 4.7h-9c-2.6 0-4.7-2.1-4.7-4.7v-9c0-2.6 2.1-4.7 4.7-4.7zm0 2C6.6 4.8 4.8 6.6 4.8 7.5v9c0 .9 1.8 2.7 2.7 2.7h9c.9 0 2.7-1.8 2.7-2.7v-9c0-.9-1.8-2.7-2.7-2.7h-9z" />
       <path d="M12 7.4a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2zm0 2a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2z" />
       <path d="M17 6.7a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z" />
+    </svg>
+  );
+}
+
+function YelpIcon() {
+  return (
+    <svg className="yelp-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M10.4 2.5c1.1-.4 2.3.4 2.3 1.6v5.7c0 .6-.5 1.1-1.1 1.1-.3 0-.6-.1-.8-.4L7.4 5.9c-.7-1-.2-2.3.9-2.7l2.1-.7z" />
+      <path d="M17.4 5.9c.9.7.8 2.1-.2 2.7l-4.9 2.8c-.5.3-1.2.1-1.5-.4-.2-.3-.2-.6-.1-.9l1.8-5.4c.4-1.1 1.8-1.5 2.7-.8l2.2 1.5z" />
+      <path d="M21.2 12.7c.1 1.2-.9 2.1-2.1 1.9l-5.5-.9c-.6-.1-1-.7-.9-1.3.1-.3.2-.6.5-.8l4.5-3.4c.9-.7 2.3-.1 2.5 1.1l1 3.4z" />
+      <path d="M17.7 19.8c-.8.9-2.2.7-2.7-.3l-2.7-5c-.3-.5-.1-1.2.4-1.5.3-.2.6-.2.9-.1l5.3 2c1.1.4 1.4 1.9.7 2.8l-1.9 2.1z" />
+      <path d="M8.6 21.3c-1.1-.5-1.4-1.9-.6-2.8l3.8-4.2c.4-.5 1.1-.5 1.6-.1.3.2.4.5.4.8l-.2 5.7c0 1.2-1.2 1.9-2.3 1.5l-2.7-.9z" />
     </svg>
   );
 }
