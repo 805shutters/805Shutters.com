@@ -296,8 +296,18 @@ body.commercial-mode .brand-text-logo-name {
   place-items: center;
 }
 
-.social-link-yelp {
-  color: #d32323;
+.social-links .social-link-yelp {
+  width: 82px;
+  height: 34px;
+  padding: 3px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 18px rgba(17, 17, 17, 0.1);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
 }
 
 .social-links svg {
@@ -306,8 +316,17 @@ body.commercial-mode .brand-text-logo-name {
   fill: currentColor;
 }
 
-.yelp-icon {
-  color: #d32323;
+.social-link-yelp:hover,
+.social-link-yelp:focus-visible {
+  border-color: #d32323;
+  box-shadow: 0 10px 22px rgba(17, 17, 17, 0.18);
+  transform: translateY(-1px);
+}
+
+.yelp-wordmark {
+  display: block;
+  width: 68px;
+  height: auto;
 }
 
 .yelp-review-popover {
@@ -329,7 +348,7 @@ body.commercial-mode .brand-text-logo-name {
   pointer-events: none;
   text-align: left;
   text-shadow: none;
-  transform: translate(calc(-50% + 14px), 8px);
+  transform: translate(calc(-50% + 36px), 8px);
   transition:
     opacity 180ms ease,
     transform 180ms ease;
@@ -339,7 +358,7 @@ body.commercial-mode .brand-text-logo-name {
   content: "";
   position: absolute;
   top: -7px;
-  left: calc(50% - 14px);
+  left: calc(50% - 36px);
   width: 12px;
   height: 12px;
   border-left: 1px solid rgba(17, 17, 17, 0.13);
@@ -352,7 +371,7 @@ body.commercial-mode .brand-text-logo-name {
 .social-link-with-panel:focus-within .yelp-review-popover {
   opacity: 1;
   pointer-events: auto;
-  transform: translate(calc(-50% + 14px), 0);
+  transform: translate(calc(-50% + 36px), 0);
 }
 
 .yelp-review-title {
