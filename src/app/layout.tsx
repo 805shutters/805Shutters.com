@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { CommercialModeProvider } from "@/components/CommercialModeProvider";
 import { MessagingAssistantWidget } from "@/components/MessagingAssistantWidget";
@@ -17,6 +18,13 @@ const bodoniModa = Bodoni_Moda({
   variable: "--font-bodoni-moda"
 });
 
+const theanoDidot = localFont({
+  src: "../fonts/theano-didot-latin.woff2",
+  weight: "400",
+  display: "swap",
+  variable: "--font-theano-didot"
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.baseUrl),
   title: {
@@ -32,7 +40,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={bodoniModa.variable}>
+    <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable}`}>
       <body>
         <TrackingScripts />
         <RouteTracking />
