@@ -21,6 +21,60 @@ Style for every image:
 - Leave clean center space for HTML overlay text.
 - Wide horizontal hero composition, 16:9 or wider.
 
+## Final Homepage Flow Assets
+
+Final hero-carousel assets live in `public/images/homepage-flow/` and are used
+in this exact residential homepage order:
+
+| Order | Slide | File |
+| --- | --- | --- |
+| 1 | Original home photo | `original-homepage-photo.png` |
+| 2 | Shutters | `shutters.png` |
+| 3 | Blackout Honeycombs | `blackout-honeycombs.png` |
+| 4 | Drapery | `drapery.png` |
+| 5 | Roller Shades | `roller-shades.jpg` |
+| 6 | Roman Shades | `roman-shades.jpg` |
+| 7 | Bamboo Shades | `bamboo-shades.jpg` |
+| 8 | Faux Wood Blinds | `faux-wood-blinds.png` |
+| 9 | Exterior Patio Shades | `exterior-patio-shades.jpg` |
+| 10 | Vertical Blinds | `vertical-blinds.png` |
+| 11 | Mini Blinds | `mini-blinds.png` |
+| 12 | Layered Shades | `layered-shades.jpg` |
+| 13 | Sheer Shades | `sheer-shades.png` |
+| 14 | Natural Shades | `natural-shades.jpg` |
+| 15 | Panel Track Shades | `panel-track-shades.png` |
+| 16 | Vertical Cellular Shades | `vertical-cellular-shades.png` |
+| 17 | Skylight Shades | `skylight-shades.png` |
+| 18 | Skylight Shutters | `skylight-shutters.png` |
+
+Existing AI source notes:
+- Shutters uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-12.png`.
+- Roman Shades uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-20-roman-shades-white-living-room.jpg`.
+- Drapery uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-07.png`.
+
+New June 13, 2026 generated prompts:
+
+Vertical Blinds:
+Ultra realistic luxury editorial interior photography of a bright Ventura/coastal California living room with a wide sliding glass patio door and refined garden view. Elegant cream vertical blinds with fabric vanes, partially open so the vertical product structure is unmistakable. Wide horizontal 16:9 hero composition with clean center overlay space. Warm natural California daylight, warm neutrals, cream plaster, pale oak, soft linen. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as vertical blinds, not drapery or shutters.
+
+Mini Blinds:
+Ultra realistic luxury editorial interior photography of a refined Ventura/coastal California home office with tall windows and a distant garden or hillside view. Slim white aluminum mini blinds with narrow horizontal slats, tilted to filter sunlight; the narrow mini-blind scale must be clear. Wide horizontal 16:9 hero composition with clean center overlay space. Bright warm morning light with crisp slat shadows, warm neutrals, white blinds, oak desk, cream plaster. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as mini blinds, not faux wood blinds or shutters.
+
+Sheer Shades:
+Ultra realistic luxury editorial interior photography of an airy Ventura/coastal California living room with large windows and a soft garden view. Sheer shades with translucent fabric and soft horizontal vanes suspended between sheer layers, clearly visible and filtering daylight. Wide horizontal 16:9 hero composition with clean center overlay space. Glowing daylight, soft diffusion, warm whites, pale oak, linen, soft greenery. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as sheer shades, not roller shades or drapery.
+
+Panel Track Shades:
+Ultra realistic luxury editorial interior photography of a modern Ventura/coastal California living room with a broad sliding glass door opening to a patio and hillside garden. Wide sliding panel track shades with large vertical fabric panels on an overhead track, partially stacked to one side and partially covering the glass. Wide horizontal 16:9 hero composition with clean center overlay space. Warm coastal daylight, warm neutrals, cream fabric panels, pale oak, soft stone. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as panel track shades, not vertical blinds or drapery.
+
+Vertical Cellular Shades:
+Ultra realistic luxury editorial interior photography of a refined Ventura/coastal California bedroom or sitting room with a tall sliding glass door and soft garden light. Vertical cellular shades for a sliding door, with clear pleated honeycomb fabric running vertically in tall panels, partially open to show the patio view. Wide horizontal 16:9 hero composition with clean center overlay space. Warm filtered daylight, cream cellular fabric, warm plaster, pale oak, soft greenery. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as vertical cellular shades, not vertical blinds, drapery, or shutters.
+
+Skylight Shades:
+Ultra realistic luxury editorial interior photography of a bright coastal California kitchen or loft with angled ceiling skylights and warm plaster architecture. Skylight shades installed inside angled skylight openings, with light-filtering cellular or pleated fabric panels fitted cleanly to the skylight frames. Wide horizontal 16:9 hero composition that includes ceiling skylights and clean overlay space. Sunlit but softly controlled warm daylight, warm whites, cream fabric, pale oak, soft stone. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as skylight shades, not regular window shades.
+
+Skylight Shutters:
+Ultra realistic luxury editorial interior photography of a refined coastal California living room or kitchen with angled ceiling skylights, warm plaster, pale oak beams, and clean architectural detail. Custom skylight shutters fitted inside angled skylight openings, with small operable louvers visible within each skylight frame. Wide horizontal 16:9 hero composition with clean overlay space. Bright controlled daylight, warm neutrals, white shutter louvers, pale oak, cream plaster. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as skylight shutters, not standard wall shutters or skylight shades.
+
 ## 1. Shutters
 
 Option A:
