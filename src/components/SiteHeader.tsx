@@ -117,7 +117,7 @@ export function SiteHeader() {
               <a
                 className="social-link-yelp"
                 href={site.social.yelp}
-                aria-label="805 Shutters on Yelp"
+                aria-label={`805 Shutters on Yelp, rated ${site.reviews.yelpRating} out of 5`}
                 aria-describedby="yelp-review-preview"
                 target="_blank"
                 rel="noreferrer"
@@ -131,6 +131,7 @@ export function SiteHeader() {
                     <span />
                     <span />
                   </span>
+                  <span className="yelp-rating">{site.reviews.yelpRating}</span>
                 </span>
               </a>
               <span className="yelp-review-popover" id="yelp-review-preview">
