@@ -14,6 +14,7 @@ export default function BookConsultationPage() {
   return (
     <section className="booking-page booking-page--focused">
       <header className="booking-page__masthead">
+        <h1>Let's Book!</h1>
         <img
           className="booking-page__masthead-logo"
           src="/brand/805-shutters-logo-exact-transparent.png"

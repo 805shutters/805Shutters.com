@@ -3531,7 +3531,9 @@ body:has(.booking-page--focused) .assistant-widget {
 
 .booking-page__masthead {
   display: grid;
-  place-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(18px, 4vw, 56px);
   width: min(1240px, calc(100% - 40px));
   margin: 0 auto;
   padding: clamp(24px, 3.8vw, 52px) clamp(24px, 3.5vw, 44px) clamp(22px, 3.4vw, 48px);
@@ -3540,8 +3542,22 @@ body:has(.booking-page--focused) .assistant-widget {
   background: #ffffff;
 }
 
+.booking-page__masthead h1 {
+  justify-self: start;
+  max-width: none;
+  margin: 0;
+  color: #111111;
+  font-family: var(--font-display);
+  font-size: clamp(62px, 8.2vw, 124px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.9;
+  white-space: nowrap;
+}
+
 .booking-page__masthead-logo {
-  width: clamp(132px, 12vw, 188px);
+  justify-self: end;
+  width: clamp(116px, 11vw, 178px);
   height: auto;
   filter: none;
 }
@@ -4817,12 +4833,19 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .booking-page__masthead {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
     width: min(100% - 16px, 620px);
-    padding: 22px 24px 20px;
+    padding: 20px 18px 18px;
+  }
+
+  .booking-page__masthead h1 {
+    font-size: clamp(36px, 10.6vw, 48px);
+    line-height: 0.95;
   }
 
   .booking-page__masthead-logo {
-    width: clamp(106px, 31vw, 138px);
+    width: clamp(78px, 22vw, 106px);
   }
 
   .booking-page__intro {
