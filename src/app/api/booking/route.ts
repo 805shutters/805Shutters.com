@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { bookingEndIso, buildBookingAvailability, monthRangeUtc, zonedTimeToUtc } from "@/lib/booking/availability";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmCalendarEvent } from "@/lib/crm/types";
+import { productInterestOptions } from "@/lib/product-interest-options";
 
 export const runtime = "nodejs";
 
@@ -35,8 +36,8 @@ type BookingAutomationDetails = {
 
 const defaultStaffEmail = "805@805shutters.com";
 const defaultStaffSmsNumbers = ["805-298-5555", "805-914-4917"];
-const allowedProductTypes = new Map(
-  ["Shutters", "Shades", "Blinds", "Drapery", "Exterior shades"].map((label) => [label.toLowerCase(), label])
+const allowedProductTypes = new Map<string, string>(
+  productInterestOptions.map((label) => [label.toLowerCase(), label])
 );
 
 function clean(value: unknown) {
@@ -161,16 +162,23 @@ async function sendSmsMessage({ to, body }: { to: string; body: string }) {
 
 async function sendSmsConfirmation({
   phone,
-  startAt
+  startAt,
+  productInterest,
+  productTypes
 }: {
   phone: string;
   startAt: string;
+  productInterest: string;
+  productTypes: string[];
 }) {
   const body = [
     "Thank you for your inquiry and interest in 805 Shutters.",
     `Your free in-home consultation is confirmed for ${formatAppointmentForSms(startAt)}.`,
+    productTypes.length ? `Product interest: ${productInterest}.` : null,
     "We look forward to meeting you."
-  ].join(" ");
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return sendSmsMessage({ to: phone, body });
 }
@@ -502,7 +510,7 @@ export async function POST(request: NextRequest) {
   };
 
   const [smsConfirmationSent, emailConfirmationSent, staffEmailSent, staffSmsAlertCount] = await Promise.all([
-    sendSmsConfirmation({ phone, startAt }),
+    sendSmsConfirmation({ phone, startAt, productInterest, productTypes }),
     sendCustomerEmailConfirmation(bookingDetails),
     sendStaffBookingEmail(bookingDetails),
     sendStaffSmsAlerts(bookingDetails)

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
   time: string;
@@ -30,8 +31,6 @@ type BookingCalendarProps = {
   showClose?: boolean;
   onClose?: () => void;
 };
-
-const productOptions = ["Shutters", "Shades", "Blinds", "Drapery", "Exterior shades"];
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -320,7 +319,7 @@ export function BookingCalendar({
                   Product interest <span className="booking-optional">optional</span>
                 </legend>
                 <div className="booking-product-grid">
-                  {productOptions.map((productType) => (
+                  {productInterestOptions.map((productType) => (
                     <button
                       type="button"
                       key={productType}

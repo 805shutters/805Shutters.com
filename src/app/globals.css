@@ -550,14 +550,21 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 }
 
 .category-nav-products {
-  --category-product-gap: clamp(20px, 2.4vw, 36px);
+  --category-dropdown-bg: rgba(16, 12, 9, 0.42);
+  --category-dropdown-border: rgba(255, 255, 255, 0.18);
+  --category-product-gap: clamp(12px, 1.45vw, 22px);
   position: absolute;
   top: calc(50% + 0.85em);
   left: 50%;
   z-index: 5;
+  isolation: isolate;
   width: max-content;
   min-width: 0;
-  padding-top: var(--category-product-gap);
+  padding: var(--category-product-gap) clamp(18px, 2.2vw, 34px) clamp(14px, 1.7vw, 24px);
+  border: 1px solid var(--category-dropdown-border);
+  border-radius: 6px;
+  background: var(--category-dropdown-bg);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
   color: rgba(255, 255, 255, 0.92);
   opacity: 0;
   pointer-events: none;
@@ -574,6 +581,18 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   will-change: opacity, transform;
 }
 
+.category-nav-products::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--category-product-gap) * -0.45) -0.55em;
+  z-index: -1;
+  border-radius: 8px;
+  background: rgba(9, 8, 7, 0.56);
+  filter: blur(18px);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
 .category-nav-item:hover .category-nav-products,
 .category-nav-item:focus-within .category-nav-products {
   opacity: 1;
@@ -587,6 +606,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   display: grid;
   justify-items: center;
   gap: var(--category-product-gap);
+  position: relative;
 }
 
 .category-nav-product-button {
@@ -602,9 +622,9 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   color: inherit;
   cursor: pointer;
   font: inherit;
-  font-size: 1.5em;
+  font-size: 1em;
   letter-spacing: inherit;
-  line-height: inherit;
+  line-height: 1.05;
   text-align: center;
   text-shadow:
     0 1px 2px rgba(0, 0, 0, 0.95),
@@ -632,7 +652,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
       rgba(10, 8, 6, 0) 78%
     );
   filter: blur(14px);
-  opacity: 1;
+  opacity: 0.12;
   pointer-events: none;
 }
 
@@ -986,6 +1006,8 @@ body:has(.home-editorial).site-header-solid .category-dot {
 }
 
 body:has(.home-editorial).site-header-solid .category-nav-products {
+  --category-dropdown-bg: rgba(251, 250, 247, 0.9);
+  --category-dropdown-border: rgba(17, 17, 17, 0.1);
   color: rgba(17, 17, 17, 0.88);
   text-shadow: 0 1px 14px rgba(255, 255, 255, 0.68);
 }
@@ -3076,27 +3098,69 @@ body:has(.crm-app-shell) {
 }
 
 .booking-product-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 9px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
 }
 
 .booking-product-grid button {
-  min-height: 42px;
-  padding: 0 14px;
-  background: var(--white);
-  color: var(--ink);
+  min-height: 48px;
+  justify-content: center;
+  padding: 9px 12px;
+  border-color: #cbd6e4;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 252, 0.94));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 7px 16px rgba(31, 63, 145, 0.08);
+  color: #24344d;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  white-space: normal;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.booking-product-grid button:not(:disabled):hover,
+.booking-product-grid button:not(:disabled):focus-visible {
+  border-color: #8aa0c4;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 22px rgba(31, 63, 145, 0.14);
+  transform: translateY(-1px);
 }
 
 .booking-product-grid button.active {
-  border-color: var(--ink);
-  background: var(--ink);
+  border-color: #1f3f91;
+  background:
+    linear-gradient(180deg, #1f3f91, #162f73);
+  box-shadow:
+    inset 0 2px 8px rgba(7, 18, 45, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.18);
   color: var(--white);
+  transform: translateY(1px);
+}
+
+.booking-product-grid button.active:not(:disabled):hover,
+.booking-product-grid button.active:not(:disabled):focus-visible {
+  border-color: #1f3f91;
+  box-shadow:
+    inset 0 2px 8px rgba(7, 18, 45, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.18);
+  transform: translateY(1px);
 }
 
 .booking-product-grid button:disabled {
   background: #eceff4;
   border-color: #d4d9e1;
+  box-shadow: none;
   color: #9ca9ba;
   cursor: not-allowed;
 }

@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
+import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   CrmAccountabilityItem,
@@ -36,7 +37,7 @@ const jobColumns: Array<{ status: CrmJobStatus; label: string }> = [
   { status: "installed", label: "Installed" }
 ];
 
-const productOptions = ["Shutters", "Shades", "Blinds", "Drapery", "Exterior Shades", "Mixed"];
+const productOptions = [...productInterestOptions, "Mixed"];
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> = [
   { value: "zelle", label: "Zelle" },
@@ -216,7 +217,7 @@ export function CrmApp() {
           email: formString(formData, "email"),
           city: formString(formData, "city"),
           address: formString(formData, "address"),
-          product_interest: formString(formData, "product_interest").toLowerCase(),
+          product_interest: formString(formData, "product_interest"),
           sales_owner: formString(formData, "sales_owner"),
           priority: formString(formData, "priority") || "normal",
           next_action: formString(formData, "next_action") || "Call customer",

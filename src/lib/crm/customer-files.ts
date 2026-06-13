@@ -144,7 +144,7 @@ export function buildCustomerFiles({
           quote_id: null,
           bookkeeping_entry_id: null,
           room: null,
-          product_type: titleCase(job.product_interest || "Window Treatments"),
+          product_type: job.product_interest || "Window Treatments",
           description: job.notes || job.next_action || null,
           width: null,
           height: null,
@@ -257,12 +257,4 @@ function pushUnique<T>(items: T[], id: string, value: T) {
   if (!items.some((item) => String((item as { id?: string }).id) === id)) {
     items.push(value);
   }
-}
-
-function titleCase(value: string) {
-  return value
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
 }
