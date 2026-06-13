@@ -163,6 +163,15 @@ export function SiteHeader() {
             <span className="brand-text-logo-number">805</span>
             <span className="brand-text-logo-name">{brandLabel}</span>
           </span>
+          {!isCommercialMode && (
+            <img
+              className="brand-logo brand-logo-exact"
+              src="/brand/805-shutters-logo-exact-transparent.png"
+              alt="805 Shutters"
+              width={286}
+              height={270}
+            />
+          )}
         </Link>
         <div className="mobile-header-tools mobile-header-tools--right" aria-label="Mobile contact actions">
           <TrackedPhoneLink ariaLabel="Call 805 Shutters" className="mobile-header-icon" location="mobile header">
