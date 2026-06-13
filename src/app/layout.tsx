@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda } from "next/font/google";
+import { Archivo, Bodoni_Moda } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { CommercialModeProvider } from "@/components/CommercialModeProvider";
@@ -25,6 +25,15 @@ const theanoDidot = localFont({
   variable: "--font-theano-didot"
 });
 
+// Industrial grotesque used only for the "805 Commercial" wordmark
+// (commercial mode). Variable font — weights set in CSS. Residential
+// keeps the Theano Didot serif.
+const archivo = Archivo({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-archivo"
+});
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.baseUrl),
   title: {
@@ -40,7 +49,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable}`}>
+    <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable} ${archivo.variable}`}>
       <body>
         <TrackingScripts />
         <RouteTracking />

@@ -29,6 +29,67 @@ export function localBusinessJsonLd() {
   };
 }
 
+export function commercialSubPageJsonLd(page: SitePage, cityName?: string | null) {
+  const pageUrl = `${site.baseUrl}${page.path}`;
+  const flagshipUrl = `${site.baseUrl}/commercial-window-coverings/`;
+  const areaServed = cityName
+    ? [{ "@type": "City", name: cityName }]
+    : site.areas.map((area) => ({ "@type": "City", name: area }));
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Service",
+        "@id": `${pageUrl}#commercial-service`,
+        name: page.h1,
+        description: page.description,
+        url: pageUrl,
+        provider: {
+          "@type": "LocalBusiness",
+          "@id": `${site.baseUrl}#local-business`,
+          name: site.name,
+          telephone: site.phone,
+          url: site.baseUrl
+        },
+        areaServed,
+        serviceType: [
+          "Commercial window coverings",
+          "Commercial roller shades",
+          "Solar shades",
+          "Office blinds",
+          "Storefront roller shades",
+          "Warehouse office blinds"
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: site.baseUrl
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: "Commercial Window Coverings",
+            item: flagshipUrl
+          },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: cityName ? `${cityName} Commercial Window Coverings` : page.h1,
+            item: pageUrl
+          }
+        ]
+      }
+    ]
+  };
+}
+
 export function commercialWindowCoveringsJsonLd(page: SitePage) {
   const pageUrl = `${site.baseUrl}${page.path}`;
 

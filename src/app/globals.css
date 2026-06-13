@@ -35,6 +35,10 @@ body.commercial-mode {
   --line: #cfd8d3;
   --paper: #f7f8f6;
   --soft: #e8eeea;
+  /* Commercial mode swaps the brand serif for an industrial grotesque,
+     scoped to the "805 Commercial" wordmark via the logo font vars. */
+  --font-logo: var(--font-archivo, "Archivo"), "Helvetica Neue", Arial, sans-serif;
+  --font-logo-number: var(--font-archivo, "Archivo"), "Helvetica Neue", Arial, sans-serif;
 }
 
 a {
@@ -211,9 +215,21 @@ img {
   transform: translateY(-1px);
 }
 
+body.commercial-mode .brand-text-logo-number {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 body.commercial-mode .brand-text-logo-name {
   font-size: 21px;
+  font-weight: 600;
   letter-spacing: 0.2em;
+}
+
+/* The redefined logo vars above would also catch the header phone number;
+   keep it on the brand serif numerals so only the wordmark goes industrial. */
+body.commercial-mode .header-phone {
+  font-family: var(--font-theano-didot, "Theano Didot"), Didot, "Bodoni 72", "Bodoni 72 Oldstyle", var(--font-bodoni-moda, "Bodoni Moda"), "Times New Roman", serif;
 }
 
 .masthead-email {
@@ -858,9 +874,15 @@ body:has(.home-editorial) .brand::after {
   letter-spacing: 0.34em;
 }
 
+body.commercial-mode:has(.home-editorial) .brand::before {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 body.commercial-mode:has(.home-editorial) .brand::after {
   content: "COMMERCIAL";
   font-size: 21px;
+  font-weight: 600;
   letter-spacing: 0.2em;
 }
 
@@ -2074,6 +2096,32 @@ button:hover {
   font-weight: 600;
 }
 
+.seo-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  margin: 18px 0 0;
+  list-style: none;
+}
+
+.seo-link-list a {
+  display: inline-block;
+  padding: 8px 14px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.seo-link-list a:hover,
+.seo-link-list a:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .form-band {
   background: var(--soft);
 }
@@ -2232,7 +2280,7 @@ textarea {
 .footer-commercial-wordmark span {
   font-family: var(--font-logo-number);
   font-size: 60px;
-  font-weight: 400;
+  font-weight: 700;
   line-height: 0.78;
   letter-spacing: 0.02em;
 }
@@ -2241,7 +2289,7 @@ textarea {
   margin-top: 8px;
   font-family: var(--font-logo);
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1;
   letter-spacing: 0.2em;
 }

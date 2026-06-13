@@ -11,6 +11,7 @@ export type PageSection = {
   heading: string;
   body: string;
   bullets?: string[];
+  links?: { label: string; href: string }[];
 };
 
 export type SitePage = {
@@ -140,6 +141,15 @@ const cityPages = [
   ["thousand-oaks", "thousand-oaks-ca", "Thousand Oaks"],
   ["ventura", "ventura-ca", "Ventura"]
 ] as const;
+
+// Major commercial hubs every commercial city/roller-shade page links to
+// (excluding itself) to build a real internal-link mesh between the pages.
+const commercialHubCities: { city: string; caSlug: string }[] = [
+  { city: "Camarillo", caSlug: "camarillo-ca" },
+  { city: "Thousand Oaks", caSlug: "thousand-oaks-ca" },
+  { city: "Ventura", caSlug: "ventura-ca" },
+  { city: "Oxnard", caSlug: "oxnard-ca" }
+];
 
 const productFit = {
   shutters:
@@ -468,28 +478,86 @@ const parentPages: SitePage[] = [
         heading: "Free Commercial Shade Audit",
         body:
           "The free commercial shade audit reviews glare, heat, privacy, damaged coverings, cord or safety concerns, replacement priorities, room count, and target timing. After the walkthrough, 805 Shutters can recommend product options and provide budget direction before final measuring."
+      },
+      {
+        heading: "Commercial Window Coverings By City",
+        body:
+          "805 Shutters supports commercial projects across Ventura County. Start with the page for your city for local building types, project examples, and a free shade audit.",
+        links: [
+          { label: "Commercial roller shades", href: "/commercial-roller-shades/" },
+          ...cityPages.map(([, caSlug, city]) => ({
+            label: `Commercial window coverings in ${city}`,
+            href: `/commercial-window-coverings/${caSlug}/`
+          }))
+        ]
       }
     ],
     cta: "Schedule a free commercial shade audit"
   },
   {
     path: "/commercial-roller-shades/",
-    title: "Commercial Roller Shades Ventura County | 805 Shutters",
+    title: "Commercial Roller Shades Ventura County | Office & Storefront Solar Shades | 805 Shutters",
     description:
-      "Commercial roller shades for Ventura County offices, storefronts, schools, medical spaces, restaurants, and shared facilities.",
+      "Commercial roller shades and solar shades for Ventura County offices, storefronts, schools, medical spaces, and warehouses. Glare, heat, and privacy control with a free shade audit.",
     h1: "Commercial Roller Shades in Ventura County",
     eyebrow: "Commercial roller shades",
     intro:
-      "Commercial roller shades help control glare, heat, and privacy while keeping offices and customer-facing spaces clean and professional.",
-    image: images.shades,
-    imageAlt: "Commercial roller shades for a large window",
+      "Commercial roller shades control glare, heat, and privacy while keeping offices, storefronts, and customer-facing spaces clean and professional. 805 Shutters measures, recommends, and installs roller-shade systems for Ventura County businesses.",
+    image: images.commercialHero,
+    imageAlt: "Commercial roller shades on tall office windows in a sunlit Southern California workspace",
+    gallery: [
+      {
+        image: images.commercialStorefront,
+        imageAlt: "Storefront fitted with commercial solar roller shades"
+      },
+      {
+        image: images.commercialSchool,
+        imageAlt: "School campus suited for cordless commercial roller shade replacement"
+      },
+      {
+        image: images.commercialWarehouse,
+        imageAlt: "Warehouse office windows suited for commercial roller shades"
+      }
+    ],
     sections: [
       {
-        heading: "Shade Systems For Business",
+        heading: "Where Commercial Roller Shades Work Best",
         body:
-          "We review openness factor, fabric color, mounting conditions, manual or motorized controls, and room-by-room requirements before installation."
+          "Roller shades are the most common commercial window covering because they are clean, durable, and easy to operate. They fit offices, conference rooms, storefronts, lobbies, schools, medical suites, and warehouse offices where glare, heat, and privacy all matter.",
+        bullets: [
+          "Office floors and private suites",
+          "Conference and presentation rooms",
+          "Storefronts, lobbies, and showrooms",
+          "Classrooms and facility spaces",
+          "Medical and professional offices",
+          "Warehouse and industrial offices"
+        ]
+      },
+      {
+        heading: "Solar, Light-Filtering, And Blackout Roller Shades",
+        body:
+          "The fabric does most of the work. Solar shades cut glare and heat while keeping the view and daylight, light-filtering fabrics soften a room, and blackout fabrics give conference rooms, classrooms, and treatment rooms full privacy and presentation control. We compare openness factor, color, and exterior appearance before ordering.",
+        links: [
+          { label: "Commercial window coverings (full overview)", href: "/commercial-window-coverings/" },
+          { label: "Custom window shades for homes", href: "/shades/" }
+        ]
+      },
+      {
+        heading: "Manual And Motorized Roller Shade Systems",
+        body:
+          "Roller shades can be manual chain-driven or motorized for tall glass, hard-to-reach openings, boardrooms, and multi-window walls. Motorized systems can be grouped by room or exposure so an entire wall of shades moves together, which keeps large commercial spaces consistent and easy to manage."
+      },
+      {
+        heading: "Roller Shades By City",
+        body:
+          "805 Shutters installs commercial roller shades across Ventura County, with local landing pages for the cities where most commercial projects start.",
+        links: commercialHubCities.map((hub) => ({
+          label: `Commercial window coverings in ${hub.city}`,
+          href: `/commercial-window-coverings/${hub.caSlug}/`
+        }))
       }
-    ]
+    ],
+    cta: "Schedule a free commercial shade audit"
   }
 ];
 
@@ -1202,13 +1270,140 @@ function cityProductPage({
   };
 }
 
+const commercialCityContext: Record<string, string> = {
+  Camarillo:
+    "Camarillo business parks, the Premium Outlets, light-industrial flex space off Las Posas, and medical and professional offices",
+  Fillmore:
+    "downtown Fillmore storefronts, citrus and agricultural packing facilities, and small professional offices",
+  Moorpark:
+    "Moorpark commerce-center offices, light-industrial space along the 118, and neighborhood retail and professional suites",
+  "Oak Park":
+    "Oak Park professional offices, retail centers, and medical and dental suites near the Thousand Oaks border",
+  Ojai:
+    "Ojai boutique storefronts, hospitality and wellness businesses, galleries, and professional offices along the Arcade",
+  Oxnard:
+    "Oxnard industrial and warehouse corridors, Port of Hueneme logistics facilities, agricultural operations, The Collection retail, and growing office space",
+  "Port Hueneme":
+    "Port Hueneme harbor and logistics businesses, base-adjacent offices, and local storefronts",
+  "Santa Paula":
+    "Santa Paula agricultural and packing operations, historic downtown storefronts, and professional offices",
+  "Santa Rosa Valley":
+    "Santa Rosa Valley professional offices, agricultural properties, and the nearby Camarillo and Thousand Oaks business corridors",
+  "Simi Valley":
+    "Simi Valley industrial parks, the Madera and Cochran retail corridors, professional offices, and tenant-improvement build-outs",
+  "Thousand Oaks":
+    "Thousand Oaks corporate campuses, biotech and professional offices along the 101, retail centers, and medical buildings near Los Robles",
+  Ventura:
+    "downtown Ventura storefronts, Main Street retail, harbor-area businesses, and county, professional, and medical offices"
+};
+
+function commercialCityPage({ city, caSlug }: { city: string; caSlug: string }): SitePage {
+  const context = commercialCityContext[city] ?? `${city} offices, storefronts, schools, and commercial properties`;
+  const otherHubs = commercialHubCities.filter((hub) => hub.caSlug !== caSlug).slice(0, 3);
+
+  return {
+    path: `/commercial-window-coverings/${caSlug}/`,
+    title: `Commercial Window Coverings ${city} CA | Office, Retail & Warehouse Shades | 805 Shutters`,
+    description: `Commercial window coverings for ${city} offices, storefronts, schools, medical spaces, and warehouses. Roller shades, solar shades, blinds, and a free commercial shade audit from 805 Shutters.`,
+    h1: `Commercial Window Coverings in ${city}`,
+    eyebrow: `${city} commercial`,
+    intro: `805 Shutters helps ${context} control glare, heat, privacy, and appearance with commercial roller shades, solar shades, blinds, and window coverings measured and installed by a local Ventura County team.`,
+    image: images.commercialHero,
+    imageAlt: `Commercial window coverings for a sunlit ${city} workspace`,
+    gallery: [
+      {
+        image: images.commercialStorefront,
+        imageAlt: `Southern California storefront near ${city} for commercial solar shade planning`
+      },
+      {
+        image: images.commercialWarehouse,
+        imageAlt: `Industrial warehouse with high windows for ${city} commercial shade planning`
+      },
+      {
+        image: images.commercialSchool,
+        imageAlt: `Southern California school campus near ${city} for classroom shade replacement planning`
+      }
+    ],
+    sections: [
+      {
+        heading: `Commercial Spaces We Serve In ${city}`,
+        body: `805 Shutters installs commercial window coverings throughout ${city}, including ${context}. Whether the project is a single suite or a full building, we match the shade or blind to how the space is used, who sees it, and the sun it takes.`,
+        bullets: [
+          "Offices, suites, and tenant improvements",
+          "Storefronts, lobbies, and retail spaces",
+          "Medical, dental, and professional offices",
+          "Schools, childcare, and public facilities",
+          "Warehouses, flex space, and industrial offices",
+          "Property managers and multi-tenant buildings"
+        ]
+      },
+      {
+        heading: `Glare, Heat, And Privacy Control For ${city} Buildings`,
+        body: `${city} businesses deal with strong Southern California sun, screen glare in offices, heat load on west- and south-facing glass, and privacy on street-facing windows. The right commercial roller shade, solar shade, or blind keeps the space comfortable and professional without making it feel closed off — and worn or damaged blinds get replaced cleanly.`
+      },
+      {
+        heading: "Commercial Roller Shades, Solar Shades, And Blinds",
+        body: `For ${city} projects, product recommendations can include commercial roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, vertical blinds, motorized shades, and phased replacement programs. The best fit depends on window size, mounting conditions, fabric openness, color, operation, building use, and how the glass should look from the street.`
+      },
+      {
+        heading: `Free Commercial Shade Audit For ${city} Businesses`,
+        body: `The free commercial shade audit walks the property and reviews window count, glare, heat, privacy, damaged coverings, safety concerns, replacement priorities, and target timing. After the walkthrough, 805 Shutters recommends product options and provides budget direction before final measuring — for a single ${city} office or a multi-building program.`
+      },
+      {
+        heading: `Do you install commercial window coverings in ${city}?`,
+        body: `Yes. 805 Shutters installs commercial roller shades, solar shades, blinds, and window coverings for ${city} offices, storefronts, schools, medical spaces, warehouses, and shared facilities, with local measuring and professional installation.`
+      },
+      {
+        heading: `Can you phase a ${city} commercial project?`,
+        body: `Yes. ${city} projects can be broken into priority rooms, buildings, or issues so the highest-impact glare, heat, privacy, or safety problems are handled first while staying inside budget and tenant schedules.`
+      },
+      {
+        heading: `How do ${city} commercial quotes work?`,
+        body: `Most ${city} commercial quotes start with a site audit, then a field measure, then a written proposal that lists product type, room and window count, fabric and color, operation, exclusions, and installation timing so the scope is clear before anything is ordered.`
+      },
+      {
+        heading: "Explore More Commercial Window Coverings",
+        body: `See the full commercial program and compare related ${city}-area pages.`,
+        links: [
+          { label: "Commercial window coverings (full overview)", href: "/commercial-window-coverings/" },
+          { label: "Commercial roller shades", href: "/commercial-roller-shades/" },
+          { label: `Window treatments in ${city}`, href: `/window-treatments/${caSlug}/` },
+          ...otherHubs.map((hub) => ({
+            label: `Commercial window coverings in ${hub.city}`,
+            href: `/commercial-window-coverings/${hub.caSlug}/`
+          }))
+        ]
+      }
+    ],
+    cta: `Schedule a free commercial shade audit in ${city}`
+  };
+}
+
+const commercialCityPages: SitePage[] = cityPages.map(([, caSlug, city]) =>
+  commercialCityPage({ city, caSlug })
+);
+
+const commercialCityNamesByPath = new Map(
+  commercialCityPages.map((page, index) => [page.path, cityPages[index][2]] as const)
+);
+
+export function commercialCityName(path: string): string | null {
+  return commercialCityNamesByPath.get(normalizePath(path)) ?? null;
+}
+
 function searchDepthSections(page: SitePage): PageSection[] {
-  if (page.noIndex || (page.path.startsWith("/recent-projects/") && page.path !== "/recent-projects/")) {
+  const isCommercialCityPage =
+    page.path.startsWith("/commercial-window-coverings/") && page.path !== "/commercial-window-coverings/";
+  if (
+    page.noIndex ||
+    isCommercialCityPage ||
+    (page.path.startsWith("/recent-projects/") && page.path !== "/recent-projects/")
+  ) {
     return page.sections;
   }
   const existingHeadings = new Set(page.sections.map((section) => section.heading));
 
-  if (page.path === "/commercial-window-coverings/") {
+  if (page.path === "/commercial-window-coverings/" || page.path === "/commercial-roller-shades/") {
     const commercialAdditions: PageSection[] = [
       {
         heading: "Before A Commercial Project Is Ordered",
@@ -1375,6 +1570,7 @@ export const allPages = [
   ...parentPages,
   ...supportPages,
   ...generatedCityPages,
+  ...commercialCityPages,
   ...specialtyPages,
   ...recentProjectPages
 ].map(withSearchDepth);

@@ -524,6 +524,21 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
   }
 ];
 
+function SectionLinks({ links }: { links?: { label: string; href: string }[] }) {
+  if (!links?.length) {
+    return null;
+  }
+  return (
+    <ul className="seo-link-list">
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link href={link.href}>{link.label}</Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function PageSections({ page }: { page: SitePage }) {
   const { isCommercialMode } = useCommercialMode();
 
@@ -584,6 +599,7 @@ export function PageSections({ page }: { page: SitePage }) {
                 ))}
               </ul>
             ) : null}
+            <SectionLinks links={section.links} />
           </article>
         ))}
       </section>
@@ -725,6 +741,7 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
                 ))}
               </ul>
             ) : null}
+            <SectionLinks links={section.links} />
           </article>
         ))}
       </section>
@@ -768,7 +785,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
   const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
-  const heroCta = commercialMode ? "Commercial Shade Audit" : "Book your Free In-home Consultation";
+  const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 
   return (
@@ -873,6 +890,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
                 ))}
               </ul>
             ) : null}
+            <SectionLinks links={section.links} />
           </article>
         ))}
       </section>

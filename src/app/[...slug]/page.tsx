@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
-import { allPages, getPageBySlug, site, slugForPath } from "@/lib/site-data";
-import { commercialWindowCoveringsJsonLd } from "@/lib/structured-data";
+import { allPages, commercialCityName, getPageBySlug, site, slugForPath } from "@/lib/site-data";
+import { commercialSubPageJsonLd, commercialWindowCoveringsJsonLd } from "@/lib/structured-data";
 
 type PageProps = {
   params: Promise<{
@@ -55,7 +55,12 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound();
   }
 
-  const pageJsonLd = page.path === "/commercial-window-coverings/" ? commercialWindowCoveringsJsonLd(page) : null;
+  const pageJsonLd =
+    page.path === "/commercial-window-coverings/"
+      ? commercialWindowCoveringsJsonLd(page)
+      : page.path.includes("commercial")
+        ? commercialSubPageJsonLd(page, commercialCityName(page.path))
+        : null;
 
   return (
     <>
