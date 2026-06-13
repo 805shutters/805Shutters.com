@@ -1207,6 +1207,47 @@ function searchDepthSections(page: SitePage): PageSection[] {
     return page.sections;
   }
   const existingHeadings = new Set(page.sections.map((section) => section.heading));
+
+  if (page.path === "/commercial-window-coverings/") {
+    const commercialAdditions: PageSection[] = [
+      {
+        heading: "Before A Commercial Project Is Ordered",
+        body:
+          "Before a commercial shade, blind, or window covering project is ordered, 805 Shutters confirms window count, mount conditions, field dimensions, bracket or frame details, fabric and color direction, control side, safety requirements, access needs, work hours, tenant constraints, and whether the project should be completed in one phase or by priority area."
+      },
+      {
+        heading: "What We Review During A Commercial Shade Audit",
+        body:
+          "Commercial shade audits review glare, heat, privacy, street-facing appearance, employee comfort, screen visibility, damaged coverings, cleaning needs, operation preferences, room-darkening requirements, and how the windows perform at different times of day."
+      },
+      {
+        heading: "Compare Commercial Options In One Visit",
+        body:
+          "The same walkthrough can compare commercial roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, vertical blinds, motorized shades, and phased replacement programs so the product plan fits the building instead of forcing one default answer."
+      },
+      {
+        heading: "Local Commercial Service Area",
+        body:
+          "805 Shutters supports commercial projects throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
+      },
+      {
+        heading: "Commercial Quote Details That Affect Pricing",
+        body:
+          "Commercial pricing depends on product type, fabric openness, color, window size, installation height, mounting surface, manual or motorized operation, access conditions, room count, removal of old coverings, scheduling restrictions, and whether the buyer needs a single-room replacement, full-building plan, or tenant-improvement package."
+      },
+      {
+        heading: "Commercial Consultation Next Step",
+        body:
+          "A commercial consultation is the fastest way to turn product research into a clear scope. The visit helps confirm measurements, project priorities, product tradeoffs, installation details, budget direction, and the best next step before a quote or order is finalized."
+      }
+    ];
+
+    return [
+      ...page.sections,
+      ...commercialAdditions.filter((section) => !existingHeadings.has(section.heading))
+    ];
+  }
+
   const additions: PageSection[] = [
     {
       heading: "Before A Project Is Ordered",
