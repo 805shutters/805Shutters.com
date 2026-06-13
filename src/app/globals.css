@@ -962,6 +962,10 @@ body:has(.home-editorial):not(.site-header-solid) .category-nav {
   transform: translateY(-16px);
 }
 
+body.commercial-mode:has(.home-editorial):not(.site-header-solid) .category-nav {
+  transform: translateY(-9px);
+}
+
 body:has(.home-editorial) .category-dot {
   display: none;
 }
