@@ -70,6 +70,10 @@ export const images = {
   blinds: "/images/805-portfolio-blinds-office.jpg",
   drapery: "/images/805-portfolio-drapery-living-room.jpg",
   exteriorShades: "/images/editorial-scroll/ocean-terrace-exterior-shades.jpg",
+  commercialHero: "/images/product-previews/commercial-socal-office-hero.jpg",
+  commercialStorefront: "/images/product-previews/commercial-socal-storefront-corner.jpg",
+  commercialSchool: "/images/product-previews/commercial-socal-school.jpg",
+  commercialWarehouse: "/images/product-previews/commercial-industrial-warehouse.jpg",
   project:
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
@@ -415,30 +419,58 @@ const parentPages: SitePage[] = [
     path: "/commercial-window-coverings/",
     title: "Commercial Window Coverings Ventura County | 805 Shutters",
     description:
-      "Commercial window coverings for offices, storefronts, restaurants, schools, and medical spaces in Ventura County.",
-    h1: "Commercial Window Coverings in Ventura County",
-    eyebrow: "Business window treatments",
+      "Commercial window coverings in Ventura County for schools, office buildings, warehouses, storefronts, retail spaces, and property managers. Free shade audit.",
+    h1: "Commercial Window Coverings for Ventura County Businesses",
+    eyebrow: "Commercial shade audits",
     intro:
-      "805 Shutters installs commercial window coverings for Ventura County businesses that need glare control, privacy, durability, and a professional look.",
-    image: images.shades,
-    imageAlt: "Commercial window coverings installed in a Ventura County office",
+      "805 Shutters helps schools, office buildings, warehouses, storefronts, retail spaces, property managers, and tenant-improvement teams choose commercial shades, blinds, and window coverings that solve glare, heat, privacy, safety, and appearance issues.",
+    image: images.commercialHero,
+    imageAlt: "Commercial office window coverings for a sunlit Southern California workspace",
+    gallery: [
+      {
+        image: images.commercialStorefront,
+        imageAlt: "Southern California storefront for commercial solar shade planning"
+      },
+      {
+        image: images.commercialWarehouse,
+        imageAlt: "Industrial warehouse with high windows for commercial shade planning"
+      },
+      {
+        image: images.commercialSchool,
+        imageAlt: "Southern California school campus for classroom shade replacement planning"
+      }
+    ],
     sections: [
       {
-        heading: "Built For Workspaces",
+        heading: "Built For Commercial Projects",
         body:
-          "We help offices, storefronts, restaurants, schools, medical spaces, and shared facilities select window coverings that hold up to daily use."
+          "Commercial window coverings need to do more than look good. They need to control glare, protect privacy, reduce heat, fit the building, and hold up to daily use. 805 Shutters measures the space, recommends the right product mix, and installs the selected coverings with a clear scope."
       },
       {
-        heading: "Interior And Exterior Roller Shade Uses",
+        heading: "Commercial Spaces We Serve",
         body:
-          "Commercial buildings, offices, warehouses, storefronts, and public-facing spaces can benefit from interior or exterior roller shades that reduce glare, improve privacy, help with heat, and create a more professional appearance. The same planning also helps residential customers who want cleaner light control over large windows and doors."
+          "The commercial page is built for buyers searching for school window coverings, office building shades, warehouse blinds, storefront roller shades, retail solar shades, medical office privacy shades, and property replacement programs across Ventura County.",
+        bullets: [
+          "Schools and public facilities",
+          "Office buildings and office suites",
+          "Warehouses and industrial flex spaces",
+          "Storefronts, lobbies, restaurants, and retail spaces",
+          "Medical, dental, and professional offices",
+          "Property managers and tenant-improvement teams"
+        ]
       },
       {
-        heading: "Colors, Controls, And Building Requirements",
+        heading: "Commercial Roller Shades, Blinds, And Replacement Programs",
         body:
-          "We review fabric openness, color, manual or motorized controls, mounting conditions, window size, employee comfort, customer-facing appearance, cleaning needs, and how the shades should work across the entire building."
+          "Product recommendations can include commercial roller shades, solar shades, blackout shades, motorized shades, honeycomb shades, faux wood blinds, vertical blinds, and damaged blind replacement. The right option depends on window size, mounting conditions, fabric openness, color, operation, cleaning needs, building use, employee comfort, and customer-facing appearance."
+      },
+      {
+        heading: "Free Commercial Shade Audit",
+        body:
+          "The free commercial shade audit reviews glare, heat, privacy, damaged coverings, cord or safety concerns, replacement priorities, room count, and target timing. After the walkthrough, 805 Shutters can recommend product options and provide budget direction before final measuring."
       }
-    ]
+    ],
+    cta: "Schedule a free commercial shade audit"
   },
   {
     path: "/commercial-roller-shades/",

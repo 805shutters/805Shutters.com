@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
 import { allPages, getPageBySlug, site, slugForPath } from "@/lib/site-data";
+import { commercialWindowCoveringsJsonLd } from "@/lib/structured-data";
 
 type PageProps = {
   params: Promise<{
@@ -54,5 +55,19 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound();
   }
 
-  return <PageSections page={page} />;
+  const pageJsonLd = page.path === "/commercial-window-coverings/" ? commercialWindowCoveringsJsonLd(page) : null;
+
+  return (
+    <>
+      {pageJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(pageJsonLd)
+          }}
+        />
+      ) : null}
+      <PageSections page={page} />
+    </>
+  );
 }

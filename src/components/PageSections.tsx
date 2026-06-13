@@ -9,7 +9,15 @@ import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
 import { SitePage, site } from "@/lib/site-data";
-import { commercialHomeSections, commercialModeImages, commercializePage } from "@/lib/commercial-mode-data";
+import {
+  commercialApplications,
+  commercialFaqs,
+  commercialHomeSections,
+  commercialModeImages,
+  commercialProcessSteps,
+  commercialProofPoints,
+  commercializePage
+} from "@/lib/commercial-mode-data";
 
 type PortfolioStory = {
   eyebrow: string;
@@ -436,6 +444,11 @@ const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
 
 export function PageSections({ page }: { page: SitePage }) {
   const { isCommercialMode } = useCommercialMode();
+
+  if (page.path === "/commercial-window-coverings/") {
+    return <CommercialSeoPage page={page} />;
+  }
+
   const activePage = isCommercialMode ? commercializePage(page) : page;
 
   if (activePage.path === "/") {
@@ -525,6 +538,144 @@ export function PageSections({ page }: { page: SitePage }) {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+function CommercialSeoPage({ page }: { page: SitePage }) {
+  return (
+    <>
+      <section className="page-editorial commercial-seo-hero">
+        <div className="content-wrap page-editorial-panel commercial-seo-hero-panel">
+          <div className="page-editorial-copy commercial-seo-hero-copy">
+            <p className="eyebrow">{page.eyebrow}</p>
+            <h1>{page.h1}</h1>
+            <p className="lede">{page.intro}</p>
+            <div className="hero-actions">
+              <AppointmentBooking className="button primary commercial-cta-button" label="Book a commercial shade audit" />
+              <TrackedPhoneLink className="button secondary hero-phone" location={`${page.path} hero`}>
+                Call {site.phone}
+              </TrackedPhoneLink>
+            </div>
+          </div>
+          <figure className="page-editorial-media commercial-seo-hero-media">
+            <img src={page.image} alt={page.imageAlt} />
+            <figcaption>
+              <span>30+ years local experience</span>
+              <strong>Ventura County commercial measuring and installation</strong>
+            </figcaption>
+          </figure>
+        </div>
+        <div className="content-wrap commercial-proof-strip" aria-label="Commercial window covering project types">
+          {commercialProofPoints.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+      </section>
+
+      <ServiceGrid commercialMode />
+
+      <section className="commercial-seo-applications">
+        <div className="content-wrap commercial-seo-section-head">
+          <p className="eyebrow">Commercial project types</p>
+          <h2>Window covering planning for schools, offices, warehouses, storefronts, and retail spaces</h2>
+          <p>
+            Search traffic for commercial projects usually starts with the building type and the problem: glare, heat,
+            privacy, damaged blinds, presentation control, safe operation, or a professional look from the street.
+          </p>
+        </div>
+        <div className="content-wrap commercial-application-grid">
+          {commercialApplications.map((application) => (
+            <article className="commercial-application-card" key={application.title}>
+              <img src={application.image} alt={application.imageAlt} loading="lazy" decoding="async" />
+              <div>
+                <p className="eyebrow">{application.eyebrow}</p>
+                <h3>{application.title}</h3>
+                <p>{application.body}</p>
+                <ul className="tag-list">
+                  {application.bullets.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="commercial-audit-band" id="commercial-shade-audit">
+        <div className="content-wrap commercial-audit-layout">
+          <div className="commercial-audit-copy">
+            <p className="eyebrow">Free commercial shade audit</p>
+            <h2>Turn a commercial window covering search into a clear scope</h2>
+            <p>
+              The audit reviews the property, window count, light exposure, damaged coverings, privacy needs, product
+              fit, budget priorities, and target timing before a final measure or proposal.
+            </p>
+            <div className="commercial-process-grid">
+              {commercialProcessSteps.map((step) => (
+                <article className="commercial-process-step" key={step.title}>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+          <div className="commercial-audit-form">
+            <LeadForm
+              defaultInterest="commercial"
+              notesPlaceholder="Property type, city, approximate window count, main issue, and target timing."
+              submitLabel="Request Commercial Audit"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="content-wrap section-stack commercial-seo-depth">
+        {page.sections.map((section) => (
+          <article className="copy-block" key={section.heading}>
+            <h2>{section.heading}</h2>
+            <p>{section.body}</p>
+            {section.bullets ? (
+              <ul className="tag-list">
+                {section.bullets.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+          </article>
+        ))}
+      </section>
+
+      <section className="commercial-faq-band">
+        <div className="content-wrap commercial-seo-section-head">
+          <p className="eyebrow">Commercial FAQ</p>
+          <h2>Common questions before a commercial shade audit</h2>
+        </div>
+        <div className="content-wrap commercial-faq-grid">
+          {commercialFaqs.map((faq) => (
+            <article className="commercial-faq-item" key={faq.question}>
+              <h3>{faq.question}</h3>
+              <p>{faq.answer}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="cta-band">
+        <div className="content-wrap cta-layout">
+          <div>
+            <p className="eyebrow">Next step</p>
+            <h2>{page.cta || "Schedule a free commercial shade audit"}</h2>
+          </div>
+          <div className="hero-actions">
+            <AppointmentBooking className="button primary commercial-cta-button" label="Book a commercial shade audit" />
+            <TrackedPhoneLink className="button secondary" location={`${page.path} cta`}>
+              Call {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </section>
     </>
   );
 }

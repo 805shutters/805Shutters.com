@@ -5,7 +5,17 @@ import { trackLeadEvent } from "@/lib/client-tracking";
 
 type FormState = "idle" | "submitting" | "sent" | "error";
 
-export function LeadForm() {
+type LeadFormProps = {
+  defaultInterest?: "consultation" | "shutters" | "shades" | "blinds" | "commercial";
+  notesPlaceholder?: string;
+  submitLabel?: string;
+};
+
+export function LeadForm({
+  defaultInterest = "consultation",
+  notesPlaceholder,
+  submitLabel = "Request Consultation"
+}: LeadFormProps = {}) {
   const [state, setState] = useState<FormState>("idle");
   const [message, setMessage] = useState("");
 
@@ -85,7 +95,7 @@ export function LeadForm() {
       </div>
       <label>
         Project
-        <select name="interest" defaultValue="consultation">
+        <select name="interest" defaultValue={defaultInterest}>
           <option value="consultation">Free consultation</option>
           <option value="shutters">Shutters</option>
           <option value="shades">Shades</option>
@@ -95,10 +105,10 @@ export function LeadForm() {
       </label>
       <label>
         Notes
-        <textarea name="notes" rows={4} />
+        <textarea name="notes" rows={4} placeholder={notesPlaceholder} />
       </label>
       <button type="submit" disabled={state === "submitting"}>
-        {state === "submitting" ? "Sending..." : "Request Consultation"}
+        {state === "submitting" ? "Sending..." : submitLabel}
       </button>
       <p className="privacy-note">
         By submitting this form, you agree that 805 Shutters may contact you about your
