@@ -66,7 +66,6 @@ export const residentialCategoryItems: CategoryNavItem[] = [
     products: [
       { label: "Premium Stained Wood", image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg" },
       { label: "Painted Wood", image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg" },
-      { label: "Specialty Shapes", image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg" },
       { label: "Poly Composite", image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg" },
       { label: "MDF Composite", image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg" }
     ]
