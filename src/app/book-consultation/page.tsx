@@ -14,13 +14,10 @@ export default function BookConsultationPage() {
   return (
     <section className="booking-page booking-page--focused">
       <header className="booking-page__masthead">
-        <img
-          className="booking-page__masthead-logo"
-          src="/brand/805-shutters-logo-exact-transparent.png"
-          alt="805 Shutters"
-          width={262}
-          height={209}
-        />
+        <span className="booking-page__masthead-logo brand-text-logo" aria-label="805 Shutters">
+          <span className="brand-text-logo-number">805</span>
+          <span className="brand-text-logo-name">SHUTTERS</span>
+        </span>
       </header>
       <BookingCalendar
         className="booking-panel booking-panel--page"

@@ -3541,9 +3541,16 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-page__masthead-logo {
-  width: clamp(132px, 12vw, 188px);
-  height: auto;
-  filter: none;
+  color: var(--ink);
+}
+
+.booking-page__masthead-logo .brand-text-logo-number {
+  font-size: clamp(82px, 8.4vw, 118px);
+}
+
+.booking-page__masthead-logo .brand-text-logo-name {
+  margin-top: 8px;
+  font-size: clamp(16px, 1.9vw, 24px);
 }
 
 .booking-page__intro {
@@ -4822,7 +4829,15 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .booking-page__masthead-logo {
-    width: clamp(106px, 31vw, 138px);
+    width: auto;
+  }
+
+  .booking-page__masthead-logo .brand-text-logo-number {
+    font-size: clamp(70px, 20vw, 92px);
+  }
+
+  .booking-page__masthead-logo .brand-text-logo-name {
+    font-size: clamp(12px, 3.5vw, 15px);
   }
 
   .booking-page__intro {
@@ -6015,48 +6030,39 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .brand.brand--exact .brand-text-logo {
-  display: none !important;
+  display: grid !important;
+  color: inherit;
 }
 
 .brand.brand--exact .brand-logo-exact {
-  display: block !important;
-  width: clamp(190px, 14vw, 218px) !important;
-  height: auto !important;
-  max-width: none;
-  opacity: 1 !important;
-  transform: none !important;
-  filter: none;
+  display: none !important;
 }
 
-body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
-body.home-page-active .brand.brand--exact .brand-logo-exact {
-  width: clamp(190px, 14vw, 218px) !important;
-  transform: translateY(-5%) scale(1.53) !important;
-  transform-origin: top center;
-  filter: invert(1);
-}
+@media (min-width: 621px) {
+  body:has(.home-editorial) .brand.brand--exact .brand-text-logo-number,
+  body.home-page-active .brand.brand--exact .brand-text-logo-number {
+    font-size: clamp(154px, 21vw, 168px);
+  }
 
-body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
-body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
-  width: clamp(142px, 10vw, 170px) !important;
-  filter: none;
+  body:has(.home-editorial) .brand.brand--exact .brand-text-logo-name,
+  body.home-page-active .brand.brand--exact .brand-text-logo-name {
+    margin-top: 16px;
+    font-size: clamp(33px, 4.6vw, 37px);
+  }
+
+  body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-text-logo-number,
+  body.home-page-active.site-header-solid .brand.brand--exact .brand-text-logo-number {
+    font-size: clamp(86px, 8vw, 104px);
+  }
+
+  body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-text-logo-name,
+  body.home-page-active.site-header-solid .brand.brand--exact .brand-text-logo-name {
+    margin-top: 9px;
+    font-size: clamp(18px, 2vw, 22px);
+  }
 }
 
 @media (max-width: 620px) {
-  .brand.brand--exact .brand-logo-exact {
-    width: clamp(116px, 30vw, 138px) !important;
-  }
-
-  body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
-  body.home-page-active .brand.brand--exact .brand-logo-exact {
-    width: clamp(96px, 28vw, 118px) !important;
-  }
-
-  body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
-  body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
-    width: clamp(104px, 28vw, 128px) !important;
-  }
-
   body:has(.home-editorial) .site-masthead,
   body.home-page-active .site-masthead {
     min-height: 190px;
