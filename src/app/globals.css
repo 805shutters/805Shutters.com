@@ -858,6 +858,16 @@ body:has(.home-editorial) .masthead-contact-left {
   padding-top: 0;
 }
 
+@media (min-width: 621px) {
+  body:has(.home-editorial) .masthead-route-actions {
+    transform: translateY(11px);
+  }
+
+  body:has(.home-editorial).site-header-solid .masthead-route-actions {
+    transform: none;
+  }
+}
+
 body:has(.home-editorial) .masthead-contact-left .social-links {
   margin-top: 18px;
 }
