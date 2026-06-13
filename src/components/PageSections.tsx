@@ -539,11 +539,78 @@ function SectionLinks({ links }: { links?: { label: string; href: string }[] }) 
   );
 }
 
+type ShutterOptionGroup = {
+  id: string;
+  label: string;
+  heading: string;
+  body: string;
+  image: string;
+  imageAlt: string;
+  options: string[];
+};
+
+const shutterOptionGroups: ShutterOptionGroup[] = [
+  {
+    id: "material",
+    label: "Material",
+    heading: "Choose the shutter material around finish, durability, and room use.",
+    body:
+      "The material decision affects the final look, weight, cleaning routine, and how the shutter handles daily use. The consultation compares painted, stained, and composite options against the room, light exposure, trim, and budget.",
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
+    imageAlt: "Dark stained wood plantation shutters installed across living room windows",
+    options: ["Stained wood", "Painted wood", "Poly composite", "MDF composite"]
+  },
+  {
+    id: "louver-sizes",
+    label: "Louver Sizes",
+    heading: "Pick the louver scale that controls view, privacy, and proportion.",
+    body:
+      "Smaller louvers create a tighter traditional line, while larger louvers open the view and feel cleaner on bigger windows. We review the window height, room style, sightline, and privacy goal before the order is built.",
+    image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-wide.jpg",
+    imageAlt: "Close detail of plantation shutter louvers and panel rails",
+    options: ["1 7/8", "2 1/2", "3 1/2", "4 1/2", "5 1/2"]
+  },
+  {
+    id: "style",
+    label: "Style",
+    heading: "Match the frame and stile detail to the architecture of the room.",
+    body:
+      "Traditional shutter details add a more classic built-in look. Contemporary details keep the face flatter and quieter, which works well with cleaner trim, larger glass, and modern interiors.",
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
+    imageAlt: "White plantation shutters installed in a Ventura County dining room",
+    options: ["Traditional style (beaded frames and stile)", "Contemporary (flat frames and stile)"]
+  },
+  {
+    id: "doors",
+    label: "Doors",
+    heading: "Plan shutter operation around the way the door is used every day.",
+    body:
+      "Sliding doors, French doors, and wide openings need a shutter plan that keeps access comfortable. We compare bypass, bifold, and French door layouts around handle clearance, furniture, traffic flow, and panel swing.",
+    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
+    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door",
+    options: ["Bypass", "Bifold", "French doors"]
+  },
+  {
+    id: "specialty-shapes",
+    label: "Specialty Shapes",
+    heading: "Custom shapes follow the opening instead of hiding it.",
+    body:
+      "Arches, rakes, circles, ovals, octagons, and custom shapes need precise templates and careful planning. The goal is a shutter that respects the architecture while still operating cleanly.",
+    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
+    imageAlt: "Specialty arched plantation shutters custom fit in a Ventura County home",
+    options: ["Arched shutters", "Raked shutters", "Sunburst", "Circle", "Oval", "Octagon", "Custom shapes"]
+  }
+];
+
 export function PageSections({ page }: { page: SitePage }) {
   const { isCommercialMode } = useCommercialMode();
 
   if (page.path === "/commercial-window-coverings/") {
     return <CommercialSeoPage page={page} />;
+  }
+
+  if (!isCommercialMode && page.path === "/shutters/") {
+    return <ShuttersCategoryPage page={page} />;
   }
 
   const activePage = isCommercialMode ? commercializePage(page) : page;
@@ -636,6 +703,131 @@ export function PageSections({ page }: { page: SitePage }) {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+function ShuttersCategoryPage({ page }: { page: SitePage }) {
+  return (
+    <>
+      <section className="shutter-category-strip" aria-label="Shutter product categories">
+        <div className="content-wrap shutter-category-strip__inner">
+          {shutterOptionGroups.map((group) => (
+            <a className="shutter-category-link" href={`#shutter-${group.id}`} key={group.id}>
+              <span>{group.label}</span>
+              <small>{group.options.join(" / ")}</small>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="page-editorial shutters-hero">
+        <div className="content-wrap page-editorial-panel shutters-hero-panel">
+          <div className="page-editorial-copy shutters-hero-copy">
+            <p className="eyebrow">{page.eyebrow}</p>
+            <h1>{page.h1}</h1>
+            <p className="lede">
+              Custom shutters planned by material, louver size, frame style, door operation, and specialty shape so the
+              finished installation fits the home instead of forcing one default look.
+            </p>
+            <div className="hero-actions">
+              <Link className="button primary" href="/free-window-treatment-consultation/">
+                Free Consultation
+              </Link>
+              <TrackedPhoneLink className="button secondary hero-phone" location="shutters hero">
+                Call {site.phone}
+              </TrackedPhoneLink>
+            </div>
+          </div>
+          <figure className="page-editorial-media shutters-hero-media">
+            <img src={page.image} alt={page.imageAlt} />
+            <figcaption>
+              <span>Custom measured</span>
+              <strong>Plantation shutters for standard windows, doors, and specialty shapes</strong>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section className="shutters-intro-band">
+        <div className="content-wrap shutters-intro-layout">
+          <div>
+            <p className="eyebrow">Shutter specification guide</p>
+            <h2>Start with the choices that change how the shutter looks and works.</h2>
+          </div>
+          <p>
+            A shutter order should be built around the room: the finish, the louver proportion, the frame detail, the
+            way doors open, and any custom shape in the architecture. These are the decisions we review before final
+            measuring and ordering.
+          </p>
+        </div>
+      </section>
+
+      <section className="shutter-detail-list" aria-label="Shutter option details">
+        <div className="content-wrap shutter-detail-list__inner">
+          {shutterOptionGroups.map((group, index) => (
+            <article className="shutter-detail-panel" id={`shutter-${group.id}`} key={group.id}>
+              <div className="shutter-detail-copy">
+                <p className="eyebrow">{group.label}</p>
+                <h2>{group.heading}</h2>
+                <p>{group.body}</p>
+                <ul className="shutter-option-list">
+                  {group.options.map((option) => (
+                    <li key={option}>{option}</li>
+                  ))}
+                </ul>
+              </div>
+              <figure className="shutter-detail-media">
+                <img
+                  src={group.image}
+                  alt={group.imageAlt}
+                  loading={index < 1 ? "eager" : "lazy"}
+                  decoding="async"
+                />
+              </figure>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="shutter-planning-band">
+        <div className="content-wrap shutter-planning-layout">
+          <div>
+            <p className="eyebrow">Measured before ordering</p>
+            <h2>Each shutter plan is checked against the opening, trim, clearance, and daily use.</h2>
+            <p>
+              Before anything is built, 805 Shutters confirms opening size, frame depth, sill conditions, panel swing,
+              handle clearance, divider rail placement, color direction, and how the shutters should perform when open,
+              closed, or tilted.
+            </p>
+          </div>
+          <ul className="shutter-planning-list" aria-label="Shutter planning checklist">
+            <li>Room-by-room measurements</li>
+            <li>Frame and mount review</li>
+            <li>Door and handle clearance</li>
+            <li>Specialty-shape templates</li>
+            <li>Color and material confirmation</li>
+            <li>Ventura County installation support</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="cta-band">
+        <div className="content-wrap cta-layout">
+          <div>
+            <p className="eyebrow">Next step</p>
+            <h2>Compare shutter materials, louvers, styles, doors, and shapes in one visit.</h2>
+          </div>
+          <div className="hero-actions">
+            <Link className="button primary" href="/free-window-treatment-consultation/">
+              Free Consultation
+            </Link>
+            <TrackedPhoneLink className="button secondary" location="shutters cta">
+              Call {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
