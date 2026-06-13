@@ -27,6 +27,7 @@ type AvailabilityResponse = {
 type BookingCalendarProps = {
   active?: boolean;
   className?: string;
+  deferDetailsUntilDate?: boolean;
   eyebrow?: string;
   heading?: string;
   onDone?: () => void;
@@ -61,6 +62,7 @@ function isErrorMessage(message: string) {
 export function BookingCalendar({
   active = true,
   className = "booking-panel",
+  deferDetailsUntilDate = false,
   eyebrow = "Free In-Home Consultation",
   heading = "Book a consultation",
   onDone,
@@ -262,91 +264,95 @@ export function BookingCalendar({
             ) : null}
           </div>
 
-          <div className="booking-detail-panel">
-            <div className="booking-step booking-step--times" ref={slotsRef}>
-              <div>
-                <p className="eyebrow">Available Times</p>
-                <h3>{selectedDate ? formatSelectedDate(selectedDate) : "Choose a date"}</h3>
-              </div>
-              <div className="booking-slots">
-                {selectedDay?.slots.map((slot) => (
-                  <button
-                    type="button"
-                    key={slot.time}
-                    disabled={!slot.available}
-                    className={selectedTime === slot.time ? "active" : ""}
-                    onClick={() => chooseTime(slot.time)}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-                {!selectedDay ? <p>Available times show after you pick a date.</p> : null}
-              </div>
-            </div>
-
-            <form className="booking-form" onSubmit={submitBooking} ref={customerInfoRef}>
-              <div>
-                <p className="eyebrow">Customer Information</p>
-                <h3>{selectedTime ? "Tell us where to meet you" : "Choose a time to finish booking"}</h3>
-              </div>
-              {selectedDate && selectedTime ? (
-                <p className="booking-selection-summary">
-                  {formatSelectedDate(selectedDate)} at {selectedDay?.slots.find((slot) => slot.time === selectedTime)?.label}
-                </p>
-              ) : null}
-              <div className="field-row">
-                <label>
-                  Full name
-                  <input name="name" autoComplete="name" required disabled={!selectedTime} />
-                </label>
-                <label>
-                  Phone
-                  <input name="phone" autoComplete="tel" required disabled={!selectedTime} />
-                </label>
-              </div>
-              <label>
-                Address
-                <input name="address" autoComplete="street-address" required disabled={!selectedTime} />
-              </label>
-              <div className="field-row">
-                <label>
-                  Approx. quantity of windows
-                  <input name="windowCount" type="number" min="1" disabled={!selectedTime} />
-                </label>
-                <label>
-                  Email <span className="booking-optional">optional</span>
-                  <input name="email" type="email" autoComplete="email" disabled={!selectedTime} />
-                </label>
-              </div>
-              <fieldset className="booking-product-options" disabled={!selectedTime}>
-                <legend>
-                  Product interest <span className="booking-optional">optional</span>
-                </legend>
-                <div className="booking-product-grid">
-                  {productInterestOptions.map((productType) => (
+          {!deferDetailsUntilDate || selectedDate ? (
+            <div className="booking-detail-panel">
+              <div className="booking-step booking-step--times" ref={slotsRef}>
+                <div>
+                  <p className="eyebrow">Available Times</p>
+                  <h3>{selectedDate ? formatSelectedDate(selectedDate) : "Choose a date"}</h3>
+                </div>
+                <div className="booking-slots">
+                  {selectedDay?.slots.map((slot) => (
                     <button
                       type="button"
-                      key={productType}
-                      className={selectedProductTypes.includes(productType) ? "active" : ""}
-                      aria-pressed={selectedProductTypes.includes(productType)}
-                      disabled={!selectedTime}
-                      onClick={() => toggleProductType(productType)}
+                      key={slot.time}
+                      disabled={!slot.available}
+                      className={selectedTime === slot.time ? "active" : ""}
+                      onClick={() => chooseTime(slot.time)}
                     >
-                      {productType}
+                      {slot.label}
                     </button>
                   ))}
+                  {!selectedDay ? <p>Available times show after you pick a date.</p> : null}
                 </div>
-              </fieldset>
-              <label>
-                Notes <span className="booking-optional">optional</span>
-                <textarea name="notes" rows={3} disabled={!selectedTime} />
-              </label>
-              {message ? <p className={`booking-message ${isErrorMessage(message) ? "error" : ""}`}>{message}</p> : null}
-              <button type="submit" disabled={!selectedTime || submitting}>
-                {submitting ? "Booking..." : "Submit Appointment"}
-              </button>
-            </form>
-          </div>
+              </div>
+
+              {!deferDetailsUntilDate || selectedTime ? (
+                <form className="booking-form" onSubmit={submitBooking} ref={customerInfoRef}>
+                  <div>
+                    <p className="eyebrow">Customer Information</p>
+                    <h3>{selectedTime ? "Tell us where to meet you" : "Choose a time to finish booking"}</h3>
+                  </div>
+                  {selectedDate && selectedTime ? (
+                    <p className="booking-selection-summary">
+                      {formatSelectedDate(selectedDate)} at {selectedDay?.slots.find((slot) => slot.time === selectedTime)?.label}
+                    </p>
+                  ) : null}
+                  <div className="field-row">
+                    <label>
+                      Full name
+                      <input name="name" autoComplete="name" required disabled={!selectedTime} />
+                    </label>
+                    <label>
+                      Phone
+                      <input name="phone" autoComplete="tel" required disabled={!selectedTime} />
+                    </label>
+                  </div>
+                  <label>
+                    Address
+                    <input name="address" autoComplete="street-address" required disabled={!selectedTime} />
+                  </label>
+                  <div className="field-row">
+                    <label>
+                      Approx. quantity of windows
+                      <input name="windowCount" type="number" min="1" disabled={!selectedTime} />
+                    </label>
+                    <label>
+                      Email <span className="booking-optional">optional</span>
+                      <input name="email" type="email" autoComplete="email" disabled={!selectedTime} />
+                    </label>
+                  </div>
+                  <fieldset className="booking-product-options" disabled={!selectedTime}>
+                    <legend>
+                      Product interest <span className="booking-optional">optional</span>
+                    </legend>
+                    <div className="booking-product-grid">
+                      {productInterestOptions.map((productType) => (
+                        <button
+                          type="button"
+                          key={productType}
+                          className={selectedProductTypes.includes(productType) ? "active" : ""}
+                          aria-pressed={selectedProductTypes.includes(productType)}
+                          disabled={!selectedTime}
+                          onClick={() => toggleProductType(productType)}
+                        >
+                          {productType}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <label>
+                    Notes <span className="booking-optional">optional</span>
+                    <textarea name="notes" rows={3} disabled={!selectedTime} />
+                  </label>
+                  {message ? <p className={`booking-message ${isErrorMessage(message) ? "error" : ""}`}>{message}</p> : null}
+                  <button type="submit" disabled={!selectedTime || submitting}>
+                    {submitting ? "Booking..." : "Submit Appointment"}
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          ) : null}
         </>
       )}
     </div>

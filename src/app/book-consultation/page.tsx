@@ -18,6 +18,7 @@ export default function BookConsultationPage() {
       </div>
       <BookingCalendar
         className="booking-panel booking-panel--page"
+        deferDetailsUntilDate
         eyebrow=""
         heading="Book your free in-home consultation here"
       />
