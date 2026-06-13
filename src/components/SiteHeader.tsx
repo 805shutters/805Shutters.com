@@ -167,8 +167,8 @@ export function SiteHeader() {
               className="brand-logo brand-logo-exact"
               src="/brand/805-shutters-logo-exact-transparent.png"
               alt="805 Shutters"
-              width={1532}
-              height={974}
+              width={286}
+              height={270}
             />
           )}
         </Link>
