@@ -49,15 +49,13 @@ export const residentialCategoryItems: CategoryNavItem[] = [
     label: "Drapery",
     href: "/drapery/",
     products: [
-      { label: "Ripplefold Drapery", image: "/images/805-portfolio-drapery-living-room.jpg" },
-      { label: "Pinch Pleat Drapery", image: "/images/editorial-scroll/poolside-bedroom-roller-shades.jpg" },
-      { label: "French Pleat Drapery", image: "/images/805-hero-window-treatments.jpg" },
-      { label: "Grommet Drapery", image: "/images/product-previews/grommet-drapery.jpg" },
-      { label: "Rod Pocket Drapery", image: "/images/product-previews/rod-pocket-drapery.jpg" },
-      // No goblet-pleat photo in the portfolio yet — hovering it keeps the
-      // hero unchanged. See docs/ai-homepage-photo-prompts.md for the prompt.
-      { label: "Goblet Pleat Drapery" },
-      { label: "Inverted Box Pleat Drapery", image: "/images/product-previews/inverted-box-pleat-drapery.jpg" }
+      { label: "Ripplefold Drapery", image: "/images/product-previews/drapery-ripplefold-closeup.jpg" },
+      { label: "Pinch Pleat Drapery", image: "/images/product-previews/drapery-pinch-pleat-closeup.jpg" },
+      { label: "French Pleat Drapery", image: "/images/product-previews/drapery-french-pleat-closeup.jpg" },
+      { label: "Grommet Drapery", image: "/images/product-previews/drapery-grommet-closeup.jpg" },
+      { label: "Rod Pocket Drapery", image: "/images/product-previews/drapery-rod-pocket-closeup.jpg" },
+      { label: "Goblet Pleat Drapery", image: "/images/product-previews/drapery-goblet-pleat-closeup.jpg" },
+      { label: "Inverted Box Pleat Drapery", image: "/images/product-previews/drapery-inverted-box-pleat-closeup.jpg" }
     ]
   },
   {
