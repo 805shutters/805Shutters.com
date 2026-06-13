@@ -858,6 +858,10 @@ body:has(.home-editorial) .masthead-contact-left {
   padding-top: 0;
 }
 
+body:has(.home-editorial) .masthead-contact-left .social-links {
+  margin-top: 18px;
+}
+
 body:has(.home-editorial) .commercial-mode-badge {
   border-color: rgba(255, 255, 255, 0.52);
   background: rgba(255, 255, 255, 0.12);
