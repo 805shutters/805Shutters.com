@@ -321,8 +321,8 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Layered Shades",
     tagline: "Shift from filtered light to privacy in one treatment.",
-    image: "/images/homepage-flow/layered-shades.jpg",
-    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
+    image: "/images/homepage-flow/layered-kitchen-shades.png",
+    imageAlt: "Layered shades matched to colorful marble in a bright kitchen"
   },
   {
     label: "Sheer Shades",

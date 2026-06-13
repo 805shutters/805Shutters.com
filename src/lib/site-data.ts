@@ -1551,7 +1551,7 @@ export const homePage: SitePage = withSearchDepth({
   intro:
     "805 Shutters helps Ventura County homeowners and businesses choose custom window treatments that fit their rooms, light, privacy, and budget.",
   image: images.hero,
-  imageAlt: "Layered shades in a bright kitchen with colorful marble surfaces",
+  imageAlt: "Custom shades and drapery in a bright Ventura County living room",
   sections: [
     {
       heading: "Local Window Treatment Installation",
