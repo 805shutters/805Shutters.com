@@ -5398,7 +5398,8 @@ body:has(.booking-page--focused) .assistant-widget {
 body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
 body.home-page-active .brand.brand--exact .brand-logo-exact {
   width: clamp(190px, 14vw, 218px) !important;
-  transform: translateY(-10%) scale(1.53) !important;
+  transform: translateY(0) scale(1.53) !important;
+  transform-origin: top center;
   filter: invert(1);
 }
 
