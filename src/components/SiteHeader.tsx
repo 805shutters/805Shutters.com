@@ -154,18 +154,20 @@ export function SiteHeader() {
             </span>
           </div>
         </div>
-        <Link className="brand" href="/" aria-label={brandName}>
+        <Link className={`brand ${isCommercialMode ? "brand--commercial" : "brand--exact"}`} href="/" aria-label={brandName}>
           <span className="brand-text-logo" aria-hidden="true">
             <span className="brand-text-logo-number">805</span>
             <span className="brand-text-logo-name">{brandLabel}</span>
           </span>
-          <img
-            className="brand-logo"
-            src="/brand/805-shutters-logo-header.png"
-            alt="805 Shutters"
-            width={227}
-            height={148}
-          />
+          {!isCommercialMode && (
+            <img
+              className="brand-logo brand-logo-exact"
+              src="/brand/805-shutters-logo-exact-transparent.png"
+              alt="805 Shutters"
+              width={1532}
+              height={974}
+            />
+          )}
         </Link>
         <div className="mobile-header-tools mobile-header-tools--right" aria-label="Mobile contact actions">
           <TrackedPhoneLink ariaLabel="Call 805 Shutters" className="mobile-header-icon" location="mobile header">
@@ -184,7 +186,7 @@ export function SiteHeader() {
             <TrackedPhoneLink className="header-phone" location="header">
               {site.phone}
             </TrackedPhoneLink>
-            <span className="phone-note">CALL * TEXT * EMAIL</span>
+            <span className="phone-note">CALL • TEXT • EMAIL</span>
           </div>
         </div>
       </div>

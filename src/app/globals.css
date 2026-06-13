@@ -495,10 +495,11 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 
 .phone-note {
   color: var(--ink);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   line-height: 1;
+  word-spacing: 0.24em;
 }
 
 .category-nav {
@@ -872,9 +873,10 @@ body:has(.home-editorial) .header-phone {
 }
 
 body:has(.home-editorial) .phone-note {
-  font-size: 10px;
-  margin-top: 7px;
-  letter-spacing: 0.13em;
+  font-size: 14px;
+  margin-top: 9px;
+  letter-spacing: 0.18em;
+  word-spacing: 0.24em;
 }
 
 body:has(.home-editorial) .category-nav {
@@ -4631,5 +4633,55 @@ body:has(.crm-app-shell) {
 
   .assistant-launcher {
     min-width: 48px;
+  }
+}
+
+.brand.brand--exact::before,
+.brand.brand--exact::after {
+  content: none !important;
+}
+
+.brand.brand--exact .brand-text-logo {
+  display: none !important;
+}
+
+.brand.brand--exact .brand-logo-exact {
+  display: block !important;
+  width: clamp(220px, 16vw, 292px) !important;
+  height: auto !important;
+  max-width: none;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none;
+}
+
+body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
+body.home-page-active .brand.brand--exact .brand-logo-exact {
+  width: clamp(220px, 16vw, 292px) !important;
+  filter:
+    invert(1)
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32))
+    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.3));
+}
+
+body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
+body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
+  width: clamp(174px, 12vw, 214px) !important;
+  filter: none;
+}
+
+@media (max-width: 620px) {
+  .brand.brand--exact .brand-logo-exact {
+    width: clamp(138px, 36vw, 176px) !important;
+  }
+
+  body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
+  body.home-page-active .brand.brand--exact .brand-logo-exact {
+    width: clamp(138px, 36vw, 176px) !important;
+  }
+
+  body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
+  body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
+    width: clamp(116px, 30vw, 146px) !important;
   }
 }

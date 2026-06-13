@@ -110,15 +110,6 @@ const portfolioStories: PortfolioStory[] = [
     tone: "bright"
   },
   {
-    eyebrow: "Shutters",
-    title: "Specialty shapes, measured precisely.",
-    body:
-      "Arched openings need custom planning so the shutter follows the room instead of fighting it.",
-    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
-    imageAlt: "Specialty arch window shutters custom fit in a Ventura County home",
-    href: "/shutters/"
-  },
-  {
     eyebrow: "Woven Shades",
     title: "Warm texture at every window.",
     body:
@@ -344,6 +335,12 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
     title: "Arched Window Shutters",
     image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
     imageAlt: "Custom arched plantation shutters in a Ventura County living room"
+  },
+  {
+    category: "Shutters",
+    title: "Specialty Shape Shutters",
+    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg",
+    imageAlt: "Specialty arch window shutters custom fit in a Ventura County home"
   },
   {
     category: "Shutters",
