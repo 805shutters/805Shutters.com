@@ -4247,6 +4247,11 @@ body:has(.booking-page--focused) .assistant-widget {
     line-height: 1.15;
   }
 
+  .booking-panel--page .booking-panel__head h2 {
+    font-size: 30px;
+    line-height: 1.02;
+  }
+
   .booking-close {
     width: 44px;
     flex: 0 0 44px;
