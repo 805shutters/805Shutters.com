@@ -272,7 +272,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Honeycomb Shades",
-    tagline: "Darken the room and hold the comfort in.",
+    tagline: "True room darkening rest",
     image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png",
     imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
   },
@@ -290,7 +290,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Bamboo Shades",
-    tagline: "Bring natural texture into the light.",
+    tagline: "Bring color and natural texture into the light.",
     image: "/images/homepage-flow/bamboo-shades.jpg",
     imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
   },
