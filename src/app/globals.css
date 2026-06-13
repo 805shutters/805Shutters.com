@@ -4569,7 +4569,7 @@ body:has(.crm-app-shell) {
   gap: 10px;
 }
 
-.assistant-choice {
+.assistant-widget .assistant-choice {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 18px;
   align-items: center;
@@ -4785,7 +4785,7 @@ body:has(.crm-app-shell) {
   line-height: 1.35;
 }
 
-.assistant-launcher {
+.assistant-widget .assistant-launcher {
   display: inline-flex;
   min-height: 56px;
   align-items: center;
@@ -4807,8 +4807,8 @@ body:has(.crm-app-shell) {
   backdrop-filter: blur(10px);
 }
 
-.assistant-launcher:hover,
-.assistant-launcher:focus-visible {
+.assistant-widget .assistant-launcher:hover,
+.assistant-widget .assistant-launcher:focus-visible {
   background:
     linear-gradient(135deg, rgba(35, 31, 26, 0.98), rgba(67, 50, 35, 0.98));
   box-shadow:
