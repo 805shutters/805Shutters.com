@@ -35,7 +35,7 @@ type BookingAutomationDetails = {
 };
 
 const defaultStaffEmail = "805@805shutters.com";
-const defaultStaffSmsNumbers = ["805-298-5555", "805-914-4917"];
+const defaultStaffSmsNumbers = ["805-806-9344"];
 const allowedProductTypes = new Map<string, string>(
   productInterestOptions.map((label) => [label.toLowerCase(), label])
 );

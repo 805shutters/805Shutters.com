@@ -23,7 +23,7 @@ type AssistantResponse = {
 
 type AssistantView = "closed" | "choices" | "chat";
 
-const textQuestionHref = `sms:+18052985555?&body=${encodeURIComponent(
+const textQuestionHref = `sms:+18058069344?&body=${encodeURIComponent(
   "Hi 805 Shutters, I have a question: "
 )}`;
 
@@ -162,7 +162,7 @@ export function MessagingAssistantWidget() {
                 </span>
                 <span className="assistant-choice__copy">
                   <strong>Text us a question</strong>
-                  <small>805-298-5555. Real reply from 805 Shutters.</small>
+                  <small>Opens a text message to 805 Shutters.</small>
                 </span>
                 <ArrowIcon />
               </a>
