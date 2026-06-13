@@ -115,6 +115,123 @@ export const commercialHomeSections: PageSection[] = [
   }
 ];
 
+export type CommercialApplication = {
+  title: string;
+  eyebrow: string;
+  body: string;
+  image: string;
+  imageAlt: string;
+  bullets: string[];
+};
+
+export type CommercialProcessStep = {
+  title: string;
+  body: string;
+};
+
+export type CommercialFaq = {
+  question: string;
+  answer: string;
+};
+
+export const commercialProofPoints = [
+  "Schools, campuses, and public facilities",
+  "Office buildings, suites, and tenant improvements",
+  "Warehouses, flex spaces, and industrial parks",
+  "Storefronts, retail spaces, lobbies, and showrooms",
+  "Local Ventura County measuring and installation"
+];
+
+export const commercialApplications: CommercialApplication[] = [
+  {
+    title: "Schools And Facilities",
+    eyebrow: "Classrooms and campuses",
+    body:
+      "Commercial shades for schools need to support daily use, glare control, safe operation, and room-to-room consistency. 805 Shutters helps classrooms, offices, multipurpose rooms, and campus facilities plan durable shade replacement or new installation.",
+    image: commercialModeImages.school,
+    imageAlt: "Southern California school campus suited for classroom shade planning",
+    bullets: ["Classrooms", "Administrative offices", "Multipurpose rooms", "Cordless shade options"]
+  },
+  {
+    title: "Office Buildings And Suites",
+    eyebrow: "Workplace comfort",
+    body:
+      "Office window coverings should reduce screen glare, soften heat, support privacy, and keep the space looking professional from inside and outside. We help small suites, multi-room offices, and larger workplace floors compare roller shades, solar shades, honeycomb shades, faux wood blinds, and motorized systems.",
+    image: commercialModeImages.hero,
+    imageAlt: "Sunlit Southern California office floor with tall shaded windows",
+    bullets: ["Office roller shades", "Conference rooms", "Tenant improvements", "Motorized shade planning"]
+  },
+  {
+    title: "Warehouses And Industrial Spaces",
+    eyebrow: "Flex and industrial",
+    body:
+      "Warehouses often need window coverings for front offices, staff areas, high window bands, mezzanines, and tenant-improvement build-outs. The right shade plan can reduce heat and glare without overcomplicating a working building.",
+    image: commercialModeImages.industrialWarehouse,
+    imageAlt: "Bright industrial warehouse interior with high window bands",
+    bullets: ["Warehouse offices", "Industrial parks", "Staff areas", "Phased replacement plans"]
+  },
+  {
+    title: "Storefronts And Retail Spaces",
+    eyebrow: "Customer-facing glass",
+    body:
+      "Storefronts and retail spaces need daylight control without making the business feel closed. Solar shades and commercial roller shades can protect displays, improve comfort, and keep lobbies, showrooms, restaurants, and sales floors usable during bright hours.",
+    image: commercialModeImages.storefrontCorner,
+    imageAlt: "Southern California storefront corner suited for retail solar shade planning",
+    bullets: ["Street-facing glass", "Retail showrooms", "Restaurant windows", "Lobby privacy"]
+  }
+];
+
+export const commercialProcessSteps: CommercialProcessStep[] = [
+  {
+    title: "1. Walk the space",
+    body:
+      "We review window count, exposure, glare, heat, privacy, damaged coverings, safety concerns, and the way each room is used."
+  },
+  {
+    title: "2. Match product to the building",
+    body:
+      "Recommendations can include roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, vertical blinds, or motorized controls."
+  },
+  {
+    title: "3. Scope the project clearly",
+    body:
+      "The proposal can separate priority rooms, phases, tenant-improvement areas, replacement groups, product options, and install coordination."
+  }
+];
+
+export const commercialFaqs: CommercialFaq[] = [
+  {
+    question: "Do you install commercial window coverings in Ventura County?",
+    answer:
+      "Yes. 805 Shutters installs commercial window coverings across Ventura County for offices, schools, storefronts, retail spaces, warehouses, medical offices, property managers, and shared facilities."
+  },
+  {
+    question: "What products work best for office buildings?",
+    answer:
+      "Office buildings often use commercial roller shades, solar shades, blackout shades for conference rooms, honeycomb shades, faux wood blinds, or motorized shade systems depending on glare, heat, privacy, and room use."
+  },
+  {
+    question: "Can you help schools replace classroom shades or blinds?",
+    answer:
+      "Yes. School and facility projects can be reviewed by room or building so the replacement plan addresses glare, privacy, safe operation, durability, budget, and timing."
+  },
+  {
+    question: "Do storefronts and retail spaces need different shade planning?",
+    answer:
+      "Usually, yes. Storefront and retail projects need to balance customer visibility, product protection, privacy, heat control, glare reduction, and the appearance of the glass from the street."
+  },
+  {
+    question: "Can warehouse offices and industrial spaces use commercial shades?",
+    answer:
+      "Yes. Warehouses, flex spaces, and industrial buildings often need shades or blinds for office build-outs, staff areas, mezzanines, front entries, and high-exposure window bands."
+  },
+  {
+    question: "Can you phase a commercial window covering project?",
+    answer:
+      "Yes. Projects can be phased by room, building, priority issue, budget, or tenant schedule so the highest-impact areas are handled first."
+  }
+];
+
 export const commercialGallery = [
   {
     image: commercialModeImages.storefront,
