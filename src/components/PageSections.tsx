@@ -167,10 +167,10 @@ const commercialPortfolioStories: PortfolioStory[] = [
     title: "Workspaces with controlled daylight.",
     body:
       "Neutral roller shades reduce glare and heat while keeping offices clean, bright, and professional.",
-    image: commercialModeImages.hero,
-    imageAlt: "Sunlit Southern California office floor with tall shaded windows",
-    imageWidth: 1920,
-    imageHeight: 1080,
+    image: commercialModeImages.smallOffice,
+    imageAlt: "Commercial office with neutral roller shades filtering daylight",
+    imageWidth: 1672,
+    imageHeight: 941,
     href: "/commercial-roller-shades/",
     tone: "bright"
   },
