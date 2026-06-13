@@ -27,6 +27,8 @@ type AvailabilityResponse = {
 type BookingCalendarProps = {
   active?: boolean;
   className?: string;
+  eyebrow?: string;
+  heading?: string;
   onDone?: () => void;
   showClose?: boolean;
   onClose?: () => void;
@@ -59,6 +61,8 @@ function isErrorMessage(message: string) {
 export function BookingCalendar({
   active = true,
   className = "booking-panel",
+  eyebrow = "Free In-Home Consultation",
+  heading = "Book a consultation",
   onDone,
   showClose = false,
   onClose
@@ -193,8 +197,8 @@ export function BookingCalendar({
     <div className={className}>
       <div className="booking-panel__head">
         <div>
-          <p className="eyebrow">Free In-Home Consultation</p>
-          <h2>Book a consultation</h2>
+          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+          <h2>{heading}</h2>
         </div>
         {showClose ? (
           <button type="button" className="booking-close" onClick={onClose} aria-label="Close booking">
