@@ -285,14 +285,9 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     imageAlt: "Coastal living room with wide roller shades and ocean view"
   },
   {
-    label: "Roman Shades",
-    image: "/images/homepage-flow/roman-shades.jpg",
-    imageAlt: "Bright living room with white Roman shades over garden-facing windows"
-  },
-  {
     label: "Bamboo Shades",
     image: "/images/homepage-flow/bamboo-shades.jpg",
-    imageAlt: "Bright living room with woven bamboo shades and linen drapery"
+    imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
   },
   {
     label: "Faux Wood Blinds",
