@@ -20,7 +20,7 @@ export default function BookConsultationPage() {
         className="booking-panel booking-panel--page"
         deferDetailsUntilDate
         eyebrow=""
-        heading="Book your free in-home consultation here"
+        heading="Let's Book!"
       />
     </section>
   );
