@@ -261,7 +261,7 @@ const commercialPortfolioStories: PortfolioStory[] = [
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Original Home Photo",
-    image: "/images/homepage-flow/original-homepage-photo.png",
+    image: "/images/homepage-flow/main-homepage-photo.png",
     imageAlt: page.imageAlt
   },
   {
@@ -276,7 +276,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Drapery",
-    image: "/images/homepage-flow/drapery.png",
+    image: "/images/homepage-flow/drapery.jpg",
     imageAlt: "Coastal living room with soft custom drapery panels"
   },
   {

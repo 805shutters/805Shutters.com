@@ -28,10 +28,10 @@ in this exact residential homepage order:
 
 | Order | Slide | File |
 | --- | --- | --- |
-| 1 | Original home photo | `original-homepage-photo.png` |
+| 1 | Original home photo | `main-homepage-photo.png` |
 | 2 | Shutters | `shutters.png` |
 | 3 | Blackout Honeycombs | `blackout-honeycombs.png` |
-| 4 | Drapery | `drapery.png` |
+| 4 | Drapery | `drapery.jpg` |
 | 5 | Roller Shades | `roller-shades.jpg` |
 | 6 | Roman Shades | `roman-shades.jpg` |
 | 7 | Bamboo Shades | `bamboo-shades.jpg` |
@@ -50,7 +50,7 @@ in this exact residential homepage order:
 Existing AI source notes:
 - Shutters uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-12.png`.
 - Roman Shades uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-20-roman-shades-white-living-room.jpg`.
-- Drapery uses `public/assets/ai-concepts/homepage-feed/raw-review/raw-ai-option-07.png`.
+- Drapery uses `public/images/805-portfolio-drapery-living-room.jpg`.
 
 New June 13, 2026 generated prompts:
 
