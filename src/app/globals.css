@@ -4687,10 +4687,7 @@ body:has(.crm-app-shell) {
 body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
 body.home-page-active .brand.brand--exact .brand-logo-exact {
   width: clamp(190px, 14vw, 218px) !important;
-  filter:
-    invert(1)
-    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.32))
-    drop-shadow(0 12px 28px rgba(0, 0, 0, 0.3));
+  filter: invert(1);
 }
 
 body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
