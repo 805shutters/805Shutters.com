@@ -293,6 +293,10 @@ body.commercial-mode .brand-text-logo-name {
   gap: 13px;
 }
 
+.masthead-contact-left .social-links {
+  justify-self: start;
+}
+
 .social-links a {
   display: inline-grid;
   width: 28px;
