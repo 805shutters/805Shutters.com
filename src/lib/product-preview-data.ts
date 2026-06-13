@@ -131,6 +131,8 @@ export const commercialCategoryItems: CategoryNavItem[] = [
       { label: "Property Managers", image: commercialModeImages.propertyExterior },
       { label: "Schools And Facilities", image: commercialModeImages.school },
       { label: "Medical Offices", image: commercialModeImages.medical },
+      { label: "Retail", image: commercialModeImages.storefront },
+      { label: "Warehouse", image: commercialModeImages.industrialWarehouse },
       { label: "Product Mix Review", image: commercialModeImages.storefrontCorner }
     ]
   }
