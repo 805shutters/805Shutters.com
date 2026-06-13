@@ -17,8 +17,8 @@ export type CategoryNavItem = {
  * no photo repeats inside the residential menu. Preview images live in:
  * - /images/portfolio-enhanced/  real install photos (wide crops)
  * - /images/editorial-scroll/    editorial hero photography
- * - /images/product-previews/    licensed fill-ins for types we have not
- *                                photographed yet (see manifest.json there)
+ * - /images/product-previews/    licensed and generated fill-ins for types we
+ *                                have not photographed yet (see manifest.json)
  */
 export const residentialCategoryItems: CategoryNavItem[] = [
   {
