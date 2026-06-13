@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
   label?: string;
+  tagline?: string;
   image: string;
   imageAlt: string;
   video?: string;

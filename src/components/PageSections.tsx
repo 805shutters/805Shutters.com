@@ -266,81 +266,97 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Shutters",
+    tagline: "Frame the room with custom-fit shutters.",
     image: "/images/homepage-flow/shutters.png",
     imageAlt: "Arched dining room windows fitted with white plantation shutters"
   },
   {
-    label: "Blackout Honeycombs",
-    image: "/images/homepage-flow/blackout-honeycombs.png",
+    label: "Honeycomb Shades",
+    tagline: "Darken the room and hold the comfort in.",
+    image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png",
     imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
   },
   {
     label: "Drapery",
+    tagline: "Add softness, height, and a finished designer look.",
     image: "/images/homepage-flow/drapery.jpg",
     imageAlt: "Coastal living room with soft custom drapery panels"
   },
   {
     label: "Roller Shades",
+    tagline: "Keep the view, control the glare.",
     image: "/images/homepage-flow/roller-shades.jpg",
     imageAlt: "Coastal living room with wide roller shades and ocean view"
   },
   {
     label: "Bamboo Shades",
+    tagline: "Bring natural texture into the light.",
     image: "/images/homepage-flow/bamboo-shades.jpg",
     imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
   },
   {
     label: "Faux Wood Blinds",
+    tagline: "Classic wood-look control built for daily use.",
     image: "/images/homepage-flow/faux-wood-blinds.png",
     imageAlt: "Office windows fitted with warm faux wood blinds"
   },
   {
     label: "Exterior Patio Shades",
+    tagline: "Turn harsh sun into usable outdoor space.",
     image: "/images/homepage-flow/exterior-patio-shades.jpg",
     imageAlt: "Sunset patio with exterior shades and ocean views"
   },
   {
     label: "Vertical Blinds",
+    tagline: "Cover wide doors with smooth, practical control.",
     image: "/images/homepage-flow/vertical-blinds.png",
     imageAlt: "Sliding patio door fitted with cream vertical blinds"
   },
   {
     label: "Mini Blinds",
+    tagline: "Slim lines for simple everyday privacy.",
     image: "/images/homepage-flow/mini-blinds.png",
     imageAlt: "Coastal home office windows fitted with slim white mini blinds"
   },
   {
     label: "Layered Shades",
+    tagline: "Shift from filtered light to privacy in one treatment.",
     image: "/images/homepage-flow/layered-shades.jpg",
     imageAlt: "Layered window shades installed on a Ventura County bedroom window"
   },
   {
     label: "Sheer Shades",
+    tagline: "Soften the sun while keeping the room open.",
     image: "/images/homepage-flow/sheer-shades.png",
     imageAlt: "Living room windows fitted with translucent sheer shades"
   },
   {
     label: "Natural Shades",
+    tagline: "Warm woven texture for bright rooms.",
     image: "/images/homepage-flow/natural-shades.jpg",
     imageAlt: "Breakfast room with natural woven shades and warm light"
   },
   {
     label: "Panel Track Shades",
+    tagline: "Wide panels that make sliding doors feel clean.",
     image: "/images/homepage-flow/panel-track-shades.png",
     imageAlt: "Sliding glass door fitted with wide panel track shades"
   },
   {
     label: "Vertical Cellular Shades",
+    tagline: "Insulated comfort for wide patio doors.",
     image: "/images/homepage-flow/vertical-cellular-shades.png",
     imageAlt: "Sliding glass door fitted with vertical cellular shades"
   },
   {
     label: "Skylight Shades",
+    tagline: "Tame overhead heat without losing daylight.",
     image: "/images/homepage-flow/skylight-shades.png",
     imageAlt: "Kitchen skylights fitted with light-filtering shades"
   },
   {
     label: "Skylight Shutters",
+    tagline: "Make angled light easier to control.",
     image: "/images/homepage-flow/skylight-shutters.png",
     imageAlt: "Angled skylights fitted with white louvered shutters"
   }
@@ -1043,6 +1059,12 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
                 loading={index < 2 ? "eager" : "lazy"}
                 decoding="async"
               />
+              {slide.tagline ? (
+                <figcaption>
+                  <span>{slide.label}</span>
+                  <strong>{slide.tagline}</strong>
+                </figcaption>
+              ) : null}
             </figure>
           ))}
         </section>

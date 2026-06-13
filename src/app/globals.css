@@ -2071,14 +2071,80 @@ body.commercial-mode .home-hero-actions .button.primary {
 }
 
 .home-photo-flow-item {
+  position: relative;
   margin: 0;
+  overflow: hidden;
+  aspect-ratio: 1672 / 941;
   background: #11100e;
+}
+
+.home-photo-flow-item::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: min(42%, 360px);
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(13, 12, 10, 0), rgba(13, 12, 10, 0.72));
 }
 
 .home-photo-flow-item img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-photo-flow-item figcaption {
+  position: absolute;
+  inset: auto clamp(18px, 5vw, 86px) clamp(22px, 5vw, 74px);
+  z-index: 1;
+  display: grid;
+  max-width: min(720px, calc(100% - 36px));
+  gap: clamp(8px, 1vw, 12px);
+  color: var(--white);
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.72),
+    0 12px 36px rgba(0, 0, 0, 0.48);
+}
+
+.home-photo-flow-item figcaption span {
+  font-size: clamp(11px, 1.2vw, 14px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.home-photo-flow-item figcaption strong {
+  max-width: 18ch;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 4.8vw, 68px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.96;
+}
+
+@media (max-width: 760px) {
+  .home-photo-flow-item::after {
+    height: 58%;
+  }
+
+  .home-photo-flow-item figcaption {
+    inset: auto 16px 20px;
+    max-width: calc(100% - 32px);
+    gap: 7px;
+  }
+
+  .home-photo-flow-item figcaption span {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  .home-photo-flow-item figcaption strong {
+    max-width: 16ch;
+    font-size: clamp(28px, 10.5vw, 46px);
+    line-height: 0.98;
+  }
 }
 
 .installed-portfolio {
