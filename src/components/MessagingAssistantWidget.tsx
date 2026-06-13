@@ -260,7 +260,6 @@ export function MessagingAssistantWidget() {
           <MessageIcon />
         </span>
         <span className="assistant-launcher__copy">
-          <span className="assistant-launcher__eyebrow">Text or AI</span>
           <span className="assistant-launcher__title">Ask 805</span>
         </span>
       </button>
