@@ -195,19 +195,23 @@ export function BookingCalendar({
     }
   }
 
+  const hasPanelHead = Boolean(eyebrow || heading || showClose);
+
   return (
     <div className={className}>
-      <div className="booking-panel__head">
-        <div>
-          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-          <h2>{heading}</h2>
+      {hasPanelHead ? (
+        <div className="booking-panel__head">
+          <div>
+            {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+            {heading ? <h2>{heading}</h2> : null}
+          </div>
+          {showClose ? (
+            <button type="button" className="booking-close" onClick={onClose} aria-label="Close booking">
+              ×
+            </button>
+          ) : null}
         </div>
-        {showClose ? (
-          <button type="button" className="booking-close" onClick={onClose} aria-label="Close booking">
-            ×
-          </button>
-        ) : null}
-      </div>
+      ) : null}
 
       {complete ? (
         <div className="booking-complete">

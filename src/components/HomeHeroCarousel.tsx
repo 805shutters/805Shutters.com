@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
+  label?: string;
   image: string;
   imageAlt: string;
   video?: string;
@@ -141,20 +142,28 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   }, [preview.layers]);
 
   const renderedSlides = freezeOnFirstSlide ? slides.slice(0, 1) : slides;
+  const previousIndex = renderedSlides.length > 1 ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length : activeIndex;
+  const nextIndex = renderedSlides.length > 1 ? (activeIndex + 1) % renderedSlides.length : activeIndex;
+  const shouldLoadSlide = (index: number) =>
+    renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex;
 
   return (
     <div className="home-hero-media home-hero-carousel" aria-hidden="true" ref={carouselRef}>
-      {renderedSlides.map((slide, index) => (
-        <div className={`home-hero-slide${index === activeIndex ? " is-active" : ""}`} key={slide.video || slide.image}>
-          {slide.video ? (
-            <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "metadata"}>
-              <source src={slide.video} type="video/mp4" />
-            </video>
-          ) : (
-            <div className="home-hero-image" style={{ backgroundImage: `url(${slide.image})` }} />
-          )}
-        </div>
-      ))}
+      {renderedSlides.map((slide, index) => {
+        const loadSlide = shouldLoadSlide(index);
+
+        return (
+          <div className={`home-hero-slide${index === activeIndex ? " is-active" : ""}`} key={slide.label || slide.video || slide.image}>
+            {slide.video && loadSlide ? (
+              <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "metadata"}>
+                <source src={slide.video} type="video/mp4" />
+              </video>
+            ) : (
+              <div className="home-hero-image" style={loadSlide ? { backgroundImage: `url(${slide.image})` } : undefined} />
+            )}
+          </div>
+        );
+      })}
       {preview.layers.map((layer) => (
         <div
           className={`home-hero-preview${preview.active ? " is-active" : ""}`}

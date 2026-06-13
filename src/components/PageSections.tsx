@@ -260,38 +260,120 @@ const commercialPortfolioStories: PortfolioStory[] = [
 
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
-    image: page.image,
+    label: "Original Home Photo",
+    image: "/images/homepage-flow/original-homepage-photo.png",
     imageAlt: page.imageAlt
   },
   {
-    image: "/images/video-posters/ventura-county-roller-shades-bedroom-live.jpg",
-    imageAlt: "Live roller shades installed in a Ventura County bedroom",
-    video: "/videos/ventura-county-roller-shades-bedroom-live.mp4"
+    label: "Shutters",
+    image: "/images/homepage-flow/shutters.png",
+    imageAlt: "Arched dining room windows fitted with white plantation shutters"
   },
   {
-    image: "/images/editorial-scroll/sunset-patio-exterior-shades.jpg",
-    imageAlt: "Exterior shades filtering sunset light over an ocean-view patio"
+    label: "Blackout Honeycombs",
+    image: "/images/homepage-flow/blackout-honeycombs.png",
+    imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
+  },
+  {
+    label: "Drapery",
+    image: "/images/homepage-flow/drapery.png",
+    imageAlt: "Coastal living room with soft custom drapery panels"
+  },
+  {
+    label: "Roller Shades",
+    image: "/images/homepage-flow/roller-shades.jpg",
+    imageAlt: "Coastal living room with wide roller shades and ocean view"
+  },
+  {
+    label: "Roman Shades",
+    image: "/images/homepage-flow/roman-shades.jpg",
+    imageAlt: "Bright living room with white Roman shades over garden-facing windows"
+  },
+  {
+    label: "Bamboo Shades",
+    image: "/images/homepage-flow/bamboo-shades.jpg",
+    imageAlt: "Bright living room with woven bamboo shades and linen drapery"
+  },
+  {
+    label: "Faux Wood Blinds",
+    image: "/images/homepage-flow/faux-wood-blinds.png",
+    imageAlt: "Office windows fitted with warm faux wood blinds"
+  },
+  {
+    label: "Exterior Patio Shades",
+    image: "/images/homepage-flow/exterior-patio-shades.jpg",
+    imageAlt: "Sunset patio with exterior shades and ocean views"
+  },
+  {
+    label: "Vertical Blinds",
+    image: "/images/homepage-flow/vertical-blinds.png",
+    imageAlt: "Sliding patio door fitted with cream vertical blinds"
+  },
+  {
+    label: "Mini Blinds",
+    image: "/images/homepage-flow/mini-blinds.png",
+    imageAlt: "Coastal home office windows fitted with slim white mini blinds"
+  },
+  {
+    label: "Layered Shades",
+    image: "/images/homepage-flow/layered-shades.jpg",
+    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
+  },
+  {
+    label: "Sheer Shades",
+    image: "/images/homepage-flow/sheer-shades.png",
+    imageAlt: "Living room windows fitted with translucent sheer shades"
+  },
+  {
+    label: "Natural Shades",
+    image: "/images/homepage-flow/natural-shades.jpg",
+    imageAlt: "Breakfast room with natural woven shades and warm light"
+  },
+  {
+    label: "Panel Track Shades",
+    image: "/images/homepage-flow/panel-track-shades.png",
+    imageAlt: "Sliding glass door fitted with wide panel track shades"
+  },
+  {
+    label: "Vertical Cellular Shades",
+    image: "/images/homepage-flow/vertical-cellular-shades.png",
+    imageAlt: "Sliding glass door fitted with vertical cellular shades"
+  },
+  {
+    label: "Skylight Shades",
+    image: "/images/homepage-flow/skylight-shades.png",
+    imageAlt: "Kitchen skylights fitted with light-filtering shades"
+  },
+  {
+    label: "Skylight Shutters",
+    image: "/images/homepage-flow/skylight-shutters.png",
+    imageAlt: "Angled skylights fitted with white louvered shutters"
   }
 ];
 
 const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   {
+    label: "Commercial Hero",
     image: commercialModeImages.hero,
     imageAlt: "Sunlit Southern California office floor with tall shaded windows"
   },
   {
+    label: "Commercial Blackout Shades",
     image: commercialModeImages.conference,
     imageAlt: "Commercial conference room with dark blackout roller shades"
   },
   {
+    label: "Commercial Storefront",
     image: commercialModeImages.storefront,
     imageAlt: "Commercial storefront fitted with solar roller shades"
   },
   {
+    label: "Commercial Honeycomb Shades",
     image: commercialModeImages.honeycomb,
     imageAlt: "Commercial office windows fitted with honeycomb cellular shades"
   },
   {
+    label: "Commercial Faux Wood Blinds",
     image: commercialModeImages.fauxWood,
     imageAlt: "Commercial office windows fitted with faux wood blinds"
   }

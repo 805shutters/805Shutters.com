@@ -13,14 +13,14 @@ export const metadata: Metadata = {
 export default function BookConsultationPage() {
   return (
     <section className="booking-page booking-page--focused">
-      <div className="booking-page__brand">
-        <img src="/brand/805-shutters-logo-exact-transparent.png" alt="805 Shutters" width={262} height={209} />
-      </div>
+      <header className="booking-page__masthead">
+        <h1>Let's Book!</h1>
+      </header>
       <BookingCalendar
         className="booking-panel booking-panel--page"
         deferDetailsUntilDate
         eyebrow=""
-        heading="Let's Book!"
+        heading=""
       />
     </section>
   );
