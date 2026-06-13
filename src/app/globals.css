@@ -2796,10 +2796,8 @@ body:has(.crm-app-shell) {
 
 .booking-page {
   min-height: 100vh;
-  padding: clamp(20px, 4vw, 42px) 0 clamp(44px, 6vw, 72px);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(48, 91, 168, 0.12), transparent 310px),
-    linear-gradient(180deg, #fbfcff 0%, #eef3f9 54%, #f7f8fb 100%);
+  padding: clamp(18px, 3vw, 34px) 0 clamp(44px, 6vw, 72px);
+  background: #ffffff;
 }
 
 body:has(.booking-page--focused) .site-header-shell,
@@ -2811,13 +2809,13 @@ body:has(.booking-page--focused) .assistant-widget {
 .booking-page__brand {
   display: grid;
   justify-items: center;
-  margin: 0 auto clamp(18px, 3vw, 28px);
+  margin: 0 auto clamp(16px, 2.4vw, 24px);
 }
 
 .booking-page__brand img {
-  width: clamp(124px, 13vw, 184px);
+  width: clamp(118px, 11vw, 164px);
   height: auto;
-  filter: drop-shadow(0 16px 28px rgba(30, 55, 95, 0.14));
+  filter: none;
 }
 
 .booking-page__intro {
@@ -2844,32 +2842,29 @@ body:has(.booking-page--focused) .assistant-widget {
   width: min(620px, calc(100% - 40px));
   max-height: none;
   margin: 0 auto;
-  border-color: rgba(79, 116, 178, 0.18);
+  border-color: #dbe4f0;
   border-radius: 8px;
   grid-template-columns: 1fr;
   overflow: visible;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow:
-    0 18px 50px rgba(31, 63, 145, 0.13),
-    0 1px 0 rgba(255, 255, 255, 0.94) inset;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(25, 54, 96, 0.08);
 }
 
 .booking-panel--page .booking-panel__head {
-  padding: 18px 22px 16px;
-  border-bottom-color: rgba(79, 116, 178, 0.14);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.96));
+  padding: 18px 22px 17px;
+  border-bottom-color: #dbe4f0;
+  background: #ffffff;
 }
 
 .booking-panel--page .booking-panel__head h2 {
-  max-width: 420px;
+  max-width: 520px;
   color: #173a83;
-  font-size: 24px;
+  font-size: 23px;
   line-height: 1.1;
 }
 
 .booking-panel--page .booking-calendar-shell {
-  border-bottom: 1px solid rgba(79, 116, 178, 0.14);
+  border-bottom: 1px solid #dbe4f0;
 }
 
 .booking-panel--page .booking-calendar-head {
@@ -2885,15 +2880,16 @@ body:has(.booking-page--focused) .assistant-widget {
 
 .booking-panel--page .booking-calendar-head button {
   min-height: 54px;
-  color: #466ba6;
-  font-size: 30px;
+  color: #365f9e;
+  font-size: 28px;
 }
 
 .booking-panel--page .booking-weekdays {
   min-height: 34px;
-  background: #f2f6fc;
+  background: #f7f9fc;
   color: #5b6d89;
   font-size: 12px;
+  border-bottom: 1px solid #dbe4f0;
 }
 
 .booking-panel--page .booking-days {
@@ -2909,9 +2905,9 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-panel--page .booking-day {
-  border-color: #edf1f7;
-  background: #f7f8fb;
-  color: #b8c0cd;
+  border-color: #e8edf5;
+  background: #fbfcfe;
+  color: #b8c0cc;
 }
 
 .booking-panel--page .booking-day--empty {
@@ -2921,46 +2917,38 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-panel--page .booking-day--disabled {
-  border-color: #edf1f7;
-  background: #f4f6fa;
+  border-color: #e8edf5;
+  background: #f8fafc;
   color: #c3cad5;
   box-shadow: none;
   opacity: 0.72;
 }
 
 .booking-panel--page .booking-day--available {
-  border-color: #8fb3e8;
-  background:
-    linear-gradient(180deg, #ffffff, #eef5ff);
+  border-color: #9bbce9;
+  background: #f2f7ff;
   color: #173a83;
-  box-shadow:
-    inset 0 0 0 1px rgba(64, 112, 191, 0.14),
-    0 5px 14px rgba(47, 96, 176, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(64, 112, 191, 0.12);
 }
 
 .booking-panel--page .booking-day:not(:disabled):hover,
 .booking-panel--page .booking-day--selected {
-  border-color: #2458ae;
-  background:
-    linear-gradient(180deg, #e9f3ff, #dbeaff);
+  border-color: #386bb8;
+  background: #e6f0ff;
   color: #0e2d6e;
-  box-shadow:
-    inset 0 0 0 1px rgba(36, 88, 174, 0.32),
-    0 7px 18px rgba(36, 88, 174, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(36, 88, 174, 0.24);
 }
 
 .booking-panel--page .booking-slots button {
-  border-color: #c9d8ef;
-  background:
-    linear-gradient(180deg, #ffffff, #f1f6ff);
+  border-color: #c6d8f1;
+  background: #f5f9ff;
   color: #173a83;
-  box-shadow: 0 5px 14px rgba(47, 96, 176, 0.1);
+  box-shadow: none;
 }
 
 .booking-panel--page .booking-slots button.active {
-  border-color: #2458ae;
-  background:
-    linear-gradient(180deg, #2458ae, #173a83);
+  border-color: #1f559f;
+  background: #1f559f;
   color: #ffffff;
   box-shadow: inset 0 2px 8px rgba(10, 34, 82, 0.34);
 }
@@ -2978,7 +2966,7 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-panel--page .booking-form {
-  border-top: 1px solid #e4ded4;
+  border-top: 1px solid #dbe4f0;
 }
 
 .booking-modal {
