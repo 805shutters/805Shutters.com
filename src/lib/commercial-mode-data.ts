@@ -14,8 +14,8 @@ export const commercialBrand = {
  */
 export const commercialModeImages = {
   hero: "/images/product-previews/commercial-socal-office-hero.jpg",
-  smallOffice: "/images/product-previews/commercial-small-office-roller-shades.jpg",
-  motorized: "/images/product-previews/commercial-motorized-tall-glass.jpg",
+  smallOffice: "/images/commercial-mode/commercial-small-office-roller-shades.png",
+  motorized: "/images/commercial-mode/commercial-small-office-roller-shades.png",
   warehouseTenantImprovement: "/images/product-previews/commercial-warehouse-tenant-improvement.jpg",
   industrialWarehouse: "/images/product-previews/commercial-industrial-warehouse.jpg",
   school: "/images/product-previews/commercial-socal-school.jpg",
@@ -23,8 +23,8 @@ export const commercialModeImages = {
   storefrontCorner: "/images/product-previews/commercial-socal-storefront-corner.jpg",
   conference: "/images/commercial-mode/commercial-conference-blackout-shades.png",
   medical: "/images/commercial-mode/commercial-medical-privacy-shades.png",
-  storefront: "/images/commercial-mode/commercial-storefront-solar-shades.png",
-  honeycomb: "/images/commercial-mode/commercial-office-honeycomb-shades.png",
+  storefront: "/images/commercial-mode/commercial-local-storefront-solar-shades.png",
+  honeycomb: "/images/commercial-mode/commercial-single-room-honeycomb-shades.png",
   fauxWood: "/images/commercial-mode/commercial-office-faux-wood-blinds.png"
 };
 
