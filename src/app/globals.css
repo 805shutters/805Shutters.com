@@ -6033,7 +6033,7 @@ body.home-page-active .brand.brand--exact .brand-logo-exact {
   width: clamp(190px, 14vw, 218px) !important;
   transform: translateY(-5%) scale(1.53) !important;
   transform-origin: top center;
-  filter: invert(1);
+  filter: invert(1) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28));
 }
 
 body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
