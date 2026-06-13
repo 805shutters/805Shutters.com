@@ -535,7 +535,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
   const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
-  const heroCta = commercialMode ? "Commercial Shade Audit" : "Free In-Home Consultations";
+  const heroCta = commercialMode ? "Commercial Shade Audit" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 
   return (
