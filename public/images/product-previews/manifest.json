@@ -40,6 +40,55 @@
     "photoPage": "https://unsplash.com/photos/curtains-frame-a-window-in-a-bright-room-j_J2JvXTe7M"
   },
   {
+    "file": "drapery-ripplefold-closeup.jpg",
+    "use": "Ripplefold Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up ripplefold drapery header with continuous S-shaped folds on a ceiling track."
+  },
+  {
+    "file": "drapery-pinch-pleat-closeup.jpg",
+    "use": "Pinch Pleat Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up two-finger pinch pleat drapery heading with hooks and rings."
+  },
+  {
+    "file": "drapery-french-pleat-closeup.jpg",
+    "use": "French Pleat Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up French triple pinch pleat heading with W-shaped pleat fingers."
+  },
+  {
+    "file": "drapery-grommet-closeup.jpg",
+    "use": "Grommet Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up drapery header with metal grommets punched through the fabric and a rod passing through."
+  },
+  {
+    "file": "drapery-rod-pocket-closeup.jpg",
+    "use": "Rod Pocket Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up sewn rod-pocket sleeve with gathered fabric over a slim rod."
+  },
+  {
+    "file": "drapery-goblet-pleat-closeup.jpg",
+    "use": "Goblet Pleat Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up formal goblet pleat heading with rounded cup-shaped pleats."
+  },
+  {
+    "file": "drapery-inverted-box-pleat-closeup.jpg",
+    "use": "Inverted Box Pleat Drapery close-up hover preview (residential)",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Close-up inverted box pleat heading with flat front panels and fullness folded behind."
+  },
+  {
     "file": "commercial-glare-control-shades.jpg",
     "use": "Glare Control (commercial)",
     "source": "Unsplash",
