@@ -1073,25 +1073,6 @@ body:has(.home-editorial).site-header-solid .category-dot {
   display: inline;
 }
 
-body:has(.home-editorial).site-header-solid .category-nav-products {
-  --category-dropdown-glow:
-    radial-gradient(
-      ellipse at center,
-      rgba(251, 250, 247, 0.96) 0%,
-      rgba(251, 250, 247, 0.78) 52%,
-      rgba(251, 250, 247, 0.32) 76%,
-      rgba(251, 250, 247, 0) 100%
-    );
-  --category-dropdown-glow-opacity: 1;
-  color: rgba(17, 17, 17, 0.88);
-  text-shadow: 0 1px 14px rgba(255, 255, 255, 0.68);
-}
-
-body:has(.home-editorial).site-header-solid .category-nav-product-button:hover,
-body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-visible {
-  color: var(--ink);
-}
-
 @media (min-width: 621px) {
   body:has(.home-editorial) .site-masthead {
     grid-template-columns: minmax(0, 1fr) minmax(278px, auto) minmax(0, 1fr);
