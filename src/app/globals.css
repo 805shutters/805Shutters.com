@@ -578,10 +578,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 }
 
 .category-nav-products {
-  --category-dropdown-bg: rgba(17, 15, 13, 0.86);
-  --category-dropdown-border: rgba(255, 255, 255, 0.22);
-  --category-dropdown-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
-  --category-product-gap: clamp(8px, 1vw, 14px);
+  --category-product-gap: clamp(14px, 1.55vw, 24px);
   position: absolute;
   top: calc(50% + 0.85em);
   left: 50%;
@@ -591,24 +588,24 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   max-width: calc(100vw - 32px);
   min-width: 0;
   padding:
-    clamp(16px, 2.3vw, 24px)
-    clamp(18px, 3.2vw, 34px)
-    clamp(17px, 2.4vw, 25px);
-  border: 1px solid var(--category-dropdown-border);
-  border-radius: 18px;
-  background: var(--category-dropdown-bg);
-  box-shadow: var(--category-dropdown-shadow);
+    calc(var(--category-product-gap) + 4px)
+    clamp(18px, 4vw, 48px)
+    calc(var(--category-product-gap) + 2px);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   color: rgba(255, 255, 255, 0.92);
   opacity: 0;
   pointer-events: none;
   text-align: center;
-  text-shadow: none;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.72),
+    0 8px 22px rgba(0, 0, 0, 0.38);
   text-transform: none;
   transform: translateX(-50%) translateY(-16px);
   transform-origin: top center;
   visibility: hidden;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   transition:
     opacity 260ms ease,
     transform 460ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -631,7 +628,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 
 .category-nav-product-list {
   display: grid;
-  width: min(100vw - 80px, 34ch);
+  width: min(100vw - 70px, 38ch);
   justify-items: center;
   gap: var(--category-product-gap);
   position: relative;
@@ -651,12 +648,12 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   color: inherit;
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: clamp(17px, 1.45vw, 22px);
-  font-weight: 800;
-  letter-spacing: 0.035em;
-  line-height: 1.18;
+  font-size: clamp(19px, 2.05vw, 30px);
+  font-weight: 400;
+  letter-spacing: 0.012em;
+  line-height: 1.12;
   text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
+  text-shadow: inherit;
   white-space: normal;
   overflow-wrap: break-word;
   transition:
@@ -666,16 +663,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 }
 
 .category-nav-product-button::before {
-  content: "";
-  position: absolute;
-  inset: -0.28em -0.5em;
-  z-index: -1;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.12);
-  filter: none;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 180ms ease;
+  display: none;
 }
 
 .category-nav-product-button:hover,
@@ -684,11 +672,6 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   opacity: 1;
   outline: 0;
   transform: translateY(-1px);
-}
-
-.category-nav-product-button:hover::before,
-.category-nav-product-button:focus-visible::before {
-  opacity: 1;
 }
 
 /* Product names cascade in one after another while the panel opens. */
@@ -758,16 +741,16 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 @media (max-width: 760px) {
   .category-nav-products {
     max-width: calc(100vw - 28px);
-    padding: 16px 17px 18px;
+    padding: 18px 16px 20px;
   }
 
   .category-nav-product-list {
-    width: min(100vw - 62px, 28ch);
+    width: min(100vw - 56px, 28ch);
   }
 
   .category-nav-product-button {
-    font-size: 16px;
-    letter-spacing: 0.025em;
+    font-size: 19px;
+    letter-spacing: 0.01em;
   }
 }
 
@@ -1064,24 +1047,15 @@ body:has(.home-editorial).site-header-solid .category-dot {
 }
 
 body:has(.home-editorial).site-header-solid .category-nav-products {
-  --category-dropdown-bg: rgba(251, 250, 247, 0.96);
-  --category-dropdown-border: rgba(17, 17, 17, 0.1);
-  --category-dropdown-shadow: 0 18px 42px rgba(17, 17, 17, 0.16);
-  color: rgba(17, 17, 17, 0.92);
-  text-shadow: none;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.72),
+    0 8px 22px rgba(0, 0, 0, 0.38);
 }
 
 body:has(.home-editorial).site-header-solid .category-nav-product-button:hover,
 body:has(.home-editorial).site-header-solid .category-nav-product-button:focus-visible {
-  color: var(--ink);
-}
-
-body:has(.home-editorial).site-header-solid .category-nav-product-button {
-  text-shadow: none;
-}
-
-body:has(.home-editorial).site-header-solid .category-nav-product-button::before {
-  background: rgba(17, 17, 17, 0.08);
+  color: var(--white);
 }
 
 @media (min-width: 621px) {
