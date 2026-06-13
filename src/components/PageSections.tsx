@@ -295,10 +295,10 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
   },
   {
-    label: "Faux Wood Blinds",
-    tagline: "Classic wood-look control built for daily use.",
-    image: "/images/homepage-flow/faux-wood-blinds.png",
-    imageAlt: "Office windows fitted with warm faux wood blinds"
+    label: "Stained Wood Shutters",
+    tagline: "Classic stained wood matched to the room.",
+    image: "/images/homepage-flow/stained-wood-library-shutters.png",
+    imageAlt: "Dark home library with classic stained wood shutters matched to built-in bookcases"
   },
   {
     label: "Exterior Patio Shades",
