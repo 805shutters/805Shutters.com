@@ -911,9 +911,9 @@ body:has(.home-editorial) .phone-stack {
 
 body:has(.home-editorial) .phone-stack .masthead-email {
   color: rgba(255, 255, 255, 0.82);
-  font-size: 11px;
+  font-size: 13.2px;
   letter-spacing: 0.08em;
-  transform: translateY(-7px);
+  transform: translateY(-11px);
 }
 
 body:has(.home-editorial) .header-phone {
