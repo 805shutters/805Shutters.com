@@ -1810,6 +1810,22 @@ body.commercial-mode .home-hero-actions .button.primary {
   color: rgba(255, 255, 255, 0.88);
 }
 
+.home-photo-flow {
+  display: grid;
+  background: #0d0c0a;
+}
+
+.home-photo-flow-item {
+  margin: 0;
+  background: #11100e;
+}
+
+.home-photo-flow-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .installed-portfolio {
   padding: clamp(48px, 7vw, 86px) 0;
   background: var(--paper);

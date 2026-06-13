@@ -784,6 +784,8 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : installedPortfolioPhotos;
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
+  const heroMediaSlides = commercialMode ? heroSlides : heroSlides.slice(0, 1);
+  const residentialPhotoFlowSlides = commercialMode ? [] : heroSlides.slice(1);
   const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
   const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
@@ -792,7 +794,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={heroSlides} />
+          <HomeHeroCarousel slides={heroMediaSlides} />
           <div className="home-hero-overlay">
             <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">
@@ -804,45 +806,60 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </div>
       </section>
 
-      <section className="portfolio-scroll" aria-label={commercialMode ? "805 Commercial portfolio scenes" : "805 Shutters portfolio scenes"}>
-        {stories.map((story, index) => (
-          <article
-            className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
-            key={story.title}
-          >
-            <div className="portfolio-story-media">
-              {story.video ? (
-                <video
-                  aria-label={story.imageAlt}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster={story.image}
-                  preload={index === 0 ? "auto" : "metadata"}
-                >
-                  <source src={story.video} type="video/mp4" />
-                </video>
-              ) : (
-                <img
-                  src={story.image}
-                  alt={story.imageAlt}
-                  width={story.imageWidth}
-                  height={story.imageHeight}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                />
-              )}
-            </div>
-            <div className="portfolio-story-copy">
-              <p>{story.eyebrow}</p>
-              <h2>{story.title}</h2>
-              <span>{story.body}</span>
-              <Link href={story.href}>Explore {story.eyebrow}</Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      {commercialMode ? (
+        <section className="portfolio-scroll" aria-label="805 Commercial portfolio scenes">
+          {stories.map((story, index) => (
+            <article
+              className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
+              key={story.title}
+            >
+              <div className="portfolio-story-media">
+                {story.video ? (
+                  <video
+                    aria-label={story.imageAlt}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    poster={story.image}
+                    preload={index === 0 ? "auto" : "metadata"}
+                  >
+                    <source src={story.video} type="video/mp4" />
+                  </video>
+                ) : (
+                  <img
+                    src={story.image}
+                    alt={story.imageAlt}
+                    width={story.imageWidth}
+                    height={story.imageHeight}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                )}
+              </div>
+              <div className="portfolio-story-copy">
+                <p>{story.eyebrow}</p>
+                <h2>{story.title}</h2>
+                <span>{story.body}</span>
+                <Link href={story.href}>Explore {story.eyebrow}</Link>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <section className="home-photo-flow" aria-label="805 Shutters homepage photo flow">
+          {residentialPhotoFlowSlides.map((slide, index) => (
+            <figure className="home-photo-flow-item" key={slide.label || slide.image}>
+              <img
+                src={slide.image}
+                alt={slide.imageAlt}
+                loading={index < 2 ? "eager" : "lazy"}
+                decoding="async"
+              />
+            </figure>
+          ))}
+        </section>
+      )}
 
       <section className="installed-portfolio">
         <div className="content-wrap installed-portfolio-head">

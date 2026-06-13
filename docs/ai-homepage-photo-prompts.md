@@ -21,10 +21,12 @@ Style for every image:
 - Leave clean center space for HTML overlay text.
 - Wide horizontal hero composition, 16:9 or wider.
 
-## Final Homepage Flow Assets
+## Final Homepage Photo Flow Assets
 
-Final hero-carousel assets live in `public/images/homepage-flow/` and are used
-in this exact residential homepage order:
+Final stacked photo-flow assets live in `public/images/homepage-flow/` and are
+used in this exact residential homepage order. The original home photo remains
+the top hero image; the remaining treatments stack below it with no timed photo
+rotation.
 
 | Order | Slide | File |
 | --- | --- | --- |
@@ -55,13 +57,13 @@ Existing AI source notes:
 New June 13, 2026 generated prompts:
 
 Vertical Blinds:
-Ultra realistic luxury editorial interior photography of a bright Ventura/coastal California living room with a wide sliding glass patio door and refined garden view. Elegant cream vertical blinds with fabric vanes, partially open so the vertical product structure is unmistakable. Wide horizontal 16:9 hero composition with clean center overlay space. Warm natural California daylight, warm neutrals, cream plaster, pale oak, soft linen. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as vertical blinds, not drapery or shutters.
+Ultra realistic luxury editorial interior photography of a bright Ventura/coastal California living room with a wide sliding glass patio door and refined garden view. Muted sage-green vertical blinds with fabric vanes, partially open so the vertical product structure is unmistakable. Wide horizontal 16:9 hero composition with clean center overlay space. Warm natural California daylight, warm neutrals, cream plaster, pale oak, soft linen. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as vertical blinds, not drapery or shutters.
 
 Mini Blinds:
-Ultra realistic luxury editorial interior photography of a refined Ventura/coastal California home office with tall windows and a distant garden or hillside view. Slim white aluminum mini blinds with narrow horizontal slats, tilted to filter sunlight; the narrow mini-blind scale must be clear. Wide horizontal 16:9 hero composition with clean center overlay space. Bright warm morning light with crisp slat shadows, warm neutrals, white blinds, oak desk, cream plaster. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as mini blinds, not faux wood blinds or shutters.
+Ultra realistic luxury editorial interior photography of a refined Ventura/coastal California home office with tall windows and a distant garden or hillside view. Slim soft blue-gray aluminum mini blinds with narrow horizontal slats, tilted to filter sunlight; the narrow mini-blind scale must be clear. Wide horizontal 16:9 hero composition with clean center overlay space. Bright warm morning light with crisp slat shadows, warm neutrals, oak desk, cream plaster. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as mini blinds, not faux wood blinds or shutters.
 
 Sheer Shades:
-Ultra realistic luxury editorial interior photography of an airy Ventura/coastal California living room with large windows and a soft garden view. Sheer shades with translucent fabric and soft horizontal vanes suspended between sheer layers, clearly visible and filtering daylight. Wide horizontal 16:9 hero composition with clean center overlay space. Glowing daylight, soft diffusion, warm whites, pale oak, linen, soft greenery. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as sheer shades, not roller shades or drapery.
+Ultra realistic luxury editorial interior photography of an airy Ventura/coastal California living room with large windows and a soft garden view. Sheer shades with subtle champagne-blush translucent fabric and soft horizontal vanes suspended between sheer layers, clearly visible and filtering daylight. Wide horizontal 16:9 hero composition with clean center overlay space. Glowing daylight, soft diffusion, warm whites, pale oak, linen, soft greenery. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as sheer shades, not roller shades or drapery.
 
 Panel Track Shades:
 Ultra realistic luxury editorial interior photography of a modern Ventura/coastal California living room with a broad sliding glass door opening to a patio and hillside garden. Wide sliding panel track shades with large vertical fabric panels on an overhead track, partially stacked to one side and partially covering the glass. Wide horizontal 16:9 hero composition with clean center overlay space. Warm coastal daylight, warm neutrals, cream fabric panels, pale oak, soft stone. No text, logos, people, animals, watermarks, posters, or graphic layouts. Product must read as panel track shades, not vertical blinds or drapery.

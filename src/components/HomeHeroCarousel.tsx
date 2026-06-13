@@ -54,18 +54,6 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   }, []);
 
   useEffect(() => {
-    if (slides.length < 2 || freezeOnFirstSlide) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setActiveIndex((index) => (index + 1) % slides.length);
-    }, 5000);
-
-    return () => window.clearInterval(interval);
-  }, [freezeOnFirstSlide, slides.length]);
-
-  useEffect(() => {
     const videos = carouselRef.current?.querySelectorAll("video");
 
     videos?.forEach((video) => {
