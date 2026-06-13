@@ -937,7 +937,7 @@ body:has(.home-editorial) .category-nav {
 }
 
 body:has(.home-editorial):not(.site-header-solid) .category-nav {
-  transform: translateY(-10px);
+  transform: translateY(-16px);
 }
 
 body:has(.home-editorial) .category-dot {
