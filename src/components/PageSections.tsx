@@ -579,27 +579,31 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     options: [
       {
         label: "Stained wood",
-        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
-        imageAlt: "Dark stained wood plantation shutters installed across living room windows",
-        body: "A richer natural finish for rooms where warmth, grain, and furniture tone should carry through the window treatment."
+        image: "/images/shutters-portfolio/material-stained-wood.jpg",
+        imageAlt: "Dark stained wood plantation shutters in a warm living room",
+        body:
+          "A natural wood shutter with visible grain and a furniture-style stain for rooms that need warmth, depth, and a richer finish."
       },
       {
         label: "Painted wood",
-        image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-        imageAlt: "Painted white plantation shutters installed in a dining room",
-        body: "A classic painted finish that keeps shutter lines crisp against trim, casing, and lighter room palettes."
+        image: "/images/shutters-portfolio/material-painted-wood.jpg",
+        imageAlt: "Painted white wood plantation shutters in a bright dining room",
+        body:
+          "A real wood shutter with a crisp painted finish, often used when the goal is a classic white built-in look with natural material."
       },
       {
         label: "Poly composite",
-        image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg",
-        imageAlt: "Composite plantation shutters installed on office windows",
-        body: "A practical material direction for everyday rooms that need durability, easy cleaning, and a consistent painted look."
+        image: "/images/shutters-portfolio/material-poly-composite.jpg",
+        imageAlt: "White poly composite plantation shutters in a bright bathroom",
+        body:
+          "A smooth moisture-resistant shutter option for bathrooms, laundry rooms, kitchens, and high-use spaces that need easy cleaning."
       },
       {
         label: "MDF composite",
-        image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-wide.jpg",
-        imageAlt: "Close detail of painted shutter louvers and rails",
-        body: "A budget-aware painted shutter option for standard openings where a clean finished face matters most."
+        image: "/images/shutters-portfolio/material-mdf-composite.jpg",
+        imageAlt: "White MDF composite plantation shutters in a neutral home office",
+        body:
+          "A painted composite shutter with a clean solid look for practical rooms where budget, consistency, and durability matter."
       }
     ]
   },
@@ -613,34 +617,39 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     imageAlt: "Close detail of plantation shutter louvers and panel rails",
     options: [
       {
-        label: "1 7/8 inch",
-        image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-wide.jpg",
-        imageAlt: "Close detail of narrow plantation shutter louvers",
-        body: "A smaller traditional scale for tighter window proportions and a more detailed shutter face."
+        label: "1 7/8",
+        image: "/images/shutters-portfolio/louver-1-7-8.jpg",
+        imageAlt: "Close detail of narrow 1 7/8 inch plantation shutter louvers",
+        body:
+          "The tightest louver scale, best for a more traditional look with closely spaced lines and a denser shutter pattern."
       },
       {
-        label: "2 1/2 inch",
-        image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-        imageAlt: "White plantation shutters across dining room windows",
-        body: "A balanced classic louver size that works well on many standard residential windows."
+        label: "2 1/2",
+        image: "/images/shutters-portfolio/louver-2-1-2.jpg",
+        imageAlt: "Close detail of 2 1/2 inch plantation shutter louvers",
+        body:
+          "A medium-narrow louver that keeps a classic shutter rhythm while opening the view more than the smallest size."
       },
       {
-        label: "3 1/2 inch",
-        image: "/images/portfolio-enhanced/arched-plantation-shutters-living-room-wide.jpg",
-        imageAlt: "Large living room windows with plantation shutters",
-        body: "A common larger louver choice when the goal is a cleaner line and more open view through the shutter."
+        label: "3 1/2",
+        image: "/images/shutters-portfolio/louver-3-1-2.jpg",
+        imageAlt: "Medium-wide 3 1/2 inch plantation shutter louvers on a bright window",
+        body:
+          "A popular balanced louver size for many homes, giving clean proportions, good privacy control, and a comfortable view."
       },
       {
-        label: "4 1/2 inch",
-        image: "/images/portfolio-enhanced/uploaded-two-story-living-room-shutters-wide.jpg",
-        imageAlt: "Tall living room shutters on two-story windows",
-        body: "A broader louver scale for taller glass, larger rooms, and a quieter modern shutter pattern."
+        label: "4 1/2",
+        image: "/images/shutters-portfolio/louver-4-1-2.jpg",
+        imageAlt: "Wide 4 1/2 inch plantation shutter louvers in a modern living room",
+        body:
+          "A wider louver with fewer lines across the window, useful for bigger openings and a cleaner contemporary feel."
       },
       {
-        label: "5 1/2 inch",
-        image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
-        imageAlt: "Large stained wood plantation shutters in a living room",
-        body: "The widest direction for statement openings where maximum view and strong proportion matter."
+        label: "5 1/2",
+        image: "/images/shutters-portfolio/louver-5-1-2.jpg",
+        imageAlt: "Extra large 5 1/2 inch plantation shutter louvers on oversized windows",
+        body:
+          "The broadest louver scale for a bold, open look on oversized windows where view-through and modern proportion matter."
       }
     ]
   },
@@ -655,15 +664,17 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     options: [
       {
         label: "Traditional style (beaded frames and stile)",
-        image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-        imageAlt: "Traditional white plantation shutters with divided window panels",
-        body: "A more detailed shutter face that feels architectural, classic, and finished with traditional trim."
+        image: "/images/shutters-portfolio/style-traditional-beaded.jpg",
+        imageAlt: "Traditional plantation shutters with beaded frames and stile detail",
+        body:
+          "Beaded frame and stile details add shadow lines and a more classic built-in profile around the shutter opening."
       },
       {
         label: "Contemporary (flat frames and stile)",
-        image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-wide.jpg",
-        imageAlt: "Clean white plantation shutters in a bright office",
-        body: "A flatter visual direction for cleaner rooms, wider glass, and a quieter modern profile."
+        image: "/images/shutters-portfolio/style-contemporary-flat.jpg",
+        imageAlt: "Contemporary plantation shutters with flat frames and flat stile",
+        body:
+          "Flat frame and stile details reduce visual busywork for cleaner rooms, modern trim, and larger window openings."
       }
     ]
   },
@@ -678,21 +689,24 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     options: [
       {
         label: "Bypass",
-        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-        imageAlt: "Bypass-style shutters covering a bedroom sliding door",
-        body: "A sliding shutter approach for patio doors and wide openings where panel swing would interrupt furniture or traffic."
+        image: "/images/shutters-portfolio/door-bypass.jpg",
+        imageAlt: "Bypass plantation shutters on a wide sliding glass door",
+        body:
+          "Bypass shutter panels slide past each other on a track, making them useful for wide patio doors and sliding glass openings."
       },
       {
         label: "Bifold",
-        image: "/images/portfolio-enhanced/uploaded-two-story-living-room-shutters-wide.jpg",
-        imageAlt: "Wide multi-panel shutters on tall living room windows",
-        body: "A folding layout for larger openings where panels need to stack open more compactly."
+        image: "/images/shutters-portfolio/door-bifold.jpg",
+        imageAlt: "Bifold plantation shutter panels folded beside a patio door opening",
+        body:
+          "Bifold shutter panels fold together so a wider opening can clear more fully when the room needs door access."
       },
       {
         label: "French doors",
-        image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-natural.jpg",
-        imageAlt: "Custom door shutters with warm natural light",
-        body: "A door-mounted plan that accounts for handles, clearance, swing direction, and daily access."
+        image: "/images/shutters-portfolio/door-french.jpg",
+        imageAlt: "Plantation shutters mounted on French doors with handle cutouts",
+        body:
+          "French door shutters need precise panel sizing and handle clearance so the doors remain usable after installation."
       }
     ]
   },
@@ -707,45 +721,52 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
     options: [
       {
         label: "Arched shutters",
-        image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
-        imageAlt: "Specialty arched plantation shutters custom fit in a home",
-        body: "A custom template follows the curve so the shutter works with the architecture instead of covering it up."
+        image: "/images/shutters-portfolio/specialty-arched.jpg",
+        imageAlt: "Custom arched plantation shutters fitted to a tall arched window",
+        body:
+          "Arched shutters follow the curved top of the window so the treatment looks built for the architecture."
       },
       {
         label: "Raked shutters",
-        image: "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg",
-        imageAlt: "Custom specialty shutters on angled and arched windows",
-        body: "An angled shutter layout for raked or sloped openings where standard rectangular panels do not fit."
+        image: "/images/shutters-portfolio/specialty-raked.jpg",
+        imageAlt: "Custom raked plantation shutters fitted to a sloped angled window",
+        body:
+          "Raked shutters are built for angled or sloped windows where a standard rectangular shutter would not fit the opening."
       },
       {
         label: "Sunburst",
-        image: "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
-        imageAlt: "Stacked specialty arch shutters with custom upper detail",
-        body: "A decorative upper treatment for arched openings that need a finished focal point."
+        image: "/images/shutters-portfolio/specialty-sunburst.jpg",
+        imageAlt: "White sunburst plantation shutter with radial fan louvers",
+        body:
+          "Sunburst shutters use a fan-like louver pattern for half-round arches and decorative transom openings."
       },
       {
         label: "Circle",
-        image: "/images/portfolio-enhanced/uploaded-single-arch-shutter-wide.jpg",
-        imageAlt: "Single specialty arched shutter with custom shaped detail",
-        body: "A specialty template direction for round architectural openings that need measured custom fabrication."
+        image: "/images/shutters-portfolio/specialty-circle.jpg",
+        imageAlt: "Custom circular plantation shutter fitted inside a round window",
+        body:
+          "Circle shutters require a true round frame and custom louver layout so the shutter follows the window edge cleanly."
       },
       {
         label: "Oval",
-        image: "/images/portfolio-enhanced/uploaded-arched-shutter-detail-wide.jpg",
-        imageAlt: "Close view of specialty shutter detail and shaped frame",
-        body: "A shaped-frame approach for softer specialty openings where the shutter must follow the reveal."
+        image: "/images/shutters-portfolio/specialty-oval.jpg",
+        imageAlt: "Custom oval plantation shutter fitted inside a tall oval window",
+        body:
+          "Oval shutters are templated around the curved opening so the finished treatment keeps the shape visible."
       },
       {
         label: "Octagon",
-        image: "/images/portfolio-enhanced/arched-plantation-shutters-living-room-wide.jpg",
-        imageAlt: "Custom shutters installed on specialty living room windows",
-        body: "A custom measured option for geometric windows that need clean edges and controlled light."
+        image: "/images/shutters-portfolio/specialty-octagon.jpg",
+        imageAlt: "Custom octagon plantation shutter fitted inside an eight-sided window",
+        body:
+          "Octagon shutters use a faceted frame that follows each side of the eight-sided window opening."
       },
       {
         label: "Custom shapes",
-        image: "/images/portfolio-enhanced/arched-window-custom-shutters-natural.jpg",
-        imageAlt: "Natural view of custom shutters on specialty shaped windows",
-        body: "A measured-from-template path for unusual openings that do not match standard shutter dimensions."
+        image: "/images/shutters-portfolio/specialty-custom-shapes.jpg",
+        imageAlt: "Custom plantation shutters fitted to mixed specialty window shapes",
+        body:
+          "Custom shape shutters handle mixed geometry, unusual angles, eyebrow arches, and specialty window groupings."
       }
     ]
   }
