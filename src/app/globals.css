@@ -180,6 +180,13 @@ img {
   padding-top: 10px;
 }
 
+.masthead-route-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .commercial-mode-badge {
   min-height: 41px;
   padding: 10px 13px;
@@ -258,6 +265,10 @@ body.commercial-mode .brand-text-logo-name {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--white);
+}
+
+.header-calendar-link--phone-row {
+  display: none;
 }
 
 .phone-stack {
@@ -3244,6 +3255,12 @@ body:has(.crm-app-shell) {
     padding-top: 4px;
   }
 
+  .masthead-route-actions {
+    display: grid;
+    justify-items: start;
+    gap: 6px;
+  }
+
   .masthead-contact-left .social-links {
     display: none;
   }
@@ -3296,6 +3313,14 @@ body:has(.crm-app-shell) {
     min-height: 38px;
     flex: 0 0 42px;
     padding: 0;
+  }
+
+  .header-calendar-link--with-commercial {
+    display: none;
+  }
+
+  .header-calendar-link--phone-row {
+    display: inline-flex;
   }
 
   .header-calendar-link span {

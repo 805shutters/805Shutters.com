@@ -102,7 +102,10 @@ export function SiteHeader() {
           </Link>
         </div>
         <div className="masthead-contact-left">
-          <CommercialModeBadge />
+          <div className="masthead-route-actions">
+            <CommercialModeBadge />
+            <CalendarRouteLink className="header-calendar-link--with-commercial" />
+          </div>
           <div className="social-links" aria-label="Social links">
             <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
               <FacebookIcon />
@@ -175,10 +178,7 @@ export function SiteHeader() {
           </TrackedPhoneLink>
         </div>
         <div className="masthead-actions">
-          <Link className="header-calendar-link" href="/book-consultation/" aria-label="Book a free in-home consultation">
-            <CalendarIcon />
-            <span>Calendar</span>
-          </Link>
+          <CalendarRouteLink className="header-calendar-link--phone-row" />
           <div className="phone-stack">
             <Link className="masthead-link masthead-email" href={site.emailHref}>
               {site.email}
@@ -235,6 +235,19 @@ export function SiteHeader() {
         ))}
       </nav>
     </header>
+  );
+}
+
+function CalendarRouteLink({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      className={`header-calendar-link${className ? ` ${className}` : ""}`}
+      href="/book-consultation/"
+      aria-label="Book a free in-home consultation"
+    >
+      <CalendarIcon />
+      <span>Calendar</span>
+    </Link>
   );
 }
 
