@@ -44,6 +44,14 @@ export async function GET(request: NextRequest) {
   const databaseConfigured = Boolean(supabaseUrl && serviceRoleKey);
   const migrationsReady = tableChecks.length > 0 && tableChecks.every((check) => check.ready);
 
+  // Booking confirmation channels — booleans only, never the secret values.
+  const bookingEmailConfigured = Boolean(process.env.RESEND_API_KEY);
+  const bookingSmsConfigured = Boolean(
+    process.env.TWILIO_ACCOUNT_SID &&
+      process.env.TWILIO_AUTH_TOKEN &&
+      (process.env.TWILIO_FROM_PHONE || process.env.TWILIO_MESSAGING_SERVICE_SID)
+  );
+
   return NextResponse.json({
     ready: authConfigured && databaseConfigured && migrationsReady && googleOAuth.enabled,
     authConfigured,
@@ -51,6 +59,8 @@ export async function GET(request: NextRequest) {
     googleProviderEnabled: googleOAuth.enabled,
     googleProviderError: googleOAuth.error,
     migrationsReady,
+    bookingEmailConfigured,
+    bookingSmsConfigured,
     supabaseHost: supabaseUrl ? new URL(supabaseUrl).hostname : null,
     allowedEmailsConfigured: getAllowedCrmEmails().length > 0,
     allowedEmailCount: getAllowedCrmEmails().length,
