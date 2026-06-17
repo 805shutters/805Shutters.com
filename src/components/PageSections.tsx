@@ -352,7 +352,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     label: "Skylight Shades",
     tagline: "Tame overhead heat without losing daylight.",
     image: "/images/homepage-flow/skylight-shades.png",
-    imageAlt: "Kitchen skylights fitted with light-filtering shades"
+    imageAlt: "Two drywall skylights fitted with light-filtering cellular shades"
   },
   {
     label: "Skylight Shutters",
