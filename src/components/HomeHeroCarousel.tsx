@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
   label?: string;
+  tagline?: string;
   image: string;
   imageAlt: string;
   video?: string;
@@ -52,18 +53,6 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
 
     return () => staticHeroQuery.removeListener(syncStaticHero);
   }, []);
-
-  useEffect(() => {
-    if (slides.length < 2 || freezeOnFirstSlide) {
-      return;
-    }
-
-    const interval = window.setInterval(() => {
-      setActiveIndex((index) => (index + 1) % slides.length);
-    }, 5000);
-
-    return () => window.clearInterval(interval);
-  }, [freezeOnFirstSlide, slides.length]);
 
   useEffect(() => {
     const videos = carouselRef.current?.querySelectorAll("video");

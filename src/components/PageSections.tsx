@@ -167,10 +167,10 @@ const commercialPortfolioStories: PortfolioStory[] = [
     title: "Workspaces with controlled daylight.",
     body:
       "Neutral roller shades reduce glare and heat while keeping offices clean, bright, and professional.",
-    image: commercialModeImages.hero,
-    imageAlt: "Sunlit Southern California office floor with tall shaded windows",
-    imageWidth: 1920,
-    imageHeight: 1080,
+    image: commercialModeImages.smallOffice,
+    imageAlt: "Commercial office with neutral roller shades filtering daylight",
+    imageWidth: 1672,
+    imageHeight: 941,
     href: "/commercial-roller-shades/",
     tone: "bright"
   },
@@ -266,86 +266,97 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Shutters",
+    tagline: "Frame the room with custom-fit shutters.",
     image: "/images/homepage-flow/shutters.png",
     imageAlt: "Arched dining room windows fitted with white plantation shutters"
   },
   {
-    label: "Blackout Honeycombs",
-    image: "/images/homepage-flow/blackout-honeycombs.png",
+    label: "Honeycomb Shades",
+    tagline: "True room darkening rest",
+    image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png",
     imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
   },
   {
     label: "Drapery",
+    tagline: "Add softness, height, and a finished designer look.",
     image: "/images/homepage-flow/drapery.jpg",
     imageAlt: "Coastal living room with soft custom drapery panels"
   },
   {
     label: "Roller Shades",
+    tagline: "Keep the view, control the glare.",
     image: "/images/homepage-flow/roller-shades.jpg",
     imageAlt: "Coastal living room with wide roller shades and ocean view"
   },
   {
-    label: "Roman Shades",
-    image: "/images/homepage-flow/roman-shades.jpg",
-    imageAlt: "Bright living room with white Roman shades over garden-facing windows"
-  },
-  {
     label: "Bamboo Shades",
+    tagline: "Bring color and natural texture into the light.",
     image: "/images/homepage-flow/bamboo-shades.jpg",
-    imageAlt: "Bright living room with woven bamboo shades and linen drapery"
+    imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
   },
   {
-    label: "Faux Wood Blinds",
-    image: "/images/homepage-flow/faux-wood-blinds.png",
-    imageAlt: "Office windows fitted with warm faux wood blinds"
+    label: "Stained Wood Shutters",
+    tagline: "Classic stained wood matched to the room.",
+    image: "/images/homepage-flow/stained-wood-library-shutters.png",
+    imageAlt: "Dark home library with classic stained wood shutters matched to built-in bookcases"
   },
   {
     label: "Exterior Patio Shades",
+    tagline: "Turn harsh sun into usable outdoor space.",
     image: "/images/homepage-flow/exterior-patio-shades.jpg",
     imageAlt: "Sunset patio with exterior shades and ocean views"
   },
   {
     label: "Vertical Blinds",
+    tagline: "Cover wide doors with smooth, practical control.",
     image: "/images/homepage-flow/vertical-blinds.png",
     imageAlt: "Sliding patio door fitted with cream vertical blinds"
   },
   {
     label: "Mini Blinds",
+    tagline: "Slim lines for simple everyday privacy.",
     image: "/images/homepage-flow/mini-blinds.png",
     imageAlt: "Coastal home office windows fitted with slim white mini blinds"
   },
   {
     label: "Layered Shades",
-    image: "/images/homepage-flow/layered-shades.jpg",
-    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
+    tagline: "Shift from filtered light to privacy in one treatment.",
+    image: "/images/homepage-flow/layered-kitchen-shades.png",
+    imageAlt: "Layered shades matched to colorful marble in a bright kitchen"
   },
   {
     label: "Sheer Shades",
+    tagline: "Soften the sun while keeping the room open.",
     image: "/images/homepage-flow/sheer-shades.png",
     imageAlt: "Living room windows fitted with translucent sheer shades"
   },
   {
     label: "Natural Shades",
+    tagline: "Warm woven texture for bright rooms.",
     image: "/images/homepage-flow/natural-shades.jpg",
     imageAlt: "Breakfast room with natural woven shades and warm light"
   },
   {
     label: "Panel Track Shades",
+    tagline: "Wide panels that make sliding doors feel clean.",
     image: "/images/homepage-flow/panel-track-shades.png",
     imageAlt: "Sliding glass door fitted with wide panel track shades"
   },
   {
     label: "Vertical Cellular Shades",
+    tagline: "Insulated comfort for wide patio doors.",
     image: "/images/homepage-flow/vertical-cellular-shades.png",
     imageAlt: "Sliding glass door fitted with vertical cellular shades"
   },
   {
     label: "Skylight Shades",
+    tagline: "Tame overhead heat without losing daylight.",
     image: "/images/homepage-flow/skylight-shades.png",
-    imageAlt: "Kitchen skylights fitted with light-filtering shades"
+    imageAlt: "Two drywall skylights fitted with light-filtering cellular shades"
   },
   {
     label: "Skylight Shutters",
+    tagline: "Make angled light easier to control.",
     image: "/images/homepage-flow/skylight-shutters.png",
     imageAlt: "Angled skylights fitted with white louvered shutters"
   }
@@ -539,11 +550,237 @@ function SectionLinks({ links }: { links?: { label: string; href: string }[] }) 
   );
 }
 
+type ShutterOption = {
+  label: string;
+  image: string;
+  imageAlt: string;
+  body: string;
+};
+
+type ShutterOptionGroup = {
+  id: string;
+  label: string;
+  heading: string;
+  body: string;
+  image: string;
+  imageAlt: string;
+  options: ShutterOption[];
+};
+
+const shutterOptionGroups: ShutterOptionGroup[] = [
+  {
+    id: "material",
+    label: "Material",
+    heading: "Choose the shutter material around finish, durability, and room use.",
+    body:
+      "The material decision affects the final look, weight, cleaning routine, and how the shutter handles daily use. The consultation compares painted, stained, and composite options against the room, light exposure, trim, and budget.",
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-wide.jpg",
+    imageAlt: "Dark stained wood plantation shutters installed across living room windows",
+    options: [
+      {
+        label: "Stained wood",
+        image: "/images/shutters-portfolio/material-stained-wood.jpg",
+        imageAlt: "Dark stained wood plantation shutters in a warm living room",
+        body:
+          "A natural wood shutter with visible grain and a furniture-style stain for rooms that need warmth, depth, and a richer finish."
+      },
+      {
+        label: "Painted wood",
+        image: "/images/shutters-portfolio/material-painted-wood.jpg",
+        imageAlt: "Painted white wood plantation shutters in a bright dining room",
+        body:
+          "A real wood shutter with a crisp painted finish, often used when the goal is a classic white built-in look with natural material."
+      },
+      {
+        label: "Poly composite",
+        image: "/images/shutters-portfolio/material-poly-composite.jpg",
+        imageAlt: "White poly composite plantation shutters in a bright bathroom",
+        body:
+          "A smooth moisture-resistant shutter option for bathrooms, laundry rooms, kitchens, and high-use spaces that need easy cleaning."
+      },
+      {
+        label: "MDF composite",
+        image: "/images/shutters-portfolio/material-mdf-composite.jpg",
+        imageAlt: "White MDF composite plantation shutters in a neutral home office",
+        body:
+          "A painted composite shutter with a clean solid look for practical rooms where budget, consistency, and durability matter."
+      }
+    ]
+  },
+  {
+    id: "louver-sizes",
+    label: "Louver Sizes",
+    heading: "Pick the louver scale that controls view, privacy, and proportion.",
+    body:
+      "Smaller louvers create a tighter traditional line, while larger louvers open the view and feel cleaner on bigger windows. We review the window height, room style, sightline, and privacy goal before the order is built.",
+    image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-wide.jpg",
+    imageAlt: "Close detail of plantation shutter louvers and panel rails",
+    options: [
+      {
+        label: "1 7/8",
+        image: "/images/shutters-portfolio/louver-1-7-8.jpg",
+        imageAlt: "Close detail of narrow 1 7/8 inch plantation shutter louvers",
+        body:
+          "The tightest louver scale, best for a more traditional look with closely spaced lines and a denser shutter pattern."
+      },
+      {
+        label: "2 1/2",
+        image: "/images/shutters-portfolio/louver-2-1-2.jpg",
+        imageAlt: "Close detail of 2 1/2 inch plantation shutter louvers",
+        body:
+          "A medium-narrow louver that keeps a classic shutter rhythm while opening the view more than the smallest size."
+      },
+      {
+        label: "3 1/2",
+        image: "/images/shutters-portfolio/louver-3-1-2.jpg",
+        imageAlt: "Medium-wide 3 1/2 inch plantation shutter louvers on a bright window",
+        body:
+          "A popular balanced louver size for many homes, giving clean proportions, good privacy control, and a comfortable view."
+      },
+      {
+        label: "4 1/2",
+        image: "/images/shutters-portfolio/louver-4-1-2.jpg",
+        imageAlt: "Wide 4 1/2 inch plantation shutter louvers in a modern living room",
+        body:
+          "A wider louver with fewer lines across the window, useful for bigger openings and a cleaner contemporary feel."
+      },
+      {
+        label: "5 1/2",
+        image: "/images/shutters-portfolio/louver-5-1-2.jpg",
+        imageAlt: "Extra large 5 1/2 inch plantation shutter louvers on oversized windows",
+        body:
+          "The broadest louver scale for a bold, open look on oversized windows where view-through and modern proportion matter."
+      }
+    ]
+  },
+  {
+    id: "style",
+    label: "Style",
+    heading: "Match the frame and stile detail to the architecture of the room.",
+    body:
+      "Traditional shutter details add a more classic built-in look. Contemporary details keep the face flatter and quieter, which works well with cleaner trim, larger glass, and modern interiors.",
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
+    imageAlt: "White plantation shutters installed in a Ventura County dining room",
+    options: [
+      {
+        label: "Traditional style (beaded frames and stile)",
+        image: "/images/shutters-portfolio/style-traditional-beaded.jpg",
+        imageAlt: "Traditional plantation shutters with beaded frames and stile detail",
+        body:
+          "Beaded frame and stile details add shadow lines and a more classic built-in profile around the shutter opening."
+      },
+      {
+        label: "Contemporary (flat frames and stile)",
+        image: "/images/shutters-portfolio/style-contemporary-flat.jpg",
+        imageAlt: "Contemporary plantation shutters with flat frames and flat stile",
+        body:
+          "Flat frame and stile details reduce visual busywork for cleaner rooms, modern trim, and larger window openings."
+      }
+    ]
+  },
+  {
+    id: "doors",
+    label: "Doors",
+    heading: "Plan shutter operation around the way the door is used every day.",
+    body:
+      "Sliding doors, French doors, and wide openings need a shutter plan that keeps access comfortable. We compare bypass, bifold, and French door layouts around handle clearance, furniture, traffic flow, and panel swing.",
+    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
+    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door",
+    options: [
+      {
+        label: "Bypass",
+        image: "/images/shutters-portfolio/door-bypass.jpg",
+        imageAlt: "Bypass plantation shutters on a wide sliding glass door",
+        body:
+          "Bypass shutter panels slide past each other on a track, making them useful for wide patio doors and sliding glass openings."
+      },
+      {
+        label: "Bifold",
+        image: "/images/shutters-portfolio/door-bifold.jpg",
+        imageAlt: "Bifold plantation shutter panels folded beside a patio door opening",
+        body:
+          "Bifold shutter panels fold together so a wider opening can clear more fully when the room needs door access."
+      },
+      {
+        label: "French doors",
+        image: "/images/shutters-portfolio/door-french.jpg",
+        imageAlt: "Plantation shutters mounted on French doors with handle cutouts",
+        body:
+          "French door shutters need precise panel sizing and handle clearance so the doors remain usable after installation."
+      }
+    ]
+  },
+  {
+    id: "specialty-shapes",
+    label: "Specialty Shapes",
+    heading: "Custom shapes follow the opening instead of hiding it.",
+    body:
+      "Arches, rakes, circles, ovals, octagons, and custom shapes need precise templates and careful planning. The goal is a shutter that respects the architecture while still operating cleanly.",
+    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-wide.jpg",
+    imageAlt: "Specialty arched plantation shutters custom fit in a Ventura County home",
+    options: [
+      {
+        label: "Arched shutters",
+        image: "/images/shutters-portfolio/specialty-arched.jpg",
+        imageAlt: "Custom arched plantation shutters fitted to a tall arched window",
+        body:
+          "Arched shutters follow the curved top of the window so the treatment looks built for the architecture."
+      },
+      {
+        label: "Raked shutters",
+        image: "/images/shutters-portfolio/specialty-raked.jpg",
+        imageAlt: "Custom raked plantation shutters fitted to a sloped angled window",
+        body:
+          "Raked shutters are built for angled or sloped windows where a standard rectangular shutter would not fit the opening."
+      },
+      {
+        label: "Sunburst",
+        image: "/images/shutters-portfolio/specialty-sunburst.jpg",
+        imageAlt: "White sunburst plantation shutter with radial fan louvers",
+        body:
+          "Sunburst shutters use a fan-like louver pattern for half-round arches and decorative transom openings."
+      },
+      {
+        label: "Circle",
+        image: "/images/shutters-portfolio/specialty-circle.jpg",
+        imageAlt: "Custom circular plantation shutter fitted inside a round window",
+        body:
+          "Circle shutters require a true round frame and custom louver layout so the shutter follows the window edge cleanly."
+      },
+      {
+        label: "Oval",
+        image: "/images/shutters-portfolio/specialty-oval.jpg",
+        imageAlt: "Custom oval plantation shutter fitted inside a tall oval window",
+        body:
+          "Oval shutters are templated around the curved opening so the finished treatment keeps the shape visible."
+      },
+      {
+        label: "Octagon",
+        image: "/images/shutters-portfolio/specialty-octagon.jpg",
+        imageAlt: "Custom octagon plantation shutter fitted inside an eight-sided window",
+        body:
+          "Octagon shutters use a faceted frame that follows each side of the eight-sided window opening."
+      },
+      {
+        label: "Custom shapes",
+        image: "/images/shutters-portfolio/specialty-custom-shapes.jpg",
+        imageAlt: "Custom plantation shutters fitted to mixed specialty window shapes",
+        body:
+          "Custom shape shutters handle mixed geometry, unusual angles, eyebrow arches, and specialty window groupings."
+      }
+    ]
+  }
+];
+
 export function PageSections({ page }: { page: SitePage }) {
   const { isCommercialMode } = useCommercialMode();
 
   if (page.path === "/commercial-window-coverings/") {
     return <CommercialSeoPage page={page} />;
+  }
+
+  if (!isCommercialMode && page.path === "/shutters/") {
+    return <ShuttersCategoryPage page={page} />;
   }
 
   const activePage = isCommercialMode ? commercializePage(page) : page;
@@ -636,6 +873,145 @@ export function PageSections({ page }: { page: SitePage }) {
           </div>
         </section>
       )}
+    </>
+  );
+}
+
+function ShuttersCategoryPage({ page }: { page: SitePage }) {
+  return (
+    <>
+      <section className="shutter-category-strip" aria-label="Shutter product categories">
+        <div className="content-wrap shutter-category-strip__inner">
+          {shutterOptionGroups.map((group) => (
+            <a className="shutter-category-link" href={`#shutter-${group.id}`} key={group.id}>
+              <span>{group.label}</span>
+              <small>{group.options.map((option) => option.label).join(" / ")}</small>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section className="page-editorial shutters-hero">
+        <div className="content-wrap page-editorial-panel shutters-hero-panel">
+          <div className="page-editorial-copy shutters-hero-copy">
+            <p className="eyebrow">{page.eyebrow}</p>
+            <h1>{page.h1}</h1>
+            <p className="lede">
+              Custom shutters planned by material, louver size, frame style, door operation, and specialty shape so the
+              finished installation fits the home instead of forcing one default look.
+            </p>
+            <div className="hero-actions">
+              <Link className="button primary" href="/free-window-treatment-consultation/">
+                Free Consultation
+              </Link>
+              <TrackedPhoneLink className="button secondary hero-phone" location="shutters hero">
+                Call {site.phone}
+              </TrackedPhoneLink>
+            </div>
+          </div>
+          <figure className="page-editorial-media shutters-hero-media">
+            <img src={page.image} alt={page.imageAlt} />
+            <figcaption>
+              <span>Custom measured</span>
+              <strong>Plantation shutters for standard windows, doors, and specialty shapes</strong>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section className="shutters-intro-band">
+        <div className="content-wrap shutters-intro-layout">
+          <div>
+            <p className="eyebrow">Shutter specification guide</p>
+            <h2>Start with the choices that change how the shutter looks and works.</h2>
+          </div>
+          <p>
+            A shutter order should be built around the room: the finish, the louver proportion, the frame detail, the
+            way doors open, and any custom shape in the architecture. These are the decisions we review before final
+            measuring and ordering.
+          </p>
+        </div>
+      </section>
+
+      <section className="shutter-detail-list" aria-label="Shutter option details">
+        <div className="content-wrap shutter-detail-list__inner">
+          {shutterOptionGroups.map((group, index) => (
+            <article className="shutter-detail-panel" id={`shutter-${group.id}`} key={group.id}>
+              <div className="shutter-detail-overview">
+                <div className="shutter-detail-copy">
+                  <p className="eyebrow">{group.label}</p>
+                  <h2>{group.heading}</h2>
+                  <p>{group.body}</p>
+                  <ul className="shutter-option-list">
+                    {group.options.map((option) => (
+                      <li key={option.label}>{option.label}</li>
+                    ))}
+                  </ul>
+                </div>
+                <figure className="shutter-detail-media">
+                  <img
+                    src={group.options[0].image}
+                    alt={group.options[0].imageAlt}
+                    loading={index < 1 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                </figure>
+              </div>
+              <div className="shutter-option-gallery" aria-label={`${group.label} photo examples`}>
+                {group.options.map((option) => (
+                  <figure className="shutter-portfolio-card" key={option.label}>
+                    <img src={option.image} alt={option.imageAlt} loading="lazy" decoding="async" />
+                    <figcaption>
+                      <span>{group.label}</span>
+                      <strong>{option.label}</strong>
+                      <p>{option.body}</p>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="shutter-planning-band">
+        <div className="content-wrap shutter-planning-layout">
+          <div>
+            <p className="eyebrow">Measured before ordering</p>
+            <h2>Each shutter plan is checked against the opening, trim, clearance, and daily use.</h2>
+            <p>
+              Before anything is built, 805 Shutters confirms opening size, frame depth, sill conditions, panel swing,
+              handle clearance, divider rail placement, color direction, and how the shutters should perform when open,
+              closed, or tilted.
+            </p>
+          </div>
+          <ul className="shutter-planning-list" aria-label="Shutter planning checklist">
+            <li>Room-by-room measurements</li>
+            <li>Frame and mount review</li>
+            <li>Door and handle clearance</li>
+            <li>Specialty-shape templates</li>
+            <li>Color and material confirmation</li>
+            <li>Ventura County installation support</li>
+          </ul>
+        </div>
+      </section>
+
+      <section className="cta-band">
+        <div className="content-wrap cta-layout">
+          <div>
+            <p className="eyebrow">Next step</p>
+            <h2>Compare shutter materials, louvers, styles, doors, and shapes in one visit.</h2>
+          </div>
+          <div className="hero-actions">
+            <Link className="button primary" href="/free-window-treatment-consultation/">
+              Free Consultation
+            </Link>
+            <TrackedPhoneLink className="button secondary" location="shutters cta">
+              Call {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </section>
     </>
   );
 }
@@ -784,6 +1160,8 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : installedPortfolioPhotos;
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
+  const heroMediaSlides = commercialMode ? heroSlides : heroSlides.slice(0, 1);
+  const residentialPhotoFlowSlides = commercialMode ? [] : heroSlides.slice(1);
   const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
   const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
@@ -792,7 +1170,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={heroSlides} />
+          <HomeHeroCarousel slides={heroMediaSlides} />
           <div className="home-hero-overlay">
             <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">
@@ -804,45 +1182,66 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </div>
       </section>
 
-      <section className="portfolio-scroll" aria-label={commercialMode ? "805 Commercial portfolio scenes" : "805 Shutters portfolio scenes"}>
-        {stories.map((story, index) => (
-          <article
-            className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
-            key={story.title}
-          >
-            <div className="portfolio-story-media">
-              {story.video ? (
-                <video
-                  aria-label={story.imageAlt}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster={story.image}
-                  preload={index === 0 ? "auto" : "metadata"}
-                >
-                  <source src={story.video} type="video/mp4" />
-                </video>
-              ) : (
-                <img
-                  src={story.image}
-                  alt={story.imageAlt}
-                  width={story.imageWidth}
-                  height={story.imageHeight}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  decoding="async"
-                />
-              )}
-            </div>
-            <div className="portfolio-story-copy">
-              <p>{story.eyebrow}</p>
-              <h2>{story.title}</h2>
-              <span>{story.body}</span>
-              <Link href={story.href}>Explore {story.eyebrow}</Link>
-            </div>
-          </article>
-        ))}
-      </section>
+      {commercialMode ? (
+        <section className="portfolio-scroll" aria-label="805 Commercial portfolio scenes">
+          {stories.map((story, index) => (
+            <article
+              className={`portfolio-story-panel${story.tone === "bright" ? " portfolio-story-panel--bright" : ""}`}
+              key={story.title}
+            >
+              <div className="portfolio-story-media">
+                {story.video ? (
+                  <video
+                    aria-label={story.imageAlt}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    poster={story.image}
+                    preload={index === 0 ? "auto" : "metadata"}
+                  >
+                    <source src={story.video} type="video/mp4" />
+                  </video>
+                ) : (
+                  <img
+                    src={story.image}
+                    alt={story.imageAlt}
+                    width={story.imageWidth}
+                    height={story.imageHeight}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                )}
+              </div>
+              <div className="portfolio-story-copy">
+                <p>{story.eyebrow}</p>
+                <h2>{story.title}</h2>
+                <span>{story.body}</span>
+                <Link href={story.href}>Explore {story.eyebrow}</Link>
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <section className="home-photo-flow" aria-label="805 Shutters homepage photo flow">
+          {residentialPhotoFlowSlides.map((slide, index) => (
+            <figure className="home-photo-flow-item" key={slide.label || slide.image}>
+              <img
+                src={slide.image}
+                alt={slide.imageAlt}
+                loading={index < 2 ? "eager" : "lazy"}
+                decoding="async"
+              />
+              {slide.tagline ? (
+                <figcaption>
+                  <span>{slide.label}</span>
+                  <strong>{slide.tagline}</strong>
+                </figcaption>
+              ) : null}
+            </figure>
+          ))}
+        </section>
+      )}
 
       <section className="installed-portfolio">
         <div className="content-wrap installed-portfolio-head">
