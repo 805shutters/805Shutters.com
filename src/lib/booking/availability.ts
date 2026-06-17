@@ -1,4 +1,4 @@
-import { CrmCalendarEvent } from "@/lib/crm/types";
+import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
 const timeZone = "America/Los_Angeles";
 const slotTimes = ["09:00", "11:00", "13:00", "15:00"];
@@ -36,6 +36,11 @@ function formatParts(date: Date) {
 export function losAngelesDateString(date = new Date()) {
   const parts = formatParts(date);
   return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function losAngelesTimeString(date = new Date()) {
+  const parts = formatParts(date);
+  return `${parts.hour}:${parts.minute}`;
 }
 
 export function zonedTimeToUtc(date: string, time: string) {
@@ -78,13 +83,32 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
-function hasOverlap(events: CrmCalendarEvent[], slotStart: Date, slotEnd: Date) {
-  return events.some((event) => {
-    if (event.status === "canceled") return false;
-    const eventStart = new Date(event.start_at);
-    const eventEnd = new Date(event.end_at);
-    return slotStart < eventEnd && slotEnd > eventStart;
-  });
+function ownersOfferingSlot(availabilitySlots: CrmAvailabilitySlot[], slotStart: Date) {
+  const target = slotStart.getTime();
+  const owners = availabilitySlots
+    .filter((slot) => slot.status === "available" && new Date(slot.start_at).getTime() === target)
+    .map((slot) => slot.owner);
+  return Array.from(new Set(owners));
+}
+
+// A rep can take a slot only if they are not already booked, and no office-wide
+// "block" event covers the window. Returns the subset of `owners` that are free.
+function repsFreeForWindow(
+  owners: string[],
+  slotStart: Date,
+  slotEnd: Date,
+  events: CrmCalendarEvent[]
+) {
+  return owners.filter(
+    (owner) =>
+      !events.some(
+        (event) =>
+          event.status !== "canceled" &&
+          (event.event_type === "block" || event.assigned_to === owner) &&
+          new Date(event.start_at) < slotEnd &&
+          new Date(event.end_at) > slotStart
+      )
+  );
 }
 
 function dayOfWeek(date: string) {
@@ -92,7 +116,11 @@ function dayOfWeek(date: string) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
-export function buildBookingAvailability(month: string, events: CrmCalendarEvent[] = []) {
+export function buildBookingAvailability(
+  month: string,
+  events: CrmCalendarEvent[] = [],
+  availabilitySlots: CrmAvailabilitySlot[] = []
+) {
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   const today = losAngelesDateString();
@@ -101,15 +129,17 @@ export function buildBookingAvailability(month: string, events: CrmCalendarEvent
     const day = index + 1;
     const date = `${year}-${String(monthNumber).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const isPast = date < today;
-    const isSunday = dayOfWeek(date) === 0;
     const slots = slotTimes.map((time) => {
       const start = zonedTimeToUtc(date, time);
       const end = addMinutes(start, defaultDurationMinutes);
-      const available = !isPast && !isSunday && !hasOverlap(events, start, end);
+      const offeringOwners = ownersOfferingSlot(availabilitySlots, start);
+      const freeOwners = repsFreeForWindow(offeringOwners, start, end, events);
+      const available = !isPast && freeOwners.length > 0;
 
       return {
         time,
         label: new Intl.DateTimeFormat("en-US", {
+          timeZone,
           hour: "numeric",
           minute: "2-digit"
         }).format(start),
@@ -136,6 +166,19 @@ export function buildBookingAvailability(month: string, events: CrmCalendarEvent
     startsOn: dayOfWeek(`${year}-${String(monthNumber).padStart(2, "0")}-01`),
     days
   };
+}
+
+// Which reps are both available for and free at a given slot — used to auto-assign
+// an incoming booking. Returns owner names (e.g. "Jessica", "Mike").
+export function freeRepsForSlot(
+  date: string,
+  time: string,
+  availabilitySlots: CrmAvailabilitySlot[],
+  events: CrmCalendarEvent[]
+) {
+  const start = zonedTimeToUtc(date, time);
+  const end = addMinutes(start, defaultDurationMinutes);
+  return repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start), start, end, events);
 }
 
 export function bookingEndIso(date: string, time: string) {

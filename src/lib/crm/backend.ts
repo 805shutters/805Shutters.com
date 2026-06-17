@@ -1,13 +1,23 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import {
+  BUSINESS_PAYOFF_TARGET,
   buildAccountabilityQueue,
   buildBookkeepingRows,
+  buildKenPayoffSummary,
   normalizePaymentType,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
+  bookingEndIso,
+  losAngelesDateString,
+  losAngelesTimeString,
+  monthRangeUtc,
+  zonedTimeToUtc
+} from "@/lib/booking/availability";
+import {
+  CrmAvailabilitySlot,
   CrmBookkeepingCredit,
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
@@ -17,7 +27,9 @@ import {
   CrmCustomerProduct,
   CrmDashboardData,
   CrmJob,
+  CrmJobExpense,
   CrmJobStatus,
+  CrmKenPayment,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
@@ -114,7 +126,8 @@ const allowedEntryPatchFields = new Set([
   "manufacturer_order_url",
   "manufacturer_document_url",
   "notes",
-  "imported_sheet_row"
+  "imported_sheet_row",
+  "ken_cut_override"
 ]);
 
 export function toMoney(value: unknown) {
@@ -153,6 +166,15 @@ function normalizeOwner(value: unknown) {
   return null;
 }
 
+// Availability + calendar assignment use capitalized rep names ("Jessica", "Mike")
+// to match the CRM "Assigned to" dropdown and crm_calendar_events.assigned_to.
+function normalizeAvailabilityOwner(value: unknown) {
+  const lower = String(value || "").toLowerCase();
+  if (lower.includes("jessica")) return "Jessica";
+  if (lower.includes("mike")) return "Mike";
+  throw new CrmAuthError(400, "Availability owner must be Jessica or Mike.");
+}
+
 function normalizeCustomerKey(name: string) {
   return name
     .trim()
@@ -188,8 +210,11 @@ export async function recordCrmActivity(
       | "quote"
       | "bookkeeping_entry"
       | "bookkeeping_payment"
+      | "expense"
       | "calendar_event"
       | "customer"
+      | "ken_payment"
+      | "settings"
       | "session"
       | "system";
     entityId?: string | null;
@@ -300,7 +325,11 @@ export function buildDashboardData({
   contracts,
   entries,
   payments,
-  credits
+  credits,
+  expenses,
+  kenPayments,
+  openingBalance,
+  payoffTarget
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -311,15 +340,25 @@ export function buildDashboardData({
   entries: CrmBookkeepingEntry[];
   payments: CrmBookkeepingPayment[];
   credits: CrmBookkeepingCredit[];
+  expenses: CrmJobExpense[];
+  kenPayments: CrmKenPayment[];
+  openingBalance: number;
+  payoffTarget: number;
 }): CrmDashboardData {
   const quotesByJob = new Map<string, number>();
   for (const quote of quotes) {
     quotesByJob.set(quote.job_id, Math.max(quotesByJob.get(quote.job_id) || 0, toMoney(quote.quote_total)));
   }
 
-  const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits });
+  const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
+  const kenPayoff = buildKenPayoffSummary({
+    rows: bookkeepingRows,
+    payments: kenPayments,
+    openingBalance,
+    payoffTarget
+  });
   const customerFiles = buildCustomerFiles({
     customers,
     products,
@@ -344,8 +383,11 @@ export function buildDashboardData({
     bookkeepingEntries: entries,
     bookkeepingPayments: payments,
     bookkeepingCredits: credits,
+    jobExpenses: expenses,
     bookkeepingRows,
     bookkeepingTotals,
+    kenPayments,
+    kenPayoff,
     accountability,
     summary: {
       openJobs: jobsWithQuotes.filter((job) => openStatuses.has(job.status)).length,
@@ -374,7 +416,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     contractsResult,
     entriesResult,
     paymentsResult,
-    creditsResult
+    creditsResult,
+    expensesResult,
+    kenPaymentsResult,
+    settingsResult
   ] = await Promise.all([
     supabase.from("crm_jobs").select("*").order("created_at", { ascending: false }).limit(120),
     supabase.from("crm_quotes").select("*").order("created_at", { ascending: false }).limit(120),
@@ -393,7 +438,18 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .order("sold_date", { ascending: false, nullsFirst: false })
       .limit(500),
     supabase.from("crm_quote_bookkeeping_payments").select("*").order("paid_at", { ascending: false }).limit(800),
-    supabase.from("crm_quote_bookkeeping_credits").select("*").order("credit_date", { ascending: false }).limit(500)
+    supabase.from("crm_quote_bookkeeping_credits").select("*").order("credit_date", { ascending: false }).limit(500),
+    supabase
+      .from("crm_job_expenses")
+      .select("*")
+      .order("incurred_on", { ascending: false, nullsFirst: false })
+      .limit(1000),
+    supabase
+      .from("crm_ken_payments")
+      .select("*")
+      .order("paid_on", { ascending: false, nullsFirst: false })
+      .limit(500),
+    supabase.from("crm_settings").select("*")
   ]);
 
   if (
@@ -410,6 +466,20 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     throw new CrmAuthError(502, "CRM data failed to load. Run the 805 CRM Supabase migrations.");
   }
 
+  // Job expenses are newer than the core tables; degrade gracefully (no expense
+  // deductions) rather than breaking the whole dashboard if the table is absent.
+  if (expensesResult.error) {
+    console.warn("CRM job expenses could not be loaded.", expensesResult.error.message);
+  }
+
+  if (kenPaymentsResult.error) {
+    console.warn("CRM Ken payments could not be loaded.", kenPaymentsResult.error.message);
+  }
+
+  if (settingsResult.error) {
+    console.warn("CRM settings could not be loaded.", settingsResult.error.message);
+  }
+
   const jobs = (jobsResult.data || []) as CrmJob[];
   const quotes = (quotesResult.data || []) as CrmQuote[];
   const events = (eventsResult.data || []) as CrmCalendarEvent[];
@@ -419,6 +489,15 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const entries = (entriesResult.data || []) as CrmBookkeepingEntry[];
   const payments = (paymentsResult.data || []) as CrmBookkeepingPayment[];
   const credits = (creditsResult.data || []) as CrmBookkeepingCredit[];
+  const expenses = (expensesResult.error ? [] : expensesResult.data || []) as CrmJobExpense[];
+  const kenPayments = (kenPaymentsResult.error ? [] : kenPaymentsResult.data || []) as CrmKenPayment[];
+  const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
+    key: string;
+    value: number;
+  }>;
+  const settingsMap = new Map(settingsRows.map((row) => [row.key, Number(row.value) || 0]));
+  const openingBalance = settingsMap.get("ken_opening_balance") ?? 0;
+  const payoffTarget = settingsMap.get("payoff_target") ?? BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
   return buildDashboardData({
@@ -433,7 +512,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     contracts,
     entries,
     payments,
-    credits
+    credits,
+    expenses,
+    kenPayments,
+    openingBalance,
+    payoffTarget
   });
 }
 
@@ -600,6 +683,86 @@ export async function createCrmCalendarEvent(
   });
 
   return data as CrmCalendarEvent;
+}
+
+export async function listCrmAvailabilitySlots(supabase: CrmSupabaseClient, month: string) {
+  const range = monthRangeUtc(month);
+  const { data, error } = await supabase
+    .from("crm_availability_slots")
+    .select("*")
+    .eq("status", "available")
+    .gte("start_at", range.start)
+    .lt("start_at", range.end)
+    .order("start_at", { ascending: true });
+
+  if (error) throw new CrmAuthError(502, "Availability could not be loaded.");
+
+  return (data || []).map((row) => {
+    const slot = row as CrmAvailabilitySlot;
+    const start = new Date(slot.start_at);
+    return {
+      ...slot,
+      date: losAngelesDateString(start),
+      time: losAngelesTimeString(start)
+    };
+  });
+}
+
+export async function createCrmAvailabilitySlot(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const owner = normalizeAvailabilityOwner(payload.owner);
+  const date = requiredText(payload.date, "Availability date and time are required.");
+  const time = requiredText(payload.time, "Availability date and time are required.");
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+    throw new CrmAuthError(400, "Availability date and time are invalid.");
+  }
+
+  const record = {
+    owner,
+    start_at: zonedTimeToUtc(date, time).toISOString(),
+    end_at: bookingEndIso(date, time),
+    status: "available",
+    source: "crm_click_availability",
+    created_by_email: actor.email,
+    meta: metadataWithActor(payload, actor, "createdBy")
+  };
+
+  const { data, error } = await supabase
+    .from("crm_availability_slots")
+    .upsert(record, { onConflict: "owner,start_at,end_at" })
+    .select("*")
+    .single();
+
+  if (error || !data) throw new CrmAuthError(502, "Availability slot could not be saved.");
+
+  return data as CrmAvailabilitySlot;
+}
+
+export async function deleteCrmAvailabilitySlot(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>
+) {
+  const owner = normalizeAvailabilityOwner(payload.owner);
+  const date = requiredText(payload.date, "Availability date and time are required.");
+  const time = requiredText(payload.time, "Availability date and time are required.");
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+    throw new CrmAuthError(400, "Availability date and time are invalid.");
+  }
+
+  const { error } = await supabase
+    .from("crm_availability_slots")
+    .delete()
+    .eq("owner", owner)
+    .eq("start_at", zonedTimeToUtc(date, time).toISOString());
+
+  if (error) throw new CrmAuthError(502, "Availability slot could not be removed.");
+
+  return { removed: true };
 }
 
 export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
@@ -793,6 +956,29 @@ export async function updateCrmQuote(
       manufacturer_order_url: quote.manufacturer_order_url || null,
       manufacturer_document_url: quote.manufacturer_document_url || null,
       notes: quote.notes || null,
+      // Entry-only fields (no column on crm_quotes) editable from the ledger.
+      // Only written when the caller sends them, so a plain quote update leaves
+      // them untouched (upsert updates only the columns present in this object).
+      ...(payload.installation_invoice_amount !== undefined
+        ? { installation_invoice_amount: toMoney(payload.installation_invoice_amount) }
+        : {}),
+      ...(typeof payload.installation_complete === "boolean"
+        ? {
+            installation_match_status: payload.installation_complete ? "matched" : "unmatched",
+            installation_matched_at: payload.installation_complete ? now : null
+          }
+        : {}),
+      ...(payload.ken_cut_override !== undefined
+        ? {
+            ken_cut_override:
+              payload.ken_cut_override === "" || payload.ken_cut_override === null
+                ? null
+                : Math.max(Number(payload.ken_cut_override) || 0, 0)
+          }
+        : {}),
+      ...(typeof payload.jessica_commission_paid === "boolean"
+        ? { jessica_commission_paid_at: payload.jessica_commission_paid ? now : null }
+        : {}),
       meta: { lastUpdatedBy: actor.email }
     },
     { onConflict: "quote_id" }
@@ -924,6 +1110,10 @@ export async function updateCrmBookkeepingEntry(
       patch.sales_owner_set_at = now;
     } else if (["total_amount", "cogs_amount", "installation_invoice_amount"].includes(key)) {
       patch[key] = toMoney(value);
+    } else if (key === "ken_cut_override") {
+      // null/blank reverts to the default rule; a number pins it (0 waives).
+      patch.ken_cut_override =
+        value === "" || value === null || value === undefined ? null : Math.max(Number(value) || 0, 0);
     } else {
       patch[key] = value === "" ? null : value;
     }
@@ -989,4 +1179,133 @@ export async function updateCrmBookkeepingEntry(
   });
 
   return entry as CrmBookkeepingEntry;
+}
+
+const allowedSettingKeys = new Set(["payoff_target", "ken_opening_balance"]);
+
+export async function createKenPayment(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const amount = toMoney(payload.amount);
+  if (amount <= 0) throw new CrmAuthError(400, "Ken payment amount must be greater than zero.");
+
+  const record = {
+    paid_on: payload.paid_on || new Date().toISOString().slice(0, 10),
+    period_month: payload.period_month || null,
+    amount,
+    note: optionalText(payload.note),
+    created_by_email: actor.email,
+    meta: { createdBy: actor.email }
+  };
+
+  const { data, error } = await supabase.from("crm_ken_payments").insert(record).select("*").single();
+  if (error || !data) throw new CrmAuthError(502, "Ken payment could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "ken_payment",
+    entityId: data.id,
+    action: "create",
+    after: data
+  });
+
+  return data as CrmKenPayment;
+}
+
+export async function deleteKenPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_ken_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Ken payment was not found.");
+
+  const { error } = await supabase.from("crm_ken_payments").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Ken payment could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "ken_payment",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
+}
+
+export async function updateKenPayment(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_ken_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Ken payment was not found.");
+
+  const patch: Record<string, unknown> = {};
+  if (payload.amount !== undefined) {
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Ken payment amount must be greater than zero.");
+    patch.amount = amount;
+  }
+  if (payload.paid_on !== undefined) patch.paid_on = payload.paid_on || null;
+  if (payload.period_month !== undefined) patch.period_month = payload.period_month || null;
+  if (payload.note !== undefined) patch.note = optionalText(payload.note);
+
+  if (!Object.keys(patch).length) {
+    throw new CrmAuthError(400, "No supported Ken payment fields provided.");
+  }
+
+  const { data, error } = await supabase
+    .from("crm_ken_payments")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Ken payment could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "ken_payment",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmKenPayment;
+}
+
+export async function updateCrmSettings(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const updates: Array<{ key: string; value: number }> = [];
+  for (const key of allowedSettingKeys) {
+    if (payload[key] === undefined) continue;
+    updates.push({ key, value: toMoney(payload[key]) });
+  }
+  if (!updates.length) throw new CrmAuthError(400, "No supported settings provided.");
+
+  const { error } = await supabase
+    .from("crm_settings")
+    .upsert(
+      updates.map((row) => ({ ...row, updated_at: new Date().toISOString() })),
+      { onConflict: "key" }
+    );
+  if (error) throw new CrmAuthError(502, "Settings could not be saved.");
+
+  const result = Object.fromEntries(updates.map((row) => [row.key, row.value]));
+  await recordCrmActivity(supabase, actor, {
+    entityType: "settings",
+    action: "update",
+    after: result
+  });
+
+  return result;
 }

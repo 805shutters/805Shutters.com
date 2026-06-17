@@ -7,11 +7,22 @@ import {
   CrmBookkeepingRow,
   CrmBookkeepingSalesOwner,
   CrmBookkeepingTotals,
+  CrmJobExpense,
+  CrmKenPayment,
+  CrmKenPayoffSummary,
   CrmQuote,
   CrmQuoteStatus
 } from "@/lib/crm/types";
 
 export const OWNER_COMMISSION_RATE = 0.1;
+
+// Jessica's sales closed on or after this date are exempt from Ken's cut.
+// Documented in supabase migration 20260610000000_profit_split_50_50.sql.
+export const JESSICA_KEN_CUT_EXEMPT_FROM = "2026-06-10";
+
+// Fixed price the business is being purchased from Ken for. Every dollar paid to
+// Ken (opening balance + recorded checks) counts toward this payoff.
+export const BUSINESS_PAYOFF_TARGET = 500000;
 
 const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "sold",
@@ -27,12 +38,14 @@ export function buildBookkeepingRows({
   quotes,
   entries,
   payments,
-  credits = []
+  credits = [],
+  expenses = []
 }: {
   quotes: CrmQuote[];
   entries: CrmBookkeepingEntry[];
   payments: CrmBookkeepingPayment[];
   credits?: CrmBookkeepingCredit[];
+  expenses?: CrmJobExpense[];
 }): CrmBookkeepingRow[] {
   const paymentsByEntryId = groupPayments(payments, "bookkeeping_entry_id");
   const paymentsByQuoteId = groupPayments(payments, "quote_id");
@@ -40,6 +53,9 @@ export function buildBookkeepingRows({
   const creditsFromEntryId = groupCredits(credits, "from_bookkeeping_entry_id");
   const creditsToQuoteId = groupCredits(credits, "to_quote_id");
   const creditsFromQuoteId = groupCredits(credits, "from_quote_id");
+  const expensesByEntryId = groupExpenses(expenses, "bookkeeping_entry_id");
+  const expensesByQuoteId = groupExpenses(expenses, "quote_id");
+  const expensesByJobId = groupExpenses(expenses, "job_id");
   const quoteMetadataEntries = entries.filter((entry) => entry.source === "crm_quote" && entry.quote_id);
   const quoteMetadataByQuoteId = new Map(
     quoteMetadataEntries.map((entry) => [entry.quote_id as string, entry])
@@ -47,27 +63,53 @@ export function buildBookkeepingRows({
   const standaloneEntries = entries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
   const linkedQuoteIds = new Set(standaloneEntries.map((entry) => entry.quote_id).filter(Boolean));
 
+  // Each expense is applied to exactly one row. Entry rows resolve first (most
+  // specific), so a job-linked expense can't also land on a quote row that
+  // happens to share the same job.
+  const claimedExpenseIds = new Set<string>();
+  const resolveExpenses = (keys: {
+    entryId?: string | null;
+    quoteId?: string | null;
+    jobId?: string | null;
+  }) => {
+    const matched: CrmJobExpense[] = [];
+    const consider = (list?: CrmJobExpense[]) => {
+      for (const expense of list || []) {
+        if (claimedExpenseIds.has(expense.id)) continue;
+        claimedExpenseIds.add(expense.id);
+        matched.push(expense);
+      }
+    };
+    if (keys.entryId) consider(expensesByEntryId.get(keys.entryId));
+    if (keys.quoteId) consider(expensesByQuoteId.get(keys.quoteId));
+    if (keys.jobId) consider(expensesByJobId.get(keys.jobId));
+    return matched;
+  };
+
   const entryRows = standaloneEntries.map((entry) =>
     buildEntryRow(
       entry,
       paymentsByEntryId.get(entry.id) || [],
       creditsToEntryId.get(entry.id) || [],
-      creditsFromEntryId.get(entry.id) || []
+      creditsFromEntryId.get(entry.id) || [],
+      resolveExpenses({ entryId: entry.id, quoteId: entry.quote_id, jobId: entry.job_id })
     )
   );
 
   const quoteRows = quotes
     .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quote.status))
     .filter((quote) => !linkedQuoteIds.has(quote.id))
-    .map((quote) =>
-      buildQuoteRow(
+    .map((quote) => {
+      const metadataEntry = quoteMetadataByQuoteId.get(quote.id) || null;
+      return buildQuoteRow(
         quote,
         paymentsByQuoteId.get(quote.id) || [],
         creditsToQuoteId.get(quote.id) || [],
         creditsFromQuoteId.get(quote.id) || [],
-        quoteMetadataByQuoteId.get(quote.id) || null
-      )
-    );
+        metadataEntry,
+        resolveExpenses({ entryId: metadataEntry?.id, quoteId: quote.id, jobId: quote.job_id })
+      );
+    });
 
   return [...entryRows, ...quoteRows].sort((a, b) => {
     const at = a.soldDate ? Date.parse(a.soldDate) : 0;
@@ -85,6 +127,7 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       totals.creditIn = roundCents(totals.creditIn + row.creditIn);
       totals.creditOut = roundCents(totals.creditOut + row.creditOut);
       totals.cogs = roundCents(totals.cogs + row.cogs);
+      totals.expensesTotal = roundCents(totals.expensesTotal + row.expensesTotal);
       totals.balance = roundCents(totals.balance + row.balance);
       totals.kenCut = roundCents(totals.kenCut + row.kenCut);
       totals.mikeProfit = roundCents(totals.mikeProfit + row.mikeProfit);
@@ -108,6 +151,7 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       creditIn: 0,
       creditOut: 0,
       cogs: 0,
+      expensesTotal: 0,
       balance: 0,
       kenCut: 0,
       mikeProfit: 0,
@@ -118,6 +162,50 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       missingCogs: 0
     }
   );
+}
+
+export function buildKenPayoffSummary({
+  rows,
+  payments,
+  openingBalance = 0,
+  payoffTarget = BUSINESS_PAYOFF_TARGET
+}: {
+  rows: CrmBookkeepingRow[];
+  payments: CrmKenPayment[];
+  openingBalance?: number;
+  payoffTarget?: number;
+}): CrmKenPayoffSummary {
+  // "Completed" for Ken = the customer has paid in full (zero/negative balance).
+  // Each row's kenCut already reflects Jessica's exemption and any override, so
+  // exempt jobs correctly contribute $0 to Ken's check.
+  const completedRows = rows.filter((row) => row.total > 0 && row.balance <= 0);
+  const kenAccruedCompleted = roundCents(
+    completedRows.reduce((sum, row) => sum + (Number(row.kenCut) || 0), 0)
+  );
+  const kenAccruedAll = roundCents(rows.reduce((sum, row) => sum + (Number(row.kenCut) || 0), 0));
+  const recordedPayments = roundCents(
+    payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
+  );
+  const opening = roundCents(Math.max(Number(openingBalance) || 0, 0));
+  const target = roundCents(Math.max(Number(payoffTarget) || 0, 0)) || BUSINESS_PAYOFF_TARGET;
+  const kenPaid = roundCents(opening + recordedPayments);
+  const payoffRemaining = roundCents(Math.max(target - kenPaid, 0));
+  const kenOwed = roundCents(Math.max(kenAccruedCompleted - kenPaid, 0));
+  const payoffPct = target > 0 ? Math.min(100, Math.round((kenPaid / target) * 1000) / 10) : 0;
+
+  return {
+    payoffTarget: target,
+    openingBalance: opening,
+    recordedPayments,
+    kenPaid,
+    payoffRemaining,
+    payoffPct,
+    isPaidOff: kenPaid >= target,
+    kenAccruedCompleted,
+    kenAccruedAll,
+    kenOwed,
+    completedJobs: completedRows.filter((row) => (Number(row.kenCut) || 0) > 0).length
+  };
 }
 
 export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccountabilityItem[] {
@@ -241,7 +329,8 @@ function buildEntryRow(
   entry: CrmBookkeepingEntry,
   payments: CrmBookkeepingPayment[],
   creditsIn: CrmBookkeepingCredit[],
-  creditsOut: CrmBookkeepingCredit[]
+  creditsOut: CrmBookkeepingCredit[],
+  expenses: CrmJobExpense[]
 ): CrmBookkeepingRow {
   const total = Number(entry.total_amount) || 0;
   const depositPaid = sumPayments(payments.filter(isDepositPayment));
@@ -250,7 +339,13 @@ function buildEntryRow(
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
   const cogs = Number(entry.cogs_amount) || 0;
-  const kenCut = roundCents(total * OWNER_COMMISSION_RATE);
+  const expensesTotal = sumExpenses(expenses);
+  const kenCut = computeKenCut({
+    total,
+    salesOwner: entry.sales_owner,
+    soldDate: entry.sold_date,
+    override: entry.ken_cut_override
+  });
   const installation = getInstallationFields(entry);
   const profit = calculateBookkeepingProfit({
     total,
@@ -258,7 +353,8 @@ function buildEntryRow(
     kenCut,
     salesOwner: entry.sales_owner,
     installationAmount: installation.invoiceAmount,
-    isInstallationComplete: installation.isComplete
+    isInstallationComplete: installation.isComplete,
+    expenses: expensesTotal
   });
 
   return {
@@ -280,6 +376,7 @@ function buildEntryRow(
     cogs,
     balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
     kenCut,
+    kenCutOverride: entry.ken_cut_override ?? null,
     mikeProfit: profit.mikeProfit,
     salesOwner: entry.sales_owner,
     installationInvoiceDocumentId: entry.installation_invoice_document_id,
@@ -301,7 +398,9 @@ function buildEntryRow(
     status: entry.source === "legacy_sheet" ? "legacy" : "manual",
     payments,
     creditsIn,
-    creditsOut
+    creditsOut,
+    expenses,
+    expensesTotal
   };
 }
 
@@ -310,7 +409,8 @@ function buildQuoteRow(
   payments: CrmBookkeepingPayment[],
   creditsIn: CrmBookkeepingCredit[],
   creditsOut: CrmBookkeepingCredit[],
-  entry: CrmBookkeepingEntry | null
+  entry: CrmBookkeepingEntry | null,
+  expenses: CrmJobExpense[]
 ): CrmBookkeepingRow {
   const total = Number(quote.quote_total) || 0;
   const cogs = Number(entry?.cogs_amount ?? quote.materials_cost) || 0;
@@ -322,8 +422,15 @@ function buildQuoteRow(
   const paidTotal = roundCents(depositPaid + balancePaid);
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
-  const kenCut = roundCents(total * OWNER_COMMISSION_RATE);
+  const expensesTotal = sumExpenses(expenses);
+  const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
+  const kenCut = computeKenCut({
+    total,
+    salesOwner,
+    soldDate,
+    override: entry?.ken_cut_override
+  });
   const installation = getInstallationFields(entry);
   const profit = calculateBookkeepingProfit({
     total,
@@ -331,7 +438,8 @@ function buildQuoteRow(
     kenCut,
     salesOwner,
     installationAmount: installation.invoiceAmount,
-    isInstallationComplete: installation.isComplete
+    isInstallationComplete: installation.isComplete,
+    expenses: expensesTotal
   });
 
   return {
@@ -341,7 +449,7 @@ function buildQuoteRow(
     jobId: quote.job_id,
     customerName: quote.customer_name || entry?.customer_name || "Linked job",
     quoteNumber: quote.quote_number,
-    soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at,
+    soldDate,
     total,
     depositDue: roundCents(total * 0.5),
     depositPaid,
@@ -353,6 +461,7 @@ function buildQuoteRow(
     cogs,
     balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
     kenCut,
+    kenCutOverride: entry?.ken_cut_override ?? null,
     mikeProfit: profit.mikeProfit,
     salesOwner,
     installationInvoiceDocumentId: entry?.installation_invoice_document_id || null,
@@ -374,7 +483,9 @@ function buildQuoteRow(
     status: quote.status,
     payments,
     creditsIn,
-    creditsOut
+    creditsOut,
+    expenses,
+    expensesTotal
   };
 }
 
@@ -411,6 +522,52 @@ function sumCredits(credits: CrmBookkeepingCredit[]) {
   return roundCents(credits.reduce((sum, credit) => sum + (Number(credit.amount) || 0), 0));
 }
 
+function sumExpenses(expenses: CrmJobExpense[]) {
+  return roundCents(expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0));
+}
+
+function groupExpenses(
+  expenses: CrmJobExpense[],
+  key: "bookkeeping_entry_id" | "quote_id" | "job_id"
+) {
+  return expenses.reduce<Map<string, CrmJobExpense[]>>((map, expense) => {
+    const value = expense[key];
+    if (!value) return map;
+    const current = map.get(value) || [];
+    current.push(expense);
+    map.set(value, current);
+    return map;
+  }, new Map());
+}
+
+function isOnOrAfter(date: string | null | undefined, cutoff: string) {
+  if (!date) return false;
+  return date.slice(0, 10) >= cutoff;
+}
+
+function computeKenCut({
+  total,
+  salesOwner,
+  soldDate,
+  override
+}: {
+  total: number;
+  salesOwner: CrmBookkeepingSalesOwner | null;
+  soldDate: string | null | undefined;
+  override: number | null | undefined;
+}) {
+  // An explicit override pins the dollar amount (0 waives Ken's cut entirely).
+  if (override !== null && override !== undefined) {
+    return roundCents(Math.max(Number(override) || 0, 0));
+  }
+  // Jessica's own sales closed on/after the cutoff are exempt; everyone else
+  // (and all older rows) keeps the historical 10% so legacy math is unchanged.
+  if (salesOwner === "jessica" && isOnOrAfter(soldDate, JESSICA_KEN_CUT_EXEMPT_FROM)) {
+    return 0;
+  }
+  return roundCents(total * OWNER_COMMISSION_RATE);
+}
+
 function isDepositPayment(payment: CrmBookkeepingPayment) {
   return payment.payment_label.toLowerCase().includes("deposit");
 }
@@ -434,7 +591,8 @@ function calculateBookkeepingProfit({
   kenCut,
   salesOwner,
   installationAmount,
-  isInstallationComplete
+  isInstallationComplete,
+  expenses
 }: {
   total: number;
   cogs: number;
@@ -442,9 +600,14 @@ function calculateBookkeepingProfit({
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationAmount: number;
   isInstallationComplete: boolean;
+  expenses: number;
 }) {
   const installationCost = isInstallationComplete ? installationAmount : 0;
-  const remainingProfitBeforeJessica = roundCents(total - cogs - kenCut - installationCost);
+  const remainingProfitBeforeJessica = roundCents(total - cogs - kenCut - installationCost - expenses);
+  // The 50/50 split applies ONLY to Jessica's own sales (owner-confirmed rule,
+  // June 2026); Mike keeps 100% of jobs he sold. This intentionally differs from
+  // the "regardless of who sold it" wording in migration 20260610. Her half is
+  // realized only once the install invoice is known, so the cost is netted first.
   const jessicaCommission =
     salesOwner === "jessica" && isInstallationComplete
       ? roundCents(Math.max(remainingProfitBeforeJessica, 0) * 0.5)

@@ -178,6 +178,7 @@ export type CrmBookkeepingEntry = {
   manufacturer_document_url: string | null;
   notes: string | null;
   imported_sheet_row: number | null;
+  ken_cut_override: number | null;
 };
 
 export type CrmBookkeepingPayment = {
@@ -208,6 +209,32 @@ export type CrmBookkeepingCredit = {
   note: string | null;
 };
 
+export type CrmJobExpenseCategory =
+  | "materials"
+  | "installation_extra"
+  | "processing_fee"
+  | "permit"
+  | "repair"
+  | "referral"
+  | "other";
+
+export type CrmJobExpenseSource = "crm_quote" | "legacy_sheet" | "manual";
+
+export type CrmJobExpense = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  bookkeeping_entry_id: string | null;
+  quote_id: string | null;
+  job_id: string | null;
+  label: string;
+  category: CrmJobExpenseCategory;
+  amount: number;
+  incurred_on: string | null;
+  notes: string | null;
+  source: CrmJobExpenseSource;
+};
+
 export type CrmBookkeepingRow = {
   id: string;
   source: CrmBookkeepingEntrySource | "crm_quote";
@@ -227,6 +254,7 @@ export type CrmBookkeepingRow = {
   cogs: number;
   balance: number;
   kenCut: number;
+  kenCutOverride: number | null;
   mikeProfit: number;
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationInvoiceDocumentId: string | null;
@@ -249,6 +277,8 @@ export type CrmBookkeepingRow = {
   payments: CrmBookkeepingPayment[];
   creditsIn: CrmBookkeepingCredit[];
   creditsOut: CrmBookkeepingCredit[];
+  expenses: CrmJobExpense[];
+  expensesTotal: number;
 };
 
 export type CrmCustomerFile = {
@@ -278,6 +308,7 @@ export type CrmBookkeepingTotals = {
   creditIn: number;
   creditOut: number;
   cogs: number;
+  expensesTotal: number;
   balance: number;
   kenCut: number;
   mikeProfit: number;
@@ -323,6 +354,19 @@ export type CrmCalendarEvent = {
   customer_name?: string;
 };
 
+export type CrmAvailabilitySlot = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  owner: string;
+  start_at: string;
+  end_at: string;
+  status: "available" | "canceled";
+  source: string;
+  created_by_email: string | null;
+  meta: Record<string, unknown>;
+};
+
 export type CrmSummary = {
   openJobs: number;
   scheduledJobs: number;
@@ -338,6 +382,32 @@ export type CrmSummary = {
   contracts: number;
 };
 
+export type CrmKenPayment = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  paid_on: string | null;
+  period_month: string | null;
+  amount: number;
+  note: string | null;
+  created_by_email: string | null;
+  meta: Record<string, unknown>;
+};
+
+export type CrmKenPayoffSummary = {
+  payoffTarget: number;
+  openingBalance: number;
+  recordedPayments: number;
+  kenPaid: number;
+  payoffRemaining: number;
+  payoffPct: number;
+  isPaidOff: boolean;
+  kenAccruedCompleted: number;
+  kenAccruedAll: number;
+  kenOwed: number;
+  completedJobs: number;
+};
+
 export type CrmDashboardData = {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -349,8 +419,11 @@ export type CrmDashboardData = {
   bookkeepingEntries: CrmBookkeepingEntry[];
   bookkeepingPayments: CrmBookkeepingPayment[];
   bookkeepingCredits: CrmBookkeepingCredit[];
+  jobExpenses: CrmJobExpense[];
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
+  kenPayments: CrmKenPayment[];
+  kenPayoff: CrmKenPayoffSummary;
   accountability: CrmAccountabilityItem[];
   summary: CrmSummary;
 };

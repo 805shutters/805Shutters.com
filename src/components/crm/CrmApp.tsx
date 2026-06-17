@@ -5,8 +5,10 @@ import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import {
   CrmAccountabilityItem,
+  CrmAvailabilitySlot,
   CrmBookkeepingPaymentType,
   CrmBookkeepingRow,
   CrmCalendarEvent,
@@ -14,13 +16,15 @@ import {
   CrmDashboardData,
   CrmJob,
   CrmJobStatus,
+  CrmKenPayment,
+  CrmKenPayoffSummary,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar";
+type CrmTab = "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
 
 type CrmUser = {
   email: string;
@@ -49,6 +53,15 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function lastDayOfMonthInputValue() {
+  const now = new Date();
+  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const year = last.getFullYear();
+  const month = String(last.getMonth() + 1).padStart(2, "0");
+  const day = String(last.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function toCurrency(value: number | undefined) {
@@ -123,6 +136,7 @@ export function CrmApp() {
   const [message, setMessage] = useState<string | null>(null);
   const [authSetupMessage, setAuthSetupMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [editRow, setEditRow] = useState<CrmBookkeepingRow | null>(null);
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -131,6 +145,7 @@ export function CrmApp() {
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
+  const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
 
   async function signOut() {
     if (!supabase) return;
@@ -351,7 +366,12 @@ export function CrmApp() {
         method: "PATCH",
         body: JSON.stringify({
           status: formString(formData, "status"),
+          quote_total: Number(formString(formData, "quote_total") || 0),
           materials_cost: Number(formString(formData, "materials_cost") || 0),
+          sold_by: formString(formData, "sold_by"),
+          payment_amount: Number(formString(formData, "payment_amount") || 0),
+          payment_label: formString(formData, "payment_label") || "Balance payment",
+          payment_type: formString(formData, "payment_type") || "other",
           manufacturer_name: formString(formData, "manufacturer_name"),
           manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
           manufacturer_order_url: formString(formData, "manufacturer_order_url"),
@@ -401,6 +421,186 @@ export function CrmApp() {
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Calendar event could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recordKenPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, "/api/crm/ken-payments", {
+        method: "POST",
+        body: JSON.stringify({
+          amount: Number(formString(formData, "amount") || 0),
+          paid_on: formString(formData, "paid_on") || null,
+          period_month: formString(formData, "period_month") || null,
+          note: formString(formData, "note")
+        })
+      });
+      event.currentTarget.reset();
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ken payment could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteKenPaymentRow(id: string) {
+    if (!session) return;
+    if (!window.confirm("Delete this Ken payment? It changes the payoff total.")) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/ken-payments/${id}`, { method: "DELETE" });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ken payment could not be deleted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, "/api/crm/settings", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ken_opening_balance: Number(formString(formData, "ken_opening_balance") || 0),
+          payoff_target: Number(formString(formData, "payoff_target") || 0)
+        })
+      });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Settings could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function editBookkeepingRow(event: FormEvent<HTMLFormElement>, row: CrmBookkeepingRow) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    const owner = formString(formData, "sales_owner");
+    const total = Number(formString(formData, "total_amount") || 0);
+    const cogs = Number(formString(formData, "cogs_amount") || 0);
+    const overrideRaw = formString(formData, "ken_cut_override");
+    const shared = {
+      payment_type: formString(formData, "payment_type") || "other",
+      payment_amount: Number(formString(formData, "payment_amount") || 0),
+      payment_label: formString(formData, "payment_label") || "Balance payment",
+      installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
+      installation_complete: formData.get("installation_complete") === "on",
+      jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
+      ken_cut_override: overrideRaw === "" ? null : Number(overrideRaw),
+      manufacturer_name: formString(formData, "manufacturer_name"),
+      manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
+      notes: formString(formData, "notes")
+    };
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (row.source === "crm_quote" && row.quoteId) {
+        await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ ...shared, quote_total: total, materials_cost: cogs, sold_by: owner })
+        });
+      } else {
+        await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            ...shared,
+            customer_name: formString(formData, "customer_name"),
+            sold_date: formString(formData, "sold_date"),
+            total_amount: total,
+            cogs_amount: cogs,
+            sales_owner: owner
+          })
+        });
+      }
+      setEditRow(null);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Row could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateJob(event: FormEvent<HTMLFormElement>, job: CrmJob) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${job.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          customer_name: formString(formData, "customer_name"),
+          phone: formString(formData, "phone"),
+          email: formString(formData, "email"),
+          city: formString(formData, "city"),
+          address: formString(formData, "address"),
+          sales_owner: formString(formData, "sales_owner"),
+          product_interest: formString(formData, "product_interest"),
+          next_action: formString(formData, "next_action"),
+          next_action_due: formString(formData, "next_action_due") || null,
+          estimated_total: Number(formString(formData, "estimated_total") || 0),
+          notes: formString(formData, "notes")
+        })
+      });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Job could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateKenPaymentRow(event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/ken-payments/${payment.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          amount: Number(formString(formData, "amount") || 0),
+          paid_on: formString(formData, "paid_on") || null,
+          period_month: formString(formData, "period_month") || null,
+          note: formString(formData, "note")
+        })
+      });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ken payment could not be updated.");
     } finally {
       setBusy(false);
     }
@@ -490,6 +690,7 @@ export function CrmApp() {
         <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} />
         <Metric label="Customer Files" value={data?.summary.customerFiles || 0} />
         <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} />
+        <Metric label="Payoff Left" value={toCurrency(data?.kenPayoff.payoffRemaining)} />
       </section>
 
       <nav className="crm-tabs" aria-label="CRM sections">
@@ -499,7 +700,9 @@ export function CrmApp() {
           ["jobs", "Sales Jobs"],
           ["bookkeeping", "Bookkeeping"],
           ["orders", "Orders"],
-          ["calendar", "Calendar"]
+          ["calendar", "Calendar"],
+          ["availability", "Open Times"],
+          ["payoff", "Ken / Payoff"]
         ].map(([tab, label]) => (
           <button
             type="button"
@@ -608,7 +811,7 @@ export function CrmApp() {
                   {jobs
                     .filter((job) => job.status === column.status)
                     .map((job) => (
-                      <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} />
+                      <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} busy={busy} />
                     ))}
                 </div>
               </section>
@@ -620,6 +823,15 @@ export function CrmApp() {
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace">
           <aside className="crm-panel">
+            {editRow ? (
+              <BookkeepingEditForm
+                row={editRow}
+                busy={busy}
+                onSubmit={editBookkeepingRow}
+                onCancel={() => setEditRow(null)}
+              />
+            ) : (
+            <>
             <h2>Add Spreadsheet Row</h2>
             <form className="crm-form" onSubmit={createBookkeepingEntry}>
               <div className="crm-field-row">
@@ -718,9 +930,11 @@ export function CrmApp() {
                 Save Row
               </button>
             </form>
+            </>
+            )}
           </aside>
 
-          <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} />
+          <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
         </section>
       ) : null}
 
@@ -887,6 +1101,22 @@ export function CrmApp() {
 
           <CalendarAgenda events={events} />
         </section>
+      ) : null}
+
+      {activeTab === "availability" && session ? (
+        <AvailabilityBoard session={session} events={events} />
+      ) : null}
+
+      {activeTab === "payoff" ? (
+        <KenPayoffView
+          payoff={data?.kenPayoff}
+          payments={kenPayments}
+          onRecord={recordKenPayment}
+          onEdit={updateKenPaymentRow}
+          onDelete={deleteKenPaymentRow}
+          onSaveSettings={saveSettings}
+          busy={busy}
+        />
       ) : null}
     </div>
   );
@@ -1093,11 +1323,94 @@ function SnapshotColumn({
 
 function JobCard({
   job,
-  onStatusChange
+  onStatusChange,
+  onSave,
+  busy
 }: {
   job: CrmJob;
   onStatusChange: (job: CrmJob, status: CrmJobStatus) => void;
+  onSave: (event: FormEvent<HTMLFormElement>, job: CrmJob) => void;
+  busy: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <article className="crm-job-card">
+        <form
+          className="crm-form"
+          onSubmit={(event) => {
+            onSave(event, job);
+            setEditing(false);
+          }}
+        >
+          <label>
+            Customer
+            <input name="customer_name" defaultValue={job.customer_name} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Phone
+              <input name="phone" defaultValue={job.phone} />
+            </label>
+            <label>
+              Owner
+              <select name="sales_owner" defaultValue={job.sales_owner || "Unassigned"}>
+                {ownerOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Email
+            <input name="email" defaultValue={job.email || ""} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              City
+              <input name="city" defaultValue={job.city || ""} />
+            </label>
+            <label>
+              Estimate
+              <input name="estimated_total" type="number" min="0" step="50" defaultValue={job.estimated_total || ""} />
+            </label>
+          </div>
+          <label>
+            Address
+            <input name="address" defaultValue={job.address || ""} />
+          </label>
+          <label>
+            Product
+            <input name="product_interest" defaultValue={job.product_interest} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Next Action
+              <input name="next_action" defaultValue={job.next_action || ""} />
+            </label>
+            <label>
+              Due
+              <input name="next_action_due" type="date" defaultValue={job.next_action_due || ""} />
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea name="notes" rows={3} defaultValue={job.notes || ""} />
+          </label>
+          <div className="crm-edit-actions">
+            <button type="submit" disabled={busy}>
+              Save
+            </button>
+            <button type="button" className="crm-ghost-button" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </article>
+    );
+  }
+
   return (
     <article className="crm-job-card">
       <div className="crm-job-card-head">
@@ -1133,16 +1446,151 @@ function JobCard({
           ))}
         </select>
       </div>
+      <button type="button" className="crm-ghost-button crm-card-edit" onClick={() => setEditing(true)}>
+        Edit details
+      </button>
     </article>
+  );
+}
+
+function BookkeepingEditForm({
+  row,
+  busy,
+  onSubmit,
+  onCancel
+}: {
+  row: CrmBookkeepingRow;
+  busy: boolean;
+  onSubmit: (event: FormEvent<HTMLFormElement>, row: CrmBookkeepingRow) => void;
+  onCancel: () => void;
+}) {
+  const isQuote = row.source === "crm_quote";
+  return (
+    <>
+      <div className="crm-edit-head">
+        <h2>Edit Row</h2>
+        <button type="button" className="crm-ghost-button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+      <p className="crm-help">
+        {row.customerName}
+        {row.quoteNumber ? ` / ${row.quoteNumber}` : ""} {isQuote ? "(quote)" : "(spreadsheet row)"}
+      </p>
+      <form className="crm-form" key={`${row.source}-${row.id}`} onSubmit={(event) => onSubmit(event, row)}>
+        {isQuote ? null : (
+          <>
+            <label>
+              Customer
+              <input name="customer_name" defaultValue={row.customerName} />
+            </label>
+            <label>
+              Sold Date
+              <input name="sold_date" type="date" defaultValue={row.soldDate ? row.soldDate.slice(0, 10) : ""} />
+            </label>
+          </>
+        )}
+        <div className="crm-field-row">
+          <label>
+            Total
+            <input name="total_amount" type="number" min="0" step="0.01" defaultValue={row.total || ""} />
+          </label>
+          <label>
+            COGS
+            <input name="cogs_amount" type="number" min="0" step="0.01" defaultValue={row.cogs || ""} />
+          </label>
+        </div>
+        <div className="crm-field-row">
+          <label>
+            Sales Owner
+            <select name="sales_owner" defaultValue={row.salesOwner || ""}>
+              <option value="">Unassigned</option>
+              <option value="mike">Mike</option>
+              <option value="jessica">Jessica</option>
+            </select>
+          </label>
+          <label>
+            Ken Cut Override
+            <input
+              name="ken_cut_override"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Auto (10%)"
+              defaultValue={row.kenCutOverride ?? ""}
+            />
+          </label>
+        </div>
+        <div className="crm-field-row">
+          <label>
+            Install Invoice
+            <input
+              name="installation_invoice_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              defaultValue={row.installationInvoiceAmount || ""}
+            />
+          </label>
+          <label>
+            Add Payment
+            <input name="payment_amount" type="number" min="0" step="0.01" placeholder="0" />
+          </label>
+        </div>
+        <div className="crm-field-row">
+          <label>
+            Payment Type
+            <select name="payment_type" defaultValue={row.paymentType || "other"}>
+              {paymentTypes.map((item) => (
+                <option value={item.value} key={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Payment Label
+            <input name="payment_label" placeholder="Balance payment" />
+          </label>
+        </div>
+        <div className="crm-field-row">
+          <label>
+            Manufacturer
+            <input name="manufacturer_name" defaultValue={row.manufacturerName || ""} />
+          </label>
+          <label>
+            Order #
+            <input name="manufacturer_order_ref" defaultValue={row.manufacturerOrderRef || ""} />
+          </label>
+        </div>
+        <label className="crm-checkbox">
+          <input name="installation_complete" type="checkbox" defaultChecked={row.isInstallationComplete} />
+          Installation complete
+        </label>
+        <label className="crm-checkbox">
+          <input name="jessica_commission_paid" type="checkbox" defaultChecked={Boolean(row.jessicaCommissionPaidAt)} />
+          Jessica commission paid
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" rows={3} defaultValue={row.notes || ""} />
+        </label>
+        <button type="submit" disabled={busy}>
+          Save Changes
+        </button>
+      </form>
+    </>
   );
 }
 
 function BookkeepingSpreadsheet({
   rows,
-  totals
+  totals,
+  onEdit
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  onEdit: (row: CrmBookkeepingRow) => void;
 }) {
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
@@ -1187,6 +1635,7 @@ function BookkeepingSpreadsheet({
               <th>Order Ref</th>
               <th>Status</th>
               <th>Notes</th>
+              <th aria-label="Edit" />
             </tr>
           </thead>
           <tbody>
@@ -1220,6 +1669,11 @@ function BookkeepingSpreadsheet({
                 <td>{row.manufacturerOrderRef || "Needs order"}</td>
                 <td>{row.status}</td>
                 <td>{row.notes || ""}</td>
+                <td>
+                  <button type="button" className="crm-ghost-button" onClick={() => onEdit(row)}>
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1276,6 +1730,36 @@ function OrderBoard({
               </div>
               <div className="crm-field-row">
                 <label>
+                  Quote Total
+                  <input name="quote_total" type="number" min="0" step="0.01" defaultValue={quote.quote_total || ""} />
+                </label>
+                <label>
+                  Sold By
+                  <select name="sold_by" defaultValue={quote.sold_by || "Unassigned"}>
+                    {ownerOptions.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="crm-field-row">
+                <label>
+                  Add Payment
+                  <input name="payment_amount" type="number" min="0" step="0.01" placeholder="0" />
+                </label>
+                <label>
+                  Payment Type
+                  <select name="payment_type" defaultValue="other">
+                    {paymentTypes.map((item) => (
+                      <option value={item.value} key={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="crm-field-row">
+                <label>
                   Manufacturer
                   <input name="manufacturer_name" defaultValue={quote.manufacturer_name || ""} />
                 </label>
@@ -1308,6 +1792,214 @@ function OrderBoard({
   );
 }
 
+const AVAILABILITY_SLOTS = [
+  { time: "09:00", label: "9:00 AM" },
+  { time: "11:00", label: "11:00 AM" },
+  { time: "13:00", label: "1:00 PM" },
+  { time: "15:00", label: "3:00 PM" }
+];
+
+const AVAILABILITY_REPS = ["Jessica", "Mike"];
+
+type AvailabilitySlotRow = CrmAvailabilitySlot & { date: string; time: string };
+
+function currentMonthValue() {
+  return losAngelesDateString().slice(0, 7);
+}
+
+function shiftMonthValue(month: string, delta: number) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const next = new Date(Date.UTC(year, monthNumber - 1 + delta, 1));
+  return `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function availabilityMonthLabel(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Los_Angeles"
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1, 12)));
+}
+
+function availabilityDayLabel(date: string) {
+  const [year, monthNumber, day] = date.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "America/Los_Angeles"
+  }).format(new Date(Date.UTC(year, monthNumber - 1, day, 12)));
+}
+
+function availabilityMonthDays(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  const count = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+  return Array.from({ length: count }, (_value, index) => {
+    const day = index + 1;
+    return `${year}-${String(monthNumber).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  });
+}
+
+function isSlotBooked(owner: string, date: string, time: string, events: CrmCalendarEvent[]) {
+  const start = zonedTimeToUtc(date, time);
+  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  return events.some(
+    (event) =>
+      event.status !== "canceled" &&
+      (event.event_type === "block" || event.assigned_to === owner) &&
+      new Date(event.start_at) < end &&
+      new Date(event.end_at) > start
+  );
+}
+
+function AvailabilityBoard({ session, events }: { session: Session; events: CrmCalendarEvent[] }) {
+  const [owner, setOwner] = useState("Jessica");
+  const [month, setMonth] = useState(currentMonthValue());
+  const [slots, setSlots] = useState<AvailabilitySlotRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`)
+      .then((result) => {
+        if (active) setSlots(result.slots || []);
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : "Could not load open times.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session, month]);
+
+  const openKeys = useMemo(() => {
+    const keys = new Set<string>();
+    slots.filter((slot) => slot.owner === owner).forEach((slot) => keys.add(`${slot.date} ${slot.time}`));
+    return keys;
+  }, [slots, owner]);
+
+  const today = losAngelesDateString();
+  const days = useMemo(() => availabilityMonthDays(month).filter((date) => date >= today), [month, today]);
+
+  async function toggle(date: string, time: string) {
+    const key = `${date} ${time}`;
+    const isOpen = openKeys.has(key);
+    setBusyKey(key);
+    setError(null);
+    try {
+      await crmFetch(session, "/api/crm/availability", {
+        method: isOpen ? "DELETE" : "POST",
+        body: JSON.stringify({ owner, date, time })
+      });
+      const result = await crmFetch<{ slots: AvailabilitySlotRow[] }>(
+        session,
+        `/api/crm/availability?month=${month}`
+      );
+      setSlots(result.slots || []);
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "Could not update open times.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  return (
+    <section className="crm-workspace crm-workspace-wide">
+      <aside className="crm-panel">
+        <h2>Open Times</h2>
+        <p className="crm-help">
+          Turn on the appointment slots each rep is available for. Customers can only book slots a rep has opened —
+          every slot is closed by default.
+        </p>
+        <label>
+          Rep
+          <select value={owner} onChange={(event) => setOwner(event.target.value)}>
+            {AVAILABILITY_REPS.map((rep) => (
+              <option key={rep}>{rep}</option>
+            ))}
+          </select>
+        </label>
+        <div className="crm-field-row" style={{ alignItems: "center", gap: "0.75rem" }}>
+          <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, -1))}>
+            ‹ Prev
+          </button>
+          <strong>{availabilityMonthLabel(month)}</strong>
+          <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, 1))}>
+            Next ›
+          </button>
+        </div>
+        {error ? <p className="crm-alert">{error}</p> : null}
+      </aside>
+
+      <div className="crm-panel" style={{ overflowX: "auto" }}>
+        {loading ? (
+          <p>Loading open times…</p>
+        ) : days.length === 0 ? (
+          <p>No upcoming days this month.</p>
+        ) : (
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "0.4rem 0.6rem" }}>Day</th>
+                {AVAILABILITY_SLOTS.map((slot) => (
+                  <th key={slot.time} style={{ padding: "0.4rem 0.6rem" }}>
+                    {slot.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {days.map((date) => (
+                <tr key={date}>
+                  <th scope="row" style={{ textAlign: "left", padding: "0.4rem 0.6rem", whiteSpace: "nowrap" }}>
+                    {availabilityDayLabel(date)}
+                  </th>
+                  {AVAILABILITY_SLOTS.map((slot) => {
+                    const key = `${date} ${slot.time}`;
+                    const open = openKeys.has(key);
+                    const booked = isSlotBooked(owner, date, slot.time, events);
+                    const label = booked ? "Booked" : open ? "Open" : "—";
+                    return (
+                      <td key={slot.time} style={{ padding: "0.25rem 0.4rem", textAlign: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => toggle(date, slot.time)}
+                          disabled={booked || busyKey === key}
+                          title={booked ? "Already booked" : open ? "Open — click to close" : "Closed — click to open"}
+                          style={{
+                            minWidth: 72,
+                            padding: "0.35rem 0.5rem",
+                            borderRadius: 6,
+                            cursor: booked ? "default" : "pointer",
+                            border: open ? "none" : "1px dashed #b9c2cc",
+                            background: booked ? "#e9edf1" : open ? "#1f7a4d" : "transparent",
+                            color: booked ? "#5b6670" : open ? "#ffffff" : "#7a838d",
+                            fontWeight: open ? 600 : 400
+                          }}
+                        >
+                          {label}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CalendarAgenda({ events }: { events: CrmCalendarEvent[] }) {
   return (
     <section className="crm-ledger">
@@ -1327,6 +2019,202 @@ function CalendarAgenda({ events }: { events: CrmCalendarEvent[] }) {
           </article>
         ))}
         {!events.length ? <p className="crm-empty">No calendar events yet.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function KenPaymentRow({
+  payment,
+  busy,
+  onEdit,
+  onDelete
+}: {
+  payment: CrmKenPayment;
+  busy: boolean;
+  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <tr>
+        <td colSpan={5}>
+          <form
+            className="crm-inline-form"
+            onSubmit={(event) => {
+              onEdit(event, payment);
+              setEditing(false);
+            }}
+          >
+            <input name="amount" type="number" min="0" step="0.01" defaultValue={payment.amount} aria-label="Amount" />
+            <input name="paid_on" type="date" defaultValue={payment.paid_on || ""} aria-label="Check date" />
+            <input name="period_month" type="date" defaultValue={payment.period_month || ""} aria-label="For month" />
+            <input name="note" defaultValue={payment.note || ""} placeholder="Note" aria-label="Note" />
+            <button type="submit" disabled={busy}>
+              Save
+            </button>
+            <button type="button" className="crm-ghost-button" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td>{formatShortDate(payment.paid_on)}</td>
+      <td>{payment.period_month ? formatShortDate(payment.period_month) : "—"}</td>
+      <td>{toCurrency(payment.amount)}</td>
+      <td>{payment.note || ""}</td>
+      <td>
+        <button type="button" className="crm-ghost-button" onClick={() => setEditing(true)} disabled={busy}>
+          Edit
+        </button>
+        <button type="button" className="crm-ghost-button" onClick={() => onDelete(payment.id)} disabled={busy}>
+          Delete
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function KenPayoffView({
+  payoff,
+  payments,
+  onRecord,
+  onEdit,
+  onDelete,
+  onSaveSettings,
+  busy
+}: {
+  payoff: CrmKenPayoffSummary | undefined;
+  payments: CrmKenPayment[];
+  onRecord: (event: FormEvent<HTMLFormElement>) => void;
+  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
+  onDelete: (id: string) => void;
+  onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
+  busy: boolean;
+}) {
+  const target = payoff?.payoffTarget || 500000;
+  const remaining = payoff?.payoffRemaining ?? target;
+  const paid = payoff?.kenPaid || 0;
+  const pct = payoff?.payoffPct || 0;
+  const owed = payoff?.kenOwed || 0;
+
+  return (
+    <section className="crm-workspace crm-workspace-wide">
+      <aside className="crm-panel">
+        <h2>Record Ken Payment</h2>
+        <form className="crm-form" onSubmit={onRecord}>
+          <label>
+            Amount
+            <input name="amount" type="number" min="0" step="0.01" required defaultValue={owed > 0 ? owed : ""} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Check Date
+              <input name="paid_on" type="date" defaultValue={lastDayOfMonthInputValue()} />
+            </label>
+            <label>
+              For Month
+              <input name="period_month" type="date" defaultValue={lastDayOfMonthInputValue()} />
+            </label>
+          </div>
+          <label>
+            Note
+            <textarea name="note" rows={3} placeholder="Check #, month covered..." />
+          </label>
+          <button type="submit" disabled={busy}>
+            Record Payment
+          </button>
+          <p className="crm-help">Suggested amount = 10% of completed (paid-in-full) jobs not yet paid to Ken.</p>
+        </form>
+
+        <h2 className="crm-panel-subhead">Payoff Settings</h2>
+        <form className="crm-form" onSubmit={onSaveSettings}>
+          <label>
+            Already Paid Ken (opening balance)
+            <input name="ken_opening_balance" type="number" min="0" step="0.01" defaultValue={payoff?.openingBalance ?? 0} />
+          </label>
+          <label>
+            Total Payoff Target
+            <input name="payoff_target" type="number" min="0" step="100" defaultValue={target} />
+          </label>
+          <button type="submit" disabled={busy}>
+            Save Settings
+          </button>
+        </form>
+      </aside>
+
+      <div className="crm-ledger">
+        <div className="crm-section-head">
+          <div>
+            <p className="eyebrow">Business Payoff</p>
+            <h2>Buying 805 From Ken</h2>
+          </div>
+          {payoff?.isPaidOff ? <strong className="crm-paidoff">PAID OFF</strong> : null}
+        </div>
+
+        <div className="crm-payoff-hero">
+          <span>Remaining to pay off</span>
+          <strong>{toCurrency(remaining)}</strong>
+          <div className="crm-payoff-bar">
+            <div className="crm-payoff-bar-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <p>
+            {toCurrency(paid)} of {toCurrency(target)} paid ({pct}%)
+          </p>
+        </div>
+
+        <div className="crm-payoff-stats">
+          <div>
+            <span>Due to Ken now</span>
+            <strong className={owed > 0 ? "warn" : ""}>{toCurrency(owed)}</strong>
+            <em>10% of completed, unpaid</em>
+          </div>
+          <div>
+            <span>Completed jobs</span>
+            <strong>{payoff?.completedJobs || 0}</strong>
+            <em>customer paid in full</em>
+          </div>
+          <div>
+            <span>Ken earned (completed)</span>
+            <strong>{toCurrency(payoff?.kenAccruedCompleted)}</strong>
+            <em>lifetime 10%</em>
+          </div>
+          <div>
+            <span>Ken paid to date</span>
+            <strong>{toCurrency(paid)}</strong>
+            <em>opening + checks</em>
+          </div>
+        </div>
+
+        <div className="crm-payoff-payments">
+          <h3>Payment History</h3>
+          <table className="crm-bookkeeping-table">
+            <thead>
+              <tr>
+                <th>Check Date</th>
+                <th>For Month</th>
+                <th>Amount</th>
+                <th>Note</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment) => (
+                <KenPaymentRow key={payment.id} payment={payment} busy={busy} onEdit={onEdit} onDelete={onDelete} />
+              ))}
+            </tbody>
+          </table>
+          {!payments.length ? (
+            <p className="crm-empty">No Ken checks recorded yet. The opening balance above seeds the payoff.</p>
+          ) : null}
+        </div>
       </div>
     </section>
   );

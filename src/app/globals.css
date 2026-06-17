@@ -5579,3 +5579,158 @@ body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
     top: 128px;
   }
 }
+
+/* CRM Ken payment + business payoff tracker */
+.crm-panel-subhead {
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.crm-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.crm-paidoff {
+  padding: 6px 12px;
+  background: #e8f2ea;
+  color: #2f5a3f;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.crm-payoff-hero {
+  display: grid;
+  gap: 12px;
+  padding: 28px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-payoff-hero > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.crm-payoff-hero > strong {
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.crm-payoff-hero > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.crm-payoff-bar {
+  height: 14px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.crm-payoff-bar-fill {
+  height: 100%;
+  min-width: 2px;
+  background: #39684a;
+  transition: width 0.4s ease;
+}
+
+.crm-payoff-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-payoff-stats > div {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  background: var(--white);
+}
+
+.crm-payoff-stats span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-payoff-stats strong {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.crm-payoff-stats strong.warn {
+  color: #7a431f;
+}
+
+.crm-payoff-stats em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.crm-payoff-payments {
+  padding: 20px 24px;
+}
+
+.crm-payoff-payments h3 {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 900px) {
+  .crm-payoff-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crm-payoff-hero > strong {
+    font-size: 42px;
+  }
+}
+
+/* CRM inline edit affordances */
+.crm-edit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crm-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.crm-card-edit {
+  margin-top: 10px;
+  width: 100%;
+  border: 1px solid var(--line);
+}
+
+.crm-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.crm-inline-form input {
+  min-width: 120px;
+}

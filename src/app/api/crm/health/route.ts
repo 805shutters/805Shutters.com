@@ -13,6 +13,7 @@ const requiredTables = [
   "crm_quote_bookkeeping_payments",
   "crm_quote_bookkeeping_credits",
   "crm_calendar_events",
+  "crm_availability_slots",
   "crm_customers",
   "crm_customer_products",
   "crm_customer_contracts",

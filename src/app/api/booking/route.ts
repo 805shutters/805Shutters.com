@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { bookingEndIso, buildBookingAvailability, monthRangeUtc, zonedTimeToUtc } from "@/lib/booking/availability";
+import {
+  bookingEndIso,
+  buildBookingAvailability,
+  freeRepsForSlot,
+  monthRangeUtc,
+  zonedTimeToUtc
+} from "@/lib/booking/availability";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { CrmCalendarEvent } from "@/lib/crm/types";
+import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 import { productInterestOptions } from "@/lib/product-interest-options";
 
 export const runtime = "nodejs";
@@ -36,6 +42,15 @@ type BookingAutomationDetails = {
 
 const defaultStaffEmail = "805@805shutters.com";
 const defaultStaffSmsNumbers = ["805-806-9344"];
+// When more than one rep is free for a slot, assign in this order (primary first).
+const repPriority = ["Jessica", "Mike"];
+
+function pickRep(freeReps: string[]) {
+  for (const rep of repPriority) {
+    if (freeReps.includes(rep)) return rep;
+  }
+  return freeReps[0] || null;
+}
 const allowedProductTypes = new Map<string, string>(
   productInterestOptions.map((label) => [label.toLowerCase(), label])
 );
@@ -378,22 +393,38 @@ export async function POST(request: NextRequest) {
 
   const month = date.slice(0, 7);
   const range = monthRangeUtc(month);
-  const { data: existingEvents, error: eventsError } = await supabase
-    .from("crm_calendar_events")
-    .select("*")
-    .gte("start_at", range.start)
-    .lt("start_at", range.end)
-    .neq("status", "canceled");
+  const [eventsResult, slotsResult] = await Promise.all([
+    supabase
+      .from("crm_calendar_events")
+      .select("*")
+      .gte("start_at", range.start)
+      .lt("start_at", range.end)
+      .neq("status", "canceled"),
+    supabase
+      .from("crm_availability_slots")
+      .select("*")
+      .eq("status", "available")
+      .gte("start_at", range.start)
+      .lt("start_at", range.end)
+  ]);
 
-  if (eventsError) {
+  if (eventsResult.error || slotsResult.error) {
     return NextResponse.json({ message: "Calendar could not be checked." }, { status: 502 });
   }
 
-  const availability = buildBookingAvailability(month, (existingEvents || []) as CrmCalendarEvent[]);
+  const existingEvents = (eventsResult.data || []) as CrmCalendarEvent[];
+  const availabilitySlots = (slotsResult.data || []) as CrmAvailabilitySlot[];
+
+  const availability = buildBookingAvailability(month, existingEvents, availabilitySlots);
   const selectedDay = availability.days.find((day) => day.date === date);
   const selectedSlot = selectedDay?.slots.find((slot) => slot.time === time);
 
   if (!selectedDay?.available || !selectedSlot?.available) {
+    return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
+  }
+
+  const assignedRep = pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
+  if (!assignedRep) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }
 
@@ -449,7 +480,7 @@ export async function POST(request: NextRequest) {
       email: email || null,
       address,
       product_interest: productInterest,
-      sales_owner: "Unassigned",
+      sales_owner: assignedRep,
       next_action: "Review self-booking and prepare appointment",
       next_action_due: date,
       appointment_start: startAt,
@@ -475,7 +506,7 @@ export async function POST(request: NextRequest) {
       title: `${name} consultation`,
       event_type: "sales_consult",
       status: "scheduled",
-      assigned_to: "Unassigned",
+      assigned_to: assignedRep,
       start_at: startAt,
       end_at: endAt,
       location: address,
@@ -530,6 +561,7 @@ export async function POST(request: NextRequest) {
     productInterest,
     appointmentStart: startAt,
     appointmentEnd: endAt,
+    assignedTo: assignedRep,
     smsConfirmationSent,
     emailConfirmationSent,
     staffEmailSent,
@@ -541,6 +573,7 @@ export async function POST(request: NextRequest) {
     leadId: lead.id,
     jobId: job.id,
     calendarEventId: calendarEvent.id,
+    assignedTo: assignedRep,
     smsConfirmationSent,
     emailConfirmationSent,
     staffEmailSent,
