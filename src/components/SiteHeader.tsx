@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { commercialBrand } from "@/lib/commercial-mode-data";
@@ -26,7 +26,7 @@ type YelpReviewsResponse = {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { isCommercialMode } = useCommercialMode();
+  const { isCommercialMode, toggleCommercialMode } = useCommercialMode();
   const isHome = pathname === "/";
   const activeCategoryItems = isCommercialMode ? commercialCategoryItems : residentialCategoryItems;
   const brandName = isCommercialMode ? commercialBrand.name : site.name;
@@ -34,6 +34,33 @@ export function SiteHeader() {
   const brandLabel = isCommercialMode ? commercialBrand.label : "SHUTTERS";
   const [yelpReviews, setYelpReviews] = useState<YelpReview[]>([]);
   const [yelpReviewStatus, setYelpReviewStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle");
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the mobile menu whenever navigation lands on a new route.
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  // While the drawer is open, lock page scroll and allow Escape to close it.
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.documentElement.classList.add("mobile-menu-open");
+    window.addEventListener("keydown", handleKey);
+
+    return () => {
+      document.documentElement.classList.remove("mobile-menu-open");
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [menuOpen]);
 
   const loadYelpReviews = () => {
     if (yelpReviewStatus !== "idle") {
@@ -91,15 +118,21 @@ export function SiteHeader() {
   };
 
   return (
-    <header className="site-header-shell">
+    <>
+      <header className="site-header-shell">
       <HeaderScrollState />
       <div className="site-masthead">
         <div className="mobile-header-tools mobile-header-tools--left" aria-label="Mobile navigation">
-          <CommercialModeBadge />
-          <Link className="mobile-book-link" href="/book-consultation/" aria-label="Book an appointment">
-            <CalendarIcon />
-            <span>Book Here</span>
-          </Link>
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            aria-label="Open menu"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setMenuOpen(true)}
+          >
+            <HamburgerIcon />
+          </button>
         </div>
         <div className="masthead-contact-left">
           <div className="masthead-route-actions">
@@ -235,7 +268,73 @@ export function SiteHeader() {
           </Fragment>
         ))}
       </nav>
-    </header>
+      </header>
+
+      <div className={`mobile-menu${menuOpen ? " is-open" : ""}`} id="mobile-menu">
+        <button
+          type="button"
+          className="mobile-menu-backdrop"
+          aria-label="Close menu"
+          tabIndex={menuOpen ? 0 : -1}
+          onClick={() => setMenuOpen(false)}
+        />
+        <div className="mobile-menu-panel" role="dialog" aria-modal="true" aria-label={`${brandName} menu`}>
+          <div className="mobile-menu-head">
+            <span className="mobile-menu-eyebrow">{brandName}</span>
+            <button
+              type="button"
+              className="mobile-menu-close"
+              aria-label="Close menu"
+              onClick={() => setMenuOpen(false)}
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          <Link className="mobile-menu-book" href="/book-consultation/" onClick={() => setMenuOpen(false)}>
+            <CalendarIcon />
+            <span>Book a Consultation</span>
+          </Link>
+
+          <nav className="mobile-menu-nav" aria-label="Mobile primary navigation">
+            {activeCategoryItems.map((item) => (
+              <Link key={`menu-${item.href}`} href={item.href} onClick={() => setMenuOpen(false)}>
+                {item.label}
+              </Link>
+            ))}
+            <Link href="/reviews/" onClick={() => setMenuOpen(false)}>
+              Reviews
+            </Link>
+            <Link href="/gallery/" onClick={() => setMenuOpen(false)}>
+              Gallery
+            </Link>
+            <Link href="/about/" onClick={() => setMenuOpen(false)}>
+              About
+            </Link>
+            <Link href="/faq/" onClick={() => setMenuOpen(false)}>
+              FAQ
+            </Link>
+            <Link href="/contact/" onClick={() => setMenuOpen(false)}>
+              Contact
+            </Link>
+          </nav>
+
+          <div className="mobile-menu-foot">
+            <button
+              type="button"
+              className={`commercial-mode-badge mobile-menu-commercial${isCommercialMode ? " active" : ""}`}
+              aria-pressed={isCommercialMode}
+              onClick={toggleCommercialMode}
+            >
+              {isCommercialMode ? "Switch to residential" : "805 Commercial"}
+            </button>
+            <TrackedPhoneLink className="mobile-menu-phone" location="mobile menu">
+              {site.phone}
+            </TrackedPhoneLink>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -260,6 +359,25 @@ function CalendarIcon() {
       <path d="M4 9h16" />
       <path d="M5 4h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
       <path d="M8 13h3v3H8z" />
+    </svg>
+  );
+}
+
+function HamburgerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M3 6h18" />
+      <path d="M3 12h18" />
+      <path d="M3 18h18" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M6 6l12 12" />
+      <path d="M18 6l-12 12" />
     </svg>
   );
 }

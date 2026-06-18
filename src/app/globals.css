@@ -6555,3 +6555,234 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
     font-size: 11px;
   }
 }
+
+/* ==========================================================================
+   Mobile hamburger menu (appended). A top-left hamburger opens a slide-in
+   drawer with a Book a Consultation CTA plus the primary nav. Mobile only;
+   the toggle and drawer are display:none on desktop.
+   ========================================================================== */
+.mobile-menu-toggle,
+.mobile-menu {
+  display: none;
+}
+
+html.mobile-menu-open {
+  overflow: hidden;
+}
+
+@media (max-width: 620px) {
+  .mobile-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .mobile-menu-toggle svg {
+    width: 26px;
+    height: 26px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  /* Hamburger pinned to the far left of the bar, ahead of the logo. */
+  .mobile-header-tools--left {
+    display: flex;
+    align-items: center;
+    order: -2;
+  }
+
+  /* --- Drawer --- */
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: block;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .mobile-menu.is-open {
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .mobile-menu-backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgba(17, 14, 10, 0.5);
+    opacity: 0;
+    transition: opacity 280ms ease;
+    cursor: pointer;
+  }
+
+  .mobile-menu.is-open .mobile-menu-backdrop {
+    opacity: 1;
+  }
+
+  .mobile-menu-panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: min(86vw, 360px);
+    height: 100%;
+    padding: 18px 22px calc(22px + env(safe-area-inset-bottom));
+    background: var(--paper);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.34);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .mobile-menu.is-open .mobile-menu-panel {
+    transform: translateX(0);
+  }
+
+  .mobile-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mobile-menu-eyebrow {
+    color: var(--ink);
+    font-family: var(--font-logo, var(--font-display));
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+  }
+
+  .mobile-menu-close {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin: 0 -8px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .mobile-menu-close svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+
+  .mobile-menu-book {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 14px 18px;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    line-height: 1;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+
+  .mobile-menu-book svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mobile-menu-nav {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mobile-menu-nav a {
+    padding: 14px 2px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1.1;
+    text-decoration: none;
+  }
+
+  .mobile-menu-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: auto;
+    padding-top: 14px;
+  }
+
+  .mobile-menu-commercial {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .mobile-menu-phone {
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 22px;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  /* Non-home pages: collapse the multi-row grid header to the same compact
+     [hamburger] [logo] [phone] bar the home page already uses. */
+  body:not(:has(.home-editorial)) .site-masthead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px 14px;
+  }
+
+  body:not(:has(.home-editorial)) .mobile-header-tools--right {
+    display: flex;
+    align-items: center;
+  }
+
+  body:not(:has(.home-editorial)) .brand {
+    order: -1;
+    margin-right: auto;
+    justify-self: start;
+  }
+
+  body:not(:has(.home-editorial)) .brand.brand--exact .brand-logo-exact {
+    width: clamp(74px, 20vw, 86px) !important;
+  }
+
+  body:not(:has(.home-editorial)) .masthead-contact-left,
+  body:not(:has(.home-editorial)) .masthead-actions,
+  body:not(:has(.home-editorial)) .category-nav {
+    display: none;
+  }
+}
