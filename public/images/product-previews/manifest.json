@@ -183,5 +183,12 @@
     "license": "Unsplash License (free for commercial use, no attribution required)",
     "photographer": "Benoit Debaix",
     "photoPage": "https://unsplash.com/photos/white-and-brown-concrete-building-near-palm-trees-during-daytime-_6h13vrKKO4"
+  },
+  {
+    "file": "home-theater-blackout-roller-shades-side-rails-king-kong.jpg",
+    "use": "Home theater blackout roller shades with side rails and King Kong screen scene",
+    "source": "OpenAI image generation",
+    "license": "Generated project asset",
+    "promptSummary": "Photorealistic home movie theater with blackout roller shades fully sealed in side-channel rails and a cinematic King Kong skyscraper scene on the screen."
   }
 ]

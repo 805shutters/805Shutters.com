@@ -6051,33 +6051,14 @@ body:has(.booking-page--focused) .assistant-widget {
   filter: none;
 }
 
-body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
-body.home-page-active .brand.brand--exact .brand-logo-exact {
-  width: clamp(190px, 14vw, 218px) !important;
-  transform: translateY(-5%) scale(1.53) !important;
-  transform-origin: top center;
-  filter: invert(1) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28));
-}
-
-body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
-body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
-  width: clamp(142px, 10vw, 170px) !important;
-  filter: none;
+body:has(.home-editorial):not(.site-header-solid) .brand.brand--exact .brand-logo-exact,
+body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-exact {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28));
 }
 
 @media (max-width: 620px) {
   .brand.brand--exact .brand-logo-exact {
     width: clamp(116px, 30vw, 138px) !important;
-  }
-
-  body:has(.home-editorial) .brand.brand--exact .brand-logo-exact,
-  body.home-page-active .brand.brand--exact .brand-logo-exact {
-    width: clamp(96px, 28vw, 118px) !important;
-  }
-
-  body:has(.home-editorial).site-header-solid .brand.brand--exact .brand-logo-exact,
-  body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
-    width: clamp(104px, 28vw, 128px) !important;
   }
 
   body:has(.home-editorial) .site-masthead,

@@ -2,6 +2,40 @@
 
 import { useEffect } from "react";
 
+const topRevealY = 8;
+const solidHeaderY = 48;
+const revealDelta = -4;
+
+type HeaderScrollClassState = {
+  isSolid: boolean;
+  shouldHide: boolean | null;
+};
+
+export function getHeaderScrollClassState(currentScrollY: number, lastScrollY: number): HeaderScrollClassState {
+  const normalizedScrollY = Math.max(currentScrollY, 0);
+  const scrollDelta = normalizedScrollY - Math.max(lastScrollY, 0);
+  const isAtTop = normalizedScrollY <= topRevealY;
+
+  if (isAtTop || scrollDelta < revealDelta) {
+    return {
+      isSolid: normalizedScrollY > solidHeaderY,
+      shouldHide: false
+    };
+  }
+
+  if (scrollDelta > 0) {
+    return {
+      isSolid: normalizedScrollY > solidHeaderY,
+      shouldHide: true
+    };
+  }
+
+  return {
+    isSolid: normalizedScrollY > solidHeaderY,
+    shouldHide: null
+  };
+}
+
 export function HeaderScrollState() {
   useEffect(() => {
     let frame = 0;
@@ -13,13 +47,13 @@ export function HeaderScrollState() {
     function updateHeaderState() {
       frame = 0;
       const currentScrollY = Math.max(window.scrollY, 0);
-      const scrollDelta = currentScrollY - lastScrollY;
+      const classState = getHeaderScrollClassState(currentScrollY, lastScrollY);
 
-      document.body.classList.toggle("site-header-solid", currentScrollY > 48);
+      document.body.classList.toggle("site-header-solid", classState.isSolid);
 
-      if (currentScrollY <= 96 || scrollDelta < -4) {
+      if (classState.shouldHide === false) {
         document.body.classList.remove("site-header-hidden");
-      } else if (scrollDelta > 6) {
+      } else if (classState.shouldHide === true) {
         document.body.classList.add("site-header-hidden");
       }
 

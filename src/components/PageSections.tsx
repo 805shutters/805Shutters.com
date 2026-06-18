@@ -289,10 +289,10 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     imageAlt: "Coastal living room with wide roller shades and ocean view"
   },
   {
-    label: "Bamboo Shades",
-    tagline: "Bring color and natural texture into the light.",
-    image: "/images/homepage-flow/bamboo-shades.jpg",
-    imageAlt: "Bright living room with colored woven bamboo shades and linen drapery"
+    label: "Vertical Cellular Shades",
+    tagline: "Insulated comfort for wide patio doors.",
+    image: "/images/homepage-flow/vertical-cellular-shades.png",
+    imageAlt: "Sliding glass door fitted with vertical cellular shades"
   },
   {
     label: "Stained Wood Shutters",
@@ -341,12 +341,6 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     tagline: "Wide panels that make sliding doors feel clean.",
     image: "/images/homepage-flow/panel-track-shades.png",
     imageAlt: "Sliding glass door fitted with wide panel track shades"
-  },
-  {
-    label: "Vertical Cellular Shades",
-    tagline: "Insulated comfort for wide patio doors.",
-    image: "/images/homepage-flow/vertical-cellular-shades.png",
-    imageAlt: "Sliding glass door fitted with vertical cellular shades"
   },
   {
     label: "Skylight Shades",
