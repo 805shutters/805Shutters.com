@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   bookingEndIso,
   buildBookingAvailability,
+  fallbackBookingOwner,
   freeRepsForSlot,
+  isAvailabilitySlotsMissing,
   monthRangeUtc,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
@@ -408,12 +410,12 @@ export async function POST(request: NextRequest) {
       .lt("start_at", range.end)
   ]);
 
-  if (eventsResult.error || slotsResult.error) {
+  if (eventsResult.error || (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))) {
     return NextResponse.json({ message: "Calendar could not be checked." }, { status: 502 });
   }
 
   const existingEvents = (eventsResult.data || []) as CrmCalendarEvent[];
-  const availabilitySlots = (slotsResult.data || []) as CrmAvailabilitySlot[];
+  const availabilitySlots = slotsResult.error ? undefined : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
 
   const availability = buildBookingAvailability(month, existingEvents, availabilitySlots);
   const selectedDay = availability.days.find((day) => day.date === date);
@@ -423,7 +425,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }
 
-  const assignedRep = pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
+  const assignedRep = slotsResult.error
+    ? fallbackBookingOwner
+    : pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
   if (!assignedRep) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }

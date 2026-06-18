@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildBookingAvailability, losAngelesDateString, monthRangeUtc } from "@/lib/booking/availability";
+import {
+  buildBookingAvailability,
+  isAvailabilitySlotsMissing,
+  losAngelesDateString,
+  monthRangeUtc
+} from "@/lib/booking/availability";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
@@ -41,16 +46,18 @@ export async function GET(request: NextRequest) {
       .lt("start_at", range.end)
   ]);
 
-  if (eventsResult.error || slotsResult.error) {
+  if (eventsResult.error || (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))) {
     return NextResponse.json({ message: "Availability could not be loaded." }, { status: 502 });
   }
+
+  const availabilitySlots = slotsResult.error ? undefined : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
 
   return NextResponse.json({
     configured: true,
     ...buildBookingAvailability(
       month,
       (eventsResult.data || []) as CrmCalendarEvent[],
-      (slotsResult.data || []) as CrmAvailabilitySlot[]
+      availabilitySlots
     )
   });
 }
