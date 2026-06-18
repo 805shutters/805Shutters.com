@@ -6356,3 +6356,24 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
     border-right: 0;
   }
 }
+
+/* Auto-hide the fixed home header on mobile while scrolling DOWN, and slide it
+   back on scroll-up. HeaderScrollState already toggles `site-header-hidden`
+   (added on scroll-down past 96px, removed on scroll-up or near the top); the
+   matching CSS only existed inside the >=621px query, so on phones the class
+   did nothing and the bar stayed stuck. This wires it up for mobile only. */
+@media (max-width: 620px) {
+  body.home-page-active .site-header-shell,
+  body:has(.home-editorial) .site-header-shell {
+    transition:
+      transform 280ms ease,
+      opacity 220ms ease;
+  }
+
+  body.home-page-active.site-header-hidden .site-header-shell,
+  body:has(.home-editorial).site-header-hidden .site-header-shell {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-100%);
+  }
+}
