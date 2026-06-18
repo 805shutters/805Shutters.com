@@ -6250,3 +6250,128 @@ body.home-page-active.site-header-solid .brand.brand--exact .brand-logo-exact {
 .crm-inline-form input {
   min-width: 120px;
 }
+
+/* ==========================================================================
+   Mobile fixes (appended) — these intentionally sit last in the cascade so
+   they win over the duplicated `:has(.home-editorial)` / `.home-page-active`
+   header rules above without having to edit both copies.
+   ========================================================================== */
+@media (max-width: 620px) {
+  /* --- Home header: compact, non-overlapping bar once the page is scrolled.
+     The transparent hero header absolutely-positions the centered "805"
+     wordmark plus the COMMERCIAL toggle and Book Here button to float over the
+     hero image. When the header turns solid on scroll, that absolute layout
+     collapsed and the wordmark collided with the toggle/Book buttons. Lay the
+     solid state out as a simple flex bar instead: logo left, actions right. */
+  body.home-page-active.site-header-solid .site-masthead,
+  body:has(.home-editorial).site-header-solid .site-masthead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    padding: 8px 14px;
+  }
+
+  body.home-page-active.site-header-solid .brand,
+  body.home-page-active.site-header-solid .mobile-header-tools,
+  body.home-page-active.site-header-solid .mobile-header-tools--left,
+  body.home-page-active.site-header-solid .mobile-header-tools--right,
+  body:has(.home-editorial).site-header-solid .brand,
+  body:has(.home-editorial).site-header-solid .mobile-header-tools,
+  body:has(.home-editorial).site-header-solid .mobile-header-tools--left,
+  body:has(.home-editorial).site-header-solid .mobile-header-tools--right {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    transform: none;
+  }
+
+  /* Logo first (left); the auto margin groups the action cluster on the right
+     when the row has spare width (it resolves to 0 on narrow phones, where the
+     controls already fill the bar). */
+  body.home-page-active.site-header-solid .brand,
+  body:has(.home-editorial).site-header-solid .brand {
+    order: -1;
+    margin-right: auto;
+  }
+
+  body.home-page-active.site-header-solid .brand-text-logo,
+  body:has(.home-editorial).site-header-solid .brand-text-logo {
+    justify-items: start;
+    text-align: left;
+  }
+
+  body.home-page-active.site-header-solid .brand-text-logo-number,
+  body:has(.home-editorial).site-header-solid .brand-text-logo-number {
+    font-size: 30px;
+  }
+
+  body.home-page-active.site-header-solid .brand-text-logo-name,
+  body:has(.home-editorial).site-header-solid .brand-text-logo-name {
+    margin-top: 1px;
+    font-size: 8px;
+    letter-spacing: 0.22em;
+  }
+
+  body.home-page-active.site-header-solid .mobile-header-tools--left,
+  body:has(.home-editorial).site-header-solid .mobile-header-tools--left {
+    gap: 8px;
+  }
+
+  body.home-page-active.site-header-solid .commercial-mode-badge,
+  body:has(.home-editorial).site-header-solid .commercial-mode-badge {
+    min-height: 38px;
+    padding: 8px 9px;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+  }
+
+  body.home-page-active.site-header-solid .mobile-book-link,
+  body:has(.home-editorial).site-header-solid .mobile-book-link {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 9px;
+  }
+
+  body.home-page-active.site-header-solid .mobile-book-link svg,
+  body:has(.home-editorial).site-header-solid .mobile-book-link svg {
+    width: 16px;
+    height: 16px;
+    flex-basis: 16px;
+  }
+
+  body.home-page-active.site-header-solid .mobile-header-icon,
+  body:has(.home-editorial).site-header-solid .mobile-header-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  /* --- Shutter category quick-links: read as a wrapping grid instead of a
+     clipped horizontal-scroll strip (the specs ran off the right edge with no
+     scroll affordance). These are jump links, so a 2-up grid stays tappable
+     and fully readable. */
+  .shutter-category-strip {
+    overflow-x: visible;
+  }
+
+  .shutter-category-strip__inner {
+    width: auto;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shutter-category-link {
+    min-height: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .shutter-category-link:nth-child(even) {
+    border-left: 1px solid rgba(255, 255, 255, 0.16);
+  }
+
+  .shutter-category-link:last-child {
+    border-right: 0;
+  }
+}
