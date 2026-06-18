@@ -1,5 +1,7 @@
 "use client";
 
+import { getGoogleAdsId } from "@/lib/tracking-config";
+
 type Gtag = (...args: unknown[]) => void;
 type Fbq = (...args: unknown[]) => void;
 
@@ -20,7 +22,7 @@ type LeadEventParams = {
 };
 
 function googleAdsSendTo(conversionLabel?: string) {
-  const adsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+  const adsId = getGoogleAdsId();
   if (!adsId || !conversionLabel) {
     return undefined;
   }

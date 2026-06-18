@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
 
 export function RouteTracking() {
   const pathname = usePathname();
@@ -13,10 +14,10 @@ export function RouteTracking() {
       return;
     }
 
-    const ga4Id = process.env.NEXT_PUBLIC_GA4_ID;
-    const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
+    const ga4Ids = getGa4Ids();
+    const googleAdsId = getGoogleAdsId();
 
-    if (ga4Id) {
+    for (const ga4Id of ga4Ids) {
       window.gtag?.("config", ga4Id, {
         page_path: pathname
       });

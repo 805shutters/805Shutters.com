@@ -1,10 +1,11 @@
 import Script from "next/script";
+import { getGa4Ids, getGoogleAdsId, getMetaPixelId } from "@/lib/tracking-config";
 
 export function TrackingScripts() {
-  const ga4Id = process.env.NEXT_PUBLIC_GA4_ID;
-  const googleAdsId = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-  const metaPixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
-  const gtagIds = [ga4Id, googleAdsId].filter(Boolean);
+  const ga4Ids = getGa4Ids();
+  const googleAdsId = getGoogleAdsId();
+  const metaPixelId = getMetaPixelId();
+  const gtagIds = [...ga4Ids, googleAdsId].filter((id): id is string => Boolean(id));
 
   return (
     <>
@@ -19,7 +20,7 @@ export function TrackingScripts() {
               window.dataLayer = window.dataLayer || [];
               function gtag(){dataLayer.push(arguments);}
               gtag('js', new Date());
-              ${gtagIds.map((id) => `gtag('config', '${id}');`).join("\n")}
+              ${gtagIds.map((id) => `gtag('config', ${JSON.stringify(id)});`).join("\n")}
             `}
           </Script>
         </>
@@ -35,7 +36,7 @@ export function TrackingScripts() {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${metaPixelId}');
+            fbq('init', ${JSON.stringify(metaPixelId)});
             fbq('track', 'PageView');
           `}
         </Script>
