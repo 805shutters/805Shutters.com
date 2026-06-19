@@ -3194,6 +3194,257 @@ body:has(.crm-app-shell) {
   font-weight: 400;
 }
 
+.crm-calendar-board {
+  width: min(1500px, 100%);
+  margin: 22px auto 0;
+  padding: 20px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-calendar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+
+.crm-calendar-week-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: #f7f5f0;
+  border: 1px solid var(--line);
+}
+
+.crm-calendar-week-label strong,
+.crm-calendar-week-label span {
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-week-label span {
+  color: var(--accent);
+}
+
+.crm-calendar-grid-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+}
+
+.crm-calendar-grid {
+  display: grid;
+  grid-template-columns: 92px repeat(7, minmax(142px, 1fr));
+  min-width: 1086px;
+  background: var(--line);
+  gap: 1px;
+}
+
+.crm-calendar-time-head,
+.crm-calendar-day-head,
+.crm-calendar-time-label,
+.crm-calendar-slot {
+  background: var(--white);
+}
+
+.crm-calendar-time-head,
+.crm-calendar-day-head {
+  min-height: 70px;
+  padding: 12px;
+}
+
+.crm-calendar-time-head,
+.crm-calendar-time-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-day-head {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+}
+
+.crm-calendar-day-head span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-day-head strong {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.crm-calendar-time-label {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 82px;
+  padding: 12px;
+}
+
+.crm-calendar-time-label strong,
+.crm-calendar-time-label span {
+  display: block;
+}
+
+.crm-calendar-time-label span {
+  color: #9b907f;
+}
+
+.crm-calendar-slot {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 82px;
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  color: var(--ink);
+  box-shadow: none;
+  text-align: left;
+}
+
+.crm-calendar-slot:hover {
+  transform: none;
+}
+
+.crm-calendar-slot:not(:disabled):hover,
+.crm-calendar-slot:not(:disabled):focus-visible {
+  background: #111111;
+  color: var(--white);
+}
+
+.crm-calendar-slot span {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.crm-calendar-slot small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.crm-calendar-slot:not(:disabled):hover small,
+.crm-calendar-slot:not(:disabled):focus-visible small {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.crm-calendar-slot--taken {
+  background: #eee8df;
+  color: #5f4e39;
+  cursor: not-allowed;
+}
+
+.crm-calendar-slot--taken small {
+  color: #806a4f;
+}
+
+.crm-calendar-slot--past {
+  background: #f5f2ed;
+  color: #9b907f;
+  cursor: not-allowed;
+}
+
+.crm-slot-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.crm-slot-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+  background: rgba(17, 17, 17, 0.52);
+  cursor: pointer;
+}
+
+.crm-slot-modal__backdrop:hover {
+  transform: none;
+}
+
+.crm-slot-form-panel {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  width: min(760px, 100%);
+  max-height: min(860px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 24px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  box-shadow: 0 26px 80px rgba(17, 17, 17, 0.24);
+}
+
+.crm-slot-form-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-slot-form-head h2 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.crm-slot-close {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.crm-slot-close:hover {
+  transform: none;
+}
+
+.crm-slot-time-summary {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-slot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 10px;
+}
+
 .crm-checkbox {
   display: flex;
   align-items: center;
@@ -4819,8 +5070,30 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .crm-panel,
-  .crm-ledger {
+  .crm-ledger,
+  .crm-calendar-board {
     padding: 16px;
+  }
+
+  .crm-calendar-actions,
+  .crm-slot-actions {
+    justify-content: stretch;
+  }
+
+  .crm-calendar-actions button,
+  .crm-slot-actions button {
+    flex: 1 1 120px;
+  }
+
+  .crm-calendar-week-label,
+  .crm-slot-form-head {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .crm-slot-modal {
+    align-items: stretch;
+    padding: 8px;
   }
 
   .booking-modal {

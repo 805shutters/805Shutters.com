@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
 import { productInterestOptions } from "@/lib/product-interest-options";
@@ -50,6 +50,36 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
 ];
+const calendarSlotHours = Array.from({ length: 9 }, (_item, index) => index + 8);
+const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "America/Los_Angeles"
+});
+const calendarHourFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  timeZone: "America/Los_Angeles"
+});
+const calendarDayFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "America/Los_Angeles"
+});
+const calendarLongDayFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "America/Los_Angeles"
+});
+
+type CalendarSlotSelection = {
+  date: string;
+  hour: number;
+  startAt: string;
+  endAt: string;
+};
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
@@ -72,16 +102,6 @@ function toCurrency(value: number | undefined) {
   }).format(value || 0);
 }
 
-function formatDate(value: string | null | undefined) {
-  if (!value) return "No date";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(new Date(value));
-}
-
 function formatShortDate(value: string | null | undefined) {
   if (!value) return "Open";
   return new Intl.DateTimeFormat("en-US", {
@@ -89,6 +109,84 @@ function formatShortDate(value: string | null | undefined) {
     day: "numeric",
     year: "2-digit"
   }).format(new Date(value));
+}
+
+function calendarDateToUtcNoon(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 12));
+}
+
+function addCalendarDays(value: string, days: number) {
+  const date = calendarDateToUtcNoon(value);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfCalendarWeek(value: string) {
+  const date = calendarDateToUtcNoon(value);
+  return addCalendarDays(value, -date.getUTCDay());
+}
+
+function calendarWeekDays(weekStart: string) {
+  return Array.from({ length: 7 }, (_item, index) => addCalendarDays(weekStart, index));
+}
+
+function calendarTimeValue(hour: number) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function calendarSlotStart(date: string, hour: number) {
+  return zonedTimeToUtc(date, calendarTimeValue(hour));
+}
+
+function calendarSlotSelection(date: string, hour: number): CalendarSlotSelection {
+  const start = calendarSlotStart(date, hour);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+
+  return {
+    date,
+    hour,
+    startAt: start.toISOString(),
+    endAt: end.toISOString()
+  };
+}
+
+function formatCalendarHour(hour: number) {
+  return calendarHourFormatter.format(calendarSlotStart("2026-01-05", hour));
+}
+
+function formatCalendarSlotRange(slot: CalendarSlotSelection) {
+  return `${calendarTimeFormatter.format(new Date(slot.startAt))} - ${calendarTimeFormatter.format(new Date(slot.endAt))}`;
+}
+
+function formatCalendarDay(value: string) {
+  return calendarDayFormatter.format(zonedTimeToUtc(value, "12:00"));
+}
+
+function formatCalendarLongDay(value: string) {
+  return calendarLongDayFormatter.format(zonedTimeToUtc(value, "12:00"));
+}
+
+function isActiveCalendarEvent(event: CrmCalendarEvent) {
+  return event.status === "scheduled" || event.status === "rescheduled";
+}
+
+function findCalendarEventForSlot(events: CrmCalendarEvent[], date: string, hour: number) {
+  const selection = calendarSlotSelection(date, hour);
+  const slotStart = new Date(selection.startAt);
+  const slotEnd = new Date(selection.endAt);
+
+  return events.find((event) => {
+    if (!isActiveCalendarEvent(event)) return false;
+    const eventStart = new Date(event.start_at);
+    const eventEnd = new Date(event.end_at);
+    return slotStart < eventEnd && slotEnd > eventStart;
+  });
+}
+
+function isPastCalendarSlot(date: string, hour: number) {
+  const selection = calendarSlotSelection(date, hour);
+  return new Date(selection.endAt) <= new Date();
 }
 
 function formString(formData: FormData, key: string) {
@@ -137,6 +235,8 @@ export function CrmApp() {
   const [authSetupMessage, setAuthSetupMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [editRow, setEditRow] = useState<CrmBookkeepingRow | null>(null);
+  const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfCalendarWeek(losAngelesDateString()));
+  const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -387,40 +487,62 @@ export function CrmApp() {
     }
   }
 
-  async function createEvent(event: FormEvent<HTMLFormElement>) {
+  async function createAppointmentFromSlot(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) return;
+    if (!session || !selectedCalendarSlot) return;
 
     const formData = new FormData(event.currentTarget);
-    const date = formString(formData, "date");
-    const time = formString(formData, "time");
-    const duration = Number(formString(formData, "duration") || 90);
-    const start = new Date(`${date}T${time || "09:00"}`);
-    const end = new Date(start.getTime() + duration * 60 * 1000);
-    const jobId = formString(formData, "job_id");
-    const job = jobs.find((item) => item.id === jobId);
+    const customerName = formString(formData, "customer_name");
+    const phone = formString(formData, "phone");
+    const email = formString(formData, "email");
+    const city = formString(formData, "city");
+    const address = formString(formData, "address");
+    const productInterest = formString(formData, "product_interest") || "Shutters";
+    const assignedTo = formString(formData, "assigned_to") || "Unassigned";
+    const notes = formString(formData, "notes");
 
     setBusy(true);
     setMessage(null);
 
     try {
+      const { job } = await crmFetch<{ job: CrmJob }>(session, "/api/crm/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          customer_name: customerName,
+          phone,
+          email,
+          city,
+          address,
+          product_interest: productInterest,
+          sales_owner: assignedTo,
+          priority: "normal",
+          next_action: "Prepare for appointment",
+          next_action_due: selectedCalendarSlot.date,
+          estimated_total: 0,
+          notes
+        })
+      });
+
       await crmFetch<{ event: CrmCalendarEvent }>(session, "/api/crm/calendar", {
         method: "POST",
         body: JSON.stringify({
-          job_id: jobId || null,
-          title: formString(formData, "title") || (job ? `${job.customer_name} consultation` : "Sales appointment"),
-          event_type: formString(formData, "event_type") || "sales_consult",
-          assigned_to: formString(formData, "assigned_to") || "Unassigned",
-          start_at: start.toISOString(),
-          end_at: end.toISOString(),
-          location: formString(formData, "location") || job?.address,
-          notes: formString(formData, "notes")
+          job_id: job.id,
+          title: `${customerName} consultation`,
+          event_type: "sales_consult",
+          assigned_to: assignedTo,
+          start_at: selectedCalendarSlot.startAt,
+          end_at: selectedCalendarSlot.endAt,
+          location: address,
+          notes
         })
       });
+
       event.currentTarget.reset();
+      setSelectedCalendarSlot(null);
       await refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Calendar event could not be saved.");
+      setMessage(error instanceof Error ? error.message : "Appointment could not be saved.");
+      await refresh();
     } finally {
       setBusy(false);
     }
@@ -1037,70 +1159,22 @@ export function CrmApp() {
       ) : null}
 
       {activeTab === "calendar" ? (
-        <section className="crm-workspace crm-workspace-wide">
-          <aside className="crm-panel">
-            <h2>Schedule</h2>
-            <form className="crm-form" onSubmit={createEvent}>
-              <label>
-                Job
-                <select name="job_id">
-                  <option value="">No linked job</option>
-                  {jobs.map((job) => (
-                    <option value={job.id} key={job.id}>
-                      {job.customer_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Title
-                <input name="title" placeholder="Sales consultation" />
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Date
-                  <input name="date" type="date" required defaultValue={todayInputValue()} />
-                </label>
-                <label>
-                  Time
-                  <input name="time" type="time" required defaultValue="09:00" />
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Duration
-                  <select name="duration" defaultValue="90">
-                    <option value="60">1 hour</option>
-                    <option value="90">1.5 hours</option>
-                    <option value="120">2 hours</option>
-                    <option value="180">3 hours</option>
-                  </select>
-                </label>
-                <label>
-                  Assigned
-                  <select name="assigned_to" defaultValue="Unassigned">
-                    {ownerOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <label>
-                Location
-                <input name="location" placeholder="Customer address" />
-              </label>
-              <label>
-                Notes
-                <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />
-              </label>
-              <button type="submit" disabled={busy}>
-                Add Event
-              </button>
-            </form>
-          </aside>
-
-          <CalendarAgenda events={events} />
-        </section>
+        <>
+          <CalendarPlanner
+            events={events}
+            weekStart={calendarWeekStart}
+            onWeekStartChange={setCalendarWeekStart}
+            onSelectSlot={setSelectedCalendarSlot}
+          />
+          {selectedCalendarSlot ? (
+            <CalendarAppointmentModal
+              busy={busy}
+              selectedSlot={selectedCalendarSlot}
+              onClose={() => setSelectedCalendarSlot(null)}
+              onSubmit={createAppointmentFromSlot}
+            />
+          ) : null}
+        </>
       ) : null}
 
       {activeTab === "availability" && session ? (
@@ -2000,27 +2074,182 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
   );
 }
 
-function CalendarAgenda({ events }: { events: CrmCalendarEvent[] }) {
+function CalendarPlanner({
+  events,
+  weekStart,
+  onWeekStartChange,
+  onSelectSlot
+}: {
+  events: CrmCalendarEvent[];
+  weekStart: string;
+  onWeekStartChange: (weekStart: string) => void;
+  onSelectSlot: (slot: CalendarSlotSelection) => void;
+}) {
+  const days = useMemo(() => calendarWeekDays(weekStart), [weekStart]);
+  const weekEnd = days[days.length - 1];
+  const weekStartAt = zonedTimeToUtc(weekStart, "00:00");
+  const weekEndAt = zonedTimeToUtc(addCalendarDays(weekEnd, 1), "00:00");
+  const visibleEvents = events.filter((event) => {
+    if (!isActiveCalendarEvent(event)) return false;
+    return new Date(event.start_at) < weekEndAt && new Date(event.end_at) > weekStartAt;
+  });
+
   return (
-    <section className="crm-ledger">
+    <section className="crm-calendar-board">
       <div className="crm-section-head">
-        <p className="eyebrow">Calendar</p>
-        <h2>Upcoming Sales Work</h2>
+        <div>
+          <p className="eyebrow">Calendar</p>
+          <h2>Sales Appointment Calendar</h2>
+        </div>
+        <div className="crm-calendar-actions" aria-label="Calendar week navigation">
+          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(addCalendarDays(weekStart, -7))}>
+            Previous
+          </button>
+          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(startOfCalendarWeek(losAngelesDateString()))}>
+            Today
+          </button>
+          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(addCalendarDays(weekStart, 7))}>
+            Next
+          </button>
+        </div>
       </div>
-      <div className="crm-agenda">
-        {events.map((event) => (
-          <article className="crm-event-card" key={event.id}>
-            <time>{formatDate(event.start_at)}</time>
-            <div>
-              <h3>{event.title}</h3>
-              <p>{event.customer_name || event.location || "805 Shutters"}</p>
+
+      <div className="crm-calendar-week-label">
+        <strong>
+          {formatCalendarDay(weekStart)} - {formatCalendarDay(weekEnd)}
+        </strong>
+        <span>{visibleEvents.length} scheduled</span>
+      </div>
+
+      <div className="crm-calendar-grid-wrap">
+        <div className="crm-calendar-grid">
+          <div className="crm-calendar-time-head">Time</div>
+          {days.map((day) => (
+            <div className="crm-calendar-day-head" key={day}>
+              <span>{formatCalendarDay(day).split(",")[0]}</span>
+              <strong>{formatCalendarDay(day).replace(/^[^,]+,?\s*/, "")}</strong>
             </div>
-            <span>{event.assigned_to}</span>
-          </article>
-        ))}
-        {!events.length ? <p className="crm-empty">No calendar events yet.</p> : null}
+          ))}
+
+          {calendarSlotHours.map((hour) => (
+            <Fragment key={hour}>
+              <div className="crm-calendar-time-label">
+                <strong>{formatCalendarHour(hour)}</strong>
+                <span>{formatCalendarHour(hour + 1)}</span>
+              </div>
+              {days.map((day) => {
+                const event = findCalendarEventForSlot(events, day, hour);
+                const past = isPastCalendarSlot(day, hour);
+                const slot = calendarSlotSelection(day, hour);
+
+                return (
+                  <button
+                    type="button"
+                    className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
+                    disabled={Boolean(event) || past}
+                    key={`${day}-${hour}`}
+                    onClick={() => onSelectSlot(slot)}
+                  >
+                    <span>{event ? event.title : "Open"}</span>
+                    <small>
+                      {event
+                        ? `${calendarTimeFormatter.format(new Date(event.start_at))} ${event.assigned_to}`
+                        : "Add appointment"}
+                    </small>
+                  </button>
+                );
+              })}
+            </Fragment>
+          ))}
+        </div>
       </div>
     </section>
+  );
+}
+
+function CalendarAppointmentModal({
+  selectedSlot,
+  busy,
+  onClose,
+  onSubmit
+}: {
+  selectedSlot: CalendarSlotSelection;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  return (
+    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment form" onClick={onClose} />
+      <section className="crm-slot-form-panel">
+        <div className="crm-slot-form-head">
+          <div>
+            <p className="eyebrow">New Appointment</p>
+            <h2 id="crm-slot-modal-title">{formatCalendarLongDay(selectedSlot.date)}</h2>
+          </div>
+          <button type="button" className="crm-slot-close" aria-label="Close appointment form" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
+        <form className="crm-form" onSubmit={onSubmit}>
+          <div className="crm-field-row">
+            <label>
+              Customer
+              <input name="customer_name" required placeholder="Customer name" autoFocus />
+            </label>
+            <label>
+              Phone
+              <input name="phone" required placeholder="805-000-0000" />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Email
+              <input name="email" type="email" placeholder="customer@email.com" />
+            </label>
+            <label>
+              City
+              <input name="city" placeholder="Ventura" />
+            </label>
+          </div>
+          <label>
+            Address
+            <input name="address" placeholder="Project address" />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Product
+              <select name="product_interest" defaultValue="Shutters">
+                {productOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Assigned
+              <select name="assigned_to" defaultValue="Unassigned">
+                {ownerOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Job Notes
+            <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />
+          </label>
+          <div className="crm-slot-actions">
+            <button type="button" className="crm-ghost-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={busy}>
+              {busy ? "Saving..." : "Save Appointment"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
 

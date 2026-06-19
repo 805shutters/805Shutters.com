@@ -604,16 +604,12 @@ export async function updateCrmJob(
 
 async function assertCalendarWindowAvailable(
   supabase: CrmSupabaseClient,
-  assignedTo: string,
   startAt: string,
   endAt: string
 ) {
-  if (assignedTo === "Unassigned") return;
-
   const { data, error } = await supabase
     .from("crm_calendar_events")
     .select("id,title,start_at,end_at")
-    .eq("assigned_to", assignedTo)
     .in("status", ["scheduled", "rescheduled"])
     .lt("start_at", endAt)
     .gt("end_at", startAt)
@@ -639,7 +635,7 @@ export async function createCrmCalendarEvent(
   }
 
   const assignedTo = optionalText(payload.assigned_to) || "Unassigned";
-  await assertCalendarWindowAvailable(supabase, assignedTo, startAt, endAt);
+  await assertCalendarWindowAvailable(supabase, startAt, endAt);
 
   const record = {
     job_id: payload.job_id || null,
