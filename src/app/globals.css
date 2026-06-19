@@ -6786,3 +6786,20 @@ html.mobile-menu-open {
     display: none;
   }
 }
+
+/* --- White header height reduction (~20%) ---------------------------------
+   The brand wordmark PNG (805-shutters-logo-exact-transparent.png, 1144x1080)
+   bakes in a tall band of transparent space below the lettering (~39% of its
+   height) plus some above. That dead space — not the wordmark — is what made
+   the masthead tall. Crop it with aspect-ratio + object-fit:cover, keeping the
+   image WIDTH (and therefore the rendered size of the wordmark) unchanged, so
+   the white header sits ~20% shorter without altering any text or the logo's
+   visible size. Desktop only; the mobile compact header keeps its own sizing. */
+@media (min-width: 621px) {
+  .brand.brand--exact .brand-logo-exact {
+    aspect-ratio: 1144 / 770;
+    height: auto !important;
+    object-fit: cover;
+    object-position: 50% 5%;
+  }
+}
