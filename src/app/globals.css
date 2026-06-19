@@ -3240,6 +3240,7 @@ body:has(.crm-app-shell) {
 .crm-calendar-grid {
   display: grid;
   grid-template-columns: 92px repeat(7, minmax(142px, 1fr));
+  grid-template-rows: 70px repeat(9, minmax(82px, auto));
   min-width: 1086px;
   background: var(--line);
   gap: 1px;
@@ -3355,9 +3356,165 @@ body:has(.crm-app-shell) {
   color: #806a4f;
 }
 
+.crm-calendar-slot--taken span,
+.crm-calendar-slot--taken small {
+  opacity: 0;
+}
+
 .crm-calendar-slot--past {
   background: #f5f2ed;
   color: #9b907f;
+  cursor: not-allowed;
+}
+
+.crm-calendar-event-block {
+  z-index: 2;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  margin: 7px;
+  padding: 10px 11px;
+  overflow: hidden;
+  background: #214f43;
+  border: 1px solid #183c33;
+  color: var(--white);
+  box-shadow: 0 10px 24px rgba(31, 26, 20, 0.16);
+}
+
+.crm-calendar-event-block h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.crm-calendar-event-block p,
+.crm-calendar-event-block span {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.crm-availability-workspace {
+  grid-template-columns: minmax(270px, 320px) minmax(0, 1fr);
+}
+
+.crm-availability-month-controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.crm-availability-month-controls strong {
+  min-width: 130px;
+  text-align: center;
+}
+
+.crm-availability-panel {
+  min-width: 0;
+  padding: 20px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-availability-grid-wrap {
+  overflow-x: auto;
+}
+
+.crm-availability-grid {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.crm-availability-grid th,
+.crm-availability-grid td {
+  padding: 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+.crm-availability-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.crm-availability-grid th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 120px;
+  background: var(--white);
+  text-align: left;
+}
+
+.crm-availability-grid thead th:first-child {
+  z-index: 3;
+}
+
+.crm-availability-slot,
+.crm-availability-day-button {
+  width: 100%;
+  min-height: 44px;
+  min-width: 88px;
+  padding: 8px 10px;
+  border: 1px dashed #b8c4cf;
+  background: var(--white);
+  color: #65727d;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.crm-availability-slot:hover,
+.crm-availability-day-button:hover {
+  transform: none;
+}
+
+.crm-availability-slot:not(:disabled):hover,
+.crm-availability-slot:not(:disabled):focus-visible,
+.crm-availability-day-button:not(:disabled):hover,
+.crm-availability-day-button:not(:disabled):focus-visible {
+  border-style: solid;
+  border-color: #214f43;
+  color: #214f43;
+}
+
+.crm-availability-slot--open,
+.crm-availability-day-button--open {
+  border-style: solid;
+  border-color: #214f43;
+  background: #214f43;
+  color: var(--white);
+}
+
+.crm-availability-day-button--partial {
+  border-style: solid;
+  border-color: #8d744f;
+  background: #efe7dc;
+  color: #5f4e39;
+}
+
+.crm-availability-slot--booked,
+.crm-availability-slot:disabled,
+.crm-availability-day-button:disabled {
+  border-style: solid;
+  border-color: #d9d5cc;
+  background: #f2f0eb;
+  color: #8b867a;
   cursor: not-allowed;
 }
 

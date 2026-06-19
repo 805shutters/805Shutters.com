@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buildBookingAvailability, freeRepsForSlot, zonedTimeToUtc } from "./availability";
+import {
+  bookingSlotDurationMinutes,
+  bookingSlotTimes,
+  buildBookingAvailability,
+  freeRepsForSlot,
+  zonedTimeToUtc
+} from "./availability";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
 function eventAt(date: string, time: string): CrmCalendarEvent {
   const start = zonedTimeToUtc(date, time);
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
 
   return {
     id: "event-1",
@@ -24,7 +30,7 @@ function eventAt(date: string, time: string): CrmCalendarEvent {
 
 function publishedSlot(date: string, time: string): CrmAvailabilitySlot {
   const start = zonedTimeToUtc(date, time);
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
 
   return {
     id: "slot-1",
@@ -47,6 +53,7 @@ describe("buildBookingAvailability", () => {
 
     expect(monday?.available).toBe(true);
     expect(monday?.slots.some((slot) => slot.available)).toBe(true);
+    expect(monday?.slots.map((slot) => slot.time)).toEqual(bookingSlotTimes);
   });
 
   it("keeps Sundays unavailable in legacy fallback mode", () => {

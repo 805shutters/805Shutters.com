@@ -1,8 +1,11 @@
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
 const timeZone = "America/Los_Angeles";
-const slotTimes = ["09:00", "11:00", "13:00", "15:00"];
-const defaultDurationMinutes = 90;
+export const bookingSlotTimes = Array.from(
+  { length: 9 },
+  (_item, index) => `${String(index + 8).padStart(2, "0")}:00`
+);
+export const bookingSlotDurationMinutes = 60;
 export const fallbackBookingOwner = "Unassigned";
 
 type SupabaseQueryError = {
@@ -150,9 +153,9 @@ export function buildBookingAvailability(
     const date = `${year}-${String(monthNumber).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const isPast = date < today;
     const isSunday = dayOfWeek(date) === 0;
-    const slots = slotTimes.map((time) => {
+    const slots = bookingSlotTimes.map((time) => {
       const start = zonedTimeToUtc(date, time);
-      const end = addMinutes(start, defaultDurationMinutes);
+      const end = addMinutes(start, bookingSlotDurationMinutes);
       const available = usePublishedSlots
         ? !isPast && repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start), start, end, events).length > 0
         : !isPast && !isSunday && !hasOverlap(events, start, end);
@@ -198,7 +201,7 @@ export function freeRepsForSlot(
   events: CrmCalendarEvent[]
 ) {
   const start = zonedTimeToUtc(date, time);
-  const end = addMinutes(start, defaultDurationMinutes);
+  const end = addMinutes(start, bookingSlotDurationMinutes);
 
   if (!availabilitySlots) {
     return dayOfWeek(date) !== 0 && !hasOverlap(events, start, end) ? [fallbackBookingOwner] : [];
@@ -208,5 +211,5 @@ export function freeRepsForSlot(
 }
 
 export function bookingEndIso(date: string, time: string) {
-  return addMinutes(zonedTimeToUtc(date, time), defaultDurationMinutes).toISOString();
+  return addMinutes(zonedTimeToUtc(date, time), bookingSlotDurationMinutes).toISOString();
 }

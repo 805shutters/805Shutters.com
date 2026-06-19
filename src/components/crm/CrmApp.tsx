@@ -5,7 +5,12 @@ import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
+import {
+  bookingSlotDurationMinutes,
+  bookingSlotTimes,
+  losAngelesDateString,
+  zonedTimeToUtc
+} from "@/lib/booking/availability";
 import {
   CrmAccountabilityItem,
   CrmAvailabilitySlot,
@@ -50,7 +55,7 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
 ];
-const calendarSlotHours = Array.from({ length: 9 }, (_item, index) => index + 8);
+const calendarSlotHours = bookingSlotTimes.map((time) => Number(time.slice(0, 2)));
 const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
@@ -141,7 +146,7 @@ function calendarSlotStart(date: string, hour: number) {
 
 function calendarSlotSelection(date: string, hour: number): CalendarSlotSelection {
   const start = calendarSlotStart(date, hour);
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
 
   return {
     date,
@@ -187,6 +192,37 @@ function findCalendarEventForSlot(events: CrmCalendarEvent[], date: string, hour
 function isPastCalendarSlot(date: string, hour: number) {
   const selection = calendarSlotSelection(date, hour);
   return new Date(selection.endAt) <= new Date();
+}
+
+function calendarEventPlacement(event: CrmCalendarEvent, days: string[]) {
+  const eventStart = new Date(event.start_at);
+  const eventEnd = new Date(event.end_at);
+  const dayIndex = days.findIndex((day) => {
+    const dayStart = zonedTimeToUtc(day, "00:00");
+    const dayEnd = zonedTimeToUtc(addCalendarDays(day, 1), "00:00");
+    return eventStart < dayEnd && eventEnd > dayStart;
+  });
+
+  if (dayIndex < 0) return null;
+
+  const day = days[dayIndex];
+  const overlappingRows = calendarSlotHours
+    .map((hour, index) => {
+      const slot = calendarSlotSelection(day, hour);
+      return eventStart < new Date(slot.endAt) && eventEnd > new Date(slot.startAt) ? index : -1;
+    })
+    .filter((index) => index >= 0);
+
+  if (!overlappingRows.length) return null;
+
+  const firstRow = Math.min(...overlappingRows);
+  const lastRow = Math.max(...overlappingRows);
+
+  return {
+    column: dayIndex + 2,
+    rowStart: firstRow + 2,
+    rowEnd: lastRow + 3
+  };
 }
 
 function formString(formData: FormData, key: string) {
@@ -1866,12 +1902,10 @@ function OrderBoard({
   );
 }
 
-const AVAILABILITY_SLOTS = [
-  { time: "09:00", label: "9:00 AM" },
-  { time: "11:00", label: "11:00 AM" },
-  { time: "13:00", label: "1:00 PM" },
-  { time: "15:00", label: "3:00 PM" }
-];
+const AVAILABILITY_SLOTS = bookingSlotTimes.map((time) => ({
+  time,
+  label: calendarTimeFormatter.format(zonedTimeToUtc("2026-01-05", time))
+}));
 
 const AVAILABILITY_REPS = ["Jessica", "Mike"];
 
@@ -1917,7 +1951,7 @@ function availabilityMonthDays(month: string) {
 
 function isSlotBooked(owner: string, date: string, time: string, events: CrmCalendarEvent[]) {
   const start = zonedTimeToUtc(date, time);
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
+  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
   return events.some(
     (event) =>
       event.status !== "canceled" &&
@@ -1963,21 +1997,29 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
   const today = losAngelesDateString();
   const days = useMemo(() => availabilityMonthDays(month).filter((date) => date >= today), [month, today]);
 
+  async function reloadSlots() {
+    const result = await crmFetch<{ slots: AvailabilitySlotRow[] }>(
+      session,
+      `/api/crm/availability?month=${month}`
+    );
+    setSlots(result.slots || []);
+  }
+
+  async function setAvailability(date: string, time: string, open: boolean) {
+    await crmFetch(session, "/api/crm/availability", {
+      method: open ? "POST" : "DELETE",
+      body: JSON.stringify({ owner, date, time })
+    });
+  }
+
   async function toggle(date: string, time: string) {
     const key = `${date} ${time}`;
     const isOpen = openKeys.has(key);
     setBusyKey(key);
     setError(null);
     try {
-      await crmFetch(session, "/api/crm/availability", {
-        method: isOpen ? "DELETE" : "POST",
-        body: JSON.stringify({ owner, date, time })
-      });
-      const result = await crmFetch<{ slots: AvailabilitySlotRow[] }>(
-        session,
-        `/api/crm/availability?month=${month}`
-      );
-      setSlots(result.slots || []);
+      await setAvailability(date, time, !isOpen);
+      await reloadSlots();
     } catch (toggleError) {
       setError(toggleError instanceof Error ? toggleError.message : "Could not update open times.");
     } finally {
@@ -1985,8 +2027,29 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
     }
   }
 
+  async function toggleDay(date: string) {
+    const openableSlots = AVAILABILITY_SLOTS.filter((slot) => !isSlotBooked(owner, date, slot.time, events));
+    const shouldOpen = openableSlots.some((slot) => !openKeys.has(`${date} ${slot.time}`));
+    const targetSlots = openableSlots.filter((slot) =>
+      shouldOpen ? !openKeys.has(`${date} ${slot.time}`) : openKeys.has(`${date} ${slot.time}`)
+    );
+
+    if (!targetSlots.length) return;
+
+    setBusyKey(`${date} all`);
+    setError(null);
+    try {
+      await Promise.all(targetSlots.map((slot) => setAvailability(date, slot.time, shouldOpen)));
+      await reloadSlots();
+    } catch (toggleError) {
+      setError(toggleError instanceof Error ? toggleError.message : "Could not update the full day.");
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   return (
-    <section className="crm-workspace crm-workspace-wide">
+    <section className="crm-workspace crm-workspace-wide crm-availability-workspace">
       <aside className="crm-panel">
         <h2>Open Times</h2>
         <p className="crm-help">
@@ -2001,63 +2064,82 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
             ))}
           </select>
         </label>
-        <div className="crm-field-row" style={{ alignItems: "center", gap: "0.75rem" }}>
+        <div className="crm-availability-month-controls">
           <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, -1))}>
-            ‹ Prev
+            Prev
           </button>
           <strong>{availabilityMonthLabel(month)}</strong>
           <button type="button" className="crm-ghost-button" onClick={() => setMonth(shiftMonthValue(month, 1))}>
-            Next ›
+            Next
           </button>
         </div>
         {error ? <p className="crm-alert">{error}</p> : null}
       </aside>
 
-      <div className="crm-panel" style={{ overflowX: "auto" }}>
+      <div className="crm-availability-panel">
         {loading ? (
-          <p>Loading open times…</p>
+          <p className="crm-empty">Loading open times...</p>
         ) : days.length === 0 ? (
-          <p>No upcoming days this month.</p>
+          <p className="crm-empty">No upcoming days this month.</p>
         ) : (
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", padding: "0.4rem 0.6rem" }}>Day</th>
+          <div className="crm-availability-grid-wrap">
+            <table className="crm-availability-grid">
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>All Day</th>
                 {AVAILABILITY_SLOTS.map((slot) => (
-                  <th key={slot.time} style={{ padding: "0.4rem 0.6rem" }}>
-                    {slot.label}
-                  </th>
+                    <th key={slot.time}>{slot.label}</th>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
+                </tr>
+              </thead>
+              <tbody>
               {days.map((date) => (
                 <tr key={date}>
-                  <th scope="row" style={{ textAlign: "left", padding: "0.4rem 0.6rem", whiteSpace: "nowrap" }}>
+                    <th scope="row">
                     {availabilityDayLabel(date)}
                   </th>
+                    {(() => {
+                      const openableSlots = AVAILABILITY_SLOTS.filter(
+                        (slot) => !isSlotBooked(owner, date, slot.time, events)
+                      );
+                      const allOpen =
+                        openableSlots.length > 0 &&
+                        openableSlots.every((slot) => openKeys.has(`${date} ${slot.time}`));
+                      const someOpen = openableSlots.some((slot) => openKeys.has(`${date} ${slot.time}`));
+                      const dayBusy = busyKey === `${date} all`;
+
+                      return (
+                        <td>
+                          <button
+                            type="button"
+                            className={`crm-availability-day-button${allOpen ? " crm-availability-day-button--open" : ""}${
+                              someOpen && !allOpen ? " crm-availability-day-button--partial" : ""
+                            }`}
+                            onClick={() => toggleDay(date)}
+                            disabled={!openableSlots.length || dayBusy}
+                          >
+                            {allOpen ? "Clear Day" : "All Day"}
+                          </button>
+                        </td>
+                      );
+                    })()}
                   {AVAILABILITY_SLOTS.map((slot) => {
                     const key = `${date} ${slot.time}`;
                     const open = openKeys.has(key);
                     const booked = isSlotBooked(owner, date, slot.time, events);
-                    const label = booked ? "Booked" : open ? "Open" : "—";
+                      const busy = busyKey === key || busyKey === `${date} all`;
+                      const label = booked ? "Booked" : open ? "Available" : "Closed";
                     return (
-                      <td key={slot.time} style={{ padding: "0.25rem 0.4rem", textAlign: "center" }}>
+                        <td key={slot.time}>
                         <button
                           type="button"
+                            className={`crm-availability-slot${open ? " crm-availability-slot--open" : ""}${
+                              booked ? " crm-availability-slot--booked" : ""
+                            }`}
                           onClick={() => toggle(date, slot.time)}
-                          disabled={booked || busyKey === key}
-                          title={booked ? "Already booked" : open ? "Open — click to close" : "Closed — click to open"}
-                          style={{
-                            minWidth: 72,
-                            padding: "0.35rem 0.5rem",
-                            borderRadius: 6,
-                            cursor: booked ? "default" : "pointer",
-                            border: open ? "none" : "1px dashed #b9c2cc",
-                            background: booked ? "#e9edf1" : open ? "#1f7a4d" : "transparent",
-                            color: booked ? "#5b6670" : open ? "#ffffff" : "#7a838d",
-                            fontWeight: open ? 600 : 400
-                          }}
+                            disabled={booked || busy}
+                            title={booked ? "Already booked" : open ? "Available - click to close" : "Closed - click to open"}
                         >
                           {label}
                         </button>
@@ -2066,8 +2148,9 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
                   })}
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>
@@ -2150,17 +2233,35 @@ function CalendarPlanner({
                     key={`${day}-${hour}`}
                     onClick={() => onSelectSlot(slot)}
                   >
-                    <span>{event ? event.title : "Open"}</span>
-                    <small>
-                      {event
-                        ? `${calendarTimeFormatter.format(new Date(event.start_at))} ${event.assigned_to}`
-                        : "Add appointment"}
-                    </small>
+                    <span>{event ? "Booked" : "Open"}</span>
+                    <small>{event ? "Scheduled" : "Add appointment"}</small>
                   </button>
                 );
               })}
             </Fragment>
           ))}
+          {visibleEvents.map((event) => {
+            const placement = calendarEventPlacement(event, days);
+            if (!placement) return null;
+
+            return (
+              <article
+                className="crm-calendar-event-block"
+                key={event.id}
+                style={{
+                  gridColumn: placement.column,
+                  gridRow: `${placement.rowStart} / ${placement.rowEnd}`
+                }}
+              >
+                <h3>{event.title}</h3>
+                <p>
+                  {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
+                  {calendarTimeFormatter.format(new Date(event.end_at))}
+                </p>
+                <span>{event.assigned_to}</span>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>
