@@ -245,15 +245,22 @@ function bookingPlainText(details: BookingAutomationDetails, customerFacing: boo
   const appointmentLabel = formatAppointmentForEmail(details.startAt);
 
   if (customerFacing) {
+    const firstName = details.name.trim().split(/\s+/)[0] || "there";
     return [
-      "Your free in-home consultation with 805 Shutters is confirmed.",
+      `Hi ${firstName},`,
       "",
-      `Appointment: ${appointmentLabel}`,
-      `Address: ${details.address}`,
-      details.productTypes.length ? `Product interest: ${details.productInterest}` : null,
-      details.windowCount ? `Approximate window quantity: ${details.windowCount}` : null,
+      "You're all set — your free in-home consultation with 805 Shutters is confirmed.",
       "",
-      "Reply to this email or call/text 805-806-9344 if anything changes."
+      `When:  ${appointmentLabel}`,
+      `Where: ${details.address}`,
+      details.productTypes.length ? `Interested in: ${details.productInterest}` : null,
+      "",
+      "Our designer will bring samples, measure your windows, and put together an honest quote — no pressure.",
+      "",
+      "Need to reschedule or have a question? Just reply to this email or call/text 805-806-9344.",
+      "",
+      "See you soon,",
+      "805 Shutters"
     ]
       .filter((line) => line !== null)
       .join("\n");
@@ -279,7 +286,30 @@ function bookingPlainText(details: BookingAutomationDetails, customerFacing: boo
 }
 
 function bookingHtml(details: BookingAutomationDetails, customerFacing: boolean) {
-  const lines = bookingPlainText(details, customerFacing)
+  if (customerFacing) {
+    const firstName = escapeHtml(details.name.trim().split(/\s+/)[0] || "there");
+    const appointmentLabel = escapeHtml(formatAppointmentForEmail(details.startAt));
+    const address = escapeHtml(details.address);
+    const interest = details.productTypes.length
+      ? `<p style="margin:6px 0 0;color:#555">Interested in: ${escapeHtml(details.productInterest)}</p>`
+      : "";
+
+    return `<div style="font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;max-width:480px;margin:0 auto;padding:8px;color:#1a1a1a;line-height:1.6">
+  <p style="font-size:22px;font-weight:600;margin:0 0 2px">You're booked 🎉</p>
+  <p style="margin:0 0 22px;color:#666">Thanks for choosing 805 Shutters, ${firstName}.</p>
+  <div style="background:#f5f4f2;border-radius:12px;padding:18px 20px;margin:0 0 22px">
+    <p style="margin:0 0 4px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#999">Your consultation</p>
+    <p style="margin:0 0 10px;font-size:17px;font-weight:600">${appointmentLabel}</p>
+    <p style="margin:0;color:#555">${address}</p>
+    ${interest}
+  </div>
+  <p style="margin:0 0 22px">Our designer will bring samples, measure your windows, and put together an honest quote — no pressure, just ideas.</p>
+  <p style="margin:0;color:#666">Need to reschedule or have a question? Reply to this email or call/text <a href="tel:+18058069344" style="color:#1a1a1a;font-weight:600">805-806-9344</a>.</p>
+  <p style="margin:26px 0 0;font-size:13px;color:#aaa">805 Shutters</p>
+</div>`;
+  }
+
+  const lines = bookingPlainText(details, false)
     .split("\n")
     .map((line) => (line ? `<p>${escapeHtml(line)}</p>` : "<br />"))
     .join("");

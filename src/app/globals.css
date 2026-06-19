@@ -6632,16 +6632,72 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 }
 
 /* CRM inline edit affordances */
-.crm-edit-head {
+.crm-edit-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Collapsible entry panels — collapsed to a "+" button, expand inline */
+.crm-panel-collapsed {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.crm-panel-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 11px 16px;
+  background: var(--white);
+  border: 1px dashed var(--line);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.crm-panel-add:hover {
+  border-color: var(--ink);
+  color: var(--accent);
+}
+
+.crm-panel-add-icon {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.crm-panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 16px;
 }
 
-.crm-edit-actions {
-  display: flex;
-  gap: 10px;
+.crm-panel-head h2 {
+  margin: 0;
+}
+
+.crm-panel-collapse {
+  min-height: 30px;
+  padding: 2px 10px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* When a panel is collapsed, let the data view reclaim its width (desktop only) */
+@media (min-width: 921px) {
+  .crm-workspace:has(.crm-panel-collapsed) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
 }
 
 .crm-card-edit {

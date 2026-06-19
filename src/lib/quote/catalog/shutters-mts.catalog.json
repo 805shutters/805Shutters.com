@@ -1,0 +1,1009 @@
+{
+  "source": "MTS pricingData.ts (pre-2026) — PROVISIONAL, verify against current Norman/Onyx guide",
+  "products": [
+    {
+      "id": "norman_shutters",
+      "productType": "shutter",
+      "name": "Norman Shutters",
+      "pages": [],
+      "provisional": true,
+      "source": "MTS pricingData.ts (pre-2026) — PROVISIONAL, verify against current Norman/Onyx guide",
+      "fabricRouting": null,
+      "programs": [
+        {
+          "id": "woodlore",
+          "name": "Woodlore",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 39.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "woodlore_plus",
+          "name": "Woodlore Plus",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 41.5,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "woodlore_aquashield",
+          "name": "Woodlore Aquashield",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 48.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "brightwood",
+          "name": "Brightwood",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 44.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "normandy_painted",
+          "name": "Normandy Painted",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 47.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "normandy_stained",
+          "name": "Normandy Stained",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 48.5,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        }
+      ],
+      "surcharges": [
+        {
+          "id": "premium_colors",
+          "name": "Premium Colors",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "l_frames_with_1_2in_or_1in_buildout",
+          "name": "L Frames with 1/2\" or 1\" Buildout",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "deco_frames_with_1_2in_1in_or_1_1_2in_extension",
+          "name": "Deco Frames with 1/2\", 1\", or 1 1/2\" Extension",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "frames_with_custom_extension",
+          "name": "Frames with Custom Extension",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "t_post_extension",
+          "name": "T-Post Extension",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "custom_width_t_post",
+          "name": "Custom-width T-post",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "custom_angle_bay_post",
+          "name": "Custom Angle Bay Post",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "pre_drilled_z_and_l_frames",
+          "name": "Pre-Drilled Z & L Frames",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "stainless_steel_hinges",
+          "name": "Stainless Steel Hinges",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "batten_back_fd_e_and_f",
+          "name": "Batten Back (FD E & F)",
+          "kind": "percent",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "invisiblehinge",
+          "name": "InvisibleHinge",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "1_7_8in_louvers",
+          "name": "1 7/8\" Louvers",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "4_5in_louvers",
+          "name": "4.5\" Louvers",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "double_hung",
+          "name": "Double-Hung",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "cafe_shutters",
+          "name": "Cafe Shutters",
+          "kind": "percent",
+          "per": "unit",
+          "value": 30,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "bypass_and_bifold_track_shutters",
+          "name": "Bypass & Bifold Track Shutters",
+          "kind": "percent",
+          "per": "unit",
+          "value": 40,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "floating_panels",
+          "name": "Floating Panels",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "bypass_track",
+          "name": "Bypass Track",
+          "kind": "percent",
+          "per": "unit",
+          "value": 40,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "bifold_180",
+          "name": "Bifold 180",
+          "kind": "percent",
+          "per": "unit",
+          "value": 40,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "floating_90_bifold",
+          "name": "Floating 90 Bifold",
+          "kind": "percent",
+          "per": "unit",
+          "value": 45,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "interlocking_bottom_guide",
+          "name": "Interlocking Bottom Guide",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "triple_track",
+          "name": "Triple Track",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "track_only",
+          "name": "Track Only",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "track_w_header_and_fascia",
+          "name": "Track w/ Header & Fascia",
+          "kind": "percent",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "shutter_pole",
+          "name": "Shutter Pole",
+          "kind": "flat",
+          "per": "unit",
+          "value": 40,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "pole_attachment",
+          "name": "Pole Attachment",
+          "kind": "flat",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "keystone",
+          "name": "Keystone",
+          "kind": "flat",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "custom_color_per_order",
+          "name": "Custom Color (per order)",
+          "kind": "flat",
+          "per": "once",
+          "value": 200,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "frame_and_light_block_notch_out",
+          "name": "Frame & Light Block Notch Out",
+          "kind": "flat",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "hand_carved_rail",
+          "name": "Hand Carved Rail",
+          "kind": "flat",
+          "per": "unit",
+          "value": 50,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "offset_tilt_rod",
+          "name": "Offset Tilt Rod",
+          "kind": "flat",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "invisibletilt",
+          "name": "InvisibleTilt",
+          "kind": "flat",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "autotilt",
+          "name": "AutoTilt",
+          "kind": "flat",
+          "per": "unit",
+          "value": 70,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "raised_panel",
+          "name": "Raised Panel",
+          "kind": "flat",
+          "per": "unit",
+          "value": 60,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "ring_pulls_or_handles",
+          "name": "Ring Pulls or Handles",
+          "kind": "flat",
+          "per": "unit",
+          "value": 15,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "panel_locks",
+          "name": "Panel Locks",
+          "kind": "flat",
+          "per": "unit",
+          "value": 15,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "custom_divider_rail",
+          "name": "Custom Divider Rail",
+          "kind": "flat",
+          "per": "unit",
+          "value": 21,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "liberty_arch",
+          "name": "Liberty Arch",
+          "kind": "flat",
+          "per": "unit",
+          "value": 60,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "french_door_cutout",
+          "name": "French Door Cutout",
+          "kind": "flat",
+          "per": "unit",
+          "value": 200,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "angle_top",
+          "name": "Angle Top",
+          "kind": "flat",
+          "per": "unit",
+          "value": 215,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "arch_top_picture_window_with_horizontal_louvers",
+          "name": "Arch Top Picture Window with Horizontal Louvers",
+          "kind": "flat",
+          "per": "unit",
+          "value": 322.5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "quarter_sunburst_panel_with_continuous_frame",
+          "name": "Quarter Sunburst Panel with Continuous Frame",
+          "kind": "flat",
+          "per": "unit",
+          "value": 430,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "horizontal_center_arch_with_quarter_round_side_panels",
+          "name": "Horizontal Center Arch with Quarter Round Side Panels",
+          "kind": "flat",
+          "per": "unit",
+          "value": 430,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "sunburst_center_arch_with_quarter_round_side_panels",
+          "name": "Sunburst Center Arch with Quarter Round Side Panels",
+          "kind": "flat",
+          "per": "unit",
+          "value": 645,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "all_other_shapes",
+          "name": "All Other Shapes",
+          "kind": "flat",
+          "per": "unit",
+          "value": 215,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "clearview_tilt_rod",
+          "name": "Clearview Tilt Rod",
+          "kind": "flat",
+          "per": "unit",
+          "value": 20,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        }
+      ],
+      "fabricByYard": [],
+      "notes": [
+        "Priced per square foot by wood/composite program. 8 sq ft minimum."
+      ]
+    },
+    {
+      "id": "onyx_shutters",
+      "productType": "shutter",
+      "name": "Onyx Shutters",
+      "pages": [],
+      "provisional": true,
+      "source": "MTS pricingData.ts (pre-2026) — PROVISIONAL, verify against current Norman/Onyx guide",
+      "fabricRouting": null,
+      "programs": [
+        {
+          "id": "painted_basswood",
+          "name": "Painted Basswood",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 31.5,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "stained_basswood",
+          "name": "Stained Basswood",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 38.5,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "secamore",
+          "name": "Secamore",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 25.55,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "vinyl",
+          "name": "Vinyl",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 28.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "vlo_hybrid",
+          "name": "VLO Hybrid",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 28.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "onyx_us_made_vinyl",
+          "name": "Onyx US Made Vinyl",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 31.85,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        },
+        {
+          "id": "poly_composite",
+          "name": "Poly Composite",
+          "priceGroup": null,
+          "priceAxis": "sqft",
+          "grid": {
+            "widths": [],
+            "heights": [],
+            "prices": []
+          },
+          "pricePerSqft": 35.0,
+          "minSqft": 8,
+          "maxWidth": null,
+          "maxHeight": null,
+          "maxAreaSqft": null,
+          "fabricCollections": [],
+          "notes": [
+            "8 sq ft minimum billable area."
+          ]
+        }
+      ],
+      "surcharges": [
+        {
+          "id": "hidden_tilt_rod",
+          "name": "Hidden Tilt Rod",
+          "kind": "flat",
+          "per": "sqft",
+          "value": 1.2,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "double_hung",
+          "name": "Double Hung",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "offset_tilt_rod",
+          "name": "Offset Tilt Rod",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "flat_slade_fixed_louver",
+          "name": "Flat Slade / Fixed Louver",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "bay_corner_window",
+          "name": "Bay / Corner Window",
+          "kind": "percent",
+          "per": "unit",
+          "value": 8,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "liberty_arch_panel",
+          "name": "Liberty Arch Panel",
+          "kind": "percent",
+          "per": "unit",
+          "value": 8,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "flush_rail_raised_panel_solid_flat_panel",
+          "name": "Flush Rail / Raised Panel / Solid Flat Panel",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "extension_less_than_1in",
+          "name": "Extension less than 1\"",
+          "kind": "percent",
+          "per": "unit",
+          "value": 5,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "extension_equal_to_or_greater_than_1in",
+          "name": "Extension equal to or greater than 1\"",
+          "kind": "percent",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "percent"
+        },
+        {
+          "id": "arch",
+          "name": "Arch",
+          "kind": "flat",
+          "per": "unit",
+          "value": 200,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "sunburst",
+          "name": "Sunburst",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "octagon",
+          "name": "Octagon",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "hexagon",
+          "name": "Hexagon",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "circle",
+          "name": "Circle",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "elongated_eyebrow",
+          "name": "Elongated Eyebrow",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "close_by_pass_2_tracks",
+          "name": "Close By-Pass (2 tracks)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "open_by_pass_2_tracks",
+          "name": "Open By-Pass (2 tracks)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 250,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "bi_fold",
+          "name": "Bi-Fold",
+          "kind": "flat",
+          "per": "unit",
+          "value": 220,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "french_door_cutout_l_frame_only",
+          "name": "French Door CutOut (L Frame only)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 110,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "racked",
+          "name": "Racked",
+          "kind": "flat",
+          "per": "unit",
+          "value": 140,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "custom_color_per_color",
+          "name": "Custom Color (per color)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 150,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "dishout_cut_per_cut_1_1_4in_max",
+          "name": "Dishout Cut (per cut; 1 1/4\" max)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 30,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "scribe_less_than_27_cubic_inches_per_piece",
+          "name": "Scribe less than 27 cubic inches (per piece)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 7,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "scribe_greater_than_27_and_less_than_54_cubic_inches_per_piece",
+          "name": "Scribe greater than 27 and less than 54 cubic inches (per piece)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 10,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        },
+        {
+          "id": "scribe_greater_than_54_cubic_inches_per_piece",
+          "name": "Scribe greater than 54 cubic inches (per piece)",
+          "kind": "flat",
+          "per": "unit",
+          "value": 15,
+          "appliesTo": "shutter",
+          "notes": "",
+          "sourceType": "flat"
+        }
+      ],
+      "fabricByYard": [],
+      "notes": [
+        "Retail derived from wholesale x 28/12 (legacy MTS markup). 8 sq ft minimum."
+      ]
+    }
+  ]
+}

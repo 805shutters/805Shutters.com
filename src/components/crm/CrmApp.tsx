@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Fragment, useEffect, useMemo, useState } from "react";
+import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
 import { productInterestOptions } from "@/lib/product-interest-options";
@@ -11,6 +11,7 @@ import {
   losAngelesDateString,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
+import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import {
   CrmAccountabilityItem,
   CrmAvailabilitySlot,
@@ -260,6 +261,57 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   return body as T;
 }
 
+function CollapsiblePanel({
+  title,
+  addLabel,
+  forceOpen = false,
+  onClose,
+  children
+}: {
+  title: string;
+  addLabel?: string;
+  forceOpen?: boolean;
+  onClose?: () => void;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const isOpen = open || forceOpen;
+
+  if (!isOpen) {
+    return (
+      <aside className="crm-panel crm-panel-collapsed">
+        <button type="button" className="crm-panel-add" onClick={() => setOpen(true)}>
+          <span className="crm-panel-add-icon" aria-hidden="true">
+            +
+          </span>
+          {addLabel ?? title}
+        </button>
+      </aside>
+    );
+  }
+
+  return (
+    <aside className="crm-panel">
+      <div className="crm-panel-head">
+        <h2>{title}</h2>
+        <button
+          type="button"
+          className="crm-ghost-button crm-panel-collapse"
+          aria-label="Collapse"
+          title="Collapse"
+          onClick={() => {
+            setOpen(false);
+            onClose?.();
+          }}
+        >
+          ×
+        </button>
+      </div>
+      {children}
+    </aside>
+  );
+}
+
 export function CrmApp() {
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
@@ -273,6 +325,7 @@ export function CrmApp() {
   const [editRow, setEditRow] = useState<CrmBookkeepingRow | null>(null);
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfCalendarWeek(losAngelesDateString()));
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
+  const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -820,6 +873,15 @@ export function CrmApp() {
 
   return (
     <div className="crm-app-shell">
+      {builderQuoteId && session ? (
+        <QuoteBuilderPanel
+          session={session}
+          quoteId={builderQuoteId}
+          onClose={() => setBuilderQuoteId(null)}
+          onChanged={refresh}
+          onSwitch={setBuilderQuoteId}
+        />
+      ) : null}
       <header className="crm-topbar">
         <div>
           <p className="eyebrow">805 Shutters</p>
@@ -884,8 +946,7 @@ export function CrmApp() {
 
       {activeTab === "jobs" ? (
         <section className="crm-workspace">
-          <aside className="crm-panel">
-            <h2>New Sales Job</h2>
+          <CollapsiblePanel title="New Sales Job">
             <form className="crm-form" onSubmit={createJob}>
               <label>
                 Customer
@@ -956,7 +1017,7 @@ export function CrmApp() {
                 Add Job
               </button>
             </form>
-          </aside>
+          </CollapsiblePanel>
 
           <div className="crm-kanban">
             {jobColumns.map((column) => (
@@ -980,17 +1041,15 @@ export function CrmApp() {
 
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace">
-          <aside className="crm-panel">
+          <CollapsiblePanel
+            title={editRow ? "Edit Row" : "Add Spreadsheet Row"}
+            addLabel="Add Spreadsheet Row"
+            forceOpen={Boolean(editRow)}
+            onClose={() => setEditRow(null)}
+          >
             {editRow ? (
-              <BookkeepingEditForm
-                row={editRow}
-                busy={busy}
-                onSubmit={editBookkeepingRow}
-                onCancel={() => setEditRow(null)}
-              />
+              <BookkeepingEditForm row={editRow} busy={busy} onSubmit={editBookkeepingRow} />
             ) : (
-            <>
-            <h2>Add Spreadsheet Row</h2>
             <form className="crm-form" onSubmit={createBookkeepingEntry}>
               <div className="crm-field-row">
                 <label>
@@ -1088,9 +1147,8 @@ export function CrmApp() {
                 Save Row
               </button>
             </form>
-            </>
             )}
-          </aside>
+          </CollapsiblePanel>
 
           <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
         </section>
@@ -1098,8 +1156,7 @@ export function CrmApp() {
 
       {activeTab === "orders" ? (
         <section className="crm-workspace crm-workspace-wide">
-          <aside className="crm-panel">
-            <h2>New Quote / Sold Job</h2>
+          <CollapsiblePanel title="New Quote / Sold Job">
             <form className="crm-form" onSubmit={createQuote}>
               <label>
                 Job
@@ -1188,9 +1245,9 @@ export function CrmApp() {
                 Save Quote
               </button>
             </form>
-          </aside>
+          </CollapsiblePanel>
 
-          <OrderBoard quotes={quotes} onUpdate={updateQuote} busy={busy} />
+          <OrderBoard quotes={quotes} onUpdate={updateQuote} busy={busy} onOpenBuilder={setBuilderQuoteId} />
         </section>
       ) : null}
 
@@ -1566,23 +1623,15 @@ function JobCard({
 function BookkeepingEditForm({
   row,
   busy,
-  onSubmit,
-  onCancel
+  onSubmit
 }: {
   row: CrmBookkeepingRow;
   busy: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>, row: CrmBookkeepingRow) => void;
-  onCancel: () => void;
 }) {
   const isQuote = row.source === "crm_quote";
   return (
     <>
-      <div className="crm-edit-head">
-        <h2>Edit Row</h2>
-        <button type="button" className="crm-ghost-button" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
       <p className="crm-help">
         {row.customerName}
         {row.quoteNumber ? ` / ${row.quoteNumber}` : ""} {isQuote ? "(quote)" : "(spreadsheet row)"}
@@ -1797,11 +1846,13 @@ function BookkeepingSpreadsheet({
 function OrderBoard({
   quotes,
   onUpdate,
-  busy
+  busy,
+  onOpenBuilder
 }: {
   quotes: CrmQuote[];
   onUpdate: (event: FormEvent<HTMLFormElement>, quote: CrmQuote) => Promise<void>;
   busy: boolean;
+  onOpenBuilder: (quoteId: string) => void;
 }) {
   return (
     <section className="crm-ledger">
@@ -1821,6 +1872,14 @@ function OrderBoard({
               </div>
               <strong>{toCurrency(quote.quote_total)}</strong>
             </div>
+            <button
+              type="button"
+              className="crm-ghost-button"
+              onClick={() => onOpenBuilder(quote.id)}
+              style={{ marginBottom: 10 }}
+            >
+              Edit line items &amp; pricing
+            </button>
             <form className="crm-order-form" onSubmit={(event) => onUpdate(event, quote)}>
               <div className="crm-field-row">
                 <label>
@@ -2437,8 +2496,7 @@ function KenPayoffView({
 
   return (
     <section className="crm-workspace crm-workspace-wide">
-      <aside className="crm-panel">
-        <h2>Record Ken Payment</h2>
+      <CollapsiblePanel title="Record Ken Payment">
         <form className="crm-form" onSubmit={onRecord}>
           <label>
             Amount
@@ -2478,7 +2536,7 @@ function KenPayoffView({
             Save Settings
           </button>
         </form>
-      </aside>
+      </CollapsiblePanel>
 
       <div className="crm-ledger">
         <div className="crm-section-head">

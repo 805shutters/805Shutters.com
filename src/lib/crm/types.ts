@@ -84,8 +84,66 @@ export type CrmQuote = {
   manufacturer_order_ref: string | null;
   manufacturer_order_url: string | null;
   manufacturer_document_url: string | null;
+  share_token: string | null;
+  customer_signature: string | null;
+  customer_printed_name: string | null;
+  signed_at: string | null;
+  quote_group_id: string | null;
+  quote_label: string | null;
+  meta: Record<string, unknown>;
   notes: string | null;
   customer_name?: string;
+};
+
+// ---- Quote builder: line items + designs (pick-one alternatives) ----
+
+export type CrmQuoteSurchargeSelection = { id: string; units?: number };
+export type CrmQuoteMotorizationSelection = {
+  groupId: string;
+  optionId: string;
+  units?: number;
+};
+
+export type CrmQuoteDesign = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  line_item_id: string;
+  label: string;
+  sort_order: number;
+  product_id: string;
+  program_id: string | null;
+  fabric: string | null;
+  surcharges: CrmQuoteSurchargeSelection[];
+  motorization: CrmQuoteMotorizationSelection[];
+  /** Server-computed per-window price (authoritative; clients never set this). */
+  unit_price: number;
+  /** Snapshot of the full pricing breakdown at priced_at. */
+  price_breakdown: Record<string, unknown>;
+  /** "ok" or a pricing engine error code (e.g. WIDTH_EXCEEDS_MAX). */
+  price_status: string;
+  priced_at: string | null;
+  notes: string | null;
+};
+
+export type CrmQuoteLineItem = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  quote_id: string;
+  room: string | null;
+  width_in: number | null;
+  height_in: number | null;
+  quantity: number;
+  sort_order: number;
+  /** The customer's chosen alternative; only this design is billed. */
+  selected_design_id: string | null;
+  notes: string | null;
+  designs: CrmQuoteDesign[];
+};
+
+export type CrmQuoteWithItems = CrmQuote & {
+  lineItems: CrmQuoteLineItem[];
 };
 
 export type CrmCustomer = {
