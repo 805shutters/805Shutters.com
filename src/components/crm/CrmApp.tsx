@@ -393,9 +393,10 @@ export function CrmApp() {
   }
 
   async function refresh() {
-    if (!session) return;
+    if (!session) return null;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
     setData(dashboardResult);
+    return dashboardResult;
   }
 
   async function sendEmailLogin(event: FormEvent<HTMLFormElement>) {
@@ -541,6 +542,36 @@ export function CrmApp() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "CRM job could not be updated.");
       await refresh();
+    }
+  }
+
+  async function reassignSale(entry: DrillEntry, owner: string) {
+    if (!session || !entry.jobId) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${entry.jobId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ sales_owner: owner })
+      });
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill?.metric) {
+        const nextPayload = buildSummaryDrill(
+          drill.metric,
+          dashboardResult.jobs,
+          dashboardResult.bookkeepingRows,
+          dashboardResult.customerFiles
+        );
+        if (nextPayload) setDrill(nextPayload);
+      }
+      setMessage(`Sale assigned to ${owner}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Sale owner could not be updated.");
+      await refresh();
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -1033,9 +1064,31 @@ export function CrmApp() {
         ))}
       </nav>
 
+      {drill && activeTab !== "command" ? (
+        <div className="crm-inline-drill-shell">
+          <DrillDetailPanel
+            payload={drill}
+            busy={busy}
+            onClose={() => setDrill(null)}
+            onOpenCustomer={openCustomerFile}
+            onReassignSale={reassignSale}
+          />
+        </div>
+      ) : null}
+
       {activeTab === "command" ? (
         <>
-          <CommandDashboard jobs={jobs} rows={rows} onDrill={setDrill} />
+          <CommandDashboard
+            jobs={jobs}
+            rows={rows}
+            files={customerFiles}
+            activeDrill={drill}
+            busy={busy}
+            onDrill={setDrill}
+            onCloseDrill={() => setDrill(null)}
+            onOpenCustomer={openCustomerFile}
+            onReassignSale={reassignSale}
+          />
           <section className="crm-command-grid">
             <AccountabilityBoard items={accountability} />
             <BookkeepingSnapshot rows={rows} />
@@ -1393,9 +1446,6 @@ export function CrmApp() {
         />
       ) : null}
 
-      {drill ? (
-        <DrillDrawer payload={drill} onClose={() => setDrill(null)} onOpenCustomer={openCustomerFile} />
-      ) : null}
     </div>
   );
 }
@@ -1493,8 +1543,43 @@ const OPEN_JOB_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quo
 // Mirrors backend.ts `openStatuses` so the Open Jobs metric drill matches the count.
 const SUMMARY_OPEN_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted", "sold", "ordered"];
 
-type DrillEntry = { id: string; name: string; customerName: string; meta: string; value?: string; tone?: "warn" };
-type DrillPayload = { title: string; subtitle: string; entries: DrillEntry[] };
+type DrillPlacement = "summary" | "numbers" | "product" | "closing" | "response";
+type DrillDocument = {
+  id: string;
+  title: string;
+  url: string;
+  status?: string | null;
+  kind: string;
+};
+type DrillEntry = {
+  id: string;
+  name: string;
+  customerName: string;
+  meta: string;
+  value?: string;
+  tone?: "warn";
+  jobId?: string | null;
+  salesOwner?: string | null;
+  canReassignSale?: boolean;
+  row?: CrmBookkeepingRow;
+  job?: CrmJob;
+  file?: CrmCustomerFile;
+  documents?: DrillDocument[];
+  products?: CrmCustomerFile["products"];
+  notes?: string[];
+};
+type DrillPayload = {
+  title: string;
+  subtitle: string;
+  entries: DrillEntry[];
+  metric?: string;
+  allowSaleReassignment?: boolean;
+  placement?: DrillPlacement;
+};
+type DrillEntryContext = {
+  jobs?: CrmJob[];
+  files?: CrmCustomerFile[];
+};
 
 function titleCase(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -1512,35 +1597,178 @@ function jobValue(job: CrmJob) {
   return job.quote_total || job.estimated_total || 0;
 }
 
-function jobToEntry(job: CrmJob): DrillEntry {
+function saleOwnerDisplayName(value: string | null | undefined) {
+  const lower = String(value || "").toLowerCase();
+  if (lower.includes("jessica")) return "Jessica";
+  if (lower.includes("mike")) return "Mike";
+  return "Unassigned";
+}
+
+function customerFileForName(files: CrmCustomerFile[] = [], name: string) {
+  const normalized = normalizeCustomerName(name);
+  return files.find((file) => normalizeCustomerName(file.customerName) === normalized);
+}
+
+function relatedJobForRow(row: CrmBookkeepingRow, jobs: CrmJob[] = []) {
+  return row.jobId ? jobs.find((job) => job.id === row.jobId) : undefined;
+}
+
+function contractUrl(contract: CrmCustomerFile["contracts"][number]) {
+  if (contract.contract_url) return contract.contract_url;
+  if (contract.share_token) return `/quote/${contract.share_token}`;
+  return null;
+}
+
+function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
+  if (!file) return [];
+  const matches = file.contracts.filter(
+    (contract) =>
+      (row?.jobId && contract.job_id === row.jobId) ||
+      (row?.quoteId && contract.quote_id === row.quoteId) ||
+      (row && contract.bookkeeping_entry_id === row.id) ||
+      (job?.id && contract.job_id === job.id)
+  );
+  return matches.length ? matches : file.contracts;
+}
+
+function uniqueDocuments(documents: DrillDocument[]) {
+  const seen = new Set<string>();
+  return documents.filter((document) => {
+    const key = document.url || document.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function documentsForDetail(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCustomerFile): DrillDocument[] {
+  const documents: DrillDocument[] = [];
+
+  for (const contract of relatedContracts(file, row, job)) {
+    const url = contractUrl(contract);
+    if (!url) continue;
+    documents.push({
+      id: `contract-${contract.id}`,
+      title: contract.title || "Contract copy",
+      url,
+      status: contract.status,
+      kind: "Contract copy"
+    });
+  }
+
+  if (row?.manufacturerDocumentUrl) {
+    documents.push({
+      id: `manufacturer-document-${row.id}`,
+      title: row.manufacturerOrderRef || row.manufacturerName || "Manufacturer document",
+      url: row.manufacturerDocumentUrl,
+      status: row.status,
+      kind: "Manufacturer document"
+    });
+  }
+
+  if (row?.manufacturerOrderUrl) {
+    documents.push({
+      id: `manufacturer-order-${row.id}`,
+      title: row.manufacturerOrderRef || "Manufacturer order",
+      url: row.manufacturerOrderUrl,
+      status: row.status,
+      kind: "Manufacturer order"
+    });
+  }
+
+  if (row?.installationInvoiceUrl) {
+    documents.push({
+      id: `install-invoice-${row.id}`,
+      title: row.installationInvoiceNumber || "Installation invoice",
+      url: row.installationInvoiceUrl,
+      status: row.isInstallationComplete ? "Complete" : row.installationMatchStatus,
+      kind: "Install invoice"
+    });
+  }
+
+  return uniqueDocuments(documents);
+}
+
+function productsForDetail(file?: CrmCustomerFile, row?: CrmBookkeepingRow, job?: CrmJob) {
+  if (!file) return [];
+  const matches = file.products.filter(
+    (product) =>
+      (row?.jobId && product.job_id === row.jobId) ||
+      (row?.quoteId && product.quote_id === row.quoteId) ||
+      (row && product.bookkeeping_entry_id === row.id) ||
+      (job?.id && product.job_id === job.id)
+  );
+  return matches.length ? matches : file.products;
+}
+
+function detailNotes(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCustomerFile) {
+  return Array.from(new Set([row?.notes, job?.notes, ...(file?.notes || [])].filter(Boolean) as string[]));
+}
+
+function jobToEntry(job: CrmJob, row?: CrmBookkeepingRow, files: CrmCustomerFile[] = []): DrillEntry {
   const value = jobValue(job);
+  const file = customerFileForName(files, job.customer_name);
   return {
     id: job.id,
     name: job.customer_name,
     customerName: job.customer_name,
     meta: [job.product_interest, job.city, titleCase(job.status)].filter(Boolean).join(" · "),
-    value: value ? toCurrency(value) : undefined
+    value: value ? toCurrency(value) : undefined,
+    jobId: job.id,
+    salesOwner: saleOwnerDisplayName(row?.salesOwner || job.sales_owner),
+    canReassignSale: WON_JOB_STATUSES.includes(job.status),
+    row,
+    job,
+    file,
+    documents: documentsForDetail(row, job, file),
+    products: productsForDetail(file, row, job),
+    notes: detailNotes(row, job, file)
   };
 }
 
-function jobsToEntries(list: CrmJob[]): DrillEntry[] {
-  return [...list].sort((a, b) => jobValue(b) - jobValue(a)).map(jobToEntry);
+function rowsByJobId(rows: CrmBookkeepingRow[]) {
+  return rows.reduce<Map<string, CrmBookkeepingRow>>((map, row) => {
+    if (!row.jobId || map.has(row.jobId)) return map;
+    map.set(row.jobId, row);
+    return map;
+  }, new Map());
+}
+
+function jobsToEntries(list: CrmJob[], rows: CrmBookkeepingRow[] = [], context: DrillEntryContext = {}): DrillEntry[] {
+  const rowMap = rowsByJobId(rows);
+  return [...list]
+    .sort((a, b) => jobValue(b) - jobValue(a))
+    .map((job) => jobToEntry(job, rowMap.get(job.id), context.files));
 }
 
 function rowsToEntries(
   list: CrmBookkeepingRow[],
-  valueOf: (row: CrmBookkeepingRow) => number = (row) => row.total
+  valueOf: (row: CrmBookkeepingRow) => number = (row) => row.total,
+  context: DrillEntryContext = {}
 ): DrillEntry[] {
   return [...list]
     .sort((a, b) => valueOf(b) - valueOf(a))
-    .map((row) => ({
-      id: row.id,
-      name: row.customerName,
-      customerName: row.customerName,
-      meta: [titleCase(String(row.status)), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
-      value: toCurrency(valueOf(row)),
-      tone: row.balance > 0 ? ("warn" as const) : undefined
-    }));
+    .map((row) => {
+      const job = relatedJobForRow(row, context.jobs);
+      const file = customerFileForName(context.files, row.customerName);
+      return {
+        id: row.id,
+        name: row.customerName,
+        customerName: row.customerName,
+        meta: [titleCase(String(row.status)), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
+        value: toCurrency(valueOf(row)),
+        tone: row.balance > 0 ? ("warn" as const) : undefined,
+        jobId: row.jobId,
+        salesOwner: saleOwnerDisplayName(row.salesOwner || job?.sales_owner),
+        canReassignSale: Boolean(row.jobId && (row.status === "sold" || row.status === "approved")),
+        row,
+        job,
+        file,
+        documents: documentsForDetail(row, job, file),
+        products: productsForDetail(file, row, job),
+        notes: detailNotes(row, job, file)
+      };
+    });
 }
 
 function filesToEntries(list: CrmCustomerFile[]): DrillEntry[] {
@@ -1552,7 +1780,11 @@ function filesToEntries(list: CrmCustomerFile[]): DrillEntry[] {
       customerName: file.customerName,
       meta: [file.city, file.latestStatus ? titleCase(file.latestStatus) : null].filter(Boolean).join(" · "),
       value: file.lifetimeValue ? toCurrency(file.lifetimeValue) : undefined,
-      tone: file.openBalance > 0 ? ("warn" as const) : undefined
+      tone: file.openBalance > 0 ? ("warn" as const) : undefined,
+      file,
+      documents: documentsForDetail(undefined, undefined, file),
+      products: productsForDetail(file),
+      notes: detailNotes(undefined, undefined, file)
     }));
 }
 
@@ -1568,57 +1800,78 @@ function buildSummaryDrill(
       return {
         title: "Open Jobs",
         subtitle: "Active jobs in the pipeline",
-        entries: jobsToEntries(jobs.filter((job) => SUMMARY_OPEN_STATUSES.includes(job.status)))
+        placement: "summary",
+        entries: jobsToEntries(jobs.filter((job) => SUMMARY_OPEN_STATUSES.includes(job.status)), rows, { files })
       };
     case "soldJobs":
       return {
         title: "Sold Jobs",
         subtitle: "Sold or ordered",
-        entries: jobsToEntries(jobs.filter((job) => job.status === "sold" || job.status === "ordered"))
+        metric,
+        allowSaleReassignment: true,
+        placement: "summary",
+        entries: jobsToEntries(
+          jobs.filter((job) => job.status === "sold" || job.status === "ordered"),
+          rows,
+          { files }
+        ).map((entry) => ({ ...entry, canReassignSale: true }))
       };
     case "pipeline":
       return {
         title: "Pipeline",
         subtitle: "Jobs carrying a live quote",
-        entries: jobsToEntries(jobs.filter((job) => (job.quote_total || 0) > 0))
+        placement: "summary",
+        entries: jobsToEntries(jobs.filter((job) => (job.quote_total || 0) > 0), rows, { files })
       };
     case "openBalance":
       return {
         title: "Open Balance",
         subtitle: "Jobs with money still owed",
-        entries: rowsToEntries(rows.filter((row) => row.balance > 0), (row) => row.balance)
+        placement: "summary",
+        entries: rowsToEntries(rows.filter((row) => row.balance > 0), (row) => row.balance, { jobs, files })
       };
     case "needsOrder":
       return {
         title: "Needs Order",
         subtitle: "Sold jobs without a manufacturer order",
+        placement: "summary",
         entries: rowsToEntries(
-          rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef)
+          rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef),
+          (row) => row.total,
+          { jobs, files }
         )
       };
     case "missingCogs":
       return {
         title: "Missing COGS",
         subtitle: "Cost of goods not yet entered",
-        entries: rowsToEntries(rows.filter((row) => row.cogs <= 0))
+        placement: "summary",
+        entries: rowsToEntries(rows.filter((row) => row.cogs <= 0), (row) => row.total, { jobs, files })
       };
     case "readyInstall":
       return {
         title: "Ready To Install",
         subtitle: "Received and awaiting install scheduling",
-        entries: rowsToEntries(rows.filter((row) => row.status === "received"))
+        placement: "summary",
+        entries: rowsToEntries(rows.filter((row) => row.status === "received"), (row) => row.total, { jobs, files })
       };
     case "customerFiles":
       return {
         title: "Customer Files",
         subtitle: "All customers on file",
+        placement: "summary",
         entries: filesToEntries(files)
       };
     case "jessicaOwed":
       return {
         title: "Jessica Owed",
         subtitle: "Commission owed to Jessica",
-        entries: rowsToEntries(rows.filter((row) => row.jessicaCommissionOwed > 0), (row) => row.jessicaCommissionOwed)
+        placement: "summary",
+        entries: rowsToEntries(
+          rows.filter((row) => row.jessicaCommissionOwed > 0),
+          (row) => row.jessicaCommissionOwed,
+          { jobs, files }
+        )
       };
     default:
       return null;
@@ -1628,11 +1881,23 @@ function buildSummaryDrill(
 function CommandDashboard({
   jobs,
   rows,
-  onDrill
+  files,
+  activeDrill,
+  busy,
+  onDrill,
+  onCloseDrill,
+  onOpenCustomer,
+  onReassignSale
 }: {
   jobs: CrmJob[];
   rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+  activeDrill: DrillPayload | null;
+  busy: boolean;
   onDrill: (payload: DrillPayload) => void;
+  onCloseDrill: () => void;
+  onOpenCustomer: (customerName: string) => void;
+  onReassignSale?: (entry: DrillEntry, owner: string) => void;
 }) {
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
@@ -1717,6 +1982,17 @@ function CommandDashboard({
 
   const productTotal = productMix.reduce((sum, slice) => sum + slice.count, 0);
   const responseMax = Math.max(1, ...response.buckets.map((bucket) => bucket.list.length));
+  const activePlacement = activeDrill?.placement || "summary";
+  const drillPanel = (placements: DrillPlacement[]) =>
+    activeDrill && placements.includes(activePlacement) ? (
+      <DrillDetailPanel
+        payload={activeDrill}
+        busy={busy}
+        onClose={onCloseDrill}
+        onOpenCustomer={onOpenCustomer}
+        onReassignSale={onReassignSale}
+      />
+    ) : null;
 
   return (
     <section className="crm-dashboard">
@@ -1737,7 +2013,8 @@ function CommandDashboard({
             onDrill({
               title: "Booked Revenue",
               subtitle: "All booked jobs",
-              entries: rowsToEntries(rows)
+              placement: "numbers",
+              entries: rowsToEntries(rows, (row) => row.total, { jobs, files })
             })
           }
         />
@@ -1749,7 +2026,8 @@ function CommandDashboard({
             onDrill({
               title: "Collected",
               subtitle: "Jobs with payments in",
-              entries: rowsToEntries(numbers.collectedRows, (row) => row.paidTotal)
+              placement: "numbers",
+              entries: rowsToEntries(numbers.collectedRows, (row) => row.paidTotal, { jobs, files })
             })
           }
         />
@@ -1762,7 +2040,8 @@ function CommandDashboard({
             onDrill({
               title: "Outstanding Balances",
               subtitle: "Jobs with money still owed",
-              entries: rowsToEntries(numbers.outstandingRows, (row) => row.balance)
+              placement: "numbers",
+              entries: rowsToEntries(numbers.outstandingRows, (row) => row.balance, { jobs, files })
             })
           }
         />
@@ -1774,11 +2053,14 @@ function CommandDashboard({
             onDrill({
               title: "Profit By Job",
               subtitle: "Mike net per job",
-              entries: rowsToEntries(rows, (row) => row.mikeProfit)
+              placement: "numbers",
+              entries: rowsToEntries(rows, (row) => row.mikeProfit, { jobs, files })
             })
           }
         />
       </div>
+
+      {drillPanel(["summary", "numbers"])}
 
       <div className="crm-dashboard-grid">
         <section className="crm-ledger crm-chart-card">
@@ -1802,7 +2084,8 @@ function CommandDashboard({
                         onDrill({
                           title: slice.label,
                           subtitle: `${slice.count} jobs · ${toCurrency(slice.value)} pipeline`,
-                          entries: jobsToEntries(slice.list)
+                          placement: "product",
+                          entries: jobsToEntries(slice.list, rows, { files })
                         })
                       }
                     >
@@ -1828,13 +2111,15 @@ function CommandDashboard({
             <strong>{Math.round(closing.overall.rate * 100)}%</strong>
           </div>
           <div className="crm-close-list">
-            <CloseRow label="Everyone" bucket={closing.overall} onDrill={onDrill} />
+            <CloseRow label="Everyone" bucket={closing.overall} rows={rows} files={files} onDrill={onDrill} />
             {closing.byOwner.map((owner) => (
-              <CloseRow key={owner.owner} label={owner.owner} bucket={owner} onDrill={onDrill} />
+              <CloseRow key={owner.owner} label={owner.owner} bucket={owner} rows={rows} files={files} onDrill={onDrill} />
             ))}
           </div>
         </section>
       </div>
+
+      {drillPanel(["product", "closing"])}
 
       <section className="crm-ledger crm-chart-card">
         <div className="crm-section-head">
@@ -1859,7 +2144,8 @@ function CommandDashboard({
                     onDrill({
                       title: `Response: ${bucket.label}`,
                       subtitle: "Lead to booked appointment",
-                      entries: jobsToEntries(bucket.list)
+                      placement: "response",
+                      entries: jobsToEntries(bucket.list, rows, { files })
                     })
                   }
                 >
@@ -1876,6 +2162,8 @@ function CommandDashboard({
           <p className="crm-empty">No appointments booked yet to measure response time.</p>
         )}
       </section>
+
+      {drillPanel(["response"])}
     </section>
   );
 }
@@ -1948,10 +2236,14 @@ function Donut({
 function CloseRow({
   label,
   bucket,
+  rows,
+  files,
   onDrill
 }: {
   label: string;
   bucket: { won: CrmJob[]; lost: CrmJob[]; open: CrmJob[]; rate: number; total: number };
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
   onDrill: (payload: DrillPayload) => void;
 }) {
   const total = Math.max(1, bucket.won.length + bucket.lost.length + bucket.open.length);
@@ -1979,7 +2271,8 @@ function CloseRow({
                 onDrill({
                   title: `${label} · ${segment.label}`,
                   subtitle: `${segment.list.length} jobs`,
-                  entries: jobsToEntries(segment.list)
+                  placement: "closing",
+                  entries: jobsToEntries(segment.list, rows, { files })
                 })
               }
             />
@@ -1995,48 +2288,101 @@ function CloseRow({
   );
 }
 
-function DrillDrawer({
-  payload,
-  onClose,
-  onOpenCustomer
-}: {
+type DrillPanelProps = {
   payload: DrillPayload;
+  busy: boolean;
   onClose: () => void;
   onOpenCustomer: (customerName: string) => void;
-}) {
+  onReassignSale?: (entry: DrillEntry, owner: string) => void;
+};
+
+function DrillRows({ payload, busy, onOpenCustomer, onReassignSale }: Omit<DrillPanelProps, "onClose">) {
   return (
-    <div className="crm-drill" role="dialog" aria-modal="true" aria-label={payload.title}>
-      <button type="button" className="crm-drill__backdrop" aria-label="Close" onClick={onClose} />
-      <aside className="crm-drill-panel">
-        <div className="crm-slot-form-head">
-          <div>
-            <p className="eyebrow">{payload.subtitle}</p>
-            <h2>{payload.title}</h2>
-          </div>
-          <button type="button" className="crm-slot-close" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <p className="crm-drill-count">
-          {payload.entries.length} {payload.entries.length === 1 ? "customer" : "customers"} · tap to open file
-        </p>
-        <div className="crm-drill-list">
-          {payload.entries.map((entry) => (
+    <div className="crm-drill-list">
+      {payload.entries.map((entry) => {
+        const rowContent = (
+          <>
+            <div>
+              <strong>{entry.name}</strong>
+              <span>{entry.meta}</span>
+            </div>
+            {entry.value ? <em className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</em> : null}
+          </>
+        );
+        const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
+
+        if (!canReassignSale) {
+          return (
             <button
               type="button"
               className="crm-drill-row"
               key={entry.id}
               onClick={() => onOpenCustomer(entry.customerName)}
             >
-              <div>
-                <strong>{entry.name}</strong>
-                <span>{entry.meta}</span>
-              </div>
-              {entry.value ? <em className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</em> : null}
+              {rowContent}
             </button>
-          ))}
-          {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
+          );
+        }
+
+        return (
+          <div className="crm-drill-row crm-drill-row--with-actions" key={entry.id}>
+            <button type="button" className="crm-drill-open" onClick={() => onOpenCustomer(entry.customerName)}>
+              {rowContent}
+            </button>
+            <label className="crm-sale-owner-control">
+              <span>Sale owner</span>
+              <select
+                aria-label={`Sale owner for ${entry.name}`}
+                value={saleOwnerDisplayName(entry.salesOwner)}
+                disabled={busy}
+                onChange={(event) => onReassignSale?.(entry, event.target.value)}
+              >
+                {ownerOptions.map((owner) => (
+                  <option key={owner}>{owner}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        );
+      })}
+      {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
+    </div>
+  );
+}
+
+function DrillDetailPanel({
+  payload,
+  busy,
+  onClose,
+  onOpenCustomer,
+  onReassignSale
+}: DrillPanelProps) {
+  return (
+    <section className="crm-drill-detail" aria-label={payload.title}>
+      <div className="crm-slot-form-head">
+        <div>
+          <p className="eyebrow">{payload.subtitle}</p>
+          <h2>{payload.title}</h2>
         </div>
+        <button type="button" className="crm-slot-close" aria-label="Close" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <p className="crm-drill-count">
+        {payload.entries.length} {payload.entries.length === 1 ? "customer" : "customers"} · tap to open file
+      </p>
+      <DrillRows payload={payload} busy={busy} onOpenCustomer={onOpenCustomer} onReassignSale={onReassignSale} />
+    </section>
+  );
+}
+
+function DrillDrawer(props: DrillPanelProps) {
+  const { payload, onClose } = props;
+  return (
+    <div className="crm-drill" role="dialog" aria-modal="true" aria-label={payload.title}>
+      <button type="button" className="crm-drill__backdrop" aria-label="Close" onClick={onClose} />
+      <aside className="crm-drill-panel">
+        <DrillDetailPanel {...props} />
       </aside>
     </div>
   );

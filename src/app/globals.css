@@ -7792,6 +7792,22 @@ html.mobile-menu-open {
   text-align: right;
 }
 
+.crm-inline-drill-shell {
+  width: min(1500px, 100%);
+  margin: 18px auto 0;
+}
+
+.crm-drill-detail {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
 /* Drill-down drawer (customers behind any box) */
 .crm-drill {
   position: fixed;
@@ -7819,9 +7835,6 @@ html.mobile-menu-open {
 
 .crm-drill-panel {
   position: relative;
-  display: grid;
-  align-content: start;
-  gap: 14px;
   width: min(440px, 100%);
   height: 100%;
   overflow-y: auto;
@@ -7829,6 +7842,12 @@ html.mobile-menu-open {
   background: var(--white);
   border-left: 1px solid var(--line);
   box-shadow: -26px 0 80px rgba(17, 17, 17, 0.24);
+}
+
+.crm-drill-panel .crm-drill-detail {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
 }
 
 .crm-drill-count {
@@ -7866,7 +7885,36 @@ html.mobile-menu-open {
   background: var(--white);
 }
 
-.crm-drill-row > div {
+.crm-drill-row--with-actions {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.crm-drill-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 0;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.crm-drill-open:hover,
+.crm-drill-open:focus-visible {
+  transform: none;
+  background: var(--white);
+}
+
+.crm-drill-row > div,
+.crm-drill-open > div {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -7893,6 +7941,42 @@ html.mobile-menu-open {
 
 .crm-drill-row em.warn {
   color: #b4534a;
+}
+
+.crm-sale-owner-control {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--line);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-sale-owner-control > span {
+  overflow: visible;
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.crm-sale-owner-control select {
+  min-height: 38px;
+  padding: 7px 10px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crm-sale-owner-control select:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 @media (max-width: 1024px) {

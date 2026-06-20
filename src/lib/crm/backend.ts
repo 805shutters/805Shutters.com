@@ -62,6 +62,8 @@ const quoteStatusSet = new Set<string>(crmQuoteStatuses);
 const prioritySet = new Set(["low", "normal", "high", "urgent"]);
 const calendarEventTypes = new Set(["sales_consult", "measure", "install", "follow_up", "block"]);
 const calendarStatuses = new Set(["scheduled", "complete", "canceled", "rescheduled"]);
+const saleOwnerSyncJobStatuses = new Set(["sold", "ordered", "installed", "invoiced", "closed"]);
+const saleOwnerSyncQuoteStatuses = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"];
 
 const allowedJobPatchFields = new Set([
   "status",
@@ -164,6 +166,17 @@ function normalizeOwner(value: unknown) {
   if (lower.includes("jessica")) return "jessica";
   if (lower.includes("mike")) return "mike";
   return null;
+}
+
+function ownerDisplayName(value: unknown) {
+  const owner = normalizeOwner(value);
+  if (owner === "jessica") return "Jessica";
+  if (owner === "mike") return "Mike";
+  return null;
+}
+
+function shouldSyncSaleOwnerForJob(status: unknown) {
+  return saleOwnerSyncJobStatuses.has(String(status || ""));
 }
 
 // Availability + calendar assignment use capitalized rep names ("Jessica", "Mike")
@@ -720,6 +733,10 @@ export async function updateCrmJob(
   const { data, error } = await supabase.from("crm_jobs").update(patch).eq("id", id).select("*").single();
   if (error || !data) throw new CrmAuthError(502, "CRM job could not be updated.");
 
+  if (Object.prototype.hasOwnProperty.call(patch, "sales_owner") && shouldSyncSaleOwnerForJob(data.status)) {
+    await syncSaleOwnerForJob(supabase, id, patch.sales_owner, actor);
+  }
+
   await syncCustomerFromJob(supabase, data);
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
@@ -730,6 +747,48 @@ export async function updateCrmJob(
   });
 
   return data as CrmJob;
+}
+
+async function syncSaleOwnerForJob(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  value: unknown,
+  actor: CrmActor
+) {
+  const salesOwner = normalizeOwner(value);
+  const soldBy = ownerDisplayName(value);
+  const now = new Date().toISOString();
+
+  const quoteResult = await supabase
+    .from("crm_quotes")
+    .update({ sold_by: soldBy })
+    .eq("job_id", jobId)
+    .in("status", saleOwnerSyncQuoteStatuses);
+
+  if (quoteResult.error) throw new CrmAuthError(502, "Sale owner was saved on the job, but quote ownership failed to sync.");
+
+  const entryResult = await supabase
+    .from("crm_quote_bookkeeping_entries")
+    .update({
+      sales_owner: salesOwner,
+      sales_owner_auth_user_id: salesOwner ? actor.userId || null : null,
+      sales_owner_set_at: salesOwner ? now : null
+    })
+    .eq("job_id", jobId);
+
+  if (entryResult.error) {
+    throw new CrmAuthError(502, "Sale owner was saved on the job, but bookkeeping ownership failed to sync.");
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: jobId,
+    action: "sync_sale_owner",
+    metadata: {
+      salesOwner,
+      soldBy
+    }
+  });
 }
 
 async function assertCalendarWindowAvailable(
