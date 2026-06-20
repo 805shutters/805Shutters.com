@@ -3156,6 +3156,10 @@ body:has(.crm-app-shell) {
   grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
 }
 
+.crm-jobs-workspace {
+  grid-template-columns: 1fr;
+}
+
 .crm-bookkeeping-workspace {
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   width: min(1800px, 100%);
@@ -3193,6 +3197,43 @@ body:has(.crm-app-shell) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.crm-job-board {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.crm-job-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.crm-job-toolbar .crm-panel-collapsed {
+  justify-self: end;
+}
+
+.crm-job-toolbar .crm-panel {
+  width: min(360px, 100%);
+}
+
+.crm-status-filter-bar {
+  margin: 0;
+}
+
+.crm-job-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 12px;
+  align-items: start;
+  padding-bottom: 10px;
+}
+
+.crm-job-list .crm-empty {
+  grid-column: 1 / -1;
 }
 
 .crm-kanban {
@@ -5275,6 +5316,14 @@ body:has(.booking-page--focused) .assistant-widget {
     gap: 12px;
   }
 
+  .crm-job-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-job-toolbar .crm-panel-collapsed {
+    justify-self: start;
+  }
+
   .crm-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -7287,6 +7336,10 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 @media (min-width: 921px) {
   .crm-workspace:has(.crm-panel-collapsed) {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .crm-jobs-workspace:has(.crm-panel-collapsed) {
+    grid-template-columns: 1fr;
   }
 }
 

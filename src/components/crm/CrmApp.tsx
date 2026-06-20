@@ -523,6 +523,10 @@ export function CrmApp() {
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
+  const visibleJobs = useMemo(
+    () => (activeJobStatus ? jobs.filter((job) => job.status === activeJobStatus) : jobs),
+    [activeJobStatus, jobs]
+  );
 
   function openCustomerFile(customerName: string) {
     setFocusCustomer(customerName);
@@ -1339,108 +1343,96 @@ export function CrmApp() {
       ) : null}
 
       {activeTab === "jobs" ? (
-        <section className="crm-workspace crm-workspace-wide">
-          <JobStatusTabs
-            jobs={jobs}
-            activeStatus={activeJobStatus}
-            onChange={setActiveJobStatus}
-          />
-          <CollapsiblePanel title="New Sales Job">
-            <form className="crm-form" onSubmit={createJob}>
-              <label>
-                Customer
-                <input name="customer_name" required placeholder="Customer name" />
-              </label>
-              <label>
-                Phone
-                <input name="phone" required placeholder="805-000-0000" />
-              </label>
-              <label>
-                Email
-                <input name="email" type="email" placeholder="customer@email.com" />
-              </label>
-              <label>
-                City
-                <input name="city" placeholder="Ventura" />
-              </label>
-              <label>
-                Address
-                <input name="address" placeholder="Project address" />
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Product
-                  <select name="product_interest" defaultValue="Shutters">
-                    {productOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Owner
-                  <select name="sales_owner" defaultValue="Unassigned">
-                    {ownerOptions.map((item) => (
-                      <option key={item}>{item}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Priority
-                  <select name="priority" defaultValue="normal">
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="low">Low</option>
-                  </select>
-                </label>
-                <label>
-                  Due
-                  <input name="next_action_due" type="date" defaultValue={todayInputValue()} />
-                </label>
-              </div>
-              <label>
-                Next Action
-                <input name="next_action" defaultValue="Call customer" />
-              </label>
-              <label>
-                Estimate
-                <input name="estimated_total" type="number" min="0" step="50" placeholder="0" />
-              </label>
-              <label>
-                Notes
-                <textarea name="notes" rows={4} placeholder="Rooms, products, source, timing..." />
-              </label>
-              <button type="submit" disabled={busy}>
-                Add Job
-              </button>
-            </form>
-          </CollapsiblePanel>
-
-          <div className="crm-kanban">
-            {(activeJobStatus ? jobColumns.filter((column) => column.status === activeJobStatus) : jobColumns).map((column) => (
-              <section className="crm-column" key={column.status}>
-                <div className="crm-column-head">
-                  <h2>{column.label}</h2>
-                  <span>{jobs.filter((job) => job.status === column.status).length}</span>
-                </div>
-                <div className="crm-card-stack">
-                  {jobs
-                    .filter((job) => job.status === column.status)
-                    .map((job) => (
-                      <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} busy={busy} />
-                    ))}
-                </div>
-              </section>
-            ))}
+        <section className="crm-workspace crm-jobs-workspace">
+          <div className="crm-job-board">
+            <div className="crm-job-toolbar">
+              <JobStatusTabs jobs={jobs} activeStatus={activeJobStatus} onChange={setActiveJobStatus} />
+              <CollapsiblePanel title="New Sales Job">
+                <form className="crm-form" onSubmit={createJob}>
+                  <label>
+                    Customer
+                    <input name="customer_name" required placeholder="Customer name" />
+                  </label>
+                  <label>
+                    Phone
+                    <input name="phone" required placeholder="805-000-0000" />
+                  </label>
+                  <label>
+                    Email
+                    <input name="email" type="email" placeholder="customer@email.com" />
+                  </label>
+                  <label>
+                    City
+                    <input name="city" placeholder="Ventura" />
+                  </label>
+                  <label>
+                    Address
+                    <input name="address" placeholder="Project address" />
+                  </label>
+                  <div className="crm-field-row">
+                    <label>
+                      Product
+                      <select name="product_interest" defaultValue="Shutters">
+                        {productOptions.map((item) => (
+                          <option key={item}>{item}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Owner
+                      <select name="sales_owner" defaultValue="Unassigned">
+                        {ownerOptions.map((item) => (
+                          <option key={item}>{item}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="crm-field-row">
+                    <label>
+                      Priority
+                      <select name="priority" defaultValue="normal">
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </label>
+                    <label>
+                      Due
+                      <input name="next_action_due" type="date" defaultValue={todayInputValue()} />
+                    </label>
+                  </div>
+                  <label>
+                    Next Action
+                    <input name="next_action" defaultValue="Call customer" />
+                  </label>
+                  <label>
+                    Estimate
+                    <input name="estimated_total" type="number" min="0" step="50" placeholder="0" />
+                  </label>
+                  <label>
+                    Notes
+                    <textarea name="notes" rows={4} placeholder="Rooms, products, source, timing..." />
+                  </label>
+                  <button type="submit" disabled={busy}>
+                    Add Job
+                  </button>
+                </form>
+              </CollapsiblePanel>
+            </div>
+            <div className="crm-job-list" aria-label={`${statusLabel(activeJobStatus)} jobs`}>
+              {visibleJobs.map((job) => (
+                <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} busy={busy} />
+              ))}
+              {!visibleJobs.length ? <p className="crm-empty">No {statusLabel(activeJobStatus).toLowerCase()} jobs.</p> : null}
+            </div>
+            <CustomerFilesView
+              files={customerFiles}
+              activeStatus={activeJobStatus}
+              focusCustomer={focusCustomer}
+              onFocusHandled={() => setFocusCustomer(null)}
+            />
           </div>
-          <CustomerFilesView
-            files={customerFiles}
-            activeStatus={activeJobStatus}
-            focusCustomer={focusCustomer}
-            onFocusHandled={() => setFocusCustomer(null)}
-          />
         </section>
       ) : null}
 
