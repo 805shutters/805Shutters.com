@@ -33,8 +33,9 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "quotes" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
 type JobStatusFilter = CrmJobStatus | null;
+type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 
 type CrmUser = {
   email: string;
@@ -54,6 +55,14 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "check", label: "Check" },
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
+];
+const customerFileFilters: Array<{ value: CustomerFileFilter; label: string }> = [
+  { value: "need_to_schedule", label: "Need to Schedule" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "quoted", label: "Quoted" },
+  { value: "sold", label: "Sold" },
+  { value: "ordered", label: "Ordered" },
+  { value: "completed", label: "Completed" }
 ];
 const calendarSlotHours = bookingSlotTimes.map((time) => Number(time.slice(0, 2)));
 const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -531,7 +540,7 @@ export function CrmApp() {
   function openCustomerFile(customerName: string) {
     setFocusCustomer(customerName);
     setActiveJobStatus(null);
-    setActiveTab("jobs");
+    setActiveTab("customers");
     setDrill(null);
   }
 
@@ -1286,6 +1295,7 @@ export function CrmApp() {
         {[
           ["command", "Command Center"],
           ["quotes", "Quotes"],
+          ["customers", "Customer Files"],
           ["jobs", "Jobs"],
           ["bookkeeping", "Bookkeeping"],
           ["orders", "Orders"],
@@ -1340,6 +1350,14 @@ export function CrmApp() {
             <BookkeepingSnapshot rows={rows} />
           </section>
         </>
+      ) : null}
+
+      {activeTab === "customers" ? (
+        <CustomerFilesView
+          files={customerFiles}
+          focusCustomer={focusCustomer}
+          onFocusHandled={() => setFocusCustomer(null)}
+        />
       ) : null}
 
       {activeTab === "jobs" ? (
@@ -2838,6 +2856,10 @@ function DrillDetailCard({
           onSave: (value) => {
             const name = value.trim();
             if (!name) return Promise.resolve(false);
+            if (canEditJob && row) {
+              const rowPatch = row.source === "crm_quote" && row.quoteId ? { quote_total: row.total, customer_name: name } : { customer_name: name };
+              return onSaveField(entry, { job: { customer_name: name }, row: rowPatch, message: "Customer name updated." });
+            }
             return canEditJob ? saveJob({ customer_name: name }, "Customer name updated.") : saveRow({ customer_name: name }, "Customer name updated.");
           }
         }
@@ -3634,6 +3656,27 @@ function customerFileMatchesStatus(file: CrmCustomerFile, status: JobStatusFilte
   return false;
 }
 
+function customerFileMatchesFilter(file: CrmCustomerFile, filter: CustomerFileFilter) {
+  const statuses = customerFileStatusTokens(file);
+  if (!statuses.size) return filter === "need_to_schedule";
+
+  switch (filter) {
+    case "need_to_schedule":
+      return statuses.has("new") || statuses.has("follow_up");
+    case "scheduled":
+      return statuses.has("scheduled");
+    case "quoted":
+      return statuses.has("quoted") || statuses.has("draft") || statuses.has("sent");
+    case "sold":
+      return statuses.has("sold") || statuses.has("approved");
+    case "ordered":
+      return statuses.has("ordered") || statuses.has("received");
+    case "completed":
+      return statuses.has("installed") || statuses.has("invoiced") || statuses.has("paid") || statuses.has("closed");
+  }
+  return false;
+}
+
 function statusLabel(status: JobStatusFilter) {
   return status ? titleCase(status) : "All";
 }
@@ -3645,11 +3688,12 @@ function CustomerFilesView({
   onFocusHandled
 }: {
   files: CrmCustomerFile[];
-  activeStatus: JobStatusFilter;
+  activeStatus?: JobStatusFilter;
   focusCustomer?: string | null;
   onFocusHandled?: () => void;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
   const sortedFiles = useMemo(
     () =>
       [...files].sort((a, b) => {
@@ -3658,9 +3702,23 @@ function CustomerFilesView({
       }),
     [files]
   );
-  const visibleFiles = useMemo(
-    () => sortedFiles.filter((file) => customerFileMatchesStatus(file, activeStatus)),
+  const statusFilteredFiles = useMemo(
+    () => sortedFiles.filter((file) => customerFileMatchesStatus(file, activeStatus ?? null)),
     [activeStatus, sortedFiles]
+  );
+  const visibleFiles = useMemo(
+    () => (activeFilter ? statusFilteredFiles.filter((file) => customerFileMatchesFilter(file, activeFilter)) : statusFilteredFiles),
+    [activeFilter, statusFilteredFiles]
+  );
+  const filterCounts = useMemo(
+    () =>
+      new Map<CustomerFileFilter, number>(
+        customerFileFilters.map((filter) => [
+          filter.value,
+          statusFilteredFiles.filter((file) => customerFileMatchesFilter(file, filter.value)).length
+        ])
+      ),
+    [statusFilteredFiles]
   );
 
   useEffect(() => {
@@ -3682,9 +3740,27 @@ function CustomerFilesView({
       <div className="crm-section-head">
         <div>
           <p className="eyebrow">Customer Files</p>
-          <h2>{statusLabel(activeStatus)} Customer Files</h2>
+          <h2>{statusLabel(activeStatus ?? null)} Customer Files</h2>
         </div>
         <strong>{visibleFiles.length}</strong>
+      </div>
+      <div className="crm-customer-filter-bar" aria-label="Customer lifecycle filters">
+        <button type="button" className={!activeFilter ? "active" : ""} aria-pressed={!activeFilter} onClick={() => setActiveFilter(null)}>
+          All
+          <span>{statusFilteredFiles.length}</span>
+        </button>
+        {customerFileFilters.map((filter) => (
+          <button
+            type="button"
+            className={activeFilter === filter.value ? "active" : ""}
+            aria-pressed={activeFilter === filter.value}
+            onClick={() => setActiveFilter(filter.value)}
+            key={filter.value}
+          >
+            {filter.label}
+            <span>{filterCounts.get(filter.value) || 0}</span>
+          </button>
+        ))}
       </div>
       <div className="crm-customer-stack">
         {visibleFiles.map((file) => {
@@ -3805,7 +3881,11 @@ function CustomerFilesView({
         })}
       </div>
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
-      {files.length && !visibleFiles.length ? <p className="crm-empty">No customer files match {statusLabel(activeStatus).toLowerCase()}.</p> : null}
+      {files.length && !visibleFiles.length ? (
+        <p className="crm-empty">
+          No customer files match {activeFilter ? "this lifecycle filter" : statusLabel(activeStatus ?? null).toLowerCase()}.
+        </p>
+      ) : null}
     </section>
   );
 }
