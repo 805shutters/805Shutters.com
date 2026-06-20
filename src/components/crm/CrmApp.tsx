@@ -80,6 +80,11 @@ const calendarDayNumberFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: "America/Los_Angeles"
 });
+const calendarMonthFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  year: "numeric",
+  timeZone: "America/Los_Angeles"
+});
 const calendarLongDayFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   month: "long",
@@ -94,6 +99,13 @@ type CalendarSlotSelection = {
   startAt: string;
   endAt: string;
 };
+type CalendarView = "day" | "week" | "month";
+
+const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" }
+];
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
@@ -160,6 +172,31 @@ function calendarWeekDays(weekStart: string) {
   return Array.from({ length: 7 }, (_item, index) => addCalendarDays(weekStart, index));
 }
 
+function startOfCalendarMonth(value: string) {
+  const date = calendarDateToUtcNoon(value);
+  date.setUTCDate(1);
+  return date.toISOString().slice(0, 10);
+}
+
+function addCalendarMonths(value: string, months: number) {
+  const date = calendarDateToUtcNoon(value);
+  const targetYear = date.getUTCFullYear();
+  const targetMonth = date.getUTCMonth() + months;
+  const lastTargetDay = new Date(Date.UTC(targetYear, targetMonth + 1, 0, 12)).getUTCDate();
+  const safeDay = Math.min(date.getUTCDate(), lastTargetDay);
+  return new Date(Date.UTC(targetYear, targetMonth, safeDay, 12)).toISOString().slice(0, 10);
+}
+
+function calendarMonthDays(value: string) {
+  const monthStart = startOfCalendarMonth(value);
+  const monthEnd = addCalendarDays(addCalendarMonths(monthStart, 1), -1);
+  const gridStart = startOfCalendarWeek(monthStart);
+  const gridEnd = addCalendarDays(startOfCalendarWeek(monthEnd), 6);
+  const dayCount = Math.round((calendarDateToUtcNoon(gridEnd).getTime() - calendarDateToUtcNoon(gridStart).getTime()) / 86400000) + 1;
+
+  return Array.from({ length: dayCount }, (_item, index) => addCalendarDays(gridStart, index));
+}
+
 function calendarTimeValue(hour: number) {
   return `${String(hour).padStart(2, "0")}:00`;
 }
@@ -198,6 +235,10 @@ function formatCalendarWeekday(value: string) {
 
 function formatCalendarDayNumber(value: string) {
   return calendarDayNumberFormatter.format(zonedTimeToUtc(value, "12:00"));
+}
+
+function formatCalendarMonth(value: string) {
+  return calendarMonthFormatter.format(zonedTimeToUtc(value, "12:00"));
 }
 
 function formatCalendarLongDay(value: string) {
@@ -268,6 +309,16 @@ function calendarEventsForDay(events: CrmCalendarEvent[], day: string) {
   });
 }
 
+function calendarEventsForRange(events: CrmCalendarEvent[], startDay: string, endDay: string) {
+  const rangeStart = zonedTimeToUtc(startDay, "00:00");
+  const rangeEnd = zonedTimeToUtc(endDay, "00:00");
+
+  return events.filter((event) => {
+    if (!isActiveCalendarEvent(event)) return false;
+    return new Date(event.start_at) < rangeEnd && new Date(event.end_at) > rangeStart;
+  });
+}
+
 function calendarEventDurationLabel(event: CrmCalendarEvent) {
   const minutes = Math.max(0, Math.round((new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) / 60000));
   if (minutes < 60) return `${minutes}m`;
@@ -276,7 +327,7 @@ function calendarEventDurationLabel(event: CrmCalendarEvent) {
   return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
-function calendarEventClassName(event: CrmCalendarEvent) {
+function calendarEventToneClassName(event: CrmCalendarEvent) {
   const owner = (event.assigned_to || "").toLowerCase();
   const ownerClass = owner.includes("mike")
     ? "crm-calendar-event-block--mike"
@@ -285,11 +336,43 @@ function calendarEventClassName(event: CrmCalendarEvent) {
       : "crm-calendar-event-block--unassigned";
   const typeClass = event.event_type === "block" ? " crm-calendar-event-block--block" : "";
 
-  return `crm-calendar-event-block ${ownerClass}${typeClass}`;
+  return `${ownerClass}${typeClass}`;
+}
+
+function calendarEventClassName(event: CrmCalendarEvent) {
+  return `crm-calendar-event-block ${calendarEventToneClassName(event)}`;
 }
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
+}
+
+function dateInputValue(value: string | null | undefined) {
+  return value ? String(value).slice(0, 10) : "";
+}
+
+function dateTimeLocalValue(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    timeZone: "America/Los_Angeles"
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value || "00";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}
+
+function dateTimeLocalToIso(value: string) {
+  if (!value) return null;
+  const [date, time] = value.split("T");
+  if (!date || !time) return null;
+  return zonedTimeToUtc(date, time).toISOString();
 }
 
 function crmAuthErrorMessage(code: string | null) {
@@ -397,7 +480,8 @@ export function CrmApp() {
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editRow, setEditRow] = useState<CrmBookkeepingRow | null>(null);
-  const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfCalendarWeek(losAngelesDateString()));
+  const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
+  const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
@@ -617,6 +701,115 @@ export function CrmApp() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Sale owner could not be updated.");
       await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveDrillEntry(event: FormEvent<HTMLFormElement>, entry: DrillEntry) {
+    event.preventDefault();
+    if (!session) return false;
+
+    const formData = new FormData(event.currentTarget);
+    const row = entry.row;
+    const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
+    const customerName = formString(formData, "customer_name") || entry.customerName;
+    const soldDate = formString(formData, "sold_date");
+    const total = Number(formString(formData, "total_amount") || 0);
+    const cogs = Number(formString(formData, "cogs_amount") || 0);
+    const paymentAmount = Number(formString(formData, "payment_amount") || 0);
+    const kenCutOverride = formString(formData, "ken_cut_override");
+    const rowNotes = formString(formData, "row_notes");
+
+    if (!jobId && !row) {
+      setMessage("This card is a customer snapshot. Open the file to edit the source record.");
+      return false;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (jobId) {
+        const jobPatch: Record<string, unknown> = {
+          customer_name: customerName,
+          phone: formString(formData, "phone"),
+          email: formString(formData, "email"),
+          city: formString(formData, "city"),
+          address: formString(formData, "address"),
+          product_interest: formString(formData, "product_interest"),
+          next_action: formString(formData, "next_action"),
+          next_action_due: formString(formData, "next_action_due") || null,
+          estimated_total: Number(formString(formData, "estimated_total") || 0),
+          appointment_start: dateTimeLocalToIso(formString(formData, "appointment_start")),
+          appointment_end: dateTimeLocalToIso(formString(formData, "appointment_end")),
+          notes: formString(formData, "job_notes")
+        };
+
+        const jobStatus = formString(formData, "job_status");
+        if (jobStatus) jobPatch.status = jobStatus;
+
+        await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${jobId}`, {
+          method: "PATCH",
+          body: JSON.stringify(jobPatch)
+        });
+      }
+
+      if (row) {
+        const sharedRowPatch = {
+          customer_name: customerName,
+          payment_type: formString(formData, "payment_type") || "other",
+          payment_amount: paymentAmount,
+          payment_label: formString(formData, "payment_label") || "Balance payment",
+          paid_at: formString(formData, "paid_at") || null,
+          installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
+          installation_invoice_number: formString(formData, "installation_invoice_number"),
+          installation_invoice_url: formString(formData, "installation_invoice_url"),
+          installation_complete: formData.get("installation_complete") === "on",
+          jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
+          ken_cut_override: kenCutOverride === "" ? null : Number(kenCutOverride),
+          manufacturer_name: formString(formData, "manufacturer_name"),
+          manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
+          manufacturer_order_url: formString(formData, "manufacturer_order_url"),
+          manufacturer_document_url: formString(formData, "manufacturer_document_url"),
+          notes: rowNotes
+        };
+
+        if (row.source === "crm_quote" && row.quoteId) {
+          await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              ...sharedRowPatch,
+              status: formString(formData, "quote_status") || row.status,
+              quote_number: formString(formData, "quote_number"),
+              quote_total: total,
+              materials_cost: cogs,
+              sold_at: soldDate || null
+            })
+          });
+        } else {
+          await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              ...sharedRowPatch,
+              sold_date: soldDate || null,
+              total_amount: total,
+              cogs_amount: cogs
+            })
+          });
+        }
+      }
+
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill) {
+        setDrill(rebuildDrillPayload(drill, dashboardResult.jobs, dashboardResult.bookkeepingRows, dashboardResult.customerFiles));
+      }
+      setMessage(`${entry.name} updated.`);
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Card could not be updated.");
+      await refresh();
+      return false;
     } finally {
       setBusy(false);
     }
@@ -1119,6 +1312,7 @@ export function CrmApp() {
             onClose={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
+            onSaveEntry={saveDrillEntry}
           />
         </div>
       ) : null}
@@ -1135,6 +1329,7 @@ export function CrmApp() {
             onCloseDrill={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
+            onSaveEntry={saveDrillEntry}
           />
           <section className="crm-command-grid">
             <AccountabilityBoard items={accountability} />
@@ -1462,8 +1657,10 @@ export function CrmApp() {
         <>
           <CalendarPlanner
             events={events}
-            weekStart={calendarWeekStart}
-            onWeekStartChange={setCalendarWeekStart}
+            anchorDate={calendarDate}
+            view={calendarView}
+            onDateChange={setCalendarDate}
+            onViewChange={setCalendarView}
             onSelectSlot={setSelectedCalendarSlot}
           />
           {selectedCalendarSlot ? (
@@ -1925,6 +2122,50 @@ function buildSummaryDrill(
   }
 }
 
+function rowValueForDrill(payload: DrillPayload) {
+  const label = `${payload.title} ${payload.subtitle}`.toLowerCase();
+  if (label.includes("collected") || label.includes("paying")) return (row: CrmBookkeepingRow) => row.paidTotal;
+  if (label.includes("outstanding") || label.includes("open balance") || label.includes("money still owed")) {
+    return (row: CrmBookkeepingRow) => row.balance;
+  }
+  if (label.includes("profit")) return (row: CrmBookkeepingRow) => row.mikeProfit;
+  return (row: CrmBookkeepingRow) => row.total;
+}
+
+function rebuildDrillPayload(
+  payload: DrillPayload,
+  jobs: CrmJob[],
+  rows: CrmBookkeepingRow[],
+  files: CrmCustomerFile[]
+) {
+  if (payload.metric) {
+    return buildSummaryDrill(payload.metric, jobs, rows, files) || payload;
+  }
+
+  const rowValue = rowValueForDrill(payload);
+  const updatedEntries = payload.entries.map((entry) => {
+    if (entry.row) {
+      const row = rows.find((item) => item.id === entry.row?.id || (entry.row?.quoteId && item.quoteId === entry.row.quoteId));
+      if (row) return rowsToEntries([row], rowValue, { jobs, files })[0] || entry;
+    }
+
+    const jobId = entry.job?.id || entry.jobId;
+    if (jobId) {
+      const job = jobs.find((item) => item.id === jobId);
+      if (job) return jobsToEntries([job], rows, { files })[0] || entry;
+    }
+
+    if (entry.file) {
+      const file = files.find((item) => item.id === entry.file?.id) || customerFileForName(files, entry.customerName);
+      if (file) return filesToEntries([file])[0] || entry;
+    }
+
+    return entry;
+  });
+
+  return { ...payload, entries: updatedEntries };
+}
+
 function CommandDashboard({
   jobs,
   rows,
@@ -1934,7 +2175,8 @@ function CommandDashboard({
   onDrill,
   onCloseDrill,
   onOpenCustomer,
-  onReassignSale
+  onReassignSale,
+  onSaveEntry
 }: {
   jobs: CrmJob[];
   rows: CrmBookkeepingRow[];
@@ -1945,6 +2187,7 @@ function CommandDashboard({
   onCloseDrill: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
+  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
 }) {
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
@@ -2038,6 +2281,7 @@ function CommandDashboard({
         onClose={onCloseDrill}
         onOpenCustomer={onOpenCustomer}
         onReassignSale={onReassignSale}
+        onSaveEntry={onSaveEntry}
       />
     ) : null;
 
@@ -2341,6 +2585,7 @@ type DrillPanelProps = {
   onClose: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
+  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
 };
 
 function DrillDetailPanel({
@@ -2348,7 +2593,8 @@ function DrillDetailPanel({
   busy,
   onClose,
   onOpenCustomer,
-  onReassignSale
+  onReassignSale,
+  onSaveEntry
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -2375,6 +2621,7 @@ function DrillDetailPanel({
             key={entry.id}
             onOpenCustomer={onOpenCustomer}
             onReassignSale={onReassignSale}
+            onSaveEntry={onSaveEntry}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -2388,14 +2635,17 @@ function DrillDetailCard({
   payload,
   busy,
   onOpenCustomer,
-  onReassignSale
+  onReassignSale,
+  onSaveEntry
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
   busy: boolean;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
+  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
 }) {
+  const [editing, setEditing] = useState(false);
   const row = entry.row;
   const job = entry.job;
   const file = entry.file;
@@ -2403,6 +2653,7 @@ function DrillDetailCard({
   const products = entry.products || [];
   const notes = entry.notes || [];
   const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
+  const canEditCard = Boolean(entry.jobId || job || row);
 
   return (
     <article className="crm-drill-detail-card">
@@ -2417,6 +2668,11 @@ function DrillDetailCard({
           <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
             Open File
           </button>
+          {canEditCard ? (
+            <button type="button" className="crm-ghost-button" onClick={() => setEditing((current) => !current)} disabled={busy}>
+              {editing ? "View Card" : "Edit Card"}
+            </button>
+          ) : null}
         </div>
       </header>
 
@@ -2436,6 +2692,19 @@ function DrillDetailCard({
         </label>
       ) : null}
 
+      {editing ? (
+        <DrillDetailEditForm
+          entry={entry}
+          busy={busy}
+          onCancel={() => setEditing(false)}
+          onSubmit={(event) => {
+            void onSaveEntry(event, entry).then((saved) => {
+              if (saved) setEditing(false);
+            });
+          }}
+        />
+      ) : (
+        <>
       <div className="crm-drill-column-grid">
         <section className="crm-drill-info-column">
           <h4>Status</h4>
@@ -2545,7 +2814,265 @@ function DrillDetailCard({
           {notes.length ? <p className="crm-drill-notes">{notes.join(" / ")}</p> : null}
         </section>
       </div>
+        </>
+      )}
     </article>
+  );
+}
+
+function DrillDetailEditForm({
+  entry,
+  busy,
+  onCancel,
+  onSubmit
+}: {
+  entry: DrillEntry;
+  busy: boolean;
+  onCancel: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const row = entry.row;
+  const job = entry.job;
+  const file = entry.file;
+  const isQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
+  const canEditJobStatus = Boolean(job && !isQuoteRow);
+  const canEditQuoteStatus = Boolean(isQuoteRow);
+  const customerName = job?.customer_name || row?.customerName || file?.customerName || entry.customerName;
+  const statusValue = String(row?.status || job?.status || file?.latestStatus || "");
+  const soldDate = dateInputValue(row?.soldDate || file?.latestSoldDate || null);
+  const total = row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue ?? 0;
+  const cogs = row?.cogs ?? 0;
+  const installationAmount = row?.installationInvoiceAmount ?? 0;
+  const paymentType = row?.paymentType || "other";
+
+  return (
+    <form className="crm-drill-edit-form" onSubmit={onSubmit}>
+      <div className="crm-drill-edit-grid">
+        <section className="crm-drill-info-column">
+          <h4>Status</h4>
+          <div className="crm-field-row">
+            <label>
+              Customer
+              <input name="customer_name" required defaultValue={customerName} />
+            </label>
+            <label>
+              Phone
+              <input name="phone" defaultValue={file?.phone || job?.phone || ""} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Email
+              <input name="email" type="email" defaultValue={file?.email || job?.email || ""} />
+            </label>
+            <label>
+              City
+              <input name="city" defaultValue={file?.city || job?.city || ""} />
+            </label>
+          </div>
+          <label>
+            Address
+            <input name="address" defaultValue={file?.address || job?.address || ""} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Status
+              {canEditQuoteStatus ? (
+                <select name="quote_status" defaultValue={statusValue}>
+                  {crmQuoteStatuses.map((status) => (
+                    <option value={status} key={status}>
+                      {titleCase(status)}
+                    </option>
+                  ))}
+                </select>
+              ) : canEditJobStatus ? (
+                <select name="job_status" defaultValue={statusValue}>
+                  {crmJobStatuses.map((status) => (
+                    <option value={status} key={status}>
+                      {titleCase(status)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input value={statusValue ? titleCase(statusValue) : "Not linked"} readOnly />
+              )}
+            </label>
+            <label>
+              Sold Date
+              <input name="sold_date" type="date" defaultValue={soldDate} disabled={!row} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Quote / Job
+              <input name="quote_number" defaultValue={row?.quoteNumber || ""} disabled={!isQuoteRow} />
+            </label>
+            <label>
+              Product
+              <select name="product_interest" defaultValue={job?.product_interest || "Shutters"} disabled={!job}>
+                {productOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Next Action
+            <input name="next_action" defaultValue={job?.next_action || ""} disabled={!job} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Due
+              <input name="next_action_due" type="date" defaultValue={dateInputValue(job?.next_action_due)} disabled={!job} />
+            </label>
+            <label>
+              Estimate
+              <input name="estimated_total" type="number" min="0" step="0.01" defaultValue={job?.estimated_total || ""} disabled={!job} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Appointment Start
+              <input name="appointment_start" type="datetime-local" defaultValue={dateTimeLocalValue(job?.appointment_start)} disabled={!job} />
+            </label>
+            <label>
+              Appointment End
+              <input name="appointment_end" type="datetime-local" defaultValue={dateTimeLocalValue(job?.appointment_end)} disabled={!job} />
+            </label>
+          </div>
+        </section>
+
+        <section className="crm-drill-info-column">
+          <h4>Payment</h4>
+          <div className="crm-field-row">
+            <label>
+              Total
+              <input name="total_amount" type="number" min="0" step="0.01" defaultValue={total || ""} disabled={!row} />
+            </label>
+            <label>
+              COGS
+              <input name="cogs_amount" type="number" min="0" step="0.01" defaultValue={cogs || ""} disabled={!row} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Payment Type
+              <select name="payment_type" defaultValue={paymentType} disabled={!row}>
+                {paymentTypes.map((item) => (
+                  <option value={item.value} key={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Add Payment
+              <input name="payment_amount" type="number" min="0" step="0.01" placeholder="0.00" disabled={!row} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Payment Label
+              <input name="payment_label" placeholder="Balance payment" disabled={!row} />
+            </label>
+            <label>
+              Paid Date
+              <input name="paid_at" type="date" defaultValue={todayInputValue()} disabled={!row} />
+            </label>
+          </div>
+          <label>
+            Ken Cut Override
+            <input
+              name="ken_cut_override"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Auto"
+              defaultValue={row?.kenCutOverride ?? ""}
+              disabled={!row}
+            />
+          </label>
+          <div className="crm-drill-calculated-grid" aria-label="Calculated payment values">
+            <span>
+              Paid <strong>{row ? toLedgerCurrency(row.paidTotal) : "No ledger row"}</strong>
+            </span>
+            <span>
+              Balance <strong>{toLedgerCurrency(row?.balance ?? file?.openBalance)}</strong>
+            </span>
+            <span>
+              Ken <strong>{row ? toLedgerCurrency(row.kenCut) : "No ledger row"}</strong>
+            </span>
+            <span>
+              Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
+            </span>
+          </div>
+        </section>
+
+        <section className="crm-drill-info-column">
+          <h4>Product + Order</h4>
+          <div className="crm-field-row">
+            <label>
+              Manufacturer
+              <input name="manufacturer_name" defaultValue={row?.manufacturerName || ""} disabled={!row} />
+            </label>
+            <label>
+              Order #
+              <input name="manufacturer_order_ref" defaultValue={row?.manufacturerOrderRef || ""} disabled={!row} />
+            </label>
+          </div>
+          <label>
+            Order URL
+            <input name="manufacturer_order_url" type="url" defaultValue={row?.manufacturerOrderUrl || ""} disabled={!row} />
+          </label>
+          <label>
+            Manufacturer Document URL
+            <input name="manufacturer_document_url" type="url" defaultValue={row?.manufacturerDocumentUrl || ""} disabled={!row} />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Install Invoice
+              <input name="installation_invoice_amount" type="number" min="0" step="0.01" defaultValue={installationAmount || ""} disabled={!row} />
+            </label>
+            <label>
+              Invoice #
+              <input name="installation_invoice_number" defaultValue={row?.installationInvoiceNumber || ""} disabled={!row} />
+            </label>
+          </div>
+          <label>
+            Install Invoice URL
+            <input name="installation_invoice_url" type="url" defaultValue={row?.installationInvoiceUrl || ""} disabled={!row} />
+          </label>
+          <label className="crm-checkbox">
+            <input name="installation_complete" type="checkbox" defaultChecked={Boolean(row?.isInstallationComplete)} disabled={!row} />
+            Installation complete
+          </label>
+          <label className="crm-checkbox">
+            <input name="jessica_commission_paid" type="checkbox" defaultChecked={Boolean(row?.jessicaCommissionPaidAt)} disabled={!row} />
+            Jessica commission paid
+          </label>
+        </section>
+
+        <section className="crm-drill-info-column crm-drill-info-column--notes">
+          <h4>Notes</h4>
+          <label>
+            Job Notes
+            <textarea name="job_notes" rows={4} defaultValue={job?.notes || ""} disabled={!job} />
+          </label>
+          <label>
+            Ledger / Quote Notes
+            <textarea name="row_notes" rows={4} defaultValue={row?.notes || ""} disabled={!row} />
+          </label>
+        </section>
+      </div>
+      <div className="crm-drill-edit-actions">
+        <button type="button" className="crm-ghost-button" onClick={onCancel} disabled={busy}>
+          Cancel
+        </button>
+        <button type="submit" disabled={busy}>
+          {busy ? "Saving..." : "Save Card"}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -3503,23 +4030,53 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
 
 function CalendarPlanner({
   events,
-  weekStart,
-  onWeekStartChange,
+  anchorDate,
+  view,
+  onDateChange,
+  onViewChange,
   onSelectSlot
 }: {
   events: CrmCalendarEvent[];
-  weekStart: string;
-  onWeekStartChange: (weekStart: string) => void;
+  anchorDate: string;
+  view: CalendarView;
+  onDateChange: (date: string) => void;
+  onViewChange: (view: CalendarView) => void;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
 }) {
-  const days = useMemo(() => calendarWeekDays(weekStart), [weekStart]);
-  const weekEnd = days[days.length - 1];
-  const weekStartAt = zonedTimeToUtc(weekStart, "00:00");
-  const weekEndAt = zonedTimeToUtc(addCalendarDays(weekEnd, 1), "00:00");
-  const visibleEvents = events.filter((event) => {
-    if (!isActiveCalendarEvent(event)) return false;
-    return new Date(event.start_at) < weekEndAt && new Date(event.end_at) > weekStartAt;
-  });
+  const today = losAngelesDateString();
+  const weekStart = startOfCalendarWeek(anchorDate);
+  const weekDays = useMemo(() => calendarWeekDays(startOfCalendarWeek(anchorDate)), [anchorDate]);
+  const monthStart = startOfCalendarMonth(anchorDate);
+  const monthDays = useMemo(() => calendarMonthDays(anchorDate), [anchorDate]);
+  const timelineDays = view === "day" ? [anchorDate] : weekDays;
+  const rangeStart = view === "month" ? monthDays[0] : timelineDays[0];
+  const rangeEnd = view === "month" ? addCalendarDays(monthDays[monthDays.length - 1], 1) : addCalendarDays(timelineDays[timelineDays.length - 1], 1);
+  const visibleEvents = calendarEventsForRange(events, rangeStart, rangeEnd);
+  const rangeLabel =
+    view === "day"
+      ? formatCalendarLongDay(anchorDate)
+      : view === "week"
+        ? `${formatCalendarDay(weekStart)} - ${formatCalendarDay(weekDays[weekDays.length - 1])}`
+        : formatCalendarMonth(monthStart);
+
+  function moveCalendar(direction: -1 | 1) {
+    if (view === "day") {
+      onDateChange(addCalendarDays(anchorDate, direction));
+      return;
+    }
+
+    if (view === "week") {
+      onDateChange(addCalendarDays(anchorDate, direction * 7));
+      return;
+    }
+
+    onDateChange(addCalendarMonths(anchorDate, direction));
+  }
+
+  function openDay(day: string) {
+    onDateChange(day);
+    onViewChange("day");
+  }
 
   return (
     <section className="crm-calendar-board">
@@ -3528,96 +4085,188 @@ function CalendarPlanner({
           <p className="eyebrow">Calendar</p>
           <h2>Sales Appointment Calendar</h2>
         </div>
-        <div className="crm-calendar-actions" aria-label="Calendar week navigation">
-          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(addCalendarDays(weekStart, -7))}>
-            Previous
-          </button>
-          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(startOfCalendarWeek(losAngelesDateString()))}>
-            Today
-          </button>
-          <button type="button" className="crm-ghost-button" onClick={() => onWeekStartChange(addCalendarDays(weekStart, 7))}>
-            Next
-          </button>
+        <div className="crm-calendar-actions">
+          <div className="crm-calendar-view-switch" aria-label="Calendar view">
+            {calendarViewOptions.map((option) => (
+              <button
+                type="button"
+                aria-pressed={view === option.value}
+                className={view === option.value ? "active" : ""}
+                key={option.value}
+                onClick={() => onViewChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div className="crm-calendar-nav" aria-label={`${view} calendar navigation`}>
+            <button type="button" className="crm-ghost-button" onClick={() => moveCalendar(-1)}>
+              Previous
+            </button>
+            <button type="button" className="crm-ghost-button" onClick={() => onDateChange(today)}>
+              Today
+            </button>
+            <button type="button" className="crm-ghost-button" onClick={() => moveCalendar(1)}>
+              Next
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="crm-calendar-week-label">
-        <strong>
-          {formatCalendarDay(weekStart)} - {formatCalendarDay(weekEnd)}
-        </strong>
+        <strong>{rangeLabel}</strong>
         <span>{visibleEvents.length} scheduled</span>
       </div>
 
-      <div className="crm-calendar-grid-wrap">
-        <div className="crm-calendar-grid">
-          <div className="crm-calendar-time-head" style={{ gridColumn: 1, gridRow: 1 }}>Time</div>
-          {days.map((day, dayIndex) => (
-            <div className="crm-calendar-day-head" key={day} style={{ gridColumn: dayIndex + 2, gridRow: 1 }}>
-              <span>{formatCalendarWeekday(day)}</span>
-              <strong>{formatCalendarDayNumber(day)}</strong>
-              <em>{calendarEventsForDay(visibleEvents, day).length || "0"} appt</em>
-            </div>
-          ))}
-
-          {calendarSlotHours.map((hour, rowIndex) => (
-            <Fragment key={hour}>
-              <div className="crm-calendar-time-label" style={{ gridColumn: 1, gridRow: rowIndex + 2 }}>
-                <strong>{formatCalendarHour(hour)}</strong>
-                <span>{formatCalendarHour(hour + 1)}</span>
-              </div>
-              {days.map((day, dayIndex) => {
-                const event = findCalendarEventForSlot(events, day, hour);
-                const past = isPastCalendarSlot(day, hour);
-                const slot = calendarSlotSelection(day, hour);
-
-                return (
-                  <button
-                    type="button"
-                    aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarHour(hour)}`}
-                    className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
-                    disabled={Boolean(event) || past}
-                    key={`${day}-${hour}`}
-                    onClick={() => onSelectSlot(slot)}
-                    style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
-                  >
-                    <span>{event ? "Booked" : "Open"}</span>
-                    <small>{event ? "Scheduled" : "Add appointment"}</small>
-                  </button>
-                );
-              })}
-            </Fragment>
-          ))}
-          {visibleEvents.map((event) => {
-            const placement = calendarEventPlacement(event, days);
-            if (!placement) return null;
-
-            return (
-              <article
-                className={calendarEventClassName(event)}
-                key={event.id}
-                style={{
-                  gridColumn: placement.column,
-                  gridRow: `${placement.rowStart} / ${placement.rowEnd}`
-                }}
-              >
-                <div className="crm-calendar-event-time">
-                  <span>
-                    {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
-                    {calendarTimeFormatter.format(new Date(event.end_at))}
-                  </span>
-                  <b>{calendarEventDurationLabel(event)}</b>
-                </div>
-                <h3>{event.title}</h3>
-                <p>{event.assigned_to}</p>
-              </article>
-            );
-          })}
-        </div>
-      </div>
+      {view === "month" ? (
+        <CalendarMonthGrid days={monthDays} events={visibleEvents} monthStart={monthStart} today={today} onOpenDay={openDay} />
+      ) : (
+        <CalendarTimelineGrid days={timelineDays} events={visibleEvents} onSelectSlot={onSelectSlot} view={view} />
+      )}
     </section>
   );
 }
 
+function CalendarTimelineGrid({
+  days,
+  events,
+  onSelectSlot,
+  view
+}: {
+  days: string[];
+  events: CrmCalendarEvent[];
+  onSelectSlot: (slot: CalendarSlotSelection) => void;
+  view: "day" | "week";
+}) {
+  return (
+    <div className="crm-calendar-grid-wrap">
+      <div className={`crm-calendar-grid crm-calendar-grid--${view}`}>
+        <div className="crm-calendar-time-head" style={{ gridColumn: 1, gridRow: 1 }}>Time</div>
+        {days.map((day, dayIndex) => (
+          <div className="crm-calendar-day-head" key={day} style={{ gridColumn: dayIndex + 2, gridRow: 1 }}>
+            <span>{formatCalendarWeekday(day)}</span>
+            <strong>{formatCalendarDayNumber(day)}</strong>
+            <em>{calendarEventsForDay(events, day).length || "0"} appt</em>
+          </div>
+        ))}
+
+        {calendarSlotHours.map((hour, rowIndex) => (
+          <Fragment key={hour}>
+            <div className="crm-calendar-time-label" style={{ gridColumn: 1, gridRow: rowIndex + 2 }}>
+              <strong>{formatCalendarHour(hour)}</strong>
+              <span>{formatCalendarHour(hour + 1)}</span>
+            </div>
+            {days.map((day, dayIndex) => {
+              const event = findCalendarEventForSlot(events, day, hour);
+              const past = isPastCalendarSlot(day, hour);
+              const slot = calendarSlotSelection(day, hour);
+
+              return (
+                <button
+                  type="button"
+                  aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarHour(hour)}`}
+                  className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
+                  disabled={Boolean(event) || past}
+                  key={`${day}-${hour}`}
+                  onClick={() => onSelectSlot(slot)}
+                  style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
+                >
+                  <span>{event ? "Booked" : "Open"}</span>
+                  <small>{event ? "Scheduled" : "Add appointment"}</small>
+                </button>
+              );
+            })}
+          </Fragment>
+        ))}
+        {events.map((event) => {
+          const placement = calendarEventPlacement(event, days);
+          if (!placement) return null;
+
+          return (
+            <article
+              className={calendarEventClassName(event)}
+              key={event.id}
+              style={{
+                gridColumn: placement.column,
+                gridRow: `${placement.rowStart} / ${placement.rowEnd}`
+              }}
+            >
+              <div className="crm-calendar-event-time">
+                <span>
+                  {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
+                  {calendarTimeFormatter.format(new Date(event.end_at))}
+                </span>
+                <b>{calendarEventDurationLabel(event)}</b>
+              </div>
+              <h3>{event.title}</h3>
+              <p>{event.assigned_to}</p>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarMonthGrid({
+  days,
+  events,
+  monthStart,
+  today,
+  onOpenDay
+}: {
+  days: string[];
+  events: CrmCalendarEvent[];
+  monthStart: string;
+  today: string;
+  onOpenDay: (day: string) => void;
+}) {
+  const weekdays = calendarWeekDays(startOfCalendarWeek(monthStart));
+
+  return (
+    <div className="crm-calendar-month-wrap">
+      <div className="crm-calendar-month-grid">
+        {weekdays.map((day) => (
+          <div className="crm-calendar-month-head" key={day}>
+            {formatCalendarWeekday(day)}
+          </div>
+        ))}
+        {days.map((day) => {
+          const dayEvents = calendarEventsForDay(events, day).sort((first, second) => new Date(first.start_at).getTime() - new Date(second.start_at).getTime());
+          const eventPreview = dayEvents.slice(0, 3);
+          const outsideMonth = startOfCalendarMonth(day) !== monthStart;
+          const className = [
+            "crm-calendar-month-cell",
+            outsideMonth ? "crm-calendar-month-cell--outside" : "",
+            day === today ? "crm-calendar-month-cell--today" : ""
+          ].filter(Boolean).join(" ");
+
+          return (
+            <article className={className} key={day}>
+              <button type="button" className="crm-calendar-month-date" onClick={() => onOpenDay(day)} aria-label={`Open day view for ${formatCalendarLongDay(day)}`}>
+                <span>{formatCalendarDayNumber(day)}</span>
+                <em>{dayEvents.length || "0"} appt</em>
+              </button>
+              <div className="crm-calendar-month-events">
+                {eventPreview.map((event) => (
+                  <div className={`crm-calendar-month-event ${calendarEventToneClassName(event)}`} key={event.id}>
+                    <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
+                    <span>{event.title}</span>
+                  </div>
+                ))}
+                {dayEvents.length > eventPreview.length ? (
+                  <button type="button" className="crm-calendar-month-more" onClick={() => onOpenDay(day)}>
+                    +{dayEvents.length - eventPreview.length} more
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function KenPaymentRow({
   payment,

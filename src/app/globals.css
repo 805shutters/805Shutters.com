@@ -3266,6 +3266,41 @@ body:has(.crm-app-shell) {
   gap: 8px;
 }
 
+.crm-calendar-view-switch,
+.crm-calendar-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.crm-calendar-view-switch {
+  padding: 3px;
+  background: #eeeeeb;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-calendar-view-switch button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #5b5b58;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-view-switch button.active,
+.crm-calendar-view-switch button:hover,
+.crm-calendar-view-switch button:focus-visible {
+  background: #ffffff;
+  border-color: #d8d8d2;
+  color: #0b0b0b;
+  box-shadow: none;
+  transform: none;
+}
+
 .crm-calendar-week-label {
   display: flex;
   align-items: center;
@@ -3297,11 +3332,19 @@ body:has(.crm-app-shell) {
 
 .crm-calendar-grid {
   display: grid;
-  grid-template-columns: 58px repeat(7, minmax(166px, 1fr));
   grid-template-rows: 48px repeat(9, 58px);
-  min-width: 1220px;
   background: #d8d8d2;
   gap: 1px;
+}
+
+.crm-calendar-grid--day {
+  grid-template-columns: 58px minmax(420px, 1fr);
+  min-width: 760px;
+}
+
+.crm-calendar-grid--week {
+  grid-template-columns: 58px repeat(7, minmax(166px, 1fr));
+  min-width: 1220px;
 }
 
 .crm-calendar-time-head,
@@ -3528,6 +3571,159 @@ body:has(.crm-app-shell) {
   font-weight: 800;
   line-height: 1.25;
   opacity: 0.82;
+}
+
+.crm-calendar-month-wrap {
+  overflow-x: auto;
+  border: 1px solid #d8d8d2;
+  background: #eeeeeb;
+}
+
+.crm-calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(138px, 1fr));
+  min-width: 980px;
+  gap: 1px;
+  background: #d8d8d2;
+}
+
+.crm-calendar-month-head,
+.crm-calendar-month-cell {
+  background: #ffffff;
+}
+
+.crm-calendar-month-head {
+  min-height: 38px;
+  padding: 10px;
+  color: #3a3a36;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-month-cell {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 132px;
+  padding: 8px;
+}
+
+.crm-calendar-month-cell--outside {
+  background: #f4f4f2;
+  color: #9a9890;
+}
+
+.crm-calendar-month-cell--today {
+  box-shadow: inset 0 0 0 2px #111111;
+}
+
+.crm-calendar-month-date {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  text-align: left;
+}
+
+.crm-calendar-month-date:hover,
+.crm-calendar-month-date:focus-visible {
+  background: transparent;
+  color: #0b0b0b;
+  transform: none;
+}
+
+.crm-calendar-month-date span {
+  color: #0b0b0b;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.crm-calendar-month-cell--outside .crm-calendar-month-date span {
+  color: #9a9890;
+}
+
+.crm-calendar-month-date em {
+  padding: 2px 6px;
+  background: #f4f4f2;
+  border: 1px solid #d8d8d2;
+  border-radius: 5px;
+  color: #5b5b58;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.crm-calendar-month-events {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-calendar-month-event,
+.crm-calendar-month-more {
+  min-width: 0;
+  padding: 5px 6px;
+  overflow: hidden;
+  background: #3a3a36;
+  border: 1px solid #2b2b28;
+  border-radius: 3px;
+  color: #ffffff;
+}
+
+.crm-calendar-month-event {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.crm-calendar-month-event.crm-calendar-event-block--mike {
+  background: #111111;
+  border-color: #0b0b0b;
+}
+
+.crm-calendar-month-event.crm-calendar-event-block--jessica {
+  background: #245743;
+  border-color: #174433;
+}
+
+.crm-calendar-month-event.crm-calendar-event-block--block {
+  background: #e5e4e2;
+  border-color: #b8b6ae;
+  color: #3a3a36;
+}
+
+.crm-calendar-month-event strong,
+.crm-calendar-month-event span {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-calendar-month-event strong {
+  flex: 0 0 auto;
+}
+
+.crm-calendar-month-more {
+  background: #f4f4f2;
+  border-color: #d8d8d2;
+  color: #5b5b58;
+  font-size: 10px;
+  font-weight: 900;
+  text-align: left;
 }
 
 .crm-availability-workspace {
