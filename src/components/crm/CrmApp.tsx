@@ -908,7 +908,8 @@ export function CrmApp() {
     event.preventDefault();
     if (!session || !selectedCalendarSlot) return;
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const customerName = formString(formData, "customer_name");
     const phone = formString(formData, "phone");
     const email = formString(formData, "email");
@@ -954,7 +955,7 @@ export function CrmApp() {
         })
       });
 
-      event.currentTarget.reset();
+      form.reset();
       setSelectedCalendarSlot(null);
       await refresh();
     } catch (error) {
