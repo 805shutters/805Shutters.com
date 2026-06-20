@@ -731,14 +731,13 @@ export async function createCrmAvailabilitySlot(
     .from("crm_availability_slots")
     .delete()
     .eq("owner", owner)
-    .eq("start_at", record.start_at)
-    .neq("end_at", record.end_at);
+    .eq("start_at", record.start_at);
 
   if (staleSlotError) throw new CrmAuthError(502, "Availability slot could not be saved.");
 
   const { data, error } = await supabase
     .from("crm_availability_slots")
-    .upsert(record, { onConflict: "owner,start_at,end_at" })
+    .insert(record)
     .select("*")
     .single();
 

@@ -2805,7 +2805,9 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
     setBusyKey(`${date} all`);
     setError(null);
     try {
-      await Promise.all(targetSlots.map((slot) => setAvailability(date, slot.time, shouldOpen)));
+      for (const slot of targetSlots) {
+        await setAvailability(date, slot.time, shouldOpen);
+      }
       await reloadSlots();
     } catch (toggleError) {
       setError(toggleError instanceof Error ? toggleError.message : "Could not update the full day.");
