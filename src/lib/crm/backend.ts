@@ -111,6 +111,8 @@ const allowedQuotePatchFields = new Set([
   "customer_email",
   "customer_phone",
   "customer_address",
+  "customer_printed_name",
+  "signed_at",
   "notes"
 ]);
 
@@ -493,6 +495,71 @@ async function syncCustomerFromJob(supabase: CrmSupabaseClient, job: Record<stri
       lastJobId: job.id
     }
   });
+}
+
+function publicQuoteUrl(token: string | null | undefined): string | null {
+  if (!token) return null;
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+  return base ? `${base}/quote/${token}` : `/quote/${token}`;
+}
+
+async function upsertSoldQuoteContract(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  job?: Record<string, unknown> | null
+) {
+  if (quote.status !== "sold" && quote.status !== "approved") return;
+  const signedAt = quote.signed_at || quote.sold_at || quote.approved_at;
+  if (!signedAt && !quote.share_token) return;
+
+  let linkedJob = job || null;
+  if (!linkedJob && quote.job_id) {
+    const { data } = await supabase.from("crm_jobs").select("*").eq("id", quote.job_id).maybeSingle();
+    linkedJob = data || null;
+  }
+  const customerName = String(quote.customer_name || linkedJob?.customer_name || "Linked customer");
+  const customer = linkedJob
+    ? await upsertCrmCustomer(supabase, {
+        displayName: customerName,
+        phone: typeof linkedJob.phone === "string" ? linkedJob.phone : null,
+        email: typeof linkedJob.email === "string" ? linkedJob.email : quote.customer_email,
+        address: typeof linkedJob.address === "string" ? linkedJob.address : quote.customer_address,
+        city: typeof linkedJob.city === "string" ? linkedJob.city : null,
+        latestStatus: quote.status,
+        latestSoldDate: signedAt ? signedAt.slice(0, 10) : null,
+        source: "crm",
+        notes: quote.notes || (typeof linkedJob.notes === "string" ? linkedJob.notes : null),
+        meta: {
+          lastQuoteId: quote.id,
+          lastSignedQuoteId: quote.id,
+          lastJobId: linkedJob.id
+        }
+      })
+    : null;
+
+  const { error } = await supabase.from("crm_customer_contracts").upsert(
+    {
+      external_source: "crm_quote",
+      external_id: `contract:${quote.id}`,
+      customer_id: customer?.id || null,
+      job_id: quote.job_id,
+      quote_id: quote.id,
+      bookkeeping_entry_id: null,
+      title: quote.quote_number ? `Contract ${quote.quote_number}` : `${customerName} contract`,
+      contract_url: publicQuoteUrl(quote.share_token),
+      share_token: quote.share_token,
+      status: quote.status,
+      signed_at: signedAt || null,
+      total_amount: toMoney(quote.quote_total),
+      meta: {
+        customer_printed_name: quote.customer_printed_name || null,
+        source: "crm_quote_status"
+      }
+    },
+    { onConflict: "external_source,external_id" }
+  );
+
+  if (error) throw new CrmAuthError(502, "Quote was saved, but the customer contract file could not be saved.");
 }
 
 async function syncCustomerFromBookkeepingEntry(
@@ -1165,6 +1232,7 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     deposit_required: depositPaid,
     balance_due: Math.max(quoteTotal - depositPaid - balancePaid, 0),
     sold_by: optionalText(payload.sold_by),
+    signed_at: status === "sold" || status === "approved" ? payload.signed_at || payload.sold_at || now : null,
     sold_at: status === "sold" || status === "approved" ? payload.sold_at || now : null,
     approved_at: status === "approved" ? payload.approved_at || now : null,
     ordered_at: status === "ordered" ? payload.ordered_at || now : null,
@@ -1243,6 +1311,7 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
   });
 
   if (job) await syncCustomerFromJob(supabase, job);
+  await upsertSoldQuoteContract(supabase, data as CrmQuote, job);
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
@@ -1299,6 +1368,7 @@ export async function updateCrmQuote(
 
   if (typeof payload.status === "string") {
     if ((payload.status === "sold" || payload.status === "approved") && !patch.sold_at) patch.sold_at = now;
+    if ((payload.status === "sold" || payload.status === "approved") && !patch.signed_at) patch.signed_at = now;
     if (payload.status === "approved" && !patch.approved_at) patch.approved_at = now;
     if (payload.status === "ordered" && !patch.ordered_at) patch.ordered_at = now;
     if (payload.status === "received" && !patch.received_at) patch.received_at = now;
@@ -1398,6 +1468,7 @@ export async function updateCrmQuote(
   });
 
   if (job) await syncCustomerFromJob(supabase, job);
+  await upsertSoldQuoteContract(supabase, quote as CrmQuote, job);
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",

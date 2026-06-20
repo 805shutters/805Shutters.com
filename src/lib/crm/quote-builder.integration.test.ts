@@ -101,6 +101,19 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(after.status).toBe("sold");
     expect(after.signed_at).toBeTruthy();
 
+    const { data: contract } = await supabase
+      .from("crm_customer_contracts")
+      .select("quote_id, job_id, share_token, status, signed_at, total_amount")
+      .eq("external_source", "crm_quote")
+      .eq("external_id", `contract:${quoteId}`)
+      .maybeSingle();
+    expect(contract?.quote_id).toBe(quoteId);
+    expect(contract?.job_id).toBe(jobId);
+    expect(contract?.share_token).toBe(share.token);
+    expect(contract?.status).toBe("sold");
+    expect(contract?.signed_at).toBeTruthy();
+    expect(Number(contract?.total_amount)).toBe(424);
+
     // Signing again is idempotent
     const again = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer" });
     expect(again.alreadySigned).toBe(true);

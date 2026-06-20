@@ -5,7 +5,7 @@
 import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { recordCrmActivity } from "@/lib/crm/backend";
+import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { computeQuoteMoney, lineItemSubtotal, parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
@@ -175,6 +175,77 @@ export function buildSignedCustomerSms(customerName: string): string {
   return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Reply with any questions.`;
 }
 
+function publicQuoteUrl(token: string): string {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+  return base ? `${base}/quote/${token}` : `/quote/${token}`;
+}
+
+async function syncSignedQuoteArtifacts(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  token: string,
+  pub: PublicQuote,
+  signedAt: string,
+  printedName: string,
+) {
+  const { data: job } = quote.job_id
+    ? await supabase
+        .from("crm_jobs")
+        .select("id, customer_name, phone, email, address, city, notes")
+        .eq("id", quote.job_id)
+        .maybeSingle()
+    : { data: null };
+
+  const jobRow = job as {
+    id: string;
+    customer_name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    city?: string | null;
+    notes?: string | null;
+  } | null;
+  const customerName = pub.customerName || jobRow?.customer_name || "Linked customer";
+  const customer = await upsertCrmCustomer(supabase, {
+    displayName: customerName,
+    phone: quote.customer_phone || jobRow?.phone || null,
+    email: quote.customer_email || jobRow?.email || null,
+    address: quote.customer_address || jobRow?.address || null,
+    city: jobRow?.city || null,
+    latestStatus: "sold",
+    latestSoldDate: signedAt.slice(0, 10),
+    source: "crm",
+    notes: quote.notes || jobRow?.notes || null,
+    meta: {
+      lastQuoteId: quote.id,
+      lastSignedQuoteId: quote.id,
+    },
+  });
+
+  const { error } = await supabase.from("crm_customer_contracts").upsert(
+    {
+      external_source: "crm_quote",
+      external_id: `contract:${quote.id}`,
+      customer_id: customer?.id || null,
+      job_id: quote.job_id,
+      quote_id: quote.id,
+      bookkeeping_entry_id: null,
+      title: quote.quote_number ? `Contract ${quote.quote_number}` : `${customerName} contract`,
+      contract_url: publicQuoteUrl(token),
+      share_token: token,
+      status: "sold",
+      signed_at: signedAt,
+      total_amount: pub.total,
+      meta: {
+        customer_printed_name: printedName,
+        source: "public_quote_signature",
+      },
+    },
+    { onConflict: "external_source,external_id" },
+  );
+  if (error) throw new CrmAuthError(502, "Quote was signed, but the customer contract file could not be saved.");
+}
+
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
@@ -182,7 +253,20 @@ export async function acceptPublicQuote(
 ): Promise<{ ok: true; alreadySigned: boolean }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This quote link is no longer valid.");
-  if (quote.signed_at) return { ok: true, alreadySigned: true };
+  if (quote.signed_at) {
+    const pub = await loadPublicQuoteByToken(supabase, token);
+    if (pub) {
+      await syncSignedQuoteArtifacts(
+        supabase,
+        quote,
+        token,
+        pub,
+        quote.signed_at,
+        quote.customer_printed_name || input.printedName || pub.customerName || "Customer",
+      );
+    }
+    return { ok: true, alreadySigned: true };
+  }
 
   const printedName = (input.printedName || "").trim();
   if (!printedName) throw new CrmAuthError(400, "Please type your name to sign.");
@@ -286,6 +370,15 @@ export async function acceptPublicQuote(
     .update({ sold_date: now.slice(0, 10), total_amount: soldTotal })
     .eq("quote_id", quote.id);
 
+  await syncSignedQuoteArtifacts(
+    supabase,
+    { ...quote, signed_at: now, sold_at: now, customer_signature: signature, customer_printed_name: printedName },
+    token,
+    { ...pub, total: soldTotal, signed: true, signedAt: now },
+    now,
+    printedName,
+  );
+
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",
     entityId: quote.id,
@@ -331,8 +424,7 @@ export async function ensureShareToken(
     await recordCrmActivity(supabase, actor, { entityType: "quote", entityId: quoteId, action: "share_link.create" });
   }
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "";
-  return { token, url: `${base}/quote/${token}` };
+  return { token, url: publicQuoteUrl(token) };
 }
 
 export async function sendQuoteToCustomer(
