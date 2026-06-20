@@ -1224,35 +1224,26 @@ export function CrmApp() {
         />
       ) : null}
       <header className="crm-topbar">
-        <div>
-          <p className="eyebrow">805 Shutters</p>
-          <h1>CRM Command</h1>
+        <div className="crm-logo-lockup">
+          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} />
+          <h1 className="crm-visually-hidden">CRM Command</h1>
+          <span aria-hidden="true">CRM</span>
         </div>
-        <div className="crm-user">
-          <span>{user?.displayName || user?.email}</span>
-          <button type="button" className="crm-ghost-button" onClick={refresh}>
-            Refresh
-          </button>
-          <button type="button" className="crm-ghost-button" onClick={signOut}>
-            Sign Out
-          </button>
-        </div>
+        <section className="crm-metrics" aria-label="CRM summary">
+          <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
+          <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
+          <Metric label="Pipeline" value={toCurrency(data?.summary.quotePipeline)} onClick={() => openSummaryDrill("pipeline")} />
+          <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
+          <Metric label="Needs Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
+          <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} onClick={() => openSummaryDrill("missingCogs")} />
+          <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} onClick={() => openSummaryDrill("readyInstall")} />
+          <Metric label="Customer Files" value={data?.summary.customerFiles || 0} onClick={() => openSummaryDrill("customerFiles")} />
+          <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} onClick={() => openSummaryDrill("jessicaOwed")} />
+          <Metric label="Payoff Left" value={toCurrency(data?.kenPayoff.payoffRemaining)} />
+        </section>
       </header>
 
       {message ? <p className="crm-alert">{message}</p> : null}
-
-      <section className="crm-metrics" aria-label="CRM summary">
-        <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
-        <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
-        <Metric label="Pipeline" value={toCurrency(data?.summary.quotePipeline)} onClick={() => openSummaryDrill("pipeline")} />
-        <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
-        <Metric label="Needs Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
-        <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} onClick={() => openSummaryDrill("missingCogs")} />
-        <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} onClick={() => openSummaryDrill("readyInstall")} />
-        <Metric label="Customer Files" value={data?.summary.customerFiles || 0} onClick={() => openSummaryDrill("customerFiles")} />
-        <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} onClick={() => openSummaryDrill("jessicaOwed")} />
-        <Metric label="Payoff Left" value={toCurrency(data?.kenPayoff.payoffRemaining)} />
-      </section>
 
       <nav className="crm-tabs" aria-label="CRM sections">
         {[
