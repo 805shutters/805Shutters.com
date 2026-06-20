@@ -7974,28 +7974,56 @@ html.mobile-menu-open {
   color: #b4534a;
 }
 
-.crm-drill-fact-grid {
+.crm-drill-column-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 12px;
 }
 
-.crm-drill-fact {
+.crm-drill-column-grid--support {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
+.crm-drill-info-column {
   display: grid;
   align-content: start;
-  gap: 4px;
+  gap: 10px;
   min-width: 0;
-  padding: 10px;
+  padding: 13px;
   background: var(--white);
   border: 1px solid #ded5c8;
 }
 
-.crm-drill-fact.wide {
-  grid-column: span 2;
+.crm-drill-info-column h4 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-drill-fact-stack {
+  display: grid;
+  min-width: 0;
+}
+
+.crm-drill-fact {
+  display: grid;
+  grid-template-columns: minmax(94px, 0.72fr) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #ded5c8;
+}
+
+.crm-drill-fact:last-child {
+  border-bottom: 0;
 }
 
 .crm-drill-fact span,
-.crm-drill-subsection h4,
 .crm-drill-mini-card strong,
 .crm-drill-document-grid strong {
   color: var(--accent);
@@ -8036,6 +8064,10 @@ html.mobile-menu-open {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.crm-drill-mini-grid--single {
+  grid-template-columns: 1fr;
 }
 
 .crm-drill-mini-card,
@@ -8127,7 +8159,7 @@ html.mobile-menu-open {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .crm-drill-fact-grid,
+  .crm-drill-column-grid,
   .crm-drill-mini-grid,
   .crm-drill-document-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8159,11 +8191,14 @@ html.mobile-menu-open {
     justify-content: stretch;
   }
 
-  .crm-drill-fact-grid,
+  .crm-drill-column-grid,
   .crm-drill-mini-grid,
-  .crm-drill-document-grid,
-  .crm-drill-fact.wide {
+  .crm-drill-document-grid {
     grid-template-columns: 1fr;
-    grid-column: auto;
+  }
+
+  .crm-drill-fact {
+    grid-template-columns: 1fr;
+    gap: 3px;
   }
 }

@@ -2436,107 +2436,116 @@ function DrillDetailCard({
         </label>
       ) : null}
 
-      <div className="crm-drill-fact-grid">
-        <DrillFact label="Sold Date" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} />
-        <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} />
-        <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} />
-        <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} wide />
-        <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} />
-        <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
-        <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
-        <DrillFact label="COGS" value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"} tone={row && row.cogs <= 0 ? "warn" : undefined} />
-        <DrillFact label="Deposit Due" value={row ? toLedgerCurrency(row.depositDue) : "No ledger row"} />
-        <DrillFact label="Deposit Paid" value={row ? toLedgerCurrency(row.depositPaid) : "No ledger row"} />
-        <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
-        <DrillFact label="Payment Type" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} />
-        <DrillFact label="Installation" value={row ? `${toLedgerCurrency(row.installationInvoiceAmount)} / ${row.isInstallationComplete ? "Complete" : row.installationMatchStatus}` : "No install row"} />
-        <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
-        <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
-        <DrillFact label="Jessica" value={row ? jessicaLedgerStatus(row) : "No ledger row"} />
-        <DrillFact label="Manufacturer" value={[row?.manufacturerName, row?.manufacturerOrderRef].filter(Boolean).join(" / ") || "Needs order details"} wide />
-        <DrillFact label="Next Action" value={job?.next_action || "No next action"} />
-        <DrillFact label="Due" value={job?.next_action_due || "Open"} />
-        <DrillFact label="Appointment" value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"} />
+      <div className="crm-drill-column-grid">
+        <section className="crm-drill-info-column">
+          <h4>Status</h4>
+          <div className="crm-drill-fact-stack">
+            <DrillFact label="Sold Date" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} />
+            <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} />
+            <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} />
+            <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} />
+            <DrillFact label="Next Action" value={job?.next_action || "No next action"} />
+            <DrillFact label="Due" value={job?.next_action_due || "Open"} />
+            <DrillFact label="Appointment" value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"} />
+          </div>
+        </section>
+
+        <section className="crm-drill-info-column">
+          <h4>Payment</h4>
+          <div className="crm-drill-fact-stack">
+            <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} />
+            <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
+            <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
+            <DrillFact label="Deposit Due" value={row ? toLedgerCurrency(row.depositDue) : "No ledger row"} />
+            <DrillFact label="Deposit Paid" value={row ? toLedgerCurrency(row.depositPaid) : "No ledger row"} />
+            <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
+            <DrillFact label="Payment Type" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} />
+            <DrillFact label="COGS" value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"} tone={row && row.cogs <= 0 ? "warn" : undefined} />
+            <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
+            <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+            <DrillFact label="Jessica" value={row ? jessicaLedgerStatus(row) : "No ledger row"} />
+          </div>
+        </section>
+
+        <section className="crm-drill-info-column">
+          <h4>Product + Order</h4>
+          <div className="crm-drill-fact-stack">
+            <DrillFact label="Manufacturer" value={[row?.manufacturerName, row?.manufacturerOrderRef].filter(Boolean).join(" / ") || "Needs order details"} />
+            <DrillFact label="Installation" value={row ? `${toLedgerCurrency(row.installationInvoiceAmount)} / ${row.isInstallationComplete ? "Complete" : row.installationMatchStatus}` : "No install row"} />
+          </div>
+          <div className="crm-drill-mini-grid crm-drill-mini-grid--single">
+            {products.map((product) => (
+              <div className="crm-drill-mini-card" key={product.id}>
+                <strong>{[product.room, product.product_type].filter(Boolean).join(" / ")}</strong>
+                <span>
+                  {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
+                    .filter(Boolean)
+                    .join(" / ") || "Product details pending"}
+                </span>
+                <em>
+                  {product.quantity} item{product.quantity === 1 ? "" : "s"}
+                  {product.total_price ? ` / ${toLedgerCurrency(product.total_price)}` : ""}
+                </em>
+              </div>
+            ))}
+            {!products.length ? <p>No product rows attached yet.</p> : null}
+          </div>
+        </section>
       </div>
 
-      <section className="crm-drill-subsection">
-        <h4>Products</h4>
-        <div className="crm-drill-mini-grid">
-          {products.map((product) => (
-            <div className="crm-drill-mini-card" key={product.id}>
-              <strong>{[product.room, product.product_type].filter(Boolean).join(" / ")}</strong>
-              <span>
-                {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
-                  .filter(Boolean)
-                  .join(" / ") || "Product details pending"}
-              </span>
-              <em>
-                {product.quantity} item{product.quantity === 1 ? "" : "s"}
-                {product.total_price ? ` / ${toLedgerCurrency(product.total_price)}` : ""}
-              </em>
-            </div>
-          ))}
-          {!products.length ? <p>No product rows attached yet.</p> : null}
-        </div>
-      </section>
-
-      <section className="crm-drill-subsection">
-        <h4>Payments + Activity</h4>
-        <div className="crm-drill-mini-grid">
-          {row?.payments.map((payment) => (
-            <div className="crm-drill-mini-card" key={payment.id}>
-              <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
-              <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
-              <em>{toLedgerCurrency(payment.amount)}</em>
-            </div>
-          ))}
-          {row?.creditsIn.map((credit) => (
-            <div className="crm-drill-mini-card" key={`credit-in-${credit.id}`}>
-              <strong>Credit In</strong>
-              <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-              <em>{toLedgerCurrency(credit.amount)}</em>
-            </div>
-          ))}
-          {row?.creditsOut.map((credit) => (
-            <div className="crm-drill-mini-card" key={`credit-out-${credit.id}`}>
-              <strong>Credit Out</strong>
-              <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-              <em>{toLedgerCurrency(credit.amount)}</em>
-            </div>
-          ))}
-          {row?.expenses.map((expense) => (
-            <div className="crm-drill-mini-card" key={`expense-${expense.id}`}>
-              <strong>{expense.label}</strong>
-              <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
-              <em>{toLedgerCurrency(expense.amount)}</em>
-            </div>
-          ))}
-          {!row || (!row.payments.length && !row.creditsIn.length && !row.creditsOut.length && !row.expenses.length) ? (
-            <p>No payment, credit, or expense activity attached.</p>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="crm-drill-subsection">
-        <h4>Contract + Documents</h4>
-        <div className="crm-drill-document-grid">
-          {documents.map((document) => (
-            <a href={document.url} target="_blank" rel="noreferrer" key={document.id}>
-              <strong>{document.kind}</strong>
-              <span>{document.title}</span>
-              <em>{document.status || "Open copy"}</em>
-            </a>
-          ))}
-          {!documents.length ? <p>No contract copy or document link attached.</p> : null}
-        </div>
-      </section>
-
-      {notes.length ? (
-        <section className="crm-drill-subsection">
-          <h4>Notes</h4>
-          <p className="crm-drill-notes">{notes.join(" / ")}</p>
+      <div className="crm-drill-column-grid crm-drill-column-grid--support">
+        <section className="crm-drill-info-column">
+          <h4>Payments + Activity</h4>
+          <div className="crm-drill-mini-grid">
+            {row?.payments.map((payment) => (
+              <div className="crm-drill-mini-card" key={payment.id}>
+                <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
+                <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
+                <em>{toLedgerCurrency(payment.amount)}</em>
+              </div>
+            ))}
+            {row?.creditsIn.map((credit) => (
+              <div className="crm-drill-mini-card" key={`credit-in-${credit.id}`}>
+                <strong>Credit In</strong>
+                <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+                <em>{toLedgerCurrency(credit.amount)}</em>
+              </div>
+            ))}
+            {row?.creditsOut.map((credit) => (
+              <div className="crm-drill-mini-card" key={`credit-out-${credit.id}`}>
+                <strong>Credit Out</strong>
+                <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+                <em>{toLedgerCurrency(credit.amount)}</em>
+              </div>
+            ))}
+            {row?.expenses.map((expense) => (
+              <div className="crm-drill-mini-card" key={`expense-${expense.id}`}>
+                <strong>{expense.label}</strong>
+                <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
+                <em>{toLedgerCurrency(expense.amount)}</em>
+              </div>
+            ))}
+            {!row || (!row.payments.length && !row.creditsIn.length && !row.creditsOut.length && !row.expenses.length) ? (
+              <p>No payment, credit, or expense activity attached.</p>
+            ) : null}
+          </div>
         </section>
-      ) : null}
+
+        <section className="crm-drill-info-column">
+          <h4>Documents + Notes</h4>
+          <div className="crm-drill-document-grid">
+            {documents.map((document) => (
+              <a href={document.url} target="_blank" rel="noreferrer" key={document.id}>
+                <strong>{document.kind}</strong>
+                <span>{document.title}</span>
+                <em>{document.status || "Open copy"}</em>
+              </a>
+            ))}
+            {!documents.length ? <p>No contract copy or document link attached.</p> : null}
+          </div>
+          {notes.length ? <p className="crm-drill-notes">{notes.join(" / ")}</p> : null}
+        </section>
+      </div>
     </article>
   );
 }
