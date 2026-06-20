@@ -3550,22 +3550,22 @@ function CalendarPlanner({
 
       <div className="crm-calendar-grid-wrap">
         <div className="crm-calendar-grid">
-          <div className="crm-calendar-time-head">Time</div>
-          {days.map((day) => (
-            <div className="crm-calendar-day-head" key={day}>
+          <div className="crm-calendar-time-head" style={{ gridColumn: 1, gridRow: 1 }}>Time</div>
+          {days.map((day, dayIndex) => (
+            <div className="crm-calendar-day-head" key={day} style={{ gridColumn: dayIndex + 2, gridRow: 1 }}>
               <span>{formatCalendarWeekday(day)}</span>
               <strong>{formatCalendarDayNumber(day)}</strong>
               <em>{calendarEventsForDay(visibleEvents, day).length || "0"} appt</em>
             </div>
           ))}
 
-          {calendarSlotHours.map((hour) => (
+          {calendarSlotHours.map((hour, rowIndex) => (
             <Fragment key={hour}>
-              <div className="crm-calendar-time-label">
+              <div className="crm-calendar-time-label" style={{ gridColumn: 1, gridRow: rowIndex + 2 }}>
                 <strong>{formatCalendarHour(hour)}</strong>
                 <span>{formatCalendarHour(hour + 1)}</span>
               </div>
-              {days.map((day) => {
+              {days.map((day, dayIndex) => {
                 const event = findCalendarEventForSlot(events, day, hour);
                 const past = isPastCalendarSlot(day, hour);
                 const slot = calendarSlotSelection(day, hour);
@@ -3578,6 +3578,7 @@ function CalendarPlanner({
                     disabled={Boolean(event) || past}
                     key={`${day}-${hour}`}
                     onClick={() => onSelectSlot(slot)}
+                    style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
                   >
                     <span>{event ? "Booked" : "Open"}</span>
                     <small>{event ? "Scheduled" : "Add appointment"}</small>
