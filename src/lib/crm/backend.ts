@@ -194,6 +194,16 @@ function metadataWithActor(payload: unknown, actor: CrmActor, action: string) {
   };
 }
 
+function isMissingAvailabilityColumn(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message || "";
+  return (
+    error?.code === "PGRST204" ||
+    error?.code === "42703" ||
+    (message.includes("crm_availability_slots") && message.includes("column")) ||
+    message.includes("Could not find")
+  );
+}
+
 function getJobStatusForQuote(status: string) {
   if (status === "ordered" || status === "received") return "ordered";
   if (status === "installed" || status === "invoiced" || status === "paid") return "installed";
@@ -686,15 +696,20 @@ export async function listCrmAvailabilitySlots(supabase: CrmSupabaseClient, mont
   const { data, error } = await supabase
     .from("crm_availability_slots")
     .select("*")
-    .eq("status", "available")
     .gte("start_at", range.start)
     .lt("start_at", range.end)
     .order("start_at", { ascending: true });
 
   if (error) throw new CrmAuthError(502, "Availability could not be loaded.");
 
-  return (data || []).map((row) => {
-    const slot = row as CrmAvailabilitySlot;
+  return (data || []).filter((row) => (row.status || "available") === "available").map((row) => {
+    const slot = {
+      status: "available",
+      source: "crm_click_availability",
+      created_by_email: null,
+      meta: {},
+      ...row
+    } as CrmAvailabilitySlot;
     const start = new Date(slot.start_at);
     return {
       ...slot,
@@ -740,6 +755,28 @@ export async function createCrmAvailabilitySlot(
     .insert(record)
     .select("*")
     .single();
+
+  if (error && isMissingAvailabilityColumn(error)) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("crm_availability_slots")
+      .insert({
+        owner: record.owner,
+        start_at: record.start_at,
+        end_at: record.end_at
+      })
+      .select("*")
+      .single();
+
+    if (fallbackError || !fallbackData) throw new CrmAuthError(502, "Availability slot could not be saved.");
+
+    return {
+      status: "available",
+      source: "crm_click_availability",
+      created_by_email: null,
+      meta: {},
+      ...fallbackData
+    } as CrmAvailabilitySlot;
+  }
 
   if (error || !data) throw new CrmAuthError(502, "Availability slot could not be saved.");
 

@@ -108,7 +108,7 @@ function hasOverlap(events: CrmCalendarEvent[], slotStart: Date, slotEnd: Date) 
 function ownersOfferingSlot(availabilitySlots: CrmAvailabilitySlot[], slotStart: Date) {
   const target = slotStart.getTime();
   const owners = availabilitySlots
-    .filter((slot) => slot.status === "available" && new Date(slot.start_at).getTime() === target)
+    .filter((slot) => (slot.status || "available") === "available" && new Date(slot.start_at).getTime() === target)
     .map((slot) => slot.owner);
   return Array.from(new Set(owners));
 }
