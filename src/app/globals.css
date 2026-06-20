@@ -2890,16 +2890,19 @@ body:has(.crm-app-shell) {
   border: 1px solid var(--line);
 }
 
-.crm-customer-grid {
+.crm-customer-stack {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 8px;
 }
 
 .crm-customer-card {
   display: grid;
-  align-content: start;
-  gap: 15px;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(390px, 1.05fr) minmax(620px, 1.65fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 1280px;
   padding: 18px;
   background: #f7f5f0;
   border: 1px solid var(--line);
@@ -2919,6 +2922,13 @@ body:has(.crm-app-shell) {
   100% {
     box-shadow: 0 0 0 2px var(--accent);
   }
+}
+
+.crm-customer-primary {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
 }
 
 .crm-customer-card-head {
@@ -2958,6 +2968,7 @@ body:has(.crm-app-shell) {
 .crm-customer-facts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-content: start;
   gap: 8px;
   margin: 0;
 }
@@ -2990,10 +3001,19 @@ body:has(.crm-app-shell) {
   color: #7a431f;
 }
 
+.crm-customer-row-details {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.12fr) minmax(220px, 1fr) minmax(240px, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
 .crm-customer-section,
 .crm-customer-notes {
   display: grid;
+  align-content: start;
   gap: 9px;
+  min-width: 0;
 }
 
 .crm-customer-section h4,
@@ -3017,6 +3037,7 @@ body:has(.crm-app-shell) {
   border: 1px solid #ded5c8;
   color: var(--ink);
   text-decoration: none;
+  overflow-wrap: anywhere;
 }
 
 .crm-customer-list strong,
@@ -3036,7 +3057,7 @@ body:has(.crm-app-shell) {
 }
 
 .crm-customer-list.compact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .crm-workspace {
@@ -4755,7 +4776,6 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .crm-snapshot-grid,
-  .crm-customer-grid,
   .crm-order-grid {
     grid-template-columns: 1fr;
   }
@@ -5261,6 +5281,19 @@ body:has(.booking-page--focused) .assistant-widget {
 
   .crm-customer-files {
     padding: 16px;
+  }
+
+  .crm-customer-stack {
+    overflow-x: visible;
+  }
+
+  .crm-customer-card,
+  .crm-customer-row-details {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-customer-card {
+    min-width: 0;
   }
 
   .crm-customer-card-head,

@@ -117,6 +117,12 @@ function formatShortDate(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
+function dateSortValue(value: string | null | undefined) {
+  if (!value) return 0;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 function calendarDateToUtcNoon(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day, 12));
@@ -2037,6 +2043,14 @@ function CustomerFilesView({
   onFocusHandled?: () => void;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const sortedFiles = useMemo(
+    () =>
+      [...files].sort((a, b) => {
+        const dateDelta = dateSortValue(b.latestSoldDate) - dateSortValue(a.latestSoldDate);
+        return dateDelta || a.customerName.localeCompare(b.customerName);
+      }),
+    [files]
+  );
 
   useEffect(() => {
     if (!focusCustomer) return;
@@ -2061,110 +2075,121 @@ function CustomerFilesView({
         </div>
         <strong>{files.length}</strong>
       </div>
-      <div className="crm-customer-grid">
-        {files.map((file) => (
-          <article
-            className={`crm-customer-card ${highlighted === normalizeCustomerName(file.customerName) ? "crm-focus" : ""}`}
-            id={customerCardDomId(file.customerName)}
-            key={file.id}
-          >
-            <header className="crm-customer-card-head">
-              <div>
-                <h3>{file.customerName}</h3>
-                <p>{[file.phone, file.email, file.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
-              </div>
-              <strong>{toCurrency(file.lifetimeValue)}</strong>
-            </header>
+      <div className="crm-customer-stack">
+        {sortedFiles.map((file) => {
+          const sortedBookkeepingRows = [...file.bookkeepingRows].sort((a, b) => {
+            const dateDelta = dateSortValue(b.soldDate) - dateSortValue(a.soldDate);
+            return dateDelta || (a.quoteNumber || a.source).localeCompare(b.quoteNumber || b.source);
+          });
 
-            <dl className="crm-customer-facts">
-              <div>
-                <dt>Open Balance</dt>
-                <dd className={file.openBalance > 0 ? "warn" : ""}>{toCurrency(file.openBalance)}</dd>
-              </div>
-              <div>
-                <dt>Latest Status</dt>
-                <dd>{file.latestStatus || "Open"}</dd>
-              </div>
-              <div>
-                <dt>Sold Date</dt>
-                <dd>{formatShortDate(file.latestSoldDate)}</dd>
-              </div>
-              <div>
-                <dt>Contracts</dt>
-                <dd>{file.contracts.length}</dd>
-              </div>
-            </dl>
-
-            {file.address ? <p className="crm-customer-address">{file.address}</p> : null}
-
-            <div className="crm-customer-section">
-              <h4>Products</h4>
-              <div className="crm-customer-list">
-                {file.products.map((product) => (
-                  <div key={product.id}>
-                    <strong>
-                      {product.room ? `${product.room} / ` : ""}
-                      {product.product_type}
-                    </strong>
-                    <span>
-                      {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
-                        .filter(Boolean)
-                        .join(" / ") || "Product details pending"}
-                    </span>
-                    <em>
-                      {product.quantity} item{product.quantity === 1 ? "" : "s"}
-                      {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
-                    </em>
+          return (
+            <article
+              className={`crm-customer-card ${highlighted === normalizeCustomerName(file.customerName) ? "crm-focus" : ""}`}
+              id={customerCardDomId(file.customerName)}
+              key={file.id}
+            >
+              <div className="crm-customer-primary">
+                <header className="crm-customer-card-head">
+                  <div>
+                    <h3>{file.customerName}</h3>
+                    <p>{[file.phone, file.email, file.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
                   </div>
-                ))}
-                {!file.products.length ? <p>No product details imported yet.</p> : null}
-              </div>
-            </div>
+                  <strong>{toCurrency(file.lifetimeValue)}</strong>
+                </header>
 
-            <div className="crm-customer-section">
-              <h4>Contracts + Documents</h4>
-              <div className="crm-document-list">
-                {file.contracts.map((contract) =>
-                  contract.contract_url ? (
-                    <a href={contract.contract_url} target="_blank" rel="noreferrer" key={contract.id}>
-                      {contract.title}
-                      <span>{contract.status || "Document"}</span>
-                    </a>
-                  ) : (
-                    <div key={contract.id}>
-                      {contract.title}
-                      <span>{contract.status || "No link"}</span>
-                    </div>
-                  )
-                )}
-                {!file.contracts.length ? <p>No contract or document link attached.</p> : null}
-              </div>
-            </div>
+                {file.address ? <p className="crm-customer-address">{file.address}</p> : null}
 
-            <div className="crm-customer-section">
-              <h4>Jobs + Bookkeeping</h4>
-              <div className="crm-customer-list compact">
-                {file.bookkeepingRows.slice(0, 4).map((row) => (
-                  <div key={`${row.source}-${row.id}`}>
-                    <strong>{row.quoteNumber || row.source.replace("_", " ")}</strong>
-                    <span>{row.manufacturerName || row.status}</span>
-                    <em>
-                      {toCurrency(row.total)} / balance {toCurrency(row.balance)}
-                    </em>
+                {file.notes.length ? (
+                  <div className="crm-customer-notes">
+                    <h4>Notes</h4>
+                    <p>{file.notes.slice(0, 3).join(" / ")}</p>
                   </div>
-                ))}
-                {!file.bookkeepingRows.length ? <p>No bookkeeping row attached.</p> : null}
+                ) : null}
               </div>
-            </div>
 
-            {file.notes.length ? (
-              <div className="crm-customer-notes">
-                <h4>Notes</h4>
-                <p>{file.notes.slice(0, 3).join(" / ")}</p>
+              <dl className="crm-customer-facts">
+                <div>
+                  <dt>Sold Date</dt>
+                  <dd>{formatShortDate(file.latestSoldDate)}</dd>
+                </div>
+                <div>
+                  <dt>Open Balance</dt>
+                  <dd className={file.openBalance > 0 ? "warn" : ""}>{toCurrency(file.openBalance)}</dd>
+                </div>
+                <div>
+                  <dt>Latest Status</dt>
+                  <dd>{file.latestStatus || "Open"}</dd>
+                </div>
+                <div>
+                  <dt>Contracts</dt>
+                  <dd>{file.contracts.length}</dd>
+                </div>
+              </dl>
+
+              <div className="crm-customer-row-details">
+                <div className="crm-customer-section">
+                  <h4>Products</h4>
+                  <div className="crm-customer-list">
+                    {file.products.map((product) => (
+                      <div key={product.id}>
+                        <strong>
+                          {product.room ? `${product.room} / ` : ""}
+                          {product.product_type}
+                        </strong>
+                        <span>
+                          {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
+                            .filter(Boolean)
+                            .join(" / ") || "Product details pending"}
+                        </span>
+                        <em>
+                          {product.quantity} item{product.quantity === 1 ? "" : "s"}
+                          {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
+                        </em>
+                      </div>
+                    ))}
+                    {!file.products.length ? <p>No product details imported yet.</p> : null}
+                  </div>
+                </div>
+
+                <div className="crm-customer-section">
+                  <h4>Contracts + Documents</h4>
+                  <div className="crm-document-list">
+                    {file.contracts.map((contract) =>
+                      contract.contract_url ? (
+                        <a href={contract.contract_url} target="_blank" rel="noreferrer" key={contract.id}>
+                          {contract.title}
+                          <span>{contract.status || "Document"}</span>
+                        </a>
+                      ) : (
+                        <div key={contract.id}>
+                          {contract.title}
+                          <span>{contract.status || "No link"}</span>
+                        </div>
+                      )
+                    )}
+                    {!file.contracts.length ? <p>No contract or document link attached.</p> : null}
+                  </div>
+                </div>
+
+                <div className="crm-customer-section">
+                  <h4>Jobs + Bookkeeping</h4>
+                  <div className="crm-customer-list compact">
+                    {sortedBookkeepingRows.slice(0, 4).map((row) => (
+                      <div key={`${row.source}-${row.id}`}>
+                        <strong>{row.quoteNumber || row.source.replace("_", " ")}</strong>
+                        <span>{formatShortDate(row.soldDate)} / {row.manufacturerName || row.status}</span>
+                        <em>
+                          {toCurrency(row.total)} / balance {toCurrency(row.balance)}
+                        </em>
+                      </div>
+                    ))}
+                    {!file.bookkeepingRows.length ? <p>No bookkeeping row attached.</p> : null}
+                  </div>
+                </div>
               </div>
-            ) : null}
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
     </section>
