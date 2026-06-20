@@ -10,8 +10,6 @@ Create `.env.local` with the dedicated 805 project values:
 NEXT_PUBLIC_SUPABASE_URL=https://<805-project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<805-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<805-service-role-key>
-CRM_ALLOWED_EMAILS=805shutters@gmail.com,hello@805shutters.com,805@805shutters.com,jessica@805shutters.com
-CRM_ALLOWED_DOMAINS=805shutters.com
 BOOKING_ALERT_WEBHOOK_URL=<optional-alert-webhook>
 BOOKING_EMAIL_FROM="805 Shutters <appointments@805shutters.com>"
 BOOKING_EMAIL_REPLY_TO=805@805shutters.com
@@ -66,6 +64,12 @@ This applies:
 ## Backend readiness
 
 The CRM backend runs through Next.js API routes under `/api/crm/*`. Browser code only sends the Supabase Google access token; the server verifies that token, checks the allow-list, and then uses the dedicated service-role key for database writes.
+
+CRM access is intentionally limited in code to exactly these three users:
+
+- `805shutters@gmail.com`
+- `jessica@805shutters.com`
+- `khill31@msn.com`
 
 Use this local readiness check after adding environment values and migrations:
 

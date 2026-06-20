@@ -29,24 +29,20 @@ export function CrmHomeLogin() {
   }, [supabase]);
 
   return (
-    <section className="home-crm-login" aria-label="Private CRM login">
-      <div>
-        <p className="eyebrow">Private</p>
-        <h2>805 CRM</h2>
-      </div>
+    <section className="home-crm-login" aria-label="admin login">
       {session ? (
         <a className="button secondary" href="/crm">
-          Open CRM
+          admin login
         </a>
       ) : (
         <>
           {configured ? (
             <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm/">
-              Google Login
+              admin login
             </a>
           ) : (
             <button type="button" disabled>
-              Google Login
+              admin login
             </button>
           )}
         </>

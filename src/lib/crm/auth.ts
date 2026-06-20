@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-
-const defaultAllowedEmails = [
-  "805shutters@gmail.com",
-  "hello@805shutters.com",
-  "805@805shutters.com",
-  "jessica@805shutters.com"
-];
+import { allowedCrmEmails, isAllowedCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
 
 export class CrmAuthError extends Error {
   status: number;
@@ -19,25 +13,7 @@ export class CrmAuthError extends Error {
 }
 
 export function getAllowedCrmEmails() {
-  const configured = process.env.CRM_ALLOWED_EMAILS?.split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-
-  return configured?.length ? configured : defaultAllowedEmails;
-}
-
-function getAllowedCrmDomains() {
-  return (process.env.CRM_ALLOWED_DOMAINS || "805shutters.com")
-    .split(",")
-    .map((domain) => domain.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function isAllowedCrmEmail(email: string) {
-  const normalized = email.trim().toLowerCase();
-  const domain = normalized.split("@")[1] || "";
-
-  return getAllowedCrmEmails().includes(normalized) || getAllowedCrmDomains().includes(domain);
+  return [...allowedCrmEmails];
 }
 
 function getBearerToken(request: NextRequest) {
@@ -78,7 +54,7 @@ export async function requireCrmUser(request: NextRequest) {
   }
 
   const user = await getUserFromToken(token);
-  const email = user.email?.trim().toLowerCase();
+  const email = user.email ? normalizeCrmEmail(user.email) : "";
 
   if (!email || !isAllowedCrmEmail(email)) {
     throw new CrmAuthError(403, "This Google account is not allowed for the 805 CRM.");

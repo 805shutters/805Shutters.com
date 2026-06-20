@@ -3,6 +3,7 @@
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType } from "@/lib/crm/bookkeeping";
+import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
@@ -416,10 +417,6 @@ function crmAuthErrorMessage(code: string | null) {
   return null;
 }
 
-function isCrmLoginEmail(email: string) {
-  return email === "805shutters@gmail.com" || email.endsWith("@805shutters.com");
-}
-
 function crmRedirectUrl() {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   const origin = configuredSiteUrl || window.location.origin;
@@ -605,7 +602,7 @@ export function CrmApp() {
       return;
     }
 
-    if (!isCrmLoginEmail(email)) {
+    if (!isAllowedCrmEmail(email)) {
       setEmailLoginMessage("Use an approved 805 Shutters email.");
       return;
     }
