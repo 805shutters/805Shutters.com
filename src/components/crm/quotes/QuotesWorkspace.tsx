@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { CrmJob, CrmQuote, CrmQuoteStatus } from "@/lib/crm/types";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { STATUS_LABELS, getNextStatus, getAdvanceLabel } from "@/lib/quote/lifecycle";
+import { buildQuoteWorkspaceBuckets } from "@/lib/crm/quote-workspace";
 
 type Props = {
   session: Session;
@@ -47,6 +48,10 @@ function formString(formData: FormData, key: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function statusText(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 async function api<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, {
     ...init,
@@ -79,15 +84,8 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
     [jobsById],
   );
 
-  const activeQuotes = useMemo(() => quotes.filter((q) => q.status !== "archived" && q.status !== "lost"), [quotes]);
-  const quoteForJob = useCallback(
-    (jobId: string) => activeQuotes.find((q) => q.job_id === jobId),
-    [activeQuotes],
-  );
-  const consultations = useMemo(
-    () => jobs.filter((j) => j.status === "scheduled" && j.appointment_start).sort((a, b) => (a.appointment_start || "").localeCompare(b.appointment_start || "")),
-    [jobs],
-  );
+  const buckets = useMemo(() => buildQuoteWorkspaceBuckets(jobs, quotes), [jobs, quotes]);
+  const activeQuotes = buckets.activeQuotes;
   const activeQuote = useMemo(() => quotes.find((q) => q.id === activeQuoteId) || null, [quotes, activeQuoteId]);
 
   const openBuilder = useCallback((quoteId: string) => {
@@ -250,8 +248,10 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
       {subtab === "dashboard" ? (
         <Dashboard
           jobs={jobs}
-          consultations={consultations}
-          quoteForJob={quoteForJob}
+          quoteByJobId={buckets.quoteByJobId}
+          leadsToSchedule={buckets.leadsToSchedule}
+          upcomingConsultations={buckets.upcomingConsultations}
+          consultationsNeedingQuote={buckets.consultationsNeedingQuote}
           activeQuotes={activeQuotes}
           customerName={customerName}
           busy={busy}
@@ -280,7 +280,12 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
       ) : null}
 
       {subtab === "calendar" ? (
-        <Consultations consultations={consultations} quoteForJob={quoteForJob} busy={busy} onBuild={buildForJob} onOpen={openBuilder} />
+        <Consultations
+          upcomingConsultations={buckets.upcomingConsultations}
+          consultationsNeedingQuote={buckets.consultationsNeedingQuote}
+          busy={busy}
+          onBuild={buildForJob}
+        />
       ) : null}
     </section>
   );
@@ -288,8 +293,10 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
 
 function Dashboard({
   jobs,
-  consultations,
-  quoteForJob,
+  quoteByJobId,
+  leadsToSchedule,
+  upcomingConsultations,
+  consultationsNeedingQuote,
   activeQuotes,
   customerName,
   busy,
@@ -300,8 +307,10 @@ function Dashboard({
   onOpenContractLink,
 }: {
   jobs: CrmJob[];
-  consultations: CrmJob[];
-  quoteForJob: (jobId: string) => CrmQuote | undefined;
+  quoteByJobId: Map<string, CrmQuote>;
+  leadsToSchedule: CrmJob[];
+  upcomingConsultations: CrmJob[];
+  consultationsNeedingQuote: CrmJob[];
   activeQuotes: CrmQuote[];
   customerName: (q: CrmQuote) => string;
   busy: boolean;
@@ -319,30 +328,33 @@ function Dashboard({
   const pipelineColumns = [...PIPELINE, ...extraStatuses];
   return (
     <div>
-      <CreateQuoteCard jobs={jobs} busy={busy} onCreate={onCreate} />
+      <CreateQuoteCard jobs={jobs} quoteByJobId={quoteByJobId} busy={busy} onCreate={onCreate} />
 
-      <h3 style={{ margin: "8px 0" }}>Upcoming consultations</h3>
-      {consultations.length === 0 ? (
-        <p style={{ opacity: 0.6 }}>No scheduled consultations.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 8, marginBottom: 24 }}>
-          {consultations.map((j) => {
-            const q = quoteForJob(j.id);
-            return (
-              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 12, border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#f8fafc" }}>
-                <div style={{ flex: 1 }}>
-                  <strong>{j.customer_name}</strong>
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>{when(j.appointment_start)}{j.address ? ` · ${j.address}` : ""}</div>
-                </div>
-                {q ? <StatusPill status={q.status} /> : null}
-                <button type="button" disabled={busy} onClick={() => (q ? onOpen(q.id) : onBuild(j.id))} style={primaryBtn}>
-                  {q ? "Open quote" : "Build Quote"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <JobSection
+        title="Leads to schedule"
+        empty="No new or follow-up leads without quotes."
+        jobs={leadsToSchedule}
+        busy={busy}
+        actionLabel="Start quote"
+        onBuild={onBuild}
+      />
+      <JobSection
+        title="Upcoming consultations"
+        empty="No today or future consultations without an active quote."
+        jobs={upcomingConsultations}
+        busy={busy}
+        actionLabel="Build Quote"
+        onBuild={onBuild}
+      />
+      <JobSection
+        title="Consultations needing quote"
+        empty="No past consultations waiting on a quote."
+        jobs={consultationsNeedingQuote}
+        busy={busy}
+        actionLabel="Build Quote"
+        onBuild={onBuild}
+        highlight
+      />
 
       <h3 style={{ margin: "8px 0" }}>Quote pipeline</h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
@@ -377,9 +389,82 @@ function Dashboard({
   );
 }
 
-function CreateQuoteCard({ jobs, busy, onCreate }: { jobs: CrmJob[]; busy: boolean; onCreate: (event: FormEvent<HTMLFormElement>) => void }) {
+function JobSection({
+  title,
+  empty,
+  jobs,
+  busy,
+  actionLabel,
+  onBuild,
+  highlight,
+}: {
+  title: string;
+  empty: string;
+  jobs: CrmJob[];
+  busy: boolean;
+  actionLabel: string;
+  onBuild: (jobId: string) => void;
+  highlight?: boolean;
+}) {
+  return (
+    <section style={{ marginBottom: 24 }}>
+      <h3 style={{ margin: "8px 0" }}>{title}</h3>
+      {jobs.length === 0 ? (
+        <p style={{ opacity: 0.6 }}>{empty}</p>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {jobs.map((job) => (
+            <JobCard key={job.id} job={job} busy={busy} actionLabel={actionLabel} onBuild={onBuild} highlight={highlight} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function JobCard({
+  job,
+  busy,
+  actionLabel,
+  onBuild,
+  highlight,
+}: {
+  job: CrmJob;
+  busy: boolean;
+  actionLabel: string;
+  onBuild: (jobId: string) => void;
+  highlight?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, border: `1px solid ${highlight ? "#facc15" : "#e2e8f0"}`, borderRadius: 10, padding: 12, background: highlight ? "#fffbeb" : "#f8fafc" }}>
+      <div style={{ flex: 1 }}>
+        <strong>{job.customer_name}</strong>
+        <div style={{ fontSize: 13, opacity: 0.7 }}>
+          {job.appointment_start ? when(job.appointment_start) : statusText(job.status)}
+          {job.address ? ` · ${job.address}` : ""}
+          {job.next_action ? ` · ${job.next_action}` : ""}
+        </div>
+      </div>
+      <button type="button" disabled={busy} onClick={() => onBuild(job.id)} style={primaryBtn}>
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
+function CreateQuoteCard({
+  jobs,
+  quoteByJobId,
+  busy,
+  onCreate,
+}: {
+  jobs: CrmJob[];
+  quoteByJobId: Map<string, CrmQuote>;
+  busy: boolean;
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+}) {
   const linkableJobs = jobs
-    .filter((job) => job.status !== "closed" && job.status !== "lost")
+    .filter((job) => job.status !== "closed" && job.status !== "lost" && !quoteByJobId.has(job.id))
     .sort((a, b) => a.customer_name.localeCompare(b.customer_name));
 
   return (
@@ -449,41 +534,35 @@ function CreateQuoteCard({ jobs, busy, onCreate }: { jobs: CrmJob[]; busy: boole
 }
 
 function Consultations({
-  consultations,
-  quoteForJob,
+  upcomingConsultations,
+  consultationsNeedingQuote,
   busy,
   onBuild,
-  onOpen,
 }: {
-  consultations: CrmJob[];
-  quoteForJob: (jobId: string) => CrmQuote | undefined;
+  upcomingConsultations: CrmJob[];
+  consultationsNeedingQuote: CrmJob[];
   busy: boolean;
   onBuild: (jobId: string) => void;
-  onOpen: (quoteId: string) => void;
 }) {
   return (
     <div>
-      <h3 style={{ margin: "8px 0" }}>Scheduled consultations</h3>
-      {consultations.length === 0 ? (
-        <p style={{ opacity: 0.6 }}>No scheduled consultations. New website bookings appear here automatically.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {consultations.map((j) => {
-            const q = quoteForJob(j.id);
-            return (
-              <div key={j.id} style={{ display: "flex", alignItems: "center", gap: 12, border: "1px solid #e2e8f0", borderRadius: 10, padding: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <strong>{j.customer_name}</strong> <span style={{ fontSize: 13, opacity: 0.7 }}>· {j.phone}</span>
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>{when(j.appointment_start)}{j.address ? ` · ${j.address}` : ""}</div>
-                </div>
-                <button type="button" disabled={busy} onClick={() => (q ? onOpen(q.id) : onBuild(j.id))} style={primaryBtn}>
-                  {q ? "Open quote" : "Build Quote"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <JobSection
+        title="Upcoming consultations"
+        empty="No today or future consultations without an active quote."
+        jobs={upcomingConsultations}
+        busy={busy}
+        actionLabel="Build Quote"
+        onBuild={onBuild}
+      />
+      <JobSection
+        title="Consultations needing quote"
+        empty="No past consultations waiting on a quote."
+        jobs={consultationsNeedingQuote}
+        busy={busy}
+        actionLabel="Build Quote"
+        onBuild={onBuild}
+        highlight
+      />
     </div>
   );
 }
