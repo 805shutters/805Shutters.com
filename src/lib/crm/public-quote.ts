@@ -28,6 +28,7 @@ export type PublicQuoteLine = {
   styleName: string;
   options: string[];
   designOptions: PublicQuoteDesignOption[];
+  showDesignOptions: boolean;
   unitPrice: number;
   quantity: number;
   lineTotal: number;
@@ -162,6 +163,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
       styleName: "",
       options: [],
       designOptions,
+      showDesignOptions: true,
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
       quantity: qty,
       lineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.lineTotal, 0)) : 0,
@@ -179,6 +181,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
       styleName: "",
       options: [],
       designOptions: [],
+      showDesignOptions: false,
       unitPrice: 0,
       quantity: qty,
       lineTotal: 0,
@@ -197,6 +200,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
     styleName,
     options,
     designOptions: [projectDesignOption(design, qty)],
+    showDesignOptions: false,
     unitPrice,
     quantity: qty,
     // Authoritative billed amount (unit x qty + any per-order surcharge) — matches

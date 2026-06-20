@@ -90,7 +90,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
               <td style={td}>
                 {line.priceReady ? (
                   <div>
-                    {line.designOptions.length > 1 ? (
+                    {line.showDesignOptions && line.designOptions.length ? (
                       <div style={{ display: "grid", gap: 8 }}>
                         {line.designOptions.map((option) => (
                           <div key={option.id} style={optionBox}>
