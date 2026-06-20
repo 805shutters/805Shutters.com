@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
+import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
 import { site } from "@/lib/site-data";
 import { localBusinessJsonLd } from "@/lib/structured-data";
 
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <TrackingScripts />
         <RouteTracking />
+        <CrmAuthRedirect />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

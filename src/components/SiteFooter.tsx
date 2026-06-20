@@ -33,6 +33,7 @@ export function SiteFooter() {
       </div>
       <div className="footer-links">
         <Link href="/free-window-treatment-consultation/">Free consultation</Link>
+        <Link href="/best-window-treatments-ventura-county/">Window treatment guide</Link>
         <Link href="/reviews/">Reviews</Link>
         <Link href="/faq/">FAQ</Link>
         <Link href="/privacy-policy/">Privacy Policy</Link>

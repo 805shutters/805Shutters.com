@@ -242,6 +242,16 @@ function crmAuthErrorMessage(code: string | null) {
   return null;
 }
 
+function isCrmLoginEmail(email: string) {
+  return email === "805shutters@gmail.com" || email.endsWith("@805shutters.com");
+}
+
+function crmRedirectUrl() {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  const origin = configuredSiteUrl || window.location.origin;
+  return `${origin}/crm/`;
+}
+
 async function crmFetch<T>(session: Session, path: string, init: RequestInit = {}) {
   const response = await fetch(path, {
     ...init,
@@ -321,6 +331,8 @@ export function CrmApp() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [authSetupMessage, setAuthSetupMessage] = useState<string | null>(null);
+  const [emailLoginMessage, setEmailLoginMessage] = useState<string | null>(null);
+  const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editRow, setEditRow] = useState<CrmBookkeepingRow | null>(null);
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfCalendarWeek(losAngelesDateString()));
@@ -356,6 +368,47 @@ export function CrmApp() {
     if (!session) return;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
     setData(dashboardResult);
+  }
+
+  async function sendEmailLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+
+    const email = formString(new FormData(event.currentTarget), "email").toLowerCase();
+    if (!email) {
+      setEmailLoginMessage("Enter an approved 805 Shutters email.");
+      return;
+    }
+
+    if (!isCrmLoginEmail(email)) {
+      setEmailLoginMessage("Use an approved 805 Shutters email.");
+      return;
+    }
+
+    setEmailLoginBusy(true);
+    setEmailLoginMessage(null);
+    setMessage(null);
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: crmRedirectUrl(),
+          shouldCreateUser: true
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setEmailLoginMessage(`Login link sent to ${email}.`);
+      event.currentTarget.reset();
+    } catch (error) {
+      setEmailLoginMessage(error instanceof Error ? error.message : "Email login link could not be sent.");
+    } finally {
+      setEmailLoginBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -655,6 +708,7 @@ export function CrmApp() {
           note: formString(formData, "note")
         })
       });
+
       event.currentTarget.reset();
       await refresh();
     } catch (error) {
@@ -845,10 +899,26 @@ export function CrmApp() {
       <div className="crm-app-shell">
         <section className="crm-login-panel">
           <p className="eyebrow">Private CRM</p>
-          <h1>Google login only.</h1>
-          <p>Use an approved 805 Shutters Google account to access sales jobs, quotes, bookkeeping, and calendar.</p>
+          <h1>CRM login.</h1>
+          <p>Use an approved 805 Shutters email to access sales jobs, quotes, bookkeeping, and calendar.</p>
           {authSetupMessage ? <p className="crm-alert">{authSetupMessage}</p> : null}
-          <a className="button primary" href="/api/crm/oauth/google?redirectTo=/crm">
+          {emailLoginMessage ? <p className="crm-alert">{emailLoginMessage}</p> : null}
+          <form className="crm-email-login" onSubmit={sendEmailLogin}>
+            <label>
+              Email
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                placeholder="jessica@805shutters.com"
+                required
+              />
+            </label>
+            <button type="submit" className="button primary" disabled={emailLoginBusy}>
+              {emailLoginBusy ? "Sending link..." : "Email Login Link"}
+            </button>
+          </form>
+          <a className="button secondary" href="/api/crm/oauth/google?redirectTo=/crm/">
             Continue with Google
           </a>
         </section>
@@ -2327,91 +2397,6 @@ function CalendarPlanner({
   );
 }
 
-function CalendarAppointmentModal({
-  selectedSlot,
-  busy,
-  onClose,
-  onSubmit
-}: {
-  selectedSlot: CalendarSlotSelection;
-  busy: boolean;
-  onClose: () => void;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
-}) {
-  return (
-    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title">
-      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment form" onClick={onClose} />
-      <section className="crm-slot-form-panel">
-        <div className="crm-slot-form-head">
-          <div>
-            <p className="eyebrow">New Appointment</p>
-            <h2 id="crm-slot-modal-title">{formatCalendarLongDay(selectedSlot.date)}</h2>
-          </div>
-          <button type="button" className="crm-slot-close" aria-label="Close appointment form" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
-        <form className="crm-form" onSubmit={onSubmit}>
-          <div className="crm-field-row">
-            <label>
-              Customer
-              <input name="customer_name" required placeholder="Customer name" autoFocus />
-            </label>
-            <label>
-              Phone
-              <input name="phone" required placeholder="805-000-0000" />
-            </label>
-          </div>
-          <div className="crm-field-row">
-            <label>
-              Email
-              <input name="email" type="email" placeholder="customer@email.com" />
-            </label>
-            <label>
-              City
-              <input name="city" placeholder="Ventura" />
-            </label>
-          </div>
-          <label>
-            Address
-            <input name="address" placeholder="Project address" />
-          </label>
-          <div className="crm-field-row">
-            <label>
-              Product
-              <select name="product_interest" defaultValue="Shutters">
-                {productOptions.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Assigned
-              <select name="assigned_to" defaultValue="Unassigned">
-                {ownerOptions.map((item) => (
-                  <option key={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label>
-            Job Notes
-            <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />
-          </label>
-          <div className="crm-slot-actions">
-            <button type="button" className="crm-ghost-button" onClick={onClose}>
-              Cancel
-            </button>
-            <button type="submit" disabled={busy}>
-              {busy ? "Saving..." : "Save Appointment"}
-            </button>
-          </div>
-        </form>
-      </section>
-    </div>
-  );
-}
 
 function KenPaymentRow({
   payment,
@@ -2605,5 +2590,91 @@ function KenPayoffView({
         </div>
       </div>
     </section>
+  );
+}
+
+function CalendarAppointmentModal({
+  selectedSlot,
+  busy,
+  onClose,
+  onSubmit
+}: {
+  selectedSlot: CalendarSlotSelection;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  return (
+    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment form" onClick={onClose} />
+      <section className="crm-slot-form-panel">
+        <div className="crm-slot-form-head">
+          <div>
+            <p className="eyebrow">New Appointment</p>
+            <h2 id="crm-slot-modal-title">{formatCalendarLongDay(selectedSlot.date)}</h2>
+          </div>
+          <button type="button" className="crm-slot-close" aria-label="Close appointment form" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
+        <form className="crm-form" onSubmit={onSubmit}>
+          <div className="crm-field-row">
+            <label>
+              Customer
+              <input name="customer_name" required placeholder="Customer name" autoFocus />
+            </label>
+            <label>
+              Phone
+              <input name="phone" required placeholder="805-000-0000" />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Email
+              <input name="email" type="email" placeholder="customer@email.com" />
+            </label>
+            <label>
+              City
+              <input name="city" placeholder="Ventura" />
+            </label>
+          </div>
+          <label>
+            Address
+            <input name="address" placeholder="Project address" />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Product
+              <select name="product_interest" defaultValue="Shutters">
+                {productOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Assigned
+              <select name="assigned_to" defaultValue="Unassigned">
+                {ownerOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Job Notes
+            <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />
+          </label>
+          <div className="crm-slot-actions">
+            <button type="button" className="crm-ghost-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={busy}>
+              {busy ? "Saving..." : "Save Appointment"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }

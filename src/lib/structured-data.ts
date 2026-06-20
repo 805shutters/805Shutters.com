@@ -1,30 +1,151 @@
 import { site } from "./site-data";
+import { services } from "./site-data";
 import type { SitePage } from "./site-data";
+import type { AnswerPage } from "./llm-search-pages";
 import { commercialFaqs } from "./commercial-mode-data";
 
 export function localBusinessJsonLd() {
   return {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": "HomeAndConstructionBusiness",
     "@id": `${site.baseUrl}#local-business`,
     name: site.name,
+    alternateName: site.shortName,
     url: site.baseUrl,
     telephone: site.phone,
+    email: site.email,
+    image: `${site.baseUrl}/images/805-hero-window-treatments.png`,
+    logo: `${site.baseUrl}/brand/805-shutters-logo-exact-transparent.png`,
+    sameAs: [site.social.facebook, site.social.instagram, site.social.yelp],
     areaServed: site.areas.map((area) => ({
       "@type": "City",
       name: area
     })),
+    serviceArea: {
+      "@type": "AdministrativeArea",
+      name: site.serviceArea
+    },
     address: {
       "@type": "PostalAddress",
       addressRegion: "CA",
       addressCountry: "US"
     },
+    knowsAbout: [
+      "Plantation shutters",
+      "Custom shutters",
+      "Window shades",
+      "Custom blinds",
+      "Drapery",
+      "Exterior shades",
+      "Commercial roller shades",
+      "Window coverings"
+    ],
     makesOffer: [
       "Custom shutters",
       "Custom window shades",
       "Custom blinds",
       "Custom drapery",
       "Commercial window coverings"
+    ],
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "805 Shutters window covering services",
+      itemListElement: services.map((service) => ({
+        "@type": "Offer",
+        itemOffered: {
+          "@type": "Service",
+          name: service.title,
+          description: service.description,
+          areaServed: site.serviceArea,
+          provider: {
+            "@id": `${site.baseUrl}#local-business`
+          },
+          url: `${site.baseUrl}/${service.slug}/`
+        }
+      }))
+    }
+  };
+}
+
+export function answerPageJsonLd(page: AnswerPage) {
+  const pageUrl = `${site.baseUrl}${page.path}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${pageUrl}#webpage`,
+        url: pageUrl,
+        name: page.title,
+        description: page.description,
+        dateModified: page.updated,
+        inLanguage: "en-US",
+        isPartOf: {
+          "@type": "WebSite",
+          "@id": `${site.baseUrl}#website`,
+          name: site.name,
+          url: site.baseUrl
+        },
+        about: page.serviceTypes.map((serviceType) => ({
+          "@type": "Service",
+          name: serviceType,
+          provider: {
+            "@id": `${site.baseUrl}#local-business`
+          }
+        })),
+        primaryImageOfPage: {
+          "@type": "ImageObject",
+          url: `${site.baseUrl}${page.image}`
+        }
+      },
+      {
+        "@type": "Service",
+        "@id": `${pageUrl}#service`,
+        name: page.h1,
+        description: page.answer,
+        serviceType: page.serviceTypes,
+        areaServed: site.areas.map((area) => ({
+          "@type": "City",
+          name: area
+        })),
+        provider: {
+          "@id": `${site.baseUrl}#local-business`,
+          name: site.name,
+          telephone: site.phone,
+          url: site.baseUrl
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${pageUrl}#faq`,
+        mainEntity: page.faqs.map((faq) => ({
+          "@type": "Question",
+          name: faq.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: faq.answer
+          }
+        }))
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: site.baseUrl
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: page.h1,
+            item: pageUrl
+          }
+        ]
+      }
     ]
   };
 }

@@ -3913,6 +3913,26 @@ body:has(.crm-app-shell) {
   line-height: 1.5;
 }
 
+.crm-email-login {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 420px);
+}
+
+.crm-email-login label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.crm-email-login input {
+  width: 100%;
+}
+
 .booking-page {
   min-height: 100vh;
   padding: 0 0 clamp(44px, 6vw, 72px);

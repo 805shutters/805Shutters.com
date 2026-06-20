@@ -201,9 +201,16 @@ Then paste that Google client ID and client secret into Supabase Auth > Provider
 Add these redirect URLs:
 
 ```text
+https://www.805shutters.com/crm
+https://805-one.vercel.app/crm
 http://127.0.0.1:3000/crm
 http://localhost:3000/crm
-https://www.805shutters.com/crm
+```
+
+Set the Supabase Auth Site URL to:
+
+```text
+https://www.805shutters.com
 ```
 
 After enabling Google, confirm the hosted provider is active:

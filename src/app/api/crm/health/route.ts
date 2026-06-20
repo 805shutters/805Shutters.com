@@ -20,6 +20,20 @@ const requiredTables = [
   "crm_activity_events"
 ];
 
+function getCanonicalSiteOrigin(request: NextRequest) {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+
+  if (configured) {
+    try {
+      return new URL(configured).origin;
+    } catch {
+      return request.nextUrl.origin;
+    }
+  }
+
+  return request.nextUrl.origin;
+}
+
 export async function GET(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
@@ -38,7 +52,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const googleOAuth = await getCrmGoogleOAuthStatus(new URL("/crm", request.nextUrl.origin).toString());
+  const googleOAuth = await getCrmGoogleOAuthStatus(new URL("/crm/", getCanonicalSiteOrigin(request)).toString());
 
   const authConfigured = Boolean(supabaseUrl && anonKey);
   const databaseConfigured = Boolean(supabaseUrl && serviceRoleKey);

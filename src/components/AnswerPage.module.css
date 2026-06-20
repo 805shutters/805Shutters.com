@@ -1,0 +1,261 @@
+.answerPage {
+  background: #f8f7f2;
+  color: #151515;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(300px, 0.58fr);
+  gap: clamp(24px, 4vw, 52px);
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(34px, 5vw, 64px) 0 clamp(40px, 6vw, 74px);
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 13px;
+  color: #7b5a28;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.heroCopy {
+  display: grid;
+}
+
+.hero h1,
+.faqHead h2,
+.relatedBand h2 {
+  margin: 0;
+  color: #151515;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.94;
+  text-wrap: balance;
+}
+
+.hero h1 {
+  max-width: 840px;
+  font-size: clamp(42px, 4.6vw, 60px);
+  line-height: 0.98;
+}
+
+.directAnswer {
+  order: 2;
+  max-width: 780px;
+  margin: 18px 0 0;
+  color: #3f3a34;
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.5;
+}
+
+.actions {
+  order: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.heroMedia {
+  margin: 0;
+  border: 1px solid #d7ccba;
+  background: #ffffff;
+}
+
+.heroMedia img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.heroMedia figcaption {
+  padding: 14px 16px 16px;
+  color: #5c554c;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.sectionList {
+  display: grid;
+  width: min(980px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 0 0 clamp(46px, 7vw, 88px);
+  gap: 18px;
+}
+
+.contentSection,
+.faqItem {
+  border: 1px solid #d7ccba;
+  background: #ffffff;
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.contentSection h2 {
+  margin: 0 0 12px;
+  color: #151515;
+  font-size: clamp(24px, 3vw, 36px);
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.contentSection p,
+.faqItem p {
+  margin: 0;
+  color: #5a5146;
+  font-size: 1rem;
+  line-height: 1.68;
+}
+
+.contentSection ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contentSection li {
+  border: 1px solid #ded4c4;
+  background: #f8f7f2;
+  padding: 11px 12px;
+  color: #251f18;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.faqBand {
+  background: #151515;
+  color: #ffffff;
+  padding: clamp(48px, 7vw, 88px) 0;
+}
+
+.faqHead,
+.faqGrid,
+.relatedBand {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.faqHead {
+  margin-bottom: clamp(24px, 4vw, 44px);
+}
+
+.faqHead h2 {
+  max-width: 760px;
+  color: #ffffff;
+  font-size: clamp(36px, 5vw, 68px);
+}
+
+.faqGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.faqItem {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.faqItem h3 {
+  margin: 0 0 12px;
+  color: #ffffff;
+  font-size: 1.08rem;
+  line-height: 1.22;
+}
+
+.faqItem p {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.relatedBand {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 64px);
+  padding: clamp(48px, 7vw, 88px) 0;
+  align-items: start;
+}
+
+.relatedBand h2 {
+  font-size: clamp(34px, 5vw, 64px);
+}
+
+.relatedLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.relatedLinks a {
+  border: 1px solid #d7ccba;
+  background: #ffffff;
+  color: #151515;
+  padding: 11px 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.relatedLinks a:hover,
+.relatedLinks a:focus-visible {
+  border-color: #7b5a28;
+  color: #7b5a28;
+}
+
+@media (max-width: 920px) {
+  .hero,
+  .relatedBand {
+    grid-template-columns: 1fr;
+  }
+
+  .heroMedia img {
+    aspect-ratio: 16 / 9;
+  }
+
+  .faqGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .hero,
+  .sectionList,
+  .faqHead,
+  .faqGrid,
+  .relatedBand {
+    width: min(100% - 28px, 620px);
+  }
+
+  .hero {
+    padding-top: 42px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 12vw, 58px);
+  }
+
+  .directAnswer {
+    order: 3;
+    font-size: 17px;
+  }
+
+  .actions {
+    order: 2;
+    display: grid;
+    align-items: stretch;
+    margin-top: 18px;
+  }
+
+  .contentSection ul {
+    grid-template-columns: 1fr;
+  }
+}

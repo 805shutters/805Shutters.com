@@ -29,3 +29,4 @@ content/commercial/target-account-tracker.csv
 content/commercial/send-ready/
 public/assets/ai-concepts/homepage-feed/raw-review/
 public/brand/805-shutters-logo-*.jpg
+.env*

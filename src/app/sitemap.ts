@@ -1,4 +1,5 @@
 import { MetadataRoute } from "next";
+import { answerPages } from "@/lib/llm-search-pages";
 import { allPages, site } from "@/lib/site-data";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -21,5 +22,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9
   };
 
-  return [...pageEntries, bookingEntry];
+  const answerEntries: MetadataRoute.Sitemap = answerPages.map((page) => ({
+    url: `${site.baseUrl}${page.path}`,
+    lastModified: new Date(page.updated),
+    changeFrequency: "monthly",
+    priority: 0.82
+  }));
+
+  return [...pageEntries, ...answerEntries, bookingEntry];
 }
