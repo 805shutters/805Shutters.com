@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { supabase } = await requireCrmUser(request);
+    const { supabase, email, user } = await requireCrmUser(request);
     const payload = await request.json();
-    const result = await deleteCrmAvailabilitySlot(supabase, payload);
+    const result = await deleteCrmAvailabilitySlot(supabase, payload, { email, userId: user.id });
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);

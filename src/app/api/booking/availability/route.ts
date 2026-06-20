@@ -5,6 +5,7 @@ import {
   losAngelesDateString,
   monthRangeUtc
 } from "@/lib/booking/availability";
+import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
@@ -50,7 +51,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ message: "Availability could not be loaded." }, { status: 502 });
   }
 
-  const availabilitySlots = slotsResult.error ? undefined : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
+  let availabilitySlots: CrmAvailabilitySlot[] | undefined = slotsResult.error
+    ? undefined
+    : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
+
+  if (slotsResult.error && isAvailabilitySlotsMissing(slotsResult.error)) {
+    availabilitySlots = (await listCrmAvailabilityFallbackSlots(supabase, month)) as CrmAvailabilitySlot[];
+  }
 
   return NextResponse.json({
     configured: true,

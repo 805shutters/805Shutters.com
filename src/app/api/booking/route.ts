@@ -8,6 +8,7 @@ import {
   monthRangeUtc,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
+import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 import { productInterestOptions } from "@/lib/product-interest-options";
@@ -445,7 +446,13 @@ export async function POST(request: NextRequest) {
   }
 
   const existingEvents = (eventsResult.data || []) as CrmCalendarEvent[];
-  const availabilitySlots = slotsResult.error ? undefined : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
+  let availabilitySlots: CrmAvailabilitySlot[] | undefined = slotsResult.error
+    ? undefined
+    : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
+
+  if (slotsResult.error && isAvailabilitySlotsMissing(slotsResult.error)) {
+    availabilitySlots = (await listCrmAvailabilityFallbackSlots(supabase, month)) as CrmAvailabilitySlot[];
+  }
 
   const availability = buildBookingAvailability(month, existingEvents, availabilitySlots);
   const selectedDay = availability.days.find((day) => day.date === date);
@@ -455,9 +462,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }
 
-  const assignedRep = slotsResult.error
-    ? fallbackBookingOwner
-    : pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
+  const assignedRep = availabilitySlots
+    ? pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents))
+    : slotsResult.error
+      ? fallbackBookingOwner
+      : pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
   if (!assignedRep) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }

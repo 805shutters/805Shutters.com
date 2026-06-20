@@ -204,6 +204,10 @@ function isMissingAvailabilityColumn(error: { code?: string; message?: string } 
   );
 }
 
+function isAvailabilitySlotsTableMissing(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST205" && Boolean(error.message?.includes("crm_availability_slots"));
+}
+
 function logSupabaseError(label: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
   console.error(label, {
     code: error.code,
@@ -211,6 +215,113 @@ function logSupabaseError(label: string, error: { code?: string; message?: strin
     details: error.details,
     hint: error.hint
   });
+}
+
+function availabilitySlotFromActivity(row: Record<string, unknown>) {
+  const metadata = typeof row.metadata === "object" && row.metadata ? row.metadata : {};
+  const afterData = typeof row.after_data === "object" && row.after_data ? row.after_data : {};
+  const source = { ...metadata, ...afterData } as Record<string, unknown>;
+  const owner = typeof source.owner === "string" ? source.owner : null;
+  const startAt = typeof source.start_at === "string" ? source.start_at : null;
+  const endAt = typeof source.end_at === "string" ? source.end_at : null;
+
+  if (!owner || !startAt || !endAt) return null;
+
+  return {
+    id: typeof row.id === "string" ? row.id : `${owner}-${startAt}`,
+    created_at: typeof row.created_at === "string" ? row.created_at : startAt,
+    updated_at: typeof row.created_at === "string" ? row.created_at : startAt,
+    owner,
+    start_at: startAt,
+    end_at: endAt,
+    status: row.action === "availability_slot_closed" ? "canceled" : "available",
+    source: "crm_activity_events_fallback",
+    created_by_email: typeof row.actor_email === "string" ? row.actor_email : null,
+    meta: typeof source.meta === "object" && source.meta ? source.meta : {}
+  } as CrmAvailabilitySlot;
+}
+
+function activityAvailabilityRowsToSlots(rows: Record<string, unknown>[], range: { start: string; end: string }) {
+  const latestByWindow = new Map<string, CrmAvailabilitySlot>();
+
+  for (const row of rows) {
+    const slot = availabilitySlotFromActivity(row);
+    if (!slot) continue;
+    if (slot.start_at < range.start || slot.start_at >= range.end) continue;
+    latestByWindow.set(`${slot.owner}|${slot.start_at}`, slot);
+  }
+
+  return Array.from(latestByWindow.values())
+    .filter((slot) => slot.status === "available")
+    .sort((left, right) => left.start_at.localeCompare(right.start_at));
+}
+
+export async function listCrmAvailabilityFallbackSlots(supabase: CrmSupabaseClient, month: string) {
+  const range = monthRangeUtc(month);
+  const { data, error } = await supabase
+    .from("crm_activity_events")
+    .select("id,created_at,actor_email,action,after_data,metadata")
+    .eq("entity_type", "system")
+    .in("action", ["availability_slot_open", "availability_slot_closed"])
+    .order("created_at", { ascending: true })
+    .limit(5000);
+
+  if (error) {
+    logSupabaseError("crm availability activity fallback query failed", error);
+    throw new CrmAuthError(502, "Availability could not be loaded.");
+  }
+
+  return activityAvailabilityRowsToSlots((data || []) as Record<string, unknown>[], range).map((slot) => {
+    const start = new Date(slot.start_at);
+    return {
+      ...slot,
+      date: losAngelesDateString(start),
+      time: losAngelesTimeString(start)
+    };
+  });
+}
+
+async function recordAvailabilityFallbackSlot(
+  supabase: CrmSupabaseClient,
+  actor: CrmActor,
+  record: { owner: string; start_at: string; end_at: string },
+  open: boolean
+) {
+  const status = open ? "available" : "canceled";
+  const action = open ? "availability_slot_open" : "availability_slot_closed";
+  const slot = {
+    ...record,
+    status,
+    source: "crm_activity_events_fallback",
+    created_by_email: actor.email,
+    meta: {
+      fallbackStore: "crm_activity_events"
+    }
+  };
+  const { data, error } = await supabase
+    .from("crm_activity_events")
+    .insert({
+      actor_auth_user_id: actor.userId || null,
+      actor_email: actor.email,
+      entity_type: "system",
+      action,
+      after_data: slot,
+      metadata: slot
+    })
+    .select("id,created_at,actor_email,action,after_data,metadata")
+    .single();
+
+  if (error || !data) {
+    if (error) logSupabaseError("crm availability activity fallback insert failed", error);
+    throw new CrmAuthError(502, open ? "Availability slot could not be saved." : "Availability slot could not be removed.");
+  }
+
+  const fallbackSlot = availabilitySlotFromActivity(data as Record<string, unknown>);
+  return {
+    ...(fallbackSlot || slot),
+    date: losAngelesDateString(new Date(record.start_at)),
+    time: losAngelesTimeString(new Date(record.start_at))
+  };
 }
 
 function getJobStatusForQuote(status: string) {
@@ -711,6 +822,9 @@ export async function listCrmAvailabilitySlots(supabase: CrmSupabaseClient, mont
 
   if (error) {
     logSupabaseError("crm_availability_slots ranged query failed", error);
+    if (isAvailabilitySlotsTableMissing(error)) {
+      return listCrmAvailabilityFallbackSlots(supabase, month);
+    }
     const fallback = await supabase.from("crm_availability_slots").select("*");
     data = fallback.data;
     error = fallback.error;
@@ -718,6 +832,9 @@ export async function listCrmAvailabilitySlots(supabase: CrmSupabaseClient, mont
 
   if (error) {
     logSupabaseError("crm_availability_slots fallback query failed", error);
+    if (isAvailabilitySlotsTableMissing(error)) {
+      return listCrmAvailabilityFallbackSlots(supabase, month);
+    }
     throw new CrmAuthError(502, "Availability could not be loaded.");
   }
 
@@ -771,13 +888,24 @@ export async function createCrmAvailabilitySlot(
     .eq("owner", owner)
     .eq("start_at", record.start_at);
 
-  if (staleSlotError) throw new CrmAuthError(502, "Availability slot could not be saved.");
+  if (staleSlotError) {
+    logSupabaseError("crm_availability_slots delete-before-insert failed", staleSlotError);
+    if (isAvailabilitySlotsTableMissing(staleSlotError)) {
+      return recordAvailabilityFallbackSlot(supabase, actor, record, true);
+    }
+    throw new CrmAuthError(502, "Availability slot could not be saved.");
+  }
 
   const { data, error } = await supabase
     .from("crm_availability_slots")
     .insert(record)
     .select("*")
     .single();
+
+  if (error && isAvailabilitySlotsTableMissing(error)) {
+    logSupabaseError("crm_availability_slots insert table missing", error);
+    return recordAvailabilityFallbackSlot(supabase, actor, record, true);
+  }
 
   if (error && isMissingAvailabilityColumn(error)) {
     logSupabaseError("crm_availability_slots full insert failed", error);
@@ -815,7 +943,8 @@ export async function createCrmAvailabilitySlot(
 
 export async function deleteCrmAvailabilitySlot(
   supabase: CrmSupabaseClient,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  actor: CrmActor
 ) {
   const owner = normalizeAvailabilityOwner(payload.owner);
   const date = requiredText(payload.date, "Availability date and time are required.");
@@ -831,7 +960,23 @@ export async function deleteCrmAvailabilitySlot(
     .eq("owner", owner)
     .eq("start_at", zonedTimeToUtc(date, time).toISOString());
 
-  if (error) throw new CrmAuthError(502, "Availability slot could not be removed.");
+  if (error) {
+    logSupabaseError("crm_availability_slots delete failed", error);
+    if (isAvailabilitySlotsTableMissing(error)) {
+      await recordAvailabilityFallbackSlot(
+        supabase,
+        actor,
+        {
+          owner,
+          start_at: zonedTimeToUtc(date, time).toISOString(),
+          end_at: bookingEndIso(date, time)
+        },
+        false
+      );
+      return { removed: true };
+    }
+    throw new CrmAuthError(502, "Availability slot could not be removed.");
+  }
 
   return { removed: true };
 }
