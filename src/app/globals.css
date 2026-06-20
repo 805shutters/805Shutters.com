@@ -2922,6 +2922,53 @@ body:has(.crm-app-shell) {
   border: 1px solid var(--line);
 }
 
+.crm-customer-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-customer-filter-bar button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-color: var(--line);
+  background: #f7f7f5;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-customer-filter-bar button.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.crm-customer-filter-bar span {
+  min-width: 22px;
+  padding: 3px 6px;
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid currentColor;
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.crm-customer-filter-bar button.active span {
+  background: transparent;
+  color: var(--white);
+}
+
 .crm-customer-stack {
   display: grid;
   gap: 12px;

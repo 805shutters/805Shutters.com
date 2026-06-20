@@ -32,6 +32,7 @@ import {
 } from "@/lib/crm/types";
 
 type CrmTab = "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
+type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 
 type CrmUser = {
   email: string;
@@ -51,6 +52,14 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "check", label: "Check" },
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
+];
+const customerFileFilters: Array<{ value: CustomerFileFilter; label: string }> = [
+  { value: "need_to_schedule", label: "Need to Schedule" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "quoted", label: "Quoted" },
+  { value: "sold", label: "Sold" },
+  { value: "ordered", label: "Ordered" },
+  { value: "completed", label: "Completed" }
 ];
 const calendarSlotHours = bookingSlotTimes.map((time) => Number(time.slice(0, 2)));
 const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -3484,6 +3493,35 @@ function DrillFact({
   );
 }
 
+function customerFileStatusTokens(file: CrmCustomerFile) {
+  const statuses = new Set<string>();
+  if (file.latestStatus) statuses.add(file.latestStatus);
+  for (const job of file.jobs) statuses.add(job.status);
+  for (const quote of file.quotes) statuses.add(quote.status);
+  for (const row of file.bookkeepingRows) statuses.add(String(row.status));
+  return statuses;
+}
+
+function customerFileMatchesFilter(file: CrmCustomerFile, filter: CustomerFileFilter) {
+  const statuses = customerFileStatusTokens(file);
+  if (!statuses.size) return filter === "need_to_schedule";
+
+  switch (filter) {
+    case "need_to_schedule":
+      return statuses.has("new") || statuses.has("follow_up");
+    case "scheduled":
+      return statuses.has("scheduled");
+    case "quoted":
+      return statuses.has("quoted") || statuses.has("draft") || statuses.has("sent");
+    case "sold":
+      return statuses.has("sold") || statuses.has("approved");
+    case "ordered":
+      return statuses.has("ordered") || statuses.has("received");
+    case "completed":
+      return statuses.has("installed") || statuses.has("invoiced") || statuses.has("paid") || statuses.has("closed");
+  }
+}
+
 function CustomerFilesView({
   files,
   focusCustomer,
@@ -3494,12 +3532,24 @@ function CustomerFilesView({
   onFocusHandled?: () => void;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
   const sortedFiles = useMemo(
     () =>
       [...files].sort((a, b) => {
         const dateDelta = dateSortValue(b.latestSoldDate) - dateSortValue(a.latestSoldDate);
         return dateDelta || a.customerName.localeCompare(b.customerName);
       }),
+    [files]
+  );
+  const visibleFiles = useMemo(
+    () => (activeFilter ? sortedFiles.filter((file) => customerFileMatchesFilter(file, activeFilter)) : sortedFiles),
+    [activeFilter, sortedFiles]
+  );
+  const filterCounts = useMemo(
+    () =>
+      new Map<CustomerFileFilter, number>(
+        customerFileFilters.map((filter) => [filter.value, files.filter((file) => customerFileMatchesFilter(file, filter.value)).length])
+      ),
     [files]
   );
 
@@ -3524,10 +3574,28 @@ function CustomerFilesView({
           <p className="eyebrow">Customer Files</p>
           <h2>Bookkeeping Customers</h2>
         </div>
-        <strong>{files.length}</strong>
+        <strong>{visibleFiles.length}</strong>
+      </div>
+      <div className="crm-customer-filter-bar" aria-label="Customer lifecycle filters">
+        <button type="button" className={!activeFilter ? "active" : ""} onClick={() => setActiveFilter(null)}>
+          All
+          <span>{files.length}</span>
+        </button>
+        {customerFileFilters.map((filter) => (
+          <button
+            type="button"
+            className={activeFilter === filter.value ? "active" : ""}
+            aria-pressed={activeFilter === filter.value}
+            onClick={() => setActiveFilter(filter.value)}
+            key={filter.value}
+          >
+            {filter.label}
+            <span>{filterCounts.get(filter.value) || 0}</span>
+          </button>
+        ))}
       </div>
       <div className="crm-customer-stack">
-        {sortedFiles.map((file) => {
+        {visibleFiles.map((file) => {
           const sortedBookkeepingRows = [...file.bookkeepingRows].sort((a, b) => {
             const dateDelta = dateSortValue(b.soldDate) - dateSortValue(a.soldDate);
             return dateDelta || (a.quoteNumber || a.source).localeCompare(b.quoteNumber || b.source);
@@ -3645,6 +3713,7 @@ function CustomerFilesView({
         })}
       </div>
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
+      {files.length && !visibleFiles.length ? <p className="crm-empty">No customer files match this filter.</p> : null}
     </section>
   );
 }
