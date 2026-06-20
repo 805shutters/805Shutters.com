@@ -65,6 +65,20 @@ describe("pick-one totals (the legacy triple-billing bug must never return)", ()
     expect(lineItemSubtotal(li)).toBe(636);
   });
 
+  it("adds a per-order 'once' surcharge ONCE, not per unit (H2/H13)", () => {
+    // A design carrying a $200 once charge in its price snapshot, qty 2.
+    const a = design({ id: "a", unit_price: 212, price_breakdown: { onceTotal: 200 } });
+    const li = lineItem({ designs: [a], selected_design_id: "a", quantity: 2 });
+    // 212 * 2 + 200 (once, not x2) = 624
+    expect(lineItemSubtotal(li)).toBe(624);
+  });
+
+  it("ignores a once charge on an errored design (never a wrong total)", () => {
+    const a = design({ id: "a", unit_price: 0, price_status: "WIDTH_EXCEEDS_MAX", price_breakdown: { onceTotal: 200 } });
+    const li = lineItem({ designs: [a], selected_design_id: "a", quantity: 1 });
+    expect(lineItemSubtotal(li)).toBe(0);
+  });
+
   it("contributes 0 when no design is selected", () => {
     const a = design({ id: "a", unit_price: 212 });
     const li = lineItem({ designs: [a], selected_design_id: null });

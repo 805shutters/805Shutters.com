@@ -36,6 +36,7 @@ import {
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
+import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -338,11 +339,34 @@ async function recordAvailabilityFallbackSlot(
   };
 }
 
-function getJobStatusForQuote(status: string) {
-  if (status === "ordered" || status === "received") return "ordered";
-  if (status === "installed" || status === "invoiced" || status === "paid") return "installed";
-  if (status === "sold" || status === "approved") return "sold";
-  return "quoted";
+// The single source of truth for the quote -> job projection lives in
+// @/lib/quote/lifecycle (jobStatusForQuote). The legacy paths below go through
+// syncJobFromQuote so the builder and legacy endpoints never diverge.
+/**
+ * Forward-only write of the parent job's status from a quote's status, plus any
+ * extra job fields (estimated_total, deposit_paid). Reads the job's current
+ * status and never downgrades it (a sold/ordered/installed job is not dragged
+ * back to "quoted" by a later quote edit) — `lost` is the one allowed override.
+ * An unsent `draft` quote does NOT advance the job (an empty/early draft leaves
+ * the job "scheduled"), matching the builder's recalcQuoteTotals behavior.
+ */
+async function syncJobFromQuote(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  quoteStatus: string,
+  extra: Record<string, unknown>,
+): Promise<CrmJob | null> {
+  const update: Record<string, unknown> = { ...extra };
+  if (quoteStatus !== "draft") {
+    const { data: jobRow } = await supabase.from("crm_jobs").select("status").eq("id", jobId).maybeSingle();
+    const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
+    if (current) {
+      const next = advanceJobStatus(current, jobStatusForQuote(quoteStatus as CrmQuoteStatus));
+      if (next !== current) update.status = next;
+    }
+  }
+  const { data: job } = await supabase.from("crm_jobs").update(update).eq("id", jobId).select("*").maybeSingle();
+  return (job as CrmJob | null) ?? null;
 }
 
 export async function recordCrmActivity(
@@ -569,8 +593,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     kenPaymentsResult,
     settingsResult
   ] = await Promise.all([
-    supabase.from("crm_jobs").select("*").order("created_at", { ascending: false }).limit(120),
-    supabase.from("crm_quotes").select("*").order("created_at", { ascending: false }).limit(120),
+    // Jobs and quotes use the SAME limit so a job and its quote don't land on
+    // opposite sides of the cap (which blanks quote customer names and shows
+    // "Build Quote" for jobs that already have one). TODO: server-side pagination.
+    supabase.from("crm_jobs").select("*").order("created_at", { ascending: false }).limit(1000),
+    supabase.from("crm_quotes").select("*").order("created_at", { ascending: false }).limit(1000),
     supabase
       .from("crm_calendar_events")
       .select("*")
@@ -1117,37 +1144,41 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     if (paymentError) throw new CrmAuthError(502, "Quote was saved, but payments failed to save.");
   }
 
-  const { error: entryError } = await supabase.from("crm_quote_bookkeeping_entries").insert({
-    quote_id: data.id,
-    job_id: jobId,
-    source: "crm_quote",
-    customer_name: optionalText(payload.customer_name) || "Linked job",
-    sold_date: payload.sold_at || (status === "draft" || status === "sent" ? null : now.slice(0, 10)),
-    total_amount: quoteTotal,
-    payment_type: paymentType,
-    cogs_amount: toMoney(payload.materials_cost),
-    sales_owner: normalizeOwner(payload.sold_by),
-    sales_owner_set_at: payload.sold_by ? now : null,
-    manufacturer_name: optionalText(payload.manufacturer_name),
-    manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
-    manufacturer_order_url: optionalText(payload.manufacturer_order_url),
-    manufacturer_document_url: optionalText(payload.manufacturer_document_url),
-    notes: optionalText(payload.notes),
-    meta: { createdBy: actor.email }
+  // Defer the bookkeeping entry until the quote is actually committed (sold or
+  // further). Draft/sent (not yet won) and lost/archived (never won) must NOT
+  // create a ledger entry — that would inflate the pipeline with quotes that were
+  // never sold. When the quote later advances to sold, updateCrmQuote's upsert
+  // creates the entry.
+  const committedSale = status !== "draft" && status !== "sent" && status !== "lost" && status !== "archived";
+  if (committedSale) {
+    const { error: entryError } = await supabase.from("crm_quote_bookkeeping_entries").insert({
+      quote_id: data.id,
+      job_id: jobId,
+      source: "crm_quote",
+      customer_name: optionalText(payload.customer_name) || "Linked job",
+      sold_date: payload.sold_at || now.slice(0, 10),
+      total_amount: quoteTotal,
+      payment_type: paymentType,
+      cogs_amount: toMoney(payload.materials_cost),
+      sales_owner: normalizeOwner(payload.sold_by),
+      sales_owner_set_at: payload.sold_by ? now : null,
+      manufacturer_name: optionalText(payload.manufacturer_name),
+      manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
+      manufacturer_order_url: optionalText(payload.manufacturer_order_url),
+      manufacturer_document_url: optionalText(payload.manufacturer_document_url),
+      notes: optionalText(payload.notes),
+      meta: { createdBy: actor.email }
+    });
+
+    if (entryError) throw new CrmAuthError(502, "Quote was saved, but bookkeeping failed to save.");
+  }
+
+  // Forward-only job projection (never downgrades; an unsent draft leaves the
+  // job at "scheduled").
+  const job = await syncJobFromQuote(supabase, jobId, status, {
+    estimated_total: quoteTotal,
+    deposit_paid: depositPaid
   });
-
-  if (entryError) throw new CrmAuthError(502, "Quote was saved, but bookkeeping failed to save.");
-
-  const { data: job } = await supabase
-    .from("crm_jobs")
-    .update({
-      status: getJobStatusForQuote(status),
-      estimated_total: quoteTotal,
-      deposit_paid: depositPaid
-    })
-    .eq("id", jobId)
-    .select("*")
-    .maybeSingle();
 
   if (job) await syncCustomerFromJob(supabase, job);
 
@@ -1177,11 +1208,24 @@ export async function updateCrmQuote(
     .maybeSingle();
   if (existingError || !existing) throw new CrmAuthError(404, "Quote was not found.");
 
+  // A quote with line items is priced by the engine (recalcQuoteTotals is the
+  // authority). The legacy ledger endpoint must NOT overwrite those
+  // server-computed customer-facing totals with a client-supplied number — that
+  // would let an unvalidated price reach the contract and bookkeeping. (Manual
+  // ledger quotes with no line items still accept a typed-in total.)
+  const { count: lineItemCount } = await supabase
+    .from("crm_quote_line_items")
+    .select("id", { count: "exact", head: true })
+    .eq("quote_id", id);
+  const builderManaged = (lineItemCount ?? 0) > 0;
+  const serverPricedFields = new Set(["quote_total", "discount", "tax", "deposit_required", "balance_due"]);
+
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedQuotePatchFields.has(key)) continue;
+    if (builderManaged && serverPricedFields.has(key)) continue; // server-authoritative
     if (key === "status") {
       patch.status = normalizeEnum<CrmQuoteStatus>(value, quoteStatusSet, existing.status, "Invalid quote status.");
     } else if (["quote_total", "materials_cost", "labor_cost", "discount", "tax", "deposit_required", "balance_due"].includes(key)) {
@@ -1232,8 +1276,10 @@ export async function updateCrmQuote(
     if (paymentError) throw new CrmAuthError(502, "Quote was updated, but payment failed to save.");
   }
 
-  const { error: entryError } = await supabase.from("crm_quote_bookkeeping_entries").upsert(
-    {
+  // Don't materialize a ledger entry for an unsold draft/sent quote (matches the
+  // create path and the builder, which only create the entry once sold).
+  const maintainEntry = quote.status !== "draft" && quote.status !== "sent";
+  const entryRecord = {
       quote_id: id,
       job_id: quote.job_id,
       source: "crm_quote",
@@ -1273,22 +1319,21 @@ export async function updateCrmQuote(
         ? { jessica_commission_paid_at: payload.jessica_commission_paid ? now : null }
         : {}),
       meta: { lastUpdatedBy: actor.email }
-    },
-    { onConflict: "quote_id" }
-  );
+  };
 
-  if (entryError) throw new CrmAuthError(502, "Quote was updated, but bookkeeping failed to update.");
+  if (maintainEntry) {
+    const { error: entryError } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .upsert(entryRecord, { onConflict: "quote_id" });
+    if (entryError) throw new CrmAuthError(502, "Quote was updated, but bookkeeping failed to update.");
+  }
 
-  const { data: job } = await supabase
-    .from("crm_jobs")
-    .update({
-      status: getJobStatusForQuote(String(quote.status || payload.status)),
-      estimated_total: toMoney(quote.quote_total),
-      deposit_paid: toMoney(quote.deposit_required)
-    })
-    .eq("id", quote.job_id)
-    .select("*")
-    .maybeSingle();
+  // Forward-only job projection: never downgrade a sold/ordered/installed job
+  // because someone edited the quote (lost is the one allowed override).
+  const job = await syncJobFromQuote(supabase, String(quote.job_id), String(quote.status || payload.status), {
+    estimated_total: toMoney(quote.quote_total),
+    deposit_paid: toMoney(quote.deposit_required)
+  });
 
   if (job) await syncCustomerFromJob(supabase, job);
 

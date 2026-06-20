@@ -30,6 +30,7 @@ export type PriceErrorCode =
   | "AREA_EXCEEDS_MAX"
   | "NA_CELL"
   | "SURCHARGE_UNKNOWN"
+  | "SURCHARGE_NO_PRICE"
   | "MOTORIZATION_UNKNOWN";
 
 export type SurchargeSelection = {
@@ -128,6 +129,23 @@ export function roundUpIndex(headers: number[], value: number): number {
     if (headers[i] >= value) return i;
   }
   return -1;
+}
+
+/**
+ * Price a width-graduated surcharge (e.g. a valance) in cents: look up the price
+ * at the first width breakpoint >= the window width (round up). Beyond the
+ * largest breakpoint, charge the top price plus the per-foot overage for each
+ * whole foot over. Never under-charges off the largest listed size.
+ */
+function widthGraduatedCents(
+  g: { widths: number[]; prices: number[]; additionalFootRate: number },
+  widthInches: number,
+): number {
+  const wi = roundUpIndex(g.widths, widthInches);
+  if (wi >= 0) return toCents(g.prices[wi]);
+  const last = g.widths.length - 1;
+  const extraFeet = Math.max(0, Math.ceil((widthInches - g.widths[last]) / 12));
+  return toCents(g.prices[last]) + toCents(g.additionalFootRate) * extraFeet;
 }
 
 function resolveProgram(
@@ -261,12 +279,22 @@ export function priceDesign(input: PriceInput): PriceResult {
     if (!sc) {
       return fail("SURCHARGE_UNKNOWN", `Surcharge '${sel.id}' is not valid for ${product.name}.`, warnings);
     }
-    if (sc.value == null) {
-      warnings.push(`Surcharge '${sc.name}' has no catalog price and was skipped.`);
-      continue;
-    }
     let amountCents: number;
     let detail: string | undefined;
+    if (sc.widthGraduated) {
+      // Valance-style charge priced by window width (round up), plus a per-foot
+      // overage beyond the largest listed width.
+      amountCents = widthGraduatedCents(sc.widthGraduated, W);
+      detail = `by width (${W}")`;
+      surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), kind: sc.kind, detail });
+      perWindowCents += amountCents;
+      continue;
+    }
+    if (sc.value == null) {
+      // A selected surcharge with no priceable value must NOT be silently dropped
+      // (that under-bills the customer). Fail loudly so it gets priced or removed.
+      return fail("SURCHARGE_NO_PRICE", `Surcharge '${sc.name}' has no catalog price. Remove it or add a price before quoting.`, warnings);
+    }
     if (sc.kind === "percent") {
       amountCents = Math.round((baseCents * sc.value) / 100);
       detail = `${sc.value}% of base`;
@@ -275,7 +303,9 @@ export function priceDesign(input: PriceInput): PriceResult {
       amountCents = Math.round(toCents(sc.value) * sqft);
       detail = `$${sc.value}/sq ft x ${sqft.toFixed(1)}`;
     } else {
-      const units = sc.per === "side" || sc.per === "foot" ? Math.max(1, Number(sel.units) || 1) : 1;
+      // Sides (cut-outs) and feet (additional valance foot) are billed per whole
+      // unit — never a fractional count (which would yield a fractional charge).
+      const units = sc.per === "side" || sc.per === "foot" ? Math.max(1, Math.round(Number(sel.units) || 1)) : 1;
       amountCents = toCents(sc.value) * units;
       if (units > 1) detail = `${sc.value} x ${units} ${sc.per}s`;
     }
@@ -295,7 +325,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       warnings.push(`Motorization '${opt.name}' has no catalog price and was skipped.`);
       continue;
     }
-    const units = Math.max(1, Number(sel.units) || 1);
+    const units = Math.max(1, Math.round(Number(sel.units) || 1));
     const amountCents = toCents(opt.price) * units;
     surchargeLines.push({
       id: `motor:${sel.groupId}:${opt.id}`,

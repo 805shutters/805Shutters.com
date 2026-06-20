@@ -124,16 +124,21 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
 
       <div style={{ marginLeft: "auto", marginTop: 20, maxWidth: 320 }}>
         <Row label="Subtotal" value={money(quote.subtotal)} />
-        {quote.depositDue > 0 ? <Row label="Deposit due" value={money(quote.depositDue)} /> : null}
-        {quote.balanceDue > 0 ? <Row label="Balance" value={money(quote.balanceDue)} /> : null}
+        {quote.fees.map((fee, i) => (
+          <Row key={i} label={fee.name} value={money(fee.amount)} />
+        ))}
+        {quote.discount > 0 ? <Row label="Discount" value={`− ${money(quote.discount)}`} /> : null}
+        {quote.tax > 0 ? <Row label="Tax" value={money(quote.tax)} /> : null}
         <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(quote.total)} strong />
         </div>
+        {quote.depositDue > 0 ? <Row label="Deposit due" value={money(quote.depositDue)} /> : null}
+        {quote.balanceDue > 0 ? <Row label="Balance" value={money(quote.balanceDue)} /> : null}
       </div>
 
       {!quote.signed && quote.allPriced ? (
         <div className="no-print">
-          <SignQuote token={quote.token} customerName={quote.customerName} />
+          <SignQuote token={quote.token} customerName={quote.customerName} total={quote.total} />
         </div>
       ) : null}
       {!quote.signed && !quote.allPriced ? (

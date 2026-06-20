@@ -543,22 +543,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "CRM job could not be saved." }, { status: 502 });
   }
 
-  // Auto-create a draft quote so the rep is ready to build at the consultation.
-  // Lightweight: no bookkeeping entry, no job-status change (job stays "scheduled").
-  // Best-effort — a quote hiccup must not fail the customer's booking.
-  await supabase.from("crm_quotes").insert({
-    job_id: job.id,
-    status: "draft",
-    quote_total: 0,
-    materials_cost: 0,
-    labor_cost: 0,
-    discount: 0,
-    tax: 0,
-    deposit_required: 0,
-    balance_due: 0,
-    meta: { createdVia: "self_booking" }
-  });
-
+  // The calendar event is the critical scheduling record — create it BEFORE the
+  // best-effort draft quote. A unique (assigned_to, start_at) index makes a
+  // concurrent double-book fail here (23505) instead of silently double-booking.
   const { data: calendarEvent, error: calendarError } = await supabase
     .from("crm_calendar_events")
     .insert({
@@ -581,7 +568,36 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (calendarError) {
-    return NextResponse.json({ message: "Calendar booking could not be saved." }, { status: 502 });
+    // No transactions span these inserts, so compensate: remove the job + lead we
+    // just created. This prevents an orphaned, unscheduled job/lead/draft and
+    // keeps a retry clean.
+    await supabase.from("crm_jobs").delete().eq("id", job.id);
+    await supabase.from("leads").delete().eq("id", lead.id);
+    const slotTaken = (calendarError as { code?: string }).code === "23505";
+    return NextResponse.json(
+      { message: slotTaken ? "That appointment time was just booked. Please choose another." : "Calendar booking could not be saved." },
+      { status: slotTaken ? 409 : 502 }
+    );
+  }
+
+  // Auto-create a draft quote so the rep is ready to build at the consultation.
+  // Lightweight: no bookkeeping entry, no job-status change (job stays "scheduled").
+  // Best-effort — a quote hiccup must not fail the customer's booking, but log it
+  // so a silently-missing draft is observable.
+  const { error: draftQuoteError } = await supabase.from("crm_quotes").insert({
+    job_id: job.id,
+    status: "draft",
+    quote_total: 0,
+    materials_cost: 0,
+    labor_cost: 0,
+    discount: 0,
+    tax: 0,
+    deposit_required: 0,
+    balance_due: 0,
+    meta: { createdVia: "self_booking" }
+  });
+  if (draftQuoteError) {
+    console.error("[booking] auto-draft quote insert failed", { jobId: job.id, message: draftQuoteError.message });
   }
 
   const bookingDetails: BookingAutomationDetails = {

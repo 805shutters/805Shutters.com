@@ -414,11 +414,14 @@ function buildQuoteRow(
 ): CrmBookkeepingRow {
   const total = Number(quote.quote_total) || 0;
   const cogs = Number(entry?.cogs_amount ?? quote.materials_cost) || 0;
-  const explicitPaid = sumPayments(payments);
+  // Only money actually recorded as a payment counts as collected. Previously an
+  // unpaid-but-sold quote assumed its REQUIRED deposit was paid (deposit_required
+  // is what's owed, not collected) — overstating revenue and mis-flagging jobs as
+  // paid-in-full. Now collected = recorded payments only.
   const explicitDepositPaid = sumPayments(payments.filter(isDepositPayment));
   const explicitBalancePaid = sumPayments(payments.filter((payment) => !isDepositPayment(payment)));
-  const depositPaid = explicitPaid > 0 && explicitDepositPaid > 0 ? explicitDepositPaid : Number(quote.deposit_required) || 0;
-  const balancePaid = explicitPaid > 0 ? explicitBalancePaid : 0;
+  const depositPaid = explicitDepositPaid;
+  const balancePaid = explicitBalancePaid;
   const paidTotal = roundCents(depositPaid + balancePaid);
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
@@ -451,7 +454,9 @@ function buildQuoteRow(
     quoteNumber: quote.quote_number,
     soldDate,
     total,
-    depositDue: roundCents(total * 0.5),
+    // The deposit actually configured on the quote (deposit_required), not a
+    // hardcoded 50%. 0 when no deposit was set.
+    depositDue: roundCents(Number(quote.deposit_required) || 0),
     depositPaid,
     balancePaid,
     paidTotal,

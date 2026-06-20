@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiProduct } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, splitInches, toInches } from "@/lib/quote/measurements";
 
 type Props = {
@@ -38,6 +38,18 @@ async function api<T>(session: Session, path: string, init: RequestInit = {}): P
 function money(n: number | null | undefined): string {
   const v = Number(n) || 0;
   return v.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+/** Short price hint shown next to a surcharge toggle (accurate per unit/basis). */
+function surchargeHint(s: UiSurcharge): string {
+  if (s.widthGraduated) return "priced by width";
+  if (s.kind === "percent") return `${s.value}%`;
+  const amt = money(s.value);
+  if (s.per === "sqft") return `${amt}/sq ft`;
+  if (s.per === "side") return `${amt}/side`;
+  if (s.per === "foot") return `${amt}/ft`;
+  if (s.per === "once") return `${amt}/order`;
+  return amt;
 }
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -100,6 +112,10 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     setShareUrl(null);
     setSendMsg(null);
     setError(null);
+    // Clear the previous quote so switching versions never shows the old quote's
+    // windows briefly under the new version's header/total.
+    setQuote(null);
+    setCustomRoom("");
     (async () => {
       try {
         const [c, q] = await Promise.all([
@@ -587,9 +603,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                                     onChange={() => toggleSurcharge(li, design, s.id)}
                                   />
                                   {s.name}{" "}
-                                  <span style={{ opacity: 0.6 }}>
-                                    ({s.kind === "percent" ? `${s.value}%` : `${money(s.value)}${s.per === "sqft" ? "/sqft" : ""}`})
-                                  </span>
+                                  <span style={{ opacity: 0.6 }}>({surchargeHint(s)})</span>
                                 </label>
                               ))}
                             </div>

@@ -1259,6 +1259,7 @@ export function CrmApp() {
         {[
           ["command", "Command Center"],
           ["quotes", "Quotes"],
+          ["jobs", "Jobs"],
           ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["orders", "Orders"],

@@ -40,13 +40,25 @@ export function selectedDesign(lineItem: CrmQuoteLineItem): CrmQuoteDesign | nul
   return lineItem.designs.find((d) => d.id === lineItem.selected_design_id) ?? null;
 }
 
-/** Billable amount for a line = selected design unit price x quantity. 0 if no
- *  valid selection (never lets an unpriced/errored design contribute a total). */
+/** Per-order ("once") surcharge total captured in a design's price snapshot.
+ *  These (e.g. a $200 custom-color charge) are NOT multiplied by quantity — they
+ *  apply once for the window/order, so the builder must add them on top of
+ *  unit_price x qty (which deliberately excludes them). 0 unless priced ok. */
+export function designOnceTotal(design: CrmQuoteDesign | null): number {
+  if (!design || design.price_status !== "ok") return 0;
+  const bd = design.price_breakdown as { onceTotal?: unknown } | null;
+  const once = bd && typeof bd.onceTotal === "number" ? bd.onceTotal : 0;
+  return round2(Math.max(0, once));
+}
+
+/** Billable amount for a line = selected design unit price x quantity, plus any
+ *  per-order ("once") surcharges. 0 if no valid selection (never lets an
+ *  unpriced/errored design contribute a total). */
 export function lineItemSubtotal(lineItem: CrmQuoteLineItem): number {
   const design = selectedDesign(lineItem);
   if (!design || design.price_status !== "ok") return 0;
   const qty = Math.max(1, Math.floor(Number(lineItem.quantity) || 1));
-  return round2(Number(design.unit_price) * qty);
+  return round2(Number(design.unit_price) * qty + designOnceTotal(design));
 }
 
 export function quoteSubtotal(lineItems: CrmQuoteLineItem[]): number {
@@ -280,7 +292,12 @@ export async function recalcQuoteTotals(
     .update({ total_amount: money.total })
     .eq("quote_id", quoteId);
   if (bkErr) throw new CrmAuthError(502, "Bookkeeping total could not be synced.");
-  if (built.job_id) {
+  // Sibling versions (Quote A/B/C) share one job. Only the primary version
+  // (label "A", or an ungrouped quote) projects its total/status onto the job —
+  // editing a cheaper unpicked alternative must NOT clobber the job estimate or
+  // advance its status. The winning version drives the job via the accept flow.
+  const isPrimaryVersion = !built.quote_group_id || (built.quote_label || "A").trim().toUpperCase() === "A";
+  if (built.job_id && isPrimaryVersion) {
     const jobUpdate: Record<string, unknown> = { estimated_total: money.total };
     // A quote with line items has moved past "scheduled" — advance an early-stage
     // job to "quoted" (forward-only; never downgrades a sold/ordered job).
@@ -494,13 +511,18 @@ export async function upsertDesign(
   const designId = optionalText(payload.id);
   let savedId: string;
   if (designId) {
+    // Ownership check: the design being updated must already belong to this line
+    // item. The service-role client bypasses RLS, so without this a design could
+    // be reparented to a different window/quote and re-priced against the wrong
+    // dimensions (corrupting both quotes). Scope the update by line_item_id too.
     const { data, error } = await supabase
       .from("crm_quote_designs")
       .update(record)
       .eq("id", designId)
+      .eq("line_item_id", lineItemId)
       .select("*")
       .single();
-    if (error || !data) throw new CrmAuthError(502, "Design could not be updated.");
+    if (error || !data) throw new CrmAuthError(404, "Design was not found on this window.");
     savedId = data.id;
   } else {
     const { data, error } = await supabase.from("crm_quote_designs").insert(record).select("*").single();

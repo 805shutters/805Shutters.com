@@ -15,7 +15,9 @@ type Props = {
 
 type SubTab = "dashboard" | "builder" | "contract" | "calendar";
 
-const PIPELINE: CrmQuoteStatus[] = ["draft", "sent", "sold", "ordered", "received", "installed"];
+// Every non-terminal (non-archived/lost) status gets a pipeline column so a
+// sold-and-progressed quote (approved/invoiced/paid) never silently vanishes.
+const PIPELINE: CrmQuoteStatus[] = ["draft", "sent", "approved", "sold", "ordered", "received", "installed", "invoiced", "paid"];
 
 const PILL: Record<string, { bg: string; fg: string }> = {
   draft: { bg: "#f1f5f9", fg: "#475569" },
@@ -226,6 +228,12 @@ function Dashboard({
   onOpen: (quoteId: string) => void;
   onContract: (quoteId: string) => void;
 }) {
+  // Render a column for every active status (incl. approved/invoiced/paid and any
+  // unexpected one), so a progressed quote never silently disappears from the board.
+  const extraStatuses = Array.from(
+    new Set(activeQuotes.map((q) => q.status as CrmQuoteStatus).filter((s) => !PIPELINE.includes(s))),
+  );
+  const pipelineColumns = [...PIPELINE, ...extraStatuses];
   return (
     <div>
       <h3 style={{ margin: "8px 0" }}>Upcoming consultations</h3>
@@ -253,7 +261,7 @@ function Dashboard({
 
       <h3 style={{ margin: "8px 0" }}>Quote pipeline</h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-        {PIPELINE.map((status) => {
+        {pipelineColumns.map((status) => {
           const list = activeQuotes.filter((q) => q.status === status);
           return (
             <div key={status} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function SignQuote({ token, customerName }: { token: string; customerName: string }) {
+export function SignQuote({ token, customerName, total }: { token: string; customerName: string; total: number }) {
   const [name, setName] = useState(customerName && customerName !== "Valued customer" ? customerName : "");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +24,9 @@ export function SignQuote({ token, customerName }: { token: string; customerName
       const res = await fetch(`/api/quote/${token}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ printedName: name.trim(), signature: name.trim() }),
+        // Send the exact total shown on this page so the server can reject the
+        // signature if the quote was edited after we rendered it (consent guard).
+        body: JSON.stringify({ printedName: name.trim(), signature: name.trim(), acknowledgedTotal: total }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || body.error || "We couldn't record your signature.");

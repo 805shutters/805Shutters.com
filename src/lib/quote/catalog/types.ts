@@ -37,12 +37,26 @@ export type CatalogProgram = {
   notes: string[];
 };
 
+/** Width-graduated surcharge price table (e.g. valances priced by window width). */
+export type CatalogWidthGraduated = {
+  /** Ascending width breakpoints in inches. */
+  widths: number[];
+  /** Retail price (whole dollars) at each width breakpoint; same length as widths. */
+  prices: number[];
+  /** Dollars added per whole foot of width beyond the largest breakpoint. */
+  additionalFootRate: number;
+};
+
 export type CatalogSurcharge = {
   id: string;
   name: string;
   kind: SurchargeKind;
   per: SurchargePer;
   value: number | null;
+  /** When present, the charge is looked up by window width (round up) rather than
+   *  using a flat `value`. Used for width-graduated valances whose price table
+   *  would otherwise sit unused in `notes` and bill $0. */
+  widthGraduated?: CatalogWidthGraduated;
   appliesTo: string;
   notes: string;
   sourceType: string;

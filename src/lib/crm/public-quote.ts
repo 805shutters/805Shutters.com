@@ -6,7 +6,9 @@ import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
-import { round2, selectedDesign } from "@/lib/crm/quote-builder";
+import { computeQuoteMoney, lineItemSubtotal, parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
+import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
+import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
 import { getProduct } from "@/lib/quote/catalog";
 import { productImage } from "@/lib/quote/product-images";
@@ -42,6 +44,10 @@ export type PublicQuote = {
   signedAt: string | null;
   lines: PublicQuoteLine[];
   subtotal: number;
+  /** Extra flat fees (install, etc.) shown as their own lines so the math reconciles. */
+  fees: { name: string; amount: number }[];
+  discount: number;
+  tax: number;
   depositDue: number;
   balanceDue: number;
   total: number;
@@ -90,7 +96,9 @@ function projectLine(li: CrmQuoteLineItem): PublicQuoteLine {
     image: product ? productImage(product.productType) : "",
     unitPrice,
     quantity: qty,
-    lineTotal: round2(unitPrice * qty),
+    // Authoritative billed amount (unit x qty + any per-order surcharge) — matches
+    // exactly what the quote/bookkeeping bill, so the customer's math reconciles.
+    lineTotal: priceReady ? lineItemSubtotal(li) : 0,
     priceReady,
   };
 }
@@ -117,7 +125,12 @@ export async function loadPublicQuoteByToken(
     .sort((a, b) => a.sort_order - b.sort_order);
   const lines = lineItems.map(projectLine);
   const subtotal = round2(lines.reduce((s, l) => s + l.lineTotal, 0));
-  const total = round2(Number(quote.quote_total) || subtotal);
+  // Rebuild the full money breakdown from line items + adjustments (same engine
+  // the builder uses), so Subtotal − discount + tax + fees = Total exactly. This
+  // also self-heals a stale stored quote_total.
+  const adj = parseAdjustments(quote.meta);
+  const money = computeQuoteMoney(subtotal, adj);
+  const total = money.total;
 
   let customerName = quote.customer_name || "";
   if (!customerName && quote.job_id) {
@@ -141,9 +154,12 @@ export async function loadPublicQuoteByToken(
     signed: Boolean(quote.signed_at),
     signedAt: quote.signed_at,
     lines,
-    subtotal,
-    depositDue: round2(Number(quote.deposit_required) || 0),
-    balanceDue: round2(Number(quote.balance_due) || 0),
+    subtotal: money.subtotal,
+    fees: adj.fees,
+    discount: money.discountAmount,
+    tax: money.taxAmount,
+    depositDue: money.depositRequired,
+    balanceDue: money.balanceDue,
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     business: { name: BUSINESS_NAME, phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || "" },
@@ -162,7 +178,7 @@ export function buildSignedCustomerSms(customerName: string): string {
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
-  input: { printedName: string; signature?: string },
+  input: { printedName: string; signature?: string; acknowledgedTotal?: number },
 ): Promise<{ ok: true; alreadySigned: boolean }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This quote link is no longer valid.");
@@ -180,6 +196,16 @@ export async function acceptPublicQuote(
   }
   const soldTotal = pub.total;
 
+  // Consent guard: the customer must sign the exact total they were shown. If an
+  // admin edited the quote after the page loaded, the displayed total no longer
+  // matches — reject so they review the new amount before binding themselves.
+  if (
+    input.acknowledgedTotal != null &&
+    Math.round(Number(input.acknowledgedTotal) * 100) !== Math.round(soldTotal * 100)
+  ) {
+    throw new CrmAuthError(409, "This quote was updated since you opened it. Please refresh to review the new total before signing.");
+  }
+
   // Atomic claim: only the first request that flips signed_at from null wins
   // (guards against double-submit / concurrent sign of the same link).
   const { data: claimed, error } = await supabase
@@ -195,12 +221,44 @@ export async function acceptPublicQuote(
     .eq("share_token", token)
     .is("signed_at", null)
     .select("id");
-  if (error) throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
+  if (error) {
+    // The one-signed-per-group unique index (crm_quotes_one_signed_per_group)
+    // rejects a second concurrent sign in the same group — treat that as a
+    // graceful "already decided", not a server error.
+    if ((error as { code?: string }).code === "23505") return { ok: true, alreadySigned: true };
+    throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
+  }
   if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
 
   // Within a group, the chosen version wins — supersede the unsigned alternatives
   // so they can't also be signed and never get their own bookkeeping entry.
   if (quote.quote_group_id) {
+    // Concurrency guard (M6): if a sibling link was signed at nearly the same
+    // moment, both per-row claims can succeed. Resolve to a single winner — the
+    // earliest signature (tiebreak: lowest id). If THIS request lost, revert our
+    // claim before any bookkeeping/supersede so we never end up with two sold
+    // versions + two ledger entries.
+    const { data: signedRows } = await supabase
+      .from("crm_quotes")
+      .select("id, signed_at")
+      .eq("quote_group_id", quote.quote_group_id)
+      .not("signed_at", "is", null);
+    const others = ((signedRows as { id: string; signed_at: string }[]) ?? []).filter((r) => r.id !== quote.id);
+    // Compare by parsed epoch ms — toISOString() (ms, "Z") and a PostgREST
+    // timestamptz (microseconds, "+00:00") are NOT lexicographically comparable.
+    const nowMs = Date.parse(now);
+    const weLost = others.some((o) => {
+      const oMs = Date.parse(String(o.signed_at));
+      return oMs < nowMs || (oMs === nowMs && o.id < quote.id);
+    });
+    if (weLost) {
+      await supabase
+        .from("crm_quotes")
+        .update({ status: "archived", signed_at: null, sold_at: null, customer_signature: null, customer_printed_name: null, share_token: null })
+        .eq("id", quote.id);
+      return { ok: true, alreadySigned: true };
+    }
+
     await supabase
       .from("crm_quotes")
       .update({ status: "archived", share_token: null })
@@ -322,6 +380,17 @@ export async function sendQuoteToCustomer(
   if (status === "draft") {
     await supabase.from("crm_quotes").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", quoteId);
     status = "sent";
+  }
+
+  // The job is a forward-only projection of the quote: sending it advances the
+  // job to "quoted" (never downgrades a job already further along).
+  if (quote.job_id) {
+    const { data: jobRow } = await supabase.from("crm_jobs").select("status").eq("id", quote.job_id).maybeSingle();
+    const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
+    if (current) {
+      const next = advanceJobStatus(current, jobStatusForQuote(status as CrmQuoteStatus));
+      if (next !== current) await supabase.from("crm_jobs").update({ status: next }).eq("id", quote.job_id);
+    }
   }
 
   await recordCrmActivity(supabase, actor, {

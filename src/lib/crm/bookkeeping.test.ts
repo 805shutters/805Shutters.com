@@ -507,3 +507,27 @@ describe("buildKenPayoffSummary", () => {
     expect(BUSINESS_PAYOFF_TARGET).toBe(500000);
   });
 });
+
+describe("deposit/balance only count recorded money (H7/M10/L16)", () => {
+  it("a sold-but-unpaid quote shows nothing collected and the full balance owed", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", status: "sold", quote_total: 4000, deposit_required: 2000 })],
+    });
+    // deposit_required is what's OWED, not collected — nothing was recorded as paid
+    expect(row.depositPaid).toBe(0);
+    expect(row.paidTotal).toBe(0);
+    expect(row.balance).toBe(4000);
+    // depositDue reflects the quote's configured deposit, not a hardcoded 50%
+    expect(row.depositDue).toBe(2000);
+  });
+
+  it("counts a recorded deposit payment as collected", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q2", status: "sold", quote_total: 4000, deposit_required: 2000 })],
+      payments: [payment({ quote_id: "q2", amount: 2000, payment_label: "Deposit" })],
+    });
+    expect(row.depositPaid).toBe(2000);
+    expect(row.paidTotal).toBe(2000);
+    expect(row.balance).toBe(2000);
+  });
+});

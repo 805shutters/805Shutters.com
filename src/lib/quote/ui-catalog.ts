@@ -20,6 +20,8 @@ export type UiSurcharge = {
   kind: "percent" | "flat";
   per: "unit" | "side" | "foot" | "sqft" | "once";
   value: number | null;
+  /** True when priced by window width (valances) rather than a flat value. */
+  widthGraduated: boolean;
 };
 
 export type UiProduct = {
@@ -73,6 +75,7 @@ export function buildUiCatalog(): UiCatalog {
       kind: s.kind,
       per: s.per,
       value: s.value,
+      widthGraduated: s.widthGraduated != null,
     })),
   }));
 

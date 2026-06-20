@@ -74,37 +74,54 @@ export async function createQuoteVersion(
     if (groupErr) throw new CrmAuthError(502, "Could not start a quote group.");
   }
 
-  const siblings = await listQuoteVersions(supabase, source.id);
-  const label = nextLabel(siblings.map((s) => s.label));
-
-  const { data, error } = await supabase
-    .from("crm_quotes")
-    .insert({
-      job_id: source.job_id,
-      quote_number: source.quote_number ? `${source.quote_number}-${label}` : null,
-      status: "draft",
-      quote_total: 0,
-      materials_cost: 0,
-      labor_cost: 0,
-      discount: 0,
-      tax: 0,
-      deposit_required: 0,
-      balance_due: 0,
-      quote_group_id: groupId,
-      quote_label: label,
-      meta: { createdBy: actor.email, createdAsVersionOf: source.id },
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw new CrmAuthError(502, "New quote version could not be created.");
+  // Insert the next free label, retrying if a concurrent creation grabbed the
+  // same label first (unique (quote_group_id, quote_label) index → 23505). The
+  // retry recomputes the label from the now-current sibling set.
+  const usedLabels = (await listQuoteVersions(supabase, source.id)).map((s) => s.label);
+  let label = nextLabel(usedLabels);
+  let createdId: string | null = null;
+  for (let attempt = 0; attempt < 4 && !createdId; attempt += 1) {
+    const { data, error } = await supabase
+      .from("crm_quotes")
+      .insert({
+        job_id: source.job_id,
+        quote_number: source.quote_number ? `${source.quote_number}-${label}` : null,
+        status: "draft",
+        quote_total: 0,
+        materials_cost: 0,
+        labor_cost: 0,
+        discount: 0,
+        tax: 0,
+        deposit_required: 0,
+        balance_due: 0,
+        quote_group_id: groupId,
+        quote_label: label,
+        meta: { createdBy: actor.email, createdAsVersionOf: source.id },
+      })
+      .select("id")
+      .single();
+    if (!error && data) {
+      createdId = data.id;
+      break;
+    }
+    if (error && (error as { code?: string }).code === "23505") {
+      // Label taken by a concurrent insert — recompute against the latest siblings.
+      usedLabels.push(label);
+      const fresh = (await listQuoteVersions(supabase, source.id)).map((s) => s.label);
+      label = nextLabel([...usedLabels, ...fresh]);
+      continue;
+    }
+    throw new CrmAuthError(502, "New quote version could not be created.");
+  }
+  if (!createdId) throw new CrmAuthError(409, "Could not assign a unique version label. Please retry.");
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
-    entityId: data.id,
+    entityId: createdId,
     action: "version.create",
     metadata: { groupId, label, sourceId: source.id },
   });
-  return { quoteId: data.id, groupId, label };
+  return { quoteId: createdId, groupId, label };
 }
 
 /**
