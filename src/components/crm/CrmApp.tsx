@@ -32,8 +32,8 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
-type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
+type CrmTab = "command" | "quotes" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
+type JobStatusFilter = CrmJobStatus | null;
 
 type CrmUser = {
   email: string;
@@ -53,14 +53,6 @@ const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> =
   { value: "check", label: "Check" },
   { value: "credit_card", label: "Credit Card" },
   { value: "other", label: "Other" }
-];
-const customerFileFilters: Array<{ value: CustomerFileFilter; label: string }> = [
-  { value: "need_to_schedule", label: "Need to Schedule" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "quoted", label: "Quoted" },
-  { value: "sold", label: "Sold" },
-  { value: "ordered", label: "Ordered" },
-  { value: "completed", label: "Completed" }
 ];
 const calendarSlotHours = bookingSlotTimes.map((time) => Number(time.slice(0, 2)));
 const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
@@ -492,6 +484,7 @@ export function CrmApp() {
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
+  const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -505,7 +498,8 @@ export function CrmApp() {
 
   function openCustomerFile(customerName: string) {
     setFocusCustomer(customerName);
-    setActiveTab("customers");
+    setActiveJobStatus(null);
+    setActiveTab("jobs");
     setDrill(null);
   }
 
@@ -1260,7 +1254,6 @@ export function CrmApp() {
           ["command", "Command Center"],
           ["quotes", "Quotes"],
           ["jobs", "Jobs"],
-          ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["orders", "Orders"],
           ["calendar", "Calendar"],
@@ -1316,16 +1309,13 @@ export function CrmApp() {
         </>
       ) : null}
 
-      {activeTab === "customers" ? (
-        <CustomerFilesView
-          files={customerFiles}
-          focusCustomer={focusCustomer}
-          onFocusHandled={() => setFocusCustomer(null)}
-        />
-      ) : null}
-
       {activeTab === "jobs" ? (
-        <section className="crm-workspace">
+        <section className="crm-workspace crm-workspace-wide">
+          <JobStatusTabs
+            jobs={jobs}
+            activeStatus={activeJobStatus}
+            onChange={setActiveJobStatus}
+          />
           <CollapsiblePanel title="New Sales Job">
             <form className="crm-form" onSubmit={createJob}>
               <label>
@@ -1400,7 +1390,7 @@ export function CrmApp() {
           </CollapsiblePanel>
 
           <div className="crm-kanban">
-            {jobColumns.map((column) => (
+            {(activeJobStatus ? jobColumns.filter((column) => column.status === activeJobStatus) : jobColumns).map((column) => (
               <section className="crm-column" key={column.status}>
                 <div className="crm-column-head">
                   <h2>{column.label}</h2>
@@ -1416,6 +1406,12 @@ export function CrmApp() {
               </section>
             ))}
           </div>
+          <CustomerFilesView
+            files={customerFiles}
+            activeStatus={activeJobStatus}
+            focusCustomer={focusCustomer}
+            onFocusHandled={() => setFocusCustomer(null)}
+          />
         </section>
       ) : null}
 
@@ -3530,6 +3526,42 @@ function DrillFact({
   );
 }
 
+function JobStatusTabs({
+  jobs,
+  activeStatus,
+  onChange
+}: {
+  jobs: CrmJob[];
+  activeStatus: JobStatusFilter;
+  onChange: (status: JobStatusFilter) => void;
+}) {
+  const counts = useMemo(
+    () => new Map<CrmJobStatus, number>(crmJobStatuses.map((status) => [status, jobs.filter((job) => job.status === status).length])),
+    [jobs]
+  );
+
+  return (
+    <div className="crm-customer-filter-bar" aria-label="Job status filters">
+      <button type="button" className={!activeStatus ? "active" : ""} aria-pressed={!activeStatus} onClick={() => onChange(null)}>
+        All
+        <span>{jobs.length}</span>
+      </button>
+      {jobColumns.map((column) => (
+        <button
+          type="button"
+          className={activeStatus === column.status ? "active" : ""}
+          aria-pressed={activeStatus === column.status}
+          onClick={() => onChange(column.status)}
+          key={column.status}
+        >
+          {column.label}
+          <span>{counts.get(column.status) || 0}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function customerFileStatusTokens(file: CrmCustomerFile) {
   const statuses = new Set<string>();
   if (file.latestStatus) statuses.add(file.latestStatus);
@@ -3539,37 +3571,48 @@ function customerFileStatusTokens(file: CrmCustomerFile) {
   return statuses;
 }
 
-function customerFileMatchesFilter(file: CrmCustomerFile, filter: CustomerFileFilter) {
+function customerFileMatchesStatus(file: CrmCustomerFile, status: JobStatusFilter) {
+  if (!status) return true;
   const statuses = customerFileStatusTokens(file);
-  if (!statuses.size) return filter === "need_to_schedule";
+  if (!statuses.size) return status === "new" || status === "follow_up";
 
-  switch (filter) {
-    case "need_to_schedule":
-      return statuses.has("new") || statuses.has("follow_up");
+  switch (status) {
+    case "new":
+    case "follow_up":
     case "scheduled":
-      return statuses.has("scheduled");
+    case "lost":
+    case "closed":
+      return statuses.has(status);
     case "quoted":
       return statuses.has("quoted") || statuses.has("draft") || statuses.has("sent");
     case "sold":
       return statuses.has("sold") || statuses.has("approved");
     case "ordered":
       return statuses.has("ordered") || statuses.has("received");
-    case "completed":
-      return statuses.has("installed") || statuses.has("invoiced") || statuses.has("paid") || statuses.has("closed");
+    case "installed":
+      return statuses.has("installed");
+    case "invoiced":
+      return statuses.has("invoiced") || statuses.has("paid");
   }
+  return false;
+}
+
+function statusLabel(status: JobStatusFilter) {
+  return status ? titleCase(status) : "All";
 }
 
 function CustomerFilesView({
   files,
+  activeStatus,
   focusCustomer,
   onFocusHandled
 }: {
   files: CrmCustomerFile[];
+  activeStatus: JobStatusFilter;
   focusCustomer?: string | null;
   onFocusHandled?: () => void;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
-  const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
   const sortedFiles = useMemo(
     () =>
       [...files].sort((a, b) => {
@@ -3579,15 +3622,8 @@ function CustomerFilesView({
     [files]
   );
   const visibleFiles = useMemo(
-    () => (activeFilter ? sortedFiles.filter((file) => customerFileMatchesFilter(file, activeFilter)) : sortedFiles),
-    [activeFilter, sortedFiles]
-  );
-  const filterCounts = useMemo(
-    () =>
-      new Map<CustomerFileFilter, number>(
-        customerFileFilters.map((filter) => [filter.value, files.filter((file) => customerFileMatchesFilter(file, filter.value)).length])
-      ),
-    [files]
+    () => sortedFiles.filter((file) => customerFileMatchesStatus(file, activeStatus)),
+    [activeStatus, sortedFiles]
   );
 
   useEffect(() => {
@@ -3609,27 +3645,9 @@ function CustomerFilesView({
       <div className="crm-section-head">
         <div>
           <p className="eyebrow">Customer Files</p>
-          <h2>Bookkeeping Customers</h2>
+          <h2>{statusLabel(activeStatus)} Customer Files</h2>
         </div>
         <strong>{visibleFiles.length}</strong>
-      </div>
-      <div className="crm-customer-filter-bar" aria-label="Customer lifecycle filters">
-        <button type="button" className={!activeFilter ? "active" : ""} onClick={() => setActiveFilter(null)}>
-          All
-          <span>{files.length}</span>
-        </button>
-        {customerFileFilters.map((filter) => (
-          <button
-            type="button"
-            className={activeFilter === filter.value ? "active" : ""}
-            aria-pressed={activeFilter === filter.value}
-            onClick={() => setActiveFilter(filter.value)}
-            key={filter.value}
-          >
-            {filter.label}
-            <span>{filterCounts.get(filter.value) || 0}</span>
-          </button>
-        ))}
       </div>
       <div className="crm-customer-stack">
         {visibleFiles.map((file) => {
@@ -3750,7 +3768,7 @@ function CustomerFilesView({
         })}
       </div>
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
-      {files.length && !visibleFiles.length ? <p className="crm-empty">No customer files match this filter.</p> : null}
+      {files.length && !visibleFiles.length ? <p className="crm-empty">No customer files match {statusLabel(activeStatus).toLowerCase()}.</p> : null}
     </section>
   );
 }
