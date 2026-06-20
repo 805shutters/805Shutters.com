@@ -9,6 +9,7 @@ import {
 } from "@/lib/crm/bookkeeping";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
   bookingEndIso,
   losAngelesDateString,
@@ -578,6 +579,26 @@ async function syncCustomerFromBookkeepingEntry(
   });
 }
 
+export function enrichCalendarEventsWithJobDetails(events: CrmCalendarEvent[], jobs: CrmJob[]): CrmCalendarEvent[] {
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+
+  return events.map((event) => {
+    const job = event.job_id ? jobsById.get(event.job_id) : null;
+    if (!job) return event;
+
+    return {
+      ...event,
+      customer_name: event.customer_name || job.customer_name,
+      customer_phone: job.phone,
+      customer_email: job.email,
+      customer_address: event.location || job.address,
+      customer_city: job.city,
+      product_interest: job.product_interest,
+      customer_notes: event.notes || job.notes
+    };
+  });
+}
+
 export function buildDashboardData({
   jobs,
   quotes,
@@ -635,11 +656,12 @@ export function buildDashboardData({
     ...job,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
+  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobs);
 
   return {
     jobs: jobsWithQuotes,
     quotes,
-    events,
+    events: calendarEvents,
     customers,
     customerProducts: products,
     customerContracts: contracts,
@@ -784,10 +806,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   return buildDashboardData({
     jobs,
     quotes: quotes.map((quote) => ({ ...quote, customer_name: jobNames.get(quote.job_id) })),
-    events: events.map((event) => ({
-      ...event,
-      customer_name: event.job_id ? jobNames.get(event.job_id) : undefined
-    })),
+    events,
     customers,
     products,
     contracts,
@@ -981,6 +1000,7 @@ export async function createCrmCalendarEvent(
   const { data, error } = await supabase.from("crm_calendar_events").insert(record).select("*").single();
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be saved.");
 
+  let linkedJob: CrmJob | null = null;
   if (payload.job_id) {
     const { data: job } = await supabase
       .from("crm_jobs")
@@ -993,8 +1013,22 @@ export async function createCrmCalendarEvent(
       .select("*")
       .maybeSingle();
 
-    if (job) await syncCustomerFromJob(supabase, job);
+    if (job) {
+      linkedJob = job as CrmJob;
+      await syncCustomerFromJob(supabase, linkedJob);
+    }
   }
+
+  const assignedSalespersonSms = await sendCalendarAssignmentSms({
+    assignedTo,
+    title,
+    startAt,
+    endAt,
+    location: optionalText(payload.location) || linkedJob?.address || null,
+    customerName: linkedJob?.customer_name || null,
+    phone: linkedJob?.phone || null,
+    productInterest: linkedJob?.product_interest || null
+  });
 
   await recordCrmActivity(supabase, actor, {
     entityType: "calendar_event",
@@ -1002,7 +1036,8 @@ export async function createCrmCalendarEvent(
     action: "create",
     after: data,
     metadata: {
-      jobId: payload.job_id || null
+      jobId: payload.job_id || null,
+      assignedSalespersonSms
     }
   });
 

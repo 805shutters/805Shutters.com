@@ -341,6 +341,37 @@ function calendarEventClassName(event: CrmCalendarEvent) {
   return `crm-calendar-event-block ${calendarEventToneClassName(event)}`;
 }
 
+function cleanCalendarText(value: string | null | undefined) {
+  return String(value || "").trim();
+}
+
+function calendarEventCustomerLabel(event: CrmCalendarEvent) {
+  return cleanCalendarText(event.customer_name) || cleanCalendarText(event.title) || "Appointment";
+}
+
+function calendarEventDescriptionLines(event: CrmCalendarEvent) {
+  const address = cleanCalendarText(event.customer_address || event.location);
+  const city = cleanCalendarText(event.customer_city);
+  const notes = cleanCalendarText(event.customer_notes || event.notes);
+
+  return [
+    cleanCalendarText(event.customer_phone) ? `Phone: ${cleanCalendarText(event.customer_phone)}` : null,
+    address ? `Address: ${address}` : null,
+    city ? `City: ${city}` : null,
+    cleanCalendarText(event.assigned_to) ? `Assigned: ${cleanCalendarText(event.assigned_to)}` : null,
+    cleanCalendarText(event.product_interest) ? `Product: ${cleanCalendarText(event.product_interest)}` : null,
+    notes ? `Notes: ${notes}` : null
+  ].filter((line): line is string => Boolean(line));
+}
+
+function calendarEventDescriptionLabel(event: CrmCalendarEvent) {
+  return [
+    `${calendarTimeFormatter.format(new Date(event.start_at))} - ${calendarTimeFormatter.format(new Date(event.end_at))}`,
+    calendarEventCustomerLabel(event),
+    ...calendarEventDescriptionLines(event)
+  ].join(". ");
+}
+
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
@@ -4772,15 +4803,19 @@ function CalendarTimelineGrid({
         {events.map((event) => {
           const placement = calendarEventPlacement(event, days);
           if (!placement) return null;
+          const detailLines = calendarEventDescriptionLines(event);
+          const descriptionLabel = calendarEventDescriptionLabel(event);
 
           return (
             <article
+              aria-label={descriptionLabel}
               className={calendarEventClassName(event)}
               key={event.id}
               style={{
                 gridColumn: placement.column,
                 gridRow: `${placement.rowStart} / ${placement.rowEnd}`
               }}
+              title={descriptionLabel}
             >
               <div className="crm-calendar-event-time">
                 <span>
@@ -4789,8 +4824,12 @@ function CalendarTimelineGrid({
                 </span>
                 <b>{calendarEventDurationLabel(event)}</b>
               </div>
-              <h3>{event.title}</h3>
-              <p>{event.assigned_to}</p>
+              <h3>{calendarEventCustomerLabel(event)}</h3>
+              <div className="crm-calendar-event-details">
+                {detailLines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
             </article>
           );
         })}
@@ -4842,7 +4881,7 @@ function CalendarMonthGrid({
                 {eventPreview.map((event) => (
                   <div className={`crm-calendar-month-event ${calendarEventToneClassName(event)}`} key={event.id}>
                     <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
-                    <span>{event.title}</span>
+                    <span>{calendarEventCustomerLabel(event)}</span>
                   </div>
                 ))}
                 {dayEvents.length > eventPreview.length ? (

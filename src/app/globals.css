@@ -3408,7 +3408,7 @@ body:has(.crm-app-shell) {
 
 .crm-calendar-grid {
   display: grid;
-  grid-template-rows: 48px repeat(9, 58px);
+  grid-template-rows: 48px repeat(9, 142px);
   background: #d8d8d2;
   gap: 1px;
 }
@@ -3483,7 +3483,7 @@ body:has(.crm-app-shell) {
   display: grid;
   align-content: start;
   gap: 2px;
-  min-height: 58px;
+  min-height: 142px;
   padding: 7px 8px;
   background: #fbfbfa;
 }
@@ -3501,7 +3501,7 @@ body:has(.crm-app-shell) {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 58px;
+  min-height: 142px;
   width: 100%;
   padding: 4px;
   border: 0;
@@ -3577,7 +3577,8 @@ body:has(.crm-app-shell) {
   min-width: 0;
   margin: 4px 6px;
   padding: 6px 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #f4f4f2;
   border: 1px solid #b8b6ae;
   border-radius: 3px;
@@ -3635,9 +3636,15 @@ body:has(.crm-app-shell) {
   min-width: 0;
   overflow-wrap: anywhere;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   line-height: 1.15;
+}
+
+.crm-calendar-event-details {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 .crm-calendar-event-block p {
@@ -3647,6 +3654,8 @@ body:has(.crm-app-shell) {
   font-weight: 800;
   line-height: 1.25;
   opacity: 0.82;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .crm-calendar-month-wrap {

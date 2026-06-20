@@ -446,6 +446,12 @@ export type CrmCalendarEvent = {
   location: string | null;
   notes: string | null;
   customer_name?: string;
+  customer_phone?: string | null;
+  customer_email?: string | null;
+  customer_address?: string | null;
+  customer_city?: string | null;
+  product_interest?: string | null;
+  customer_notes?: string | null;
 };
 
 export type CrmAvailabilitySlot = {

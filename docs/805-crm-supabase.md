@@ -308,6 +308,6 @@ When the dedicated service-role key is present, `/api/booking` creates:
 - a scheduled `crm_jobs` row
 - a scheduled `crm_calendar_events` row
 
-After the CRM calendar event is saved, `/api/booking` attempts customer SMS confirmation when Twilio is configured, customer email confirmation when an email is supplied and Resend is configured, a staff email to `805@805shutters.com`, staff texts to Jessica and Mike, and the optional booking webhook alert. Notification failures are logged but do not cancel a successfully saved booking.
+After the CRM calendar event is saved, `/api/booking` attempts customer SMS confirmation when Twilio is configured, customer email confirmation when an email is supplied and Resend is configured, a staff email to `805@805shutters.com`, admin staff texts through `CRM_APPOINTMENT_ALERT_SMS_NUMBERS`, an assigned-salesperson text through `JESSICA_805_SALES_SMS_NUMBER` or `MIKE_805_SALES_SMS_NUMBER`, and the optional booking webhook alert. Notification failures are logged but do not cancel a successfully saved booking.
 
 Unavailable dates and times are greyed out based on existing CRM calendar events. Sundays and past dates are not bookable by default.

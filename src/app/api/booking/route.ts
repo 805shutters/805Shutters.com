@@ -9,6 +9,7 @@ import {
   zonedTimeToUtc
 } from "@/lib/booking/availability";
 import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
+import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
@@ -91,9 +92,7 @@ function staffEmailRecipients() {
 function staffSmsRecipients() {
   return uniqueItems([
     ...defaultStaffSmsNumbers,
-    ...splitList(process.env.CRM_APPOINTMENT_ALERT_SMS_NUMBERS),
-    ...splitList(process.env.JESSICA_805_SALES_SMS_NUMBER),
-    ...splitList(process.env.MIKE_805_SALES_SMS_NUMBER)
+    ...splitList(process.env.CRM_APPOINTMENT_ALERT_SMS_NUMBERS)
   ])
     .map(normalizeSmsPhone)
     .filter(Boolean)
@@ -625,11 +624,27 @@ export async function POST(request: NextRequest) {
     console.warn("Self-booking customer details could not be synced.", error);
   }
 
-  const [smsConfirmationSent, emailConfirmationSent, staffEmailSent, staffSmsAlertCount] = await Promise.all([
+  const [
+    smsConfirmationSent,
+    emailConfirmationSent,
+    staffEmailSent,
+    staffSmsAlertCount,
+    assignedSalespersonSms
+  ] = await Promise.all([
     sendSmsConfirmation({ phone, startAt, productInterest, productTypes }),
     sendCustomerEmailConfirmation(bookingDetails),
     sendStaffBookingEmail(bookingDetails),
-    sendStaffSmsAlerts(bookingDetails)
+    sendStaffSmsAlerts(bookingDetails),
+    sendCalendarAssignmentSms({
+      assignedTo: assignedRep,
+      title: `${name} consultation`,
+      startAt,
+      endAt,
+      location: address,
+      customerName: name,
+      phone,
+      productInterest
+    })
   ]);
 
   await sendBookingAlert({
@@ -650,7 +665,8 @@ export async function POST(request: NextRequest) {
     smsConfirmationSent,
     emailConfirmationSent,
     staffEmailSent,
-    staffSmsAlertCount
+    staffSmsAlertCount,
+    assignedSalespersonSms
   });
 
   return NextResponse.json({
@@ -662,6 +678,7 @@ export async function POST(request: NextRequest) {
     smsConfirmationSent,
     emailConfirmationSent,
     staffEmailSent,
-    staffSmsAlertCount
+    staffSmsAlertCount,
+    assignedSalespersonSms
   });
 }
