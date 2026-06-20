@@ -258,7 +258,7 @@ for (const entry of entries) {
     notes: entry.notes || null,
     imported_sheet_row: entry.imported_sheet_row || null,
     meta: { mts_entry_id: entry.id, account_id: entry.account_id }
-  });
+  }, targetQuoteId ? "quote_id" : "external_source,external_id");
   entryIdByMtsEntryId.set(entry.id, importedEntry.id);
 
   if (entry.manufacturer_order_url || entry.manufacturer_document_url || entry.installation_invoice_url) {

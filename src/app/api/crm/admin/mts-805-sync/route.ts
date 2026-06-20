@@ -285,7 +285,7 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
       notes: entry.notes || null,
       imported_sheet_row: entry.imported_sheet_row || null,
       meta: { mts_entry_id: entry.id, account_id: accountId },
-    });
+    }, targetQuoteId ? "quote_id" : "external_source,external_id");
     counts.entries += 1;
     entryIdByMtsEntryId.set(entry.id, importedEntry.id);
 
