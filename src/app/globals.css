@@ -3769,6 +3769,73 @@ body:has(.crm-app-shell) {
   border: 1px solid var(--line);
 }
 
+.crm-bookkeeping-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.crm-bookkeeping-counts span {
+  padding: 7px 12px;
+  background: #f0ede8;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-bookkeeping-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.crm-bookkeeping-summary-card {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-height: 92px;
+  padding: 14px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-bookkeeping-summary-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.crm-bookkeeping-summary-card strong {
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: clamp(20px, 1.6vw, 28px);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.crm-bookkeeping-alert {
+  margin: 0 -20px 16px;
+  padding: 14px 20px;
+  background: #fff8df;
+  border-top: 1px solid #edd486;
+  border-bottom: 1px solid #edd486;
+  color: #7a431f;
+  font-size: 14px;
+  font-weight: 900;
+}
+
 .crm-bookkeeping-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -3805,6 +3872,22 @@ body:has(.crm-app-shell) {
   white-space: nowrap;
 }
 
+.crm-bookkeeping-table--legacy {
+  min-width: 1660px;
+  font-size: 13px;
+}
+
+.crm-bookkeeping-table--legacy th {
+  background: var(--white);
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.crm-bookkeeping-table--legacy td {
+  padding: 14px 10px;
+  font-size: 14px;
+}
+
 .crm-bookkeeping-table td strong,
 .crm-bookkeeping-table td span {
   display: block;
@@ -3814,6 +3897,67 @@ body:has(.crm-app-shell) {
   margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.crm-bookkeeping-status {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 9px;
+  background: #d7f7e6;
+  border: 1px solid #9de8bf;
+  border-radius: 999px;
+  color: #26774e;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: lowercase;
+}
+
+.crm-bookkeeping-pill {
+  display: inline-block !important;
+  min-width: 80px;
+  padding: 5px 13px;
+  background: #1f5fbf;
+  border-radius: 999px;
+  color: var(--white) !important;
+  font-size: 12px !important;
+  font-weight: 900;
+  text-align: center;
+}
+
+.crm-ledger-money-warn {
+  color: #b9551d !important;
+  font-weight: 900;
+}
+
+.crm-ledger-money-good {
+  color: #14784f !important;
+  font-weight: 900;
+}
+
+.crm-bookkeeping-note-button {
+  display: block;
+  width: 100%;
+  min-width: 220px;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px dashed #c8d3df;
+  background: #fbfcfe;
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+}
+
+.crm-bookkeeping-note-button:hover,
+.crm-bookkeeping-note-button:focus-visible {
+  transform: none;
+  border-style: solid;
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .crm-warning-cell {

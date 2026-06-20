@@ -108,6 +108,15 @@ function toCurrency(value: number | undefined) {
   }).format(value || 0);
 }
 
+function toLedgerCurrency(value: number | null | undefined) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value || 0);
+}
+
 function formatShortDate(value: string | null | undefined) {
   if (!value) return "Open";
   return new Intl.DateTimeFormat("en-US", {
@@ -2483,50 +2492,63 @@ function BookkeepingSpreadsheet({
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
   onEdit: (row: CrmBookkeepingRow) => void;
 }) {
+  const totalProfit = roundCurrency(
+    (totals?.total || 0) - (totals?.cogs || 0) - (totals?.installationAmount || 0) - (totals?.expensesTotal || 0)
+  );
+  const netProfit = roundCurrency(totalProfit - (totals?.kenCut || 0));
+  const profitMargin = totals?.total ? `${((totalProfit / totals.total) * 100).toFixed(1)}%` : "0.0%";
+  const missingCogs = totals?.missingCogs || 0;
+  const summaryCards = [
+    ["Total Sales", toLedgerCurrency(totals?.total)],
+    ["Open Balance", toLedgerCurrency(totals?.balance)],
+    ["COGS", toLedgerCurrency(totals?.cogs)],
+    ["Installation", toLedgerCurrency(totals?.installationAmount)],
+    ["Ken Total Profit", toLedgerCurrency(totals?.kenCut)],
+    ["MTS Total Profit", toLedgerCurrency(netProfit)],
+    ["Jessica Commission", toLedgerCurrency(totals?.jessicaCommission)],
+    ["Jessica Paid", toLedgerCurrency(totals?.jessicaCommissionPaid)],
+    ["Jessica Owed", toLedgerCurrency(totals?.jessicaCommissionOwed)],
+    ["Total Profit", toLedgerCurrency(totalProfit)],
+    ["Profit Margin", profitMargin]
+  ];
+
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
       <div className="crm-section-head">
         <div>
           <p className="eyebrow">Bookkeeping</p>
-          <h2>805 Spreadsheet</h2>
+          <h2>Quote Job Ledger</h2>
         </div>
-        <div className="crm-ledger-totals">
-          <span>Total {toCurrency(totals?.total)}</span>
-          <span>Paid {toCurrency(totals?.paidTotal)}</span>
-          <span>Balance {toCurrency(totals?.balance)}</span>
-          <span>COGS {toCurrency(totals?.cogs)}</span>
-          <span>Ken {toCurrency(totals?.kenCut)}</span>
-          <span>Mike {toCurrency(totals?.mikeProfit)}</span>
-          <span>Jessica {toCurrency(totals?.jessicaCommissionOwed)}</span>
+        <div className="crm-bookkeeping-counts" aria-label="Bookkeeping row counts">
+          <span>Rows: {totals?.rows || 0}</span>
         </div>
       </div>
+      <div className="crm-bookkeeping-summary-grid">
+        {summaryCards.map(([label, value]) => (
+          <article className="crm-bookkeeping-summary-card" key={label}>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </article>
+        ))}
+      </div>
+      {missingCogs ? <p className="crm-bookkeeping-alert">{missingCogs} rows missing COGS.</p> : null}
       <div className="crm-bookkeeping-table-wrap">
-        <table className="crm-bookkeeping-table">
+        <table className="crm-bookkeeping-table crm-bookkeeping-table--legacy">
           <thead>
             <tr>
               <th>Customer / Quote</th>
-              <th>Sold Date</th>
+              <th>Date</th>
               <th>Total</th>
-              <th>Deposit Due</th>
-              <th>Deposit Paid</th>
-              <th>Balance Paid</th>
-              <th>Paid Total</th>
-              <th>Credit In</th>
-              <th>Credit Out</th>
-              <th>Payment Type</th>
+              <th>Deposit</th>
+              <th>PD/W</th>
               <th>COGS</th>
-              <th>Balance</th>
-              <th>Ken Cut</th>
-              <th>Mike Profit</th>
-              <th>Sales Owner</th>
               <th>Installation</th>
+              <th>Balance</th>
+              <th>Ken</th>
+              <th>Mike</th>
               <th>Jessica</th>
-              <th>Jessica Owed</th>
-              <th>Manufacturer</th>
-              <th>Order Ref</th>
-              <th>Status</th>
+              <th>J Paid</th>
               <th>Notes</th>
-              <th aria-label="Edit" />
             </tr>
           </thead>
           <tbody>
@@ -2535,34 +2557,24 @@ function BookkeepingSpreadsheet({
                 <td>
                   <strong>{row.customerName}</strong>
                   <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
+                  <em className="crm-bookkeeping-status">{row.source === "legacy_sheet" ? "sold" : row.status}</em>
                 </td>
                 <td>{formatShortDate(row.soldDate)}</td>
-                <td>{toCurrency(row.total)}</td>
-                <td>{toCurrency(row.depositDue)}</td>
-                <td>{toCurrency(row.depositPaid)}</td>
-                <td>{toCurrency(row.balancePaid)}</td>
-                <td>{toCurrency(row.paidTotal)}</td>
-                <td>{toCurrency(row.creditIn)}</td>
-                <td>{toCurrency(row.creditOut)}</td>
+                <td>{toLedgerCurrency(row.total)}</td>
+                <td>{toLedgerCurrency(row.depositPaid)}</td>
                 <td>{formatPaymentType(row.paymentType)}</td>
-                <td className={row.cogs <= 0 ? "crm-warning-cell" : ""}>{row.cogs <= 0 ? "Missing" : toCurrency(row.cogs)}</td>
-                <td className={row.balance > 0 ? "crm-warning-cell" : "crm-complete-cell"}>{toCurrency(row.balance)}</td>
-                <td>{toCurrency(row.kenCut)}</td>
-                <td>{toCurrency(row.mikeProfit)}</td>
-                <td>{row.salesOwner || "Unassigned"}</td>
                 <td>
-                  <strong>{toCurrency(row.installationInvoiceAmount)}</strong>
-                  <span>{row.isInstallationComplete ? "Complete" : row.installationMatchStatus}</span>
+                  {row.cogs <= 0 ? <span className="crm-bookkeeping-pill">Missing</span> : toLedgerCurrency(row.cogs)}
                 </td>
-                <td>{toCurrency(row.jessicaCommission)}</td>
-                <td className={row.jessicaCommissionOwed > 0 ? "crm-warning-cell" : ""}>{toCurrency(row.jessicaCommissionOwed)}</td>
-                <td>{row.manufacturerName || "Open"}</td>
-                <td>{row.manufacturerOrderRef || "Needs order"}</td>
-                <td>{row.status}</td>
-                <td>{row.notes || ""}</td>
+                <td>{row.isInstallationComplete ? toLedgerCurrency(row.installationInvoiceAmount) : "No install invoice"}</td>
+                <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(row.balance)}</td>
+                <td className="crm-ledger-money-warn">{toLedgerCurrency(row.kenCut)}</td>
+                <td className="crm-ledger-money-good">{toLedgerCurrency(row.mikeProfit)}</td>
+                <td>{jessicaLedgerStatus(row)}</td>
+                <td>{row.jessicaCommissionPaidAt ? toLedgerCurrency(row.jessicaCommission) : "-"}</td>
                 <td>
-                  <button type="button" className="crm-ghost-button" onClick={() => onEdit(row)}>
-                    Edit
+                  <button type="button" className="crm-bookkeeping-note-button" onClick={() => onEdit(row)}>
+                    {row.notes || "Click to add note"}
                   </button>
                 </td>
               </tr>
@@ -2573,6 +2585,17 @@ function BookkeepingSpreadsheet({
       </div>
     </section>
   );
+}
+
+function roundCurrency(value: number) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function jessicaLedgerStatus(row: CrmBookkeepingRow) {
+  if (row.salesOwner === "mike") return "Mike sale";
+  if (row.jessicaCommission > 0) return toLedgerCurrency(row.jessicaCommission);
+  if (!row.isInstallationComplete) return "Pending install";
+  return "-";
 }
 
 function OrderBoard({
