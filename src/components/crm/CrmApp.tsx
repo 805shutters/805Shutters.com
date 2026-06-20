@@ -2296,60 +2296,6 @@ type DrillPanelProps = {
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
 };
 
-function DrillRows({ payload, busy, onOpenCustomer, onReassignSale }: Omit<DrillPanelProps, "onClose">) {
-  return (
-    <div className="crm-drill-list">
-      {payload.entries.map((entry) => {
-        const rowContent = (
-          <>
-            <div>
-              <strong>{entry.name}</strong>
-              <span>{entry.meta}</span>
-            </div>
-            {entry.value ? <em className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</em> : null}
-          </>
-        );
-        const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
-
-        if (!canReassignSale) {
-          return (
-            <button
-              type="button"
-              className="crm-drill-row"
-              key={entry.id}
-              onClick={() => onOpenCustomer(entry.customerName)}
-            >
-              {rowContent}
-            </button>
-          );
-        }
-
-        return (
-          <div className="crm-drill-row crm-drill-row--with-actions" key={entry.id}>
-            <button type="button" className="crm-drill-open" onClick={() => onOpenCustomer(entry.customerName)}>
-              {rowContent}
-            </button>
-            <label className="crm-sale-owner-control">
-              <span>Sale owner</span>
-              <select
-                aria-label={`Sale owner for ${entry.name}`}
-                value={saleOwnerDisplayName(entry.salesOwner)}
-                disabled={busy}
-                onChange={(event) => onReassignSale?.(entry, event.target.value)}
-              >
-                {ownerOptions.map((owner) => (
-                  <option key={owner}>{owner}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        );
-      })}
-      {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
-    </div>
-  );
-}
-
 function DrillDetailPanel({
   payload,
   busy,
@@ -2358,32 +2304,211 @@ function DrillDetailPanel({
   onReassignSale
 }: DrillPanelProps) {
   return (
-    <section className="crm-drill-detail" aria-label={payload.title}>
-      <div className="crm-slot-form-head">
+    <section className="crm-drill-inline" aria-label={payload.title}>
+      <div className="crm-drill-inline-head">
         <div>
           <p className="eyebrow">{payload.subtitle}</p>
           <h2>{payload.title}</h2>
         </div>
-        <button type="button" className="crm-slot-close" aria-label="Close" onClick={onClose}>
-          ×
-        </button>
+        <div className="crm-drill-inline-actions">
+          <p className="crm-drill-count">
+            {payload.entries.length} {payload.entries.length === 1 ? "record" : "records"}
+          </p>
+          <button type="button" className="crm-ghost-button" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
-      <p className="crm-drill-count">
-        {payload.entries.length} {payload.entries.length === 1 ? "customer" : "customers"} · tap to open file
-      </p>
-      <DrillRows payload={payload} busy={busy} onOpenCustomer={onOpenCustomer} onReassignSale={onReassignSale} />
+      <div className="crm-drill-detail-list">
+        {payload.entries.map((entry) => (
+          <DrillDetailCard
+            entry={entry}
+            payload={payload}
+            busy={busy}
+            key={entry.id}
+            onOpenCustomer={onOpenCustomer}
+            onReassignSale={onReassignSale}
+          />
+        ))}
+        {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
+      </div>
     </section>
   );
 }
 
-function DrillDrawer(props: DrillPanelProps) {
-  const { payload, onClose } = props;
+function DrillDetailCard({
+  entry,
+  payload,
+  busy,
+  onOpenCustomer,
+  onReassignSale
+}: {
+  entry: DrillEntry;
+  payload: DrillPayload;
+  busy: boolean;
+  onOpenCustomer: (customerName: string) => void;
+  onReassignSale?: (entry: DrillEntry, owner: string) => void;
+}) {
+  const row = entry.row;
+  const job = entry.job;
+  const file = entry.file;
+  const documents = entry.documents || [];
+  const products = entry.products || [];
+  const notes = entry.notes || [];
+  const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
+
   return (
-    <div className="crm-drill" role="dialog" aria-modal="true" aria-label={payload.title}>
-      <button type="button" className="crm-drill__backdrop" aria-label="Close" onClick={onClose} />
-      <aside className="crm-drill-panel">
-        <DrillDetailPanel {...props} />
-      </aside>
+    <article className="crm-drill-detail-card">
+      <header className="crm-drill-detail-card-head">
+        <div>
+          <p className="eyebrow">{entry.meta || payload.subtitle}</p>
+          <h3>{entry.name}</h3>
+          <p>{[file?.phone || job?.phone, file?.email || job?.email, file?.city || job?.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
+        </div>
+        <div className="crm-drill-detail-value">
+          {entry.value ? <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong> : null}
+          <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
+            Open File
+          </button>
+        </div>
+      </header>
+
+      {canReassignSale ? (
+        <label className="crm-sale-owner-control crm-sale-owner-control--inline">
+          <span>Sale owner</span>
+          <select
+            aria-label={`Sale owner for ${entry.name}`}
+            value={saleOwnerDisplayName(entry.salesOwner)}
+            disabled={busy}
+            onChange={(event) => onReassignSale?.(entry, event.target.value)}
+          >
+            {ownerOptions.map((owner) => (
+              <option key={owner}>{owner}</option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <div className="crm-drill-fact-grid">
+        <DrillFact label="Sold Date" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} />
+        <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} />
+        <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} />
+        <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} wide />
+        <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} />
+        <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
+        <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
+        <DrillFact label="COGS" value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"} tone={row && row.cogs <= 0 ? "warn" : undefined} />
+        <DrillFact label="Deposit Due" value={row ? toLedgerCurrency(row.depositDue) : "No ledger row"} />
+        <DrillFact label="Deposit Paid" value={row ? toLedgerCurrency(row.depositPaid) : "No ledger row"} />
+        <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
+        <DrillFact label="Payment Type" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} />
+        <DrillFact label="Installation" value={row ? `${toLedgerCurrency(row.installationInvoiceAmount)} / ${row.isInstallationComplete ? "Complete" : row.installationMatchStatus}` : "No install row"} />
+        <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
+        <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+        <DrillFact label="Jessica" value={row ? jessicaLedgerStatus(row) : "No ledger row"} />
+        <DrillFact label="Manufacturer" value={[row?.manufacturerName, row?.manufacturerOrderRef].filter(Boolean).join(" / ") || "Needs order details"} wide />
+        <DrillFact label="Next Action" value={job?.next_action || "No next action"} />
+        <DrillFact label="Due" value={job?.next_action_due || "Open"} />
+        <DrillFact label="Appointment" value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"} />
+      </div>
+
+      <section className="crm-drill-subsection">
+        <h4>Products</h4>
+        <div className="crm-drill-mini-grid">
+          {products.map((product) => (
+            <div className="crm-drill-mini-card" key={product.id}>
+              <strong>{[product.room, product.product_type].filter(Boolean).join(" / ")}</strong>
+              <span>
+                {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
+                  .filter(Boolean)
+                  .join(" / ") || "Product details pending"}
+              </span>
+              <em>
+                {product.quantity} item{product.quantity === 1 ? "" : "s"}
+                {product.total_price ? ` / ${toLedgerCurrency(product.total_price)}` : ""}
+              </em>
+            </div>
+          ))}
+          {!products.length ? <p>No product rows attached yet.</p> : null}
+        </div>
+      </section>
+
+      <section className="crm-drill-subsection">
+        <h4>Payments + Activity</h4>
+        <div className="crm-drill-mini-grid">
+          {row?.payments.map((payment) => (
+            <div className="crm-drill-mini-card" key={payment.id}>
+              <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
+              <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
+              <em>{toLedgerCurrency(payment.amount)}</em>
+            </div>
+          ))}
+          {row?.creditsIn.map((credit) => (
+            <div className="crm-drill-mini-card" key={`credit-in-${credit.id}`}>
+              <strong>Credit In</strong>
+              <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+              <em>{toLedgerCurrency(credit.amount)}</em>
+            </div>
+          ))}
+          {row?.creditsOut.map((credit) => (
+            <div className="crm-drill-mini-card" key={`credit-out-${credit.id}`}>
+              <strong>Credit Out</strong>
+              <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+              <em>{toLedgerCurrency(credit.amount)}</em>
+            </div>
+          ))}
+          {row?.expenses.map((expense) => (
+            <div className="crm-drill-mini-card" key={`expense-${expense.id}`}>
+              <strong>{expense.label}</strong>
+              <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
+              <em>{toLedgerCurrency(expense.amount)}</em>
+            </div>
+          ))}
+          {!row || (!row.payments.length && !row.creditsIn.length && !row.creditsOut.length && !row.expenses.length) ? (
+            <p>No payment, credit, or expense activity attached.</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="crm-drill-subsection">
+        <h4>Contract + Documents</h4>
+        <div className="crm-drill-document-grid">
+          {documents.map((document) => (
+            <a href={document.url} target="_blank" rel="noreferrer" key={document.id}>
+              <strong>{document.kind}</strong>
+              <span>{document.title}</span>
+              <em>{document.status || "Open copy"}</em>
+            </a>
+          ))}
+          {!documents.length ? <p>No contract copy or document link attached.</p> : null}
+        </div>
+      </section>
+
+      {notes.length ? (
+        <section className="crm-drill-subsection">
+          <h4>Notes</h4>
+          <p className="crm-drill-notes">{notes.join(" / ")}</p>
+        </section>
+      ) : null}
+    </article>
+  );
+}
+
+function DrillFact({
+  label,
+  value,
+  tone,
+  wide
+}: {
+  label: string;
+  value: string;
+  tone?: "warn" | "good";
+  wide?: boolean;
+}) {
+  return (
+    <div className={`crm-drill-fact ${tone || ""} ${wide ? "wide" : ""}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
