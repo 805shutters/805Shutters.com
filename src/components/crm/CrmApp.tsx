@@ -2094,10 +2094,23 @@ function buildSummaryDrill(
       return {
         title: "Jessica Owed",
         subtitle: "Commission owed to Jessica",
+        metric,
         placement: "summary",
         entries: rowsToEntries(
           rows.filter((row) => row.jessicaCommissionOwed > 0),
           (row) => row.jessicaCommissionOwed,
+          { jobs, files }
+        )
+      };
+    case "jessicaNet":
+      return {
+        title: "Jessica Net",
+        subtitle: "Jessica net per job",
+        metric,
+        placement: "numbers",
+        entries: rowsToEntries(
+          rows.filter((row) => row.jessicaCommission > 0),
+          (row) => row.jessicaCommission,
           { jobs, files }
         )
       };
@@ -2112,6 +2125,7 @@ function rowValueForDrill(payload: DrillPayload) {
   if (label.includes("outstanding") || label.includes("open balance") || label.includes("money still owed")) {
     return (row: CrmBookkeepingRow) => row.balance;
   }
+  if (label.includes("jessica net")) return (row: CrmBookkeepingRow) => row.jessicaCommission;
   if (label.includes("profit")) return (row: CrmBookkeepingRow) => row.mikeProfit;
   return (row: CrmBookkeepingRow) => row.total;
 }
@@ -2179,8 +2193,10 @@ function CommandDashboard({
     const collectedRows = rows.filter((row) => (row.paidTotal || 0) > 0);
     const outstandingRows = rows.filter((row) => row.balance > 0);
     const outstanding = outstandingRows.reduce((sum, row) => sum + row.balance, 0);
-    const profit = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
-    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, profit };
+    const mikeNet = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
+    const jessicaNetRows = rows.filter((row) => (row.jessicaCommission || 0) > 0);
+    const jessicaNet = jessicaNetRows.reduce((sum, row) => sum + (row.jessicaCommission || 0), 0);
+    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, mikeNet, jessicaNet, jessicaNetRows };
   }, [rows]);
 
   const productMix = useMemo(() => {
@@ -2322,7 +2338,7 @@ function CommandDashboard({
         />
         <StatTile
           label="Profit"
-          value={toCurrency(numbers.profit)}
+          value={toCurrency(numbers.mikeNet)}
           sub="Mike net"
           onClick={() =>
             onDrill({
@@ -2330,6 +2346,20 @@ function CommandDashboard({
               subtitle: "Mike net per job",
               placement: "numbers",
               entries: rowsToEntries(rows, (row) => row.mikeProfit, { jobs, files })
+            })
+          }
+        />
+        <StatTile
+          label="Profit"
+          value={toCurrency(numbers.jessicaNet)}
+          sub="Jessica net"
+          onClick={() =>
+            onDrill({
+              title: "Jessica Net",
+              subtitle: "Jessica net per job",
+              metric: "jessicaNet",
+              placement: "numbers",
+              entries: rowsToEntries(numbers.jessicaNetRows, (row) => row.jessicaCommission, { jobs, files })
             })
           }
         />
