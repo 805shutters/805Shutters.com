@@ -362,6 +362,17 @@ export async function createLineItem(
     after: data,
     metadata: { lineItemId: data.id },
   });
+  // Button-driven builder: when the room buttons add a window for the active
+  // product line, seed the first design ("A") so the new window is immediately
+  // priceable instead of an empty shell. Ignored when the product is unknown.
+  const seedProductId = optionalText(payload.seed_product_id);
+  if (seedProductId && getProduct(seedProductId)) {
+    return upsertDesign(
+      supabase,
+      { line_item_id: data.id, product_id: seedProductId, label: "A", sort_order: 0 },
+      actor,
+    );
+  }
   return recalcQuoteTotals(supabase, quoteId);
 }
 

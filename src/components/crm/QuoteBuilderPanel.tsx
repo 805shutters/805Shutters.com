@@ -42,6 +42,46 @@ function money(n: number | null | undefined): string {
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
 
+// Friendly labels for the catalog's productType keys, shown on the product-line
+// tiles. Any type missing here falls back to a title-cased version of the key.
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  shutter: "Shutters",
+  roller_shade: "Roller Shades",
+  roman_shade: "Roman Shades",
+  honeycomb_shade: "Honeycomb Shades",
+  vertical_honeycomb_shade: "Vertical Honeycomb",
+  sheer_shade: "Sheer Shades",
+  smartfold_shade: "SmartFold Shades",
+  smart_drape: "Smart Drapes",
+  faux_wood_blind: "Faux Wood Blinds",
+  wood_blind: "Wood Blinds",
+  vertical_blind: "Vertical Blinds",
+  aluminum_blind: "Aluminum Blinds",
+  accessory: "Accessories",
+};
+
+function typeLabel(t: string): string {
+  return PRODUCT_TYPE_LABELS[t] || t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Quick-add room buttons (mirrors the MTS builder's room presets).
+const ROOM_PRESETS = [
+  "Living Room",
+  "Family Room",
+  "Dining Room",
+  "Kitchen",
+  "Primary Bedroom",
+  "Primary Bath",
+  "Bedroom 2",
+  "Bedroom 3",
+  "Office",
+  "Bathroom",
+  "Hallway",
+  "Loft",
+];
+
+type ProductTypeTile = { type: string; label: string; image: string; defaultProductId: string; count: number };
+
 export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwitch, embedded }: Props) {
   const [catalog, setCatalog] = useState<UiCatalog | null>(null);
   const [quote, setQuote] = useState<CrmQuoteWithItems | null>(null);
@@ -50,6 +90,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [error, setError] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sendMsg, setSendMsg] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<string | null>(null);
+  const [customRoom, setCustomRoom] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -82,6 +124,44 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     catalog?.products.forEach((p) => map.set(p.id, p));
     return map;
   }, [catalog]);
+
+  // Group catalog products into product-line tiles (one per productType). The
+  // default product is the first non-provisional product in the group (so a
+  // tapped room seeds real pricing where we have it), else the first product.
+  const productTypes = useMemo<ProductTypeTile[]>(() => {
+    if (!catalog) return [];
+    const groups = new Map<string, UiProduct[]>();
+    catalog.products.forEach((p) => {
+      const arr = groups.get(p.productType) || [];
+      arr.push(p);
+      groups.set(p.productType, arr);
+    });
+    return Array.from(groups.entries())
+      .map(([type, prods]) => {
+        const preferred = prods.find((p) => !p.provisional) || prods[0];
+        return {
+          type,
+          label: typeLabel(type),
+          image: preferred.image,
+          defaultProductId: preferred.id,
+          count: prods.length,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [catalog]);
+
+  // Default the active product line to Shutters (or the first tile) once loaded.
+  useEffect(() => {
+    if (!activeType && productTypes.length > 0) {
+      const shutter = productTypes.find((t) => t.type === "shutter");
+      setActiveType(shutter?.type ?? productTypes[0].type);
+    }
+  }, [productTypes, activeType]);
+
+  const activeTile = useMemo(
+    () => productTypes.find((t) => t.type === activeType) ?? null,
+    [productTypes, activeType],
+  );
 
   const mutate = useCallback(
     async (path: string, init: RequestInit) => {
@@ -119,6 +199,19 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     mutate(`/api/crm/quotes/${quoteId}/builder`, {
       method: "POST",
       body: JSON.stringify({ room: "", quantity: 1, sort_order: quote?.lineItems.length ?? 0 }),
+    });
+
+  // Tap a room preset (or custom room) to add a window pre-loaded with the
+  // active product line as design "A" — the MTS-style quick-add flow.
+  const addWindowWithRoom = (room: string) =>
+    mutate(`/api/crm/quotes/${quoteId}/builder`, {
+      method: "POST",
+      body: JSON.stringify({
+        room,
+        quantity: 1,
+        sort_order: quote?.lineItems.length ?? 0,
+        seed_product_id: activeTile?.defaultProductId,
+      }),
     });
 
   const patchWindow = (id: string, patch: Record<string, unknown>) =>
@@ -182,7 +275,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const addDesign = (li: CrmQuoteLineItem) => {
     const used = new Set(li.designs.map((d) => d.label));
     const label = LABELS.find((l) => !used.has(l)) || `Option ${li.designs.length + 1}`;
-    const firstProduct = catalog?.products[0]?.id ?? "";
+    const firstProduct = activeTile?.defaultProductId ?? catalog?.products[0]?.id ?? "";
     return mutate("/api/crm/quote-designs", {
       method: "POST",
       body: JSON.stringify({
@@ -286,8 +379,85 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 + Add version
               </button>
             </div>
+
+            {/* Product line tiles — pick which product the room buttons add. */}
+            <div style={sectionLabel}>Product line</div>
+            <div style={tileRow}>
+              {productTypes.map((t) => {
+                const active = t.type === activeType;
+                return (
+                  <button
+                    key={t.type}
+                    type="button"
+                    onClick={() => setActiveType(t.type)}
+                    style={{
+                      ...productTile,
+                      borderColor: active ? "#111111" : "#d8d8d2",
+                      background: active ? "#0b0b0b" : "#ffffff",
+                      color: active ? "#ffffff" : "#0b0b0b",
+                    }}
+                  >
+                    {t.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.image} alt="" width={40} height={30} style={{ objectFit: "cover", borderRadius: 4 }} />
+                    ) : null}
+                    <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.1 }}>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Room quick-add — tap a room to add a window using the active product. */}
+            <div style={{ ...sectionLabel, marginTop: 14 }}>
+              Add a window
+              {activeTile ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {activeTile.label}</span> : null}
+            </div>
+            <div style={tileRow}>
+              {ROOM_PRESETS.map((room) => (
+                <button
+                  key={room}
+                  type="button"
+                  style={roomPill}
+                  disabled={busy || !activeTile}
+                  onClick={() => addWindowWithRoom(room)}
+                >
+                  + {room}
+                </button>
+              ))}
+              <span style={{ display: "inline-flex", gap: 4 }}>
+                <input
+                  value={customRoom}
+                  onChange={(e) => setCustomRoom(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customRoom.trim()) {
+                      addWindowWithRoom(customRoom.trim());
+                      setCustomRoom("");
+                    }
+                  }}
+                  placeholder="Custom room…"
+                  style={{ ...customRoomInput }}
+                />
+                <button
+                  type="button"
+                  style={roomPill}
+                  disabled={busy || !activeTile || !customRoom.trim()}
+                  onClick={() => {
+                    addWindowWithRoom(customRoom.trim());
+                    setCustomRoom("");
+                  }}
+                >
+                  + Add
+                </button>
+              </span>
+              <button type="button" style={{ ...roomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>
+                + Blank window
+              </button>
+            </div>
+
+            <div style={{ height: 1, background: "#eeeeeb", margin: "16px 0" }} />
+
             {quote.lineItems.length === 0 ? (
-              <p style={{ opacity: 0.7 }}>No windows yet. Add the first opening to start pricing.</p>
+              <p style={{ opacity: 0.7 }}>No windows yet. Pick a product line above, then tap a room to start pricing.</p>
             ) : null}
 
             {quote.lineItems.map((li) => (
@@ -640,3 +810,17 @@ const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#fff
 const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
 const addBtn: CSSProperties = { border: "1px dashed #b8b6ae", background: "#ffffff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
 const errorStyle: CSSProperties = { color: "#4d4d49", background: "#f4f4f2", padding: "8px 16px", margin: 0 };
+const sectionLabel: CSSProperties = { fontSize: 11, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7, marginBottom: 8, fontWeight: 600 };
+const tileRow: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+const productTile: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  border: "2px solid #d8d8d2",
+  borderRadius: 8,
+  padding: "8px 12px",
+  cursor: "pointer",
+  minWidth: 120,
+};
+const roomPill: CSSProperties = { border: "1px solid #b8b6ae", background: "#ffffff", borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0b0b0b" };
+const customRoomInput: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 999, padding: "7px 14px", fontSize: 13, width: 130 };

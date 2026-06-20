@@ -106,6 +106,20 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(again.alreadySigned).toBe(true);
   });
 
+  it("seeds design A from seed_product_id (room-button quick-add) and auto-selects it", async () => {
+    const built = await createLineItem(
+      supabase,
+      { quote_id: quoteId, room: "Office", width_in: 24, height_in: 36, quantity: 1, seed_product_id: "honeycomb" },
+      actor,
+    );
+    const li = built.lineItems.find((l) => l.room === "Office")!;
+    expect(li.designs).toHaveLength(1);
+    expect(li.designs[0].label).toBe("A");
+    expect(li.designs[0].product_id).toBe("honeycomb");
+    // The seeded design is auto-selected so the new window bills immediately.
+    expect(li.selected_design_id).toBe(li.designs[0].id);
+  });
+
   it("rejects an out-of-range design with an error status (no silent wrong price)", async () => {
     const built = await createLineItem(supabase, { quote_id: quoteId, room: "Huge Window", width_in: 200, height_in: 36, quantity: 1 }, actor);
     const li = built.lineItems.find((l) => l.room === "Huge Window")!;
