@@ -109,7 +109,7 @@ export async function loadPublicQuoteByToken(
   if (!quote) return null;
   const { data: items } = await supabase
     .from("crm_quote_line_items")
-    .select("*, designs:crm_quote_designs(*)")
+    .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
     .eq("quote_id", quote.id);
 
   const lineItems = ((items as CrmQuoteLineItem[]) ?? [])

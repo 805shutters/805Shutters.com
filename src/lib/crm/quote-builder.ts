@@ -230,7 +230,7 @@ export async function loadQuoteBuilder(
   const quote = await fetchQuote(supabase, quoteId);
   const { data: items, error } = await supabase
     .from("crm_quote_line_items")
-    .select("*, designs:crm_quote_designs(*)")
+    .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
     .eq("quote_id", quoteId);
   if (error) throw new CrmAuthError(502, "Quote line items could not be loaded.");
 
@@ -317,7 +317,7 @@ export async function updateQuoteAdjustments(
 async function fetchLineItem(supabase: CrmSupabaseClient, id: string): Promise<CrmQuoteLineItem> {
   const { data, error } = await supabase
     .from("crm_quote_line_items")
-    .select("*, designs:crm_quote_designs(*)")
+    .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
     .eq("id", id)
     .maybeSingle();
   if (error || !data) throw new CrmAuthError(404, "Line item was not found.");
