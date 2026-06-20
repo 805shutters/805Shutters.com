@@ -31,6 +31,13 @@ GOOGLE_CALENDAR_TIME_ZONE=America/Los_Angeles
 GOOGLE_CALENDAR_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CALENDAR_CLIENT_SECRET=<google-oauth-client-secret>
 GOOGLE_CALENDAR_REFRESH_TOKEN=<805-calendar-refresh-token>
+INSTALLATION_INVOICE_MAILBOX=805@805shutters.com
+INSTALLATION_INVOICE_GMAIL_QUERY='to:805@805shutters.com newer_than:30d (invoice OR "amount due" OR "balance due" OR "invoice total")'
+INSTALLATION_INVOICE_GMAIL_MAX_RESULTS=50
+INSTALLATION_INVOICE_CRON_SECRET=<optional-cron-secret>
+GMAIL_805_CLIENT_ID=<google-oauth-client-id-with-gmail-readonly-scope>
+GMAIL_805_CLIENT_SECRET=<google-oauth-client-secret>
+GMAIL_805_REFRESH_TOKEN=<805-gmail-readonly-refresh-token>
 ```
 
 ## Database
@@ -124,6 +131,39 @@ Implemented in `src/lib/crm/bookkeeping.ts` and covered by `npm test`:
   Open Balance, COGS, Installation, Ken Total Profit, Total Profit (gross,
   before Ken), Profit Margin, Net Profit (after Ken), Mike 50%, Jessica 50%,
   Jessica Paid, and Jessica Owed.
+
+## Installation invoice email puller
+
+MTS installation invoices should be sent to `805@805shutters.com`. The CRM can
+pull that mailbox from the Bookkeeping tab or through the Vercel cron route at
+`/api/cron/installation-invoices`.
+
+The puller:
+
+- searches the configured Gmail query for invoice-style messages;
+- downloads PDF attachments from the Gmail message and extracts their text;
+- extracts the customer full name from invoice text such as
+  `Customer Name: ...`, and extracts the final invoice amount from the email
+  body or invoice text;
+- matches the customer name against sold bookkeeping rows and active sold
+  quotes;
+- writes the invoice amount into `installation_invoice_amount`, stores the
+  Gmail URL, marks the install invoice as matched, and lets the existing profit
+  rules recompute commissions;
+- records every processed message in `crm_installation_invoice_emails`;
+- leaves ambiguous names, missing amounts, job-only matches, and conflicting
+  existing invoice amounts in `needs_review`.
+
+Use this Gmail OAuth scope for `GMAIL_805_REFRESH_TOKEN`:
+
+```text
+https://www.googleapis.com/auth/gmail.readonly
+```
+
+Until `GMAIL_805_CLIENT_ID`, `GMAIL_805_CLIENT_SECRET`,
+`GMAIL_805_REFRESH_TOKEN`, and `SUPABASE_SERVICE_ROLE_KEY` are populated
+locally/Vercel-side, the puller can be deployed but cannot read the 805 mailbox
+or write production matches.
 
 ## Importing the MTS CRM data
 

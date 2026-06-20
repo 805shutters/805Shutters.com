@@ -20,6 +20,7 @@ import {
   CrmCalendarEvent,
   CrmCustomerFile,
   CrmDashboardData,
+  CrmInstallationInvoiceEmail,
   CrmJob,
   CrmJobStatus,
   CrmKenPayment,
@@ -487,6 +488,7 @@ export function CrmApp() {
   const quotes = useMemo(() => data?.quotes || [], [data]);
   const events = useMemo(() => data?.events || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
+  const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
@@ -500,6 +502,12 @@ export function CrmApp() {
   function openSummaryDrill(metric: string) {
     const payload = buildSummaryDrill(metric, jobs, rows, customerFiles);
     if (payload) setDrill(payload);
+  }
+
+  function openTab(tab: CrmTab) {
+    setActiveTab(tab);
+    setDrill(null);
+    setFocusCustomer(null);
   }
 
   async function signOut() {
@@ -523,6 +531,33 @@ export function CrmApp() {
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
     setData(dashboardResult);
     return dashboardResult;
+  }
+
+  async function pullInstallationInvoices() {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{
+        matched: number;
+        needsReview: number;
+        unmatched: number;
+        skipped: number;
+        errors: number;
+      }>(session, "/api/crm/installation-invoices/pull", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      await refresh();
+      setMessage(
+        `Installation invoice pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors.`
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Installation invoices could not be pulled.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function sendEmailLogin(event: FormEvent<HTMLFormElement>) {
@@ -701,22 +736,13 @@ export function CrmApp() {
     }
   }
 
-  async function saveDrillEntry(event: FormEvent<HTMLFormElement>, entry: DrillEntry) {
-    event.preventDefault();
+  async function saveDrillField(entry: DrillEntry, patch: DrillFieldPatch) {
     if (!session) return false;
 
-    const formData = new FormData(event.currentTarget);
     const row = entry.row;
     const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
-    const customerName = formString(formData, "customer_name") || entry.customerName;
-    const soldDate = formString(formData, "sold_date");
-    const total = Number(formString(formData, "total_amount") || 0);
-    const cogs = Number(formString(formData, "cogs_amount") || 0);
-    const paymentAmount = Number(formString(formData, "payment_amount") || 0);
-    const kenCutOverride = formString(formData, "ken_cut_override");
-    const rowNotes = formString(formData, "row_notes");
 
-    if (!jobId && !row) {
+    if ((patch.job && !jobId) || (patch.row && !row)) {
       setMessage("This card is a customer snapshot. Open the file to edit the source record.");
       return false;
     }
@@ -725,72 +751,23 @@ export function CrmApp() {
     setMessage(null);
 
     try {
-      if (jobId) {
-        const jobPatch: Record<string, unknown> = {
-          customer_name: customerName,
-          phone: formString(formData, "phone"),
-          email: formString(formData, "email"),
-          city: formString(formData, "city"),
-          address: formString(formData, "address"),
-          product_interest: formString(formData, "product_interest"),
-          next_action: formString(formData, "next_action"),
-          next_action_due: formString(formData, "next_action_due") || null,
-          estimated_total: Number(formString(formData, "estimated_total") || 0),
-          appointment_start: dateTimeLocalToIso(formString(formData, "appointment_start")),
-          appointment_end: dateTimeLocalToIso(formString(formData, "appointment_end")),
-          notes: formString(formData, "job_notes")
-        };
-
-        const jobStatus = formString(formData, "job_status");
-        if (jobStatus) jobPatch.status = jobStatus;
-
+      if (patch.job && jobId) {
         await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${jobId}`, {
           method: "PATCH",
-          body: JSON.stringify(jobPatch)
+          body: JSON.stringify(patch.job)
         });
       }
 
-      if (row) {
-        const sharedRowPatch = {
-          customer_name: customerName,
-          payment_type: formString(formData, "payment_type") || "other",
-          payment_amount: paymentAmount,
-          payment_label: formString(formData, "payment_label") || "Balance payment",
-          paid_at: formString(formData, "paid_at") || null,
-          installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
-          installation_invoice_number: formString(formData, "installation_invoice_number"),
-          installation_invoice_url: formString(formData, "installation_invoice_url"),
-          installation_complete: formData.get("installation_complete") === "on",
-          jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
-          ken_cut_override: kenCutOverride === "" ? null : Number(kenCutOverride),
-          manufacturer_name: formString(formData, "manufacturer_name"),
-          manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
-          manufacturer_order_url: formString(formData, "manufacturer_order_url"),
-          manufacturer_document_url: formString(formData, "manufacturer_document_url"),
-          notes: rowNotes
-        };
-
+      if (patch.row && row) {
         if (row.source === "crm_quote" && row.quoteId) {
           await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
             method: "PATCH",
-            body: JSON.stringify({
-              ...sharedRowPatch,
-              status: formString(formData, "quote_status") || row.status,
-              quote_number: formString(formData, "quote_number"),
-              quote_total: total,
-              materials_cost: cogs,
-              sold_at: soldDate || null
-            })
+            body: JSON.stringify(patch.row)
           });
         } else {
           await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
             method: "PATCH",
-            body: JSON.stringify({
-              ...sharedRowPatch,
-              sold_date: soldDate || null,
-              total_amount: total,
-              cogs_amount: cogs
-            })
+            body: JSON.stringify(patch.row)
           });
         }
       }
@@ -799,10 +776,10 @@ export function CrmApp() {
       if (dashboardResult && drill) {
         setDrill(rebuildDrillPayload(drill, dashboardResult.jobs, dashboardResult.bookkeepingRows, dashboardResult.customerFiles));
       }
-      setMessage(`${entry.name} updated.`);
+      setMessage(patch.message || `${entry.name} updated.`);
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Card could not be updated.");
+      setMessage(error instanceof Error ? error.message : "Field could not be updated.");
       await refresh();
       return false;
     } finally {
@@ -1292,7 +1269,7 @@ export function CrmApp() {
             type="button"
             key={tab}
             className={activeTab === tab ? "active" : ""}
-            onClick={() => setActiveTab(tab as CrmTab)}
+            onClick={() => openTab(tab as CrmTab)}
           >
             {label}
           </button>
@@ -1307,7 +1284,7 @@ export function CrmApp() {
             onClose={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
-            onSaveEntry={saveDrillEntry}
+            onSaveField={saveDrillField}
           />
         </div>
       ) : null}
@@ -1324,7 +1301,7 @@ export function CrmApp() {
             onCloseDrill={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
-            onSaveEntry={saveDrillEntry}
+            onSaveField={saveDrillField}
           />
           <section className="crm-command-grid">
             <AccountabilityBoard items={accountability} />
@@ -1547,6 +1524,7 @@ export function CrmApp() {
             )}
           </CollapsiblePanel>
 
+          <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
         </section>
       ) : null}
@@ -1814,6 +1792,11 @@ type DrillPayload = {
   metric?: string;
   allowSaleReassignment?: boolean;
   placement?: DrillPlacement;
+};
+type DrillFieldPatch = {
+  job?: Record<string, unknown>;
+  row?: Record<string, unknown>;
+  message?: string;
 };
 type DrillEntryContext = {
   jobs?: CrmJob[];
@@ -2171,7 +2154,7 @@ function CommandDashboard({
   onCloseDrill,
   onOpenCustomer,
   onReassignSale,
-  onSaveEntry
+  onSaveField
 }: {
   jobs: CrmJob[];
   rows: CrmBookkeepingRow[];
@@ -2182,7 +2165,7 @@ function CommandDashboard({
   onCloseDrill: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
+  onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
 }) {
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
@@ -2276,7 +2259,7 @@ function CommandDashboard({
         onClose={onCloseDrill}
         onOpenCustomer={onOpenCustomer}
         onReassignSale={onReassignSale}
-        onSaveEntry={onSaveEntry}
+        onSaveField={onSaveField}
       />
     ) : null;
 
@@ -2580,8 +2563,138 @@ type DrillPanelProps = {
   onClose: () => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
+  onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
 };
+
+type DrillInlineOption = {
+  value: string;
+  label: string;
+};
+
+type DrillInlineEditor = {
+  type?: "text" | "number" | "date" | "datetime-local" | "select" | "email";
+  value: string;
+  options?: DrillInlineOption[];
+  disabled?: boolean;
+  ariaLabel: string;
+  onSave: (value: string) => Promise<boolean>;
+};
+
+function InlineEditableValue({
+  value,
+  editor,
+  className = ""
+}: {
+  value: string;
+  editor?: DrillInlineEditor;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(editor?.value ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setDraft(editor?.value ?? "");
+  }, [editor?.value, editing]);
+
+  if (!editor) return <span className={className}>{value}</span>;
+
+  const submit = async (nextValue = draft) => {
+    const normalized = editor.type === "number" || editor.type === "date" || editor.type === "datetime-local" ? nextValue : nextValue.trim();
+    if (normalized === editor.value) {
+      setDraft(editor.value);
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    const saved = await editor.onSave(normalized);
+    setSaving(false);
+    if (saved) {
+      setEditing(false);
+    } else {
+      setDraft(editor.value);
+    }
+  };
+
+  const cancel = () => {
+    setDraft(editor.value);
+    setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className={`crm-inline-edit-value ${className}`}
+        onClick={() => {
+          setDraft(editor.value);
+          setEditing(true);
+        }}
+        disabled={editor.disabled || saving}
+        aria-label={`${editor.ariaLabel}: ${value}`}
+      >
+        <span>{value || "Add value"}</span>
+      </button>
+    );
+  }
+
+  if (editor.type === "select") {
+    return (
+      <select
+        className="crm-inline-edit-control"
+        aria-label={editor.ariaLabel}
+        autoFocus
+        value={draft}
+        disabled={editor.disabled || saving}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setDraft(nextValue);
+          void submit(nextValue);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            cancel();
+          }
+        }}
+      >
+        {(editor.options || []).map((option) => (
+          <option value={option.value} key={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  return (
+    <input
+      className="crm-inline-edit-control"
+      aria-label={editor.ariaLabel}
+      autoFocus
+      type={editor.type || "text"}
+      min={editor.type === "number" ? "0" : undefined}
+      step={editor.type === "number" ? "0.01" : undefined}
+      value={draft}
+      disabled={editor.disabled || saving}
+      onBlur={() => {
+        void submit();
+      }}
+      onChange={(event) => setDraft(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          void submit();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancel();
+        }
+      }}
+    />
+  );
+}
 
 function DrillDetailPanel({
   payload,
@@ -2589,7 +2702,7 @@ function DrillDetailPanel({
   onClose,
   onOpenCustomer,
   onReassignSale,
-  onSaveEntry
+  onSaveField
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -2616,7 +2729,7 @@ function DrillDetailPanel({
             key={entry.id}
             onOpenCustomer={onOpenCustomer}
             onReassignSale={onReassignSale}
-            onSaveEntry={onSaveEntry}
+            onSaveField={onSaveField}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -2631,16 +2744,15 @@ function DrillDetailCard({
   busy,
   onOpenCustomer,
   onReassignSale,
-  onSaveEntry
+  onSaveField
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
   busy: boolean;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
-  onSaveEntry: (event: FormEvent<HTMLFormElement>, entry: DrillEntry) => Promise<boolean>;
+  onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
 }) {
-  const [editing, setEditing] = useState(false);
   const row = entry.row;
   const job = entry.job;
   const file = entry.file;
@@ -2648,28 +2760,246 @@ function DrillDetailCard({
   const products = entry.products || [];
   const notes = entry.notes || [];
   const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
-  const canEditCard = Boolean(entry.jobId || job || row);
+  const canEditJob = Boolean(job?.id || entry.jobId || row?.jobId);
+  const canEditQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
   const hasActivity = Boolean(row && (row.payments.length || row.creditsIn.length || row.creditsOut.length || row.expenses.length));
   const hasDocumentsOrNotes = Boolean(documents.length || notes.length);
+  const customerName = job?.customer_name || row?.customerName || file?.customerName || entry.customerName;
+  const saveJob = (patch: Record<string, unknown>, message: string) => onSaveField(entry, { job: patch, message });
+  const saveRow = (patch: Record<string, unknown>, message: string) => {
+    if (!row) return Promise.resolve(false);
+    const rowPatch = row.source === "crm_quote" && row.quoteId ? { quote_total: row.total, ...patch } : patch;
+    return onSaveField(entry, { row: rowPatch, message });
+  };
+  const moneyEditorValue = (value: number | null | undefined) => (value ? String(value) : "");
+  const moneyPatch = (value: string) => Number(value || 0);
+  const customerNameEditor: DrillInlineEditor | undefined =
+    canEditJob || row
+      ? {
+          value: customerName,
+          disabled: busy,
+          ariaLabel: "Edit customer name",
+          onSave: (value) => {
+            const name = value.trim();
+            if (!name) return Promise.resolve(false);
+            return canEditJob ? saveJob({ customer_name: name }, "Customer name updated.") : saveRow({ customer_name: name }, "Customer name updated.");
+          }
+        }
+      : undefined;
+  const contactItems: Array<{ key: string; value: string; fallback: string; editor?: DrillInlineEditor }> = [
+    {
+      key: "phone",
+      value: file?.phone || job?.phone || "",
+      fallback: "Phone pending",
+      editor: canEditJob
+        ? {
+            value: file?.phone || job?.phone || "",
+            disabled: busy,
+            ariaLabel: "Edit phone",
+            onSave: (value) => saveJob({ phone: value.trim() }, "Phone updated.")
+          }
+        : undefined
+    },
+    {
+      key: "email",
+      value: file?.email || job?.email || "",
+      fallback: "Email pending",
+      editor: canEditJob
+        ? {
+            type: "email",
+            value: file?.email || job?.email || "",
+            disabled: busy,
+            ariaLabel: "Edit email",
+            onSave: (value) => saveJob({ email: value.trim() }, "Email updated.")
+          }
+        : undefined
+    },
+    {
+      key: "city",
+      value: file?.city || job?.city || "",
+      fallback: "City pending",
+      editor: canEditJob
+        ? {
+            value: file?.city || job?.city || "",
+            disabled: busy,
+            ariaLabel: "Edit city",
+            onSave: (value) => saveJob({ city: value.trim() }, "City updated.")
+          }
+        : undefined
+    }
+  ];
+  const visibleContactItems = canEditJob ? contactItems : contactItems.filter((item) => item.value);
+  const statusEditor: DrillInlineEditor | undefined =
+    canEditQuoteRow && row
+      ? {
+          type: "select",
+          value: String(row.status || "sold"),
+          options: crmQuoteStatuses.map((status) => ({ value: status, label: titleCase(status) })),
+          disabled: busy,
+          ariaLabel: "Edit status",
+          onSave: (value) => saveRow({ status: value }, "Status updated.")
+        }
+      : canEditJob && job
+        ? {
+            type: "select",
+            value: job.status,
+            options: crmJobStatuses.map((status) => ({ value: status, label: titleCase(status) })),
+            disabled: busy,
+            ariaLabel: "Edit status",
+            onSave: (value) => saveJob({ status: value }, "Status updated.")
+          }
+        : undefined;
+  const soldDateEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "date",
+        value: dateInputValue(row.soldDate || file?.latestSoldDate || null),
+        disabled: busy,
+        ariaLabel: "Edit sold date",
+        onSave: (value) => saveRow(row.source === "crm_quote" ? { sold_at: value || null } : { sold_date: value || null }, "Sold date updated.")
+      }
+    : undefined;
+  const quoteNumberEditor: DrillInlineEditor | undefined =
+    canEditQuoteRow && row
+      ? {
+          value: row.quoteNumber || "",
+          disabled: busy,
+          ariaLabel: "Edit quote number",
+          onSave: (value) => saveRow({ quote_number: value.trim() }, "Quote number updated.")
+        }
+      : undefined;
+  const totalEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "number",
+        value: moneyEditorValue(row.total),
+        disabled: busy,
+        ariaLabel: "Edit total",
+        onSave: (value) => saveRow(row.source === "crm_quote" ? { quote_total: moneyPatch(value) } : { total_amount: moneyPatch(value) }, "Total updated.")
+      }
+    : canEditJob && job
+      ? {
+          type: "number",
+          value: moneyEditorValue(job.estimated_total),
+          disabled: busy,
+          ariaLabel: "Edit estimated total",
+          onSave: (value) => saveJob({ estimated_total: moneyPatch(value) }, "Total updated.")
+        }
+      : undefined;
+  const paymentEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "select",
+        value: row.paymentType || "other",
+        options: paymentTypes.map((item) => ({ value: item.value, label: item.label })),
+        disabled: busy,
+        ariaLabel: "Edit payment type",
+        onSave: (value) => saveRow({ payment_type: value }, "Payment type updated.")
+      }
+    : undefined;
+  const cogsEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "number",
+        value: moneyEditorValue(row.cogs),
+        disabled: busy,
+        ariaLabel: "Edit COGS",
+        onSave: (value) => saveRow(row.source === "crm_quote" ? { materials_cost: moneyPatch(value) } : { cogs_amount: moneyPatch(value) }, "COGS updated.")
+      }
+    : undefined;
+  const manufacturerEditor: DrillInlineEditor | undefined = row
+    ? {
+        value: row.manufacturerName || "",
+        disabled: busy,
+        ariaLabel: "Edit manufacturer",
+        onSave: (value) => saveRow({ manufacturer_name: value.trim() }, "Manufacturer updated.")
+      }
+    : undefined;
+  const orderRefEditor: DrillInlineEditor | undefined = row
+    ? {
+        value: row.manufacturerOrderRef || "",
+        disabled: busy,
+        ariaLabel: "Edit order number",
+        onSave: (value) => saveRow({ manufacturer_order_ref: value.trim() }, "Order number updated.")
+      }
+    : undefined;
+  const installAmountEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "number",
+        value: moneyEditorValue(row.installationInvoiceAmount),
+        disabled: busy,
+        ariaLabel: "Edit installation amount",
+        onSave: (value) => saveRow({ installation_invoice_amount: moneyPatch(value) }, "Installation amount updated.")
+      }
+    : undefined;
+  const installStatusEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "select",
+        value: row.isInstallationComplete ? "complete" : "unmatched",
+        options: [
+          { value: "unmatched", label: "Unmatched" },
+          { value: "complete", label: "Complete" }
+        ],
+        disabled: busy,
+        ariaLabel: "Edit installation status",
+        onSave: (value) => saveRow({ installation_complete: value === "complete" }, "Installation status updated.")
+      }
+    : undefined;
+  const dueEditor: DrillInlineEditor | undefined = canEditJob
+    ? {
+        type: "date",
+        value: dateInputValue(job?.next_action_due),
+        disabled: busy,
+        ariaLabel: "Edit due date",
+        onSave: (value) => saveJob({ next_action_due: value || null }, "Due date updated.")
+      }
+    : undefined;
+  const appointmentEditor: DrillInlineEditor | undefined = canEditJob
+    ? {
+        type: "datetime-local",
+        value: dateTimeLocalValue(job?.appointment_start),
+        disabled: busy,
+        ariaLabel: "Edit appointment",
+        onSave: (value) => saveJob({ appointment_start: dateTimeLocalToIso(value) }, "Appointment updated.")
+      }
+    : undefined;
+  const addressEditor: DrillInlineEditor | undefined = canEditJob
+    ? {
+        value: file?.address || job?.address || "",
+        disabled: busy,
+        ariaLabel: "Edit address",
+        onSave: (value) => saveJob({ address: value.trim() }, "Address updated.")
+      }
+    : undefined;
+  const nextActionEditor: DrillInlineEditor | undefined = canEditJob
+    ? {
+        value: job?.next_action || "",
+        disabled: busy,
+        ariaLabel: "Edit next action",
+        onSave: (value) => saveJob({ next_action: value.trim() }, "Next action updated.")
+      }
+    : undefined;
 
   return (
     <article className="crm-drill-detail-card">
       <header className="crm-drill-detail-card-head">
         <div>
           <p className="eyebrow">{entry.meta || payload.subtitle}</p>
-          <h3>{entry.name}</h3>
-          <p>{[file?.phone || job?.phone, file?.email || job?.email, file?.city || job?.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
+          <h3>
+            <InlineEditableValue value={customerName} editor={customerNameEditor} className="crm-inline-edit-heading" />
+          </h3>
+          <p className="crm-drill-contact-line">
+            {visibleContactItems.length
+              ? visibleContactItems.map((item, index) => (
+                  <Fragment key={item.key}>
+                    {index ? <span className="crm-contact-divider">/</span> : null}
+                    <InlineEditableValue value={item.value || item.fallback} editor={item.editor} className="crm-inline-edit-contact" />
+                  </Fragment>
+                ))
+              : "Contact details pending"}
+          </p>
         </div>
         <div className="crm-drill-detail-value">
           {entry.value ? <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong> : null}
           <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
             Open File
           </button>
-          {canEditCard ? (
-            <button type="button" className="crm-ghost-button" onClick={() => setEditing((current) => !current)} disabled={busy}>
-              {editing ? "View Card" : "Edit Card"}
-            </button>
-          ) : null}
         </div>
       </header>
 
@@ -2689,39 +3019,42 @@ function DrillDetailCard({
         </label>
       ) : null}
 
-      {editing ? (
-        <DrillDetailEditForm
-          entry={entry}
-          busy={busy}
-          onCancel={() => setEditing(false)}
-          onSubmit={(event) => {
-            void onSaveEntry(event, entry).then((saved) => {
-              if (saved) setEditing(false);
-            });
-          }}
-        />
-      ) : (
-        <>
-          <div className="crm-drill-compact-grid">
-            <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} />
-            <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} />
-            <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} />
-            <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} />
-            <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
-            <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
-            <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
-            <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
-            <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} />
-            <DrillFact label="COGS" value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"} tone={row && row.cogs <= 0 ? "warn" : undefined} />
-            <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
-            <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
-            <DrillFact label="Manufacturer" value={[row?.manufacturerName, row?.manufacturerOrderRef].filter(Boolean).join(" / ") || "Needs order details"} />
-            <DrillFact label="Install" value={row ? `${toLedgerCurrency(row.installationInvoiceAmount)} / ${row.isInstallationComplete ? "Complete" : row.installationMatchStatus}` : "No install row"} />
-            <DrillFact label="Due" value={job?.next_action_due || "Open"} />
-            <DrillFact label="Appointment" value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"} />
-            <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} />
-            <DrillFact label="Next Action" value={job?.next_action || "No next action"} wide />
-          </div>
+      <>
+        <div className="crm-drill-compact-grid">
+          <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
+          <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} editor={soldDateEditor} />
+          <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} editor={quoteNumberEditor} />
+          <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
+          <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
+          <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
+          <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
+          <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
+          <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
+          <DrillFact
+            label="COGS"
+            value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"}
+            tone={row && row.cogs <= 0 ? "warn" : undefined}
+            editor={cogsEditor}
+          />
+          <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
+          <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+          <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} editor={manufacturerEditor} />
+          <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
+          <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} editor={installAmountEditor} />
+          <DrillFact
+            label="Install Status"
+            value={row ? (row.isInstallationComplete ? "Complete" : titleCase(row.installationMatchStatus)) : "No install row"}
+            editor={installStatusEditor}
+          />
+          <DrillFact label="Due" value={formatShortDate(job?.next_action_due)} editor={dueEditor} />
+          <DrillFact
+            label="Appointment"
+            value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"}
+            editor={appointmentEditor}
+          />
+          <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} editor={addressEditor} />
+          <DrillFact label="Next Action" value={job?.next_action || "No next action"} editor={nextActionEditor} wide />
+        </div>
 
           {products.length || hasActivity || hasDocumentsOrNotes ? (
             <div className="crm-drill-detail-strip">
@@ -2803,9 +3136,83 @@ function DrillDetailCard({
             </div>
           ) : null}
         </>
-      )}
     </article>
   );
+}
+
+function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEntry): DrillFieldPatch {
+  event.preventDefault();
+
+  const formData = new FormData(event.currentTarget);
+  const row = entry.row;
+  const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
+  const customerName = formString(formData, "customer_name") || entry.customerName;
+  const patch: DrillFieldPatch = {};
+
+  if (jobId) {
+    const jobPatch: Record<string, unknown> = {
+      customer_name: customerName,
+      phone: formString(formData, "phone"),
+      email: formString(formData, "email"),
+      city: formString(formData, "city"),
+      address: formString(formData, "address"),
+      product_interest: formString(formData, "product_interest"),
+      next_action: formString(formData, "next_action"),
+      next_action_due: formString(formData, "next_action_due") || null,
+      estimated_total: Number(formString(formData, "estimated_total") || 0),
+      appointment_start: dateTimeLocalToIso(formString(formData, "appointment_start")),
+      appointment_end: dateTimeLocalToIso(formString(formData, "appointment_end")),
+      notes: formString(formData, "job_notes")
+    };
+    const jobStatus = formString(formData, "job_status");
+    if (jobStatus) jobPatch.status = jobStatus;
+    patch.job = jobPatch;
+  }
+
+  if (row) {
+    const soldDate = formString(formData, "sold_date");
+    const total = Number(formString(formData, "total_amount") || 0);
+    const cogs = Number(formString(formData, "cogs_amount") || 0);
+    const paymentAmount = Number(formString(formData, "payment_amount") || 0);
+    const kenCutOverride = formString(formData, "ken_cut_override");
+    const sharedRowPatch = {
+      customer_name: customerName,
+      payment_type: formString(formData, "payment_type") || "other",
+      payment_amount: paymentAmount,
+      payment_label: formString(formData, "payment_label") || "Balance payment",
+      paid_at: formString(formData, "paid_at") || null,
+      installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
+      installation_invoice_number: formString(formData, "installation_invoice_number"),
+      installation_invoice_url: formString(formData, "installation_invoice_url"),
+      installation_complete: formData.get("installation_complete") === "on",
+      jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
+      ken_cut_override: kenCutOverride === "" ? null : Number(kenCutOverride),
+      manufacturer_name: formString(formData, "manufacturer_name"),
+      manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
+      manufacturer_order_url: formString(formData, "manufacturer_order_url"),
+      manufacturer_document_url: formString(formData, "manufacturer_document_url"),
+      notes: formString(formData, "row_notes")
+    };
+
+    patch.row =
+      row.source === "crm_quote" && row.quoteId
+        ? {
+            ...sharedRowPatch,
+            status: formString(formData, "quote_status") || row.status,
+            quote_number: formString(formData, "quote_number"),
+            quote_total: total,
+            materials_cost: cogs,
+            sold_at: soldDate || null
+          }
+        : {
+            ...sharedRowPatch,
+            sold_date: soldDate || null,
+            total_amount: total,
+            cogs_amount: cogs
+          };
+  }
+
+  return patch;
 }
 
 function DrillDetailEditForm({
@@ -3068,17 +3475,21 @@ function DrillFact({
   label,
   value,
   tone,
-  wide
+  wide,
+  editor
 }: {
   label: string;
   value: string;
   tone?: "warn" | "good";
   wide?: boolean;
+  editor?: DrillInlineEditor;
 }) {
   return (
     <div className={`crm-drill-fact ${tone || ""} ${wide ? "wide" : ""}`}>
       <span>{label}</span>
-      <strong>{value}</strong>
+      <strong>
+        <InlineEditableValue value={value} editor={editor} />
+      </strong>
     </div>
   );
 }
@@ -3523,6 +3934,83 @@ function BookkeepingEditForm({
         </button>
       </form>
     </>
+  );
+}
+
+function InstallationInvoiceInbox({
+  invoices,
+  onPull,
+  busy
+}: {
+  invoices: CrmInstallationInvoiceEmail[];
+  onPull: () => void;
+  busy: boolean;
+}) {
+  const counts = invoices.reduce(
+    (current, invoice) => {
+      current[invoice.match_status] += 1;
+      return current;
+    },
+    { matched: 0, needs_review: 0, unmatched: 0, skipped: 0, error: 0 }
+  );
+  const recent = invoices.slice(0, 12);
+
+  return (
+    <section className="crm-ledger crm-installation-inbox">
+      <div className="crm-section-head">
+        <div>
+          <p className="eyebrow">Install invoices</p>
+          <h2>805 Gmail Reconciliation</h2>
+        </div>
+        <button type="button" onClick={onPull} disabled={busy}>
+          Pull Invoices
+        </button>
+      </div>
+      <div className="crm-bookkeeping-counts" aria-label="Installation invoice pull counts">
+        <span>Matched: {counts.matched}</span>
+        <span>Review: {counts.needs_review}</span>
+        <span>Unmatched: {counts.unmatched}</span>
+        <span>Errors: {counts.error}</span>
+      </div>
+      <div className="crm-bookkeeping-table-wrap">
+        <table className="crm-bookkeeping-table">
+          <thead>
+            <tr>
+              <th>Invoice</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent.map((invoice) => (
+              <tr key={invoice.id}>
+                <td>
+                  {invoice.email_url ? (
+                    <a href={invoice.email_url} target="_blank" rel="noreferrer">
+                      {invoice.extracted_invoice_number || invoice.subject || "Gmail invoice"}
+                    </a>
+                  ) : (
+                    invoice.extracted_invoice_number || invoice.subject || "Gmail invoice"
+                  )}
+                  <span>{formatShortDate(invoice.sent_at || invoice.processed_at)}</span>
+                </td>
+                <td>{invoice.extracted_customer_name || "Needs review"}</td>
+                <td>{invoice.extracted_invoice_amount ? toLedgerCurrency(invoice.extracted_invoice_amount) : "-"}</td>
+                <td>
+                  <span className={`crm-bookkeeping-pill crm-bookkeeping-pill--${invoice.match_status}`}>
+                    {titleCase(invoice.match_status)}
+                  </span>
+                </td>
+                <td>{invoice.match_reason || invoice.error_message || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!recent.length ? <p className="crm-empty">No installation invoice emails processed yet.</p> : null}
+      </div>
+    </section>
   );
 }
 

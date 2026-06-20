@@ -293,6 +293,39 @@ export type CrmJobExpense = {
   source: CrmJobExpenseSource;
 };
 
+export type CrmInstallationInvoiceEmailStatus = "matched" | "needs_review" | "unmatched" | "skipped" | "error";
+
+export type CrmInstallationInvoiceEmail = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  mailbox_email: string;
+  gmail_message_id: string;
+  gmail_thread_id: string | null;
+  gmail_history_id: string | null;
+  from_email: string | null;
+  to_email: string | null;
+  subject: string | null;
+  sent_at: string | null;
+  snippet: string | null;
+  attachment_names: string[];
+  email_url: string | null;
+  extracted_customer_name: string | null;
+  extracted_invoice_amount: number | null;
+  extracted_invoice_number: string | null;
+  extraction_confidence: number;
+  matched_job_id: string | null;
+  matched_quote_id: string | null;
+  matched_bookkeeping_entry_id: string | null;
+  match_status: CrmInstallationInvoiceEmailStatus;
+  match_confidence: number;
+  match_reason: string | null;
+  processed_at: string | null;
+  applied_at: string | null;
+  error_message: string | null;
+  raw: Record<string, unknown>;
+};
+
 export type CrmBookkeepingRow = {
   id: string;
   source: CrmBookkeepingEntrySource | "crm_quote";
@@ -478,6 +511,7 @@ export type CrmDashboardData = {
   bookkeepingPayments: CrmBookkeepingPayment[];
   bookkeepingCredits: CrmBookkeepingCredit[];
   jobExpenses: CrmJobExpense[];
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
   kenPayments: CrmKenPayment[];

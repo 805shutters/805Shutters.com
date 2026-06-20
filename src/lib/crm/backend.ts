@@ -26,6 +26,7 @@ import {
   CrmCustomerContract,
   CrmCustomerProduct,
   CrmDashboardData,
+  CrmInstallationInvoiceEmail,
   CrmJob,
   CrmJobExpense,
   CrmJobStatus,
@@ -470,6 +471,7 @@ export function buildDashboardData({
   payments,
   credits,
   expenses,
+  installationInvoiceEmails,
   kenPayments,
   openingBalance,
   payoffTarget
@@ -484,6 +486,7 @@ export function buildDashboardData({
   payments: CrmBookkeepingPayment[];
   credits: CrmBookkeepingCredit[];
   expenses: CrmJobExpense[];
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   kenPayments: CrmKenPayment[];
   openingBalance: number;
   payoffTarget: number;
@@ -527,6 +530,7 @@ export function buildDashboardData({
     bookkeepingPayments: payments,
     bookkeepingCredits: credits,
     jobExpenses: expenses,
+    installationInvoiceEmails,
     bookkeepingRows,
     bookkeepingTotals,
     kenPayments,
@@ -561,6 +565,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     paymentsResult,
     creditsResult,
     expensesResult,
+    installationInvoiceEmailsResult,
     kenPaymentsResult,
     settingsResult
   ] = await Promise.all([
@@ -587,6 +592,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .select("*")
       .order("incurred_on", { ascending: false, nullsFirst: false })
       .limit(1000),
+    supabase
+      .from("crm_installation_invoice_emails")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100),
     supabase
       .from("crm_ken_payments")
       .select("*")
@@ -615,6 +625,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM job expenses could not be loaded.", expensesResult.error.message);
   }
 
+  if (installationInvoiceEmailsResult.error) {
+    console.warn("CRM installation invoice email records could not be loaded.", installationInvoiceEmailsResult.error.message);
+  }
+
   if (kenPaymentsResult.error) {
     console.warn("CRM Ken payments could not be loaded.", kenPaymentsResult.error.message);
   }
@@ -633,6 +647,9 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const payments = (paymentsResult.data || []) as CrmBookkeepingPayment[];
   const credits = (creditsResult.data || []) as CrmBookkeepingCredit[];
   const expenses = (expensesResult.error ? [] : expensesResult.data || []) as CrmJobExpense[];
+  const installationInvoiceEmails = (
+    installationInvoiceEmailsResult.error ? [] : installationInvoiceEmailsResult.data || []
+  ) as CrmInstallationInvoiceEmail[];
   const kenPayments = (kenPaymentsResult.error ? [] : kenPaymentsResult.data || []) as CrmKenPayment[];
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
@@ -657,6 +674,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     payments,
     credits,
     expenses,
+    installationInvoiceEmails,
     kenPayments,
     openingBalance,
     payoffTarget

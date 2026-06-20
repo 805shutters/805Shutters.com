@@ -8356,7 +8356,7 @@ html.mobile-menu-open {
   border-bottom: 0;
 }
 
-.crm-drill-fact span,
+.crm-drill-fact > span,
 .crm-drill-mini-card strong,
 .crm-drill-document-grid strong {
   color: var(--accent);
@@ -8380,6 +8380,76 @@ html.mobile-menu-open {
 
 .crm-drill-fact.good strong {
   color: #3a3a36;
+}
+
+.crm-inline-edit-value {
+  display: inline-block;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: text;
+}
+
+.crm-inline-edit-value:hover,
+.crm-inline-edit-value:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.crm-inline-edit-value:disabled {
+  cursor: default;
+  opacity: 0.75;
+  text-decoration: none;
+}
+
+.crm-inline-edit-heading {
+  width: auto;
+}
+
+.crm-drill-contact-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 6px;
+  align-items: center;
+}
+
+.crm-contact-divider {
+  color: var(--muted);
+}
+
+.crm-inline-edit-contact {
+  width: auto;
+  color: inherit;
+}
+
+.crm-inline-edit-control {
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crm-drill-contact-line .crm-inline-edit-control {
+  width: min(220px, 100%);
+  min-height: 26px;
+  font-size: 12px;
 }
 
 .crm-drill-subsection {
