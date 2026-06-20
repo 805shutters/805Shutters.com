@@ -20,9 +20,9 @@ structurally prevented (see "Design guarantees" below).
 | Backend domain layer | `src/lib/crm/quote-builder.ts` |
 | Public/customer flow | `src/lib/crm/public-quote.ts` |
 | Twilio SMS | `src/lib/notify/twilio.ts` |
-| CRM builder UI | `src/components/crm/QuoteBuilderPanel.tsx` (opened from `CrmApp` order cards) |
+| CRM builder UI | `src/components/crm/quotes/QuotesWorkspace.tsx` + `src/components/crm/QuoteBuilderPanel.tsx` |
 | Customer page | `src/app/quote/[token]/page.tsx` + `SignQuote.tsx` |
-| API routes | `src/app/api/crm/quote-catalog{,/price}`, `.../quote-line-items/[id]{,/select}`, `.../quote-designs{,/[id]}`, `.../quotes/[id]/{builder,share}`, `src/app/api/quote/[token]/accept` |
+| API routes | `src/app/api/crm/quote-catalog{,/price,/reference}`, `.../quote-line-items/[id]{,/select}`, `.../quote-designs{,/[id]}`, `.../quotes/[id]/{builder,share}`, `src/app/api/quote/[token]/accept` |
 | DB migration | `supabase/migrations/20260618000000_create_quote_builder_line_items.sql` |
 
 ## Design guarantees (the MTS bugs that can't come back)
@@ -52,8 +52,9 @@ supabase db push
 
 `20260618000000` creates `crm_quote_line_items` + `crm_quote_designs` and retires the
 dormant `crm_quote_items` stub **only if empty**. `20260618010000` adds
-`quote_group_id` + `quote_label` for whole-quote versions. Add `crm_quote_line_items` to
-`src/app/api/crm/health/route.ts` `requiredTables` if you want it health-checked.
+`quote_group_id` + `quote_label` for whole-quote versions. The CRM health endpoint checks
+both builder tables so missing quote-builder migrations show up as migration readiness
+failures.
 
 ## Twilio (customer + shop SMS on sign)
 
@@ -85,7 +86,7 @@ with that project's URL + service key. Do not point it at production.
 
 ## Manual QA checklist (deployed app)
 
-1. CRM → Orders → a quote → **Edit line items & pricing**.
+1. CRM → Quotes → **Create quote** or open a scheduled consultation → **Builder**.
 2. Add a window (room, width, height, qty). Add option **A** (e.g. Honeycomb 9/16) → price shows.
    Add option **B** (e.g. a roller fabric). Select **A** → total reflects A only.
 3. Change quantity → total scales. Try an oversize width → option shows an error, not a price.

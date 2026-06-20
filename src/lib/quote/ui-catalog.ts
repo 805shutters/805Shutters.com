@@ -50,6 +50,31 @@ export type UiCatalog = {
   motorization: UiMotorizationGroup[];
 };
 
+export type UiPricingReferenceProgram = {
+  productId: string;
+  productName: string;
+  productType: string;
+  provisional: boolean;
+  source: string | null;
+  programId: string;
+  programName: string;
+  priceGroup: string | null;
+  priceAxis: "wh" | "width" | "sqft";
+  maxWidth: number | null;
+  maxHeight: number | null;
+  minSqft: number | null;
+  pricePerSqft: number | null;
+  widths: number[];
+  heights: number[];
+  prices: Array<Array<number | null>>;
+};
+
+export type UiPricingReference = {
+  source: string;
+  effectiveDate: string;
+  programs: UiPricingReferenceProgram[];
+};
+
 export function buildUiCatalog(): UiCatalog {
   const products: UiProduct[] = catalog.products.map((p) => ({
     id: p.id,
@@ -92,5 +117,34 @@ export function buildUiCatalog(): UiCatalog {
     effectiveDate: catalog.effectiveDate,
     products: products.sort((a, b) => a.name.localeCompare(b.name)),
     motorization,
+  };
+}
+
+export function buildPricingReference(): UiPricingReference {
+  const programs = catalog.products.flatMap((product) =>
+    product.programs.map((program) => ({
+      productId: product.id,
+      productName: product.name,
+      productType: product.productType,
+      provisional: product.provisional === true,
+      source: product.source ?? null,
+      programId: program.id,
+      programName: program.name,
+      priceGroup: program.priceGroup,
+      priceAxis: program.priceAxis,
+      maxWidth: program.maxWidth ?? null,
+      maxHeight: program.maxHeight ?? null,
+      minSqft: program.minSqft ?? null,
+      pricePerSqft: program.pricePerSqft ?? null,
+      widths: program.grid.widths,
+      heights: program.grid.heights,
+      prices: program.grid.prices,
+    })),
+  );
+
+  return {
+    source: catalog.source,
+    effectiveDate: catalog.effectiveDate,
+    programs,
   };
 }

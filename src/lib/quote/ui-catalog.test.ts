@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildUiCatalog } from "./ui-catalog";
+import { buildPricingReference, buildUiCatalog } from "./ui-catalog";
 
 describe("buildUiCatalog", () => {
   const ui = buildUiCatalog();
@@ -35,5 +35,27 @@ describe("buildUiCatalog", () => {
     const json = JSON.stringify(ui);
     expect(json).not.toContain("\"prices\"");
     expect(json).not.toContain("\"grid\"");
+  });
+});
+
+describe("buildPricingReference", () => {
+  const ref = buildPricingReference();
+
+  it("exposes authoritative grid numbers for CRM reference", () => {
+    const honeycomb = ref.programs.find((p) => p.programId === "honeycomb_9_16in_cordless_single_cell");
+    expect(honeycomb).toBeTruthy();
+    expect(honeycomb!.source).toBeNull();
+    expect(honeycomb!.widths).toContain(24);
+    expect(honeycomb!.heights).toContain(36);
+    expect(honeycomb!.prices[0][0]).toBe(212);
+  });
+
+  it("keeps provisional shutter provenance visible", () => {
+    const shutter = ref.programs.find((p) => p.productId === "norman_shutters");
+    expect(shutter).toBeTruthy();
+    expect(shutter!.provisional).toBe(true);
+    expect(shutter!.source).toContain("MTS pricingData");
+    expect(shutter!.priceAxis).toBe("sqft");
+    expect(shutter!.pricePerSqft).toBeGreaterThan(0);
   });
 });

@@ -84,6 +84,9 @@ export type CrmQuote = {
   manufacturer_order_ref: string | null;
   manufacturer_order_url: string | null;
   manufacturer_document_url: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
   share_token: string | null;
   customer_signature: string | null;
   customer_printed_name: string | null;

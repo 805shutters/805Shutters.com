@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmJob, CrmQuote, CrmQuoteStatus } from "@/lib/crm/types";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
@@ -40,6 +40,11 @@ function when(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
   return Number.isFinite(d.getTime()) ? d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) : "";
+}
+
+function formString(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function api<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
@@ -109,6 +114,49 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
     [session, onChanged, openBuilder],
   );
 
+  const createQuote = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const formData = new FormData(form);
+      const jobId = formString(formData, "job_id");
+      const job = jobId ? jobsById.get(jobId) : null;
+
+      setBusy(true);
+      setError(null);
+      setMsg(null);
+      try {
+        const result = await api<{ quote: CrmQuote }>(session, "/api/crm/quotes", {
+          method: "POST",
+          body: JSON.stringify({
+            job_id: jobId || null,
+            customer_name: formString(formData, "customer_name") || job?.customer_name,
+            phone: formString(formData, "phone") || job?.phone,
+            email: formString(formData, "email") || job?.email,
+            address: formString(formData, "address") || job?.address,
+            city: formString(formData, "city") || job?.city,
+            product_interest: formString(formData, "product_interest") || job?.product_interest || "Window Treatments",
+            sales_owner: formString(formData, "sales_owner") || job?.sales_owner || "Unassigned",
+            status: "draft",
+            quote_number: formString(formData, "quote_number"),
+            quote_total: 0,
+            notes: formString(formData, "notes"),
+            meta: { source: "quotes_workspace" },
+          }),
+        });
+        form.reset();
+        onChanged();
+        openBuilder(result.quote.id);
+        setMsg(`Quote ${result.quote.quote_number || result.quote.id.slice(0, 8)} created.`);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not create quote.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [session, jobsById, onChanged, openBuilder],
+  );
+
   const advance = useCallback(
     async (quoteId: string, status: CrmQuoteStatus) => {
       setBusy(true);
@@ -137,6 +185,24 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
         setMsg(`Sent — ${res.sms.sent ? "texted" : "SMS skipped"}, ${res.email.sent ? "emailed" : "email skipped"}. Link: ${res.url}`);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Send failed.");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [session, onChanged],
+  );
+
+  const openCustomerContract = useCallback(
+    async (quoteId: string) => {
+      setBusy(true);
+      setError(null);
+      setMsg(null);
+      try {
+        const res = await api<{ url: string }>(session, `/api/crm/quotes/${quoteId}/share`, { method: "POST" });
+        window.open(res.url, "_blank", "noopener,noreferrer");
+        onChanged();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Could not open the contract link.");
       } finally {
         setBusy(false);
       }
@@ -183,14 +249,17 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
 
       {subtab === "dashboard" ? (
         <Dashboard
+          jobs={jobs}
           consultations={consultations}
           quoteForJob={quoteForJob}
           activeQuotes={activeQuotes}
           customerName={customerName}
           busy={busy}
+          onCreate={createQuote}
           onBuild={buildForJob}
           onOpen={openBuilder}
           onContract={(id) => { setActiveQuoteId(id); setSubtab("contract"); }}
+          onOpenContractLink={openCustomerContract}
         />
       ) : null}
 
@@ -199,7 +268,15 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
       ) : null}
 
       {subtab === "contract" && activeQuote ? (
-        <ContractView quote={activeQuote} name={customerName(activeQuote)} busy={busy} onSend={() => sendToCustomer(activeQuote.id)} onAdvance={advance} onOpenBuilder={() => openBuilder(activeQuote.id)} />
+        <ContractView
+          quote={activeQuote}
+          name={customerName(activeQuote)}
+          busy={busy}
+          onSend={() => sendToCustomer(activeQuote.id)}
+          onAdvance={advance}
+          onOpenBuilder={() => openBuilder(activeQuote.id)}
+          onOpenContract={() => openCustomerContract(activeQuote.id)}
+        />
       ) : null}
 
       {subtab === "calendar" ? (
@@ -210,23 +287,29 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
 }
 
 function Dashboard({
+  jobs,
   consultations,
   quoteForJob,
   activeQuotes,
   customerName,
   busy,
+  onCreate,
   onBuild,
   onOpen,
   onContract,
+  onOpenContractLink,
 }: {
+  jobs: CrmJob[];
   consultations: CrmJob[];
   quoteForJob: (jobId: string) => CrmQuote | undefined;
   activeQuotes: CrmQuote[];
   customerName: (q: CrmQuote) => string;
   busy: boolean;
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
   onBuild: (jobId: string) => void;
   onOpen: (quoteId: string) => void;
   onContract: (quoteId: string) => void;
+  onOpenContractLink: (quoteId: string) => void;
 }) {
   // Render a column for every active status (incl. approved/invoiced/paid and any
   // unexpected one), so a progressed quote never silently disappears from the board.
@@ -236,6 +319,8 @@ function Dashboard({
   const pipelineColumns = [...PIPELINE, ...extraStatuses];
   return (
     <div>
+      <CreateQuoteCard jobs={jobs} busy={busy} onCreate={onCreate} />
+
       <h3 style={{ margin: "8px 0" }}>Upcoming consultations</h3>
       {consultations.length === 0 ? (
         <p style={{ opacity: 0.6 }}>No scheduled consultations.</p>
@@ -279,6 +364,7 @@ function Dashboard({
                     <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                       <button type="button" style={ghostBtn} onClick={() => onOpen(q.id)}>Build</button>
                       <button type="button" style={ghostBtn} onClick={() => onContract(q.id)}>Contract</button>
+                      <button type="button" style={ghostBtn} onClick={() => onOpenContractLink(q.id)}>Open link</button>
                     </div>
                   </div>
                 ))
@@ -288,6 +374,77 @@ function Dashboard({
         })}
       </div>
     </div>
+  );
+}
+
+function CreateQuoteCard({ jobs, busy, onCreate }: { jobs: CrmJob[]; busy: boolean; onCreate: (event: FormEvent<HTMLFormElement>) => void }) {
+  const linkableJobs = jobs
+    .filter((job) => job.status !== "closed" && job.status !== "lost")
+    .sort((a, b) => a.customer_name.localeCompare(b.customer_name));
+
+  return (
+    <form onSubmit={onCreate} style={{ border: "1px solid #dbe3ee", borderRadius: 10, padding: 14, marginBottom: 20, background: "#f8fafc" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 12 }}>
+        <h3 style={{ margin: 0 }}>Create quote</h3>
+        <button type="submit" disabled={busy} style={primaryBtn}>
+          Create + open builder
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 10 }}>
+        <label style={formLabel}>
+          Existing job
+          <select name="job_id" style={formInput}>
+            <option value="">Start from customer details</option>
+            {linkableJobs.map((job) => (
+              <option value={job.id} key={job.id}>
+                {job.customer_name} - {job.product_interest}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label style={formLabel}>
+          Customer
+          <input name="customer_name" placeholder="Customer name" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          Phone
+          <input name="phone" placeholder="805-000-0000" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          Email
+          <input name="email" type="email" placeholder="customer@email.com" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          Address
+          <input name="address" placeholder="Project address" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          City
+          <input name="city" placeholder="Ventura" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          Product
+          <input name="product_interest" placeholder="Window Treatments" style={formInput} />
+        </label>
+        <label style={formLabel}>
+          Sales owner
+          <select name="sales_owner" defaultValue="Unassigned" style={formInput}>
+            <option>Unassigned</option>
+            <option>Jessica</option>
+            <option>Mike</option>
+          </select>
+        </label>
+        <label style={formLabel}>
+          Quote #
+          <input name="quote_number" placeholder="Auto if blank" style={formInput} />
+        </label>
+        <label style={{ ...formLabel, gridColumn: "1 / -1" }}>
+          Notes
+          <textarea name="notes" rows={2} placeholder="Scope, rooms, install notes..." style={formInput} />
+        </label>
+      </div>
+    </form>
   );
 }
 
@@ -338,6 +495,7 @@ function ContractView({
   onSend,
   onAdvance,
   onOpenBuilder,
+  onOpenContract,
 }: {
   quote: CrmQuote;
   name: string;
@@ -345,6 +503,7 @@ function ContractView({
   onSend: () => void;
   onAdvance: (quoteId: string, status: CrmQuoteStatus) => void;
   onOpenBuilder: () => void;
+  onOpenContract: () => void;
 }) {
   const next = getNextStatus(quote.status);
   return (
@@ -368,6 +527,7 @@ function ContractView({
 
         <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
           <button type="button" disabled={busy} onClick={onSend} style={primaryBtn}>Send to customer</button>
+          <button type="button" disabled={busy} onClick={onOpenContract} style={ghostBtn}>Open customer contract</button>
           {next ? (
             <button type="button" disabled={busy} onClick={() => onAdvance(quote.id, next)} style={ghostBtn}>
               {getAdvanceLabel(quote.status)}
@@ -381,3 +541,5 @@ function ContractView({
 
 const primaryBtn = { border: "none", background: "#2563eb", color: "#fff", borderRadius: 8, padding: "9px 16px", cursor: "pointer", fontWeight: 600 } as const;
 const ghostBtn = { border: "1px solid #cbd5e1", background: "#fff", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 13 } as const;
+const formLabel = { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, fontWeight: 600, color: "#334155" } as const;
+const formInput = { border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 10px", font: "inherit", background: "#fff", color: "#0f172a" } as const;

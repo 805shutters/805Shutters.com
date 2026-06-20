@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, splitInches, toInches } from "@/lib/quote/measurements";
 
 type Props = {
@@ -104,6 +104,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [sendMsg, setSendMsg] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<string | null>(null);
   const [customRoom, setCustomRoom] = useState("");
+  const [pricingReference, setPricingReference] = useState<UiPricingReference | null>(null);
+  const [showPricingReference, setShowPricingReference] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -196,20 +198,57 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     [session, onChanged],
   );
 
+  const ensureCustomerLink = useCallback(async () => {
+    const res = await api<{ url: string }>(session, `/api/crm/quotes/${quoteId}/share`, { method: "POST" });
+    setShareUrl(res.url);
+    return res.url;
+  }, [session, quoteId]);
+
   const shareLink = useCallback(async () => {
     setError(null);
     try {
-      const res = await api<{ url: string }>(session, `/api/crm/quotes/${quoteId}/share`, { method: "POST" });
-      setShareUrl(res.url);
+      const url = await ensureCustomerLink();
       try {
-        await navigator.clipboard.writeText(res.url);
+        await navigator.clipboard.writeText(url);
       } catch {
         /* clipboard may be blocked; the link is still shown below */
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create the customer link.");
     }
-  }, [session, quoteId]);
+  }, [ensureCustomerLink]);
+
+  const openContract = useCallback(async () => {
+    setError(null);
+    try {
+      const url = shareUrl || (await ensureCustomerLink());
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open the contract.");
+    }
+  }, [shareUrl, ensureCustomerLink]);
+
+  const togglePricingReference = useCallback(async () => {
+    if (showPricingReference) {
+      setShowPricingReference(false);
+      return;
+    }
+
+    setShowPricingReference(true);
+    if (pricingReference) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api<{ reference: UiPricingReference }>(session, "/api/crm/quote-catalog/reference");
+      setPricingReference(res.reference);
+    } catch (e) {
+      setShowPricingReference(false);
+      setError(e instanceof Error ? e.message : "Could not load the pricing reference.");
+    } finally {
+      setBusy(false);
+    }
+  }, [session, showPricingReference, pricingReference]);
 
   const addWindow = () =>
     mutate(`/api/crm/quotes/${quoteId}/builder`, {
@@ -351,6 +390,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             >
               Send to customer
             </button>
+            <button type="button" onClick={openContract} style={closeBtn}>
+              Open contract
+            </button>
             <button type="button" onClick={shareLink} style={closeBtn}>
               {shareUrl ? "Link copied ✓" : "Customer link"}
             </button>
@@ -395,6 +437,19 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 + Add version
               </button>
             </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#4d4d49" }}>
+                Pricing source: {catalog.source}
+                {catalog.effectiveDate ? ` (${catalog.effectiveDate})` : ""}. Shutter products marked provisional use the legacy MTS shutter rate table until a current guide replaces it.
+              </p>
+              <button type="button" style={ghostBtn} disabled={busy} onClick={togglePricingReference}>
+                {showPricingReference ? "Hide pricing reference" : "Pricing reference"}
+              </button>
+            </div>
+            {showPricingReference ? (
+              pricingReference ? <PricingReferencePanel reference={pricingReference} /> : <p style={{ fontSize: 13, opacity: 0.7 }}>Loading pricing reference...</p>
+            ) : null}
 
             {/* Product line tiles — pick which product the room buttons add. */}
             <div style={sectionLabel}>Product line</div>
@@ -637,6 +692,89 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   );
 }
 
+function PricingReferencePanel({ reference }: { reference: UiPricingReference }) {
+  const [programKey, setProgramKey] = useState(reference.programs[0] ? pricingProgramKey(reference.programs[0]) : "");
+  const program = reference.programs.find((item) => pricingProgramKey(item) === programKey) || reference.programs[0];
+
+  if (!program) {
+    return <p style={{ fontSize: 13, opacity: 0.7 }}>No pricing programs found.</p>;
+  }
+
+  return (
+    <section style={pricingReferencePanel}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "end" }}>
+        <Field label="Reference grid">
+          <select value={pricingProgramKey(program)} onChange={(event) => setProgramKey(event.target.value)}>
+            {reference.programs.map((item) => (
+              <option key={pricingProgramKey(item)} value={pricingProgramKey(item)}>
+                {item.productName} - {item.programName}
+                {item.provisional ? " (provisional)" : ""}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <div style={{ fontSize: 12, opacity: 0.75 }}>
+          {reference.source}
+          {reference.effectiveDate ? ` / ${reference.effectiveDate}` : ""}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 8, fontSize: 13 }}>
+        <strong>{program.productName}</strong> / {program.programName}
+        {program.priceGroup ? ` / ${program.priceGroup}` : ""} / {program.priceAxis}
+        {program.source ? <span style={{ opacity: 0.65 }}> / {program.source}</span> : null}
+      </div>
+
+      {program.priceAxis === "sqft" ? (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8, fontSize: 13 }}>
+          <span>Retail: <strong>{program.pricePerSqft == null ? "N/A" : money(program.pricePerSqft)} / sq ft</strong></span>
+          <span>Minimum: <strong>{program.minSqft ?? 0} sq ft</strong></span>
+          <span>Max width: <strong>{program.maxWidth ?? "N/A"}</strong></span>
+          <span>Max height: <strong>{program.maxHeight ?? "N/A"}</strong></span>
+        </div>
+      ) : (
+        <PricingGrid program={program} />
+      )}
+    </section>
+  );
+}
+
+function pricingProgramKey(program: UiPricingReferenceProgram) {
+  return `${program.productId}::${program.programId}`;
+}
+
+function PricingGrid({ program }: { program: UiPricingReferenceProgram }) {
+  const rowLabels = program.heights.length ? program.heights : [null];
+  const rows = program.heights.length ? program.prices : [program.prices[0] || []];
+
+  return (
+    <div style={{ overflowX: "auto", marginTop: 8, border: "1px solid #e5e7eb", borderRadius: 6 }}>
+      <table style={{ borderCollapse: "collapse", fontSize: 12, minWidth: Math.max(520, program.widths.length * 70) }}>
+        <thead>
+          <tr>
+            <th style={priceCellStyle}>{program.heights.length ? "H / W" : "Width"}</th>
+            {program.widths.map((width) => (
+              <th key={width} style={priceCellStyle}>{width}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => (
+            <tr key={rowLabels[index] ?? "width"}>
+              <th style={priceCellStyle}>{rowLabels[index] ?? "Price"}</th>
+              {program.widths.map((width, colIndex) => (
+                <td key={`${width}-${colIndex}`} style={priceCellStyle}>
+                  {row[colIndex] == null ? "N/A" : money(row[colIndex])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Field({ label, children, width }: { label: string; children: ReactNode; width?: number }) {
   return (
     <label style={{ display: "flex", flexDirection: "column", fontSize: 12, gap: 3, width }}>
@@ -824,6 +962,8 @@ const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#fff
 const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
 const addBtn: CSSProperties = { border: "1px dashed #b8b6ae", background: "#ffffff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
 const errorStyle: CSSProperties = { color: "#4d4d49", background: "#f4f4f2", padding: "8px 16px", margin: 0 };
+const pricingReferencePanel: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 8, padding: 12, marginBottom: 14, background: "#fbfbfa" };
+const priceCellStyle: CSSProperties = { border: "1px solid #e5e7eb", padding: "5px 7px", textAlign: "right", whiteSpace: "nowrap" };
 const sectionLabel: CSSProperties = { fontSize: 11, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7, marginBottom: 8, fontWeight: 600 };
 const tileRow: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
 const productTile: CSSProperties = {

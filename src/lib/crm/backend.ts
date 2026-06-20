@@ -108,6 +108,9 @@ const allowedQuotePatchFields = new Set([
   "manufacturer_order_ref",
   "manufacturer_order_url",
   "manufacturer_document_url",
+  "customer_email",
+  "customer_phone",
+  "customer_address",
   "notes"
 ]);
 
@@ -207,6 +210,30 @@ function metadataWithActor(payload: unknown, actor: CrmActor, action: string) {
     [action]: actor.email,
     [`${action}At`]: new Date().toISOString()
   };
+}
+
+async function fetchCrmJob(supabase: CrmSupabaseClient, jobId: string): Promise<CrmJob> {
+  const { data, error } = await supabase.from("crm_jobs").select("*").eq("id", jobId).maybeSingle();
+  if (error || !data) throw new CrmAuthError(404, "CRM job was not found.");
+  return data as CrmJob;
+}
+
+async function nextCrmQuoteNumber(supabase: CrmSupabaseClient) {
+  const { data, error } = await supabase
+    .from("crm_quotes")
+    .select("quote_number")
+    .ilike("quote_number", "805-%")
+    .limit(5000);
+
+  if (error) return null;
+
+  const max = ((data as Array<{ quote_number: string | null }>) || []).reduce((highest, row) => {
+    const match = String(row.quote_number || "").match(/^805-(\d+)$/i);
+    if (!match) return highest;
+    return Math.max(highest, Number(match[1]) || 0);
+  }, 1000);
+
+  return `805-${max + 1}`;
 }
 
 function isMissingAvailabilityColumn(error: { code?: string; message?: string } | null | undefined) {
@@ -1086,17 +1113,49 @@ export async function deleteCrmAvailabilitySlot(
 }
 
 export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
-  const jobId = requiredText(payload.job_id, "Job is required for a quote.");
+  let jobId = optionalText(payload.job_id);
+  let linkedJob: CrmJob | null = null;
+
+  if (jobId) {
+    linkedJob = await fetchCrmJob(supabase, jobId);
+  } else {
+    const customerName = requiredText(payload.customer_name, "Customer name and phone are required to start a quote.");
+    const phone = requiredText(payload.phone ?? payload.customer_phone, "Customer name and phone are required to start a quote.");
+    linkedJob = await createCrmJob(
+      supabase,
+      {
+        customer_name: customerName,
+        phone,
+        email: payload.email ?? payload.customer_email,
+        address: payload.address ?? payload.customer_address,
+        city: payload.city,
+        product_interest: optionalText(payload.product_interest) || "Window Treatments",
+        sales_owner: optionalText(payload.sales_owner) || optionalText(payload.sold_by) || "Unassigned",
+        priority: optionalText(payload.priority) || "normal",
+        next_action: "Build quote",
+        next_action_due: payload.next_action_due || null,
+        notes: optionalText(payload.notes),
+        meta: {
+          ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+          source: "quote_builder"
+        }
+      },
+      actor
+    );
+    jobId = linkedJob.id;
+  }
+
   const status = normalizeEnum<CrmQuoteStatus>(payload.status, quoteStatusSet, "draft", "Invalid quote status.");
   const quoteTotal = toMoney(payload.quote_total);
   const depositPaid = toMoney(payload.deposit_paid ?? payload.deposit_required);
   const balancePaid = toMoney(payload.balance_paid);
   const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
   const now = new Date().toISOString();
+  const quoteNumber = optionalText(payload.quote_number) || (await nextCrmQuoteNumber(supabase));
 
   const record = {
     job_id: jobId,
-    quote_number: optionalText(payload.quote_number),
+    quote_number: quoteNumber,
     status,
     quote_total: quoteTotal,
     materials_cost: toMoney(payload.materials_cost),
@@ -1115,6 +1174,9 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
     manufacturer_order_url: optionalText(payload.manufacturer_order_url),
     manufacturer_document_url: optionalText(payload.manufacturer_document_url),
+    customer_email: optionalText(payload.customer_email) || optionalText(payload.email) || linkedJob.email || null,
+    customer_phone: optionalText(payload.customer_phone) || optionalText(payload.phone) || linkedJob.phone || null,
+    customer_address: optionalText(payload.customer_address) || optionalText(payload.address) || linkedJob.address || null,
     notes: optionalText(payload.notes),
     meta: metadataWithActor(payload, actor, "createdBy")
   };
@@ -1155,7 +1217,7 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
       quote_id: data.id,
       job_id: jobId,
       source: "crm_quote",
-      customer_name: optionalText(payload.customer_name) || "Linked job",
+      customer_name: optionalText(payload.customer_name) || linkedJob.customer_name || "Linked job",
       sold_date: payload.sold_at || now.slice(0, 10),
       total_amount: quoteTotal,
       payment_type: paymentType,

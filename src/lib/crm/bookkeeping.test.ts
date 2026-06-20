@@ -145,6 +145,9 @@ function quote(overrides: Partial<CrmQuote> = {}): CrmQuote {
     manufacturer_order_ref: null,
     manufacturer_order_url: null,
     manufacturer_document_url: null,
+    customer_email: null,
+    customer_phone: null,
+    customer_address: null,
     notes: null,
     ...overrides
   };

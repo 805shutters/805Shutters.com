@@ -9,6 +9,8 @@ const requiredTables = [
   "crm_profiles",
   "crm_jobs",
   "crm_quotes",
+  "crm_quote_line_items",
+  "crm_quote_designs",
   "crm_quote_bookkeeping_entries",
   "crm_quote_bookkeeping_payments",
   "crm_quote_bookkeeping_credits",
