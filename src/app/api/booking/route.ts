@@ -8,6 +8,7 @@ import {
   monthRangeUtc,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
+import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
@@ -582,6 +583,15 @@ export async function POST(request: NextRequest) {
     startAt,
     endAt
   };
+
+  try {
+    await syncSelfBookingCustomerDetails(supabase, {
+      ...bookingDetails,
+      bookingNotes
+    });
+  } catch (error) {
+    console.warn("Self-booking customer details could not be synced.", error);
+  }
 
   const [smsConfirmationSent, emailConfirmationSent, staffEmailSent, staffSmsAlertCount] = await Promise.all([
     sendSmsConfirmation({ phone, startAt, productInterest, productTypes }),
