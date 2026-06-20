@@ -55,6 +55,19 @@ type SyncCounts = {
   credits: number;
 };
 
+type NumericMismatch = {
+  entity: string;
+  field: string;
+  source: number;
+  target: number;
+  delta: number;
+};
+
+type NumericVerification = {
+  checked: number;
+  mismatches: NumericMismatch[];
+};
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   if (!verifyRequestSignature(request, rawBody)) {
@@ -127,6 +140,7 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
     payments: 0,
     credits: 0,
   };
+  const verification = createNumericVerification();
 
   const designsByLineItemId = groupBy(designs, "line_item_id");
   const lineItemsByQuoteId = groupBy(lineItems, "quote_id");
@@ -188,8 +202,8 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
       labor_cost: 0,
       discount: 0,
       tax: 0,
-      deposit_required: money(quote.deposit_paid),
-      balance_due: Math.max(0, money(quote.total_amount) - money(quote.deposit_paid) - money(quote.balance_paid)),
+      deposit_required: legacyContractDepositDue(quote),
+      balance_due: legacyContractBalanceDue(quote),
       sold_by: titleOwner(quote.sales_owner),
       sent_at: quote.sent_at || null,
       approved_at: quote.signed_at || null,
@@ -212,23 +226,36 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
     });
     counts.quotes += 1;
     quoteIdByMtsQuoteId.set(quote.id, importedQuote.id);
+    expectNumber(verification, `quote:${quote.id}`, "contract_amount", quote.total_amount, importedQuote.quote_total);
+    expectNumber(verification, `quote:${quote.id}`, "manufacturer_cost", quote.manufacturer_cost, importedQuote.materials_cost);
+    expectNumber(verification, `quote:${quote.id}`, "contract_deposit_due", legacyContractDepositDue(quote), importedQuote.deposit_required);
+    expectNumber(verification, `quote:${quote.id}`, "contract_balance_due", legacyContractBalanceDue(quote), importedQuote.balance_due);
+    expectNumber(verification, `job:${quote.id}`, "estimated_total", quote.total_amount, job.estimated_total);
+    expectNumber(verification, `job:${quote.id}`, "actual_deposit_paid", quote.deposit_paid, job.deposit_paid);
 
-    const structureCounts = await upsertImportedQuoteStructure(supabase, importedQuote.id, quoteLineItems, designsByLineItemId);
+    const structureCounts = await upsertImportedQuoteStructure(supabase, importedQuote.id, quoteLineItems, designsByLineItemId, verification);
     counts.lineItems += structureCounts.lineItems;
     counts.designs += structureCounts.designs;
 
     const contract = await upsertContractForQuote(supabase, customer.id, importedQuote.id, job.id, quote, quoteBaseUrl);
-    if (contract) counts.contracts += 1;
+    if (contract) {
+      counts.contracts += 1;
+      expectNumber(verification, `contract:${quote.id}`, "contract_amount", quote.total_amount, contract.total_amount);
+    }
 
     for (const lineItem of quoteLineItems) {
       const itemDesigns = designsByLineItemId.get(lineItem.id) || [];
       if (!itemDesigns.length) {
-        await upsertProduct(supabase, customer.id, job.id, importedQuote.id, null, lineItem, null);
+        const product = await upsertProduct(supabase, customer.id, job.id, importedQuote.id, null, lineItem, null);
+        expectNumber(verification, `product:${lineItem.id}`, "quantity", normalizeQuantity(lineItem.quantity), product.quantity);
         counts.products += 1;
         continue;
       }
       for (const design of itemDesigns) {
-        await upsertProduct(supabase, customer.id, job.id, importedQuote.id, null, lineItem, design);
+        const product = await upsertProduct(supabase, customer.id, job.id, importedQuote.id, null, lineItem, design);
+        expectNumber(verification, `product:${lineItem.id}:${design.id}`, "unit_price", design.unit_price, product.unit_price);
+        expectNumber(verification, `product:${lineItem.id}:${design.id}`, "total_price", money(design.unit_price) * normalizeQuantity(lineItem.quantity), product.total_price);
+        expectNumber(verification, `product:${lineItem.id}:${design.id}`, "quantity", normalizeQuantity(lineItem.quantity), product.quantity);
         counts.products += 1;
       }
     }
@@ -288,9 +315,15 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
     }, targetQuoteId ? "quote_id" : "external_source,external_id");
     counts.entries += 1;
     entryIdByMtsEntryId.set(entry.id, importedEntry.id);
+    expectNumber(verification, `entry:${entry.id}`, "bookkeeping_total", entry.total_amount, importedEntry.total_amount);
+    expectNumber(verification, `entry:${entry.id}`, "cogs_amount", entry.cogs_amount, importedEntry.cogs_amount);
+    expectNumber(verification, `entry:${entry.id}`, "installation_invoice_amount", entry.installation_invoice_amount, importedEntry.installation_invoice_amount);
+    if (entry.ken_cut_override !== undefined && entry.ken_cut_override !== null) {
+      expectNumber(verification, `entry:${entry.id}`, "ken_cut_override", entry.ken_cut_override, importedEntry.ken_cut_override);
+    }
 
     if (entry.manufacturer_order_url || entry.manufacturer_document_url || entry.installation_invoice_url) {
-      await upsertOne(supabase, "crm_customer_contracts", {
+      const documentContract = await upsertOne(supabase, "crm_customer_contracts", {
         external_source: IMPORT_SOURCE,
         external_id: `entry-document:${entry.id}`,
         customer_id: customer.id,
@@ -306,12 +339,13 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
         meta: { mts_entry_id: entry.id, source: "bookkeeping_document" },
       });
       counts.contracts += 1;
+      expectNumber(verification, `entry-document:${entry.id}`, "document_total", entry.total_amount, documentContract.total_amount);
     }
   }
 
   for (const payment of payments) {
     const paymentEntryJobId = payment.bookkeeping_entry_id ? jobIdByMtsEntryId.get(payment.bookkeeping_entry_id) || null : null;
-    await upsertOne(supabase, "crm_quote_bookkeeping_payments", {
+    const importedPayment = await upsertOne(supabase, "crm_quote_bookkeeping_payments", {
       external_source: IMPORT_SOURCE,
       external_id: `payment:${payment.id}`,
       quote_id: payment.quote_id ? quoteIdByMtsQuoteId.get(payment.quote_id) || null : null,
@@ -326,10 +360,11 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
       meta: { mts_payment_id: payment.id, account_id: accountId },
     });
     counts.payments += 1;
+    expectNumber(verification, `payment:${payment.id}`, "payment_amount", payment.amount, importedPayment.amount);
   }
 
   for (const credit of credits) {
-    await upsertOne(supabase, "crm_quote_bookkeeping_credits", {
+    const importedCredit = await upsertOne(supabase, "crm_quote_bookkeeping_credits", {
       external_source: IMPORT_SOURCE,
       external_id: `credit:${credit.id}`,
       from_quote_id: credit.from_quote_id ? quoteIdByMtsQuoteId.get(credit.from_quote_id) || null : null,
@@ -342,9 +377,15 @@ async function syncMts805Payload(supabase: CrmSupabaseClient, payload: SyncPaylo
       meta: { mts_credit_id: credit.id, account_id: accountId },
     });
     counts.credits += 1;
+    expectNumber(verification, `credit:${credit.id}`, "credit_amount", credit.amount, importedCredit.amount);
   }
 
-  return { accountId, sourceCounts: { quotes: quotes.length, entries: entries.length, payments: payments.length, credits: credits.length, lineItems: lineItems.length, designs: designs.length }, upserted: counts };
+  return {
+    accountId,
+    sourceCounts: { quotes: quotes.length, entries: entries.length, payments: payments.length, credits: credits.length, lineItems: lineItems.length, designs: designs.length },
+    upserted: counts,
+    verification: verificationResult(verification),
+  };
 }
 
 async function upsertCustomer(supabase: CrmSupabaseClient, input: {
@@ -417,7 +458,13 @@ async function upsertJobForBookkeepingEntry(supabase: CrmSupabaseClient, custome
   });
 }
 
-async function upsertImportedQuoteStructure(supabase: CrmSupabaseClient, quoteId: string, quoteLineItems: AnyRow[], designsByLineItemId: Map<string, AnyRow[]>) {
+async function upsertImportedQuoteStructure(
+  supabase: CrmSupabaseClient,
+  quoteId: string,
+  quoteLineItems: AnyRow[],
+  designsByLineItemId: Map<string, AnyRow[]>,
+  verification: NumericVerification,
+) {
   const selectedDesignByLineId = new Map<string, string | null>();
   let lineItemCount = 0;
   let designCount = 0;
@@ -425,7 +472,7 @@ async function upsertImportedQuoteStructure(supabase: CrmSupabaseClient, quoteId
   for (const lineItem of quoteLineItems.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))) {
     const itemDesigns = [...(designsByLineItemId.get(lineItem.id) || [])].sort(compareLegacyDesigns);
     selectedDesignByLineId.set(lineItem.id, itemDesigns[0]?.id || null);
-    await upsertOne(
+    const importedLineItem = await upsertOne(
       supabase,
       "crm_quote_line_items",
       {
@@ -442,12 +489,15 @@ async function upsertImportedQuoteStructure(supabase: CrmSupabaseClient, quoteId
       "id",
     );
     lineItemCount += 1;
+    expectNumber(verification, `line-item:${lineItem.id}`, "width_in", decimalMeasurement(lineItem.width_whole, lineItem.width_fraction), importedLineItem.width_in);
+    expectNumber(verification, `line-item:${lineItem.id}`, "height_in", decimalMeasurement(lineItem.height_whole, lineItem.height_fraction), importedLineItem.height_in);
+    expectNumber(verification, `line-item:${lineItem.id}`, "quantity", normalizeQuantity(lineItem.quantity), importedLineItem.quantity);
 
     const usedLabels = new Set<string>();
     for (let index = 0; index < itemDesigns.length; index += 1) {
       const design = itemDesigns[index];
       const label = uniqueDesignLabel(design.variant, usedLabels, index);
-      await upsertOne(
+      const importedDesign = await upsertOne(
         supabase,
         "crm_quote_designs",
         {
@@ -469,6 +519,7 @@ async function upsertImportedQuoteStructure(supabase: CrmSupabaseClient, quoteId
         "id",
       );
       designCount += 1;
+      expectNumber(verification, `design:${design.id}`, "unit_price", design.unit_price, importedDesign.unit_price);
     }
   }
 
@@ -576,8 +627,25 @@ function buildImportedQuoteMeta(quote: AnyRow, legacySubtotal: number, accountId
     legacy_design_subtotal: legacySubtotal,
     legacy_source_total: sourceTotal,
     legacy_source_total_adjustment: sourceTotalAdjustment,
+    legacy_deposit_paid: money(quote.deposit_paid),
+    legacy_balance_paid: money(quote.balance_paid),
+    legacy_actual_open_balance: legacyActualOpenBalance(quote),
+    legacy_contract_deposit_due: legacyContractDepositDue(quote),
+    legacy_contract_balance_due: legacyContractBalanceDue(quote),
     adjustments,
   };
+}
+
+function legacyContractDepositDue(quote: AnyRow) {
+  return money(money(quote.total_amount) * 0.5);
+}
+
+function legacyContractBalanceDue(quote: AnyRow) {
+  return money(Math.max(money(quote.total_amount) - legacyContractDepositDue(quote), 0));
+}
+
+function legacyActualOpenBalance(quote: AnyRow) {
+  return money(Math.max(money(quote.total_amount) - money(quote.deposit_paid) - money(quote.balance_paid), 0));
 }
 
 function legacyQuoteAdjustments(installerNotes: unknown) {
@@ -898,4 +966,25 @@ function groupBy(rows: AnyRow[], key: string) {
     map.get(value)?.push(row);
   }
   return map;
+}
+
+function createNumericVerification(): NumericVerification {
+  return { checked: 0, mismatches: [] };
+}
+
+function expectNumber(verification: NumericVerification, entity: string, field: string, sourceValue: unknown, targetValue: unknown) {
+  verification.checked += 1;
+  const source = money(sourceValue);
+  const target = money(targetValue);
+  const delta = money(target - source);
+  if (Math.abs(delta) < 0.01) return;
+  verification.mismatches.push({ entity, field, source, target, delta });
+}
+
+function verificationResult(verification: NumericVerification) {
+  return {
+    checked: verification.checked,
+    mismatchCount: verification.mismatches.length,
+    mismatches: verification.mismatches.slice(0, 100),
+  };
 }

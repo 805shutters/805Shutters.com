@@ -170,8 +170,8 @@ for (const quote of quotes) {
     labor_cost: 0,
     discount: 0,
     tax: 0,
-    deposit_required: money(quote.deposit_paid),
-    balance_due: Math.max(0, money(quote.total_amount) - money(quote.deposit_paid) - money(quote.balance_paid)),
+    deposit_required: legacyContractDepositDue(quote),
+    balance_due: legacyContractBalanceDue(quote),
     sold_by: titleOwner(quote.sales_owner),
     sent_at: quote.sent_at || null,
     approved_at: quote.signed_at || null,
@@ -881,8 +881,25 @@ function buildImportedQuoteMeta(quote, legacySubtotal) {
     legacy_design_subtotal: legacySubtotal,
     legacy_source_total: sourceTotal,
     legacy_source_total_adjustment: sourceTotalAdjustment,
+    legacy_deposit_paid: money(quote.deposit_paid),
+    legacy_balance_paid: money(quote.balance_paid),
+    legacy_actual_open_balance: legacyActualOpenBalance(quote),
+    legacy_contract_deposit_due: legacyContractDepositDue(quote),
+    legacy_contract_balance_due: legacyContractBalanceDue(quote),
     adjustments
   };
+}
+
+function legacyContractDepositDue(quote) {
+  return money(money(quote.total_amount) * 0.5);
+}
+
+function legacyContractBalanceDue(quote) {
+  return money(Math.max(money(quote.total_amount) - legacyContractDepositDue(quote), 0));
+}
+
+function legacyActualOpenBalance(quote) {
+  return money(Math.max(money(quote.total_amount) - money(quote.deposit_paid) - money(quote.balance_paid), 0));
 }
 
 function legacyQuoteAdjustments(installerNotes) {
