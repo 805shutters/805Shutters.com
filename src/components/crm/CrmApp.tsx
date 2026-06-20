@@ -72,6 +72,14 @@ const calendarDayFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: "America/Los_Angeles"
 });
+const calendarWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: "America/Los_Angeles"
+});
+const calendarDayNumberFormatter = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  timeZone: "America/Los_Angeles"
+});
 const calendarLongDayFormatter = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   month: "long",
@@ -184,6 +192,14 @@ function formatCalendarDay(value: string) {
   return calendarDayFormatter.format(zonedTimeToUtc(value, "12:00"));
 }
 
+function formatCalendarWeekday(value: string) {
+  return calendarWeekdayFormatter.format(zonedTimeToUtc(value, "12:00")).toUpperCase();
+}
+
+function formatCalendarDayNumber(value: string) {
+  return calendarDayNumberFormatter.format(zonedTimeToUtc(value, "12:00"));
+}
+
 function formatCalendarLongDay(value: string) {
   return calendarLongDayFormatter.format(zonedTimeToUtc(value, "12:00"));
 }
@@ -239,6 +255,37 @@ function calendarEventPlacement(event: CrmCalendarEvent, days: string[]) {
     rowStart: firstRow + 2,
     rowEnd: lastRow + 3
   };
+}
+
+function calendarEventsForDay(events: CrmCalendarEvent[], day: string) {
+  const dayStart = zonedTimeToUtc(day, "00:00");
+  const dayEnd = zonedTimeToUtc(addCalendarDays(day, 1), "00:00");
+
+  return events.filter((event) => {
+    const eventStart = new Date(event.start_at);
+    const eventEnd = new Date(event.end_at);
+    return eventStart < dayEnd && eventEnd > dayStart;
+  });
+}
+
+function calendarEventDurationLabel(event: CrmCalendarEvent) {
+  const minutes = Math.max(0, Math.round((new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) / 60000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function calendarEventClassName(event: CrmCalendarEvent) {
+  const owner = (event.assigned_to || "").toLowerCase();
+  const ownerClass = owner.includes("mike")
+    ? "crm-calendar-event-block--mike"
+    : owner.includes("jessica")
+      ? "crm-calendar-event-block--jessica"
+      : "crm-calendar-event-block--unassigned";
+  const typeClass = event.event_type === "block" ? " crm-calendar-event-block--block" : "";
+
+  return `crm-calendar-event-block ${ownerClass}${typeClass}`;
 }
 
 function formString(formData: FormData, key: string) {
@@ -3496,8 +3543,9 @@ function CalendarPlanner({
           <div className="crm-calendar-time-head">Time</div>
           {days.map((day) => (
             <div className="crm-calendar-day-head" key={day}>
-              <span>{formatCalendarDay(day).split(",")[0]}</span>
-              <strong>{formatCalendarDay(day).replace(/^[^,]+,?\s*/, "")}</strong>
+              <span>{formatCalendarWeekday(day)}</span>
+              <strong>{formatCalendarDayNumber(day)}</strong>
+              <em>{calendarEventsForDay(visibleEvents, day).length || "0"} appt</em>
             </div>
           ))}
 
@@ -3515,6 +3563,7 @@ function CalendarPlanner({
                 return (
                   <button
                     type="button"
+                    aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarHour(hour)}`}
                     className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
                     disabled={Boolean(event) || past}
                     key={`${day}-${hour}`}
@@ -3533,19 +3582,22 @@ function CalendarPlanner({
 
             return (
               <article
-                className="crm-calendar-event-block"
+                className={calendarEventClassName(event)}
                 key={event.id}
                 style={{
                   gridColumn: placement.column,
                   gridRow: `${placement.rowStart} / ${placement.rowEnd}`
                 }}
               >
+                <div className="crm-calendar-event-time">
+                  <span>
+                    {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
+                    {calendarTimeFormatter.format(new Date(event.end_at))}
+                  </span>
+                  <b>{calendarEventDurationLabel(event)}</b>
+                </div>
                 <h3>{event.title}</h3>
-                <p>
-                  {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
-                  {calendarTimeFormatter.format(new Date(event.end_at))}
-                </p>
-                <span>{event.assigned_to}</span>
+                <p>{event.assigned_to}</p>
               </article>
             );
           })}
