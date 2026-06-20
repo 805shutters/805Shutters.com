@@ -543,6 +543,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "CRM job could not be saved." }, { status: 502 });
   }
 
+  // Auto-create a draft quote so the rep is ready to build at the consultation.
+  // Lightweight: no bookkeeping entry, no job-status change (job stays "scheduled").
+  // Best-effort — a quote hiccup must not fail the customer's booking.
+  await supabase.from("crm_quotes").insert({
+    job_id: job.id,
+    status: "draft",
+    quote_total: 0,
+    materials_cost: 0,
+    labor_cost: 0,
+    discount: 0,
+    tax: 0,
+    deposit_required: 0,
+    balance_due: 0,
+    meta: { createdVia: "self_booking" }
+  });
+
   const { data: calendarEvent, error: calendarError } = await supabase
     .from("crm_calendar_events")
     .insert({

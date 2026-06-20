@@ -16,9 +16,13 @@ import type {
   CrmQuoteSurchargeSelection,
   CrmQuoteWithItems,
   CrmQuote,
+  CrmJobStatus,
+  CrmQuoteStatus,
 } from "@/lib/crm/types";
 import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
 import { getProduct } from "@/lib/quote/catalog";
+import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/lib/quote/lifecycle";
+import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -277,10 +281,18 @@ export async function recalcQuoteTotals(
     .eq("quote_id", quoteId);
   if (bkErr) throw new CrmAuthError(502, "Bookkeeping total could not be synced.");
   if (built.job_id) {
-    const { error: jobErr } = await supabase
-      .from("crm_jobs")
-      .update({ estimated_total: money.total })
-      .eq("id", built.job_id);
+    const jobUpdate: Record<string, unknown> = { estimated_total: money.total };
+    // A quote with line items has moved past "scheduled" — advance an early-stage
+    // job to "quoted" (forward-only; never downgrades a sold/ordered job).
+    if (built.lineItems.length > 0) {
+      const { data: jobRow } = await supabase.from("crm_jobs").select("status").eq("id", built.job_id).maybeSingle();
+      const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
+      if (current) {
+        const next = advanceJobStatus(current, "quoted");
+        if (next !== current) jobUpdate.status = next;
+      }
+    }
+    const { error: jobErr } = await supabase.from("crm_jobs").update(jobUpdate).eq("id", built.job_id);
     if (jobErr) throw new CrmAuthError(502, "Job estimate could not be synced.");
   }
 
@@ -610,4 +622,105 @@ export async function duplicateLineItem(
     metadata: { sourceId: id, newId: copy.id },
   });
   return recalcQuoteTotals(supabase, source.quote_id);
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle: advance status (drives the job) + create a quote for a job
+// ---------------------------------------------------------------------------
+
+/**
+ * Advance a quote to a new lifecycle status: set the status + its timestamp,
+ * drive the parent job's status forward, and (on "sold") ensure a bookkeeping
+ * entry exists. The quote is the source of truth for the job's status.
+ */
+export async function advanceQuoteStatus(
+  supabase: CrmSupabaseClient,
+  quoteId: string,
+  nextStatus: CrmQuoteStatus,
+  actor: CrmActor,
+): Promise<CrmQuoteWithItems> {
+  const { data: quote, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
+  if (error || !quote) throw new CrmAuthError(404, "Quote was not found.");
+
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { status: nextStatus };
+  const tsCol = STATUS_TIMESTAMP_COLUMN[nextStatus];
+  if (tsCol && !(quote as Record<string, unknown>)[tsCol]) patch[tsCol] = now;
+
+  const { error: upErr } = await supabase.from("crm_quotes").update(patch).eq("id", quoteId);
+  if (upErr) throw new CrmAuthError(502, "Quote status could not be updated.");
+
+  // On sold, ensure the sale is captured in bookkeeping (drafts/alternatives have
+  // no entry until won), then stamp the sold date.
+  if (nextStatus === "sold") {
+    await ensureBookkeepingEntry(supabase, { ...(quote as CrmQuote), status: "sold" });
+    await supabase.from("crm_quote_bookkeeping_entries").update({ sold_date: now.slice(0, 10) }).eq("quote_id", quoteId);
+  }
+
+  // Drive the parent job's status (forward-only).
+  if (quote.job_id) {
+    const { data: jobRow } = await supabase.from("crm_jobs").select("status").eq("id", quote.job_id).maybeSingle();
+    const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
+    if (current) {
+      const next = advanceJobStatus(current, jobStatusForQuote(nextStatus));
+      if (next !== current) await supabase.from("crm_jobs").update({ status: next }).eq("id", quote.job_id);
+    }
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: quoteId,
+    action: `status.${nextStatus}`,
+    metadata: { from: quote.status, to: nextStatus },
+  });
+  return recalcQuoteTotals(supabase, quoteId);
+}
+
+/**
+ * Get-or-create the active quote for a job (used from a scheduled consultation).
+ * Idempotent: returns the job's latest non-archived/lost quote if one exists.
+ * A freshly created quote is a lightweight DRAFT with NO bookkeeping entry and
+ * does NOT change the job status (an empty draft leaves the job "scheduled").
+ */
+export async function createQuoteForJob(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  actor: CrmActor,
+): Promise<{ quoteId: string; created: boolean }> {
+  const { data: rows } = await supabase
+    .from("crm_quotes")
+    .select("id, status")
+    .eq("job_id", jobId)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const existing = rows?.[0] as { id: string; status: string } | undefined;
+  if (existing && existing.status !== "archived" && existing.status !== "lost") {
+    return { quoteId: existing.id, created: false };
+  }
+
+  const { data, error } = await supabase
+    .from("crm_quotes")
+    .insert({
+      job_id: jobId,
+      status: "draft",
+      quote_total: 0,
+      materials_cost: 0,
+      labor_cost: 0,
+      discount: 0,
+      tax: 0,
+      deposit_required: 0,
+      balance_due: 0,
+      meta: { createdBy: actor.email, createdVia: "consultation" },
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Quote could not be created for this job.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: data.id,
+    action: "create_for_job",
+    metadata: { jobId },
+  });
+  return { quoteId: data.id, created: true };
 }

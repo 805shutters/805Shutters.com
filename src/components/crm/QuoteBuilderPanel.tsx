@@ -12,6 +12,8 @@ type Props = {
   onClose: () => void;
   onChanged?: () => void;
   onSwitch?: (id: string) => void;
+  /** Render inline (no modal overlay / Close button) — used inside the Quotes workspace. */
+  embedded?: boolean;
 };
 
 type Version = { id: string; label: string; status: string; quote_total: number; share_token: string | null; signed: boolean };
@@ -40,7 +42,7 @@ function money(n: number | null | undefined): string {
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
 
-export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwitch }: Props) {
+export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwitch, embedded }: Props) {
   const [catalog, setCatalog] = useState<UiCatalog | null>(null);
   const [quote, setQuote] = useState<CrmQuoteWithItems | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -220,9 +222,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     return saveDesign(li, design, { surcharges: next });
   };
 
-  return (
-    <div className="qb-overlay" role="dialog" aria-modal="true" style={overlayStyle}>
-      <div style={panelStyle}>
+  const inner = (
+      <div style={embedded ? embeddedPanelStyle : panelStyle}>
         <header style={headerStyle}>
           <div>
             <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7 }}>
@@ -244,9 +245,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <button type="button" onClick={shareLink} style={closeBtn}>
               {shareUrl ? "Link copied ✓" : "Customer link"}
             </button>
-            <button type="button" onClick={onClose} style={closeBtn}>
-              Close
-            </button>
+            {!embedded ? (
+              <button type="button" onClick={onClose} style={closeBtn}>
+                Close
+              </button>
+            ) : null}
           </div>
         </header>
 
@@ -441,6 +444,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
           </div>
         )}
       </div>
+  );
+
+  return embedded ? inner : (
+    <div className="qb-overlay" role="dialog" aria-modal="true" style={overlayStyle}>
+      {inner}
     </div>
   );
 }
@@ -606,6 +614,15 @@ const panelStyle: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+};
+const embeddedPanelStyle: CSSProperties = {
+  background: "#ffffff",
+  color: "#0b0b0b",
+  borderRadius: 12,
+  border: "1px solid #e2e8f0",
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
 };
 const headerStyle: CSSProperties = {
   display: "flex",

@@ -12,6 +12,7 @@ import {
   zonedTimeToUtc
 } from "@/lib/booking/availability";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
+import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import {
   CrmAccountabilityItem,
   CrmAvailabilitySlot,
@@ -31,7 +32,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 
 type CrmUser = {
@@ -1257,6 +1258,7 @@ export function CrmApp() {
       <nav className="crm-tabs" aria-label="CRM sections">
         {[
           ["command", "Command Center"],
+          ["quotes", "Quotes"],
           ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["orders", "Orders"],
@@ -1286,6 +1288,10 @@ export function CrmApp() {
             onSaveField={saveDrillField}
           />
         </div>
+      ) : null}
+
+      {activeTab === "quotes" && session ? (
+        <QuotesWorkspace session={session} jobs={jobs} quotes={quotes} onChanged={refresh} />
       ) : null}
 
       {activeTab === "command" ? (
