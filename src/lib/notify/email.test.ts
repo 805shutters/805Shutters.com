@@ -19,6 +19,32 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
+  it("renders clean text line items without product images", () => {
+    const { html, text } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4250, {
+      quoteNumber: "Q-100",
+      lines: [
+        {
+          room: "Living Room",
+          dimensions: '72" W x 48" H',
+          productName: "Honeycomb Shades",
+          styleName: "Cordless",
+          options: ["Inside mount"],
+          quantity: 2,
+          lineTotal: 4250,
+        },
+      ],
+      subtotal: 4250,
+      depositDue: 2125,
+      balanceDue: 2125,
+    });
+
+    expect(html).toContain("Living Room");
+    expect(html).toContain("Honeycomb Shades");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/images/");
+    expect(text).toContain("Quote items:");
+    expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
+  });
 });
 
 describe("sendEmail guards (never throws, no-ops without config)", () => {

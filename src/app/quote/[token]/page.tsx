@@ -89,20 +89,14 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
               </td>
               <td style={td}>
                 {line.priceReady ? (
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    {line.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={line.image} alt={line.productName} width={56} height={42} style={{ objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />
-                    ) : null}
+                  <div>
                     <div>
-                      <div>
-                        {line.productName}
-                        {line.styleName ? ` — ${line.styleName}` : ""}
-                      </div>
-                      {line.options.length ? (
-                        <div style={{ fontSize: 13, opacity: 0.7 }}>{line.options.join(", ")}</div>
-                      ) : null}
+                      {line.productName}
+                      {line.styleName ? ` — ${line.styleName}` : ""}
                     </div>
+                    {line.options.length ? (
+                      <div style={{ fontSize: 13, opacity: 0.7 }}>{line.options.join(", ")}</div>
+                    ) : null}
                   </div>
                 ) : (
                   <em style={{ opacity: 0.6 }}>Pricing in progress</em>

@@ -11,7 +11,6 @@ import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
 import { getProduct } from "@/lib/quote/catalog";
-import { productImage } from "@/lib/quote/product-images";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendEmail, buildQuoteEmail } from "@/lib/notify/email";
@@ -28,7 +27,6 @@ export type PublicQuoteLine = {
   productName: string;
   styleName: string;
   options: string[];
-  image: string;
   unitPrice: number;
   quantity: number;
   lineTotal: number;
@@ -80,10 +78,9 @@ function projectLine(li: CrmQuoteLineItem): PublicQuoteLine {
   const design = selectedDesign(li);
   const qty = Math.max(1, Math.floor(Number(li.quantity) || 1));
   if (!design) {
-    return { id: li.id, room: li.room || "Window", dimensions: dimensions(li), productName: "—", styleName: "", options: [], image: "", unitPrice: 0, quantity: qty, lineTotal: 0, priceReady: false };
+    return { id: li.id, room: li.room || "Window", dimensions: dimensions(li), productName: "-", styleName: "", options: [], unitPrice: 0, quantity: qty, lineTotal: 0, priceReady: false };
   }
   const { productName, styleName, options } = describeDesign(design);
-  const product = getProduct(design.product_id);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
   return {
@@ -93,7 +90,6 @@ function projectLine(li: CrmQuoteLineItem): PublicQuoteLine {
     productName,
     styleName,
     options,
-    image: product ? productImage(product.productType) : "",
     unitPrice,
     quantity: qty,
     // Authoritative billed amount (unit x qty + any per-order surcharge) — matches
@@ -178,6 +174,11 @@ export function buildSignedCustomerSms(customerName: string): string {
 function publicQuoteUrl(token: string): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
   return base ? `${base}/quote/${token}` : `/quote/${token}`;
+}
+
+function publicAssetUrl(path: string): string | undefined {
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
+  return base ? `${base}${path}` : undefined;
 }
 
 async function syncSignedQuoteArtifacts(
@@ -432,7 +433,7 @@ export async function sendQuoteToCustomer(
   quoteId: string,
   actor: CrmActor,
 ): Promise<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }> {
-  const { url } = await ensureShareToken(supabase, quoteId, actor);
+  const { token, url } = await ensureShareToken(supabase, quoteId, actor);
   // Give every sibling version a link too, so the customer can compare them.
   try {
     const versions = await listQuoteVersions(supabase, quoteId);
@@ -463,9 +464,22 @@ export async function sendQuoteToCustomer(
     name = (job as { customer_name?: string } | null)?.customer_name || name;
   }
 
-  const total = Number(quote.quote_total) || 0;
-  const sms = await sendSms({ to: phone, body: `${BUSINESS_NAME}: ${name}, here is your quote — review & approve: ${url}` });
-  const mail = buildQuoteEmail(name, url, total);
+  const publicQuote = await loadPublicQuoteByToken(supabase, token);
+  const total = publicQuote?.total ?? (Number(quote.quote_total) || 0);
+  const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
+  const sms = await sendSms({ to: phone, body: `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}` });
+  const mail = buildQuoteEmail(customerName, url, total, {
+    quoteNumber: publicQuote?.quoteNumber,
+    lines: publicQuote?.lines,
+    subtotal: publicQuote?.subtotal,
+    fees: publicQuote?.fees,
+    discount: publicQuote?.discount,
+    tax: publicQuote?.tax,
+    depositDue: publicQuote?.depositDue,
+    balanceDue: publicQuote?.balanceDue,
+    logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
+    businessPhone: publicQuote?.business.phone,
+  });
   const emailRes = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
 
   let status = String(quote.status);
