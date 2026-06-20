@@ -1651,11 +1651,6 @@ function saleOwnerDisplayName(value: string | null | undefined) {
   return "Unassigned";
 }
 
-function salesByStatus(value: string | null | undefined) {
-  const owner = saleOwnerDisplayName(value);
-  return owner === "Unassigned" ? "Unassigned" : `${owner} sale`;
-}
-
 function customerFileForName(files: CrmCustomerFile[] = [], name: string) {
   const normalized = normalizeCustomerName(name);
   return files.find((file) => normalizeCustomerName(file.customerName) === normalized);
@@ -2468,7 +2463,6 @@ function DrillDetailCard({
             <DrillFact label="COGS" value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"} tone={row && row.cogs <= 0 ? "warn" : undefined} />
             <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
             <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
-            <DrillFact label="Sales By" value={salesByStatus(row?.salesOwner || entry.salesOwner)} />
           </div>
         </section>
 
