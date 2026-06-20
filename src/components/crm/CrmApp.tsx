@@ -338,6 +338,8 @@ export function CrmApp() {
   const [calendarWeekStart, setCalendarWeekStart] = useState(() => startOfCalendarWeek(losAngelesDateString()));
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
+  const [drill, setDrill] = useState<DrillPayload | null>(null);
+  const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -347,6 +349,17 @@ export function CrmApp() {
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
+
+  function openCustomerFile(customerName: string) {
+    setFocusCustomer(customerName);
+    setActiveTab("customers");
+    setDrill(null);
+  }
+
+  function openSummaryDrill(metric: string) {
+    const payload = buildSummaryDrill(metric, jobs, rows, customerFiles);
+    if (payload) setDrill(payload);
+  }
 
   async function signOut() {
     if (!supabase) return;
@@ -971,15 +984,15 @@ export function CrmApp() {
       {message ? <p className="crm-alert">{message}</p> : null}
 
       <section className="crm-metrics" aria-label="CRM summary">
-        <Metric label="Open Jobs" value={data?.summary.openJobs || 0} />
-        <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} />
-        <Metric label="Pipeline" value={toCurrency(data?.summary.quotePipeline)} />
-        <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} />
-        <Metric label="Needs Order" value={data?.summary.needsOrder || 0} />
-        <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} />
-        <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} />
-        <Metric label="Customer Files" value={data?.summary.customerFiles || 0} />
-        <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} />
+        <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
+        <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
+        <Metric label="Pipeline" value={toCurrency(data?.summary.quotePipeline)} onClick={() => openSummaryDrill("pipeline")} />
+        <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
+        <Metric label="Needs Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
+        <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} onClick={() => openSummaryDrill("missingCogs")} />
+        <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} onClick={() => openSummaryDrill("readyInstall")} />
+        <Metric label="Customer Files" value={data?.summary.customerFiles || 0} onClick={() => openSummaryDrill("customerFiles")} />
+        <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} onClick={() => openSummaryDrill("jessicaOwed")} />
         <Metric label="Payoff Left" value={toCurrency(data?.kenPayoff.payoffRemaining)} />
       </section>
 
@@ -1006,13 +1019,22 @@ export function CrmApp() {
       </nav>
 
       {activeTab === "command" ? (
-        <section className="crm-command-grid">
-          <AccountabilityBoard items={accountability} />
-          <BookkeepingSnapshot rows={rows} />
-        </section>
+        <>
+          <CommandDashboard jobs={jobs} rows={rows} onDrill={setDrill} />
+          <section className="crm-command-grid">
+            <AccountabilityBoard items={accountability} />
+            <BookkeepingSnapshot rows={rows} />
+          </section>
+        </>
       ) : null}
 
-      {activeTab === "customers" ? <CustomerFilesView files={customerFiles} /> : null}
+      {activeTab === "customers" ? (
+        <CustomerFilesView
+          files={customerFiles}
+          focusCustomer={focusCustomer}
+          onFocusHandled={() => setFocusCustomer(null)}
+        />
+      ) : null}
 
       {activeTab === "jobs" ? (
         <section className="crm-workspace">
@@ -1355,11 +1377,31 @@ export function CrmApp() {
           busy={busy}
         />
       ) : null}
+
+      {drill ? (
+        <DrillDrawer payload={drill} onClose={() => setDrill(null)} onOpenCustomer={openCustomerFile} />
+      ) : null}
     </div>
   );
 }
 
-function Metric({ label, value }: { label: string; value: number | string }) {
+function Metric({
+  label,
+  value,
+  onClick
+}: {
+  label: string;
+  value: number | string;
+  onClick?: () => void;
+}) {
+  if (onClick) {
+    return (
+      <button type="button" className="crm-metric crm-metric-button" onClick={onClick}>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </button>
+    );
+  }
   return (
     <div className="crm-metric">
       <span>{label}</span>
@@ -1418,7 +1460,598 @@ function BookkeepingSnapshot({ rows }: { rows: CrmBookkeepingRow[] }) {
   );
 }
 
-function CustomerFilesView({ files }: { files: CrmCustomerFile[] }) {
+// ---- Command Center analytics dashboard ----
+
+const DONUT_COLORS = [
+  "#9a7d58",
+  "#3f3a33",
+  "#c2a079",
+  "#6f5638",
+  "#7d8c7a",
+  "#b8843f",
+  "#8a6d4a",
+  "#d8c7a8",
+  "#5b5048"
+];
+const WON_JOB_STATUSES: CrmJobStatus[] = ["sold", "ordered", "installed", "invoiced", "closed"];
+const OPEN_JOB_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted"];
+// Mirrors backend.ts `openStatuses` so the Open Jobs metric drill matches the count.
+const SUMMARY_OPEN_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted", "sold", "ordered"];
+
+type DrillEntry = { id: string; name: string; customerName: string; meta: string; value?: string; tone?: "warn" };
+type DrillPayload = { title: string; subtitle: string; entries: DrillEntry[] };
+
+function titleCase(value: string) {
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeCustomerName(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function customerCardDomId(name: string) {
+  return `crm-cust-${normalizeCustomerName(name).replace(/[^a-z0-9]+/g, "-") || "unknown"}`;
+}
+
+function jobValue(job: CrmJob) {
+  return job.quote_total || job.estimated_total || 0;
+}
+
+function jobToEntry(job: CrmJob): DrillEntry {
+  const value = jobValue(job);
+  return {
+    id: job.id,
+    name: job.customer_name,
+    customerName: job.customer_name,
+    meta: [job.product_interest, job.city, titleCase(job.status)].filter(Boolean).join(" · "),
+    value: value ? toCurrency(value) : undefined
+  };
+}
+
+function jobsToEntries(list: CrmJob[]): DrillEntry[] {
+  return [...list].sort((a, b) => jobValue(b) - jobValue(a)).map(jobToEntry);
+}
+
+function rowsToEntries(
+  list: CrmBookkeepingRow[],
+  valueOf: (row: CrmBookkeepingRow) => number = (row) => row.total
+): DrillEntry[] {
+  return [...list]
+    .sort((a, b) => valueOf(b) - valueOf(a))
+    .map((row) => ({
+      id: row.id,
+      name: row.customerName,
+      customerName: row.customerName,
+      meta: [titleCase(String(row.status)), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
+      value: toCurrency(valueOf(row)),
+      tone: row.balance > 0 ? ("warn" as const) : undefined
+    }));
+}
+
+function filesToEntries(list: CrmCustomerFile[]): DrillEntry[] {
+  return [...list]
+    .sort((a, b) => b.lifetimeValue - a.lifetimeValue)
+    .map((file) => ({
+      id: file.id,
+      name: file.customerName,
+      customerName: file.customerName,
+      meta: [file.city, file.latestStatus ? titleCase(file.latestStatus) : null].filter(Boolean).join(" · "),
+      value: file.lifetimeValue ? toCurrency(file.lifetimeValue) : undefined,
+      tone: file.openBalance > 0 ? ("warn" as const) : undefined
+    }));
+}
+
+// Builds the drill payloads for the global summary band, mirroring backend.ts summary logic.
+function buildSummaryDrill(
+  metric: string,
+  jobs: CrmJob[],
+  rows: CrmBookkeepingRow[],
+  files: CrmCustomerFile[]
+): DrillPayload | null {
+  switch (metric) {
+    case "openJobs":
+      return {
+        title: "Open Jobs",
+        subtitle: "Active jobs in the pipeline",
+        entries: jobsToEntries(jobs.filter((job) => SUMMARY_OPEN_STATUSES.includes(job.status)))
+      };
+    case "soldJobs":
+      return {
+        title: "Sold Jobs",
+        subtitle: "Sold or ordered",
+        entries: jobsToEntries(jobs.filter((job) => job.status === "sold" || job.status === "ordered"))
+      };
+    case "pipeline":
+      return {
+        title: "Pipeline",
+        subtitle: "Jobs carrying a live quote",
+        entries: jobsToEntries(jobs.filter((job) => (job.quote_total || 0) > 0))
+      };
+    case "openBalance":
+      return {
+        title: "Open Balance",
+        subtitle: "Jobs with money still owed",
+        entries: rowsToEntries(rows.filter((row) => row.balance > 0), (row) => row.balance)
+      };
+    case "needsOrder":
+      return {
+        title: "Needs Order",
+        subtitle: "Sold jobs without a manufacturer order",
+        entries: rowsToEntries(
+          rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef)
+        )
+      };
+    case "missingCogs":
+      return {
+        title: "Missing COGS",
+        subtitle: "Cost of goods not yet entered",
+        entries: rowsToEntries(rows.filter((row) => row.cogs <= 0))
+      };
+    case "readyInstall":
+      return {
+        title: "Ready To Install",
+        subtitle: "Received and awaiting install scheduling",
+        entries: rowsToEntries(rows.filter((row) => row.status === "received"))
+      };
+    case "customerFiles":
+      return {
+        title: "Customer Files",
+        subtitle: "All customers on file",
+        entries: filesToEntries(files)
+      };
+    case "jessicaOwed":
+      return {
+        title: "Jessica Owed",
+        subtitle: "Commission owed to Jessica",
+        entries: rowsToEntries(rows.filter((row) => row.jessicaCommissionOwed > 0), (row) => row.jessicaCommissionOwed)
+      };
+    default:
+      return null;
+  }
+}
+
+function CommandDashboard({
+  jobs,
+  rows,
+  onDrill
+}: {
+  jobs: CrmJob[];
+  rows: CrmBookkeepingRow[];
+  onDrill: (payload: DrillPayload) => void;
+}) {
+  const numbers = useMemo(() => {
+    const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
+    const collected = rows.reduce((sum, row) => sum + (row.paidTotal || 0), 0);
+    const collectedRows = rows.filter((row) => (row.paidTotal || 0) > 0);
+    const outstandingRows = rows.filter((row) => row.balance > 0);
+    const outstanding = outstandingRows.reduce((sum, row) => sum + row.balance, 0);
+    const profit = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
+    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, profit };
+  }, [rows]);
+
+  const productMix = useMemo(() => {
+    const map = new Map<string, CrmJob[]>();
+    for (const job of jobs) {
+      const key = job.product_interest?.trim() || "Unspecified";
+      const list = map.get(key) || [];
+      list.push(job);
+      map.set(key, list);
+    }
+    const all = [...map.entries()]
+      .map(([label, list]) => ({
+        label,
+        list,
+        count: list.length,
+        value: list.reduce((sum, job) => sum + jobValue(job), 0)
+      }))
+      .sort((a, b) => b.count - a.count);
+    const top = all.slice(0, 6);
+    const rest = all.slice(6).flatMap((slice) => slice.list);
+    if (rest.length) {
+      top.push({
+        label: "Other",
+        list: rest,
+        count: rest.length,
+        value: rest.reduce((sum, job) => sum + jobValue(job), 0)
+      });
+    }
+    return top;
+  }, [jobs]);
+
+  const closing = useMemo(() => {
+    function bucketize(list: CrmJob[]) {
+      const won = list.filter((job) => WON_JOB_STATUSES.includes(job.status));
+      const lost = list.filter((job) => job.status === "lost");
+      const open = list.filter((job) => OPEN_JOB_STATUSES.includes(job.status));
+      const decided = won.length + lost.length;
+      return { won, lost, open, total: list.length, rate: decided ? won.length / decided : 0 };
+    }
+    const byOwner = ["Mike", "Jessica"].map((owner) => ({
+      owner,
+      ...bucketize(jobs.filter((job) => (job.sales_owner || "Unassigned") === owner))
+    }));
+    return { overall: bucketize(jobs), byOwner };
+  }, [jobs]);
+
+  const response = useMemo(() => {
+    const measured = jobs
+      .filter((job) => job.appointment_start)
+      .map((job) => {
+        const start = job.appointment_start as string;
+        return {
+          job,
+          days: (new Date(start).getTime() - new Date(job.created_at).getTime()) / 86_400_000
+        };
+      })
+      .filter((item) => item.days >= 0 && item.days < 120);
+    const buckets: Array<{ label: string; test: (days: number) => boolean; list: CrmJob[] }> = [
+      { label: "Same day", test: (days) => days < 1, list: [] },
+      { label: "1–2 days", test: (days) => days >= 1 && days < 3, list: [] },
+      { label: "3–5 days", test: (days) => days >= 3 && days < 6, list: [] },
+      { label: "6+ days", test: (days) => days >= 6, list: [] }
+    ];
+    for (const item of measured) {
+      const bucket = buckets.find((entry) => entry.test(item.days));
+      if (bucket) bucket.list.push(item.job);
+    }
+    const avg = measured.length
+      ? measured.reduce((sum, item) => sum + item.days, 0) / measured.length
+      : 0;
+    return { buckets, avg, count: measured.length };
+  }, [jobs]);
+
+  const productTotal = productMix.reduce((sum, slice) => sum + slice.count, 0);
+  const responseMax = Math.max(1, ...response.buckets.map((bucket) => bucket.list.length));
+
+  return (
+    <section className="crm-dashboard">
+      <div className="crm-section-head">
+        <div>
+          <p className="eyebrow">Our Numbers</p>
+          <h2>Business At A Glance</h2>
+        </div>
+        <strong>{jobs.length} jobs</strong>
+      </div>
+
+      <div className="crm-stat-band">
+        <StatTile
+          label="Booked Revenue"
+          value={toCurrency(numbers.bookedRevenue)}
+          sub={`${rows.length} jobs`}
+          onClick={() =>
+            onDrill({
+              title: "Booked Revenue",
+              subtitle: "All booked jobs",
+              entries: rowsToEntries(rows)
+            })
+          }
+        />
+        <StatTile
+          label="Collected"
+          value={toCurrency(numbers.collected)}
+          sub={`${numbers.collectedRows.length} paying`}
+          onClick={() =>
+            onDrill({
+              title: "Collected",
+              subtitle: "Jobs with payments in",
+              entries: rowsToEntries(numbers.collectedRows, (row) => row.paidTotal)
+            })
+          }
+        />
+        <StatTile
+          label="Outstanding"
+          value={toCurrency(numbers.outstanding)}
+          sub={`${numbers.outstandingRows.length} open`}
+          tone={numbers.outstanding > 0 ? "warn" : undefined}
+          onClick={() =>
+            onDrill({
+              title: "Outstanding Balances",
+              subtitle: "Jobs with money still owed",
+              entries: rowsToEntries(numbers.outstandingRows, (row) => row.balance)
+            })
+          }
+        />
+        <StatTile
+          label="Profit"
+          value={toCurrency(numbers.profit)}
+          sub="Mike net"
+          onClick={() =>
+            onDrill({
+              title: "Profit By Job",
+              subtitle: "Mike net per job",
+              entries: rowsToEntries(rows, (row) => row.mikeProfit)
+            })
+          }
+        />
+      </div>
+
+      <div className="crm-dashboard-grid">
+        <section className="crm-ledger crm-chart-card">
+          <div className="crm-section-head">
+            <div>
+              <p className="eyebrow">Product Mix</p>
+              <h2>Jobs By Product</h2>
+            </div>
+            <strong>{productTotal}</strong>
+          </div>
+          {productTotal ? (
+            <div className="crm-donut-row">
+              <Donut slices={productMix} total={productTotal} />
+              <ul className="crm-legend">
+                {productMix.map((slice, index) => (
+                  <li key={slice.label}>
+                    <button
+                      type="button"
+                      className="crm-legend-item"
+                      onClick={() =>
+                        onDrill({
+                          title: slice.label,
+                          subtitle: `${slice.count} jobs · ${toCurrency(slice.value)} pipeline`,
+                          entries: jobsToEntries(slice.list)
+                        })
+                      }
+                    >
+                      <span className="crm-swatch" style={{ background: DONUT_COLORS[index % DONUT_COLORS.length] }} />
+                      <span className="crm-legend-label">{slice.label}</span>
+                      <span className="crm-legend-count">{slice.count}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="crm-empty">No jobs to chart yet.</p>
+          )}
+        </section>
+
+        <section className="crm-ledger crm-chart-card">
+          <div className="crm-section-head">
+            <div>
+              <p className="eyebrow">Closing Rate</p>
+              <h2>Won vs Lost</h2>
+            </div>
+            <strong>{Math.round(closing.overall.rate * 100)}%</strong>
+          </div>
+          <div className="crm-close-list">
+            <CloseRow label="Everyone" bucket={closing.overall} onDrill={onDrill} />
+            {closing.byOwner.map((owner) => (
+              <CloseRow key={owner.owner} label={owner.owner} bucket={owner} onDrill={onDrill} />
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <section className="crm-ledger crm-chart-card">
+        <div className="crm-section-head">
+          <div>
+            <p className="eyebrow">Response Time</p>
+            <h2>Lead → Appointment</h2>
+          </div>
+          <strong>{response.count ? `${response.avg.toFixed(1)} days avg` : "—"}</strong>
+        </div>
+        {response.count ? (
+          <div className="crm-bars">
+            {response.buckets.map((bucket) => {
+              const count = bucket.list.length;
+              return (
+                <button
+                  type="button"
+                  key={bucket.label}
+                  className="crm-bar-row"
+                  disabled={!count}
+                  onClick={() =>
+                    count &&
+                    onDrill({
+                      title: `Response: ${bucket.label}`,
+                      subtitle: "Lead to booked appointment",
+                      entries: jobsToEntries(bucket.list)
+                    })
+                  }
+                >
+                  <span className="crm-bar-label">{bucket.label}</span>
+                  <span className="crm-bar-track">
+                    <span className="crm-bar-fill" style={{ width: `${(count / responseMax) * 100}%` }} />
+                  </span>
+                  <span className="crm-bar-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="crm-empty">No appointments booked yet to measure response time.</p>
+        )}
+      </section>
+    </section>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  sub,
+  tone,
+  onClick
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "warn";
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" className={`crm-stat-tile ${tone === "warn" ? "warn" : ""}`} onClick={onClick}>
+      <span className="crm-stat-label">{label}</span>
+      <strong className="crm-stat-value">{value}</strong>
+      {sub ? <span className="crm-stat-sub">{sub}</span> : null}
+    </button>
+  );
+}
+
+function Donut({
+  slices,
+  total
+}: {
+  slices: Array<{ label: string; count: number }>;
+  total: number;
+}) {
+  const radius = 70;
+  const circumference = 2 * Math.PI * radius;
+  let acc = 0;
+  return (
+    <svg viewBox="0 0 200 200" className="crm-donut" role="img" aria-label="Product mix">
+      <circle cx={100} cy={100} r={radius} fill="none" stroke="var(--soft)" strokeWidth={30} />
+      {slices.map((slice, index) => {
+        const fraction = slice.count / total;
+        const segment = fraction * circumference;
+        const offset = -acc * circumference;
+        acc += fraction;
+        return (
+          <circle
+            key={slice.label}
+            cx={100}
+            cy={100}
+            r={radius}
+            fill="none"
+            stroke={DONUT_COLORS[index % DONUT_COLORS.length]}
+            strokeWidth={30}
+            strokeDasharray={`${segment} ${circumference - segment}`}
+            strokeDashoffset={offset}
+            transform="rotate(-90 100 100)"
+          />
+        );
+      })}
+      <text x={100} y={94} textAnchor="middle" className="crm-donut-total">
+        {total}
+      </text>
+      <text x={100} y={116} textAnchor="middle" className="crm-donut-caption">
+        JOBS
+      </text>
+    </svg>
+  );
+}
+
+function CloseRow({
+  label,
+  bucket,
+  onDrill
+}: {
+  label: string;
+  bucket: { won: CrmJob[]; lost: CrmJob[]; open: CrmJob[]; rate: number; total: number };
+  onDrill: (payload: DrillPayload) => void;
+}) {
+  const total = Math.max(1, bucket.won.length + bucket.lost.length + bucket.open.length);
+  const segments: Array<{ key: "won" | "lost" | "open"; label: string; list: CrmJob[] }> = [
+    { key: "won", label: "Won", list: bucket.won },
+    { key: "lost", label: "Lost", list: bucket.lost },
+    { key: "open", label: "Open", list: bucket.open }
+  ];
+  return (
+    <div className="crm-close-row">
+      <div className="crm-close-head">
+        <span className="crm-close-name">{label}</span>
+        <strong className="crm-close-rate">{Math.round(bucket.rate * 100)}%</strong>
+      </div>
+      <div className="crm-close-bar">
+        {segments.map((segment) =>
+          segment.list.length ? (
+            <button
+              type="button"
+              key={segment.key}
+              className={`crm-close-seg ${segment.key}`}
+              style={{ width: `${(segment.list.length / total) * 100}%` }}
+              title={`${segment.label}: ${segment.list.length}`}
+              onClick={() =>
+                onDrill({
+                  title: `${label} · ${segment.label}`,
+                  subtitle: `${segment.list.length} jobs`,
+                  entries: jobsToEntries(segment.list)
+                })
+              }
+            />
+          ) : null
+        )}
+      </div>
+      <div className="crm-close-key">
+        <span>{bucket.won.length} won</span>
+        <span>{bucket.lost.length} lost</span>
+        <span>{bucket.open.length} open</span>
+      </div>
+    </div>
+  );
+}
+
+function DrillDrawer({
+  payload,
+  onClose,
+  onOpenCustomer
+}: {
+  payload: DrillPayload;
+  onClose: () => void;
+  onOpenCustomer: (customerName: string) => void;
+}) {
+  return (
+    <div className="crm-drill" role="dialog" aria-modal="true" aria-label={payload.title}>
+      <button type="button" className="crm-drill__backdrop" aria-label="Close" onClick={onClose} />
+      <aside className="crm-drill-panel">
+        <div className="crm-slot-form-head">
+          <div>
+            <p className="eyebrow">{payload.subtitle}</p>
+            <h2>{payload.title}</h2>
+          </div>
+          <button type="button" className="crm-slot-close" aria-label="Close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="crm-drill-count">
+          {payload.entries.length} {payload.entries.length === 1 ? "customer" : "customers"} · tap to open file
+        </p>
+        <div className="crm-drill-list">
+          {payload.entries.map((entry) => (
+            <button
+              type="button"
+              className="crm-drill-row"
+              key={entry.id}
+              onClick={() => onOpenCustomer(entry.customerName)}
+            >
+              <div>
+                <strong>{entry.name}</strong>
+                <span>{entry.meta}</span>
+              </div>
+              {entry.value ? <em className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</em> : null}
+            </button>
+          ))}
+          {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function CustomerFilesView({
+  files,
+  focusCustomer,
+  onFocusHandled
+}: {
+  files: CrmCustomerFile[];
+  focusCustomer?: string | null;
+  onFocusHandled?: () => void;
+}) {
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!focusCustomer) return;
+    const normalized = normalizeCustomerName(focusCustomer);
+    const target = files.find((file) => normalizeCustomerName(file.customerName) === normalized);
+    setHighlighted(normalized);
+    if (target) {
+      const node = document.getElementById(customerCardDomId(target.customerName));
+      node?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    onFocusHandled?.();
+    const timer = window.setTimeout(() => setHighlighted(null), 2400);
+    return () => window.clearTimeout(timer);
+  }, [focusCustomer, files, onFocusHandled]);
+
   return (
     <section className="crm-customer-files">
       <div className="crm-section-head">
@@ -1430,7 +2063,11 @@ function CustomerFilesView({ files }: { files: CrmCustomerFile[] }) {
       </div>
       <div className="crm-customer-grid">
         {files.map((file) => (
-          <article className="crm-customer-card" key={file.id}>
+          <article
+            className={`crm-customer-card ${highlighted === normalizeCustomerName(file.customerName) ? "crm-focus" : ""}`}
+            id={customerCardDomId(file.customerName)}
+            key={file.id}
+          >
             <header className="crm-customer-card-head">
               <div>
                 <h3>{file.customerName}</h3>

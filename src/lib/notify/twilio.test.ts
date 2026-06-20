@@ -9,8 +9,13 @@ describe("toE164", () => {
   it("normalizes 11-digit leading-1 numbers", () => {
     expect(toE164("1-805-555-1234")).toBe("+18055551234");
   });
-  it("passes through existing +E.164", () => {
+  it("passes through existing +E.164 and strips internal punctuation", () => {
     expect(toE164("+447911123456")).toBe("+447911123456");
+    expect(toE164("+44 7911 123456")).toBe("+447911123456");
+  });
+  it("rejects + numbers that are too short or have no digits", () => {
+    expect(toE164("+12")).toBeNull();
+    expect(toE164("+abc")).toBeNull();
   });
   it("rejects junk", () => {
     expect(toE164("abc")).toBeNull();

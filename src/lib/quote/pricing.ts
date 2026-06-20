@@ -151,8 +151,11 @@ function resolveProgram(
     }
     return prog;
   }
-  // Single-program product: only one priceable program.
-  const priceable = product.programs.filter((p) => p.grid.prices.length > 0 && p.grid.widths.length > 0);
+  // Single-program product: only one priceable program. (sqft programs price off
+  // pricePerSqft with an empty grid, so gate them the same way lookupBaseCents does.)
+  const priceable = product.programs.filter((p) =>
+    p.priceAxis === "sqft" ? p.pricePerSqft != null : p.grid.prices.length > 0 && p.grid.widths.length > 0,
+  );
   if (priceable.length === 1) return priceable[0];
   return fail(
     "PROGRAM_NOT_RESOLVED",

@@ -51,6 +51,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
   useEffect(() => {
     let active = true;
+    // Clear transient per-quote UI state so a version switch doesn't leak the
+    // previous quote's share link / send message / error.
+    setShareUrl(null);
+    setSendMsg(null);
+    setError(null);
     (async () => {
       try {
         const [c, q] = await Promise.all([
@@ -324,6 +329,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                               type="radio"
                               name={`sel-${li.id}`}
                               checked={isSelected}
+                              disabled={busy}
                               onChange={() => selectDesign(li.id, design.id)}
                             />
                             Option {design.label}
@@ -431,7 +437,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               + Add window
             </button>
 
-            <Adjustments quote={quote} busy={busy} onSave={saveAdjustments} />
+            <Adjustments key={quote.id} quote={quote} busy={busy} onSave={saveAdjustments} />
           </div>
         )}
       </div>

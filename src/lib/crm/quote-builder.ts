@@ -271,9 +271,17 @@ export async function recalcQuoteTotals(
   if (quoteError) throw new CrmAuthError(502, "Quote total could not be updated.");
 
   // Keep the 1:1 bookkeeping entry and the parent job estimate in sync.
-  await supabase.from("crm_quote_bookkeeping_entries").update({ total_amount: money.total }).eq("quote_id", quoteId);
+  const { error: bkErr } = await supabase
+    .from("crm_quote_bookkeeping_entries")
+    .update({ total_amount: money.total })
+    .eq("quote_id", quoteId);
+  if (bkErr) throw new CrmAuthError(502, "Bookkeeping total could not be synced.");
   if (built.job_id) {
-    await supabase.from("crm_jobs").update({ estimated_total: money.total }).eq("id", built.job_id);
+    const { error: jobErr } = await supabase
+      .from("crm_jobs")
+      .update({ estimated_total: money.total })
+      .eq("id", built.job_id);
+    if (jobErr) throw new CrmAuthError(502, "Job estimate could not be synced.");
   }
 
   return {
@@ -323,6 +331,7 @@ export async function createLineItem(
   actor: CrmActor,
 ): Promise<CrmQuoteWithItems> {
   const quoteId = requiredText(payload.quote_id, "Quote is required for a line item.");
+  await fetchQuote(supabase, quoteId); // 404 (not 502) if the quote doesn't exist
   const record = {
     quote_id: quoteId,
     room: optionalText(payload.room),
@@ -474,8 +483,8 @@ export async function upsertDesign(
     const { data, error } = await supabase.from("crm_quote_designs").insert(record).select("*").single();
     if (error || !data) throw new CrmAuthError(502, "Design could not be saved.");
     savedId = data.id;
-    // First design on a line auto-selects so the line is billable immediately.
-    if (!lineItem.selected_design_id && (lineItem.designs?.length ?? 0) === 0) {
+    // A line with no current selection auto-selects this new design so it bills.
+    if (!lineItem.selected_design_id) {
       await supabase.from("crm_quote_line_items").update({ selected_design_id: savedId }).eq("id", lineItemId);
     }
   }
@@ -506,9 +515,13 @@ export async function deleteDesign(
   const { error } = await supabase.from("crm_quote_designs").delete().eq("id", id);
   if (error) throw new CrmAuthError(502, "Design could not be deleted.");
 
-  // If we removed the selected design, fall back to another (or clear).
+  // If we removed the selected design, fall back deterministically: prefer a
+  // priced ("ok") survivor, then by sort order / label.
   if (lineItem.selected_design_id === id) {
-    const next = (lineItem.designs ?? []).find((d) => d.id !== id);
+    const survivors = (lineItem.designs ?? [])
+      .filter((d) => d.id !== id)
+      .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
+    const next = survivors.find((d) => d.price_status === "ok") ?? survivors[0];
     await supabase
       .from("crm_quote_line_items")
       .update({ selected_design_id: next?.id ?? null })

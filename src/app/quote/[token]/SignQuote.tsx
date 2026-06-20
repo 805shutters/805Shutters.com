@@ -71,7 +71,7 @@ export function SignQuote({ token, customerName }: { token: string; customerName
         disabled={busy}
         style={{ background: "#0f172a", color: "#fff", border: "none", borderRadius: 8, padding: "12px 22px", fontSize: 16, cursor: "pointer", opacity: busy ? 0.6 : 1 }}
       >
-        {busy ? "Submitting…" : "Sign &amp; approve"}
+        {busy ? "Submitting…" : "Sign & approve"}
       </button>
     </div>
   );

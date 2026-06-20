@@ -39,6 +39,7 @@ create table if not exists public.crm_quote_line_items (
 create index if not exists crm_quote_line_items_quote_idx
   on public.crm_quote_line_items (quote_id, sort_order);
 
+drop trigger if exists crm_quote_line_items_set_updated_at on public.crm_quote_line_items;
 create trigger crm_quote_line_items_set_updated_at
 before update on public.crm_quote_line_items
 for each row
@@ -46,6 +47,7 @@ execute function public.set_updated_at();
 
 alter table public.crm_quote_line_items enable row level security;
 
+drop policy if exists "service role can manage crm quote line items" on public.crm_quote_line_items;
 create policy "service role can manage crm quote line items"
 on public.crm_quote_line_items
 for all
@@ -82,6 +84,7 @@ create table if not exists public.crm_quote_designs (
 create index if not exists crm_quote_designs_line_item_idx
   on public.crm_quote_designs (line_item_id, sort_order);
 
+drop trigger if exists crm_quote_designs_set_updated_at on public.crm_quote_designs;
 create trigger crm_quote_designs_set_updated_at
 before update on public.crm_quote_designs
 for each row
@@ -89,6 +92,7 @@ execute function public.set_updated_at();
 
 alter table public.crm_quote_designs enable row level security;
 
+drop policy if exists "service role can manage crm quote designs" on public.crm_quote_designs;
 create policy "service role can manage crm quote designs"
 on public.crm_quote_designs
 for all
@@ -97,11 +101,18 @@ using (true)
 with check (true);
 
 -- Now that designs exist, wire up the "pick-one" selected design pointer.
-alter table public.crm_quote_line_items
-  add constraint crm_quote_line_items_selected_design_fk
-  foreign key (selected_design_id)
-  references public.crm_quote_designs(id)
-  on delete set null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'crm_quote_line_items_selected_design_fk'
+  ) then
+    alter table public.crm_quote_line_items
+      add constraint crm_quote_line_items_selected_design_fk
+      foreign key (selected_design_id)
+      references public.crm_quote_designs(id)
+      on delete set null;
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------------------
 -- Retire the dormant stub table, but ONLY if it is empty (never destroy data).

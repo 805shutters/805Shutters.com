@@ -173,7 +173,16 @@ export async function acceptPublicQuote(
   const signature = (input.signature || printedName).trim();
   const now = new Date().toISOString();
 
-  const { error } = await supabase
+  // Guard: never let a customer sign an unfinished / unpriced / $0 quote.
+  const pub = await loadPublicQuoteByToken(supabase, token);
+  if (!pub || pub.lines.length === 0 || !pub.allPriced || pub.total <= 0) {
+    throw new CrmAuthError(409, "This quote isn't finalized yet — please contact us before signing.");
+  }
+  const soldTotal = pub.total;
+
+  // Atomic claim: only the first request that flips signed_at from null wins
+  // (guards against double-submit / concurrent sign of the same link).
+  const { data: claimed, error } = await supabase
     .from("crm_quotes")
     .update({
       status: "sold",
@@ -183,8 +192,22 @@ export async function acceptPublicQuote(
       customer_printed_name: printedName,
     })
     .eq("id", quote.id)
-    .eq("share_token", token);
+    .eq("share_token", token)
+    .is("signed_at", null)
+    .select("id");
   if (error) throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
+  if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
+
+  // Within a group, the chosen version wins — supersede the unsigned alternatives
+  // so they can't also be signed and never get their own bookkeeping entry.
+  if (quote.quote_group_id) {
+    await supabase
+      .from("crm_quotes")
+      .update({ status: "archived", share_token: null })
+      .eq("quote_group_id", quote.quote_group_id)
+      .neq("id", quote.id)
+      .is("signed_at", null);
+  }
 
   // Sync the parent job + bookkeeping entry to "sold".
   let customerPhone: string | null = null;
@@ -197,18 +220,19 @@ export async function acceptPublicQuote(
       .maybeSingle();
     customerPhone = (job as { phone?: string } | null)?.phone ?? null;
   }
-  // Alternative versions have no bookkeeping entry until won — ensure one now.
-  await ensureBookkeepingEntry(supabase, quote);
+  // Alternative versions have no bookkeeping entry until won — ensure one now,
+  // using the authoritative sold total.
+  await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal });
   await supabase
     .from("crm_quote_bookkeeping_entries")
-    .update({ sold_date: now.slice(0, 10) })
+    .update({ sold_date: now.slice(0, 10), total_amount: soldTotal })
     .eq("quote_id", quote.id);
 
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",
     entityId: quote.id,
     action: "customer.sign",
-    metadata: { token, total: quote.quote_total },
+    metadata: { token, total: soldTotal },
   });
 
   // Notify shop (one or more numbers) + customer. Best-effort; never blocks signing.
@@ -217,7 +241,7 @@ export async function acceptPublicQuote(
     .map((s) => s.trim())
     .filter(Boolean);
   for (const num of shopNumbers) {
-    await sendSms({ to: num, body: buildSignedShopSms(printedName, Number(quote.quote_total) || 0) });
+    await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal) });
   }
   if (customerPhone) {
     await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
