@@ -204,6 +204,15 @@ function isMissingAvailabilityColumn(error: { code?: string; message?: string } 
   );
 }
 
+function logSupabaseError(label: string, error: { code?: string; message?: string; details?: string; hint?: string }) {
+  console.error(label, {
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint
+  });
+}
+
 function getJobStatusForQuote(status: string) {
   if (status === "ordered" || status === "received") return "ordered";
   if (status === "installed" || status === "invoiced" || status === "paid") return "installed";
@@ -693,16 +702,30 @@ export async function createCrmCalendarEvent(
 
 export async function listCrmAvailabilitySlots(supabase: CrmSupabaseClient, month: string) {
   const range = monthRangeUtc(month);
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("crm_availability_slots")
     .select("*")
     .gte("start_at", range.start)
     .lt("start_at", range.end)
     .order("start_at", { ascending: true });
 
-  if (error) throw new CrmAuthError(502, "Availability could not be loaded.");
+  if (error) {
+    logSupabaseError("crm_availability_slots ranged query failed", error);
+    const fallback = await supabase.from("crm_availability_slots").select("*");
+    data = fallback.data;
+    error = fallback.error;
+  }
 
-  return (data || []).filter((row) => (row.status || "available") === "available").map((row) => {
+  if (error) {
+    logSupabaseError("crm_availability_slots fallback query failed", error);
+    throw new CrmAuthError(502, "Availability could not be loaded.");
+  }
+
+  return (data || []).filter((row) => {
+    if ((row.status || "available") !== "available") return false;
+    const startAt = typeof row.start_at === "string" ? row.start_at : "";
+    return startAt >= range.start && startAt < range.end;
+  }).map((row) => {
     const slot = {
       status: "available",
       source: "crm_click_availability",
@@ -757,6 +780,7 @@ export async function createCrmAvailabilitySlot(
     .single();
 
   if (error && isMissingAvailabilityColumn(error)) {
+    logSupabaseError("crm_availability_slots full insert failed", error);
     const { data: fallbackData, error: fallbackError } = await supabase
       .from("crm_availability_slots")
       .insert({
@@ -767,7 +791,10 @@ export async function createCrmAvailabilitySlot(
       .select("*")
       .single();
 
-    if (fallbackError || !fallbackData) throw new CrmAuthError(502, "Availability slot could not be saved.");
+    if (fallbackError || !fallbackData) {
+      if (fallbackError) logSupabaseError("crm_availability_slots fallback insert failed", fallbackError);
+      throw new CrmAuthError(502, "Availability slot could not be saved.");
+    }
 
     return {
       status: "available",
@@ -778,7 +805,10 @@ export async function createCrmAvailabilitySlot(
     } as CrmAvailabilitySlot;
   }
 
-  if (error || !data) throw new CrmAuthError(502, "Availability slot could not be saved.");
+  if (error || !data) {
+    if (error) logSupabaseError("crm_availability_slots insert failed", error);
+    throw new CrmAuthError(502, "Availability slot could not be saved.");
+  }
 
   return data as CrmAvailabilitySlot;
 }
