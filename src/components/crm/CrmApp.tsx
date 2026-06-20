@@ -37,15 +37,10 @@ type CrmUser = {
   displayName: string | null;
 };
 
-const jobColumns: Array<{ status: CrmJobStatus; label: string }> = [
-  { status: "new", label: "New" },
-  { status: "follow_up", label: "Follow Up" },
-  { status: "scheduled", label: "Scheduled" },
-  { status: "quoted", label: "Quoted" },
-  { status: "sold", label: "Sold" },
-  { status: "ordered", label: "Ordered" },
-  { status: "installed", label: "Installed" }
-];
+const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuses.map((status) => ({
+  status,
+  label: titleCase(status)
+}));
 
 const productOptions = [...productInterestOptions, "Mixed"];
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];

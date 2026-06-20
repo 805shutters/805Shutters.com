@@ -187,6 +187,12 @@ Contract links are written to the new 805 quote route when a share token exists.
 node scripts/import_mts_bookkeeping_to_805.mjs --repair-contract-urls
 ```
 
+To create CRM job cards for already-imported bookkeeping rows that are missing a linked `crm_jobs` row, run:
+
+```bash
+node scripts/import_mts_bookkeeping_to_805.mjs --repair-entry-jobs
+```
+
 ## Google login
 
 In the dedicated Supabase project, enable Google under Authentication providers. The current 805 project URL is:

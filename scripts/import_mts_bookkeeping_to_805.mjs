@@ -14,6 +14,7 @@ loadEnv(".env.local");
 const dryRun = process.argv.includes("--dry-run");
 const verifyOnly = process.argv.includes("--verify");
 const repairContractUrlsOnly = process.argv.includes("--repair-contract-urls");
+const repairEntryJobsOnly = process.argv.includes("--repair-entry-jobs");
 const mtsUrl = process.env.MTS_SUPABASE_URL;
 const mtsKey = process.env.MTS_SUPABASE_SERVICE_ROLE_KEY;
 const targetUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -37,13 +38,23 @@ if (repairContractUrlsOnly) {
   process.exit(0);
 }
 
+if (repairEntryJobsOnly) {
+  if (!target) {
+    console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY for entry job repair.");
+    process.exit(1);
+  }
+  await repairEntryJobs();
+  process.exit(0);
+}
+
 if (!mtsUrl || !mtsKey || !target) {
   console.error(
     [
       "Missing required environment values.",
       "Set MTS_SUPABASE_URL, MTS_SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY.",
       "Use --dry-run to inspect counts after those are present.",
-      "Use --repair-contract-urls with only target Supabase env to repoint imported contract links to the 805 website."
+      "Use --repair-contract-urls with only target Supabase env to repoint imported contract links to the 805 website.",
+      "Use --repair-entry-jobs with only target Supabase env to create cards for imported bookkeeping rows missing job links."
     ].join("\n")
   );
   process.exit(1);
@@ -89,6 +100,7 @@ const designsByLineItemId = groupBy(designs, "line_item_id");
 const customerByName = new Map();
 const jobIdByMtsQuoteId = new Map();
 const quoteIdByMtsQuoteId = new Map();
+const jobIdByMtsEntryId = new Map();
 const entryIdByMtsEntryId = new Map();
 
 for (const quote of quotes) {
@@ -196,12 +208,14 @@ for (const entry of entries) {
   customerByName.set(normalizeName(customerName), customer.id);
   const targetQuoteId = entry.quote_id ? quoteIdByMtsQuoteId.get(entry.quote_id) || null : null;
   const targetJobId = entry.quote_id ? jobIdByMtsQuoteId.get(entry.quote_id) || null : null;
+  const resolvedJobId = targetJobId || (await upsertJobForBookkeepingEntry(customer, entry, customerName)).id;
+  jobIdByMtsEntryId.set(entry.id, resolvedJobId);
 
   const importedEntry = await upsertOne("crm_quote_bookkeeping_entries", {
     external_source: IMPORT_SOURCE,
     external_id: `entry:${entry.id}`,
     quote_id: targetQuoteId,
-    job_id: targetJobId,
+    job_id: resolvedJobId,
     source: normalizeEntrySource(entry.source),
     customer_name: customerName,
     sold_date: entry.sold_date || null,
@@ -234,7 +248,7 @@ for (const entry of entries) {
       external_source: IMPORT_SOURCE,
       external_id: `entry-document:${entry.id}`,
       customer_id: customer.id,
-      job_id: targetJobId,
+      job_id: resolvedJobId,
       quote_id: targetQuoteId,
       bookkeeping_entry_id: importedEntry.id,
       title: entry.manufacturer_order_ref || entry.installation_invoice_number || `${customerName} document`,
@@ -249,11 +263,12 @@ for (const entry of entries) {
 }
 
 for (const payment of payments) {
+  const paymentEntryJobId = payment.bookkeeping_entry_id ? jobIdByMtsEntryId.get(payment.bookkeeping_entry_id) || null : null;
   await upsertOne("crm_quote_bookkeeping_payments", {
     external_source: IMPORT_SOURCE,
     external_id: `payment:${payment.id}`,
     quote_id: payment.quote_id ? quoteIdByMtsQuoteId.get(payment.quote_id) || null : null,
-    job_id: payment.quote_id ? jobIdByMtsQuoteId.get(payment.quote_id) || null : null,
+    job_id: payment.quote_id ? jobIdByMtsQuoteId.get(payment.quote_id) || paymentEntryJobId : paymentEntryJobId,
     bookkeeping_entry_id: payment.bookkeeping_entry_id ? entryIdByMtsEntryId.get(payment.bookkeeping_entry_id) || null : null,
     payment_label: payment.payment_label || "Payment",
     payment_type: normalizePaymentTypeValue(payment.payment_type) || "other",
@@ -307,6 +322,38 @@ async function upsertCustomer({ name, phone, email, address, firstSoldDate, late
     },
     "normalized_name"
   );
+}
+
+async function upsertJobForBookkeepingEntry(customer, entry, customerName) {
+  const status = jobStatusForBookkeepingEntry(entry);
+  const sourceEntryId = sourceBookkeepingEntryId(entry);
+  return upsertOne("crm_jobs", {
+    external_source: IMPORT_SOURCE,
+    external_id: `entry:${sourceEntryId}`,
+    source: "mts_bookkeeping_import",
+    status,
+    priority: "normal",
+    customer_name: customerName || "Unknown customer",
+    phone: customer.phone || "unknown",
+    email: customer.email || null,
+    address: customer.address || null,
+    city: customer.city || null,
+    product_interest: entry.manufacturer_name ? `${entry.manufacturer_name} window treatments` : "window treatments",
+    sales_owner: titleOwner(entry.sales_owner),
+    next_action: nextActionForEntryJobStatus(status),
+    next_action_due: null,
+    appointment_start: null,
+    appointment_end: null,
+    estimated_total: money(entry.total_amount),
+    deposit_paid: 0,
+    notes: entry.notes || null,
+    meta: {
+      mts_entry_id: sourceEntryId,
+      target_entry_id: entry.id,
+      account_id: entry.account_id || null,
+      source: "bookkeeping_entry"
+    }
+  });
 }
 
 async function upsertProduct(customerId, jobId, quoteId, bookkeepingEntryId, lineItem, design) {
@@ -401,6 +448,62 @@ async function repairContractUrls() {
       2
     )
   );
+}
+
+async function repairEntryJobs() {
+  const entries = await queryAll(
+    target
+      .from("crm_quote_bookkeeping_entries")
+      .select("*")
+      .is("job_id", null)
+      .order("sold_date", { ascending: false, nullsFirst: false })
+  );
+  let repaired = 0;
+
+  for (const entry of entries) {
+    const customerName = entry.customer_name || "Unknown customer";
+    const customer = await upsertCustomer({
+      name: customerName,
+      phone: null,
+      email: null,
+      address: null,
+      firstSoldDate: entry.sold_date,
+      latestSoldDate: entry.sold_date,
+      latestStatus: entry.source,
+      lifetimeValue: money(entry.total_amount),
+      openBalance: 0,
+      notes: entry.notes
+    });
+    const job = await upsertJobForBookkeepingEntry(customer, entry, customerName);
+    const { error: entryError } = await target.from("crm_quote_bookkeeping_entries").update({ job_id: job.id }).eq("id", entry.id);
+    if (entryError) {
+      console.error(`Failed to attach job ${job.id} to bookkeeping entry ${entry.id}: ${entryError.message}`);
+      process.exit(1);
+    }
+    await attachEntryRelationsToJob(entry.id, job.id);
+    repaired += 1;
+  }
+
+  console.log(
+    JSON.stringify(
+      {
+        entries: entries.length,
+        repaired
+      },
+      null,
+      2
+    )
+  );
+}
+
+async function attachEntryRelationsToJob(entryId, jobId) {
+  for (const table of ["crm_customer_contracts", "crm_quote_bookkeeping_payments"]) {
+    const { error } = await target.from(table).update({ job_id: jobId }).eq("bookkeeping_entry_id", entryId).is("job_id", null);
+    if (error) {
+      console.error(`Failed to attach ${table} rows for bookkeeping entry ${entryId}: ${error.message}`);
+      process.exit(1);
+    }
+  }
 }
 
 function normalizeQuoteBaseUrl(value) {
@@ -688,10 +791,24 @@ function mapQuoteStatus(status) {
 
 function mapJobStatus(status) {
   if (status === "draft" || status === "sent") return "quoted";
+  if (status === "approved") return "sold";
   if (status === "received") return "ordered";
   if (status === "installed") return "installed";
+  if (status === "invoiced" || status === "paid") return "invoiced";
   if (status === "archived") return "closed";
   return status || "quoted";
+}
+
+function jobStatusForBookkeepingEntry(entry) {
+  if (
+    normalizeMatchStatus(entry.installation_match_status) === "matched" ||
+    money(entry.installation_invoice_amount) > 0 ||
+    entry.installation_invoice_url
+  ) {
+    return "installed";
+  }
+  if (entry.manufacturer_order_ref || entry.manufacturer_order_url || entry.manufacturer_document_url) return "ordered";
+  return "sold";
 }
 
 function nextActionForStatus(status) {
@@ -699,7 +816,20 @@ function nextActionForStatus(status) {
   if (status === "ordered") return "Confirm product received";
   if (status === "received") return "Schedule installation";
   if (status === "installed") return "Review bookkeeping";
+  if (status === "invoiced" || status === "paid") return "Close job";
   return "Follow up";
+}
+
+function nextActionForEntryJobStatus(status) {
+  if (status === "sold") return "Order product";
+  if (status === "ordered") return "Confirm product received";
+  if (status === "installed") return "Review bookkeeping";
+  if (status === "invoiced") return "Close job";
+  return "Follow up";
+}
+
+function sourceBookkeepingEntryId(entry) {
+  return entry?.meta?.mts_entry_id || entry.id;
 }
 
 function titleOwner(value) {
