@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
-import { computeQuoteMoney, lineItemSubtotal, parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
+import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
@@ -27,8 +27,20 @@ export type PublicQuoteLine = {
   productName: string;
   styleName: string;
   options: string[];
+  designOptions: PublicQuoteDesignOption[];
   unitPrice: number;
   quantity: number;
+  lineTotal: number;
+  priceReady: boolean;
+};
+
+export type PublicQuoteDesignOption = {
+  id: string;
+  label: string;
+  productName: string;
+  styleName: string;
+  options: string[];
+  unitPrice: number;
   lineTotal: number;
   priceReady: boolean;
 };
@@ -46,6 +58,7 @@ export type PublicQuote = {
   fees: { name: string; amount: number }[];
   discount: number;
   tax: number;
+  sourceTotalAdjustment: number;
   depositDue: number;
   balanceDue: number;
   total: number;
@@ -59,30 +72,123 @@ function dimensions(li: CrmQuoteLineItem): string {
   return `${li.width_in}" W × ${li.height_in}" H`;
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+}
+
+function isLegacyMtsQuote(quote: CrmQuote): boolean {
+  const meta = record(quote.meta);
+  return meta.legacy_quote_system === "mts_sales_quote" || typeof meta.mts_quote_id === "string";
+}
+
+function legacySourceTotalAdjustment(quote: CrmQuote, calculatedTotal: number): number {
+  const meta = record(quote.meta);
+  const storedAdjustment = Number(meta.legacy_source_total_adjustment);
+  if (Number.isFinite(storedAdjustment) && Math.abs(storedAdjustment) >= 0.01) return round2(storedAdjustment);
+  const sourceTotal = Number(meta.legacy_source_total ?? quote.quote_total);
+  if (!Number.isFinite(sourceTotal) || sourceTotal <= 0) return 0;
+  const delta = round2(sourceTotal - calculatedTotal);
+  return Math.abs(delta) >= 0.01 ? delta : 0;
+}
+
+function legacyDesignSnapshot(design: CrmQuoteDesign): {
+  productType?: string;
+  details?: { label: string; value: string }[];
+} | null {
+  const breakdown = record(design.price_breakdown);
+  if (breakdown.source !== "mts_805_bookkeeping") return null;
+  const details = Array.isArray(breakdown.details)
+    ? breakdown.details
+        .map((detail) => {
+          const item = record(detail);
+          const label = typeof item.label === "string" ? item.label : "";
+          const value = typeof item.value === "string" ? item.value : "";
+          return label && value ? { label, value } : null;
+        })
+        .filter((detail): detail is { label: string; value: string } => Boolean(detail))
+    : [];
+  return {
+    productType: typeof breakdown.productType === "string" ? breakdown.productType : undefined,
+    details,
+  };
+}
+
 /** Customer-readable description of a design from the catalog (no prices leaked beyond unit_price). */
 export function describeDesign(design: CrmQuoteDesign): { productName: string; styleName: string; options: string[] } {
+  const legacy = legacyDesignSnapshot(design);
   const product = getProduct(design.product_id);
-  const productName = product?.name ?? design.product_id;
+  const productName = legacy?.productType || product?.name || design.product_id;
   let styleName = "";
   if (design.program_id) {
     styleName = product?.programs.find((p) => p.id === design.program_id)?.name ?? "";
   }
   if (!styleName && design.fabric) styleName = design.fabric;
+  const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];
   const options = (design.surcharges ?? [])
     .map((s) => product?.surcharges.find((x) => x.id === s.id)?.name)
     .filter((n): n is string => Boolean(n));
-  return { productName, styleName, options };
+  return { productName, styleName, options: legacyOptions.length ? legacyOptions : options };
 }
 
-function projectLine(li: CrmQuoteLineItem): PublicQuoteLine {
-  const design = selectedDesign(li);
+function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {
+  const { productName, styleName, options } = describeDesign(design);
+  const priceReady = design.price_status === "ok";
+  const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
+  return {
+    id: design.id,
+    label: design.label || "A",
+    productName,
+    styleName,
+    options,
+    unitPrice,
+    lineTotal: priceReady ? round2(unitPrice * quantity + designOnceTotal(design)) : 0,
+    priceReady,
+  };
+}
+
+function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine {
   const qty = Math.max(1, Math.floor(Number(li.quantity) || 1));
+  if (legacyMts) {
+    const designOptions = [...(li.designs || [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((design) => projectDesignOption(design, qty));
+    const first = designOptions[0] || null;
+    const priceReady = designOptions.length > 0 && designOptions.every((option) => option.priceReady);
+    return {
+      id: li.id,
+      room: li.room || "Window",
+      dimensions: dimensions(li),
+      productName: li.notes || first?.productName || "-",
+      styleName: "",
+      options: [],
+      designOptions,
+      unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
+      quantity: qty,
+      lineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.lineTotal, 0)) : 0,
+      priceReady,
+    };
+  }
+
+  const design = selectedDesign(li);
   if (!design) {
-    return { id: li.id, room: li.room || "Window", dimensions: dimensions(li), productName: "-", styleName: "", options: [], unitPrice: 0, quantity: qty, lineTotal: 0, priceReady: false };
+    return {
+      id: li.id,
+      room: li.room || "Window",
+      dimensions: dimensions(li),
+      productName: "-",
+      styleName: "",
+      options: [],
+      designOptions: [],
+      unitPrice: 0,
+      quantity: qty,
+      lineTotal: 0,
+      priceReady: false
+    };
   }
   const { productName, styleName, options } = describeDesign(design);
   const priceReady = design.price_status === "ok";
   const unitPrice = priceReady ? round2(Number(design.unit_price)) : 0;
+  const lineTotal = priceReady ? lineItemSubtotal(li) : 0;
   return {
     id: li.id,
     room: li.room || "Window",
@@ -90,11 +196,12 @@ function projectLine(li: CrmQuoteLineItem): PublicQuoteLine {
     productName,
     styleName,
     options,
+    designOptions: [projectDesignOption(design, qty)],
     unitPrice,
     quantity: qty,
     // Authoritative billed amount (unit x qty + any per-order surcharge) — matches
     // exactly what the quote/bookkeeping bill, so the customer's math reconciles.
-    lineTotal: priceReady ? lineItemSubtotal(li) : 0,
+    lineTotal,
     priceReady,
   };
 }
@@ -119,14 +226,18 @@ export async function loadPublicQuoteByToken(
   const lineItems = ((items as CrmQuoteLineItem[]) ?? [])
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
-  const lines = lineItems.map(projectLine);
+  const legacyMts = isLegacyMtsQuote(quote);
+  const lines = lineItems.map((lineItem) => projectLine(lineItem, legacyMts));
   const subtotal = round2(lines.reduce((s, l) => s + l.lineTotal, 0));
   // Rebuild the full money breakdown from line items + adjustments (same engine
   // the builder uses), so Subtotal − discount + tax + fees = Total exactly. This
   // also self-heals a stale stored quote_total.
   const adj = parseAdjustments(quote.meta);
   const money = computeQuoteMoney(subtotal, adj);
-  const total = money.total;
+  const sourceTotalAdjustment = legacyMts ? legacySourceTotalAdjustment(quote, money.total) : 0;
+  const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
+  const depositPercent = adj.depositPercent || 0;
+  const depositDue = depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;
 
   let customerName = quote.customer_name || "";
   if (!customerName && quote.job_id) {
@@ -154,8 +265,9 @@ export async function loadPublicQuoteByToken(
     fees: adj.fees,
     discount: money.discountAmount,
     tax: money.taxAmount,
-    depositDue: money.depositRequired,
-    balanceDue: money.balanceDue,
+    sourceTotalAdjustment,
+    depositDue,
+    balanceDue: round2(Math.max(total - depositDue, 0)),
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     business: { name: BUSINESS_NAME, phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || "" },

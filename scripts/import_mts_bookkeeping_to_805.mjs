@@ -8,6 +8,20 @@ const DEFAULT_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
 const IMPORT_SOURCE = "mts_805_bookkeeping";
 const ACTIVE_QUOTE_STATUSES = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"]);
 const KEN_CUT_JESSICA_EXEMPTION_DATE = "2026-06-10";
+const LEGACY_INTERNAL_OPTION_KEYS = new Set([
+  "base_price",
+  "surcharge_total",
+  "manual_price_override",
+  "discount_source_price",
+  "discount_amount",
+  "pricing_method",
+  "pricing_grid_key",
+  "pricing_grid_price",
+  "pricing_grid_width",
+  "pricing_grid_height",
+  "pricing_built_in_adjustment",
+  "sent_price_snapshot"
+]);
 
 loadEnv(".env.local");
 
@@ -97,6 +111,7 @@ if (verifyOnly) {
 }
 
 const designsByLineItemId = groupBy(designs, "line_item_id");
+const lineItemsByQuoteId = groupBy(lineItems, "quote_id");
 const customerByName = new Map();
 const jobIdByMtsQuoteId = new Map();
 const quoteIdByMtsQuoteId = new Map();
@@ -104,6 +119,7 @@ const jobIdByMtsEntryId = new Map();
 const entryIdByMtsEntryId = new Map();
 
 for (const quote of quotes) {
+  const quoteLineItems = lineItemsByQuoteId.get(quote.id) || [];
   const customer = await upsertCustomer({
     name: quote.customer_name || "Unknown customer",
     phone: quote.customer_phone,
@@ -129,7 +145,7 @@ for (const quote of quotes) {
     email: quote.customer_email || null,
     address: quote.customer_address || null,
     city: null,
-    product_interest: inferQuoteProduct(lineItems.filter((item) => item.quote_id === quote.id)),
+    product_interest: inferQuoteProduct(quoteLineItems),
     sales_owner: titleOwner(quote.sales_owner),
     next_action: nextActionForStatus(quote.status),
     next_action_due: null,
@@ -142,6 +158,7 @@ for (const quote of quotes) {
   });
   jobIdByMtsQuoteId.set(quote.id, job.id);
 
+  const legacySubtotal = legacyQuoteSubtotal(quoteLineItems, designsByLineItemId);
   const importedQuote = await upsertOne("crm_quotes", {
     external_source: IMPORT_SOURCE,
     external_id: `quote:${quote.id}`,
@@ -173,13 +190,14 @@ for (const quote of quotes) {
     signed_at: quote.signed_at || null,
     share_token: quote.share_token || null,
     notes: quote.installer_notes || null,
-    meta: { mts_quote_id: quote.id, account_id: quote.account_id }
+    meta: buildImportedQuoteMeta(quote, legacySubtotal)
   });
   quoteIdByMtsQuoteId.set(quote.id, importedQuote.id);
 
+  await upsertImportedQuoteStructure(importedQuote.id, quoteLineItems, designsByLineItemId);
   await upsertContractForQuote(customer.id, importedQuote.id, job.id, quote);
 
-  for (const lineItem of lineItems.filter((item) => item.quote_id === quote.id)) {
+  for (const lineItem of quoteLineItems) {
     const itemDesigns = designsByLineItemId.get(lineItem.id) || [];
     if (!itemDesigns.length) {
       await upsertProduct(customer.id, job.id, importedQuote.id, null, lineItem, null);
@@ -387,6 +405,68 @@ async function upsertProduct(customerId, jobId, quoteId, bookkeepingEntryId, lin
       options_json: design?.options_json || null
     }
   });
+}
+
+async function upsertImportedQuoteStructure(quoteId, quoteLineItems, designsByLineItemId) {
+  const selectedDesignByLineId = new Map();
+
+  for (const lineItem of quoteLineItems.sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0))) {
+    const itemDesigns = (designsByLineItemId.get(lineItem.id) || []).sort(compareLegacyDesigns);
+    selectedDesignByLineId.set(lineItem.id, itemDesigns[0]?.id || null);
+    await upsertOne(
+      "crm_quote_line_items",
+      {
+        id: lineItem.id,
+        quote_id: quoteId,
+        room: lineItem.room_name || null,
+        width_in: decimalMeasurement(lineItem.width_whole, lineItem.width_fraction),
+        height_in: decimalMeasurement(lineItem.height_whole, lineItem.height_fraction),
+        quantity: normalizeQuantity(lineItem.quantity),
+        sort_order: Number(lineItem.sort_order) || 0,
+        selected_design_id: null,
+        notes: lineItem.product_type || null
+      },
+      "id"
+    );
+
+    const usedLabels = new Set();
+    for (let index = 0; index < itemDesigns.length; index += 1) {
+      const design = itemDesigns[index];
+      const label = uniqueDesignLabel(design.variant, usedLabels, index);
+      await upsertOne(
+        "crm_quote_designs",
+        {
+          id: design.id,
+          line_item_id: lineItem.id,
+          label,
+          sort_order: designSortOrder(label, index),
+          product_id: mapLegacyProductId(design.product_type || lineItem.product_type),
+          program_id: null,
+          fabric: design.fabric || design.material || design.shade_type || design.louver_size || null,
+          surcharges: [],
+          motorization: legacyMotorizationSelections(design),
+          unit_price: money(design.unit_price),
+          price_breakdown: legacyDesignBreakdown(lineItem, design, label),
+          price_status: "ok",
+          priced_at: design.created_at || null,
+          notes: design.notes || null
+        },
+        "id"
+      );
+    }
+  }
+
+  for (const [lineItemId, selectedDesignId] of selectedDesignByLineId) {
+    if (!selectedDesignId) continue;
+    const { error } = await target
+      .from("crm_quote_line_items")
+      .update({ selected_design_id: selectedDesignId })
+      .eq("id", lineItemId);
+    if (error) {
+      console.error(`Failed to select imported design ${selectedDesignId} for line item ${lineItemId}: ${error.message}`);
+      process.exit(1);
+    }
+  }
 }
 
 async function upsertContractForQuote(customerId, quoteId, jobId, quote) {
@@ -783,6 +863,175 @@ function inferQuoteProduct(items) {
   return unique.length ? unique.join(", ").toLowerCase() : "window treatments";
 }
 
+function buildImportedQuoteMeta(quote, legacySubtotal) {
+  const adjustments = legacyQuoteAdjustments(quote.installer_notes);
+  const calculatedTotal = computeLegacyTotal(legacySubtotal, adjustments);
+  const sourceTotal = money(quote.total_amount);
+  const sourceTotalAdjustment =
+    sourceTotal > 0 && Math.abs(sourceTotal - calculatedTotal) >= 0.01
+      ? money(sourceTotal - calculatedTotal)
+      : 0;
+
+  return {
+    mts_quote_id: quote.id,
+    account_id: quote.account_id,
+    importedFrom: "MTS 805 bookkeeping",
+    legacy_quote_system: "mts_sales_quote",
+    legacy_total_mode: "sum_all_design_options",
+    legacy_design_subtotal: legacySubtotal,
+    legacy_source_total: sourceTotal,
+    legacy_source_total_adjustment: sourceTotalAdjustment,
+    adjustments
+  };
+}
+
+function legacyQuoteAdjustments(installerNotes) {
+  const controls = parseLegacyAdminControls(installerNotes);
+  const extraFees = controls?.showExtras && Array.isArray(controls.extraFees)
+    ? controls.extraFees
+        .map((fee, index) => ({
+          name: String(fee?.name || `Extra fee ${index + 1}`).slice(0, 80),
+          amount: money(fee?.amount)
+        }))
+        .filter((fee) => fee.amount > 0)
+    : [];
+
+  return {
+    discountPercent: controls?.showDiscount === true ? money(controls.discountPercent) : 0,
+    discountFlat: 0,
+    taxPercent: controls?.showTax === true ? money(controls.taxPercent) : 0,
+    depositPercent: Number.isFinite(Number(controls?.depositPercent)) ? money(controls.depositPercent) : 50,
+    fees: extraFees
+  };
+}
+
+function parseLegacyAdminControls(installerNotes) {
+  if (!installerNotes || typeof installerNotes !== "string") return null;
+  try {
+    const parsed = JSON.parse(installerNotes);
+    return parsed && typeof parsed === "object" ? parsed.__adminControls || null : null;
+  } catch {
+    return null;
+  }
+}
+
+function computeLegacyTotal(subtotal, adjustments) {
+  const fees = Array.isArray(adjustments?.fees)
+    ? adjustments.fees.reduce((sum, fee) => sum + money(fee.amount), 0)
+    : 0;
+  const preDiscount = money(subtotal + fees);
+  const discount = money(preDiscount * (money(adjustments?.discountPercent) / 100) + money(adjustments?.discountFlat));
+  const taxableBase = money(Math.max(preDiscount - discount, 0));
+  const tax = money(taxableBase * (money(adjustments?.taxPercent) / 100));
+  return money(taxableBase + tax);
+}
+
+function legacyQuoteSubtotal(quoteLineItems, designsByLineItemId) {
+  return money(
+    quoteLineItems.reduce((quoteSum, lineItem) => {
+      const designTotal = (designsByLineItemId.get(lineItem.id) || []).reduce(
+        (designSum, design) => designSum + money(design.unit_price),
+        0
+      );
+      return quoteSum + designTotal * normalizeQuantity(lineItem.quantity);
+    }, 0)
+  );
+}
+
+function compareLegacyDesigns(a, b) {
+  const aRank = designSortOrder(normalizeDesignLabel(a.variant), 0);
+  const bRank = designSortOrder(normalizeDesignLabel(b.variant), 0);
+  if (aRank !== bRank) return aRank - bRank;
+  return String(a.created_at || "").localeCompare(String(b.created_at || ""));
+}
+
+function uniqueDesignLabel(rawLabel, usedLabels, index) {
+  const base = normalizeDesignLabel(rawLabel) || String.fromCharCode(65 + Math.min(index, 25));
+  let label = base;
+  let suffix = 2;
+  while (usedLabels.has(label)) {
+    label = `${base}${suffix}`;
+    suffix += 1;
+  }
+  usedLabels.add(label);
+  return label;
+}
+
+function normalizeDesignLabel(rawLabel) {
+  const value = String(rawLabel || "").trim().toUpperCase();
+  return value || "A";
+}
+
+function designSortOrder(label, fallback) {
+  const first = String(label || "").trim().toUpperCase().charCodeAt(0);
+  if (first >= 65 && first <= 90) return first - 65;
+  return fallback;
+}
+
+function mapLegacyProductId(productType) {
+  const lower = String(productType || "").toLowerCase();
+  if (lower.includes("roller") || lower.includes("solar") || lower.includes("blackout")) return "roller";
+  if (lower.includes("roman")) return "roman";
+  if (lower.includes("honeycomb") || lower.includes("cellular")) return "honeycomb";
+  if (lower.includes("sheer")) return "perfectsheer";
+  if (lower.includes("smart drape") || lower.includes("smartdrape")) return "smartdrape";
+  if (lower.includes("vertical")) return "synchrony_vertical";
+  if (lower.includes("faux")) return "faux_wood";
+  if (lower.includes("wood blind")) return "wood_blinds";
+  if (lower.includes("shutter")) return "norman_shutters";
+  return "roller";
+}
+
+function legacyMotorizationSelections(design) {
+  const motor = design.motor_type || stringOption(design.options_json, "motor_type");
+  if (!motor) return [];
+  return [{ groupId: "legacy_mts_motorization", optionId: String(motor), units: 1 }];
+}
+
+function legacyDesignBreakdown(lineItem, design, label) {
+  return {
+    source: "mts_805_bookkeeping",
+    pricingMethod: "legacy_mts_snapshot",
+    legacyTotalMode: "sum_all_design_options",
+    mtsLineItemId: lineItem.id,
+    mtsDesignId: design.id,
+    label,
+    productType: design.product_type || lineItem.product_type || null,
+    details: legacyDesignDetails(design),
+    optionsJson: design.options_json || null
+  };
+}
+
+function legacyDesignDetails(design) {
+  const directFields = [
+    ["Supplier", design.supplier],
+    ["Material", design.material],
+    ["Louver Size", design.louver_size],
+    ["Tilt Type", design.tilt_type],
+    ["Hinge Color", design.hinge_color],
+    ["Panel Config", design.panel_config],
+    ["Mount Type", design.mount_type],
+    ["Shade Type", design.shade_type],
+    ["Lift System", design.lift_system],
+    ["Valance", design.valance],
+    ["Fabric", design.fabric],
+    ["Motor Type", design.motor_type],
+    ["Remote Type", design.remote_type]
+  ];
+  const details = directFields
+    .filter(([, value]) => hasLegacyValue(value))
+    .map(([label, value]) => ({ label, value: String(value) }));
+  if (design.hard_surface_install) details.push({ label: "Hard Surface Install", value: "Yes" });
+  if (design.ladder_over_15ft) details.push({ label: "Requires Ladder Over 15ft", value: "Yes" });
+  if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
+  for (const [key, value] of Object.entries(design.options_json || {})) {
+    if (!hasLegacyValue(value) || LEGACY_INTERNAL_OPTION_KEYS.has(key)) continue;
+    details.push({ label: humanizeLegacyKey(key), value: formatLegacyOptionValue(value) });
+  }
+  if (design.notes) details.push({ label: "Notes", value: design.notes });
+  return details;
+}
+
 function mapQuoteStatus(status) {
   if (status === "received") return "received";
   if (status === "archived") return "archived";
@@ -862,10 +1111,58 @@ function formatMeasurement(whole, fraction) {
   return frac && frac !== "0" ? `${base} ${frac}\"` : base ? `${base}\"` : null;
 }
 
+function decimalMeasurement(whole, fraction) {
+  const base = Number(whole) || 0;
+  const frac = fractionToDecimal(fraction);
+  const total = base + frac;
+  return total > 0 ? Math.round(total * 1000) / 1000 : null;
+}
+
+function fractionToDecimal(fraction) {
+  const value = String(fraction || "").trim();
+  if (!value || value === "0") return 0;
+  if (value.includes("/")) {
+    const [num, den] = value.split("/").map(Number);
+    return Number.isFinite(num) && Number.isFinite(den) && den !== 0 ? num / den : 0;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function normalizeQuantity(value) {
+  const parsed = Math.floor(Number(value) || 1);
+  return parsed > 0 ? parsed : 1;
+}
+
 function stringOption(options, key) {
   if (!options || typeof options !== "object") return null;
   const value = options[key];
   return typeof value === "string" ? value : null;
+}
+
+function hasLegacyValue(value) {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+}
+
+function formatLegacyOptionValue(value) {
+  if (Array.isArray(value)) return value.map(formatLegacyOptionValue).join(", ");
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, nested]) => `${humanizeLegacyKey(key)}: ${formatLegacyOptionValue(nested)}`)
+      .join(", ");
+  }
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
+}
+
+function humanizeLegacyKey(key) {
+  return String(key)
+    .replace(/_/g, " ")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function groupBy(rows, key) {

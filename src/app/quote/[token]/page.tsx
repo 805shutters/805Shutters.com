@@ -90,13 +90,35 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
               <td style={td}>
                 {line.priceReady ? (
                   <div>
-                    <div>
-                      {line.productName}
-                      {line.styleName ? ` — ${line.styleName}` : ""}
-                    </div>
-                    {line.options.length ? (
-                      <div style={{ fontSize: 13, opacity: 0.7 }}>{line.options.join(", ")}</div>
-                    ) : null}
+                    {line.designOptions.length > 1 ? (
+                      <div style={{ display: "grid", gap: 8 }}>
+                        {line.designOptions.map((option) => (
+                          <div key={option.id} style={optionBox}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                              <strong>Option {option.label}</strong>
+                              <span style={{ whiteSpace: "nowrap" }}>{money(option.lineTotal)}</span>
+                            </div>
+                            <div>
+                              {option.productName}
+                              {option.styleName ? ` — ${option.styleName}` : ""}
+                            </div>
+                            {option.options.length ? (
+                              <div style={{ fontSize: 13, opacity: 0.7 }}>{option.options.join(", ")}</div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div>
+                        <div>
+                          {line.productName}
+                          {line.styleName ? ` — ${line.styleName}` : ""}
+                        </div>
+                        {line.options.length ? (
+                          <div style={{ fontSize: 13, opacity: 0.7 }}>{line.options.join(", ")}</div>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <em style={{ opacity: 0.6 }}>Pricing in progress</em>
@@ -123,6 +145,12 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         ))}
         {quote.discount > 0 ? <Row label="Discount" value={`− ${money(quote.discount)}`} /> : null}
         {quote.tax > 0 ? <Row label="Tax" value={money(quote.tax)} /> : null}
+        {quote.sourceTotalAdjustment ? (
+          <Row
+            label="MTS saved total adjustment"
+            value={`${quote.sourceTotalAdjustment > 0 ? "" : "− "}${money(Math.abs(quote.sourceTotalAdjustment))}`}
+          />
+        ) : null}
         <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(quote.total)} strong />
         </div>
@@ -156,3 +184,4 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;
+const optionBox = { border: "1px solid #eeeeeb", borderRadius: 8, padding: "8px 10px", background: "#fafaf8" } as const;
