@@ -31,7 +31,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
       <div className="no-print" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <PrintButton />
       </div>
-      <header style={{ borderBottom: "2px solid #0f172a", paddingBottom: 16, marginBottom: 20 }}>
+      <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20 }}>
         <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
           {quote.business.name}
         </p>
@@ -51,11 +51,11 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
               href={`/quote/${v.token}`}
               style={{
                 textDecoration: "none",
-                border: "1px solid #cbd5e1",
+                border: "1px solid #d8d8d2",
                 borderRadius: 8,
                 padding: "8px 14px",
-                background: v.current ? "#0f172a" : "#fff",
-                color: v.current ? "#fff" : "#0f172a",
+                background: v.current ? "#0b0b0b" : "#ffffff",
+                color: v.current ? "#ffffff" : "#0b0b0b",
               }}
             >
               Option {v.label} — {money(v.total)}
@@ -66,14 +66,14 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
       ) : null}
 
       {quote.signed ? (
-        <div style={{ background: "#ecfdf5", border: "1px solid #6ee7b7", borderRadius: 10, padding: 16, marginBottom: 20 }}>
+        <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: 16, marginBottom: 20 }}>
           <strong>This quote has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
         </div>
       ) : null}
 
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
         <thead>
-          <tr style={{ textAlign: "left", borderBottom: "1px solid #cbd5e1" }}>
+          <tr style={{ textAlign: "left", borderBottom: "1px solid #d8d8d2" }}>
             <th style={th}>Window</th>
             <th style={th}>Product</th>
             <th style={{ ...th, textAlign: "right" }}>Qty</th>
@@ -82,7 +82,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         </thead>
         <tbody>
           {quote.lines.map((line) => (
-            <tr key={line.id} style={{ borderBottom: "1px solid #eef2f7", verticalAlign: "top" }}>
+            <tr key={line.id} style={{ borderBottom: "1px solid #eeeeeb", verticalAlign: "top" }}>
               <td style={td}>
                 <strong>{line.room}</strong>
                 <div style={{ fontSize: 13, opacity: 0.7 }}>{line.dimensions}</div>
@@ -126,7 +126,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         <Row label="Subtotal" value={money(quote.subtotal)} />
         {quote.depositDue > 0 ? <Row label="Deposit due" value={money(quote.depositDue)} /> : null}
         {quote.balanceDue > 0 ? <Row label="Balance" value={money(quote.balanceDue)} /> : null}
-        <div style={{ borderTop: "2px solid #0f172a", marginTop: 8, paddingTop: 8 }}>
+        <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(quote.total)} strong />
         </div>
       </div>
@@ -154,6 +154,6 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
   );
 }
 
-const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0f172a" } as const;
+const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;

@@ -237,7 +237,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               type="button"
               onClick={sendToCustomer}
               disabled={busy}
-              style={{ ...closeBtn, background: "#2563eb", color: "#fff", borderColor: "#2563eb" }}
+              style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}
             >
               Send to customer
             </button>
@@ -260,7 +260,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
           </p>
         ) : null}
         {sendMsg ? (
-          <p style={{ padding: "6px 16px", margin: 0, fontSize: 13, color: "#166534", background: "#f0fdf4" }}>{sendMsg}</p>
+          <p style={{ padding: "6px 16px", margin: 0, fontSize: 13, color: "#3a3a36", background: "#eeeeeb" }}>{sendMsg}</p>
         ) : null}
         {!quote || !catalog ? (
           <p style={{ padding: 24 }}>Loading…</p>
@@ -273,7 +273,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   key={v.id}
                   type="button"
                   onClick={() => v.id !== quoteId && onSwitch?.(v.id)}
-                  style={{ ...ghostBtn, background: v.id === quoteId ? "#0f172a" : "#fff", color: v.id === quoteId ? "#fff" : "#0f172a" }}
+                  style={{ ...ghostBtn, background: v.id === quoteId ? "#0b0b0b" : "#ffffff", color: v.id === quoteId ? "#ffffff" : "#0b0b0b" }}
                 >
                   Quote {v.label}
                   {v.signed ? " ✓" : ""}
@@ -322,7 +322,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     const isSelected = li.selected_design_id === design.id;
                     const priceOk = design.price_status === "ok";
                     return (
-                      <div key={design.id} style={{ ...designCard, borderColor: isSelected ? "#2563eb" : "#e2e8f0" }}>
+                      <div key={design.id} style={{ ...designCard, borderColor: isSelected ? "#111111" : "#d8d8d2" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                           <label style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
                             <input
@@ -334,7 +334,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             />
                             Option {design.label}
                           </label>
-                          <span style={{ marginLeft: "auto", fontWeight: 700, color: priceOk ? "#0f172a" : "#b91c1c" }}>
+                          <span style={{ marginLeft: "auto", fontWeight: 700, color: priceOk ? "#0b0b0b" : "#4d4d49" }}>
                             {priceOk ? money(design.unit_price) : design.price_status}
                           </span>
                           <button type="button" style={ghostBtn} disabled={busy} onClick={() => deleteDesign(design.id)}>
@@ -395,7 +395,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                         </div>
 
                         {!priceOk && design.price_breakdown && "error" in design.price_breakdown ? (
-                          <p style={{ color: "#b91c1c", fontSize: 13, margin: "8px 0 0" }}>
+                          <p style={{ color: "#4d4d49", fontSize: 13, margin: "8px 0 0" }}>
                             {String((design.price_breakdown as { error?: string }).error)}
                           </p>
                         ) : null}
@@ -529,7 +529,7 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
   }
 
   return (
-    <div style={{ marginTop: 16, border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
+    <div style={{ marginTop: 16, border: "1px solid #d8d8d2", borderRadius: 8, padding: 14 }}>
       <strong style={{ fontSize: 13 }}>Adjustments</strong>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
         <Field label="Discount %" width={90}>
@@ -590,7 +590,7 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
 const overlayStyle: CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(15,23,42,0.55)",
+  background: "rgba(17,17,17,0.55)",
   display: "flex",
   justifyContent: "center",
   alignItems: "flex-start",
@@ -598,8 +598,8 @@ const overlayStyle: CSSProperties = {
   padding: "24px 12px",
 };
 const panelStyle: CSSProperties = {
-  background: "#fff",
-  color: "#0f172a",
+  background: "#ffffff",
+  color: "#0b0b0b",
   borderRadius: 12,
   width: "min(960px, 100%)",
   maxHeight: "92vh",
@@ -612,14 +612,14 @@ const headerStyle: CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   padding: "16px 20px",
-  borderBottom: "1px solid #e2e8f0",
+  borderBottom: "1px solid #d8d8d2",
 };
-const windowCard: CSSProperties = { border: "1px solid #e2e8f0", borderRadius: 10, padding: 14, marginBottom: 14, background: "#f8fafc" };
-const designCard: CSSProperties = { border: "2px solid #e2e8f0", borderRadius: 8, padding: 12, background: "#fff" };
-const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #f1f5f9", borderRadius: 6 };
-const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0f172a", color: "#fff", borderRadius: 8, fontSize: 18 };
-const closeBtn: CSSProperties = { border: "1px solid #cbd5e1", background: "#fff", borderRadius: 6, padding: "6px 14px", cursor: "pointer" };
-const ghostBtn: CSSProperties = { border: "1px solid #e2e8f0", background: "#fff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 };
-const primaryBtn: CSSProperties = { border: "none", background: "#2563eb", color: "#fff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
-const addBtn: CSSProperties = { border: "1px dashed #94a3b8", background: "#fff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
-const errorStyle: CSSProperties = { color: "#b91c1c", background: "#fef2f2", padding: "8px 16px", margin: 0 };
+const windowCard: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 10, padding: 14, marginBottom: 14, background: "#fbfbfa" };
+const designCard: CSSProperties = { border: "2px solid #d8d8d2", borderRadius: 8, padding: 12, background: "#ffffff" };
+const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #eeeeeb", borderRadius: 6 };
+const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0b0b0b", color: "#ffffff", borderRadius: 8, fontSize: 18 };
+const closeBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "6px 14px", cursor: "pointer" };
+const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 };
+const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
+const addBtn: CSSProperties = { border: "1px dashed #b8b6ae", background: "#ffffff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
+const errorStyle: CSSProperties = { color: "#4d4d49", background: "#f4f4f2", padding: "8px 16px", margin: 0 };

@@ -54,11 +54,11 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const subject = `Your 805 Shutters quote${total > 0 ? ` — ${amount}` : ""}`;
   const text = `Hi ${name},\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}. Review and approve it here:\n${url}\n\nThank you!\n805 Shutters`;
   const html = `<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto">
-  <h2 style="color:#0f172a">Your 805 Shutters quote is ready</h2>
+  <h2 style="color:#0b0b0b">Your 805 Shutters quote is ready</h2>
   <p>Hi ${escapeHtml(name)}, your quote${total > 0 ? ` of <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
-  <p style="margin:24px 0"><a href="${escapeAttr(url)}" style="background:#0f172a;color:#fff;padding:12px 22px;border-radius:8px;text-decoration:none">Review &amp; approve your quote</a></p>
-  <p style="color:#64748b;font-size:13px">Or paste this link into your browser:<br>${escapeHtml(url)}</p>
-  <p style="color:#64748b;font-size:13px">Thank you,<br>805 Shutters</p>
+  <p style="margin:24px 0"><a href="${escapeAttr(url)}" style="background:#0b0b0b;color:#ffffff;padding:12px 22px;border-radius:8px;text-decoration:none">Review &amp; approve your quote</a></p>
+  <p style="color:#5b5b58;font-size:13px">Or paste this link into your browser:<br>${escapeHtml(url)}</p>
+  <p style="color:#5b5b58;font-size:13px">Thank you,<br>805 Shutters</p>
 </div>`;
   return { subject, html, text };
 }

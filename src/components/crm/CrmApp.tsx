@@ -1575,15 +1575,15 @@ function BookkeepingSnapshot({ rows }: { rows: CrmBookkeepingRow[] }) {
 // ---- Command Center analytics dashboard ----
 
 const DONUT_COLORS = [
-  "#9a7d58",
-  "#3f3a33",
-  "#c2a079",
-  "#6f5638",
-  "#7d8c7a",
-  "#b8843f",
-  "#8a6d4a",
-  "#d8c7a8",
-  "#5b5048"
+  "#0b0b0b",
+  "#3a3a36",
+  "#7d7a72",
+  "#b8b6ae",
+  "#e5e4e2",
+  "#5b5b58",
+  "#9a9890",
+  "#d8d8d2",
+  "#2b2b28"
 ];
 const WON_JOB_STATUSES: CrmJobStatus[] = ["sold", "ordered", "installed", "invoiced", "closed"];
 const OPEN_JOB_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted"];
@@ -2690,19 +2690,21 @@ function CustomerFilesView({
                 <div className="crm-customer-section">
                   <h4>Contracts + Documents</h4>
                   <div className="crm-document-list">
-                    {file.contracts.map((contract) =>
-                      contract.contract_url ? (
-                        <a href={contract.contract_url} target="_blank" rel="noreferrer" key={contract.id}>
+                    {file.contracts.map((contract) => {
+                      const url = contractUrl(contract);
+                      return url ? (
+                        <a href={url} target="_blank" rel="noreferrer" key={contract.id}>
                           {contract.title}
                           <span>{contract.status || "Document"}</span>
+                          <em>View contract</em>
                         </a>
                       ) : (
                         <div key={contract.id}>
                           {contract.title}
                           <span>{contract.status || "No link"}</span>
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                     {!file.contracts.length ? <p>No contract or document link attached.</p> : null}
                   </div>
                 </div>

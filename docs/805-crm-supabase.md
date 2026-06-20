@@ -165,7 +165,7 @@ Before importing live MTS data, apply all migrations to the dedicated 805 projec
 MTS_SUPABASE_URL=<mts-project-url>
 MTS_SUPABASE_SERVICE_ROLE_KEY=<mts-service-role-key>
 MTS_805_ACCOUNT_ID=72ccf12a-11c0-4261-8ad0-31af8ad0bbfb
-MTS_PUBLIC_QUOTE_BASE_URL=https://mtsinstallationsandrepairs.lovable.app/quote
+CONTRACT_PUBLIC_QUOTE_BASE_URL=https://www.805shutters.com/quote
 ```
 
 Run a count-only dry run first:
@@ -181,6 +181,11 @@ node scripts/import_mts_bookkeeping_to_805.mjs
 ```
 
 The import is keyed by the original MTS ids, so it can be rerun without duplicating imported jobs, quotes, bookkeeping rows, products, or contracts.
+Contract links are written to the new 805 quote route when a share token exists. To repoint already-imported contract rows without rereading MTS, run:
+
+```bash
+node scripts/import_mts_bookkeeping_to_805.mjs --repair-contract-urls
+```
 
 ## Google login
 

@@ -13,26 +13,43 @@ loadEnv(".env.local");
 
 const dryRun = process.argv.includes("--dry-run");
 const verifyOnly = process.argv.includes("--verify");
+const repairContractUrlsOnly = process.argv.includes("--repair-contract-urls");
 const mtsUrl = process.env.MTS_SUPABASE_URL;
 const mtsKey = process.env.MTS_SUPABASE_SERVICE_ROLE_KEY;
 const targetUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const targetKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const accountId = process.env.MTS_805_ACCOUNT_ID || DEFAULT_805_ACCOUNT_ID;
-const quoteBaseUrl = process.env.MTS_PUBLIC_QUOTE_BASE_URL || "https://mtsinstallationsandrepairs.lovable.app/quote";
+const quoteBaseUrl = normalizeQuoteBaseUrl(
+  process.env.CONTRACT_PUBLIC_QUOTE_BASE_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "https://www.805shutters.com"
+);
+const target = targetUrl && targetKey
+  ? createClient(targetUrl, targetKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  : null;
 
-if (!mtsUrl || !mtsKey || !targetUrl || !targetKey) {
+if (repairContractUrlsOnly) {
+  if (!target) {
+    console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY for contract URL repair.");
+    process.exit(1);
+  }
+  await repairContractUrls();
+  process.exit(0);
+}
+
+if (!mtsUrl || !mtsKey || !target) {
   console.error(
     [
       "Missing required environment values.",
       "Set MTS_SUPABASE_URL, MTS_SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY.",
-      "Use --dry-run to inspect counts after those are present."
+      "Use --dry-run to inspect counts after those are present.",
+      "Use --repair-contract-urls with only target Supabase env to repoint imported contract links to the 805 website."
     ].join("\n")
   );
   process.exit(1);
 }
 
 const mts = createClient(mtsUrl, mtsKey, { auth: { persistSession: false, autoRefreshToken: false } });
-const target = createClient(targetUrl, targetKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const quotes = await queryAll(mts.from("sales_quotes").select("*").eq("account_id", accountId).order("created_at"));
 const entries = await queryAll(mts.from("quote_bookkeeping_entries").select("*").eq("account_id", accountId).order("created_at"));
@@ -327,7 +344,7 @@ async function upsertProduct(customerId, jobId, quoteId, bookkeepingEntryId, lin
 
 async function upsertContractForQuote(customerId, quoteId, jobId, quote) {
   if (!quote.share_token && !quote.customer_signature && !quote.signed_at) return null;
-  const url = quote.share_token ? `${quoteBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(quote.share_token)}` : null;
+  const url = quote.share_token ? quoteUrlForToken(quote.share_token) : null;
   return upsertOne("crm_customer_contracts", {
     external_source: IMPORT_SOURCE,
     external_id: `contract:${quote.id}`,
@@ -347,6 +364,52 @@ async function upsertContractForQuote(customerId, quoteId, jobId, quote) {
       has_signature: Boolean(quote.customer_signature)
     }
   });
+}
+
+async function repairContractUrls() {
+  const contracts = await queryAll(
+    target
+      .from("crm_customer_contracts")
+      .select("id, share_token, contract_url")
+      .not("share_token", "is", null)
+      .order("created_at")
+  );
+  let updated = 0;
+
+  for (const contract of contracts) {
+    const nextUrl = quoteUrlForToken(contract.share_token);
+    if (!nextUrl || contract.contract_url === nextUrl) continue;
+    const { error } = await target
+      .from("crm_customer_contracts")
+      .update({ contract_url: nextUrl })
+      .eq("id", contract.id);
+    if (error) {
+      console.error(`Failed to update contract ${contract.id}: ${error.message}`);
+      process.exit(1);
+    }
+    updated += 1;
+  }
+
+  console.log(
+    JSON.stringify(
+      {
+        quoteBaseUrl,
+        contracts: contracts.length,
+        updated
+      },
+      null,
+      2
+    )
+  );
+}
+
+function normalizeQuoteBaseUrl(value) {
+  const base = String(value || "https://www.805shutters.com").replace(/\/+$/, "");
+  return base.endsWith("/quote") ? base : `${base}/quote`;
+}
+
+function quoteUrlForToken(token) {
+  return token ? `${quoteBaseUrl}/${encodeURIComponent(token)}` : null;
 }
 
 async function upsertOne(table, row, onConflict = "external_source,external_id") {
