@@ -78,6 +78,10 @@ export const images = {
   commercialStorefront: "/images/product-previews/commercial-socal-storefront-corner.jpg",
   commercialSchool: "/images/product-previews/commercial-socal-school.jpg",
   commercialWarehouse: "/images/product-previews/commercial-industrial-warehouse.jpg",
+  aboutLegacy: "/images/legacy-wordpress/about-blue-blinds.jpg",
+  aboutLegacyFull: "/images/legacy-wordpress/about-blue-blinds-full.jpg",
+  aboutLegacyHome: "/images/legacy-wordpress/about-legacy-home-slider.jpg",
+  aboutLegacyShades: "/images/legacy-wordpress/about-legacy-shades-header.jpg",
   project:
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
@@ -569,20 +573,75 @@ const supportPages: SitePage[] = [
     path: "/about/",
     title: "About 805 Shutters | Family-Owned Ventura County Window Treatments",
     description:
-      "Learn about 805 Shutters, a family-owned Ventura County company installing shutters, shades, blinds, and commercial window coverings.",
-    h1: "Family-Owned Window Treatment Company",
-    eyebrow: "Est. 1995",
+      "Learn about 805 Shutters, Shades & Blinds, a family-owned Ventura County window treatment company with over 30 years of local experience and 5-star Yelp reviews.",
+    h1: "About 805 Shutters, Shades & Blinds",
+    eyebrow: "Family-owned by Ken Hill",
     intro:
-      "805 Shutters, Shades & Blinds is a local Ventura County window treatment company focused on product guidance, careful measuring, and professional installation.",
-    image: images.hero,
-    imageAlt: "805 Shutters family-owned local showroom style installation",
+      "805 Shutters, Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities. For more than 30 years, homeowners and businesses have trusted us for custom shutters, shades, blinds, commercial roller shades, and window coverings installed with personal service.",
+    image: images.aboutLegacy,
+    imageAlt: "Legacy 805 Shutters blue blinds photo from the previous About page",
+    gallery: [
+      {
+        image: images.aboutLegacyFull,
+        imageAlt: "Blue blinds legacy photo from the previous 805 Shutters website"
+      },
+      {
+        image: images.aboutLegacyHome,
+        imageAlt: "Legacy 805 Shutters window treatment room photo from the previous website"
+      },
+      {
+        image: images.aboutLegacyShades,
+        imageAlt: "Legacy 805 Shutters shades header photo from the previous website"
+      }
+    ],
     sections: [
       {
-        heading: "Local Experience",
+        heading: "Owner: Ken Hill",
         body:
-          "The team helps homeowners and businesses compare shutters, shades, blinds, and commercial window coverings with clear recommendations for each room."
+          "The previous 805 Shutters website identified Ken Hill as the public owner/author for the business and presented 805 Shutters as family-owned and operated. That local owner history now carries forward on the redesigned site with the same focus on personal service, product guidance, careful measuring, and professional installation."
+      },
+      {
+        heading: "Family-Owned Local Service",
+        body:
+          "We are not a national call center or a one-size-fits-all installer. Customers work with a local team that understands Ventura County homes, coastal light, privacy needs, heat control, and the details that matter when choosing window treatments for daily use."
+      },
+      {
+        heading: "Custom Measuring, Sales, And Installation",
+        body:
+          "Every project starts with the right measurements and product guidance. We help customers choose window treatments that fit their home, budget, light-control needs, privacy goals, and style. Our core services include plantation shutters, interior shutters, roller shades, Roman shades, woven shades, motorized shades, wood blinds, faux wood blinds, vertical blinds, commercial window coverings, and commercial roller shades."
+      },
+      {
+        heading: "Trusted Reputation",
+        body:
+          "805 Shutters has a 5-star Yelp review reputation, with customers regularly mentioning responsive service, professional installation, knowledgeable recommendations, and a smooth experience from consultation through completion. You can review public customer feedback on Yelp, BBB, and MapQuest.",
+        links: [
+          {
+            label: "Yelp reviews",
+            href: "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2"
+          },
+          {
+            label: "BBB profile",
+            href: "https://www.bbb.org/us/ca/camarillo/profile/shutters/805-shutters-shades-blinds-1236-92080266"
+          },
+          {
+            label: "MapQuest listing",
+            href: "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738"
+          }
+        ]
+      },
+      {
+        heading: "Service Area",
+        body:
+          "We serve Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities."
+      },
+      {
+        heading: "Start With A Free Consultation",
+        body:
+          "Call (805) 806-9344 or visit our contact page to schedule a free in-home consultation.",
+        links: [{ label: "Contact 805 Shutters", href: "/contact/" }]
       }
-    ]
+    ],
+    cta: "Schedule a free in-home consultation"
   },
   {
     path: "/contact/",

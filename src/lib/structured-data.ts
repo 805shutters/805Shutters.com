@@ -5,18 +5,57 @@ import type { AnswerPage } from "./llm-search-pages";
 import { commercialFaqs } from "./commercial-mode-data";
 
 export function localBusinessJsonLd() {
+  const sameAs = Array.from(
+    new Set([
+      site.social.facebook,
+      site.social.instagram,
+      site.social.yelp,
+      "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
+      "https://www.bbb.org/us/ca/camarillo/profile/shutters/805-shutters-shades-blinds-1236-92080266",
+      "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738"
+    ])
+  );
+
   return {
     "@context": "https://schema.org",
     "@type": "HomeAndConstructionBusiness",
     "@id": `${site.baseUrl}#local-business`,
     name: site.name,
+    legalName: "805 Shutters, Shades & Blinds",
     alternateName: site.shortName,
     url: site.baseUrl,
     telephone: site.phone,
     email: site.email,
     image: `${site.baseUrl}/images/805-hero-window-treatments.png`,
     logo: `${site.baseUrl}/brand/805-shutters-logo-exact-transparent.png`,
-    sameAs: [site.social.facebook, site.social.instagram, site.social.yelp],
+    sameAs,
+    description:
+      "805 Shutters, Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
+    foundingDate: "1995",
+    founder: {
+      "@type": "Person",
+      name: "Ken Hill"
+    },
+    owner: {
+      "@type": "Person",
+      name: "Ken Hill"
+    },
+    priceRange: "$$",
+    openingHoursSpecification: [
+      {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday"
+        ],
+        opens: "08:00",
+        closes: "18:00"
+      }
+    ],
     areaServed: site.areas.map((area) => ({
       "@type": "City",
       name: area
@@ -27,7 +66,10 @@ export function localBusinessJsonLd() {
     },
     address: {
       "@type": "PostalAddress",
+      streetAddress: "2209 Barbara Dr",
+      addressLocality: "Santa Rosa Valley",
       addressRegion: "CA",
+      postalCode: "93012",
       addressCountry: "US"
     },
     knowsAbout: [
