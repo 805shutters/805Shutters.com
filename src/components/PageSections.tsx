@@ -272,7 +272,7 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   },
   {
     label: "Honeycomb Shades",
-    tagline: "True room darkening rest",
+    tagline: "True room darkening rest.",
     image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png",
     imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
   },
