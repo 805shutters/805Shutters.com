@@ -5,7 +5,9 @@ import {
   CrmInstallationInvoiceEmail,
   CrmInstallationInvoiceEmailStatus,
   CrmJob,
-  CrmQuote
+  CrmJobStatus,
+  CrmQuote,
+  CrmQuoteStatus
 } from "@/lib/crm/types";
 
 type CrmSupabaseClient = SupabaseClient;
@@ -14,6 +16,9 @@ const DEFAULT_MAILBOX = "805@805shutters.com";
 const DEFAULT_MAX_RESULTS = 50;
 const AUTO_APPLY_MIN_NAME_CONFIDENCE = 0.78;
 const AUTO_APPLY_MIN_AMOUNT_CONFIDENCE = 0.7;
+const INSTALLATION_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "invoiced";
+const PAYMENT_COLLECTION_JOB_STATUS: CrmJobStatus = "invoiced";
+const PAYMENT_COLLECTION_NEXT_ACTION = "Collect payment";
 
 type GmailHeader = {
   name: string;
@@ -123,6 +128,10 @@ type QuoteRow = Pick<
 >;
 
 type JobRow = Pick<CrmJob, "id" | "customer_name" | "status" | "estimated_total">;
+type WorkflowPatch = {
+  quotePatch: Record<string, unknown> | null;
+  jobPatch: Record<string, unknown> | null;
+};
 
 function defaultQuery(mailbox: string) {
   return `to:${mailbox} newer_than:30d (invoice OR "amount due" OR "balance due" OR "invoice total")`;
@@ -654,6 +663,60 @@ function isSameMoney(left: number, right: number) {
   return Math.abs(roundMoney(left) - roundMoney(right)) < 0.01;
 }
 
+function metadataRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+export function buildInstallationInvoiceWorkflowPatches(input: {
+  currentQuote?: { status?: string | null; installed_at?: string | null; meta?: unknown } | null;
+  currentJob?: { status?: string | null; meta?: unknown } | null;
+  messageId: string;
+  threadId?: string | null;
+  actorEmail?: string;
+  now: string;
+}): WorkflowPatch {
+  const workflowMeta = {
+    installationInvoiceSource: "gmail",
+    installationInvoiceMessageId: input.messageId,
+    installationInvoiceThreadId: input.threadId || null,
+    installationInvoiceWorkflowAppliedBy: input.actorEmail || "installation-invoice-puller",
+    installationInvoiceWorkflowAppliedAt: input.now
+  };
+  const quoteStatus = String(input.currentQuote?.status || "");
+  const quoteIsTerminal = quoteStatus === "paid" || quoteStatus === "archived" || quoteStatus === "lost";
+  const jobStatus = String(input.currentJob?.status || "");
+  const jobIsTerminal = jobStatus === "closed" || jobStatus === "lost";
+
+  return {
+    quotePatch: input.currentQuote
+      ? {
+          status: quoteIsTerminal ? quoteStatus : INSTALLATION_COMPLETE_QUOTE_STATUS,
+          installed_at: input.currentQuote.installed_at || input.now,
+          meta: {
+            ...metadataRecord(input.currentQuote.meta),
+            ...workflowMeta,
+            installationInvoicePreviousQuoteStatus: quoteStatus || null
+          }
+        }
+      : null,
+    jobPatch: input.currentJob
+      ? {
+          ...(jobIsTerminal
+            ? {}
+            : {
+                status: PAYMENT_COLLECTION_JOB_STATUS,
+                next_action: PAYMENT_COLLECTION_NEXT_ACTION
+              }),
+          meta: {
+            ...metadataRecord(input.currentJob.meta),
+            ...workflowMeta,
+            installationInvoicePreviousJobStatus: jobStatus || null
+          }
+        }
+      : null
+  };
+}
+
 function autoApplyDecision(
   match: InstallationInvoiceMatch,
   extraction: ExtractedInstallationInvoice
@@ -698,6 +761,64 @@ function autoApplyDecision(
   return { status: "matched", reason: match.reason, canApply: true };
 }
 
+async function advanceInstallationInvoiceWorkflow(
+  supabase: CrmSupabaseClient,
+  candidate: InstallationInvoiceCandidate,
+  message: GmailMessage,
+  actorEmail: string | undefined,
+  now: string
+) {
+  let currentQuote: { status?: string | null; installed_at?: string | null; meta?: unknown } | null = null;
+  let currentJob: { status?: string | null; meta?: unknown } | null = null;
+
+  if (candidate.quoteId) {
+    const { data, error } = await supabase
+      .from("crm_quotes")
+      .select("status,installed_at,meta")
+      .eq("id", candidate.quoteId)
+      .maybeSingle();
+    if (error) {
+      throw new CrmAuthError(502, "Installation invoice matched, but the quote status could not be loaded.");
+    }
+    currentQuote = data;
+  }
+
+  if (candidate.jobId) {
+    const { data, error } = await supabase
+      .from("crm_jobs")
+      .select("status,meta")
+      .eq("id", candidate.jobId)
+      .maybeSingle();
+    if (error) {
+      throw new CrmAuthError(502, "Installation invoice matched, but the job status could not be loaded.");
+    }
+    currentJob = data;
+  }
+
+  const { quotePatch, jobPatch } = buildInstallationInvoiceWorkflowPatches({
+    currentQuote,
+    currentJob,
+    messageId: message.id,
+    threadId: message.threadId || null,
+    actorEmail,
+    now
+  });
+
+  if (quotePatch && candidate.quoteId) {
+    const { error } = await supabase.from("crm_quotes").update(quotePatch).eq("id", candidate.quoteId);
+    if (error) {
+      throw new CrmAuthError(502, "Installation invoice matched, but the quote could not be moved to payment collection.");
+    }
+  }
+
+  if (jobPatch && candidate.jobId) {
+    const { error } = await supabase.from("crm_jobs").update(jobPatch).eq("id", candidate.jobId);
+    if (error) {
+      throw new CrmAuthError(502, "Installation invoice matched, but the job could not be moved to payment collection.");
+    }
+  }
+}
+
 async function applyInstallationInvoice(
   supabase: CrmSupabaseClient,
   candidate: InstallationInvoiceCandidate,
@@ -730,6 +851,7 @@ async function applyInstallationInvoice(
       .update(patch)
       .eq("id", candidate.entryId);
     if (error) throw new CrmAuthError(502, "Installation invoice matched, but the bookkeeping row could not be updated.");
+    await advanceInstallationInvoiceWorkflow(supabase, candidate, message, actorEmail, now);
     return;
   }
 
@@ -751,6 +873,7 @@ async function applyInstallationInvoice(
       { onConflict: "quote_id" }
     );
     if (error) throw new CrmAuthError(502, "Installation invoice matched, but the quote bookkeeping row could not be created.");
+    await advanceInstallationInvoiceWorkflow(supabase, candidate, message, actorEmail, now);
     return;
   }
 

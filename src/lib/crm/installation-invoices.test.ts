@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   InstallationInvoiceCandidate,
+  buildInstallationInvoiceWorkflowPatches,
   extractInstallationInvoiceDetails,
   matchInstallationInvoiceToCandidate,
   normalizeCustomerName
@@ -106,5 +107,60 @@ describe("installation invoice customer matching", () => {
 
     expect(match.status).toBe("needs_review");
     expect(match.reason).toContain("Ambiguous");
+  });
+});
+
+describe("installation invoice workflow updates", () => {
+  it("moves matched quote jobs to payment collection and stamps installation completion", () => {
+    const patches = buildInstallationInvoiceWorkflowPatches({
+      currentQuote: { status: "received", installed_at: null, meta: { existing: true } },
+      currentJob: { status: "ordered", meta: { owner: "Jessica" } },
+      messageId: "gmail-1",
+      threadId: "thread-1",
+      actorEmail: "installation-invoice-cron",
+      now: "2026-06-20T12:00:00.000Z"
+    });
+
+    expect(patches.quotePatch).toMatchObject({
+      status: "invoiced",
+      installed_at: "2026-06-20T12:00:00.000Z",
+      meta: {
+        existing: true,
+        installationInvoiceMessageId: "gmail-1",
+        installationInvoicePreviousQuoteStatus: "received"
+      }
+    });
+    expect(patches.jobPatch).toMatchObject({
+      status: "invoiced",
+      next_action: "Collect payment",
+      meta: {
+        owner: "Jessica",
+        installationInvoiceWorkflowAppliedBy: "installation-invoice-cron",
+        installationInvoicePreviousJobStatus: "ordered"
+      }
+    });
+  });
+
+  it("does not reopen terminal jobs or downgrade paid quotes", () => {
+    const patches = buildInstallationInvoiceWorkflowPatches({
+      currentQuote: { status: "paid", installed_at: "2026-06-19T12:00:00.000Z", meta: null },
+      currentJob: { status: "closed", meta: null },
+      messageId: "gmail-2",
+      now: "2026-06-20T12:00:00.000Z"
+    });
+
+    expect(patches.quotePatch).toMatchObject({
+      status: "paid",
+      installed_at: "2026-06-19T12:00:00.000Z"
+    });
+    expect(patches.jobPatch).not.toMatchObject({
+      status: "invoiced",
+      next_action: "Collect payment"
+    });
+    expect(patches.jobPatch).toMatchObject({
+      meta: {
+        installationInvoicePreviousJobStatus: "closed"
+      }
+    });
   });
 });
