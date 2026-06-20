@@ -1962,7 +1962,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
 }
 
 .home-hero-actions .button.primary {
-  background: rgba(17, 17, 17, 0.92);
+  background: rgba(58, 39, 27, 0.92);
 }
 
 body.commercial-mode .home-hero-actions .button.primary {
@@ -6298,7 +6298,7 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .home-hero-actions .button.primary {
-    background: rgba(17, 17, 17, 0.92);
+    background: rgba(58, 39, 27, 0.92);
   }
 }
 
@@ -6585,6 +6585,10 @@ body:has(.booking-page--focused) .assistant-widget {
     letter-spacing: 0.08em;
     backdrop-filter: blur(5px);
     -webkit-backdrop-filter: blur(5px);
+  }
+
+  body.home-page-active .home-hero-actions .button.primary {
+    background: rgba(58, 39, 27, 0.92);
   }
 }
 @media (max-width: 380px) {
