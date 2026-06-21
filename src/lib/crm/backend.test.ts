@@ -1,6 +1,122 @@
 import { describe, expect, it } from "vitest";
-import { buildDashboardData, createCrmQuote, deleteCrmLedgerRow, enrichCalendarEventsWithJobDetails, updateCrmQuote } from "./backend";
+import {
+  assertMikePaymentAdmin,
+  buildDashboardData,
+  createCrmQuote,
+  deleteCrmLedgerRow,
+  enrichCalendarEventsWithJobDetails,
+  normalizeRemakeAmount,
+  resolveFullPartnerPaymentAmount,
+  syncRemakeExpense,
+  updateCrmQuote
+} from "./backend";
+import { CrmAuthError } from "./auth";
 import { CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
+
+type FakeExpense = {
+  id: string;
+  category: string;
+  bookkeeping_entry_id?: string | null;
+  quote_id?: string | null;
+  job_id?: string | null;
+  amount?: number;
+  meta?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+class FakeExpenseQuery {
+  private operation: "select" | "delete" | "update" | "insert" = "select";
+  private filters: Array<{ column: string; value: unknown }> = [];
+  private inFilter: { column: string; values: unknown[] } | null = null;
+  private payload: Record<string, unknown> | Record<string, unknown>[] | null = null;
+
+  constructor(private records: FakeExpense[]) {}
+
+  select() {
+    this.operation = "select";
+    return this;
+  }
+
+  delete() {
+    this.operation = "delete";
+    return this;
+  }
+
+  update(payload: Record<string, unknown>) {
+    this.operation = "update";
+    this.payload = payload;
+    return this;
+  }
+
+  insert(payload: Record<string, unknown> | Record<string, unknown>[]) {
+    this.operation = "insert";
+    this.payload = payload;
+    return this;
+  }
+
+  eq(column: string, value: unknown) {
+    this.filters.push({ column, value });
+    return this;
+  }
+
+  in(column: string, values: unknown[]) {
+    this.inFilter = { column, values };
+    return this;
+  }
+
+  order() {
+    return this;
+  }
+
+  then<TResult1 = unknown, TResult2 = never>(
+    onfulfilled?: ((value: { data?: FakeExpense[] | FakeExpense | null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+  ) {
+    return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
+  }
+
+  private matches(record: FakeExpense) {
+    const eqMatches = this.filters.every(({ column, value }) => record[column] === value);
+    const inMatches = !this.inFilter || this.inFilter.values.includes(record[this.inFilter.column]);
+    return eqMatches && inMatches;
+  }
+
+  private execute() {
+    if (this.operation === "select") {
+      return { data: this.records.filter((record) => this.matches(record)), error: null };
+    }
+
+    if (this.operation === "delete") {
+      for (let index = this.records.length - 1; index >= 0; index -= 1) {
+        if (this.matches(this.records[index])) this.records.splice(index, 1);
+      }
+      return { data: null, error: null };
+    }
+
+    if (this.operation === "update") {
+      for (const record of this.records) {
+        if (this.matches(record)) Object.assign(record, this.payload);
+      }
+      return { data: null, error: null };
+    }
+
+    const payloads = Array.isArray(this.payload) ? this.payload : [this.payload];
+    for (const payload of payloads) {
+      if (!payload) continue;
+      this.records.push({ id: `expense-${this.records.length + 1}`, ...payload } as FakeExpense);
+    }
+    return { data: null, error: null };
+  }
+}
+
+function fakeExpenseSupabase(records: FakeExpense[]) {
+  return {
+    from(table: string) {
+      expect(table).toBe("crm_job_expenses");
+      return new FakeExpenseQuery(records);
+    }
+  };
+}
 
 function job(overrides: Partial<CrmJob> = {}): CrmJob {
   return {
@@ -305,6 +421,69 @@ describe("quote bookkeeping notes", () => {
     );
     expect(quoteUpdate?.payload).toMatchObject({ notes: "New customer-facing quote note" });
     expect(entryUpsert?.payload).not.toHaveProperty("notes");
+  });
+});
+
+describe("partner payment write rules", () => {
+  it("allows only Mike's CRM login to write partner payments", () => {
+    expect(() => assertMikePaymentAdmin({ email: "805shutters@gmail.com" })).not.toThrow();
+    expect(() => assertMikePaymentAdmin({ email: "jessica@805shutters.com" })).toThrow(CrmAuthError);
+    expect(() => assertMikePaymentAdmin({ email: "khill31@msn.com" })).toThrow(CrmAuthError);
+  });
+
+  it("rejects partial partner payments", () => {
+    expect(resolveFullPartnerPaymentAmount(undefined, 600)).toBe(600);
+    expect(resolveFullPartnerPaymentAmount("", 600)).toBe(600);
+    expect(() => resolveFullPartnerPaymentAmount(250, 600)).toThrow(CrmAuthError);
+  });
+});
+
+describe("remake expense writes", () => {
+  it("normalizes positive, negative, blank, and invalid remake amounts", () => {
+    expect(normalizeRemakeAmount(325)).toBe(325);
+    expect(normalizeRemakeAmount("-325.22")).toBe(325.22);
+    expect(normalizeRemakeAmount("")).toBe(0);
+    expect(normalizeRemakeAmount("not money")).toBe(0);
+  });
+
+  it("upserts one quote-linked remake expense and collapses duplicates", async () => {
+    const records: FakeExpense[] = [
+      { id: "primary", category: "remake", quote_id: "quote-1", job_id: null, amount: 100, meta: { existing: true } },
+      { id: "duplicate", category: "remake", quote_id: "quote-1", job_id: "job-1", amount: 50 },
+      { id: "other", category: "other", quote_id: "quote-1", job_id: "job-1", amount: 25 }
+    ];
+
+    await syncRemakeExpense(
+      fakeExpenseSupabase(records) as never,
+      { quoteId: "quote-1", jobId: "job-1", source: "crm_quote", actorEmail: "805shutters@gmail.com" },
+      -325
+    );
+
+    expect(records).toHaveLength(2);
+    expect(records.find((record) => record.id === "duplicate")).toBeUndefined();
+    expect(records.find((record) => record.id === "primary")).toMatchObject({
+      category: "remake",
+      label: "Remake",
+      quote_id: "quote-1",
+      job_id: "job-1",
+      amount: 325,
+      source: "crm_quote"
+    });
+  });
+
+  it("clears manual row remake expenses when the amount is blank or zero", async () => {
+    const records: FakeExpense[] = [
+      { id: "remake", category: "remake", bookkeeping_entry_id: "entry-1", amount: 100 },
+      { id: "other", category: "other", bookkeeping_entry_id: "entry-1", amount: 25 }
+    ];
+
+    await syncRemakeExpense(
+      fakeExpenseSupabase(records) as never,
+      { bookkeepingEntryId: "entry-1", source: "manual", actorEmail: "805shutters@gmail.com" },
+      ""
+    );
+
+    expect(records).toEqual([{ id: "other", category: "other", bookkeeping_entry_id: "entry-1", amount: 25 }]);
   });
 });
 

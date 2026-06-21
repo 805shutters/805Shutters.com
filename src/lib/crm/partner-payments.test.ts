@@ -73,6 +73,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     creditsOut: [],
     expenses: [],
     expensesTotal: 0,
+    remakeTotal: 0,
     ...overrides
   };
 }
@@ -250,4 +251,3 @@ describe("buildPartnerPaymentLedger", () => {
     expect(reopenedLedger.people.ken.activeItems).toHaveLength(1);
   });
 });
-

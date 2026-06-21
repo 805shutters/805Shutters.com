@@ -6,6 +6,7 @@
 --   * 20260610000000_profit_split_50_50.sql   (ken_cut_override + job expenses)
 --   * 20260617000000_create_ken_payments_and_settings.sql (Ken checks + payoff)
 --   * 20260620000000_create_installation_invoice_email_ingest.sql (Gmail invoice puller)
+--   * 20260621020000_allow_remake_job_expenses.sql (Remake expense category)
 --
 -- Safe to run anytime: every statement is idempotent (IF NOT EXISTS / IF EXISTS
 -- / ON CONFLICT DO NOTHING), so re-running causes no harm if already applied.
@@ -31,7 +32,7 @@ create table if not exists public.crm_job_expenses (
   source text not null default 'manual',
   meta jsonb not null default '{}'::jsonb,
   constraint crm_job_expenses_category_check check (
-    category in ('materials', 'installation_extra', 'processing_fee', 'permit', 'repair', 'referral', 'other')
+    category in ('materials', 'installation_extra', 'processing_fee', 'permit', 'repair', 'remake', 'referral', 'other')
   ),
   constraint crm_job_expenses_source_check check (
     source in ('crm_quote', 'legacy_sheet', 'manual')
@@ -40,6 +41,14 @@ create table if not exists public.crm_job_expenses (
     bookkeeping_entry_id is not null or quote_id is not null or job_id is not null
   )
 );
+
+alter table public.crm_job_expenses
+  drop constraint if exists crm_job_expenses_category_check;
+
+alter table public.crm_job_expenses
+  add constraint crm_job_expenses_category_check check (
+    category in ('materials', 'installation_extra', 'processing_fee', 'permit', 'repair', 'remake', 'referral', 'other')
+  );
 
 create index if not exists crm_job_expenses_entry_idx on public.crm_job_expenses (bookkeeping_entry_id);
 create index if not exists crm_job_expenses_quote_idx on public.crm_job_expenses (quote_id);

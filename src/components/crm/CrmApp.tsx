@@ -3,7 +3,7 @@
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
-import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
+import { isAllowedCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
@@ -67,6 +67,7 @@ type BookkeepingEditableField =
   | "payment"
   | "paymentType"
   | "cogs"
+  | "remake"
   | "installation"
   | "ken"
   | "notes";
@@ -441,6 +442,7 @@ function buildBookkeepingRowPayload(row: CrmBookkeepingRow, patch: Record<string
     payment_amount: 0,
     payment_label: "Balance payment",
     paid_at: todayInputValue(),
+    remake_amount: row.remakeTotal || 0,
     installation_invoice_amount: row.installationInvoiceAmount || 0,
     installation_complete: row.isInstallationComplete,
     ken_cut_override: row.kenCutOverride ?? null,
@@ -1256,6 +1258,50 @@ export function CrmApp({
     }
   }
 
+  async function markPartnerPaymentPaid(
+    person: CrmPaymentPerson,
+    item: CrmPartnerPaymentLedgerItem,
+    row: CrmBookkeepingRow
+  ) {
+    if (!session) return;
+    if (!isMikePaymentAdminEmail(user?.email)) {
+      setMessage("Only Mike can mark partner payments paid.");
+      return;
+    }
+    if (item.paymentState === "paid" || item.remainingAmount <= 0) return;
+
+    const paidOn = item.closedAt ? item.closedAt.slice(0, 10) : row.soldDate?.slice(0, 10) || null;
+    const personName = paymentPersonDisplayName(person);
+    const confirmed = window.confirm(
+      `Mark ${personName} paid ${toLedgerCurrency(item.remainingAmount)} for ${row.customerName}? This records the payment on ${formatShortDate(paidOn)}.`
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{ dashboard: CrmDashboardData }>(session, "/api/crm/payments/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          person,
+          paid_on: paidOn,
+          period_month: item.periodMonth || (paidOn ? `${paidOn.slice(0, 7)}-01` : null),
+          note: `Manual paid checkbox reconciliation for ${row.customerName}`,
+          item_ids: [item.itemKey]
+        } satisfies PartnerPaymentRequest)
+      });
+      setData(result.dashboard);
+      setLastSyncedAt(Date.now());
+      setMessage(`${personName} marked paid for ${row.customerName}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : `${personName} payment could not be marked paid.`);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateCommissionPaymentRow(event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) {
     event.preventDefault();
     if (!session) return;
@@ -1760,8 +1806,10 @@ export function CrmApp({
               partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
               lastSyncedAt={lastSyncedAt}
+              canMarkPartnerPaid={isMikePaymentAdminEmail(user?.email)}
               onOpenPayments={openPaymentLedger}
               onSave={saveBookkeepingCell}
+              onMarkPartnerPaid={markPartnerPaymentPaid}
               onDelete={deleteBookkeepingRow}
             />
             <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
@@ -3310,9 +3358,16 @@ function DrillDetailCard({
   const canReassignSale = payload.allowSaleReassignment && entry.canReassignSale && entry.jobId;
   const canEditJob = Boolean(job?.id || entry.jobId || row?.jobId);
   const canEditQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
-  const hasActivity = Boolean(row && (row.payments.length || row.creditsIn.length || row.creditsOut.length || row.expenses.length));
+  const hasActivity = Boolean(
+    row && (row.payments.length || row.creditsIn.length || row.creditsOut.length || row.expenses.length || row.remakeTotal > 0)
+  );
   const hasDocumentsOrNotes = Boolean(documents.length || notes.length);
-  const activityItemCount = (row?.payments.length || 0) + (row?.creditsIn.length || 0) + (row?.creditsOut.length || 0) + (row?.expenses.length || 0);
+  const activityItemCount =
+    (row?.payments.length || 0) +
+    (row?.creditsIn.length || 0) +
+    (row?.creditsOut.length || 0) +
+    (row?.expenses.length || 0) +
+    (row && row.remakeTotal > 0 ? 1 : 0);
   const documentsAndNotesCount = documents.length + notes.length;
   const lineItemLabel = (count: number) => `${count} line item${count === 1 ? "" : "s"}`;
   const customerName = job?.customer_name || row?.customerName || file?.customerName || entry.customerName;
@@ -3691,6 +3746,13 @@ function DrillDetailCard({
                       <em>{toLedgerCurrency(expense.amount)}</em>
                     </div>
                   ))}
+                  {row && row.remakeTotal > 0 ? (
+                    <div className="crm-drill-line-item" key={`remake-${row.id}`}>
+                      <strong>Remake</strong>
+                      <span>Mistake / reorder cost</span>
+                      <em>{toLedgerCurrency(-row.remakeTotal)}</em>
+                    </div>
+                  ) : null}
                 </div>
               </details>
             ) : null}
@@ -3767,6 +3829,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       payment_amount: paymentAmount,
       payment_label: formString(formData, "payment_label") || "Balance payment",
       paid_at: formString(formData, "paid_at") || null,
+      remake_amount: formString(formData, "remake_amount"),
       installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
       installation_invoice_number: formString(formData, "installation_invoice_number"),
       installation_invoice_url: formString(formData, "installation_invoice_url"),
@@ -3822,6 +3885,7 @@ function DrillDetailEditForm({
   const soldDate = dateInputValue(row?.soldDate || file?.latestSoldDate || null);
   const total = row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue ?? 0;
   const cogs = row?.cogs ?? 0;
+  const remakeAmount = row?.remakeTotal ?? 0;
   const installationAmount = row?.installationInvoiceAmount ?? 0;
   const paymentType = row?.paymentType || "other";
 
@@ -3933,6 +3997,10 @@ function DrillDetailEditForm({
               COGS
               <input name="cogs_amount" type="number" min="0" step="0.01" defaultValue={cogs || ""} disabled={!row} />
             </label>
+            <label>
+              Remake
+              <input name="remake_amount" type="number" step="0.01" defaultValue={remakeAmount ? -remakeAmount : ""} disabled={!row} />
+            </label>
           </div>
           <div className="crm-field-row">
             <label>
@@ -3982,10 +4050,13 @@ function DrillDetailEditForm({
             <span>
               Ken <strong>{row ? toLedgerCurrency(row.kenCut) : "No ledger row"}</strong>
             </span>
-            <span>
-              Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
-            </span>
-          </div>
+          <span>
+            Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
+          </span>
+          <span>
+            Remake <strong>{row ? toLedgerCurrency(-row.remakeTotal) : "No ledger row"}</strong>
+          </span>
+        </div>
         </section>
 
         <section className="crm-drill-info-column">
@@ -5557,6 +5628,75 @@ function BookkeepingInstallationEditor({
   );
 }
 
+const partnerPaymentPeople: CrmPaymentPerson[] = ["ken", "mike", "jessica"];
+
+function partnerPaymentItemKey(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
+  return `${person}:${row.source}:${row.id}`;
+}
+
+function partnerPaymentItemMap(ledger: CrmDashboardData["partnerPaymentLedger"] | undefined) {
+  const map = new Map<string, CrmPartnerPaymentLedgerItem>();
+  for (const person of partnerPaymentPeople) {
+    for (const item of ledger?.people?.[person]?.items || []) {
+      map.set(item.itemKey, item);
+    }
+  }
+  return map;
+}
+
+function PartnerPaymentAmountCell({
+  person,
+  row,
+  amount,
+  item,
+  canMarkPartnerPaid,
+  busy,
+  onMarkPartnerPaid
+}: {
+  person: CrmPaymentPerson;
+  row: CrmBookkeepingRow;
+  amount: number;
+  item?: CrmPartnerPaymentLedgerItem;
+  canMarkPartnerPaid: boolean;
+  busy: boolean;
+  onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
+}) {
+  const paid = item?.paymentState === "paid";
+  const canClick = Boolean(canMarkPartnerPaid && item && !paid && item.remainingAmount > 0);
+  const label = paid
+    ? `${paymentPersonDisplayName(person)} paid for ${row.customerName}`
+    : canClick
+      ? `Mark ${paymentPersonDisplayName(person)} paid for ${row.customerName}`
+      : `${paymentPersonDisplayName(person)} not paid for ${row.customerName}`;
+  const status = (
+    <span className={`crm-partner-paid-box${paid ? " crm-partner-paid-box--paid" : ""}`} aria-hidden="true">
+      {paid ? "✓" : ""}
+    </span>
+  );
+
+  return (
+    <span className="crm-partner-paid-cell">
+      <span>{toLedgerCurrency(amount)}</span>
+      {canClick && item ? (
+        <button
+          type="button"
+          className="crm-partner-paid-button"
+          onClick={() => onMarkPartnerPaid(person, item, row)}
+          disabled={busy}
+          aria-label={label}
+          title={label}
+        >
+          {status}
+        </button>
+      ) : (
+        <span className="crm-partner-paid-status" aria-label={label} title={label}>
+          {status}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function BookkeepingSpreadsheet({
   rows,
   totals,
@@ -5564,8 +5704,10 @@ function BookkeepingSpreadsheet({
   partnerPaymentLedger,
   busy,
   lastSyncedAt,
+  canMarkPartnerPaid,
   onOpenPayments,
   onSave,
+  onMarkPartnerPaid,
   onDelete
 }: {
   rows: CrmBookkeepingRow[];
@@ -5574,24 +5716,33 @@ function BookkeepingSpreadsheet({
   partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
   lastSyncedAt: number | null;
+  canMarkPartnerPaid: boolean;
   onOpenPayments: (person: CrmPaymentPerson) => void;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
+  onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
   onDelete: (row: CrmBookkeepingRow) => void;
 }) {
   const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
-    (totals?.total || 0) - (totals?.cogs || 0) - (totals?.installationAmount || 0) - (totals?.expensesTotal || 0)
+    (totals?.total || 0) -
+      (totals?.cogs || 0) -
+      (totals?.installationAmount || 0) -
+      (totals?.expensesTotal || 0) -
+      (totals?.remakeTotal || 0)
   );
   const netProfit = roundCurrency(totalProfit - (totals?.kenCut || 0));
   const profitMargin = totals?.total ? `${((totalProfit / totals.total) * 100).toFixed(1)}%` : "0.0%";
   const missingCogs = totals?.missingCogs || 0;
   const commissionTotals = commissionSummary?.totals;
   const paymentPeople = partnerPaymentLedger?.people;
+  const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
   const summaryCards = [
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
     { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
+    { label: "Remake", value: toLedgerCurrency(-(totals?.remakeTotal || 0)) },
     { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
+    { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
     { label: "Ken Profit", value: toLedgerCurrency(totals?.kenCut) },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), person: "ken" as const },
     { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), person: "ken" as const },
@@ -5663,9 +5814,12 @@ function BookkeepingSpreadsheet({
               <th>Deposit</th>
               <th>PD/W</th>
               <th>COGS</th>
+              <th>Remake</th>
               <th>Installation</th>
               <th>Balance</th>
               <th>Ken</th>
+              <th>Mike</th>
+              <th>Jessica</th>
               <th>Profit</th>
               <th>Notes</th>
               <th className="crm-bookkeeping-delete-col" aria-label="Delete" />
@@ -5677,7 +5831,7 @@ function BookkeepingSpreadsheet({
               return (
                 <Fragment key={`status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={13}>
+                    <td className="crm-bookkeeping-group-head" colSpan={16}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
@@ -5780,6 +5934,27 @@ function BookkeepingSpreadsheet({
                   )}
                 </td>
                 <td>
+                  {isEditing(row, "remake") ? (
+                    <BookkeepingInlineTextEditor
+                      type="number"
+                      step="0.01"
+                      defaultValue={row.remakeTotal ? -row.remakeTotal : ""}
+                      placeholder="0.00"
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { remake_amount: value })}
+                      onCancel={closeEdit}
+                    />
+                  ) : (
+                    <BookkeepingCellButton
+                      ariaLabel={`Edit remake cost for ${row.customerName}`}
+                      className={row.remakeTotal > 0 ? "crm-ledger-money-warn" : undefined}
+                      onClick={() => openEdit(row, "remake")}
+                    >
+                      {toLedgerCurrency(-row.remakeTotal)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
                   {isEditing(row, "installation") ? (
                     <BookkeepingInstallationEditor row={row} busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
                   ) : (
@@ -5802,14 +5977,50 @@ function BookkeepingSpreadsheet({
                       onCancel={closeEdit}
                     />
                   ) : (
-                    <BookkeepingCellButton
-                      ariaLabel={`Edit Ken override for ${row.customerName}`}
-                      className="crm-ledger-money-warn"
-                      onClick={() => openEdit(row, "ken")}
-                    >
-                      {toLedgerCurrency(row.kenCut)}
-                    </BookkeepingCellButton>
+                    <div className="crm-bookkeeping-ken-cell">
+                      <PartnerPaymentAmountCell
+                        person="ken"
+                        row={row}
+                        amount={row.kenCut}
+                        item={paymentItemsByKey.get(partnerPaymentItemKey("ken", row))}
+                        canMarkPartnerPaid={canMarkPartnerPaid}
+                        busy={busy}
+                        onMarkPartnerPaid={onMarkPartnerPaid}
+                      />
+                      <button
+                        type="button"
+                        className="crm-bookkeeping-ken-override"
+                        onClick={() => openEdit(row, "ken")}
+                        disabled={busy}
+                        aria-label={`Edit Ken override for ${row.customerName}`}
+                        title="Edit Ken override"
+                      >
+                        Override
+                      </button>
+                    </div>
                   )}
+                </td>
+                <td className="crm-ledger-money-good">
+                  <PartnerPaymentAmountCell
+                    person="mike"
+                    row={row}
+                    amount={row.mikeProfit}
+                    item={paymentItemsByKey.get(partnerPaymentItemKey("mike", row))}
+                    canMarkPartnerPaid={canMarkPartnerPaid}
+                    busy={busy}
+                    onMarkPartnerPaid={onMarkPartnerPaid}
+                  />
+                </td>
+                <td>
+                  <PartnerPaymentAmountCell
+                    person="jessica"
+                    row={row}
+                    amount={row.jessicaCommission}
+                    item={paymentItemsByKey.get(partnerPaymentItemKey("jessica", row))}
+                    canMarkPartnerPaid={canMarkPartnerPaid}
+                    busy={busy}
+                    onMarkPartnerPaid={onMarkPartnerPaid}
+                  />
                 </td>
                 <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td>
                 <td>
@@ -5864,9 +6075,12 @@ function BookkeepingSpreadsheet({
                     <td>{toLedgerCurrency(groupTotals.depositPaid)}</td>
                     <td>-</td>
                     <td>{toLedgerCurrency(groupTotals.cogs)}</td>
+                    <td>{toLedgerCurrency(-groupTotals.remake)}</td>
                     <td>{toLedgerCurrency(groupTotals.installation)}</td>
                     <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(groupTotals.balance)}</td>
                     <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.kenCut)}</td>
+                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td>
+                    <td>{toLedgerCurrency(groupTotals.jessica)}</td>
                     <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td>
                     <td />
                     <td />
@@ -5962,18 +6176,24 @@ function bookkeepingGroupTotals(rows: CrmBookkeepingRow[]) {
       total: roundCurrency(totals.total + row.total),
       depositPaid: roundCurrency(totals.depositPaid + row.depositPaid),
       cogs: roundCurrency(totals.cogs + row.cogs),
+      remake: roundCurrency(totals.remake + row.remakeTotal),
       installation: roundCurrency(totals.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)),
       balance: roundCurrency(totals.balance + Math.max(row.balance, 0)),
       kenCut: roundCurrency(totals.kenCut + row.kenCut),
+      mike: roundCurrency(totals.mike + row.mikeProfit),
+      jessica: roundCurrency(totals.jessica + row.jessicaCommission),
       profit: roundCurrency(totals.profit + row.remainingProfitBeforeJessica)
     }),
     {
       total: 0,
       depositPaid: 0,
       cogs: 0,
+      remake: 0,
       installation: 0,
       balance: 0,
       kenCut: 0,
+      mike: 0,
+      jessica: 0,
       profit: 0
     }
   );

@@ -158,6 +158,7 @@ export function sumBookkeepingRows(
       totals.creditOut = roundCents(totals.creditOut + row.creditOut);
       totals.cogs = roundCents(totals.cogs + row.cogs);
       totals.expensesTotal = roundCents(totals.expensesTotal + row.expensesTotal);
+      totals.remakeTotal = roundCents(totals.remakeTotal + row.remakeTotal);
       totals.balance = roundCents(totals.balance + Math.max(row.balance, 0));
       totals.kenCut = roundCents(totals.kenCut + row.kenCut);
       totals.mikeProfit = roundCents(totals.mikeProfit + row.mikeProfit);
@@ -190,6 +191,7 @@ export function sumBookkeepingRows(
       creditOut: 0,
       cogs: 0,
       expensesTotal: 0,
+      remakeTotal: 0,
       balance: 0,
       kenCut: 0,
       mikeProfit: 0,
@@ -448,7 +450,7 @@ function buildEntryRow(
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
   const cogs = Number(entry.cogs_amount) || 0;
-  const expensesTotal = sumExpenses(expenses);
+  const { otherExpenses, expensesTotal, remakeTotal } = splitRemakeExpenses(expenses);
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
   const kenCut = computeKenCut({
@@ -465,7 +467,7 @@ function buildEntryRow(
     salesOwner: entry.sales_owner,
     installationAmount: installation.invoiceAmount,
     isInstallationComplete: installation.isComplete,
-    expenses: expensesTotal
+    expenses: expensesTotal + remakeTotal
   });
 
   return {
@@ -511,8 +513,9 @@ function buildEntryRow(
     payments,
     creditsIn,
     creditsOut,
-    expenses,
-    expensesTotal
+    expenses: otherExpenses,
+    expensesTotal,
+    remakeTotal
   };
 }
 
@@ -537,7 +540,7 @@ function buildQuoteRow(
   const paidTotal = roundCents(depositPaid + balancePaid);
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
-  const expensesTotal = sumExpenses(expenses);
+  const { otherExpenses, expensesTotal, remakeTotal } = splitRemakeExpenses(expenses);
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
   const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
@@ -556,7 +559,7 @@ function buildQuoteRow(
     salesOwner,
     installationAmount: installation.invoiceAmount,
     isInstallationComplete: installation.isComplete,
-    expenses: expensesTotal
+    expenses: expensesTotal + remakeTotal
   });
 
   return {
@@ -604,8 +607,9 @@ function buildQuoteRow(
     payments,
     creditsIn,
     creditsOut,
-    expenses,
-    expensesTotal
+    expenses: otherExpenses,
+    expensesTotal,
+    remakeTotal
   };
 }
 
@@ -644,6 +648,16 @@ function sumCredits(credits: CrmBookkeepingCredit[]) {
 
 function sumExpenses(expenses: CrmJobExpense[]) {
   return roundCents(expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0));
+}
+
+function splitRemakeExpenses(expenses: CrmJobExpense[]) {
+  const otherExpenses = expenses.filter((expense) => expense.category !== "remake");
+  const remakeExpenses = expenses.filter((expense) => expense.category === "remake");
+  return {
+    otherExpenses,
+    expensesTotal: sumExpenses(otherExpenses),
+    remakeTotal: sumExpenses(remakeExpenses)
+  };
 }
 
 function groupExpenses(

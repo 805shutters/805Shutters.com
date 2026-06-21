@@ -433,8 +433,24 @@ describe("job expenses", () => {
       ]
     });
     expect(row.expensesTotal).toBe(400);
+    expect(row.remakeTotal).toBe(0);
     expect(row.remainingProfitBeforeJessica).toBe(6600); // 10000 - 3000 - 0 - 400
     expect(row.mikeProfit).toBe(6600);
+  });
+
+  it("tracks remake costs separately from other expenses and subtracts both from profit", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", ken_cut_override: 0 })],
+      expenses: [
+        expense({ id: "x1", bookkeeping_entry_id: "e1", category: "other", amount: 250 }),
+        expense({ id: "r1", bookkeeping_entry_id: "e1", category: "remake", amount: 325 })
+      ]
+    });
+    expect(row.expenses).toHaveLength(1);
+    expect(row.expensesTotal).toBe(250);
+    expect(row.remakeTotal).toBe(325);
+    expect(row.remainingProfitBeforeJessica).toBe(6425); // 10000 - 3000 - 0 - 250 - 325
+    expect(row.mikeProfit).toBe(6425);
   });
 
   it("matches job-linked expenses to the row and counts each only once", () => {
@@ -524,6 +540,27 @@ describe("Jessica's 50% commission", () => {
     expect(row.mikeProfit).toBe(2800);
   });
 
+  it("nets remake costs out before splitting Jessica's commission", () => {
+    const [row] = rowsFrom({
+      entries: [
+        installedEntry({
+          id: "e1",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "jessica",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        })
+      ],
+      expenses: [expense({ id: "r1", bookkeeping_entry_id: "e1", category: "remake", amount: 500 })]
+    });
+    expect(row.expensesTotal).toBe(0);
+    expect(row.remakeTotal).toBe(500);
+    expect(row.remainingProfitBeforeJessica).toBe(5500); // 10000 - 3000 - 0 - 1000 - 500
+    expect(row.jessicaCommission).toBe(2750);
+    expect(row.mikeProfit).toBe(2750);
+  });
+
   it("reports commission as owed until it is marked paid", () => {
     const unpaid = installedEntry({
       total_amount: 10000,
@@ -599,7 +636,7 @@ describe("quote-sourced rows", () => {
 });
 
 describe("sumBookkeepingRows", () => {
-  it("aggregates expenses, Ken cut, and both partners' profit", () => {
+  it("aggregates expenses, remake costs, Ken cut, and both partners' profit", () => {
     const rows = rowsFrom({
       entries: [
         installedEntry({
@@ -612,17 +649,21 @@ describe("sumBookkeepingRows", () => {
         }),
         entry({ id: "e2", total_amount: 5000, cogs_amount: 1000, sales_owner: "mike", sold_date: "2026-05-01" })
       ],
-      expenses: [expense({ id: "x1", bookkeeping_entry_id: "e1", amount: 400 })]
+      expenses: [
+        expense({ id: "x1", bookkeeping_entry_id: "e1", amount: 400 }),
+        expense({ id: "r1", bookkeeping_entry_id: "e1", category: "remake", amount: 200 })
+      ]
     });
     const totals = sumBookkeepingRows(rows);
     expect(totals.rows).toBe(2);
     expect(totals.total).toBe(15000);
     expect(totals.cogs).toBe(4000);
     expect(totals.expensesTotal).toBe(400);
+    expect(totals.remakeTotal).toBe(200);
     expect(totals.kenCut).toBe(500); // e1 exempt (0) + e2 10% of 5000 (500)
-    expect(totals.jessicaCommission).toBe(2800); // half of (10000-3000-1000-400)
-    expect(totals.jessicaCommissionOwed).toBe(2800);
-    expect(totals.mikeProfit).toBe(6300); // e1 2800 + e2 (5000-1000-500) 3500
+    expect(totals.jessicaCommission).toBe(2700); // half of (10000-3000-1000-400-200)
+    expect(totals.jessicaCommissionOwed).toBe(2700);
+    expect(totals.mikeProfit).toBe(6200); // e1 2700 + e2 (5000-1000-500) 3500
   });
 
   it("tracks Ken's current-month due and running total from closed jobs only", () => {

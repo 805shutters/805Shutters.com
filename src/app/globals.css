@@ -4531,7 +4531,7 @@ body:has(.crm-app-shell) {
 }
 
 .crm-bookkeeping-table--legacy {
-  min-width: 1660px;
+  min-width: 2020px;
   font-size: 13px;
 }
 
@@ -4549,6 +4549,71 @@ body:has(.crm-app-shell) {
 .crm-bookkeeping-row--closed td {
   background: #edf7ef;
   color: #153a24;
+}
+
+.crm-partner-paid-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crm-partner-paid-button,
+.crm-partner-paid-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+}
+
+.crm-partner-paid-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.crm-partner-paid-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.crm-partner-paid-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid #9b9a93;
+  background: #fff;
+  color: #1f8f47;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.crm-partner-paid-box--paid {
+  border-color: #2f9d55;
+  background: #e8f7ed;
+}
+
+.crm-bookkeeping-ken-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.crm-bookkeeping-ken-override {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 0;
+  text-transform: uppercase;
 }
 
 .crm-bookkeeping-cell-button {

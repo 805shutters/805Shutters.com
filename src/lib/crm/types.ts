@@ -284,6 +284,7 @@ export type CrmJobExpenseCategory =
   | "processing_fee"
   | "permit"
   | "repair"
+  | "remake"
   | "referral"
   | "other";
 
@@ -416,6 +417,7 @@ export type CrmBookkeepingRow = {
   creditsOut: CrmBookkeepingCredit[];
   expenses: CrmJobExpense[];
   expensesTotal: number;
+  remakeTotal: number;
 };
 
 export type CrmCustomerFile = {
@@ -446,6 +448,7 @@ export type CrmBookkeepingTotals = {
   creditOut: number;
   cogs: number;
   expensesTotal: number;
+  remakeTotal: number;
   balance: number;
   kenCut: number;
   mikeProfit: number;
@@ -640,6 +643,7 @@ export type CrmPartnerPaymentLedgerPerson = {
   owed: number;
   jobCount: number;
   activeJobCount: number;
+  items: CrmPartnerPaymentLedgerItem[];
   activeItems: CrmPartnerPaymentLedgerItem[];
 };
 

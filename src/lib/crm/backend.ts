@@ -13,6 +13,7 @@ import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
 import { buildPartnerPaymentLedger, paymentPersonLabel } from "@/lib/crm/partner-payments";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
   bookingEndIso,
@@ -38,6 +39,7 @@ import {
   CrmInstallationInvoiceEmail,
   CrmJob,
   CrmJobExpense,
+  CrmJobExpenseSource,
   CrmJobStatus,
   CrmKenPaymentAllocation,
   CrmKenPayment,
@@ -153,6 +155,106 @@ const allowedEntryPatchFields = new Set([
 export function toMoney(value: unknown) {
   const amount = Number(value || 0);
   return Number.isFinite(amount) ? Math.max(amount, 0) : 0;
+}
+
+export function normalizeRemakeAmount(value: unknown) {
+  if (value === null || value === undefined || value === "") return 0;
+  const amount = Math.abs(Number(value));
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : 0;
+}
+
+function hasPayloadKey(payload: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(payload, key);
+}
+
+type RemakeExpenseTarget = {
+  bookkeepingEntryId?: string | null;
+  quoteId?: string | null;
+  jobId?: string | null;
+  source: CrmJobExpenseSource;
+  actorEmail: string;
+  incurredOn?: string | null;
+};
+
+export async function syncRemakeExpense(
+  supabase: CrmSupabaseClient,
+  target: RemakeExpenseTarget,
+  rawAmount: unknown
+) {
+  const amount = normalizeRemakeAmount(rawAmount);
+  const applyTarget = <T extends { eq: (column: string, value: string) => T }>(query: T) => {
+    if (target.bookkeepingEntryId) return query.eq("bookkeeping_entry_id", target.bookkeepingEntryId);
+    if (target.quoteId) return query.eq("quote_id", target.quoteId);
+    if (target.jobId) return query.eq("job_id", target.jobId);
+    throw new CrmAuthError(400, "Remake cost must be tied to a bookkeeping row, quote, or job.");
+  };
+
+  if (amount <= 0) {
+    const { error } = await applyTarget(supabase.from("crm_job_expenses").delete().eq("category", "remake"));
+    if (error) throw new CrmAuthError(502, "Remake cost could not be cleared.");
+    return;
+  }
+
+  const { data: existingRows, error: selectError } = await applyTarget(
+    supabase.from("crm_job_expenses").select("*").eq("category", "remake").order("created_at", { ascending: true })
+  );
+  if (selectError) throw new CrmAuthError(502, "Remake cost could not be loaded.");
+
+  const now = new Date().toISOString();
+  const expensePatch = {
+    bookkeeping_entry_id: target.bookkeepingEntryId || null,
+    quote_id: target.quoteId || null,
+    job_id: target.jobId || null,
+    label: "Remake",
+    category: "remake",
+    amount,
+    incurred_on: target.incurredOn || null,
+    notes: null,
+    source: target.source,
+    meta: { lastUpdatedBy: target.actorEmail, lastUpdatedAt: now }
+  };
+
+  const [primary, ...duplicates] = existingRows || [];
+  if (primary) {
+    const { error: updateError } = await supabase
+      .from("crm_job_expenses")
+      .update({
+        ...expensePatch,
+        meta: { ...(primary.meta || {}), lastUpdatedBy: target.actorEmail, lastUpdatedAt: now }
+      })
+      .eq("id", primary.id);
+    if (updateError) throw new CrmAuthError(502, "Remake cost could not be updated.");
+  } else {
+    const { error: insertError } = await supabase.from("crm_job_expenses").insert({
+      ...expensePatch,
+      meta: { createdBy: target.actorEmail, createdAt: now, lastUpdatedBy: target.actorEmail, lastUpdatedAt: now }
+    });
+    if (insertError) throw new CrmAuthError(502, "Remake cost could not be saved.");
+  }
+
+  const duplicateIds = duplicates.map((expense) => expense.id).filter(Boolean);
+  if (duplicateIds.length) {
+    const { error: deleteError } = await supabase.from("crm_job_expenses").delete().in("id", duplicateIds);
+    if (deleteError) throw new CrmAuthError(502, "Duplicate remake costs could not be collapsed.");
+  }
+}
+
+export function assertMikePaymentAdmin(actor: CrmActor) {
+  if (!isMikePaymentAdminEmail(actor.email)) {
+    throw new CrmAuthError(403, "Only Mike can record or edit partner payments.");
+  }
+}
+
+export function resolveFullPartnerPaymentAmount(payloadAmount: unknown, payableAmount: number) {
+  const amount =
+    payloadAmount === undefined || payloadAmount === null || payloadAmount === ""
+      ? payableAmount
+      : toMoney(payloadAmount);
+  if (amount <= 0) throw new CrmAuthError(400, "Payment amount must be greater than zero.");
+  if (Math.abs(amount - payableAmount) > 0.005) {
+    throw new CrmAuthError(400, "Partial partner payments are not supported. Pay the selected job balance in full.");
+  }
+  return Math.round(amount * 100) / 100;
 }
 
 function optionalText(value: unknown) {
@@ -1569,6 +1671,7 @@ export async function updateCrmQuote(
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
+  const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedQuotePatchFields.has(key)) continue;
@@ -1596,7 +1699,8 @@ export async function updateCrmQuote(
     "bookkeeping_notes",
     "installation_invoice_amount",
     "installation_complete",
-    "ken_cut_override"
+    "ken_cut_override",
+    "remake_amount"
   ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
   const hasPaymentPatch = toMoney(payload.payment_amount) > 0;
 
@@ -1683,6 +1787,20 @@ export async function updateCrmQuote(
       .from("crm_quote_bookkeeping_entries")
       .upsert(entryRecord, { onConflict: "quote_id" });
     if (entryError) throw new CrmAuthError(502, "Quote was updated, but bookkeeping failed to update.");
+  }
+
+  if (hasRemakeAmount) {
+    await syncRemakeExpense(
+      supabase,
+      {
+        quoteId: id,
+        jobId: quote.job_id,
+        source: "crm_quote",
+        actorEmail: actor.email,
+        incurredOn: quote.sold_at ? String(quote.sold_at).slice(0, 10) : null
+      },
+      payload.remake_amount
+    );
   }
 
   // Forward-only job projection: never downgrade a sold/ordered/installed job
@@ -1833,6 +1951,19 @@ export async function createCrmBookkeepingEntry(
 
   if (error || !entry) throw new CrmAuthError(502, "Bookkeeping row could not be created.");
 
+  if (hasPayloadKey(payload, "remake_amount")) {
+    await syncRemakeExpense(
+      supabase,
+      {
+        bookkeepingEntryId: entry.id,
+        source,
+        actorEmail: actor.email,
+        incurredOn: entry.sold_date
+      },
+      payload.remake_amount
+    );
+  }
+
   const paymentRows = [
     { label: "Deposit", amount: depositAmount },
     { label: "Balance payment", amount: balanceAmount }
@@ -1881,6 +2012,7 @@ export async function updateCrmBookkeepingEntry(
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
+  const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedEntryPatchFields.has(key)) continue;
@@ -1905,7 +2037,7 @@ export async function updateCrmBookkeepingEntry(
     patch.installation_matched_at = payload.installation_complete ? now : null;
   }
 
-  if (!Object.keys(patch).length && !toMoney(payload.payment_amount)) {
+  if (!Object.keys(patch).length && !toMoney(payload.payment_amount) && !hasRemakeAmount) {
     throw new CrmAuthError(400, "No supported bookkeeping fields provided.");
   }
 
@@ -1946,6 +2078,19 @@ export async function updateCrmBookkeepingEntry(
     if (paymentError) throw new CrmAuthError(502, "Bookkeeping row was updated, but payment failed to save.");
   }
 
+  if (hasRemakeAmount) {
+    await syncRemakeExpense(
+      supabase,
+      {
+        bookkeepingEntryId: id,
+        source: entry.source === "legacy_sheet" ? "legacy_sheet" : "manual",
+        actorEmail: actor.email,
+        incurredOn: entry.sold_date
+      },
+      payload.remake_amount
+    );
+  }
+
   await syncCustomerFromBookkeepingEntry(supabase, entry);
   await recordCrmActivity(supabase, actor, {
     entityType: "bookkeeping_entry",
@@ -1965,6 +2110,8 @@ export async function createKenPayment(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const amount = toMoney(payload.amount);
   if (amount <= 0) throw new CrmAuthError(400, "Ken payment amount must be greater than zero.");
 
@@ -1991,6 +2138,8 @@ export async function createKenPayment(
 }
 
 export async function deleteKenPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  assertMikePaymentAdmin(actor);
+
   const { data: existing, error: existingError } = await supabase
     .from("crm_ken_payments")
     .select("*")
@@ -2017,6 +2166,8 @@ export async function updateKenPayment(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const { data: existing, error: existingError } = await supabase
     .from("crm_ken_payments")
     .select("*")
@@ -2145,6 +2296,8 @@ export async function createPartnerPaymentBatch(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const person = normalizePaymentPerson(payload.person);
   const dashboard = await loadCrmDashboardData(supabase);
   const selectedKeys = selectedPaymentItemKeys(payload);
@@ -2158,14 +2311,8 @@ export async function createPartnerPaymentBatch(
   }
 
   const payableAmount = Math.round(selectedItems.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
-  const requestedAmount = payload.amount === undefined || payload.amount === null || payload.amount === "" ? payableAmount : toMoney(payload.amount);
-  if (requestedAmount <= 0) throw new CrmAuthError(400, "Payment amount must be greater than zero.");
-  if (requestedAmount > payableAmount + 0.005) {
-    throw new CrmAuthError(400, `Payment amount cannot exceed ${paymentPersonLabel(person)}'s selected unpaid balance.`);
-  }
-
-  const amount = Math.round(requestedAmount * 100) / 100;
-  const paidOn = optionalText(payload.paid_on) || new Date().toISOString().slice(0, 10);
+  const amount = resolveFullPartnerPaymentAmount(payload.amount, payableAmount);
+  const paidOn = optionalText(payload.paid_on) || selectedItems[0]?.closedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
   const note = optionalText(payload.note);
   const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
@@ -2242,6 +2389,8 @@ export async function createCommissionPayment(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const amount = toMoney(payload.amount);
   if (amount <= 0) throw new CrmAuthError(400, "Commission payment amount must be greater than zero.");
 
@@ -2269,6 +2418,8 @@ export async function createCommissionPayment(
 }
 
 export async function deleteCommissionPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  assertMikePaymentAdmin(actor);
+
   const { data: existing, error: existingError } = await supabase
     .from("crm_commission_payments")
     .select("*")
@@ -2295,6 +2446,8 @@ export async function updateCommissionPayment(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const { data: existing, error: existingError } = await supabase
     .from("crm_commission_payments")
     .select("*")

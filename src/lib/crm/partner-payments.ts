@@ -346,6 +346,7 @@ export function buildPartnerPaymentLedger({
         owed,
         jobCount: personItems.length,
         activeJobCount: personActive.length,
+        items: personItems.sort(compareEarnedItems),
         activeItems: personActive
       };
       return record;
@@ -363,4 +364,3 @@ export function buildPartnerPaymentLedger({
 export function paymentPersonLabel(person: CrmPaymentPerson) {
   return partnerLabels[person];
 }
-

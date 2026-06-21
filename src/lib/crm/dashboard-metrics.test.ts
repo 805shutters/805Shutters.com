@@ -121,6 +121,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     creditsOut: [],
     expenses: [],
     expensesTotal: 0,
+    remakeTotal: 0,
     ...overrides
   };
 }
