@@ -1317,16 +1317,9 @@ export function CrmApp() {
 
   async function deleteBookkeepingRow(row: CrmBookkeepingRow) {
     if (!session) return;
-    // Only standalone bookkeeping entries are removable. A quote-backed row is
-    // the real sale and stays until its status changes in Quotes/Orders. We
-    // never delete a job or quote from here, so this can't wipe out a sale.
-    if (row.source === "crm_quote") {
-      setMessage("This row is a live quote, not a duplicate entry. Change its status in Quotes/Orders to take it off the ledger.");
-      return;
-    }
     if (
       !window.confirm(
-        `Delete this bookkeeping row for "${row.customerName}"?\n\nThis removes only this one row from the ledger (and its own payments) — it does NOT delete the customer's job or quote. This can't be undone.`
+        `Hide this bookkeeping row for "${row.customerName}"?\n\nThis removes only this row from the bookkeeping ledger. It does NOT delete the customer's job or quote.`
       )
     ) {
       return;
@@ -1338,9 +1331,9 @@ export function CrmApp() {
     try {
       await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, { method: "DELETE" });
       await refresh();
-      setMessage(`Removed the bookkeeping row for "${row.customerName}".`);
+      setMessage(`Hidden the bookkeeping row for "${row.customerName}".`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Row could not be deleted.");
+      setMessage(error instanceof Error ? error.message : "Row could not be hidden.");
     } finally {
       setBusy(false);
     }
@@ -5229,27 +5222,25 @@ function BookkeepingSpreadsheet({
                   )}
                 </td>
                 <td className="crm-bookkeeping-delete-col">
-                  {row.source === "crm_quote" ? null : (
-                    <button
-                      type="button"
-                      className="crm-bookkeeping-delete"
-                      onClick={() => onDelete(row)}
-                      disabled={busy}
-                      aria-label={`Delete the bookkeeping row for ${row.customerName}`}
-                      title={`Delete this bookkeeping row for ${row.customerName}`}
-                    >
-                      <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
-                        <path
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
-                        />
-                      </svg>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="crm-bookkeeping-delete"
+                    onClick={() => onDelete(row)}
+                    disabled={busy}
+                    aria-label={`Hide the bookkeeping row for ${row.customerName}`}
+                    title={`Hide this bookkeeping row for ${row.customerName}`}
+                  >
+                    <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false">
+                      <path
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"
+                      />
+                    </svg>
+                  </button>
                 </td>
               </tr>
                   ))}

@@ -243,6 +243,7 @@ export type CrmBookkeepingEntry = {
   notes: string | null;
   imported_sheet_row: number | null;
   ken_cut_override: number | null;
+  meta?: Record<string, unknown> | null;
 };
 
 export type CrmBookkeepingPayment = {

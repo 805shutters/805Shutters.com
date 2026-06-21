@@ -364,6 +364,7 @@ describe("enrichCalendarEventsWithJobDetails", () => {
 
 function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: Record<string, unknown> | null }) {
   const deletes: Array<{ table: string; filters: Record<string, unknown> }> = [];
+  const updates: Array<{ table: string; filters: Record<string, unknown>; payload: Record<string, unknown> }> = [];
 
   class QueryRecorder {
     error = null;
@@ -387,6 +388,11 @@ function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: 
       return this;
     }
 
+    update(payload: Record<string, unknown>) {
+      updates.push({ table: this.table, filters: this.filters, payload });
+      return this;
+    }
+
     delete() {
       deletes.push(this);
       return this;
@@ -405,26 +411,32 @@ function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: 
     }
   } as unknown as Parameters<typeof deleteCrmLedgerRow>[0];
 
-  return { deletes, supabase };
+  return { deletes, updates, supabase };
 }
 
 const actor = { email: "boss@805shutters.com", userId: "user-1" };
 
 describe("deleteCrmLedgerRow", () => {
-  it("deletes ONLY the bookkeeping entry, even when it is linked to a job and quote", async () => {
-    const { deletes, supabase } = deleteRecorder({
-      entry: { id: "entry-1", job_id: "job-9", quote_id: "quote-9" }
+  it("tombstones ONLY the bookkeeping entry, even when it is linked to a job and quote", async () => {
+    const { deletes, updates, supabase } = deleteRecorder({
+      entry: { id: "entry-1", job_id: "job-9", quote_id: "quote-9", meta: { existing: true } }
     });
 
     await deleteCrmLedgerRow(supabase, "entry-1", actor);
 
-    expect(deletes).toHaveLength(1);
-    expect(deletes[0].table).toBe("crm_quote_bookkeeping_entries");
-    expect(deletes[0].filters.id).toBe("entry-1");
+    expect(deletes).toHaveLength(0);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].table).toBe("crm_quote_bookkeeping_entries");
+    expect(updates[0].filters.id).toBe("entry-1");
+    expect(updates[0].payload.meta).toMatchObject({
+      existing: true,
+      bookkeeping_deleted_by: actor.email,
+      bookkeeping_delete_source: "ledger_row_delete"
+    });
   });
 
   it("never deletes from crm_jobs or crm_quotes (a duplicate row can't wipe out the sale)", async () => {
-    const { deletes, supabase } = deleteRecorder({
+    const { deletes, updates, supabase } = deleteRecorder({
       entry: { id: "entry-1", job_id: "job-9", quote_id: "quote-9" }
     });
 
@@ -433,11 +445,32 @@ describe("deleteCrmLedgerRow", () => {
     const tables = deletes.map((d) => d.table);
     expect(tables).not.toContain("crm_jobs");
     expect(tables).not.toContain("crm_quotes");
+    expect(updates.map((d) => d.table)).not.toContain("crm_jobs");
   });
 
-  it("throws a 404 for a quote-backed row and deletes nothing", async () => {
-    const { deletes, supabase } = deleteRecorder({ entry: null });
-    await expect(deleteCrmLedgerRow(supabase, "quote-9", actor)).rejects.toMatchObject({ status: 404 });
+  it("can hide a quote-backed ledger row without deleting the quote", async () => {
+    const { deletes, updates, supabase } = deleteRecorder({
+      entry: null,
+      quote: { id: "quote-9", meta: { existing: true } }
+    });
+
+    await deleteCrmLedgerRow(supabase, "quote-9", actor);
+
     expect(deletes).toHaveLength(0);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].table).toBe("crm_quotes");
+    expect(updates[0].filters.id).toBe("quote-9");
+    expect(updates[0].payload.meta).toMatchObject({
+      existing: true,
+      bookkeeping_deleted_by: actor.email,
+      bookkeeping_delete_source: "ledger_row_delete"
+    });
+  });
+
+  it("throws a 404 for a missing ledger row and hides nothing", async () => {
+    const { deletes, updates, supabase } = deleteRecorder({ entry: null, quote: null });
+    await expect(deleteCrmLedgerRow(supabase, "missing-row", actor)).rejects.toMatchObject({ status: 404 });
+    expect(deletes).toHaveLength(0);
+    expect(updates).toHaveLength(0);
   });
 });

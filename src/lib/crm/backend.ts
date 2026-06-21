@@ -220,6 +220,10 @@ function metadataWithActor(payload: unknown, actor: CrmActor, action: string) {
   };
 }
 
+function objectMeta(value: unknown) {
+  return typeof value === "object" && value && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 async function fetchCrmJob(supabase: CrmSupabaseClient, jobId: string): Promise<CrmJob> {
   const { data, error } = await supabase.from("crm_jobs").select("*").eq("id", jobId).maybeSingle();
   if (error || !data) throw new CrmAuthError(404, "CRM job was not found.");
@@ -1658,33 +1662,81 @@ export async function deleteCrmLedgerRow(
   id: string,
   actor: CrmActor
 ) {
-  // SURGICAL, single-row delete. Removes ONLY this bookkeeping entry (and the
-  // payments / expenses / files that belong to it via ON DELETE CASCADE on
-  // bookkeeping_entry_id). It deliberately never touches the parent job or
-  // quote, so removing a duplicate ledger row can NOT wipe out the underlying
-  // sale. Quote-backed rows have no entry of their own and are not removable
-  // here — the UI only offers delete on standalone entry rows.
-  const { data: existing } = await supabase
+  // SURGICAL, single-row ledger tombstone. This hides ONLY the bookkeeping
+  // ledger row and deliberately keeps the parent job/quote intact. A physical
+  // delete lets imported rows or linked quote rows reappear on refresh.
+  const deletedAt = new Date().toISOString();
+  const tombstone = {
+    bookkeeping_deleted_at: deletedAt,
+    bookkeeping_deleted_by: actor.email,
+    bookkeeping_deleted_by_user_id: actor.userId || null,
+    bookkeeping_delete_source: "ledger_row_delete"
+  };
+  const { data: existing, error: entryReadError } = await supabase
     .from("crm_quote_bookkeeping_entries")
     .select("*")
     .eq("id", id)
     .maybeSingle();
 
-  if (!existing) {
+  if (entryReadError) throw new CrmAuthError(502, "Row could not be checked before hiding.");
+
+  if (existing) {
+    const after = {
+      ...existing,
+      meta: {
+        ...objectMeta((existing as CrmBookkeepingEntry).meta),
+        ...tombstone
+      }
+    };
+    const { error } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .update({ meta: after.meta })
+      .eq("id", id);
+    if (error) throw new CrmAuthError(502, "Row could not be hidden.");
+
+    await recordCrmActivity(supabase, actor, {
+      entityType: "bookkeeping_entry",
+      entityId: id,
+      action: "delete",
+      before: existing,
+      after,
+      metadata: { source: "ledger_row_delete" }
+    });
+
+    return { id };
+  }
+
+  const { data: quote, error: quoteReadError } = await supabase
+    .from("crm_quotes")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (quoteReadError) throw new CrmAuthError(502, "Quote row could not be checked before hiding.");
+
+  if (!quote) {
     throw new CrmAuthError(
       404,
-      "That row is a live quote, not a removable bookkeeping entry. Change its status in Quotes/Orders to take it off the ledger."
+      "That bookkeeping row could not be found. Refresh the CRM and try again."
     );
   }
 
-  const { error } = await supabase.from("crm_quote_bookkeeping_entries").delete().eq("id", id);
-  if (error) throw new CrmAuthError(502, "Row could not be deleted.");
+  const after = {
+    ...(quote as CrmQuote),
+    meta: {
+      ...objectMeta((quote as CrmQuote).meta),
+      ...tombstone
+    }
+  };
+  const { error } = await supabase.from("crm_quotes").update({ meta: after.meta }).eq("id", id);
+  if (error) throw new CrmAuthError(502, "Quote row could not be hidden from bookkeeping.");
 
   await recordCrmActivity(supabase, actor, {
-    entityType: "bookkeeping_entry",
+    entityType: "quote",
     entityId: id,
     action: "delete",
-    before: existing,
+    before: quote,
+    after,
     metadata: { source: "ledger_row_delete" }
   });
 

@@ -48,6 +48,10 @@ const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "paid"
 ]);
 
+function hasLedgerDeleteTombstone(meta: Record<string, unknown> | null | undefined) {
+  return Boolean(meta && typeof meta === "object" && !Array.isArray(meta) && meta.bookkeeping_deleted_at);
+}
+
 export function buildBookkeepingRows({
   quotes,
   entries,
@@ -70,12 +74,18 @@ export function buildBookkeepingRows({
   const expensesByEntryId = groupExpenses(expenses, "bookkeeping_entry_id");
   const expensesByQuoteId = groupExpenses(expenses, "quote_id");
   const expensesByJobId = groupExpenses(expenses, "job_id");
-  const quoteMetadataEntries = entries.filter((entry) => entry.source === "crm_quote" && entry.quote_id);
+  const activeEntries = entries.filter((entry) => !hasLedgerDeleteTombstone(entry.meta));
+  const quoteMetadataEntries = activeEntries.filter((entry) => entry.source === "crm_quote" && entry.quote_id);
   const quoteMetadataByQuoteId = new Map(
     quoteMetadataEntries.map((entry) => [entry.quote_id as string, entry])
   );
-  const standaloneEntries = entries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
-  const linkedQuoteIds = new Set(standaloneEntries.map((entry) => entry.quote_id).filter(Boolean));
+  const standaloneEntries = activeEntries.filter((entry) => !(entry.source === "crm_quote" && entry.quote_id));
+  const linkedQuoteIds = new Set(
+    entries
+      .filter((entry) => !(entry.source === "crm_quote" && entry.quote_id))
+      .map((entry) => entry.quote_id)
+      .filter(Boolean)
+  );
 
   // Each expense is applied to exactly one row. Entry rows resolve first (most
   // specific), so a job-linked expense can't also land on a quote row that
@@ -112,6 +122,7 @@ export function buildBookkeepingRows({
 
   const quoteRows = quotes
     .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quote.status))
+    .filter((quote) => !hasLedgerDeleteTombstone(quote.meta))
     .filter((quote) => !linkedQuoteIds.has(quote.id))
     .map((quote) => {
       const metadataEntry = quoteMetadataByQuoteId.get(quote.id) || null;

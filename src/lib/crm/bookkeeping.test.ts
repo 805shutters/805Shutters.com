@@ -250,6 +250,54 @@ describe("bookkeeping notes", () => {
   });
 });
 
+describe("bookkeeping ledger tombstones", () => {
+  it("hides tombstoned entry rows from the ledger", () => {
+    const rows = rowsFrom({
+      entries: [
+        entry({
+          id: "e1",
+          total_amount: 2704,
+          meta: { bookkeeping_deleted_at: "2026-06-21T03:00:00.000Z" }
+        })
+      ]
+    });
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it("uses a tombstoned linked entry to suppress the quote row underneath it", () => {
+    const rows = rowsFrom({
+      quotes: [quote({ id: "q1", quote_number: "Sheet row 7", quote_total: 2704 })],
+      entries: [
+        entry({
+          id: "e1",
+          source: "legacy_sheet",
+          quote_id: "q1",
+          imported_sheet_row: 7,
+          total_amount: 2704,
+          meta: { bookkeeping_deleted_at: "2026-06-21T03:00:00.000Z" }
+        })
+      ]
+    });
+
+    expect(rows).toHaveLength(0);
+  });
+
+  it("hides tombstoned quote rows from the ledger", () => {
+    const rows = rowsFrom({
+      quotes: [
+        quote({
+          id: "q1",
+          quote_total: 2704,
+          meta: { bookkeeping_deleted_at: "2026-06-21T03:00:00.000Z" }
+        })
+      ]
+    });
+
+    expect(rows).toHaveLength(0);
+  });
+});
+
 describe("paid-in-full status", () => {
   it("marks a bookkeeping row closed when payments cover the total", () => {
     const [row] = rowsFrom({
