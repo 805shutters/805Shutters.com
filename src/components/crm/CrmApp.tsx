@@ -5522,7 +5522,7 @@ function BookkeepingSpreadsheet({
                     </td>
                   </tr>
                   {groupRows.map((row) => (
-              <tr className={row.isPaidInFull ? "crm-bookkeeping-row--closed" : undefined} key={bookkeepingRowKey(row)}>
+              <tr className={bookkeepingStatusKey(row) === "closed" ? "crm-bookkeeping-row--closed" : undefined} key={bookkeepingRowKey(row)}>
                 <td>
                   {isEditing(row, "customer") ? (
                     <BookkeepingCustomerEditor row={row} busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
