@@ -477,8 +477,18 @@ function crmRedirectUrl() {
   return `${origin}/crm/`;
 }
 
+function crmApiPath(path: string) {
+  if (!path.startsWith("/api/")) return path;
+
+  const queryStart = path.indexOf("?");
+  const pathname = queryStart === -1 ? path : path.slice(0, queryStart);
+  const query = queryStart === -1 ? "" : path.slice(queryStart);
+
+  return pathname.endsWith("/") ? path : `${pathname}/${query}`;
+}
+
 async function crmFetch<T>(session: Session, path: string, init: RequestInit = {}) {
-  const response = await fetch(path, {
+  const response = await fetch(crmApiPath(path), {
     ...init,
     headers: {
       "Content-Type": "application/json",
