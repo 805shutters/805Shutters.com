@@ -213,12 +213,12 @@ describe("buildDashboardData", () => {
         job({ id: "duplicate-open", status: "ordered", customer_name: "Duplicate Open" })
       ],
       quotes: [
-        quote({ id: "quote-lead", job_id: "quoted-lead", status: "sent" }),
-        quote({ id: "quote-sold-open", job_id: "sold-open", status: "sold" }),
-        quote({ id: "quote-paid-status", job_id: "paid-status", status: "paid" }),
-        quote({ id: "quote-paid-balance", job_id: "paid-balance", status: "sold" }),
-        quote({ id: "quote-duplicate-a", job_id: "duplicate-open", status: "ordered" }),
-        quote({ id: "quote-duplicate-b", job_id: "duplicate-open", status: "approved" })
+        quote({ id: "quote-lead", job_id: "quoted-lead", status: "sent", customer_name: "Quoted Lead" }),
+        quote({ id: "quote-sold-open", job_id: "sold-open", status: "sold", customer_name: "Sold Open" }),
+        quote({ id: "quote-paid-status", job_id: "paid-status", status: "paid", customer_name: "Paid Status" }),
+        quote({ id: "quote-paid-balance", job_id: "paid-balance", status: "sold", customer_name: "Paid Balance" }),
+        quote({ id: "quote-duplicate-a", job_id: "duplicate-open", status: "ordered", customer_name: "Duplicate Open" }),
+        quote({ id: "quote-duplicate-b", job_id: "duplicate-open", status: "approved", customer_name: "Duplicate Open" })
       ],
       events: [],
       customers: [],
@@ -235,6 +235,9 @@ describe("buildDashboardData", () => {
     });
 
     expect(data.summary.openJobs).toBe(3);
+    expect(data.jobs.find((item) => item.id === "paid-balance")?.status).toBe("closed");
+    expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.latestStatus).toBe("closed");
+    expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.latestStatus).toBe("sold");
   });
 });
 

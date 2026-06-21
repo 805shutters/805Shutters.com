@@ -4,6 +4,7 @@ import {
   buildAccountabilityQueue,
   buildBookkeepingRows,
   buildKenPayoffSummary,
+  effectiveBookkeepingStatus,
   normalizePaymentType,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
@@ -656,19 +657,20 @@ export function buildDashboardData({
     payoffTarget
   });
   const commissionSummary = buildCommissionSummary(bookkeepingRows, commissionPayments);
+  const liveJobs = projectLiveJobStatuses(jobs, bookkeepingRows);
   const customerFiles = buildCustomerFiles({
     customers,
     products,
     contracts,
-    jobs,
+    jobs: liveJobs,
     quotes,
     bookkeepingRows
   });
-  const jobsWithQuotes = jobs.map((job) => ({
+  const jobsWithQuotes = liveJobs.map((job) => ({
     ...job,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
-  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobs);
+  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes);
 
   return {
     jobs: jobsWithQuotes,
@@ -700,6 +702,32 @@ export function buildDashboardData({
       now
     })
   };
+}
+
+function projectLiveJobStatuses(jobs: CrmJob[], rows: CrmBookkeepingRow[]) {
+  const statusByJobId = new Map(jobs.map((job) => [job.id, job.status]));
+
+  for (const row of rows) {
+    if (!row.jobId) continue;
+    const current = statusByJobId.get(row.jobId);
+    if (!current) continue;
+    statusByJobId.set(row.jobId, advanceJobStatus(current, jobStatusForBookkeepingRow(row)));
+  }
+
+  return jobs.map((job) => {
+    const status = statusByJobId.get(job.id) || job.status;
+    return status === job.status ? job : { ...job, status };
+  });
+}
+
+function jobStatusForBookkeepingRow(row: CrmBookkeepingRow): CrmJobStatus {
+  const status = effectiveBookkeepingStatus(row);
+  if (status === "closed" || status === "paid") return "closed";
+  if (status === "installed" || status === "invoiced") return "installed";
+  if (status === "ordered" || status === "received") return "ordered";
+  if (status === "lost") return "lost";
+  if (status === "draft" || status === "sent" || status === "archived") return "quoted";
+  return "sold";
 }
 
 export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {

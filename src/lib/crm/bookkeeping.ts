@@ -29,6 +29,14 @@ export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" 
   return Boolean(row.isPaidInFull);
 }
 
+export function effectiveBookkeepingStatus(
+  row: Pick<CrmBookkeepingRow, "source" | "status" | "isPaidInFull">
+): CrmBookkeepingStatus {
+  if (row.isPaidInFull) return "closed";
+  if (row.status === "manual" || row.status === "legacy") return "sold";
+  return row.status;
+}
+
 const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "sold",
   "approved",

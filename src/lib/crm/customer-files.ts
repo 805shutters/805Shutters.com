@@ -7,6 +7,7 @@ import {
   CrmJob,
   CrmQuote
 } from "@/lib/crm/types";
+import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
 
 export function buildCustomerFiles({
   customers,
@@ -55,7 +56,7 @@ export function buildCustomerFiles({
     file.bookkeepingRows.push(row);
     file.lifetimeValue += Number(row.total) || 0;
     file.openBalance += Math.max(Number(row.balance) || 0, 0);
-    file.latestStatus = String(row.status);
+    file.latestStatus = effectiveBookkeepingStatus(row);
     file.latestSoldDate = newestDate(file.latestSoldDate, row.soldDate);
     if (row.notes) file.notes.push(row.notes);
 
@@ -111,7 +112,7 @@ export function buildCustomerFiles({
     const file = ensureFile(fileMap, key, quote.customer_name || job?.customer_name || "Linked customer");
     pushUnique(file.quotes, quote.id, quote);
     if (job) pushUnique(file.jobs, job.id, job);
-    file.latestStatus = quote.status;
+    if (!file.bookkeepingRows.length) file.latestStatus = quote.status;
     file.latestSoldDate = newestDate(file.latestSoldDate, quote.sold_at || quote.approved_at || quote.created_at);
     if (quote.notes) file.notes.push(quote.notes);
   }
@@ -164,6 +165,8 @@ export function buildCustomerFiles({
     }
 
     file.notes = Array.from(new Set(file.notes.filter(Boolean)));
+    const liveStatus = latestLiveStatus(file);
+    if (liveStatus) file.latestStatus = liveStatus;
   }
 
   return Array.from(fileMap.values()).sort((a, b) => {
@@ -171,6 +174,36 @@ export function buildCustomerFiles({
     const bt = b.latestSoldDate ? Date.parse(b.latestSoldDate) : 0;
     return bt - at || a.customerName.localeCompare(b.customerName);
   });
+}
+
+function latestLiveStatus(file: CrmCustomerFile) {
+  const latestRow = newestByDate(file.bookkeepingRows, (row) => row.soldDate);
+  if (latestRow) return effectiveBookkeepingStatus(latestRow);
+
+  const latestQuote = newestByDate(file.quotes, (quote) =>
+    quote.sold_at || quote.approved_at || quote.ordered_at || quote.received_at || quote.installed_at || quote.created_at
+  );
+  if (latestQuote) return latestQuote.status;
+
+  const latestJob = newestByDate(file.jobs, (job) => job.appointment_start || job.created_at);
+  if (latestJob) return latestJob.status;
+
+  return file.latestStatus;
+}
+
+function newestByDate<T>(items: T[], getDate: (item: T) => string | null | undefined) {
+  let newest: T | null = null;
+  let newestTime = Number.NEGATIVE_INFINITY;
+  for (const item of items) {
+    const date = getDate(item);
+    const parsedTime = date ? Date.parse(date) : Number.NEGATIVE_INFINITY;
+    const time = Number.isFinite(parsedTime) ? parsedTime : Number.NEGATIVE_INFINITY;
+    if (!newest || time > newestTime) {
+      newest = item;
+      newestTime = time;
+    }
+  }
+  return newest;
 }
 
 export function customerKey(value: string | null | undefined) {

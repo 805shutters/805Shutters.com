@@ -2,7 +2,7 @@
 
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { formatPaymentType } from "@/lib/crm/bookkeeping";
+import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
 import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -3873,10 +3873,15 @@ function JobStatusTabs({
 
 function customerFileStatusTokens(file: CrmCustomerFile) {
   const statuses = new Set<string>();
-  if (file.latestStatus) statuses.add(file.latestStatus);
+  if (file.latestStatus) {
+    statuses.add(file.latestStatus);
+    return statuses;
+  }
+  for (const row of file.bookkeepingRows) statuses.add(effectiveBookkeepingStatus(row));
+  if (statuses.size) return statuses;
   for (const job of file.jobs) statuses.add(job.status);
+  if (statuses.size) return statuses;
   for (const quote of file.quotes) statuses.add(quote.status);
-  for (const row of file.bookkeepingRows) statuses.add(String(row.status));
   return statuses;
 }
 
@@ -3890,8 +3895,9 @@ function customerFileMatchesStatus(file: CrmCustomerFile, status: JobStatusFilte
     case "follow_up":
     case "scheduled":
     case "lost":
-    case "closed":
       return statuses.has(status);
+    case "closed":
+      return statuses.has("closed") || statuses.has("paid");
     case "quoted":
       return statuses.has("quoted") || statuses.has("draft") || statuses.has("sent");
     case "sold":
@@ -5288,12 +5294,10 @@ const BOOKKEEPING_STATUS_LABELS: Record<string, string> = {
 };
 
 // The effective, real-time status of a ledger row. Paid-in-full always wins
-// (the balance has hit zero), legacy sheet imports read as "sold"; everything
+// (the balance has hit zero), legacy/manual imports read as "sold"; everything
 // else follows the live quote/entry status.
 function bookkeepingStatusKey(row: CrmBookkeepingRow): string {
-  if (row.isPaidInFull) return "closed";
-  if (row.source === "legacy_sheet") return "sold";
-  return String(row.status);
+  return effectiveBookkeepingStatus(row);
 }
 
 function bookkeepingStatusRank(status: string) {
