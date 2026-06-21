@@ -3439,6 +3439,100 @@ body:has(.crm-app-shell) {
   white-space: nowrap;
 }
 
+.crm-status-select {
+  --status-bg: #f3f1ec;
+  --status-border: #b7b2a8;
+  --status-accent: #8c877d;
+  --status-ink: #1e1d1a;
+  border: 1px solid var(--status-border);
+  background-color: var(--status-bg);
+  box-shadow: inset 5px 0 0 var(--status-accent);
+  color: var(--status-ink);
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.crm-status-select:hover,
+.crm-status-select:focus {
+  border-color: var(--status-accent);
+}
+
+.crm-status-select[data-status="new"],
+.crm-status-select[data-status="draft"] {
+  --status-bg: #f1f0ec;
+  --status-border: #b5b0a8;
+  --status-accent: #77736b;
+  --status-ink: #25231f;
+}
+
+.crm-status-select[data-status="follow_up"],
+.crm-status-select[data-status="sent"] {
+  --status-bg: #f2ede4;
+  --status-border: #b8a987;
+  --status-accent: #917a4f;
+  --status-ink: #3f321d;
+}
+
+.crm-status-select[data-status="scheduled"] {
+  --status-bg: #e8edf0;
+  --status-border: #8da0a8;
+  --status-accent: #5e7882;
+  --status-ink: #243a43;
+}
+
+.crm-status-select[data-status="quoted"] {
+  --status-bg: #eceaf1;
+  --status-border: #9690a7;
+  --status-accent: #70698d;
+  --status-ink: #353149;
+}
+
+.crm-status-select[data-status="sold"],
+.crm-status-select[data-status="approved"] {
+  --status-bg: #e7eee6;
+  --status-border: #889c82;
+  --status-accent: #607b58;
+  --status-ink: #253c24;
+}
+
+.crm-status-select[data-status="ordered"],
+.crm-status-select[data-status="received"] {
+  --status-bg: #eee9df;
+  --status-border: #a89879;
+  --status-accent: #806b45;
+  --status-ink: #43361f;
+}
+
+.crm-status-select[data-status="installed"] {
+  --status-bg: #e2eeee;
+  --status-border: #809a9a;
+  --status-accent: #5b7f80;
+  --status-ink: #223f40;
+}
+
+.crm-status-select[data-status="invoiced"] {
+  --status-bg: #eee8ed;
+  --status-border: #9d8598;
+  --status-accent: #7d6077;
+  --status-ink: #432f3f;
+}
+
+.crm-status-select[data-status="paid"],
+.crm-status-select[data-status="closed"],
+.crm-status-select[data-status="archived"] {
+  --status-bg: #e6e5df;
+  --status-border: #858179;
+  --status-accent: #605d55;
+  --status-ink: #272520;
+}
+
+.crm-status-select[data-status="lost"] {
+  --status-bg: #efe7e4;
+  --status-border: #9e857d;
+  --status-accent: #7d5d55;
+  --status-ink: #482f2a;
+}
+
 .crm-ledger {
   min-width: 0;
   padding: 20px;

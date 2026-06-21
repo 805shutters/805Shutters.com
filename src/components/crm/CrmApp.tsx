@@ -1492,7 +1492,7 @@ export function CrmApp() {
               <div className="crm-field-row">
                 <label>
                   Status
-                  <select name="status" defaultValue="sold">
+                  <select className="crm-status-select" data-status="sold" name="status" defaultValue="sold">
                     {crmQuoteStatuses.map((status) => (
                       <option value={status} key={status}>
                         {status.replace("_", " ")}
@@ -3313,7 +3313,7 @@ function DrillDetailEditForm({
             <label>
               Status
               {canEditQuoteStatus ? (
-                <select name="quote_status" defaultValue={statusValue}>
+                <select className="crm-status-select" data-status={statusValue || undefined} name="quote_status" defaultValue={statusValue}>
                   {crmQuoteStatuses.map((status) => (
                     <option value={status} key={status}>
                       {titleCase(status)}
@@ -3321,7 +3321,7 @@ function DrillDetailEditForm({
                   ))}
                 </select>
               ) : canEditJobStatus ? (
-                <select name="job_status" defaultValue={statusValue}>
+                <select className="crm-status-select" data-status={statusValue || undefined} name="job_status" defaultValue={statusValue}>
                   {crmJobStatuses.map((status) => (
                     <option value={status} key={status}>
                       {titleCase(status)}
@@ -4021,7 +4021,7 @@ function JobCard({
       </dl>
       <div className="crm-card-footer">
         <strong>{toCurrency(job.quote_total || job.estimated_total)}</strong>
-        <select value={job.status} onChange={(event) => onStatusChange(job, event.target.value as CrmJobStatus)}>
+        <select className="crm-status-select" data-status={job.status} value={job.status} onChange={(event) => onStatusChange(job, event.target.value as CrmJobStatus)}>
           {crmJobStatuses.map((status) => (
             <option value={status} key={status}>
               {status.replace("_", " ")}
@@ -4423,7 +4423,7 @@ function OrderBoard({
               <div className="crm-field-row">
                 <label>
                   Status
-                  <select name="status" defaultValue={quote.status}>
+                  <select className="crm-status-select" data-status={quote.status} name="status" defaultValue={quote.status}>
                     {crmQuoteStatuses.map((status) => (
                       <option value={status} key={status}>
                         {status.replace("_", " ")}
