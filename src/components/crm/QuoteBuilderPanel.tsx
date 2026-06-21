@@ -77,20 +77,37 @@ function typeLabel(t: string): string {
   return PRODUCT_TYPE_LABELS[t] || t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// Quick-add room buttons (mirrors the MTS builder's room presets).
+// Quick-add room buttons (union of the old MTS quote-builder and measure-form room presets).
 const ROOM_PRESETS = [
   "Living Room",
   "Family Room",
   "Dining Room",
   "Kitchen",
+  "Breakfast Nook",
+  "Hall",
+  "Hallway",
+  "Foyer",
   "Primary Bedroom",
+  "Primary Bed",
+  "Primary Bathroom",
   "Primary Bath",
+  "Bedroom",
+  "Bedroom 1",
   "Bedroom 2",
   "Bedroom 3",
-  "Office",
+  "Guest Room",
+  "Nursery",
   "Bathroom",
-  "Hallway",
+  "Stair",
+  "Stairs",
   "Loft",
+  "Office",
+  "Den",
+  "Studio",
+  "Library",
+  "Gym",
+  "Garage",
+  "Closet",
 ];
 
 type ProductTypeTile = { type: string; label: string; defaultProductId: string; count: number };
@@ -1080,5 +1097,23 @@ const productTileLabel: CSSProperties = {
   lineHeight: 1.15,
   textAlign: "center",
 };
-const roomPill: CSSProperties = { border: "1px solid #b8b6ae", background: "#ffffff", borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0b0b0b" };
-const customRoomInput: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 999, padding: "7px 14px", fontSize: 13, width: 130 };
+const roomPill: CSSProperties = {
+  border: "1px solid #c8d2d8",
+  background: "#edf3f6",
+  borderRadius: 8,
+  padding: "10px 14px",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#10202a",
+  minHeight: 44,
+};
+const customRoomInput: CSSProperties = {
+  border: "1px solid #c8d2d8",
+  background: "#fbfdfe",
+  borderRadius: 8,
+  padding: "10px 14px",
+  fontSize: 13,
+  width: 146,
+  minHeight: 44,
+};
