@@ -106,6 +106,8 @@ export type ProcessInstallationInvoiceResult = {
   unmatched: number;
   skipped: number;
   errors: number;
+  auditTableAvailable: boolean;
+  auditError: string | null;
   invoices: CrmInstallationInvoiceEmail[];
 };
 
@@ -946,17 +948,38 @@ async function applyInstallationInvoice(
   throw new CrmAuthError(400, "Installation invoice matched a job that has no ledger target.");
 }
 
+type InstallationInvoiceRecordInput = Omit<CrmInstallationInvoiceEmail, "id" | "created_at" | "updated_at">;
+
+function fallbackInvoiceRecord(input: InstallationInvoiceRecordInput, auditError: string | null) {
+  const now = new Date().toISOString();
+  return {
+    id: `gmail:${input.gmail_message_id}`,
+    created_at: now,
+    updated_at: now,
+    ...input,
+    raw: {
+      ...input.raw,
+      auditTableFallback: true,
+      auditError
+    }
+  } satisfies CrmInstallationInvoiceEmail;
+}
+
 async function insertInvoiceRecord(
   supabase: CrmSupabaseClient,
-  input: Omit<CrmInstallationInvoiceEmail, "id" | "created_at" | "updated_at">
+  input: InstallationInvoiceRecordInput,
+  persist: boolean,
+  auditError: string | null
 ) {
+  if (!persist) return fallbackInvoiceRecord(input, auditError);
+
   const { data, error } = await supabase
     .from("crm_installation_invoice_emails")
     .upsert(input, { onConflict: "gmail_message_id" })
     .select("*")
     .single();
 
-  if (error || !data) throw new CrmAuthError(502, "Installation invoice email could not be recorded.");
+  if (error || !data) return fallbackInvoiceRecord(input, error?.message || "Installation invoice email could not be recorded.");
   return data as CrmInstallationInvoiceEmail;
 }
 
@@ -983,6 +1006,8 @@ export async function processInstallationInvoiceInbox(
     unmatched: 0,
     skipped: 0,
     errors: 0,
+    auditTableAvailable: true,
+    auditError: null,
     invoices: []
   };
 
@@ -993,9 +1018,12 @@ export async function processInstallationInvoiceInbox(
     .select("gmail_message_id")
     .in("gmail_message_id", messageIds);
   if (existingResult.error) {
-    throw new CrmAuthError(502, "Installation invoice email table is missing. Run the Supabase migration.");
+    result.auditTableAvailable = false;
+    result.auditError = existingResult.error.message;
   }
-  const existingIds = new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)));
+  const existingIds = result.auditTableAvailable
+    ? new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)))
+    : new Set<string>();
   const candidates = await loadInvoiceCandidates(supabase);
 
   for (const messageId of messageIds) {
@@ -1066,7 +1094,7 @@ export async function processInstallationInvoiceInbox(
           pdfExtractionErrors: pdfExtraction.errors,
           bodyPreview: extraction.text.slice(0, 1000)
         }
-      });
+      }, result.auditTableAvailable, result.auditError);
 
       result.invoices.push(invoice);
       result.processed += 1;
@@ -1104,7 +1132,7 @@ export async function processInstallationInvoiceInbox(
           applied_at: null,
           error_message: error instanceof Error ? error.message : "Unknown installation invoice processing error.",
           raw: {}
-        });
+        }, result.auditTableAvailable, result.auditError);
         result.invoices.push(invoice);
       }
     }
