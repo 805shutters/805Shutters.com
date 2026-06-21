@@ -230,7 +230,10 @@ export function extractOrderCogsFromText(text: string): ExtractedOrderCogs {
   const amountMatch =
     normalized.match(/\b(?:order total|grand total|amount charged|amount due|total due|invoice total|total)\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i) ||
     normalized.match(/\$\s*([\d,]+(?:\.\d{2})?)\s*(?:total|charged|paid)/i);
-  const orderMatch = normalized.match(/\b(?:order|confirmation|invoice|po)\s*(?:number|no\.|#)?\s*[:#-]?\s*((?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{3,})/i);
+  const orderMatch =
+    normalized.match(/\b(?:order|confirmation|invoice|po)\s*(?:number|no\.|#)\s*[:#-]?\s*((?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{3,})/i) ||
+    normalized.match(/\b(?:confirmation|invoice|po)\s*[:#-]\s*((?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{3,})/i) ||
+    normalized.match(/\border\s*[:#-]\s*((?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{3,})/i);
 
   const customerName = cleanName(nameMatch?.[1] || null);
   const orderAmount = moneyFrom(amountMatch?.[1]);

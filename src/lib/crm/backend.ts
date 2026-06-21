@@ -4,7 +4,6 @@ import {
   buildAccountabilityQueue,
   buildBookkeepingRows,
   buildKenPayoffSummary,
-  isPaidInFullBookkeepingRow,
   normalizePaymentType,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
@@ -65,17 +64,6 @@ type CustomerSnapshot = {
   meta?: Record<string, unknown>;
 };
 
-const openSoldBookkeepingStatuses = new Set<CrmBookkeepingRow["status"]>([
-  "sold",
-  "approved",
-  "ordered",
-  "received",
-  "installed",
-  "invoiced",
-  "paid",
-  "legacy",
-  "manual"
-]);
 const jobStatusSet = new Set<string>(crmJobStatuses);
 const quoteStatusSet = new Set<string>(crmQuoteStatuses);
 const prioritySet = new Set(["low", "normal", "high", "urgent"]);
@@ -83,25 +71,6 @@ const calendarEventTypes = new Set(["sales_consult", "measure", "install", "foll
 const calendarStatuses = new Set(["scheduled", "complete", "canceled", "rescheduled"]);
 const saleOwnerSyncJobStatuses = new Set(["sold", "ordered", "installed", "invoiced", "closed"]);
 const saleOwnerSyncQuoteStatuses = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"];
-
-function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
-  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && openSoldBookkeepingStatuses.has(row.status);
-}
-
-function countDistinctOpenSoldJobs(rows: CrmBookkeepingRow[]) {
-  const jobIds = new Set<string>();
-  let rowsWithoutJob = 0;
-
-  for (const row of rows) {
-    if (row.jobId) {
-      jobIds.add(row.jobId);
-    } else {
-      rowsWithoutJob += 1;
-    }
-  }
-
-  return jobIds.size + rowsWithoutJob;
-}
 
 const allowedJobPatchFields = new Set([
   "status",
@@ -165,7 +134,6 @@ const allowedEntryPatchFields = new Set([
   "installation_invoice_url",
   "installation_match_status",
   "installation_matched_at",
-  "jessica_commission_paid_at",
   "manufacturer_name",
   "manufacturer_order_ref",
   "manufacturer_order_url",
@@ -647,7 +615,7 @@ export function buildDashboardData({
   payments,
   credits,
   expenses,
-  installationInvoiceEmails,
+  installationInvoiceEmails = [],
   kenPayments,
   orderCogsEmails = [],
   commissionPayments = [],
@@ -1482,8 +1450,7 @@ export async function updateCrmQuote(
     "bookkeeping_notes",
     "installation_invoice_amount",
     "installation_complete",
-    "ken_cut_override",
-    "jessica_commission_paid"
+    "ken_cut_override"
   ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
   const hasPaymentPatch = toMoney(payload.payment_amount) > 0;
 
@@ -1561,9 +1528,6 @@ export async function updateCrmQuote(
                 ? null
                 : Math.max(Number(payload.ken_cut_override) || 0, 0)
           }
-        : {}),
-      ...(typeof payload.jessica_commission_paid === "boolean"
-        ? { jessica_commission_paid_at: payload.jessica_commission_paid ? now : null }
         : {}),
       meta: { lastUpdatedBy: actor.email }
   };
@@ -1662,7 +1626,6 @@ export async function createCrmBookkeepingEntry(
       installation_invoice_url: optionalText(payload.installation_invoice_url),
       installation_match_status: payload.installation_complete ? "matched" : "unmatched",
       installation_matched_at: payload.installation_complete ? now : null,
-      jessica_commission_paid_at: payload.jessica_commission_paid ? now : null,
       manufacturer_name: optionalText(payload.manufacturer_name),
       manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
       manufacturer_order_url: optionalText(payload.manufacturer_order_url),
@@ -1746,10 +1709,6 @@ export async function updateCrmBookkeepingEntry(
   if (typeof payload.installation_complete === "boolean") {
     patch.installation_match_status = payload.installation_complete ? "matched" : "unmatched";
     patch.installation_matched_at = payload.installation_complete ? now : null;
-  }
-
-  if (typeof payload.jessica_commission_paid === "boolean") {
-    patch.jessica_commission_paid_at = payload.jessica_commission_paid ? now : null;
   }
 
   if (!Object.keys(patch).length && !toMoney(payload.payment_amount)) {

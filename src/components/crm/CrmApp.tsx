@@ -2,7 +2,7 @@
 
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
+import { formatPaymentType } from "@/lib/crm/bookkeeping";
 import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -58,7 +58,6 @@ type BookkeepingEditableField =
   | "cogs"
   | "installation"
   | "ken"
-  | "jessicaPaid"
   | "notes";
 type BookkeepingCellEdit = { rowKey: string; field: BookkeepingEditableField } | null;
 
@@ -428,7 +427,6 @@ function buildBookkeepingRowPayload(row: CrmBookkeepingRow, patch: Record<string
     paid_at: todayInputValue(),
     installation_invoice_amount: row.installationInvoiceAmount || 0,
     installation_complete: row.isInstallationComplete,
-    jessica_commission_paid: Boolean(row.jessicaCommissionPaidAt),
     ken_cut_override: row.kenCutOverride ?? null,
     manufacturer_name: row.manufacturerName || "",
     manufacturer_order_ref: row.manufacturerOrderRef || "",
@@ -1940,22 +1938,6 @@ const DONUT_COLORS = [
 ];
 const WON_JOB_STATUSES: CrmJobStatus[] = ["sold", "ordered", "installed", "invoiced", "closed"];
 const OPEN_JOB_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted"];
-const OPEN_SOLD_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingRow["status"]>([
-  "sold",
-  "approved",
-  "ordered",
-  "received",
-  "installed",
-  "invoiced",
-  "paid",
-  "legacy",
-  "manual"
-]);
-
-function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
-  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && OPEN_SOLD_BOOKKEEPING_STATUSES.has(row.status);
-}
-
 function uniqueOpenSoldRows(rows: CrmBookkeepingRow[]) {
   return distinctRowsByJob(openSoldRows(rows));
 }
@@ -4978,41 +4960,6 @@ function BookkeepingInstallationEditor({
   );
 }
 
-function BookkeepingCheckboxEditor({
-  checked,
-  busy,
-  onSave,
-  onCancel
-}: {
-  checked: boolean;
-  busy: boolean;
-  onSave: (checked: boolean) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [value, setValue] = useState(checked);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await onSave(value);
-    onCancel();
-  }
-
-  return (
-    <form className="crm-bookkeeping-inline-form crm-bookkeeping-inline-form--check" onSubmit={submit}>
-      <label className="crm-bookkeeping-inline-check">
-        <input autoFocus type="checkbox" checked={value} onChange={(event) => setValue(event.target.checked)} />
-        Paid
-      </label>
-      <button type="submit" disabled={busy}>
-        Save
-      </button>
-      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
-        Cancel
-      </button>
-    </form>
-  );
-}
-
 function BookkeepingSpreadsheet({
   rows,
   totals,
@@ -5041,10 +4988,7 @@ function BookkeepingSpreadsheet({
     ["COGS", toLedgerCurrency(totals?.cogs)],
     ["Installation", toLedgerCurrency(totals?.installationAmount)],
     ["Ken Profit", toLedgerCurrency(totals?.kenCut)],
-    ["Mike Profit", toLedgerCurrency(netProfit)],
-    ["Jessica Commission", toLedgerCurrency(totals?.jessicaCommission)],
-    ["Jessica Paid", toLedgerCurrency(totals?.jessicaCommissionPaid)],
-    ["Jessica Owed", toLedgerCurrency(totals?.jessicaCommissionOwed)],
+    ["Net Profit", toLedgerCurrency(netProfit)],
     ["Paid In Full", `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}`],
     ["Total Profit", toLedgerCurrency(totalProfit)],
     ["Profit Margin", profitMargin]
@@ -5101,9 +5045,7 @@ function BookkeepingSpreadsheet({
               <th>Installation</th>
               <th>Balance</th>
               <th>Ken</th>
-              <th>Mike</th>
-              <th>Jessica</th>
-              <th>J Paid</th>
+              <th>Profit</th>
               <th>Notes</th>
               <th className="crm-bookkeeping-delete-col" aria-label="Delete" />
             </tr>
@@ -5249,22 +5191,7 @@ function BookkeepingSpreadsheet({
                     </BookkeepingCellButton>
                   )}
                 </td>
-                <td className="crm-ledger-money-good">{toLedgerCurrency(row.mikeProfit)}</td>
-                <td className="crm-ledger-money-good">{toLedgerCurrency(row.jessicaCommission)}</td>
-                <td>
-                  {isEditing(row, "jessicaPaid") ? (
-                    <BookkeepingCheckboxEditor
-                      checked={Boolean(row.jessicaCommissionPaidAt)}
-                      busy={busy}
-                      onSave={(checked) => saveCell(row, { jessica_commission_paid: checked })}
-                      onCancel={closeEdit}
-                    />
-                  ) : (
-                    <BookkeepingCellButton ariaLabel={`Edit Jessica paid status for ${row.customerName}`} onClick={() => openEdit(row, "jessicaPaid")}>
-                      {row.jessicaCommissionPaidAt ? toLedgerCurrency(row.jessicaCommission) : "-"}
-                    </BookkeepingCellButton>
-                  )}
-                </td>
+                <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td>
                 <td>
                   {isEditing(row, "notes") ? (
                     <BookkeepingInlineTextEditor
