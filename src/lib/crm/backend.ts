@@ -2013,6 +2013,7 @@ export async function updateCrmBookkeepingEntry(
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
   const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
+  const markBalancePaid = payload.mark_balance_paid === true;
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedEntryPatchFields.has(key)) continue;
@@ -2037,7 +2038,7 @@ export async function updateCrmBookkeepingEntry(
     patch.installation_matched_at = payload.installation_complete ? now : null;
   }
 
-  if (!Object.keys(patch).length && !toMoney(payload.payment_amount) && !hasRemakeAmount) {
+  if (!Object.keys(patch).length && !toMoney(payload.payment_amount) && !hasRemakeAmount && !markBalancePaid) {
     throw new CrmAuthError(400, "No supported bookkeeping fields provided.");
   }
 
@@ -2091,6 +2092,10 @@ export async function updateCrmBookkeepingEntry(
     );
   }
 
+  if (markBalancePaid && entry.job_id) {
+    await closeBookkeepingJobAfterBalancePaid(supabase, String(entry.job_id), actor);
+  }
+
   await syncCustomerFromBookkeepingEntry(supabase, entry);
   await recordCrmActivity(supabase, actor, {
     entityType: "bookkeeping_entry",
@@ -2101,6 +2106,26 @@ export async function updateCrmBookkeepingEntry(
   });
 
   return entry as CrmBookkeepingEntry;
+}
+
+async function closeBookkeepingJobAfterBalancePaid(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  actor: CrmActor
+) {
+  const { data: existingJob, error } = await supabase
+    .from("crm_jobs")
+    .select("id,status")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (error) throw new CrmAuthError(502, "Balance was marked paid, but the linked job could not be checked.");
+  if (!existingJob) return;
+
+  const status = String((existingJob as { status?: unknown }).status || "");
+  if (status === "closed" || status === "lost") return;
+
+  await updateCrmJob(supabase, jobId, { status: "closed" }, actor);
 }
 
 const allowedSettingKeys = new Set(["payoff_target", "ken_opening_balance"]);

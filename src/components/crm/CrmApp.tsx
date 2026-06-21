@@ -1370,7 +1370,7 @@ export function CrmApp({
     }
   }
 
-  async function saveBookkeepingCell(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
+  async function persistBookkeepingRowPatch(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
     if (!session) return;
 
     const payload = buildBookkeepingRowPayload(row, patch);
@@ -1379,41 +1379,80 @@ export function CrmApp({
     const customerNameChanged =
       Object.prototype.hasOwnProperty.call(patch, "customer_name") && customerName && customerName !== row.customerName;
 
+    if (row.source === "crm_quote" && row.quoteId) {
+      if (row.jobId && customerNameChanged) {
+        await crmFetch(session, `/api/crm/jobs/${row.jobId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ customer_name: customerName })
+        });
+      }
+      const quotePayload: Record<string, unknown> = {
+        ...payload,
+        ...(soldDate ? { sold_at: soldDate } : {}),
+        quote_total: Number(payload.total_amount || 0),
+        materials_cost: Number(payload.cogs_amount || 0),
+        sold_by: String(payload.sales_owner || "")
+      };
+      delete quotePayload.notes;
+      if (Object.prototype.hasOwnProperty.call(patch, "notes")) {
+        quotePayload.bookkeeping_notes = payload.notes;
+      }
+      await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
+        method: "PATCH",
+        body: JSON.stringify(quotePayload)
+      });
+    } else {
+      await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload)
+      });
+    }
+  }
+
+  async function saveBookkeepingCell(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
+    if (!session) return;
+
     setBusy(true);
     setMessage(null);
 
     try {
-      if (row.source === "crm_quote" && row.quoteId) {
-        if (row.jobId && customerNameChanged) {
-          await crmFetch(session, `/api/crm/jobs/${row.jobId}`, {
-            method: "PATCH",
-            body: JSON.stringify({ customer_name: customerName })
-          });
-        }
-        const quotePayload: Record<string, unknown> = {
-          ...payload,
-          ...(soldDate ? { sold_at: soldDate } : {}),
-          quote_total: Number(payload.total_amount || 0),
-          materials_cost: Number(payload.cogs_amount || 0),
-          sold_by: String(payload.sales_owner || "")
-        };
-        delete quotePayload.notes;
-        if (Object.prototype.hasOwnProperty.call(patch, "notes")) {
-          quotePayload.bookkeeping_notes = payload.notes;
-        }
-        await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
-          method: "PATCH",
-          body: JSON.stringify(quotePayload)
-        });
-      } else {
-        await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload)
-        });
-      }
+      await persistBookkeepingRowPatch(row, patch);
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Cell could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function markBookkeepingBalancePaid(row: CrmBookkeepingRow) {
+    if (!session) return;
+
+    const balance = roundCurrency(row.balance);
+    if (row.isPaidInFull || balance <= 0) return;
+
+    const paidAt = todayInputValue();
+    const confirmed = window.confirm(
+      `Mark ${toLedgerCurrency(balance)} paid for ${row.customerName}? This records a balance payment today and closes the job as paid.`
+    );
+    if (!confirmed) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await persistBookkeepingRowPatch(row, {
+        payment_amount: balance,
+        payment_label: "Balance payment",
+        paid_at: paidAt,
+        mark_balance_paid: true,
+        ...(row.source === "crm_quote" ? { status: "paid" } : {})
+      });
+      await refresh();
+      setMessage(`${row.customerName} balance marked paid.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Balance could not be marked paid.");
+      await refresh();
     } finally {
       setBusy(false);
     }
@@ -1809,6 +1848,7 @@ export function CrmApp({
               canMarkPartnerPaid={isMikePaymentAdminEmail(user?.email)}
               onOpenPayments={openPaymentLedger}
               onSave={saveBookkeepingCell}
+              onMarkBalancePaid={markBookkeepingBalancePaid}
               onMarkPartnerPaid={markPartnerPaymentPaid}
               onDelete={deleteBookkeepingRow}
             />
@@ -5751,6 +5791,52 @@ function PartnerPaymentAmountCell({
   );
 }
 
+function BookkeepingBalancePaidCell({
+  row,
+  busy,
+  onMarkPaid
+}: {
+  row: CrmBookkeepingRow;
+  busy: boolean;
+  onMarkPaid: (row: CrmBookkeepingRow) => void;
+}) {
+  const paid = row.isPaidInFull;
+  const canClick = !paid && row.balance > 0;
+  const amountClass = row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good";
+  const label = paid
+    ? `Balance paid for ${row.customerName}`
+    : canClick
+      ? `Mark balance paid for ${row.customerName}`
+      : `No balance due for ${row.customerName}`;
+  const status = (
+    <span className={`crm-partner-paid-box${paid ? " crm-partner-paid-box--paid" : ""}`} aria-hidden="true">
+      {paid ? "✓" : ""}
+    </span>
+  );
+
+  return (
+    <span className="crm-bookkeeping-balance-paid-cell">
+      <span className={amountClass}>{toLedgerCurrency(row.balance)}</span>
+      {canClick ? (
+        <button
+          type="button"
+          className="crm-partner-paid-button"
+          onClick={() => onMarkPaid(row)}
+          disabled={busy}
+          aria-label={label}
+          title={label}
+        >
+          {status}
+        </button>
+      ) : (
+        <span className="crm-partner-paid-status" aria-label={label} title={label}>
+          {status}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function BookkeepingSpreadsheet({
   rows,
   totals,
@@ -5761,6 +5847,7 @@ function BookkeepingSpreadsheet({
   canMarkPartnerPaid,
   onOpenPayments,
   onSave,
+  onMarkBalancePaid,
   onMarkPartnerPaid,
   onDelete
 }: {
@@ -5773,6 +5860,7 @@ function BookkeepingSpreadsheet({
   canMarkPartnerPaid: boolean;
   onOpenPayments: (person: CrmPaymentPerson) => void;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
+  onMarkBalancePaid: (row: CrmBookkeepingRow) => void;
   onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
   onDelete: (row: CrmBookkeepingRow) => void;
 }) {
@@ -6017,7 +6105,9 @@ function BookkeepingSpreadsheet({
                     </BookkeepingCellButton>
                   )}
                 </td>
-                <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(row.balance)}</td>
+                <td>
+                  <BookkeepingBalancePaidCell row={row} busy={busy} onMarkPaid={onMarkBalancePaid} />
+                </td>
                 <td>
                   {isEditing(row, "ken") ? (
                     <BookkeepingInlineTextEditor

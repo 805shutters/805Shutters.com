@@ -9,10 +9,11 @@ import {
   normalizeRemakeAmount,
   resolveFullPartnerPaymentAmount,
   syncRemakeExpense,
+  updateCrmBookkeepingEntry,
   updateCrmQuote
 } from "./backend";
 import { CrmAuthError } from "./auth";
-import { CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
+import { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
 
 type FakeExpense = {
   id: string;
@@ -206,6 +207,41 @@ function payment(overrides: Partial<CrmBookkeepingPayment> = {}): CrmBookkeeping
   };
 }
 
+function bookkeepingEntry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBookkeepingEntry {
+  return {
+    id: "entry-1",
+    created_at: "2026-06-20T00:00:00.000Z",
+    updated_at: "2026-06-20T00:00:00.000Z",
+    quote_id: null,
+    job_id: "job-1",
+    source: "manual",
+    customer_name: "Manual Customer",
+    sold_date: "2026-06-20",
+    total_amount: 1000,
+    payment_type: "cash",
+    cogs_amount: 200,
+    sales_owner: "mike",
+    sales_owner_auth_user_id: null,
+    sales_owner_set_at: null,
+    installation_invoice_document_id: null,
+    installation_invoice_amount: 0,
+    installation_invoice_number: null,
+    installation_invoice_url: null,
+    installation_match_status: "unmatched",
+    installation_matched_at: null,
+    jessica_commission_paid_at: null,
+    manufacturer_name: null,
+    manufacturer_order_ref: null,
+    manufacturer_order_url: null,
+    manufacturer_document_url: null,
+    notes: null,
+    imported_sheet_row: null,
+    ken_cut_override: null,
+    meta: {},
+    ...overrides
+  };
+}
+
 type RecordedSupabaseCall = {
   table: string;
   action: "insert" | "update" | "upsert" | "delete";
@@ -213,11 +249,14 @@ type RecordedSupabaseCall = {
   options?: unknown;
 };
 
-function createSupabaseRecorder(options: { job?: CrmJob; existingQuote?: CrmQuote; lineItemCount?: number } = {}) {
+function createSupabaseRecorder(
+  options: { job?: CrmJob; existingQuote?: CrmQuote; existingEntry?: CrmBookkeepingEntry | null; lineItemCount?: number } = {}
+) {
   const calls: RecordedSupabaseCall[] = [];
   const state = {
     job: options.job ?? job(),
     existingQuote: options.existingQuote ?? quote({ status: "ordered" }),
+    existingEntry: options.existingEntry ?? null,
     lineItemCount: options.lineItemCount ?? 0
   };
 
@@ -284,10 +323,18 @@ function createSupabaseRecorder(options: { job?: CrmJob; existingQuote?: CrmQuot
         return { data: state.job, error: null };
       }
       if (this.table === "crm_quotes") return { data: state.existingQuote, error: null };
+      if (this.table === "crm_quote_bookkeeping_entries") return { data: state.existingEntry, error: null };
       return { data: null, error: null };
     }
 
     async single() {
+      if (this.table === "crm_jobs" && this.action === "update") {
+        state.job = job({
+          ...state.job,
+          ...(this.payload as Partial<CrmJob>)
+        });
+        return { data: state.job, error: null };
+      }
       if (this.table === "crm_quotes" && this.action === "insert") {
         const record = this.payload as Partial<CrmQuote>;
         const data = quote({
@@ -305,6 +352,13 @@ function createSupabaseRecorder(options: { job?: CrmJob; existingQuote?: CrmQuot
           ...(this.payload as Partial<CrmQuote>)
         });
         return { data: state.existingQuote, error: null };
+      }
+      if (this.table === "crm_quote_bookkeeping_entries" && this.action === "update") {
+        state.existingEntry = bookkeepingEntry({
+          ...(state.existingEntry || bookkeepingEntry()),
+          ...(this.payload as Partial<CrmBookkeepingEntry>)
+        });
+        return { data: state.existingEntry, error: null };
       }
       return { data: this.payload ?? null, error: null };
     }
@@ -422,6 +476,70 @@ describe("quote bookkeeping notes", () => {
     );
     expect(quoteUpdate?.payload).toMatchObject({ notes: "New customer-facing quote note" });
     expect(entryUpsert?.payload).not.toHaveProperty("notes");
+  });
+
+  it("records a balance-paid checkbox payment and closes a quote-backed job", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1", status: "invoiced" }),
+      existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "invoiced", quote_total: 1000 })
+    });
+
+    await updateCrmQuote(
+      supabase,
+      "quote-1",
+      {
+        status: "paid",
+        payment_amount: 385.5,
+        payment_label: "Balance payment",
+        paid_at: "2026-06-21"
+      },
+      actor
+    );
+
+    expect(calls.find((call) => call.table === "crm_quote_bookkeeping_payments")?.payload).toMatchObject({
+      quote_id: "quote-1",
+      job_id: "job-1",
+      payment_label: "Balance payment",
+      amount: 385.5,
+      paid_at: "2026-06-21",
+      source: "crm_quote"
+    });
+    expect(calls.find((call) => call.table === "crm_quotes" && call.action === "update")?.payload).toMatchObject({
+      status: "paid"
+    });
+    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({
+      status: "closed"
+    });
+  });
+
+  it("records a balance-paid checkbox payment and closes a manual row's linked job", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1", status: "invoiced" }),
+      existingEntry: bookkeepingEntry({ id: "entry-1", job_id: "job-1" })
+    });
+
+    await updateCrmBookkeepingEntry(
+      supabase,
+      "entry-1",
+      {
+        payment_amount: 250,
+        payment_label: "Balance payment",
+        paid_at: "2026-06-21",
+        mark_balance_paid: true
+      },
+      actor
+    );
+
+    expect(calls.find((call) => call.table === "crm_quote_bookkeeping_payments")?.payload).toMatchObject({
+      bookkeeping_entry_id: "entry-1",
+      payment_label: "Balance payment",
+      amount: 250,
+      paid_at: "2026-06-21",
+      source: "manual"
+    });
+    expect(calls.find((call) => call.table === "crm_jobs" && call.action === "update")?.payload).toMatchObject({
+      status: "closed"
+    });
   });
 });
 
