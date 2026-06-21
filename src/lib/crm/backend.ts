@@ -751,7 +751,9 @@ function projectLiveBookkeepingStatuses(rows: CrmBookkeepingRow[], jobs: CrmJob[
       isPaidInFull: row.isPaidInFull
     });
     const jobStatus = row.jobId ? statusByJobId.get(row.jobId) : undefined;
-    const liveStatus = advanceBookkeepingStatus(current, bookkeepingStatusForJob(jobStatus));
+    const targetStatus = bookkeepingStatusForJob(jobStatus);
+    const liveStatus =
+      targetStatus === "closed" && !row.isPaidInFull ? current : advanceBookkeepingStatus(current, targetStatus);
     return liveStatus === row.liveStatus ? row : { ...row, liveStatus };
   });
 }
@@ -791,7 +793,8 @@ function projectLiveJobStatuses(jobs: CrmJob[], rows: CrmBookkeepingRow[]) {
 
 function jobStatusForBookkeepingRow(row: CrmBookkeepingRow): CrmJobStatus {
   const status = effectiveBookkeepingStatus(row);
-  if (status === "closed" || status === "paid") return "closed";
+  if (status === "closed") return "closed";
+  if (status === "paid") return row.isPaidInFull ? "closed" : "invoiced";
   if (status === "installed" || status === "invoiced") return "installed";
   if (status === "ordered" || status === "received") return "ordered";
   if (status === "lost") return "lost";

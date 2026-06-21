@@ -5,6 +5,7 @@ import {
   OWNER_COMMISSION_RATE,
   buildBookkeepingRows,
   buildKenPayoffSummary,
+  effectiveBookkeepingStatus,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
 import { buildCommissionSummary } from "@/lib/crm/commissions";
@@ -299,6 +300,18 @@ describe("bookkeeping ledger tombstones", () => {
 });
 
 describe("paid-in-full status", () => {
+  it("does not let a closed live status override an open ledger balance", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", status: "paid", quote_total: 1000, deposit_required: 500 })]
+    });
+
+    const projected = { ...row, liveStatus: "closed" as const };
+
+    expect(projected.isPaidInFull).toBe(false);
+    expect(projected.balance).toBe(1000);
+    expect(effectiveBookkeepingStatus(projected)).toBe("paid");
+  });
+
   it("marks a bookkeeping row closed when payments cover the total", () => {
     const [row] = rowsFrom({
       entries: [entry({ id: "e1", total_amount: 1000, sales_owner: "mike" })],

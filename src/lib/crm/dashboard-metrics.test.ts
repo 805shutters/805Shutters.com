@@ -130,7 +130,7 @@ describe("dashboard summary metrics", () => {
     const rows = [
       row({ id: "sold-with-ref", jobId: "job-sold", status: "sold", manufacturerOrderRef: "ABC-123" }),
       row({ id: "approved", jobId: "job-approved", status: "approved" }),
-      row({ id: "closed-live", jobId: "job-closed", status: "sold", liveStatus: "closed" }),
+      row({ id: "closed-live", jobId: "job-closed", status: "sold", liveStatus: "closed", isPaidInFull: true, balance: 0 }),
       row({ id: "ordered", jobId: "job-ordered", status: "ordered", manufacturerOrderRef: null }),
       row({ id: "paid", jobId: "job-paid", status: "sold", isPaidInFull: true, balance: 0 })
     ];
