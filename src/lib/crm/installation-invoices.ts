@@ -750,6 +750,71 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
   return candidates;
 }
 
+function targetedCustomerSearchTerm(customerName: string | null) {
+  const parts = normalizeCustomerName(customerName).split(" ").filter(Boolean);
+  const last = parts.at(-1);
+  return last && last.length >= 3 ? last : null;
+}
+
+async function loadTargetedInvoiceCandidates(supabase: CrmSupabaseClient, customerName: string | null) {
+  const term = targetedCustomerSearchTerm(customerName);
+  if (!term) return [];
+
+  const [entriesResult, jobsResult] = await Promise.all([
+    supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select(
+        "id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,sales_owner,installation_invoice_amount,installation_match_status"
+      )
+      .ilike("customer_name", `%${term}%`)
+      .limit(100),
+    supabase
+      .from("crm_jobs")
+      .select("id,customer_name,status,estimated_total")
+      .ilike("customer_name", `%${term}%`)
+      .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
+      .limit(100)
+  ]);
+
+  if (entriesResult.error || jobsResult.error) return [];
+
+  const entries = (entriesResult.data || []) as EntryRow[];
+  const jobs = (jobsResult.data || []) as JobRow[];
+  const entryJobIds = new Set(entries.map((entry) => entry.job_id).filter(Boolean));
+  const candidates: InstallationInvoiceCandidate[] = entries.map((entry) => ({
+    source: "entry",
+    customerName: entry.customer_name,
+    jobId: entry.job_id,
+    quoteId: entry.quote_id,
+    entryId: entry.id,
+    totalAmount: roundMoney(entry.total_amount),
+    cogsAmount: roundMoney(entry.cogs_amount),
+    salesOwner: entry.sales_owner,
+    soldDate: entry.sold_date,
+    existingInstallationAmount: roundMoney(entry.installation_invoice_amount),
+    existingInstallationMatchStatus: entry.installation_match_status
+  }));
+
+  for (const job of jobs) {
+    if (entryJobIds.has(job.id)) continue;
+    candidates.push({
+      source: "job",
+      customerName: job.customer_name,
+      jobId: job.id,
+      quoteId: null,
+      entryId: null,
+      totalAmount: roundMoney(job.estimated_total),
+      cogsAmount: 0,
+      salesOwner: null,
+      soldDate: null,
+      existingInstallationAmount: 0,
+      existingInstallationMatchStatus: null
+    });
+  }
+
+  return candidates;
+}
+
 function normalizeOwner(value: string | null | undefined) {
   const lower = String(value || "").toLowerCase();
   if (lower.includes("jessica")) return "jessica";
@@ -1091,11 +1156,21 @@ export async function processInstallationInvoiceInbox(
         attachmentText: pdfExtraction.text,
         attachmentNames: names
       });
-      const match = matchInstallationInvoiceToCandidate({
+      let match = matchInstallationInvoiceToCandidate({
         text: extraction.text,
         extractedCustomerName: extraction.customerName,
         candidates
       });
+      if (match.status === "unmatched" && extraction.customerName) {
+        const targetedCandidates = await loadTargetedInvoiceCandidates(supabase, extraction.customerName);
+        if (targetedCandidates.length) {
+          match = matchInstallationInvoiceToCandidate({
+            text: extraction.text,
+            extractedCustomerName: extraction.customerName,
+            candidates: targetedCandidates
+          });
+        }
+      }
       const decision = autoApplyDecision(match, extraction);
       const candidate = match.candidate;
       let appliedAt: string | null = null;
