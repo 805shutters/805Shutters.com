@@ -18,7 +18,7 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
     motorization: over.motorization ?? [],
     unit_price: 0,
     wholesale_unit_price: over.wholesale_unit_price ?? null,
-    price_breakdown: {},
+    price_breakdown: over.price_breakdown ?? {},
     price_status: "ok",
     priced_at: null,
     notes: null,
@@ -56,6 +56,26 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
     expect(d.options.some((o) => /Norman Smart Motorization: Motor/i.test(o))).toBe(true);
     expect(JSON.stringify(d)).not.toContain("wholesale");
     expect(JSON.stringify(d)).not.toContain("123.45");
+  });
+
+  it("does not expose raw pricing snapshots or internal cost/profit terms", () => {
+    const d = describeDesign(design({
+      product_id: "onyx_shutters",
+      program_id: "painted_basswood",
+      wholesale_unit_price: 168.75,
+      price_breakdown: {
+        wholesaleUnitPrice: 168.75,
+        wholesaleTotal: 337.5,
+        internalMargin: 225,
+        profit: 225,
+      },
+    }));
+    const serialized = JSON.stringify(d).toLowerCase();
+    expect(serialized).not.toContain("wholesale");
+    expect(serialized).not.toContain("internal");
+    expect(serialized).not.toContain("profit");
+    expect(serialized).not.toContain("168.75");
+    expect(serialized).not.toContain("337.5");
   });
 });
 

@@ -604,6 +604,7 @@ export async function sendQuoteToCustomer(
     fees: publicQuote?.fees,
     discount: publicQuote?.discount,
     tax: publicQuote?.tax,
+    sourceTotalAdjustment: publicQuote?.sourceTotalAdjustment,
     depositDue: publicQuote?.depositDue,
     balanceDue: publicQuote?.balanceDue,
     logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),

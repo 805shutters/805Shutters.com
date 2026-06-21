@@ -45,6 +45,19 @@ describe("buildQuoteEmail", () => {
     expect(text).toContain("Quote items:");
     expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
   });
+
+  it("renders legacy/source total deltas as a generic quote adjustment", () => {
+    const { html } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4350, {
+      subtotal: 4250,
+      sourceTotalAdjustment: 100,
+    });
+
+    expect(html).toContain("Quote adjustment");
+    expect(html).toContain("$100.00");
+    expect(html).not.toContain("MTS");
+    expect(html).not.toContain("source");
+    expect(html).not.toContain("internal");
+  });
 });
 
 describe("sendEmail guards (never throws, no-ops without config)", () => {
