@@ -40,6 +40,15 @@ describe("buildUiCatalog", () => {
     expect(json).not.toContain("\"prices\"");
     expect(json).not.toContain("\"grid\"");
   });
+
+  it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
+    const roller = ui.products.find((p) => p.id === "roller")!;
+    const solar = roller.programs.filter((pr) => pr.id.includes("solar_screen"));
+    expect(solar.length).toBe(3);
+    expect(roller.programs.map((pr) => pr.id)).toContain("roller_cordless_solar_screen_price_group_1_pg1");
+    const serene = roller.fabrics.find((f) => f.name === "Serene 7%");
+    expect(serene?.programId).toBe("roller_cordless_solar_screen_price_group_1_pg1");
+  });
 });
 
 describe("buildPricingReference", () => {

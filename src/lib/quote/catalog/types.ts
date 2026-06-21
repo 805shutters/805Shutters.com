@@ -91,6 +91,12 @@ export type CatalogMotorizationOption = {
   id: string;
   name: string;
   price: number | null;
+  /**
+   * Per-product retail price (Norman 2026 Retail Guide p7). When present and the product id is
+   * a key, this is authoritative — a `null` means NA for that product (not orderable). Product
+   * ids not present in the map fall back to the flat `price` (legacy behavior).
+   */
+  priceByProduct?: Record<string, number | null>;
   notes: string;
 };
 

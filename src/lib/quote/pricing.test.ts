@@ -180,6 +180,71 @@ describe("catalog integrity", () => {
   });
 });
 
+describe("motorization per-product pricing (Norman 2026 Retail Guide p7)", () => {
+  const SMARTDRAPE = "smartdrape_smartdrape_lakeshore_stripe";
+  const motorLine = (r: Extract<PriceResult, { ok: true }>, id = "motor") =>
+    r.surchargeLines.find((l) => l.id === `motor:smart_motorization:${id}`);
+
+  it("Motor is $642 for SmartDrape, not the legacy flat $482 (guide p7)", () => {
+    const base = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48 }));
+    const r = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
+    expect(motorLine(r)?.amount).toBe(642);
+    expect(r.unitPrice - base.unitPrice).toBe(642);
+  });
+
+  it("Motor is still $482 for a Roller (priceByProduct maps roller -> 482)", () => {
+    const r = ok(priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
+    expect(motorLine(r)?.amount).toBe(482);
+  });
+
+  it("Charging Extension Wand is SmartDrape-only at $75 (guide p7)", () => {
+    const r = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48, motorization: [{ groupId: "smart_motorization", optionId: "charging_extension_wand" }] }));
+    expect(motorLine(r, "charging_extension_wand")?.amount).toBe(75);
+  });
+
+  it("rejects an NA motor option for a product (Dual Motor on a Roller -> MOTORIZATION_UNKNOWN)", () => {
+    const r = priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, motorization: [{ groupId: "smart_motorization", optionId: "dual_motor_for_honeycomb" }] });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
+  });
+
+  it("never leaks wholesale/cost on Norman motorization (retail-only source)", () => {
+    const r = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
+    expect(motorLine(r)?.wholesaleAmount ?? null).toBe(null);
+    expect(r.wholesaleUnitPrice).toBe(null);
+    expect(r.wholesaleTotal).toBe(null);
+  });
+});
+
+describe("Soluna Cordless Solar Screen (Norman 2026 Retail Guide p15-16)", () => {
+  const SS1 = "roller_cordless_solar_screen_price_group_1_pg1";
+  const SS2 = "roller_cordless_solar_screen_price_group_2_pg2";
+  const SS3 = "roller_cordless_solar_screen_price_group_3_pg3";
+
+  it("PG1 24x36 = $240 (guide p15)", () => {
+    expect(ok(priceDesign({ productId: "roller", programId: SS1, widthInches: 24, heightInches: 36 })).base).toBe(240);
+  });
+  it("PG2 24x36 = $261 (guide p16)", () => {
+    expect(ok(priceDesign({ productId: "roller", programId: SS2, widthInches: 24, heightInches: 36 })).base).toBe(261);
+  });
+  it("PG3 24x36 = $290 (guide p16)", () => {
+    expect(ok(priceDesign({ productId: "roller", programId: SS3, widthInches: 24, heightInches: 36 })).base).toBe(290);
+  });
+  it("PG1 120x144 = $1309 (guide p15 max corner)", () => {
+    expect(ok(priceDesign({ productId: "roller", programId: SS1, widthInches: 120, heightInches: 144 })).base).toBe(1309);
+  });
+  it("routes solar fabric 'Serene 7%' -> PG1 = $240 (guide p15)", () => {
+    const r = ok(priceDesign({ productId: "roller", fabric: "Serene 7%", widthInches: 24, heightInches: 36 }));
+    expect(r.programId).toBe(SS1);
+    expect(r.base).toBe(240);
+  });
+  it("routes 'Lakeview 10%' -> PG3 = $290 (guide p16)", () => {
+    const r = ok(priceDesign({ productId: "roller", fabric: "Lakeview 10%", widthInches: 24, heightInches: 36 }));
+    expect(r.programId).toBe(SS3);
+    expect(r.base).toBe(290);
+  });
+});
+
 describe("fuzz sweep: no NaN, no negative, no silent wrong price ever escapes", () => {
   it("prices or cleanly errors across a wide grid of sizes for every single-program product", () => {
     const widths = [10, 24, 30, 47.5, 60, 72, 96, 130, 200];
