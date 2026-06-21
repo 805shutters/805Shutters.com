@@ -468,7 +468,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none",
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.1 }}>{t.label}</span>
+                    <span style={productTileLabel}>{t.label}</span>
                   </button>
                 );
               })}
@@ -961,12 +961,26 @@ const tileRow: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alig
 const productTile: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  justifyContent: "center",
   border: "2px solid #d8d8d2",
   borderRadius: 8,
-  padding: "8px 12px",
+  padding: "10px 16px",
   cursor: "pointer",
-  minWidth: 120,
+  minWidth: 150,
+  minHeight: 46,
+  fontSize: 14,
+  fontWeight: 800,
+  lineHeight: 1.15,
+  textAlign: "center",
+  textWrap: "balance",
+};
+const productTileLabel: CSSProperties = {
+  display: "block",
+  color: "#0b0b0b",
+  fontSize: 14,
+  fontWeight: 800,
+  lineHeight: 1.15,
+  textAlign: "center",
 };
 const roomPill: CSSProperties = { border: "1px solid #b8b6ae", background: "#ffffff", borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontSize: 13, color: "#0b0b0b" };
 const customRoomInput: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 999, padding: "7px 14px", fontSize: 13, width: 130 };
