@@ -404,34 +404,9 @@ function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: 
 const actor = { email: "boss@805shutters.com", userId: "user-1" };
 
 describe("deleteCrmLedgerRow", () => {
-  it("deletes the whole job (cascading the quote + bookkeeping) for a quote-linked entry", async () => {
+  it("deletes ONLY the bookkeeping entry, even when it is linked to a job and quote", async () => {
     const { deletes, supabase } = deleteRecorder({
       entry: { id: "entry-1", job_id: "job-9", quote_id: "quote-9" }
-    });
-
-    await deleteCrmLedgerRow(supabase, "entry-1", actor);
-
-    expect(deletes).toHaveLength(1);
-    expect(deletes[0].table).toBe("crm_jobs");
-    expect(deletes[0].filters.id).toBe("job-9");
-  });
-
-  it("deletes the job behind a live quote row (id resolves via crm_quotes)", async () => {
-    const { deletes, supabase } = deleteRecorder({
-      entry: null,
-      quote: { id: "quote-9", job_id: "job-9" }
-    });
-
-    await deleteCrmLedgerRow(supabase, "quote-9", actor);
-
-    expect(deletes).toHaveLength(1);
-    expect(deletes[0].table).toBe("crm_jobs");
-    expect(deletes[0].filters.id).toBe("job-9");
-  });
-
-  it("deletes only the entry for a standalone manual row with no job or quote", async () => {
-    const { deletes, supabase } = deleteRecorder({
-      entry: { id: "entry-1", job_id: null, quote_id: null }
     });
 
     await deleteCrmLedgerRow(supabase, "entry-1", actor);
@@ -441,8 +416,21 @@ describe("deleteCrmLedgerRow", () => {
     expect(deletes[0].filters.id).toBe("entry-1");
   });
 
-  it("throws a 404 when the id matches neither an entry nor a quote", async () => {
-    const { supabase } = deleteRecorder({ entry: null, quote: null });
-    await expect(deleteCrmLedgerRow(supabase, "missing", actor)).rejects.toMatchObject({ status: 404 });
+  it("never deletes from crm_jobs or crm_quotes (a duplicate row can't wipe out the sale)", async () => {
+    const { deletes, supabase } = deleteRecorder({
+      entry: { id: "entry-1", job_id: "job-9", quote_id: "quote-9" }
+    });
+
+    await deleteCrmLedgerRow(supabase, "entry-1", actor);
+
+    const tables = deletes.map((d) => d.table);
+    expect(tables).not.toContain("crm_jobs");
+    expect(tables).not.toContain("crm_quotes");
+  });
+
+  it("throws a 404 for a quote-backed row and deletes nothing", async () => {
+    const { deletes, supabase } = deleteRecorder({ entry: null });
+    await expect(deleteCrmLedgerRow(supabase, "quote-9", actor)).rejects.toMatchObject({ status: 404 });
+    expect(deletes).toHaveLength(0);
   });
 });
