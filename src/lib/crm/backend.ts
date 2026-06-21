@@ -2291,6 +2291,70 @@ function paymentAllocationRows({
   return allocations;
 }
 
+function paymentAllocationMetadata(allocations: Array<Record<string, unknown>>) {
+  return allocations.map((allocation) => ({
+    person: allocation.meta && typeof allocation.meta === "object" ? (allocation.meta as Record<string, unknown>).person : undefined,
+    source: allocation.source,
+    quote_id: allocation.quote_id,
+    bookkeeping_entry_id: allocation.bookkeeping_entry_id,
+    job_id: allocation.job_id,
+    item_key: allocation.item_key,
+    customer_name: allocation.customer_name,
+    closed_at: allocation.closed_at,
+    amount: allocation.amount,
+    period_month: allocation.period_month,
+    meta: allocation.meta
+  }));
+}
+
+function isMissingPartnerPaymentRpc(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message || "";
+  return (
+    error?.code === "PGRST202" ||
+    error?.code === "42883" ||
+    message.includes("Could not find the function") ||
+    message.includes("function public.crm_create_")
+  );
+}
+
+function isMissingPartnerAllocationTable(error: { code?: string; message?: string } | null | undefined) {
+  const message = error?.message || "";
+  return (
+    error?.code === "PGRST205" ||
+    error?.code === "42P01" ||
+    message.includes("Could not find the table") ||
+    message.includes("Could not find the relation") ||
+    message.includes("does not exist")
+  );
+}
+
+async function createPartnerPaymentBatchDirect(
+  supabase: CrmSupabaseClient,
+  person: CrmPaymentPerson,
+  record: Record<string, unknown>,
+  allocations: Array<Record<string, unknown>>
+) {
+  const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
+  const allocationTable = person === "ken" ? "crm_ken_payment_allocations" : "crm_commission_payment_allocations";
+  const paymentRecord = person === "ken" ? record : { recipient: person, ...record };
+  const { data: payment, error: paymentError } = await supabase.from(table).insert(paymentRecord).select("*").single();
+  if (paymentError || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be saved.`);
+
+  const allocationRows = allocations.map((allocation) => ({
+    ...allocation,
+    payment_id: String(payment.id)
+  }));
+  const { error: allocationError } = await supabase.from(allocationTable).insert(allocationRows);
+  if (allocationError && !isMissingPartnerAllocationTable(allocationError)) {
+    throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment was saved, but job allocation failed.`);
+  }
+  if (allocationError) {
+    console.warn(`${paymentPersonLabel(person)} payment allocation table was unavailable; using payment metadata fallback.`, allocationError.message);
+  }
+
+  return payment;
+}
+
 export async function createPartnerPaymentBatch(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -2315,13 +2379,6 @@ export async function createPartnerPaymentBatch(
   const paidOn = optionalText(payload.paid_on) || selectedItems[0]?.closedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
   const note = optionalText(payload.note);
-  const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
-  const meta = {
-    createdBy: actor.email,
-    batchSource: "unified_payment_ledger",
-    selectedItemCount: selectedItems.length,
-    selectedItemKeys: selectedItems.map((item) => item.itemKey)
-  };
   const allocations = paymentAllocationRows({
     person,
     paymentId: "00000000-0000-0000-0000-000000000000",
@@ -2334,6 +2391,21 @@ export async function createPartnerPaymentBatch(
     throw new CrmAuthError(400, "No payable allocation rows were created.");
   }
 
+  const meta = {
+    createdBy: actor.email,
+    batchSource: "unified_payment_ledger",
+    selectedItemCount: selectedItems.length,
+    selectedItemKeys: selectedItems.map((item) => item.itemKey),
+    selectedItemAllocations: paymentAllocationMetadata(allocations)
+  };
+  const paymentRecord = {
+    paid_on: paidOn,
+    period_month: periodMonth,
+    amount,
+    note,
+    created_by_email: actor.email,
+    meta
+  };
   const rpcName = person === "ken" ? "crm_create_ken_payment_batch" : "crm_create_commission_payment_batch";
   const rpcPayload =
     person === "ken"
@@ -2358,12 +2430,22 @@ export async function createPartnerPaymentBatch(
         };
 
   const { data: paymentId, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
+  let payment: Record<string, unknown>;
   if (rpcError || !paymentId) {
-    throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be allocated to jobs.`);
+    if (!isMissingPartnerPaymentRpc(rpcError)) {
+      throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be allocated to jobs.`);
+    }
+    payment = await createPartnerPaymentBatchDirect(supabase, person, paymentRecord, allocations);
+  } else {
+    const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
+    const { data: rpcPayment, error: paymentError } = await supabase
+      .from(table)
+      .select("*")
+      .eq("id", String(paymentId))
+      .single();
+    if (paymentError || !rpcPayment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be loaded after save.`);
+    payment = rpcPayment;
   }
-
-  const { data: payment, error: paymentError } = await supabase.from(table).select("*").eq("id", String(paymentId)).single();
-  if (paymentError || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be loaded after save.`);
 
   await recordCrmActivity(supabase, actor, {
     entityType: person === "ken" ? "ken_payment" : "commission_payment",

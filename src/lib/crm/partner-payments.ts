@@ -187,6 +187,49 @@ function historyFromCommissionPayment(payment: CrmCommissionPayment): CrmPartner
   };
 }
 
+function optionalString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function metadataAllocationSource(value: unknown): CrmBookkeepingRow["source"] {
+  return value === "crm_quote" || value === "legacy_sheet" || value === "manual" ? value : "manual";
+}
+
+function paymentMetadataAllocations(
+  paymentId: string,
+  person: CrmPaymentPerson,
+  meta: Record<string, unknown> | null | undefined
+): CrmPartnerPaymentHistoryAllocation[] {
+  const raw = meta?.selectedItemAllocations;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((value, index): CrmPartnerPaymentHistoryAllocation | null => {
+      if (!value || typeof value !== "object") return null;
+      const record = value as Record<string, unknown>;
+      const allocationPerson = optionalString(record.person) || optionalString(record.recipient);
+      if (allocationPerson && allocationPerson !== person) return null;
+
+      const itemKey = optionalString(record.item_key) || optionalString(record.itemKey);
+      const amount = roundCents(Number(record.amount) || 0);
+      if (!itemKey || amount <= 0) return null;
+
+      return {
+        id: `meta-${paymentId}-${itemKey}-${index}`,
+        itemKey,
+        customerName: optionalString(record.customer_name) || optionalString(record.customerName) || itemKey,
+        closedAt: optionalString(record.closed_at) || optionalString(record.closedAt),
+        amount,
+        source: metadataAllocationSource(record.source),
+        quoteId: optionalString(record.quote_id) || optionalString(record.quoteId),
+        bookkeepingEntryId: optionalString(record.bookkeeping_entry_id) || optionalString(record.bookkeepingEntryId),
+        jobId: optionalString(record.job_id) || optionalString(record.jobId),
+        virtual: false
+      } satisfies CrmPartnerPaymentHistoryAllocation;
+    })
+    .filter((allocation): allocation is CrmPartnerPaymentHistoryAllocation => Boolean(allocation));
+}
+
 function explicitAllocationHistory(
   allocation: CrmKenPaymentAllocation | CrmCommissionPaymentAllocation
 ): CrmPartnerPaymentHistoryAllocation {
@@ -254,6 +297,9 @@ export function buildPartnerPaymentLedger({
   const history = new Map<string, CrmPartnerPaymentHistoryBatch>();
   for (const payment of kenPayments) history.set(payment.id, historyFromKenPayment(payment));
   for (const payment of commissionPayments) history.set(payment.id, historyFromCommissionPayment(payment));
+  const paymentMetaById = new Map<string, Record<string, unknown>>();
+  for (const payment of kenPayments) paymentMetaById.set(payment.id, payment.meta || {});
+  for (const payment of commissionPayments) paymentMetaById.set(payment.id, payment.meta || {});
 
   const explicitTotalsByPayment = new Map<string, number>();
 
@@ -277,6 +323,22 @@ export function buildPartnerPaymentLedger({
       item.explicitAllocationIds.push(allocation.id);
     }
     history.get(allocation.payment_id)?.allocations.push(explicitAllocationHistory(allocation));
+  }
+
+  for (const batch of history.values()) {
+    if (batch.allocations.length) continue;
+    for (const allocation of paymentMetadataAllocations(batch.id, batch.person, paymentMetaById.get(batch.id))) {
+      explicitTotalsByPayment.set(
+        batch.id,
+        roundCents((explicitTotalsByPayment.get(batch.id) || 0) + allocation.amount)
+      );
+      const item = workingByKey.get(allocation.itemKey);
+      if (item && item.person === batch.person) {
+        item.explicitPaidAmount = roundCents(item.explicitPaidAmount + allocation.amount);
+        item.explicitAllocationIds.push(allocation.id);
+      }
+      batch.allocations.push(allocation);
+    }
   }
 
   const applyLegacyRemainder = (batch: CrmPartnerPaymentHistoryBatch) => {

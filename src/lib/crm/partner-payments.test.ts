@@ -198,6 +198,68 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.history.find((batch) => batch.id === "ken-payment-1")?.allocations).toHaveLength(1);
   });
 
+  it("uses selected allocation metadata when allocation rows are unavailable", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row()],
+      kenPayments: [],
+      commissionPayments: [
+        commissionPayment({
+          amount: 600,
+          meta: {
+            selectedItemAllocations: [
+              {
+                person: "mike",
+                source: "manual",
+                bookkeeping_entry_id: "row-1",
+                job_id: "job-1",
+                item_key: "mike:manual:row-1",
+                customer_name: "Test Customer",
+                closed_at: "2026-06-15",
+                amount: 600,
+                period_month: "2026-06-01"
+              }
+            ]
+          }
+        })
+      ]
+    });
+
+    expect(ledger.people.mike).toMatchObject({ earned: 600, paid: 600, owed: 0, activeJobCount: 0 });
+    expect(ledger.history[0].allocations[0]).toMatchObject({
+      itemKey: "mike:manual:row-1",
+      amount: 600,
+      virtual: false
+    });
+  });
+
+  it("does not double count metadata when explicit allocation rows are loaded", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row()],
+      kenPayments: [],
+      commissionPayments: [
+        commissionPayment({
+          amount: 600,
+          meta: {
+            selectedItemAllocations: [
+              {
+                person: "mike",
+                source: "manual",
+                item_key: "mike:manual:row-1",
+                customer_name: "Test Customer",
+                amount: 600
+              }
+            ]
+          }
+        })
+      ],
+      commissionAllocations: [commissionAllocation()]
+    });
+
+    expect(ledger.people.mike).toMatchObject({ earned: 600, paid: 600, owed: 0, activeJobCount: 0 });
+    expect(ledger.history[0].allocations).toHaveLength(1);
+    expect(ledger.history[0].allocations[0].id).toBe("commission-allocation-1");
+  });
+
   it("applies unallocated legacy payments oldest-first without losing history", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [
