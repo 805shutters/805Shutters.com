@@ -86,6 +86,89 @@ export const images = {
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
 
+const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
+  {
+    image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
+    imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
+  },
+  {
+    image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
+    imageAlt: "Roller shade covering a large Ventura County window"
+  },
+  {
+    image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
+    imageAlt: "Layered window shades installed on a Ventura County bedroom window"
+  },
+  {
+    image: "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg",
+    imageAlt: "Specialty arch window shutters custom fit in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
+    imageAlt: "Custom arched plantation shutters in a Ventura County living room"
+  },
+  {
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
+    imageAlt: "Dark wood plantation shutters across living room windows in Ventura County"
+  },
+  {
+    image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
+    imageAlt: "Dark wood plantation shutters in a Ventura County reading room"
+  },
+  {
+    image: "/images/portfolio-enhanced/arched-plantation-shutters-living-room-card.jpg",
+    imageAlt: "Arched plantation shutters installed in a Ventura County living room"
+  },
+  {
+    image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
+    imageAlt: "White plantation shutters installed in a Ventura County dining room"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-arched-shutter-detail-card.jpg",
+    imageAlt: "Custom arched shutter installed in a Ventura County room"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-single-arch-shutter-card.jpg",
+    imageAlt: "Single arched plantation shutter installed in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-shutter-panel-detail-card.jpg",
+    imageAlt: "Close detail of a custom shutter panel beside a door in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-two-story-living-room-shutters-card.jpg",
+    imageAlt: "Two-story living room windows fitted with custom plantation shutters"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-card.jpg",
+    imageAlt: "Stacked arched and rectangular shutters installed on tall living room windows"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-card.jpg",
+    imageAlt: "Cellular shades installed on two corner windows in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-bedroom-cellular-shades-card.jpg",
+    imageAlt: "Cellular shades installed on two bedroom windows beside a door"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-twin-cellular-shades-card.jpg",
+    imageAlt: "Twin cellular shades installed on side-by-side bedroom windows"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-office-plantation-shutters-card.jpg",
+    imageAlt: "White plantation shutters installed over office corner windows"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-corner-room-cellular-shades-card.jpg",
+    imageAlt: "Cellular shades installed across a corner room window grouping"
+  },
+  {
+    image: "/images/portfolio-enhanced/uploaded-full-height-cellular-shades-card.jpg",
+    imageAlt: "Full-height cellular shades installed on corner room windows"
+  }
+];
+
 export const services: Service[] = [
   {
     title: "Custom Shutters",
@@ -811,6 +894,7 @@ const supportPages: SitePage[] = [
       "Browse examples of shutters, shades, blinds, and window coverings that match common Ventura County rooms and project goals.",
     image: images.hero,
     imageAlt: "Gallery of custom window treatments",
+    gallery: oldWebsitePortfolioGallery,
     sections: [
       {
         heading: "Project Inspiration",
