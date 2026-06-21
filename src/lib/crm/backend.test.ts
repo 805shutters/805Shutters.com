@@ -556,7 +556,7 @@ describe("partner payment write rules", () => {
     expect(() => resolveFullPartnerPaymentAmount(250, 600)).toThrow(CrmAuthError);
   });
 
-  it("falls back to commission payment metadata when commission allocation RPC storage is missing", async () => {
+  it("falls back to commission payment metadata when commission allocation storage fails", async () => {
     const commissionPayments: Array<Record<string, unknown>> = [];
     const calls: Array<{ table: string; action: string; payload?: unknown }> = [];
     const rowsByTable: Record<string, unknown[]> = {
@@ -638,7 +638,7 @@ describe("partner payment write rules", () => {
 
       private execute(single: boolean) {
         if (this.table === "crm_commission_payment_allocations") {
-          return { data: null, error: { code: "42P01", message: 'relation "crm_commission_payment_allocations" does not exist' } };
+          return { data: null, error: { code: "23503", message: "allocation insert rejected" } };
         }
         if (this.table === "crm_ken_payment_allocations") {
           return { data: [], error: null };
@@ -663,7 +663,7 @@ describe("partner payment write rules", () => {
       rpc() {
         return Promise.resolve({
           data: null,
-          error: { code: "42P01", message: 'relation "crm_commission_payment_allocations" does not exist' }
+          error: { code: "XX000", message: "commission batch rpc failed" }
         });
       }
     } as unknown as Parameters<typeof createPartnerPaymentBatch>[0];
@@ -678,6 +678,7 @@ describe("partner payment write rules", () => {
       recipient: "mike",
       amount: 800
     });
+    expect(calls.find((call) => call.table === "crm_commission_payment_allocations")).toBeTruthy();
     expect((result.payment.meta as { selectedItemAllocations?: Array<Record<string, unknown>> }).selectedItemAllocations?.[0]).toMatchObject({
       person: "mike",
       item_key: "mike:crm_quote:quote-1",

@@ -2336,27 +2336,6 @@ function paymentAllocationMetadata(allocations: Array<Record<string, unknown>>) 
   }));
 }
 
-function isMissingPartnerPaymentRpc(error: { code?: string; message?: string } | null | undefined) {
-  const message = error?.message || "";
-  return (
-    error?.code === "PGRST202" ||
-    error?.code === "42883" ||
-    message.includes("Could not find the function") ||
-    message.includes("function public.crm_create_")
-  );
-}
-
-function isMissingPartnerAllocationTable(error: { code?: string; message?: string } | null | undefined) {
-  const message = error?.message || "";
-  return (
-    error?.code === "PGRST205" ||
-    error?.code === "42P01" ||
-    message.includes("Could not find the table") ||
-    message.includes("Could not find the relation") ||
-    message.includes("does not exist")
-  );
-}
-
 async function createPartnerPaymentBatchDirect(
   supabase: CrmSupabaseClient,
   person: CrmPaymentPerson,
@@ -2374,11 +2353,11 @@ async function createPartnerPaymentBatchDirect(
     payment_id: String(payment.id)
   }));
   const { error: allocationError } = await supabase.from(allocationTable).insert(allocationRows);
-  if (allocationError && !isMissingPartnerAllocationTable(allocationError)) {
-    throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment was saved, but job allocation failed.`);
-  }
   if (allocationError) {
-    console.warn(`${paymentPersonLabel(person)} payment allocation table was unavailable; using payment metadata fallback.`, allocationError.message);
+    console.warn(
+      `${paymentPersonLabel(person)} payment allocation rows could not be saved; using payment metadata fallback.`,
+      allocationError.message
+    );
   }
 
   return payment;
@@ -2484,8 +2463,11 @@ export async function createPartnerPaymentBatch(
   const { data: paymentId, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
   let payment: Record<string, unknown>;
   if (rpcError || !paymentId) {
-    if (!isMissingPartnerPaymentRpc(rpcError) && !isMissingPartnerAllocationTable(rpcError)) {
-      throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be allocated to jobs.`);
+    if (rpcError) {
+      console.warn(
+        `${paymentPersonLabel(person)} payment batch RPC could not be used; using direct insert fallback.`,
+        rpcError.message
+      );
     }
     payment = await createPartnerPaymentBatchDirect(supabase, person, paymentRecord, allocations);
   } else {
