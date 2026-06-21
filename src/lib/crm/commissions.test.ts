@@ -179,4 +179,31 @@ describe("buildCommissionSummary", () => {
       jessicaOwed: 450
     });
   });
+
+  it("resets owed balances when commission payments cover earned commissions", () => {
+    const summary = buildCommissionSummary(
+      [
+        row({ id: "mike-sale", salesOwner: "mike", remainingProfitBeforeJessica: 600 }),
+        row({
+          id: "jessica-sale",
+          salesOwner: "jessica",
+          remainingProfitBeforeJessica: 800,
+          payments: [bookkeepingPayment({ id: "payment-2", paid_at: "2026-06-20" })]
+        })
+      ],
+      [
+        commissionPayment({ id: "mike-paid", recipient: "mike", amount: 1000, period_month: "2026-06-01" }),
+        commissionPayment({ id: "jessica-paid", recipient: "jessica", amount: 400, period_month: "2026-06-01" })
+      ]
+    );
+
+    expect(summary.totals).toMatchObject({
+      mikeEarned: 1000,
+      mikePaid: 1000,
+      mikeOwed: 0,
+      jessicaEarned: 400,
+      jessicaPaid: 400,
+      jessicaOwed: 0
+    });
+  });
 });

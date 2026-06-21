@@ -1695,7 +1695,15 @@ export function CrmApp() {
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
-            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} lastSyncedAt={lastSyncedAt} onSave={saveBookkeepingCell} onDelete={deleteBookkeepingRow} />
+            <BookkeepingSpreadsheet
+              rows={rows}
+              totals={data?.bookkeepingTotals}
+              commissionSummary={data?.commissionSummary}
+              busy={busy}
+              lastSyncedAt={lastSyncedAt}
+              onSave={saveBookkeepingCell}
+              onDelete={deleteBookkeepingRow}
+            />
             <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           </div>
@@ -4974,6 +4982,7 @@ function BookkeepingInstallationEditor({
 function BookkeepingSpreadsheet({
   rows,
   totals,
+  commissionSummary,
   busy,
   lastSyncedAt,
   onSave,
@@ -4981,6 +4990,7 @@ function BookkeepingSpreadsheet({
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  commissionSummary: CrmCommissionSummary | undefined;
   busy: boolean;
   lastSyncedAt: number | null;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
@@ -4993,6 +5003,7 @@ function BookkeepingSpreadsheet({
   const netProfit = roundCurrency(totalProfit - (totals?.kenCut || 0));
   const profitMargin = totals?.total ? `${((totalProfit / totals.total) * 100).toFixed(1)}%` : "0.0%";
   const missingCogs = totals?.missingCogs || 0;
+  const commissionTotals = commissionSummary?.totals;
   const summaryCards = [
     ["Total Sales", toLedgerCurrency(totals?.total)],
     ["Open Balance", toLedgerCurrency(totals?.balance)],
@@ -5001,6 +5012,8 @@ function BookkeepingSpreadsheet({
     ["Ken Profit", toLedgerCurrency(totals?.kenCut)],
     ["Ken's % Monthly Due", toLedgerCurrency(totals?.kenMonthlyDue)],
     ["Ken's % of Total Closed", toLedgerCurrency(totals?.kenTotalClosed)],
+    ["Jessica Commission Due", toLedgerCurrency(commissionTotals?.jessicaOwed)],
+    ["Mike Commission Due", toLedgerCurrency(commissionTotals?.mikeOwed)],
     ["Net Profit", toLedgerCurrency(netProfit)],
     ["Paid In Full", `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}`],
     ["Total Profit", toLedgerCurrency(totalProfit)],
