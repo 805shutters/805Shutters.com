@@ -4,6 +4,7 @@
 
 import { catalog } from "./catalog";
 import { productImage } from "./product-images";
+import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
 
 export const WHOLESALE_REFERENCE_RATE = 0.3;
 
@@ -26,6 +27,8 @@ export type UiSurcharge = {
   widthGraduated: boolean;
 };
 
+export type UiDetailField = QuoteDetailField;
+
 export type UiReferenceSurcharge = UiSurcharge & {
   appliesTo: string;
   notes: string;
@@ -42,6 +45,8 @@ export type UiProduct = {
   /** Products are chosen by fabric when fabrics is non-empty, else by program. */
   programs: UiProgram[];
   fabrics: UiFabric[];
+  details: UiDetailField[];
+  motorizationGroups: string[];
   surcharges: UiSurcharge[];
 };
 
@@ -155,6 +160,8 @@ export function buildUiCatalog(): UiCatalog {
           .map(([name, programId]) => ({ name, programId }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [],
+    details: getDetailFieldsForProduct(p.id),
+    motorizationGroups: getMotorizationGroupsForProduct(p.id),
     surcharges: p.surcharges.map((s) => ({
       id: s.id,
       name: s.name,

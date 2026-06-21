@@ -17,13 +17,46 @@ structurally prevented (see "Design guarantees" below).
 | Pricing engine (pure) | `src/lib/quote/pricing.ts` |
 | Measurements | `src/lib/quote/measurements.ts` |
 | UI catalog projection | `src/lib/quote/ui-catalog.ts` |
+| Product detail schema | `src/lib/quote/product-options.ts` |
 | Backend domain layer | `src/lib/crm/quote-builder.ts` |
 | Public/customer flow | `src/lib/crm/public-quote.ts` |
 | Twilio SMS | `src/lib/notify/twilio.ts` |
 | CRM builder UI | `src/components/crm/quotes/QuotesWorkspace.tsx` + `src/components/crm/QuoteBuilderPanel.tsx` |
 | Customer page | `src/app/quote/[token]/page.tsx` + `SignQuote.tsx` |
 | API routes | `src/app/api/crm/quote-catalog{,/price,/reference}`, `.../quote-line-items/[id]{,/select}`, `.../quote-designs{,/[id]}`, `.../quotes/[id]/{builder,share}`, `src/app/api/quote/[token]/accept` |
-| DB migration | `supabase/migrations/20260618000000_create_quote_builder_line_items.sql` |
+| DB migrations | `supabase/migrations/20260618000000_create_quote_builder_line_items.sql`, `20260618010000_add_quote_versions.sql`, `20260621010000_add_quote_builder_details_and_wholesale.sql` |
+
+## Products currently represented
+
+805 now exposes the represented catalog products through one room -> product -> dimensions
+-> details -> add-ons -> final quote flow:
+
+- Norman shades/blinds/accessories: CityLights Aluminum, Ultimate Faux Wood,
+  Portrait Honeycomb, Palladian Shelf, PerfectSheer, Soluna Roller, Centerpiece Roman,
+  SmartDrape, SmartFold, SmartPrivacy Faux, Synchrony Vertical, Portrait Vertical
+  Honeycomb, Ultimate Normandy Wood.
+- Shutters from the legacy MTS catalog: Norman Shutters and Onyx Shutters.
+- Add-ons: catalog product surcharges and Norman motorization groups are selectable in the
+  builder and priced by the server engine.
+
+The builder detail schema covers mount, controls, valances, light control, shutter frame,
+louver, color, hinge, panel configuration, track/specialty choices, and internal install
+flags. Internal-only details are hidden from customer quote output.
+
+## Source audit notes
+
+- Legacy MTS source compared: `src/components/crm/quote-builder/QuoteBuilder.tsx`,
+  `DesignCard.tsx`, `src/lib/quoteConstants.ts`, `src/lib/pricingData.ts`, and
+  `src/lib/pricingEngine.ts` in `/Users/michaelshepard/Documents/MTS`.
+- Norman dealer portal checked: dealer login, Program Binder, product sections, and the
+  2026 Retail Price Guide link. The account-specific product-pricing security-code screen
+  did not unlock with the normal dealer password, so account wholesale grids were not
+  extracted from Norman.
+- Onyx portal checked: login, forms, existing order detail printout, and internal totals.
+  The sampled stained basswood order line matched the MTS wholesale rate of $16.50/sqft.
+- Sundance portal checked: login dashboard, order list, tariff warning, and public product
+  price guide links. Sundance product families observed there are not fully imported into
+  the 805 pricing catalog yet.
 
 ## Design guarantees (the MTS bugs that can't come back)
 
@@ -36,6 +69,9 @@ structurally prevented (see "Design guarantees" below).
   a guessed or cheapest-grid number.
 - **One source of truth**: quote total = sum of selected designs; recompute also syncs the
   1:1 bookkeeping entry total and the parent job estimate.
+- **Wholesale separation**: `wholesale_unit_price` and wholesale pricing breakdown values are
+  computed for internal CRM reference only. Public quote projection never emits wholesale
+  fields or internal-only detail flags.
 
 ## Go-live: apply the migration
 
@@ -48,13 +84,13 @@ supabase db push
 # OR paste these into the Supabase SQL editor and run them, in order:
 #   supabase/migrations/20260618000000_create_quote_builder_line_items.sql
 #   supabase/migrations/20260618010000_add_quote_versions.sql
+#   supabase/migrations/20260621010000_add_quote_builder_details_and_wholesale.sql
 ```
 
 `20260618000000` creates `crm_quote_line_items` + `crm_quote_designs` and retires the
 dormant `crm_quote_items` stub **only if empty**. `20260618010000` adds
-`quote_group_id` + `quote_label` for whole-quote versions. The CRM health endpoint checks
-both builder tables so missing quote-builder migrations show up as migration readiness
-failures.
+`quote_group_id` + `quote_label` for whole-quote versions. `20260621010000` adds
+structured design `details` and internal-only `wholesale_unit_price`.
 
 ## Twilio (customer + shop SMS on sign)
 
@@ -96,15 +132,17 @@ with that project's URL + service key. Do not point it at production.
 ## Tests
 
 ```bash
-npx vitest run            # full unit + stress suite (105 tests)
+npx vitest run            # full unit + stress suite
 npx tsc --noEmit          # typecheck
 npx next build            # production build
 ```
 
 ## Pricing catalog maintenance
 
-- **Shutters are provisional** (ported from legacy MTS, flagged in the UI). When a current
-  Norman/Onyx shutter guide is available, re-ingest and replace
-  `shutters-mts.catalog.json` — structure is final, so it's a data-only swap.
+- **Shutters are provisional** (ported from legacy MTS, flagged in the UI). Onyx wholesale
+  spot-checks matched the portal sample. Norman account wholesale needs the dealer
+  pricing-security code before replacing the provisional MTS rates.
+- Sundance categories are source-identified but not fully priced in this catalog. Import the
+  Sundance PDF grids before claiming complete Sundance parity.
 - Catalog ingestion tooling (PDF → verified JSON) lives in `~/805/_catalog_extract/`
   (`layout.py`, `consolidate.py`, `build_shutters.py`, `validate_catalog.py`).

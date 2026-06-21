@@ -10,7 +10,8 @@ import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments,
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
-import { getProduct } from "@/lib/quote/catalog";
+import { catalog, getProduct } from "@/lib/quote/catalog";
+import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendEmail, buildQuoteEmail } from "@/lib/notify/email";
@@ -125,10 +126,22 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   }
   if (!styleName && design.fabric) styleName = design.fabric;
   const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];
-  const options = (design.surcharges ?? [])
+  const surchargeOptions = (design.surcharges ?? [])
     .map((s) => product?.surcharges.find((x) => x.id === s.id)?.name)
     .filter((n): n is string => Boolean(n));
-  return { productName, styleName, options: legacyOptions.length ? legacyOptions : options };
+  const detailOptions = Object.entries(design.details ?? {})
+    .filter(([fieldId]) => isCustomerVisibleDetail(design.product_id, fieldId))
+    .map(([fieldId, value]) => detailDisplayValue(design.product_id, fieldId, value))
+    .filter((n): n is string => Boolean(n));
+  const motorizationOptions = (design.motorization ?? [])
+    .map((m) => {
+      const group = catalog.motorization[m.groupId];
+      const option = group?.options.find((o) => o.id === m.optionId);
+      return group && option ? `${group.name}: ${option.name}` : null;
+    })
+    .filter((n): n is string => Boolean(n));
+  const options = legacyOptions.length ? legacyOptions : [...detailOptions, ...surchargeOptions, ...motorizationOptions];
+  return { productName, styleName, options };
 }
 
 function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQuoteDesignOption {

@@ -11,6 +11,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import type {
   CrmQuoteDesign,
+  CrmQuoteDetailValue,
   CrmQuoteLineItem,
   CrmQuoteMotorizationSelection,
   CrmQuoteSurchargeSelection,
@@ -23,6 +24,7 @@ import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
 import { getProduct } from "@/lib/quote/catalog";
 import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/lib/quote/lifecycle";
 import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
+import { getDetailFieldsForProduct, getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -63,6 +65,27 @@ export function lineItemSubtotal(lineItem: CrmQuoteLineItem): number {
 
 export function quoteSubtotal(lineItems: CrmQuoteLineItem[]): number {
   return round2(lineItems.reduce((sum, li) => sum + lineItemSubtotal(li), 0));
+}
+
+export function lineItemWholesaleSubtotal(lineItem: CrmQuoteLineItem): number | null {
+  const design = selectedDesign(lineItem);
+  if (!design || design.price_status !== "ok" || design.wholesale_unit_price == null) return null;
+  const qty = Math.max(1, Math.floor(Number(lineItem.quantity) || 1));
+  return round2(Number(design.wholesale_unit_price) * qty);
+}
+
+export function quoteWholesaleSubtotal(lineItems: CrmQuoteLineItem[]): number | null {
+  let total = 0;
+  let hasPricedSelection = false;
+  for (const lineItem of lineItems) {
+    const design = selectedDesign(lineItem);
+    if (!design || design.price_status !== "ok") continue;
+    hasPricedSelection = true;
+    const lineCost = lineItemWholesaleSubtotal(lineItem);
+    if (lineCost == null) return null;
+    total += lineCost;
+  }
+  return hasPricedSelection ? round2(total) : null;
 }
 
 export function quoteTotal(input: { subtotal: number; discount: number; tax: number }): number {
@@ -143,6 +166,7 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): Quot
 
 type PriceFields = {
   unit_price: number;
+  wholesale_unit_price: number | null;
   price_breakdown: Record<string, unknown>;
   price_status: string;
   priced_at: string;
@@ -165,10 +189,17 @@ export function priceDesignFields(
   const result = priceDesign(input);
   const now = new Date().toISOString();
   if (result.ok) {
-    return { unit_price: round2(result.unitPrice), price_breakdown: result, price_status: "ok", priced_at: now };
+    return {
+      unit_price: round2(result.unitPrice),
+      wholesale_unit_price: result.wholesaleUnitPrice == null ? null : round2(result.wholesaleUnitPrice),
+      price_breakdown: result,
+      price_status: "ok",
+      priced_at: now,
+    };
   }
   return {
     unit_price: 0,
+    wholesale_unit_price: null,
     price_breakdown: { error: result.error, code: result.code, warnings: result.warnings },
     price_status: result.code,
     priced_at: now,
@@ -213,8 +244,9 @@ function normalizeSurcharges(value: unknown): CrmQuoteSurchargeSelection[] {
     })
     .filter(Boolean) as CrmQuoteSurchargeSelection[];
 }
-function normalizeMotorization(value: unknown): CrmQuoteMotorizationSelection[] {
+function normalizeMotorization(productId: string, value: unknown): CrmQuoteMotorizationSelection[] {
   if (!Array.isArray(value)) return [];
+  const allowedGroups = new Set(getMotorizationGroupsForProduct(productId));
   return value
     .map((v) => (v && typeof v === "object" ? v : null))
     .filter(Boolean)
@@ -223,10 +255,28 @@ function normalizeMotorization(value: unknown): CrmQuoteMotorizationSelection[] 
       const groupId = optionalText(o.groupId);
       const optionId = optionalText(o.optionId);
       if (!groupId || !optionId) return null;
+      if (!allowedGroups.has(groupId)) return null;
       const units = Number(o.units);
       return { groupId, optionId, ...(Number.isFinite(units) && units > 1 ? { units } : {}) };
     })
     .filter(Boolean) as CrmQuoteMotorizationSelection[];
+}
+function normalizeDetails(productId: string, value: unknown): Record<string, CrmQuoteDetailValue> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as Record<string, unknown>;
+  const normalized: Record<string, CrmQuoteDetailValue> = {};
+  for (const field of getDetailFieldsForProduct(productId)) {
+    const raw = input[field.id];
+    if (field.type === "checkbox") {
+      if (raw === true || raw === "true" || raw === "yes" || raw === "on") normalized[field.id] = true;
+      continue;
+    }
+    const text = optionalText(raw);
+    if (!text) continue;
+    if (field.options?.length && !field.options.some((option) => option.value === text)) continue;
+    normalized[field.id] = text;
+  }
+  return normalized;
 }
 
 // ---------------------------------------------------------------------------
@@ -494,8 +544,9 @@ export async function upsertDesign(
     product_id: productId,
     program_id: optionalText(payload.program_id),
     fabric: optionalText(payload.fabric),
+    details: normalizeDetails(productId, payload.details),
     surcharges: normalizeSurcharges(payload.surcharges),
-    motorization: normalizeMotorization(payload.motorization),
+    motorization: normalizeMotorization(productId, payload.motorization),
   };
   const priceFields = priceDesignFields(designInput, lineItem);
 
@@ -634,8 +685,9 @@ export async function duplicateLineItem(
       product_id: d.product_id,
       program_id: d.program_id,
       fabric: d.fabric,
+      details: normalizeDetails(d.product_id, d.details ?? {}),
       surcharges: d.surcharges ?? [],
-      motorization: d.motorization ?? [],
+      motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };
     const priceFields = priceDesignFields(designInput, dims);
     const { data: newDesign } = await supabase

@@ -10,6 +10,7 @@ describe("buildUiCatalog", () => {
     expect(honeycomb).toBeTruthy();
     expect(honeycomb!.programs.length).toBeGreaterThan(0);
     expect(honeycomb!.surcharges.length).toBeGreaterThan(0);
+    expect(honeycomb!.details.length).toBeGreaterThan(0);
     expect(honeycomb!.image).toContain("/images/");
   });
 
@@ -23,12 +24,15 @@ describe("buildUiCatalog", () => {
     const norman = ui.products.find((p) => p.id === "norman_shutters")!;
     expect(norman.provisional).toBe(true);
     expect(norman.programs.every((pr) => pr.priceAxis === "sqft")).toBe(true);
+    expect(norman.details.some((field) => field.id === "louver_size")).toBe(true);
   });
 
   it("includes motorization groups", () => {
     expect(ui.motorization.length).toBeGreaterThan(0);
     const smart = ui.motorization.find((g) => g.groupId === "smart_motorization");
     expect(smart!.options.length).toBeGreaterThan(0);
+    expect(ui.products.find((p) => p.id === "roller")!.motorizationGroups).toContain("smart_motorization");
+    expect(ui.products.find((p) => p.id === "norman_shutters")!.motorizationGroups).toEqual([]);
   });
 
   it("does not leak full price grids to the UI projection", () => {

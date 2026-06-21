@@ -19,6 +19,7 @@ import {
 } from "./catalog";
 import type { CatalogProduct, CatalogProgram } from "./catalog/types";
 import { squareFeet } from "./measurements";
+import { getMotorizationGroupsForProduct } from "./product-options";
 
 export type PriceErrorCode =
   | "PRODUCT_NOT_FOUND"
@@ -64,6 +65,8 @@ export type PriceLine = {
   label: string;
   /** Per-window amount in dollars (already multiplied by units for per-side/foot). */
   amount: number;
+  /** Internal per-window cost amount when wholesale source data exists. */
+  wholesaleAmount?: number;
   kind: "percent" | "flat";
   detail?: string;
 };
@@ -81,14 +84,20 @@ export type PriceBreakdown = {
   /** Billable square footage after the minimum floor (sqft-priced programs only). */
   billableSqft?: number;
   base: number;
+  /** Internal dealer/wholesale base cost. Null when the source guide exposes retail only. */
+  wholesaleBase: number | null;
   surchargeLines: PriceLine[];
   /** base + all per-window surcharges. */
   unitPrice: number;
+  /** Internal dealer/wholesale unit cost. Null when the source guide exposes retail only. */
+  wholesaleUnitPrice: number | null;
   quantity: number;
   /** Surcharges charged once per line regardless of quantity (e.g. freight). */
   onceTotal: number;
   /** unitPrice * quantity + onceTotal. */
   total: number;
+  /** Internal dealer/wholesale line total. Null when the source guide exposes retail only. */
+  wholesaleTotal: number | null;
   warnings: string[];
 };
 
@@ -184,6 +193,7 @@ function resolveProgram(
 
 type BaseLookup = {
   cents: number;
+  wholesaleCents: number | null;
   matchedWidth: number;
   matchedHeight: number | null;
   sqft?: number;
@@ -204,7 +214,11 @@ function lookupBaseCents(
     const sqft = squareFeet(widthInches, heightInches);
     const billableSqft = Math.max(sqft, prog.minSqft ?? 0);
     const cents = Math.round(billableSqft * toCents(prog.pricePerSqft));
-    return { cents, matchedWidth: widthInches, matchedHeight: heightInches, sqft, billableSqft };
+    const wholesaleCents =
+      prog.costPerSqft == null
+        ? null
+        : Math.round(billableSqft * toCents(prog.costPerSqft));
+    return { cents, wholesaleCents, matchedWidth: widthInches, matchedHeight: heightInches, sqft, billableSqft };
   }
 
   const wi = roundUpIndex(prog.grid.widths, widthInches);
@@ -216,7 +230,7 @@ function lookupBaseCents(
   if (prog.priceAxis === "width") {
     const v = prog.grid.prices[0]?.[wi];
     if (v == null) return fail("NA_CELL", `${prog.name} is not available at width ${matchedWidth}".`, warnings);
-    return { cents: toCents(v), matchedWidth, matchedHeight: null };
+    return { cents: toCents(v), wholesaleCents: null, matchedWidth, matchedHeight: null };
   }
 
   const hi = roundUpIndex(prog.grid.heights, heightInches);
@@ -228,7 +242,7 @@ function lookupBaseCents(
   if (v == null) {
     return fail("NA_CELL", `${prog.name} is not available (NA) at ${matchedWidth}" x ${matchedHeight}".`, warnings);
   }
-  return { cents: toCents(v), matchedWidth, matchedHeight };
+  return { cents: toCents(v), wholesaleCents: null, matchedWidth, matchedHeight };
 }
 
 export function priceDesign(input: PriceInput): PriceResult {
@@ -267,12 +281,14 @@ export function priceDesign(input: PriceInput): PriceResult {
 
   const baseLookup = lookupBaseCents(prog, W, H, warnings);
   if ("ok" in baseLookup) return baseLookup;
-  const { cents: baseCents, matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
+  const { cents: baseCents, wholesaleCents: wholesaleBaseCents, matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
 
   // Surcharges
   const surchargeLines: PriceLine[] = [];
   let perWindowCents = 0;
   let onceCents = 0;
+  let wholesalePerWindowCents = 0;
+  let wholesaleOnceCents = 0;
 
   for (const sel of input.surcharges ?? []) {
     const sc = findProductSurcharge(product, sel.id);
@@ -280,6 +296,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       return fail("SURCHARGE_UNKNOWN", `Surcharge '${sel.id}' is not valid for ${product.name}.`, warnings);
     }
     let amountCents: number;
+    let wholesaleAmountCents: number | null = null;
     let detail: string | undefined;
     if (sc.widthGraduated) {
       // Valance-style charge priced by window width (round up), plus a per-foot
@@ -297,25 +314,44 @@ export function priceDesign(input: PriceInput): PriceResult {
     }
     if (sc.kind === "percent") {
       amountCents = Math.round((baseCents * sc.value) / 100);
+      if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round((wholesaleBaseCents * sc.value) / 100);
       detail = `${sc.value}% of base`;
     } else if (sc.per === "sqft") {
       const sqft = actualSqft ?? (needsHeight ? squareFeet(W, H) : 0);
       amountCents = Math.round(toCents(sc.value) * sqft);
+      if (wholesaleBaseCents != null) wholesaleAmountCents = amountCents;
       detail = `$${sc.value}/sq ft x ${sqft.toFixed(1)}`;
     } else {
       // Sides (cut-outs) and feet (additional valance foot) are billed per whole
       // unit — never a fractional count (which would yield a fractional charge).
       const units = sc.per === "side" || sc.per === "foot" ? Math.max(1, Math.round(Number(sel.units) || 1)) : 1;
       amountCents = toCents(sc.value) * units;
+      if (wholesaleBaseCents != null) wholesaleAmountCents = amountCents;
       if (units > 1) detail = `${sc.value} x ${units} ${sc.per}s`;
     }
-    surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), kind: sc.kind, detail });
-    if (sc.per === "once") onceCents += amountCents;
-    else perWindowCents += amountCents;
+    surchargeLines.push({
+      id: sc.id,
+      label: sc.name,
+      amount: fromCents(amountCents),
+      ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }),
+      kind: sc.kind,
+      detail,
+    });
+    if (sc.per === "once") {
+      onceCents += amountCents;
+      if (wholesaleAmountCents != null) wholesaleOnceCents += wholesaleAmountCents;
+    } else {
+      perWindowCents += amountCents;
+      if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
+    }
   }
 
   // Motorization (flat per-window add-ons)
+  const allowedMotorizationGroups = new Set(getMotorizationGroupsForProduct(product.id));
   for (const sel of input.motorization ?? []) {
+    if (!allowedMotorizationGroups.has(sel.groupId)) {
+      return fail("MOTORIZATION_UNKNOWN", `Motorization group '${sel.groupId}' is not valid for ${product.name}.`, warnings);
+    }
     const group = catalog.motorization[sel.groupId];
     const opt = group?.options.find((o) => o.id === sel.optionId);
     if (!opt) {
@@ -327,19 +363,25 @@ export function priceDesign(input: PriceInput): PriceResult {
     }
     const units = Math.max(1, Math.round(Number(sel.units) || 1));
     const amountCents = toCents(opt.price) * units;
+    const wholesaleAmountCents = wholesaleBaseCents == null ? null : amountCents;
     surchargeLines.push({
       id: `motor:${sel.groupId}:${opt.id}`,
       label: opt.name,
       amount: fromCents(amountCents),
+      ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }),
       kind: "flat",
       detail: units > 1 ? `${opt.price} x ${units}` : undefined,
     });
     perWindowCents += amountCents;
+    if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
   }
 
   const quantity = normalizeQuantity(input.quantity);
   const unitCents = baseCents + perWindowCents;
   const totalCents = unitCents * quantity + onceCents;
+  const wholesaleUnitCents = wholesaleBaseCents == null ? null : wholesaleBaseCents + wholesalePerWindowCents;
+  const wholesaleTotalCents =
+    wholesaleUnitCents == null ? null : wholesaleUnitCents * quantity + wholesaleOnceCents;
 
   return {
     ok: true,
@@ -351,11 +393,14 @@ export function priceDesign(input: PriceInput): PriceResult {
     sqft: actualSqft,
     billableSqft,
     base: fromCents(baseCents),
+    wholesaleBase: wholesaleBaseCents == null ? null : fromCents(wholesaleBaseCents),
     surchargeLines,
     unitPrice: fromCents(unitCents),
+    wholesaleUnitPrice: wholesaleUnitCents == null ? null : fromCents(wholesaleUnitCents),
     quantity,
     onceTotal: fromCents(onceCents),
     total: fromCents(totalCents),
+    wholesaleTotal: wholesaleTotalCents == null ? null : fromCents(wholesaleTotalCents),
     warnings,
   };
 }

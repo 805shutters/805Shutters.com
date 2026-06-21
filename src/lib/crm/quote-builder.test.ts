@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   lineItemSubtotal,
+  lineItemWholesaleSubtotal,
   quoteSubtotal,
+  quoteWholesaleSubtotal,
   quoteTotal,
   selectedDesign,
   priceDesignFields,
@@ -22,9 +24,11 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
     product_id: over.product_id ?? "honeycomb",
     program_id: over.program_id ?? null,
     fabric: over.fabric ?? null,
+    details: over.details ?? {},
     surcharges: over.surcharges ?? [],
     motorization: over.motorization ?? [],
     unit_price: over.unit_price ?? 0,
+    wholesale_unit_price: over.wholesale_unit_price ?? null,
     price_breakdown: over.price_breakdown ?? {},
     price_status: over.price_status ?? "ok",
     priced_at: null,
@@ -97,6 +101,15 @@ describe("pick-one totals (the legacy triple-billing bug must never return)", ()
     expect(quoteSubtotal([li1, li2])).toBe(550);
   });
 
+  it("keeps internal wholesale totals separate from customer totals", () => {
+    const li1 = lineItem({ id: "li1", designs: [design({ id: "a", unit_price: 393.75, wholesale_unit_price: 168.75 })], selected_design_id: "a", quantity: 2 });
+    const li2 = lineItem({ id: "li2", designs: [design({ id: "b", unit_price: 212, wholesale_unit_price: null })], selected_design_id: "b", quantity: 1 });
+    expect(lineItemSubtotal(li1)).toBe(787.5);
+    expect(lineItemWholesaleSubtotal(li1)).toBe(337.5);
+    expect(quoteWholesaleSubtotal([li1])).toBe(337.5);
+    expect(quoteWholesaleSubtotal([li1, li2])).toBeNull();
+  });
+
   it("selectedDesign returns the chosen design or null", () => {
     const a = design({ id: "a" });
     expect(selectedDesign(lineItem({ designs: [a], selected_design_id: "a" }))?.id).toBe("a");
@@ -158,6 +171,17 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
     expect(fields.price_status).toBe("ok");
     expect(fields.unit_price).toBe(212);
+    expect(fields.wholesale_unit_price).toBeNull();
+  });
+
+  it("prices internal wholesale for shutter designs", () => {
+    const fields = priceDesignFields(
+      { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },
+      { width_in: 30, height_in: 60 },
+    );
+    expect(fields.price_status).toBe("ok");
+    expect(fields.unit_price).toBe(393.75);
+    expect(fields.wholesale_unit_price).toBe(168.75);
   });
 
   it("marks an out-of-range design with the error code and zero price", () => {
@@ -167,6 +191,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
     expect(fields.price_status).toBe("WIDTH_EXCEEDS_MAX");
     expect(fields.unit_price).toBe(0);
+    expect(fields.wholesale_unit_price).toBeNull();
   });
 
   it("errors cleanly on missing dimensions instead of producing NaN", () => {

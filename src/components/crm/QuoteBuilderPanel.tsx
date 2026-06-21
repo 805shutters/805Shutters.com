@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiDetailField, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, splitInches, toInches } from "@/lib/quote/measurements";
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
 };
 
 type Version = { id: string; label: string; status: string; quote_total: number; share_token: string | null; signed: boolean };
+type DetailValue = string | number | boolean | null;
 
 async function api<T>(session: Session, path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, {
@@ -352,6 +353,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         product_id: design.product_id,
         program_id: design.program_id,
         fabric: design.fabric,
+        details: design.details ?? {},
         surcharges: design.surcharges,
         motorization: design.motorization,
         ...changes,
@@ -367,6 +369,21 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       ? design.surcharges.filter((s) => s.id !== surchargeId)
       : [...design.surcharges, { id: surchargeId }];
     return saveDesign(li, design, { surcharges: next });
+  };
+
+  const setDetail = (li: CrmQuoteLineItem, design: CrmQuoteDesign, key: string, value: DetailValue) => {
+    const next = { ...(design.details ?? {}) };
+    if (value === "" || value === null || value === false) delete next[key];
+    else next[key] = value;
+    return saveDesign(li, design, { details: next });
+  };
+
+  const toggleMotorization = (li: CrmQuoteLineItem, design: CrmQuoteDesign, groupId: string, optionId: string) => {
+    const has = design.motorization.some((m) => m.groupId === groupId && m.optionId === optionId);
+    const next = has
+      ? design.motorization.filter((m) => !(m.groupId === groupId && m.optionId === optionId))
+      : [...design.motorization, { groupId, optionId }];
+    return saveDesign(li, design, { motorization: next });
   };
 
   const inner = (
@@ -559,6 +576,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   {li.designs.map((design) => {
                     const product = productsById.get(design.product_id);
+                    const motorizationGroups = product
+                      ? catalog.motorization.filter((group) => product.motorizationGroups.includes(group.groupId))
+                      : [];
                     const isSelected = li.selected_design_id === design.id;
                     const priceOk = design.price_status === "ok";
                     return (
@@ -576,6 +596,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           </label>
                           <span style={{ marginLeft: "auto", fontWeight: 700, color: priceOk ? "#0b0b0b" : "#4d4d49" }}>
                             {priceOk ? money(design.unit_price) : design.price_status}
+                            {priceOk && design.wholesale_unit_price != null ? (
+                              <span style={{ display: "block", fontSize: 11, fontWeight: 500, color: "#686862", textAlign: "right" }}>
+                                Wholesale {money(design.wholesale_unit_price)}
+                              </span>
+                            ) : null}
                           </span>
                           <button type="button" style={ghostBtn} disabled={busy} onClick={() => deleteDesign(design.id)}>
                             ✕
@@ -586,7 +611,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           <Field label="Product">
                             <select
                               value={design.product_id}
-                              onChange={(e) => saveDesign(li, design, { product_id: e.target.value, program_id: null, fabric: null, surcharges: [] })}
+                              onChange={(e) => saveDesign(li, design, { product_id: e.target.value, program_id: null, fabric: null, details: {}, surcharges: [], motorization: [] })}
                             >
                               {catalog.products.map((p) => (
                                 <option key={p.id} value={p.id}>
@@ -630,6 +655,19 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           ) : null}
                         </div>
 
+                        {product && product.details.length > 0 ? (
+                          <div style={detailGrid}>
+                            {product.details.map((field) => (
+                              <DetailControl
+                                key={field.id}
+                                field={field}
+                                value={(design.details ?? {})[field.id]}
+                                onChange={(value) => setDetail(li, design, field.id, value)}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
+
                         {!priceOk && design.price_breakdown && "error" in design.price_breakdown ? (
                           <p style={{ color: "#4d4d49", fontSize: 13, margin: "8px 0 0" }}>
                             {String((design.price_breakdown as { error?: string }).error)}
@@ -653,6 +691,29 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                                   <span style={{ opacity: 0.6 }}>({surchargeHint(s)})</span>
                                 </label>
                               ))}
+                            </div>
+                          </details>
+                        ) : null}
+
+                        {motorizationGroups.length > 0 ? (
+                          <details style={{ marginTop: 8 }}>
+                            <summary style={{ cursor: "pointer", fontSize: 13 }}>
+                              Motorization ({design.motorization.length} selected)
+                            </summary>
+                            <div style={surchargeList}>
+                              {motorizationGroups.flatMap((group) =>
+                                group.options.map((option) => (
+                                  <label key={`${group.groupId}:${option.id}`} style={{ display: "flex", gap: 6, fontSize: 13, alignItems: "center" }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={design.motorization.some((m) => m.groupId === group.groupId && m.optionId === option.id)}
+                                      onChange={() => toggleMotorization(li, design, group.groupId, option.id)}
+                                    />
+                                    {group.name}: {option.name}{" "}
+                                    <span style={{ opacity: 0.6 }}>{option.price == null ? "(price pending)" : `(${money(option.price)})`}</span>
+                                  </label>
+                                )),
+                              )}
                             </div>
                           </details>
                         ) : null}
@@ -814,6 +875,29 @@ function Measure({ label, valueIn, onChange }: { label: string; valueIn: number 
   );
 }
 
+function DetailControl({ field, value, onChange }: { field: UiDetailField; value: DetailValue | undefined; onChange: (value: DetailValue) => void }) {
+  if (field.type === "checkbox") {
+    return (
+      <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 12, minHeight: 34 }}>
+        <input type="checkbox" checked={value === true} onChange={(e) => onChange(e.target.checked)} />
+        <span>{field.label}</span>
+      </label>
+    );
+  }
+  return (
+    <Field label={field.label}>
+      <select value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value || null)}>
+        <option value="">-- choose --</option>
+        {(field.options ?? []).map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </Field>
+  );
+}
+
 function BreakRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 14 }}>
@@ -839,6 +923,13 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
     const d = li.designs.find((x) => x.id === li.selected_design_id);
     if (!d || d.price_status !== "ok") return s;
     return s + d.unit_price * Math.max(1, li.quantity || 1);
+  }, 0);
+  const wholesaleSubtotal = quote.lineItems.reduce<number | null>((sum, li) => {
+    if (sum == null) return null;
+    const d = li.designs.find((x) => x.id === li.selected_design_id);
+    if (!d || d.price_status !== "ok") return sum;
+    if (d.wholesale_unit_price == null) return null;
+    return sum + d.wholesale_unit_price * Math.max(1, li.quantity || 1);
   }, 0);
 
   function apply() {
@@ -896,6 +987,12 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
 
       <div style={{ marginTop: 14 }}>
         <BreakRow label="Subtotal" value={money(subtotal)} />
+        {wholesaleSubtotal != null && wholesaleSubtotal > 0 ? (
+          <>
+            <BreakRow label="Internal wholesale" value={money(wholesaleSubtotal)} />
+            <BreakRow label="Internal gross margin" value={money(subtotal - wholesaleSubtotal)} />
+          </>
+        ) : null}
         {quote.discount > 0 ? <BreakRow label="Discount" value={`- ${money(quote.discount)}`} /> : null}
         {quote.tax > 0 ? <BreakRow label="Tax" value={money(quote.tax)} /> : null}
         <div style={totalsBar}>
@@ -947,6 +1044,7 @@ const headerStyle: CSSProperties = {
 };
 const windowCard: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 10, padding: 14, marginBottom: 14, background: "#fbfbfa" };
 const designCard: CSSProperties = { border: "2px solid #d8d8d2", borderRadius: 8, padding: 12, background: "#ffffff" };
+const detailGrid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #eeeeeb" };
 const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #eeeeeb", borderRadius: 6 };
 const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0b0b0b", color: "#ffffff", borderRadius: 8, fontSize: 18 };
 const closeBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "6px 14px", cursor: "pointer" };

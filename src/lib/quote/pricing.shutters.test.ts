@@ -17,6 +17,8 @@ describe("shutter $/sqft pricing", () => {
     expect(r.sqft).toBe(12.5);
     expect(r.billableSqft).toBe(12.5);
     expect(r.base).toBe(487.5);
+    expect(r.wholesaleBase).toBe(163.75);
+    expect(r.wholesaleUnitPrice).toBe(163.75);
     expect(r.total).toBe(487.5);
   });
 
@@ -30,12 +32,24 @@ describe("shutter $/sqft pricing", () => {
   it("Onyx Painted Basswood ($31.50/sqft derived): 30x60 = $393.75", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
     expect(r.base).toBe(393.75);
+    expect(r.wholesaleBase).toBe(168.75);
+    expect(r.wholesaleUnitPrice).toBe(168.75);
+  });
+
+  it("Onyx Stained Basswood keeps retail and portal-supported wholesale separate", () => {
+    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
+    expect(r.base).toBe(481.25);
+    expect(r.wholesaleBase).toBe(206.25);
+    expect(r.unitPrice).toBe(481.25);
+    expect(r.wholesaleUnitPrice).toBe(206.25);
   });
 
   it("percent surcharge (Cafe Shutters 30%) applies off the sqft base", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges: [{ id: "cafe_shutters" }] }));
     expect(r.surchargeLines[0].amount).toBe(146.25); // 30% of 487.50
+    expect(r.surchargeLines[0].wholesaleAmount).toBe(49.13); // 30% of 163.75
     expect(r.unitPrice).toBe(633.75);
+    expect(r.wholesaleUnitPrice).toBe(212.88);
   });
 
   it("real per-sqft surcharge (Onyx Hidden Tilt Rod $1.20/sqft) — fixes the legacy 'set quantity to sqft' hack", () => {

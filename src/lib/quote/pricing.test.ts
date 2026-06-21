@@ -93,6 +93,12 @@ describe("quantity & surcharges", () => {
     const r = ok(priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
     expect(r.unitPrice).toBe(r.base + 482);
   });
+
+  it("rejects motorization groups that are not valid for the selected product", () => {
+    const r = priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
+  });
 });
 
 describe("error paths (legacy engine silently mis-priced all of these)", () => {

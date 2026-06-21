@@ -13,9 +13,11 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
     product_id: over.product_id ?? "honeycomb",
     program_id: over.program_id ?? null,
     fabric: over.fabric ?? null,
+    details: over.details ?? {},
     surcharges: over.surcharges ?? [],
-    motorization: [],
+    motorization: over.motorization ?? [],
     unit_price: 0,
+    wholesale_unit_price: over.wholesale_unit_price ?? null,
     price_breakdown: {},
     price_status: "ok",
     priced_at: null,
@@ -38,6 +40,22 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
   it("resolves surcharge option names", () => {
     const d = describeDesign(design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", surcharges: [{ id: "shim" }] }));
     expect(d.options.some((o) => /shim/i.test(o))).toBe(true);
+  });
+
+  it("resolves customer-visible product details and motorization names", () => {
+    const d = describeDesign(design({
+      product_id: "roller",
+      fabric: "Callie",
+      details: { mount_type: "inside", control_side: "left", hard_surface_install: true },
+      motorization: [{ groupId: "smart_motorization", optionId: "motor" }],
+      wholesale_unit_price: 123.45,
+    }));
+    expect(d.options).toContain("Mount: Inside mount");
+    expect(d.options).toContain("Control side: Left");
+    expect(d.options.some((o) => /hard-surface/i.test(o))).toBe(false);
+    expect(d.options.some((o) => /Norman Smart Motorization: Motor/i.test(o))).toBe(true);
+    expect(JSON.stringify(d)).not.toContain("wholesale");
+    expect(JSON.stringify(d)).not.toContain("123.45");
   });
 });
 

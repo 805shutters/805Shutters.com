@@ -109,6 +109,7 @@ export type CrmQuoteMotorizationSelection = {
   optionId: string;
   units?: number;
 };
+export type CrmQuoteDetailValue = string | number | boolean | null;
 
 export type CrmQuoteDesign = {
   id: string;
@@ -120,10 +121,13 @@ export type CrmQuoteDesign = {
   product_id: string;
   program_id: string | null;
   fabric: string | null;
+  details: Record<string, CrmQuoteDetailValue>;
   surcharges: CrmQuoteSurchargeSelection[];
   motorization: CrmQuoteMotorizationSelection[];
   /** Server-computed per-window price (authoritative; clients never set this). */
   unit_price: number;
+  /** Internal-only dealer/wholesale per-window cost when available. */
+  wholesale_unit_price: number | null;
   /** Snapshot of the full pricing breakdown at priced_at. */
   price_breakdown: Record<string, unknown>;
   /** "ok" or a pricing engine error code (e.g. WIDTH_EXCEEDS_MAX). */
