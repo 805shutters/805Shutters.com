@@ -752,8 +752,7 @@ function projectLiveBookkeepingStatuses(rows: CrmBookkeepingRow[], jobs: CrmJob[
     });
     const jobStatus = row.jobId ? statusByJobId.get(row.jobId) : undefined;
     const targetStatus = bookkeepingStatusForJob(jobStatus);
-    const liveStatus =
-      targetStatus === "closed" && !row.isPaidInFull ? current : advanceBookkeepingStatus(current, targetStatus);
+    const liveStatus = advanceBookkeepingStatus(current, targetStatus);
     return liveStatus === row.liveStatus ? row : { ...row, liveStatus };
   });
 }

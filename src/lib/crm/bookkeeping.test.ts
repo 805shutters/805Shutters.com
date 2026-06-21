@@ -300,7 +300,7 @@ describe("bookkeeping ledger tombstones", () => {
 });
 
 describe("paid-in-full status", () => {
-  it("does not let a closed live status override an open ledger balance", () => {
+  it("keeps closed lifecycle status separate from paid-in-full balance math", () => {
     const [row] = rowsFrom({
       quotes: [quote({ id: "q1", status: "paid", quote_total: 1000, deposit_required: 500 })]
     });
@@ -309,7 +309,7 @@ describe("paid-in-full status", () => {
 
     expect(projected.isPaidInFull).toBe(false);
     expect(projected.balance).toBe(1000);
-    expect(effectiveBookkeepingStatus(projected)).toBe("paid");
+    expect(effectiveBookkeepingStatus(projected)).toBe("closed");
   });
 
   it("marks a bookkeeping row closed when payments cover the total", () => {

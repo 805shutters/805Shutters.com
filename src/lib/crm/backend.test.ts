@@ -234,16 +234,16 @@ describe("buildDashboardData", () => {
       payoffTarget: 500000
     });
 
-    expect(data.summary.openJobs).toBe(3);
+    expect(data.summary.openJobs).toBe(2);
     expect(data.jobs.find((item) => item.id === "paid-balance")?.status).toBe("closed");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.status).toBe("paid");
-    expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.liveStatus).toBe("paid");
+    expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.liveStatus).toBe("closed");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.isPaidInFull).toBe(false);
     expect(data.quotes.find((item) => item.id === "quote-paid-balance")?.status).toBe("sold");
     expect(data.quotes.find((item) => item.id === "quote-paid-balance")?.live_status).toBe("closed");
-    expect(data.quotes.find((item) => item.id === "quote-paid-status")?.live_status).toBe("paid");
+    expect(data.quotes.find((item) => item.id === "quote-paid-status")?.live_status).toBe("closed");
     expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.latestStatus).toBe("closed");
-    expect(data.customerFiles.find((file) => file.customerName === "Paid Status")?.latestStatus).toBe("paid");
+    expect(data.customerFiles.find((file) => file.customerName === "Paid Status")?.latestStatus).toBe("closed");
     expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.latestStatus).toBe("sold");
   });
 });
