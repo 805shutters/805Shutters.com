@@ -8362,8 +8362,9 @@ html.mobile-menu-open {
 
 .crm-drill-compact-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(132px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
 }
 
 .crm-drill-detail-strip {
@@ -8482,21 +8483,42 @@ html.mobile-menu-open {
   border-bottom: 1px solid #d8d8d2;
 }
 
-.crm-drill-compact-grid .crm-drill-fact {
-  grid-template-columns: minmax(76px, 0.45fr) minmax(0, 1fr);
-  gap: 7px;
-  min-height: 41px;
-  padding: 7px 8px;
+.crm-drill-fact-column {
+  display: grid;
+  align-content: start;
+  min-width: 0;
   background: var(--white);
   border: 1px solid #d8d8d2;
 }
 
-.crm-drill-compact-grid .crm-drill-fact.wide {
-  grid-column: span 2;
+.crm-drill-fact-column h4 {
+  margin: 0;
+  padding: 9px 11px;
+  border-bottom: 1px solid #d8d8d2;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-drill-fact-column-list {
+  display: grid;
+  min-width: 0;
+}
+
+.crm-drill-compact-grid .crm-drill-fact {
+  grid-template-columns: minmax(108px, 0.62fr) minmax(0, 1fr);
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 11px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e5e5df;
 }
 
 .crm-drill-compact-grid .crm-drill-fact:last-child {
-  border-bottom: 1px solid #d8d8d2;
+  border-bottom: 0;
 }
 
 .crm-drill-fact:last-child {

@@ -3128,39 +3128,56 @@ function DrillDetailCard({
 
       <>
         <div className="crm-drill-compact-grid">
-          <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
-          <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} editor={soldDateEditor} />
-          <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} editor={quoteNumberEditor} />
-          <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
-          <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
-          <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
-          <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
-          <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
-          <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
-          <DrillFact
-            label="COGS"
-            value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"}
-            tone={row && row.cogs <= 0 ? "warn" : undefined}
-            editor={cogsEditor}
-          />
-          <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
-          <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
-          <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} editor={manufacturerEditor} />
-          <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
-          <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} editor={installAmountEditor} />
-          <DrillFact
-            label="Install Status"
-            value={row ? (row.isInstallationComplete ? "Complete" : titleCase(row.installationMatchStatus)) : "No install row"}
-            editor={installStatusEditor}
-          />
-          <DrillFact label="Due" value={formatShortDate(job?.next_action_due)} editor={dueEditor} />
-          <DrillFact
-            label="Appointment"
-            value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"}
-            editor={appointmentEditor}
-          />
-          <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} editor={addressEditor} />
-          <DrillFact label="Next Action" value={job?.next_action || "No next action"} editor={nextActionEditor} wide />
+          <section className="crm-drill-fact-column">
+            <h4>Customer Info</h4>
+            <div className="crm-drill-fact-column-list">
+              <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} editor={soldDateEditor} />
+              <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} editor={quoteNumberEditor} />
+              <DrillFact label="Due" value={formatShortDate(job?.next_action_due)} editor={dueEditor} />
+              <DrillFact
+                label="Appointment"
+                value={job?.appointment_start ? `${formatShortDate(job.appointment_start)}${job.appointment_end ? ` - ${formatShortDate(job.appointment_end)}` : ""}` : "Not scheduled"}
+                editor={appointmentEditor}
+              />
+              <DrillFact label="Address" value={file?.address || job?.address || "No address saved"} editor={addressEditor} />
+              <DrillFact label="Next Action" value={job?.next_action || "No next action"} editor={nextActionEditor} />
+            </div>
+          </section>
+
+          <section className="crm-drill-fact-column">
+            <h4>Financial</h4>
+            <div className="crm-drill-fact-column-list">
+              <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
+              <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
+              <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
+              <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
+              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
+              <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
+              <DrillFact
+                label="COGS"
+                value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"}
+                tone={row && row.cogs <= 0 ? "warn" : undefined}
+                editor={cogsEditor}
+              />
+              <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
+              <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+              <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} editor={installAmountEditor} />
+            </div>
+          </section>
+
+          <section className="crm-drill-fact-column">
+            <h4>Status + Product</h4>
+            <div className="crm-drill-fact-column-list">
+              <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
+              <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} editor={manufacturerEditor} />
+              <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
+              <DrillFact
+                label="Install Status"
+                value={row ? (row.isInstallationComplete ? "Complete" : titleCase(row.installationMatchStatus)) : "No install row"}
+                editor={installStatusEditor}
+              />
+            </div>
+          </section>
         </div>
 
         {products.length || hasActivity || hasDocumentsOrNotes ? (
