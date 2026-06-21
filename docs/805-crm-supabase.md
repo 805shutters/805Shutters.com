@@ -148,8 +148,9 @@ Implemented in `src/lib/crm/bookkeeping.ts` and covered by `npm test`:
   is closed/paid in full.
 - Mike sale: Mike receives 100% of remaining profit after COGS, Ken, install
   invoice, and job expenses.
-- Jessica sale: remaining profit after COGS, Ken, install invoice, and job
-  expenses splits 50% Jessica / 50% Mike.
+- Jessica sale: current remaining profit splits 50% Jessica / 50% Mike as soon
+  as the salesperson is Jessica. The install invoice is only netted first when a
+  matched invoice exists.
 - `crm_commission_payments` is the source of truth for payment history. The old
   `jessica_commission_paid_at` checkbox column is historical compatibility data
   and is not the payment ledger.

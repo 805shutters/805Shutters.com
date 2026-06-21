@@ -52,8 +52,8 @@ function entry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBookkeepingEntr
   };
 }
 
-// Convenience: an entry whose installation is fully matched (so install cost is
-// applied and Jessica's commission can be realized).
+// Convenience: an entry whose installation is fully matched, so install cost is
+// applied before profit is split.
 function installedEntry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBookkeepingEntry {
   return entry({
     installation_invoice_amount: 1000,
@@ -473,7 +473,7 @@ describe("job expenses", () => {
 });
 
 describe("Jessica's 50% commission", () => {
-  it("pays Jessica half of net profit only on her own completed installs", () => {
+  it("pays Jessica half of net profit on her own completed installs", () => {
     const [row] = rowsFrom({
       entries: [
         installedEntry({
@@ -493,15 +493,36 @@ describe("Jessica's 50% commission", () => {
     expect(row.mikeProfit).toBe(3000);
   });
 
-  it("pays Jessica nothing until installation is complete", () => {
+  it("splits Jessica's own sale even before an install invoice is matched", () => {
     const [row] = rowsFrom({
       entries: [
         entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: "2026-07-01" })
       ]
     });
     expect(row.isInstallationComplete).toBe(false);
-    expect(row.jessicaCommission).toBe(0);
-    expect(row.mikeProfit).toBe(7000); // 10000 - 3000 - 0 (exempt) - 0 install
+    expect(row.remainingProfitBeforeJessica).toBe(7000); // 10000 - 3000 - 0 (exempt) - 0 install
+    expect(row.jessicaCommission).toBe(3500);
+    expect(row.mikeProfit).toBe(3500);
+  });
+
+  it("uses a quote's sold-by Jessica value for the 50/50 split", () => {
+    const [row] = rowsFrom({
+      quotes: [
+        quote({
+          id: "q1",
+          status: "sold",
+          quote_total: 10000,
+          materials_cost: 3000,
+          sold_by: "Jessica",
+          sold_at: "2026-07-01"
+        })
+      ]
+    });
+    expect(row.salesOwner).toBe("jessica");
+    expect(row.isInstallationComplete).toBe(false);
+    expect(row.remainingProfitBeforeJessica).toBe(7000);
+    expect(row.jessicaCommission).toBe(3500);
+    expect(row.mikeProfit).toBe(3500);
   });
 
   it("keeps 100% with Mike on his own sales (no split)", () => {

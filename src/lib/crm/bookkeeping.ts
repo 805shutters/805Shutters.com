@@ -749,10 +749,10 @@ function calculateBookkeepingProfit({
   const remainingProfitBeforeJessica = roundCents(total - cogs - kenCut - installationCost - expenses);
   // The 50/50 split applies ONLY to Jessica's own sales (owner-confirmed rule,
   // June 2026); Mike keeps 100% of jobs he sold. This intentionally differs from
-  // the "regardless of who sold it" wording in migration 20260610. Her half is
-  // realized only once the install invoice is known, so the cost is netted first.
+  // the "regardless of who sold it" wording in migration 20260610. Installation
+  // cost is netted first only when a matched install invoice exists.
   const jessicaCommission =
-    salesOwner === "jessica" && isInstallationComplete
+    salesOwner === "jessica"
       ? roundCents(Math.max(remainingProfitBeforeJessica, 0) * 0.5)
       : 0;
 
