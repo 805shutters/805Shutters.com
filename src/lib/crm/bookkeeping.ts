@@ -30,8 +30,9 @@ export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" 
 }
 
 export function effectiveBookkeepingStatus(
-  row: Pick<CrmBookkeepingRow, "source" | "status" | "isPaidInFull">
+  row: Pick<CrmBookkeepingRow, "source" | "status" | "isPaidInFull" | "liveStatus">
 ): CrmBookkeepingStatus {
+  if (row.liveStatus) return row.liveStatus;
   if (row.isPaidInFull) return "closed";
   if (row.status === "manual" || row.status === "legacy") return "sold";
   return row.status;
@@ -232,7 +233,7 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
 
   for (const row of rows) {
     const owner = row.salesOwner === "jessica" ? "Jessica" : row.salesOwner === "mike" ? "Mike" : "Sales";
-    const status = String(row.status);
+    const status = effectiveBookkeepingStatus(row);
 
     if ((status === "sold" || status === "approved") && !row.manufacturerOrderRef) {
       items.push({

@@ -83,7 +83,7 @@ export function buildCustomerFiles({
         title: row.manufacturerOrderRef || `${row.customerName} document`,
         contract_url: rowContractUrl,
         share_token: null,
-        status: String(row.status),
+        status: String(effectiveBookkeepingStatus(row)),
         signed_at: null,
         total_amount: row.total,
         meta: { source: "bookkeeping_row" }
@@ -112,7 +112,7 @@ export function buildCustomerFiles({
     const file = ensureFile(fileMap, key, quote.customer_name || job?.customer_name || "Linked customer");
     pushUnique(file.quotes, quote.id, quote);
     if (job) pushUnique(file.jobs, job.id, job);
-    if (!file.bookkeepingRows.length) file.latestStatus = quote.status;
+    if (!file.bookkeepingRows.length) file.latestStatus = quote.live_status || quote.status;
     file.latestSoldDate = newestDate(file.latestSoldDate, quote.sold_at || quote.approved_at || quote.created_at);
     if (quote.notes) file.notes.push(quote.notes);
   }
@@ -183,7 +183,7 @@ function latestLiveStatus(file: CrmCustomerFile) {
   const latestQuote = newestByDate(file.quotes, (quote) =>
     quote.sold_at || quote.approved_at || quote.ordered_at || quote.received_at || quote.installed_at || quote.created_at
   );
-  if (latestQuote) return latestQuote.status;
+  if (latestQuote) return latestQuote.live_status || latestQuote.status;
 
   const latestJob = newestByDate(file.jobs, (job) => job.appointment_start || job.created_at);
   if (latestJob) return latestJob.status;

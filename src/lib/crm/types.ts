@@ -98,6 +98,7 @@ export type CrmQuote = {
   meta: Record<string, unknown>;
   notes: string | null;
   customer_name?: string;
+  live_status?: CrmBookkeepingStatus;
 };
 
 // ---- Quote builder: line items + designs (pick-one alternatives) ----
@@ -404,6 +405,7 @@ export type CrmBookkeepingRow = {
   manufacturerDocumentUrl: string | null;
   notes: string | null;
   status: CrmBookkeepingStatus;
+  liveStatus?: CrmBookkeepingStatus;
   payments: CrmBookkeepingPayment[];
   creditsIn: CrmBookkeepingCredit[];
   creditsOut: CrmBookkeepingCredit[];

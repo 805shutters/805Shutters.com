@@ -31,8 +31,14 @@ const PILL: Record<string, { bg: string; fg: string }> = {
   installed: { bg: "#ede9fe", fg: "#6d28d9" },
   invoiced: { bg: "#e0e7ff", fg: "#4338ca" },
   paid: { bg: "#dcfce7", fg: "#166534" },
+  closed: { bg: "#e6e5df", fg: "#272520" },
   archived: { bg: "#f1f5f9", fg: "#64748b" },
   lost: { bg: "#ffe4e6", fg: "#be123c" },
+};
+
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  ...STATUS_LABELS,
+  closed: "Closed"
 };
 
 function money(n: number | null | undefined): string {
@@ -67,9 +73,21 @@ function StatusPill({ status }: { status: string }) {
   const c = PILL[status] || PILL.draft;
   return (
     <span style={{ background: c.bg, color: c.fg, borderRadius: 999, padding: "2px 10px", fontSize: 12, fontWeight: 600, textTransform: "capitalize" }}>
-      {STATUS_LABELS[status as CrmQuoteStatus] || status}
+      {QUOTE_STATUS_LABELS[status] || status}
     </span>
   );
+}
+
+function quoteDisplayStatus(quote: CrmQuote): string {
+  return quote.live_status || quote.status;
+}
+
+function quoteLifecycleStatus(quote: CrmQuote): CrmQuoteStatus {
+  const liveStatus = quoteDisplayStatus(quote);
+  if (liveStatus === "closed") return "paid";
+  return PIPELINE.includes(liveStatus as CrmQuoteStatus) || liveStatus === "archived" || liveStatus === "lost"
+    ? (liveStatus as CrmQuoteStatus)
+    : quote.status;
 }
 
 export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
@@ -239,7 +257,7 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
         {tabBtn("calendar", "Consultations")}
         {activeQuote ? (
           <span style={{ marginLeft: "auto", fontSize: 13, opacity: 0.7 }}>
-            Active: <strong>{customerName(activeQuote)}</strong> <StatusPill status={activeQuote.status} />
+            Active: <strong>{customerName(activeQuote)}</strong> <StatusPill status={quoteDisplayStatus(activeQuote)} />
           </span>
         ) : null}
       </div>
@@ -327,7 +345,7 @@ function Dashboard({
   // Render a column for every active status (incl. approved/invoiced/paid and any
   // unexpected one), so a progressed quote never silently disappears from the board.
   const extraStatuses = Array.from(
-    new Set(activeQuotes.map((q) => q.status as CrmQuoteStatus).filter((s) => !PIPELINE.includes(s))),
+    new Set(activeQuotes.map(quoteDisplayStatus).filter((status) => !PIPELINE.includes(status as CrmQuoteStatus))),
   );
   const pipelineColumns = [...PIPELINE, ...extraStatuses];
   return (
@@ -363,7 +381,7 @@ function Dashboard({
       <h3 style={{ margin: "8px 0" }}>Quote pipeline</h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
         {pipelineColumns.map((status) => {
-          const list = activeQuotes.filter((q) => q.status === status);
+          const list = activeQuotes.filter((q) => quoteDisplayStatus(q) === status);
           return (
             <div key={status} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, background: "#fff" }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
@@ -588,14 +606,16 @@ function ContractView({
   onOpenBuilder: () => void;
   onOpenContract: () => void;
 }) {
-  const next = getNextStatus(quote.status);
+  const displayStatus = quoteDisplayStatus(quote);
+  const lifecycleStatus = quoteLifecycleStatus(quote);
+  const next = getNextStatus(lifecycleStatus);
   return (
     <div style={{ maxWidth: 640 }}>
       <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h3 style={{ margin: 0 }}>{name}</h3>
-            <div style={{ fontSize: 14, opacity: 0.75 }}>{money(quote.quote_total)} · <StatusPill status={quote.status} /></div>
+            <div style={{ fontSize: 14, opacity: 0.75 }}>{money(quote.quote_total)} · <StatusPill status={displayStatus} /></div>
           </div>
           <button type="button" style={ghostBtn} onClick={onOpenBuilder}>Open builder</button>
         </div>
@@ -613,7 +633,7 @@ function ContractView({
           <button type="button" disabled={busy} onClick={onOpenContract} style={ghostBtn}>Open customer contract</button>
           {next ? (
             <button type="button" disabled={busy} onClick={() => onAdvance(quote.id, next)} style={ghostBtn}>
-              {getAdvanceLabel(quote.status)}
+              {getAdvanceLabel(lifecycleStatus)}
             </button>
           ) : null}
         </div>

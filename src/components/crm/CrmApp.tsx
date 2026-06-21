@@ -2075,7 +2075,7 @@ function documentsForDetail(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCus
       id: `manufacturer-document-${row.id}`,
       title: row.manufacturerOrderRef || row.manufacturerName || "Manufacturer document",
       url: row.manufacturerDocumentUrl,
-      status: row.status,
+      status: effectiveBookkeepingStatus(row),
       kind: "Manufacturer document"
     });
   }
@@ -2085,7 +2085,7 @@ function documentsForDetail(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCus
       id: `manufacturer-order-${row.id}`,
       title: row.manufacturerOrderRef || "Manufacturer order",
       url: row.manufacturerOrderUrl,
-      status: row.status,
+      status: effectiveBookkeepingStatus(row),
       kind: "Manufacturer order"
     });
   }
@@ -2165,16 +2165,17 @@ function rowsToEntries(
     .map((row) => {
       const job = relatedJobForRow(row, context.jobs);
       const file = customerFileForName(context.files, row.customerName);
+      const status = effectiveBookkeepingStatus(row);
       return {
         id: row.id,
         name: row.customerName,
         customerName: row.customerName,
-        meta: [titleCase(String(row.status)), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
+        meta: [titleCase(status), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
         value: toCurrency(valueOf(row)),
         tone: row.balance > 0 ? ("warn" as const) : undefined,
         jobId: row.jobId,
         salesOwner: saleOwnerDisplayName(row.salesOwner || job?.sales_owner),
-        canReassignSale: Boolean(row.jobId && (row.status === "sold" || row.status === "approved")),
+        canReassignSale: Boolean(row.jobId && ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid", "closed"].includes(status)),
         row,
         job,
         file,
@@ -3155,6 +3156,7 @@ function DrillDetailCard({
     }
   ];
   const visibleContactItems = canEditJob ? contactItems : contactItems.filter((item) => item.value);
+  const liveRowStatus = row ? effectiveBookkeepingStatus(row) : null;
   const statusEditor: DrillInlineEditor | undefined =
     canEditQuoteRow && row
       ? {
@@ -3387,7 +3389,7 @@ function DrillDetailCard({
           <section className="crm-drill-fact-column">
             <h4>Status + Product</h4>
             <div className="crm-drill-fact-column-list">
-              <DrillFact label="Status" value={titleCase(String(row?.status || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
+              <DrillFact label="Status" value={titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
               <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} editor={manufacturerEditor} />
               <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
               <DrillFact
@@ -3891,7 +3893,7 @@ function customerFileStatusTokens(file: CrmCustomerFile) {
   if (statuses.size) return statuses;
   for (const job of file.jobs) statuses.add(job.status);
   if (statuses.size) return statuses;
-  for (const quote of file.quotes) statuses.add(quote.status);
+  for (const quote of file.quotes) statuses.add(quote.live_status || quote.status);
   return statuses;
 }
 
@@ -4171,7 +4173,7 @@ function CustomerFilesView({
                     {sortedBookkeepingRows.slice(0, 4).map((row) => (
                       <div key={`${row.source}-${row.id}`}>
                         <strong>{row.quoteNumber || row.source.replace("_", " ")}</strong>
-                        <span>{formatShortDate(row.soldDate)} / {row.manufacturerName || row.status}</span>
+                        <span>{formatShortDate(row.soldDate)} / {row.manufacturerName || bookkeepingStatusLabel(row)}</span>
                         <em>
                           {toCurrency(row.total)} / balance {toCurrency(row.balance)}
                         </em>

@@ -1,13 +1,14 @@
-import { isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
+import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
 import {
   CrmBookkeepingRow,
+  CrmBookkeepingStatus,
   CrmInstallationInvoiceEmail,
   CrmJob,
   CrmOrderCogsEmail,
   CrmQuote
 } from "@/lib/crm/types";
 
-const SOLD_PIPELINE_STATUSES = new Set<CrmBookkeepingRow["status"]>([
+const SOLD_PIPELINE_STATUSES = new Set<CrmBookkeepingStatus>([
   "sold",
   "approved",
   "ordered",
@@ -19,7 +20,7 @@ const SOLD_PIPELINE_STATUSES = new Set<CrmBookkeepingRow["status"]>([
   "manual"
 ]);
 
-const SOLD_JOB_STATUSES = new Set<CrmBookkeepingRow["status"]>([
+const SOLD_JOB_STATUSES = new Set<CrmBookkeepingStatus>([
   ...SOLD_PIPELINE_STATUSES,
   "closed"
 ]);
@@ -41,29 +42,28 @@ export function distinctRowsByJob(rows: CrmBookkeepingRow[]) {
 
 export function openSoldRows(rows: CrmBookkeepingRow[]) {
   return rows.filter(
-    (row) =>
-      row.total > 0 &&
-      !isPaidInFullBookkeepingRow(row) &&
-      row.balance > 0 &&
-      SOLD_PIPELINE_STATUSES.has(row.status)
+    (row) => {
+      const status = effectiveBookkeepingStatus(row);
+      return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && SOLD_PIPELINE_STATUSES.has(status);
+    }
   );
 }
 
 export function soldRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter((row) => row.total > 0 && SOLD_JOB_STATUSES.has(row.status));
+  return rows.filter((row) => row.total > 0 && SOLD_JOB_STATUSES.has(effectiveBookkeepingStatus(row)));
 }
 
 export function needToOrderRows(rows: CrmBookkeepingRow[]) {
   return rows.filter(
-    (row) =>
-      row.total > 0 &&
-      !isPaidInFullBookkeepingRow(row) &&
-      (row.status === "sold" || row.status === "approved")
+    (row) => {
+      const status = effectiveBookkeepingStatus(row);
+      return row.total > 0 && !isPaidInFullBookkeepingRow(row) && (status === "sold" || status === "approved");
+    }
   );
 }
 
 export function awaitingProductRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter((row) => row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.status === "ordered");
+  return rows.filter((row) => row.total > 0 && !isPaidInFullBookkeepingRow(row) && effectiveBookkeepingStatus(row) === "ordered");
 }
 
 export function missingCogsRows(rows: CrmBookkeepingRow[]) {
@@ -80,7 +80,7 @@ export function quotedPipelineQuotes(quotes: CrmQuote[], now: Date | string = ne
   const byGroup = new Map<string, CrmQuote>();
 
   for (const quote of quotes) {
-    if (quote.status !== "sent" || !quote.sent_at) continue;
+    if ((quote.live_status || quote.status) !== "sent" || !quote.sent_at) continue;
     const sentMs = Date.parse(quote.sent_at);
     if (!Number.isFinite(sentMs) || sentMs < cutoffMs || sentMs > nowMs) continue;
     const key = quote.quote_group_id || quote.job_id || quote.id;

@@ -22,6 +22,7 @@ import {
 } from "@/lib/booking/availability";
 import {
   CrmAvailabilitySlot,
+  CrmBookkeepingStatus,
   CrmBookkeepingRow,
   CrmBookkeepingCredit,
   CrmBookkeepingEntry,
@@ -647,7 +648,10 @@ export function buildDashboardData({
     quotesByJob.set(quote.job_id, Math.max(quotesByJob.get(quote.job_id) || 0, toMoney(quote.quote_total)));
   }
 
-  const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
+  const baseBookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
+  const liveJobs = projectLiveJobStatuses(jobs, baseBookkeepingRows);
+  const bookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs);
+  const liveQuotes = projectLiveQuoteStatuses(quotes, bookkeepingRows);
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
   const kenPayoff = buildKenPayoffSummary({
@@ -657,13 +661,12 @@ export function buildDashboardData({
     payoffTarget
   });
   const commissionSummary = buildCommissionSummary(bookkeepingRows, commissionPayments);
-  const liveJobs = projectLiveJobStatuses(jobs, bookkeepingRows);
   const customerFiles = buildCustomerFiles({
     customers,
     products,
     contracts,
     jobs: liveJobs,
-    quotes,
+    quotes: liveQuotes,
     bookkeepingRows
   });
   const jobsWithQuotes = liveJobs.map((job) => ({
@@ -674,7 +677,7 @@ export function buildDashboardData({
 
   return {
     jobs: jobsWithQuotes,
-    quotes,
+    quotes: liveQuotes,
     events: calendarEvents,
     customers,
     customerProducts: products,
@@ -695,13 +698,75 @@ export function buildDashboardData({
     accountability,
     summary: buildDashboardSummaryMetrics({
       jobs: jobsWithQuotes,
-      quotes,
+      quotes: liveQuotes,
       rows: bookkeepingRows,
       installationInvoiceEmails,
       orderCogsEmails,
       now
     })
   };
+}
+
+function projectLiveQuoteStatuses(quotes: CrmQuote[], rows: CrmBookkeepingRow[]) {
+  const statusByQuoteId = new Map<string, ReturnType<typeof effectiveBookkeepingStatus>>();
+  for (const row of rows) {
+    if (!row.quoteId) continue;
+    statusByQuoteId.set(row.quoteId, effectiveBookkeepingStatus(row));
+  }
+
+  return quotes.map((quote) => {
+    const liveStatus = statusByQuoteId.get(quote.id) || quote.status;
+    return liveStatus === quote.live_status ? quote : { ...quote, live_status: liveStatus };
+  });
+}
+
+const BOOKKEEPING_STATUS_RANK: Record<CrmBookkeepingStatus, number> = {
+  draft: 0,
+  sent: 1,
+  sold: 2,
+  approved: 2,
+  legacy: 2,
+  manual: 2,
+  ordered: 3,
+  received: 4,
+  installed: 5,
+  invoiced: 6,
+  paid: 7,
+  closed: 8,
+  archived: 0,
+  lost: 9
+};
+
+function projectLiveBookkeepingStatuses(rows: CrmBookkeepingRow[], jobs: CrmJob[]) {
+  const statusByJobId = new Map(jobs.map((job) => [job.id, job.status]));
+
+  return rows.map((row) => {
+    const current = effectiveBookkeepingStatus({
+      source: row.source,
+      status: row.status,
+      isPaidInFull: row.isPaidInFull
+    });
+    const jobStatus = row.jobId ? statusByJobId.get(row.jobId) : undefined;
+    const liveStatus = advanceBookkeepingStatus(current, bookkeepingStatusForJob(jobStatus));
+    return liveStatus === row.liveStatus ? row : { ...row, liveStatus };
+  });
+}
+
+function bookkeepingStatusForJob(status: CrmJobStatus | undefined): CrmBookkeepingStatus | null {
+  if (status === "closed") return "closed";
+  if (status === "invoiced") return "invoiced";
+  if (status === "installed") return "installed";
+  if (status === "ordered") return "ordered";
+  if (status === "sold") return "sold";
+  if (status === "lost") return "lost";
+  return null;
+}
+
+function advanceBookkeepingStatus(current: CrmBookkeepingStatus, target: CrmBookkeepingStatus | null) {
+  if (!target) return current;
+  if (target === "lost") return "lost";
+  if (current === "lost" || current === "closed") return current;
+  return (BOOKKEEPING_STATUS_RANK[target] ?? 0) > (BOOKKEEPING_STATUS_RANK[current] ?? 0) ? target : current;
 }
 
 function projectLiveJobStatuses(jobs: CrmJob[], rows: CrmBookkeepingRow[]) {
