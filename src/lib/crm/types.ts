@@ -538,6 +538,113 @@ export type CrmCommissionPayment = {
   meta: Record<string, unknown>;
 };
 
+export type CrmPaymentPerson = "ken" | CrmCommissionRecipient;
+
+export type CrmKenPaymentAllocation = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  payment_id: string;
+  source: CrmBookkeepingRow["source"];
+  quote_id: string | null;
+  bookkeeping_entry_id: string | null;
+  job_id: string | null;
+  item_key: string;
+  customer_name: string;
+  closed_at: string | null;
+  amount: number;
+  period_month: string | null;
+  meta: Record<string, unknown>;
+};
+
+export type CrmCommissionPaymentAllocation = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  payment_id: string;
+  recipient: CrmCommissionRecipient;
+  source: CrmBookkeepingRow["source"];
+  quote_id: string | null;
+  bookkeeping_entry_id: string | null;
+  job_id: string | null;
+  item_key: string;
+  customer_name: string;
+  closed_at: string | null;
+  amount: number;
+  period_month: string | null;
+  meta: Record<string, unknown>;
+};
+
+export type CrmPartnerPaymentState = "unpaid" | "partial" | "paid";
+
+export type CrmPartnerPaymentLedgerItem = {
+  id: string;
+  itemKey: string;
+  person: CrmPaymentPerson;
+  source: CrmBookkeepingRow["source"];
+  quoteId: string | null;
+  bookkeepingEntryId: string | null;
+  jobId: string | null;
+  customerName: string;
+  quoteNumber: string | null;
+  closedAt: string | null;
+  periodMonth: string | null;
+  sourceStatus: CrmBookkeepingStatus;
+  salesOwner: CrmBookkeepingSalesOwner | null;
+  total: number;
+  owedAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentState: CrmPartnerPaymentState;
+  explicitAllocationIds: string[];
+  legacyPaidAmount: number;
+};
+
+export type CrmPartnerPaymentHistoryAllocation = {
+  id: string;
+  itemKey: string;
+  customerName: string;
+  closedAt: string | null;
+  amount: number;
+  source: CrmBookkeepingRow["source"];
+  quoteId: string | null;
+  bookkeepingEntryId: string | null;
+  jobId: string | null;
+  virtual: boolean;
+};
+
+export type CrmPartnerPaymentHistoryBatch = {
+  id: string;
+  person: CrmPaymentPerson;
+  source: "ken_payment" | "commission_payment";
+  paidOn: string | null;
+  periodMonth: string | null;
+  amount: number;
+  note: string | null;
+  createdByEmail: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isLegacy: boolean;
+  allocations: CrmPartnerPaymentHistoryAllocation[];
+};
+
+export type CrmPartnerPaymentLedgerPerson = {
+  person: CrmPaymentPerson;
+  label: string;
+  earned: number;
+  paid: number;
+  owed: number;
+  jobCount: number;
+  activeJobCount: number;
+  activeItems: CrmPartnerPaymentLedgerItem[];
+};
+
+export type CrmPartnerPaymentLedger = {
+  people: Record<CrmPaymentPerson, CrmPartnerPaymentLedgerPerson>;
+  activeItems: CrmPartnerPaymentLedgerItem[];
+  history: CrmPartnerPaymentHistoryBatch[];
+};
+
 export type CrmCommissionMonthlySummary = {
   periodMonth: string;
   mikeEarned: number;
@@ -603,9 +710,12 @@ export type CrmDashboardData = {
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
   kenPayments: CrmKenPayment[];
+  kenPaymentAllocations: CrmKenPaymentAllocation[];
   kenPayoff: CrmKenPayoffSummary;
   commissionPayments: CrmCommissionPayment[];
+  commissionPaymentAllocations: CrmCommissionPaymentAllocation[];
   commissionSummary: CrmCommissionSummary;
+  partnerPaymentLedger: CrmPartnerPaymentLedger;
   accountability: CrmAccountabilityItem[];
   summary: CrmSummary;
 };

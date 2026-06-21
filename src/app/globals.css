@@ -4435,6 +4435,21 @@ body:has(.crm-app-shell) {
   border: 1px solid var(--line);
 }
 
+.crm-bookkeeping-summary-card-button {
+  width: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.crm-bookkeeping-summary-card-button:hover,
+.crm-bookkeeping-summary-card-button.active {
+  transform: translateY(-1px);
+  border-color: var(--ink);
+}
+
 .crm-bookkeeping-summary-card span {
   color: var(--muted);
   font-size: 9px;
@@ -4452,6 +4467,13 @@ body:has(.crm-app-shell) {
   letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
+}
+
+.crm-bookkeeping-summary-card em {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
 }
 
 .crm-bookkeeping-alert {
@@ -8166,6 +8188,84 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   text-transform: uppercase;
 }
 
+.crm-payments-workspace .crm-ledger {
+  display: grid;
+  gap: 0;
+}
+
+.crm-payment-person-grid {
+  padding: 0 24px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-payment-ledger-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.crm-payment-details summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.crm-payment-details div {
+  display: grid;
+  gap: 6px;
+  min-width: 260px;
+  padding-top: 8px;
+}
+
+.crm-payment-details p {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto auto;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crm-payment-details strong {
+  color: var(--ink);
+}
+
+.crm-payment-details em {
+  color: var(--ink);
+  font-style: normal;
+  font-weight: 800;
+}
+
+.crm-payment-review-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.crm-payment-review-summary > div {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  background: var(--white);
+}
+
+.crm-payment-review-summary span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-payment-review-summary strong {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 400;
+}
+
 @media (max-width: 900px) {
   .crm-payoff-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -8173,6 +8273,15 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 
   .crm-payoff-hero > strong {
     font-size: 42px;
+  }
+
+  .crm-payment-person-grid {
+    padding-inline: 16px;
+  }
+
+  .crm-payment-details p,
+  .crm-payment-review-summary {
+    grid-template-columns: 1fr;
   }
 }
 

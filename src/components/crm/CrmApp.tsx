@@ -40,15 +40,26 @@ import {
   CrmKenPayment,
   CrmKenPayoffSummary,
   CrmOrderCogsEmail,
+  CrmPartnerPaymentHistoryBatch,
+  CrmPartnerPaymentLedgerItem,
+  CrmPaymentPerson,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "commissions" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
+type PartnerPaymentRequest = {
+  person: CrmPaymentPerson;
+  paid_on?: string | null;
+  period_month?: string | null;
+  note?: string | null;
+  amount?: number;
+  item_ids?: string[];
+};
 type BookkeepingEditableField =
   | "customer"
   | "soldDate"
@@ -410,6 +421,11 @@ function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
 }
 
+function setPaymentLedgerUrl(person: CrmPaymentPerson) {
+  if (typeof window === "undefined") return;
+  window.history.pushState({}, "", `/crm/payments?person=${person}`);
+}
+
 function dateInputValue(value: string | null | undefined) {
   return value ? String(value).slice(0, 10) : "";
 }
@@ -557,12 +573,19 @@ function CollapsiblePanel({
   );
 }
 
-export function CrmApp() {
+export function CrmApp({
+  initialTab = "command",
+  initialPaymentPerson = "ken"
+}: {
+  initialTab?: CrmTab;
+  initialPaymentPerson?: CrmPaymentPerson;
+} = {}) {
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
-  const [activeTab, setActiveTab] = useState<CrmTab>("command");
+  const [activeTab, setActiveTab] = useState<CrmTab>(initialTab);
+  const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [authSetupMessage, setAuthSetupMessage] = useState<string | null>(null);
@@ -628,6 +651,19 @@ export function CrmApp() {
     setActiveTab(tab);
     setDrill(null);
     setFocusCustomer(null);
+    if (tab === "payments") {
+      setPaymentLedgerUrl(activePaymentPerson);
+    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/crm/payments")) {
+      window.history.pushState({}, "", "/crm/");
+    }
+  }
+
+  function openPaymentLedger(person: CrmPaymentPerson) {
+    setActivePaymentPerson(person);
+    setActiveTab("payments");
+    setDrill(null);
+    setFocusCustomer(null);
+    setPaymentLedgerUrl(person);
   }
 
   async function signOut() {
@@ -1198,6 +1234,28 @@ export function CrmApp() {
     }
   }
 
+  async function recordPartnerPaymentBatch(payload: PartnerPaymentRequest) {
+    if (!session) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{ dashboard: CrmDashboardData }>(session, "/api/crm/payments/batch", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      setData(result.dashboard);
+      setLastSyncedAt(Date.now());
+      setMessage(`${paymentPersonDisplayName(payload.person)} payment recorded.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Payment could not be recorded.");
+      throw error;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateCommissionPaymentRow(event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) {
     event.preventDefault();
     if (!session) return;
@@ -1507,7 +1565,7 @@ export function CrmApp() {
           ["customers", "Customer Files"],
           ["jobs", "Jobs"],
           ["bookkeeping", "Bookkeeping"],
-          ["commissions", "Commissions"],
+          ["payments", "Payments"],
           ["orders", "Orders"],
           ["calendar", "Calendar"],
           ["availability", "Open Times"],
@@ -1699,8 +1757,10 @@ export function CrmApp() {
               rows={rows}
               totals={data?.bookkeepingTotals}
               commissionSummary={data?.commissionSummary}
+              partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
               lastSyncedAt={lastSyncedAt}
+              onOpenPayments={openPaymentLedger}
               onSave={saveBookkeepingCell}
               onDelete={deleteBookkeepingRow}
             />
@@ -1710,14 +1770,13 @@ export function CrmApp() {
         </section>
       ) : null}
 
-      {activeTab === "commissions" ? (
-        <CommissionsView
-          summary={data?.commissionSummary}
-          payments={commissionPayments}
+      {activeTab === "payments" ? (
+        <PartnerPaymentsView
+          ledger={data?.partnerPaymentLedger}
+          activePerson={activePaymentPerson}
+          onPersonChange={openPaymentLedger}
           busy={busy}
-          onRecord={recordCommissionPayment}
-          onEdit={updateCommissionPaymentRow}
-          onDelete={deleteCommissionPaymentRow}
+          onPay={recordPartnerPaymentBatch}
         />
       ) : null}
 
@@ -4510,6 +4569,357 @@ function OrderCogsInbox({
   );
 }
 
+const paymentPeople: CrmPaymentPerson[] = ["ken", "jessica", "mike"];
+
+function paymentPersonDisplayName(person: CrmPaymentPerson) {
+  if (person === "ken") return "Ken";
+  if (person === "jessica") return "Jessica";
+  return "Mike";
+}
+
+function paymentStateDisplay(state: CrmPartnerPaymentLedgerItem["paymentState"]) {
+  if (state === "partial") return "Partial";
+  if (state === "paid") return "Paid";
+  return "Unpaid";
+}
+
+function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
+  return Math.round(items.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
+}
+
+function PartnerPaymentsView({
+  ledger,
+  activePerson,
+  onPersonChange,
+  busy,
+  onPay
+}: {
+  ledger: CrmDashboardData["partnerPaymentLedger"] | undefined;
+  activePerson: CrmPaymentPerson;
+  onPersonChange: (person: CrmPaymentPerson) => void;
+  busy: boolean;
+  onPay: (payload: PartnerPaymentRequest) => Promise<void>;
+}) {
+  const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
+  const [review, setReview] = useState<{ itemKeys: string[]; amount: number; count: number } | null>(null);
+  const [reviewDate, setReviewDate] = useState(todayInputValue());
+  const [reviewNote, setReviewNote] = useState("");
+  const activeItems = ledger?.people[activePerson]?.activeItems || [];
+  const activeHistory = (ledger?.history || []).filter((batch) => batch.person === activePerson);
+  const selectedItems = activeItems.filter((item) => selectedItemKeys.has(item.itemKey));
+  const selectedTotal = sumPartnerRemaining(selectedItems);
+  const allSelected = activeItems.length > 0 && selectedItems.length === activeItems.length;
+
+  useEffect(() => {
+    setSelectedItemKeys(new Set());
+    setReview(null);
+    setReviewDate(todayInputValue());
+    setReviewNote("");
+  }, [activePerson]);
+
+  const toggleItem = (itemKey: string) => {
+    setSelectedItemKeys((current) => {
+      const next = new Set(current);
+      if (next.has(itemKey)) {
+        next.delete(itemKey);
+      } else {
+        next.add(itemKey);
+      }
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelectedItemKeys(allSelected ? new Set() : new Set(activeItems.map((item) => item.itemKey)));
+  };
+
+  const openReview = () => {
+    if (!activeItems.length) return;
+    setReview({
+      itemKeys: activeItems.map((item) => item.itemKey),
+      amount: sumPartnerRemaining(activeItems),
+      count: activeItems.length
+    });
+    setReviewDate(todayInputValue());
+    setReviewNote("");
+  };
+
+  const confirmReviewPayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!review) return;
+    try {
+      await onPay({
+        person: activePerson,
+        paid_on: reviewDate,
+        note: reviewNote,
+        item_ids: review.itemKeys
+      });
+      setReview(null);
+      setSelectedItemKeys(new Set());
+    } catch {
+      // The shared CRM alert shows the server validation message.
+    }
+  };
+
+  const submitManualPayment = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const person = (formString(formData, "person") || activePerson) as CrmPaymentPerson;
+    const manualSelectedItems = person === activePerson ? selectedItems : [];
+
+    try {
+      await onPay({
+        person,
+        amount: Number(formString(formData, "amount") || 0),
+        paid_on: formString(formData, "paid_on") || null,
+        note: formString(formData, "note"),
+        item_ids: manualSelectedItems.length ? manualSelectedItems.map((item) => item.itemKey) : undefined
+      });
+      form.reset();
+      setSelectedItemKeys(new Set());
+    } catch {
+      // The shared CRM alert shows the server validation message.
+    }
+  };
+
+  return (
+    <section className="crm-workspace crm-workspace-wide crm-payments-workspace">
+      <div className="crm-ledger">
+        <div className="crm-section-head">
+          <div>
+            <p className="eyebrow">Payments</p>
+            <h2>Partner Payment Ledger</h2>
+          </div>
+          <button type="button" disabled={busy || !activeItems.length} onClick={openReview}>
+            Pay {paymentPersonDisplayName(activePerson)}
+          </button>
+        </div>
+
+        <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
+          {paymentPeople.map((person) => {
+            const personLedger = ledger?.people[person];
+            return (
+              <button
+                type="button"
+                className={`crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button ${
+                  activePerson === person ? "active" : ""
+                }`}
+                key={person}
+                onClick={() => onPersonChange(person)}
+              >
+                <span>{paymentPersonDisplayName(person)} Due</span>
+                <strong>{toLedgerCurrency(personLedger?.owed)}</strong>
+                <em>
+                  {personLedger?.activeJobCount || 0} active / {toLedgerCurrency(personLedger?.earned)} earned
+                </em>
+              </button>
+            );
+          })}
+        </div>
+
+        <CollapsiblePanel title="Manual / Partial Payment">
+          <form className="crm-form" onSubmit={submitManualPayment} key={activePerson}>
+            <label>
+              Person
+              <select name="person" defaultValue={activePerson}>
+                {paymentPeople.map((person) => (
+                  <option value={person} key={person}>
+                    {paymentPersonDisplayName(person)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Amount
+              <input
+                name="amount"
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                defaultValue={selectedTotal > 0 ? selectedTotal : ""}
+              />
+            </label>
+            <div className="crm-field-row">
+              <label>
+                Paid Date
+                <input name="paid_on" type="date" defaultValue={todayInputValue()} />
+              </label>
+              <label>
+                Selected Jobs
+                <input value={selectedItems.length ? `${selectedItems.length} selected` : "Oldest active jobs"} readOnly />
+              </label>
+            </div>
+            <label>
+              Note
+              <textarea name="note" rows={3} placeholder="Check #, Zelle, adjustment..." />
+            </label>
+            <button type="submit" disabled={busy}>
+              Record Manual Payment
+            </button>
+          </form>
+        </CollapsiblePanel>
+
+        <div className="crm-payoff-payments">
+          <div className="crm-payment-ledger-head">
+            <h3>{paymentPersonDisplayName(activePerson)} Active Ledger</h3>
+            {activeItems.length ? (
+              <button type="button" className="crm-ghost-button" onClick={toggleAll}>
+                {allSelected ? "Clear Selection" : "Select All"}
+              </button>
+            ) : null}
+          </div>
+          <div className="crm-bookkeeping-table-wrap">
+            <table className="crm-bookkeeping-table">
+              <thead>
+                <tr>
+                  <th aria-label="Select job" />
+                  <th>Customer</th>
+                  <th>Closed</th>
+                  <th>Status</th>
+                  <th>Sold By</th>
+                  <th>Total</th>
+                  <th>Owed</th>
+                  <th>Paid</th>
+                  <th>Remaining</th>
+                  <th>State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeItems.map((item) => (
+                  <tr key={item.itemKey}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedItemKeys.has(item.itemKey)}
+                        onChange={() => toggleItem(item.itemKey)}
+                        aria-label={`Select ${item.customerName}`}
+                      />
+                    </td>
+                    <td>
+                      <strong>{item.customerName}</strong>
+                      <span>{item.quoteNumber || item.source.replace("_", " ")}</span>
+                    </td>
+                    <td>{formatShortDate(item.closedAt)}</td>
+                    <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
+                    <td>{saleOwnerDisplayName(item.salesOwner)}</td>
+                    <td>{toLedgerCurrency(item.total)}</td>
+                    <td>{toLedgerCurrency(item.owedAmount)}</td>
+                    <td>{toLedgerCurrency(item.paidAmount)}</td>
+                    <td className="crm-ledger-money-warn">{toLedgerCurrency(item.remainingAmount)}</td>
+                    <td>{paymentStateDisplay(item.paymentState)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!activeItems.length ? <p className="crm-empty">No active unpaid jobs for {paymentPersonDisplayName(activePerson)}.</p> : null}
+          </div>
+        </div>
+
+        <div className="crm-payoff-payments">
+          <h3>{paymentPersonDisplayName(activePerson)} Payment History</h3>
+          <div className="crm-bookkeeping-table-wrap">
+            <table className="crm-bookkeeping-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Jobs</th>
+                  <th>Note</th>
+                  <th>Created By</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeHistory.map((batch) => (
+                  <PartnerPaymentHistoryRow batch={batch} key={batch.id} />
+                ))}
+              </tbody>
+            </table>
+            {!activeHistory.length ? <p className="crm-empty">No payment history for {paymentPersonDisplayName(activePerson)} yet.</p> : null}
+          </div>
+        </div>
+      </div>
+
+      {review ? (
+        <div className="crm-slot-modal crm-payment-review-modal" role="dialog" aria-modal="true" aria-labelledby="crm-payment-review-title">
+          <button type="button" className="crm-slot-modal__backdrop" aria-label="Close payment review" onClick={() => setReview(null)} />
+          <section className="crm-slot-form-panel">
+            <div className="crm-slot-form-head">
+              <div>
+                <p className="eyebrow">Review Payment</p>
+                <h2 id="crm-payment-review-title">Pay {paymentPersonDisplayName(activePerson)}</h2>
+              </div>
+              <button type="button" className="crm-slot-close" aria-label="Close payment review" onClick={() => setReview(null)}>
+                ×
+              </button>
+            </div>
+            <div className="crm-payment-review-summary">
+              <div>
+                <span>Amount</span>
+                <strong>{toLedgerCurrency(review.amount)}</strong>
+              </div>
+              <div>
+                <span>Jobs</span>
+                <strong>{review.count}</strong>
+              </div>
+            </div>
+            <form className="crm-form" onSubmit={confirmReviewPayment}>
+              <label>
+                Payment Date
+                <input type="date" value={reviewDate} onChange={(event) => setReviewDate(event.target.value)} />
+              </label>
+              <label>
+                Note
+                <textarea rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Check #, payment method..." />
+              </label>
+              <div className="crm-slot-actions">
+                <button type="button" className="crm-ghost-button" onClick={() => setReview(null)}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={busy}>
+                  Confirm Payment
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBatch }) {
+  return (
+    <tr>
+      <td>{formatShortDate(batch.paidOn)}</td>
+      <td>{toLedgerCurrency(batch.amount)}</td>
+      <td>{batch.allocations.length || "-"}</td>
+      <td>{batch.note || (batch.isLegacy ? "Legacy unallocated payment" : "")}</td>
+      <td>{batch.createdByEmail || "-"}</td>
+      <td>
+        {batch.allocations.length ? (
+          <details className="crm-payment-details">
+            <summary>View jobs</summary>
+            <div>
+              {batch.allocations.map((allocation) => (
+                <p key={allocation.id}>
+                  <strong>{allocation.customerName}</strong>
+                  <span>{formatShortDate(allocation.closedAt)}</span>
+                  <em>{toLedgerCurrency(allocation.amount)}{allocation.virtual ? " legacy" : ""}</em>
+                </p>
+              ))}
+            </div>
+          </details>
+        ) : (
+          "-"
+        )}
+      </td>
+    </tr>
+  );
+}
+
 function CommissionPaymentRow({
   payment,
   busy,
@@ -4983,16 +5393,20 @@ function BookkeepingSpreadsheet({
   rows,
   totals,
   commissionSummary,
+  partnerPaymentLedger,
   busy,
   lastSyncedAt,
+  onOpenPayments,
   onSave,
   onDelete
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
   commissionSummary: CrmCommissionSummary | undefined;
+  partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
   lastSyncedAt: number | null;
+  onOpenPayments: (person: CrmPaymentPerson) => void;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
   onDelete: (row: CrmBookkeepingRow) => void;
 }) {
@@ -5004,20 +5418,21 @@ function BookkeepingSpreadsheet({
   const profitMargin = totals?.total ? `${((totalProfit / totals.total) * 100).toFixed(1)}%` : "0.0%";
   const missingCogs = totals?.missingCogs || 0;
   const commissionTotals = commissionSummary?.totals;
+  const paymentPeople = partnerPaymentLedger?.people;
   const summaryCards = [
-    ["Total Sales", toLedgerCurrency(totals?.total)],
-    ["Open Balance", toLedgerCurrency(totals?.balance)],
-    ["COGS", toLedgerCurrency(totals?.cogs)],
-    ["Installation", toLedgerCurrency(totals?.installationAmount)],
-    ["Ken Profit", toLedgerCurrency(totals?.kenCut)],
-    ["Ken's % Monthly Due", toLedgerCurrency(totals?.kenMonthlyDue)],
-    ["Ken's % of Total Closed", toLedgerCurrency(totals?.kenTotalClosed)],
-    ["Jessica Commission Due", toLedgerCurrency(commissionTotals?.jessicaOwed)],
-    ["Mike Commission Due", toLedgerCurrency(commissionTotals?.mikeOwed)],
-    ["Net Profit", toLedgerCurrency(netProfit)],
-    ["Paid In Full", `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}`],
-    ["Total Profit", toLedgerCurrency(totalProfit)],
-    ["Profit Margin", profitMargin]
+    { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
+    { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
+    { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
+    { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
+    { label: "Ken Profit", value: toLedgerCurrency(totals?.kenCut) },
+    { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), person: "ken" as const },
+    { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), person: "ken" as const },
+    { label: "Jessica Commission Due", value: toLedgerCurrency(paymentPeople?.jessica.owed ?? commissionTotals?.jessicaOwed), person: "jessica" as const },
+    { label: "Mike Commission Due", value: toLedgerCurrency(paymentPeople?.mike.owed ?? commissionTotals?.mikeOwed), person: "mike" as const },
+    { label: "Net Profit", value: toLedgerCurrency(netProfit) },
+    { label: "Paid In Full", value: `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}` },
+    { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
+    { label: "Profit Margin", value: profitMargin }
   ];
   const isEditing = (row: CrmBookkeepingRow, field: BookkeepingEditableField) =>
     editingCell?.rowKey === bookkeepingRowKey(row) && editingCell.field === field;
@@ -5049,12 +5464,24 @@ function BookkeepingSpreadsheet({
         </div>
       </div>
       <div className="crm-bookkeeping-summary-grid">
-        {summaryCards.map(([label, value]) => (
-          <article className="crm-bookkeeping-summary-card" key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </article>
-        ))}
+        {summaryCards.map((card) =>
+          card.person ? (
+            <button
+              type="button"
+              className="crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button"
+              key={card.label}
+              onClick={() => onOpenPayments(card.person)}
+            >
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </button>
+          ) : (
+            <article className="crm-bookkeeping-summary-card" key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </article>
+          )
+        )}
       </div>
       {missingCogs ? <p className="crm-bookkeeping-alert">{missingCogs} rows missing COGS.</p> : null}
       <div className="crm-bookkeeping-table-wrap">

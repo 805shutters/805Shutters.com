@@ -11,6 +11,7 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
+import { buildPartnerPaymentLedger, paymentPersonLabel } from "@/lib/crm/partner-payments";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
@@ -27,6 +28,7 @@ import {
   CrmBookkeepingCredit,
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
+  CrmCommissionPaymentAllocation,
   CrmCommissionPayment,
   CrmCalendarEvent,
   CrmCustomer,
@@ -37,8 +39,11 @@ import {
   CrmJob,
   CrmJobExpense,
   CrmJobStatus,
+  CrmKenPaymentAllocation,
   CrmKenPayment,
   CrmOrderCogsEmail,
+  CrmPartnerPaymentLedgerItem,
+  CrmPaymentPerson,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
@@ -623,8 +628,10 @@ export function buildDashboardData({
   expenses,
   installationInvoiceEmails = [],
   kenPayments,
+  kenPaymentAllocations = [],
   orderCogsEmails = [],
   commissionPayments = [],
+  commissionPaymentAllocations = [],
   openingBalance,
   payoffTarget,
   now
@@ -641,8 +648,10 @@ export function buildDashboardData({
   expenses: CrmJobExpense[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   kenPayments: CrmKenPayment[];
+  kenPaymentAllocations?: CrmKenPaymentAllocation[];
   orderCogsEmails?: CrmOrderCogsEmail[];
   commissionPayments?: CrmCommissionPayment[];
+  commissionPaymentAllocations?: CrmCommissionPaymentAllocation[];
   openingBalance: number;
   payoffTarget: number;
   now?: Date | string;
@@ -665,6 +674,13 @@ export function buildDashboardData({
     payoffTarget
   });
   const commissionSummary = buildCommissionSummary(bookkeepingRows, commissionPayments);
+  const partnerPaymentLedger = buildPartnerPaymentLedger({
+    rows: bookkeepingRows,
+    kenPayments,
+    commissionPayments,
+    kenAllocations: kenPaymentAllocations,
+    commissionAllocations: commissionPaymentAllocations
+  });
   const customerFiles = buildCustomerFiles({
     customers,
     products,
@@ -696,9 +712,12 @@ export function buildDashboardData({
     bookkeepingRows,
     bookkeepingTotals,
     kenPayments,
+    kenPaymentAllocations,
     kenPayoff,
     commissionPayments,
+    commissionPaymentAllocations,
     commissionSummary,
+    partnerPaymentLedger,
     accountability,
     summary: buildDashboardSummaryMetrics({
       jobs: jobsWithQuotes,
@@ -815,8 +834,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     expensesResult,
     installationInvoiceEmailsResult,
     kenPaymentsResult,
+    kenPaymentAllocationsResult,
     orderCogsEmailsResult,
     commissionPaymentsResult,
+    commissionPaymentAllocationsResult,
     settingsResult
   ] = await Promise.all([
     // Jobs and quotes use the SAME limit so a job and its quote don't land on
@@ -856,6 +877,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .order("paid_on", { ascending: false, nullsFirst: false })
       .limit(500),
     supabase
+      .from("crm_ken_payment_allocations")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(2000),
+    supabase
       .from("crm_order_cogs_emails")
       .select("*")
       .order("created_at", { ascending: false })
@@ -865,6 +891,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .select("*")
       .order("paid_on", { ascending: false, nullsFirst: false })
       .limit(1000),
+    supabase
+      .from("crm_commission_payment_allocations")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(4000),
     supabase.from("crm_settings").select("*")
   ]);
 
@@ -896,12 +927,20 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM Ken payments could not be loaded.", kenPaymentsResult.error.message);
   }
 
+  if (kenPaymentAllocationsResult.error) {
+    console.warn("CRM Ken payment allocations could not be loaded.", kenPaymentAllocationsResult.error.message);
+  }
+
   if (orderCogsEmailsResult.error) {
     console.warn("CRM order COGS emails could not be loaded.", orderCogsEmailsResult.error.message);
   }
 
   if (commissionPaymentsResult.error) {
     console.warn("CRM commission payments could not be loaded.", commissionPaymentsResult.error.message);
+  }
+
+  if (commissionPaymentAllocationsResult.error) {
+    console.warn("CRM commission payment allocations could not be loaded.", commissionPaymentAllocationsResult.error.message);
   }
 
   if (settingsResult.error) {
@@ -922,10 +961,16 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     installationInvoiceEmailsResult.error ? [] : installationInvoiceEmailsResult.data || []
   ) as CrmInstallationInvoiceEmail[];
   const kenPayments = (kenPaymentsResult.error ? [] : kenPaymentsResult.data || []) as CrmKenPayment[];
+  const kenPaymentAllocations = (
+    kenPaymentAllocationsResult.error ? [] : kenPaymentAllocationsResult.data || []
+  ) as CrmKenPaymentAllocation[];
   const orderCogsEmails = (orderCogsEmailsResult.error ? [] : orderCogsEmailsResult.data || []) as CrmOrderCogsEmail[];
   const commissionPayments = (
     commissionPaymentsResult.error ? [] : commissionPaymentsResult.data || []
   ) as CrmCommissionPayment[];
+  const commissionPaymentAllocations = (
+    commissionPaymentAllocationsResult.error ? [] : commissionPaymentAllocationsResult.data || []
+  ) as CrmCommissionPaymentAllocation[];
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
     value: number;
@@ -948,8 +993,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     expenses,
     installationInvoiceEmails,
     kenPayments,
+    kenPaymentAllocations,
     orderCogsEmails,
     commissionPayments,
+    commissionPaymentAllocations,
     openingBalance,
     payoffTarget
   });
@@ -2014,6 +2061,180 @@ function normalizeCommissionRecipient(value: unknown) {
   const recipient = normalizeOwner(value);
   if (recipient === "mike" || recipient === "jessica") return recipient;
   throw new CrmAuthError(400, "Commission recipient must be Mike or Jessica.");
+}
+
+function normalizePaymentPerson(value: unknown): CrmPaymentPerson {
+  const lower = String(value || "").trim().toLowerCase();
+  if (lower === "ken") return "ken";
+  const recipient = normalizeOwner(value);
+  if (recipient === "mike" || recipient === "jessica") return recipient;
+  throw new CrmAuthError(400, "Payment person must be Ken, Mike, or Jessica.");
+}
+
+function monthStartDate(value: string | null | undefined) {
+  const date = optionalText(value) || new Date().toISOString().slice(0, 10);
+  const time = Date.parse(date);
+  if (!Number.isFinite(time)) return new Date().toISOString().slice(0, 7) + "-01";
+  return new Date(time).toISOString().slice(0, 7) + "-01";
+}
+
+function selectedPaymentItemKeys(payload: Record<string, unknown>) {
+  const raw = payload.item_ids ?? payload.itemIds ?? payload.selected_item_ids ?? payload.selectedItemIds;
+  if (!Array.isArray(raw)) return null;
+  const keys = raw.map((value) => String(value || "").trim()).filter(Boolean);
+  return keys.length ? new Set(keys) : null;
+}
+
+function comparePartnerItems(left: CrmPartnerPaymentLedgerItem, right: CrmPartnerPaymentLedgerItem) {
+  const closed = (left.closedAt || "").localeCompare(right.closedAt || "");
+  if (closed) return closed;
+  const customer = left.customerName.localeCompare(right.customerName);
+  if (customer) return customer;
+  return left.itemKey.localeCompare(right.itemKey);
+}
+
+function paymentAllocationRows({
+  person,
+  paymentId,
+  items,
+  amount,
+  actor
+}: {
+  person: CrmPaymentPerson;
+  paymentId: string;
+  items: CrmPartnerPaymentLedgerItem[];
+  amount: number;
+  actor: CrmActor;
+}) {
+  let remaining = toMoney(amount);
+  const allocations: Array<Record<string, unknown>> = [];
+
+  for (const item of [...items].sort(comparePartnerItems)) {
+    if (remaining <= 0) break;
+    const allocationAmount = Math.round(Math.min(item.remainingAmount, remaining) * 100) / 100;
+    if (allocationAmount <= 0) continue;
+    remaining = Math.round((remaining - allocationAmount) * 100) / 100;
+    allocations.push({
+      ...(person === "ken" ? {} : { recipient: person }),
+      payment_id: paymentId,
+      source: item.source,
+      quote_id: item.quoteId,
+      bookkeeping_entry_id: item.bookkeepingEntryId,
+      job_id: item.jobId,
+      item_key: item.itemKey,
+      customer_name: item.customerName,
+      closed_at: item.closedAt ? item.closedAt.slice(0, 10) : null,
+      amount: allocationAmount,
+      period_month: item.periodMonth,
+      meta: {
+        createdBy: actor.email,
+        person,
+        sourceStatus: item.sourceStatus,
+        salesOwner: item.salesOwner,
+        quoteNumber: item.quoteNumber,
+        total: item.total
+      }
+    });
+  }
+
+  return allocations;
+}
+
+export async function createPartnerPaymentBatch(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const person = normalizePaymentPerson(payload.person);
+  const dashboard = await loadCrmDashboardData(supabase);
+  const selectedKeys = selectedPaymentItemKeys(payload);
+  const activeItems = dashboard.partnerPaymentLedger.people[person].activeItems;
+  const selectedItems = selectedKeys
+    ? activeItems.filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
+    : activeItems;
+
+  if (!selectedItems.length) {
+    throw new CrmAuthError(400, `${paymentPersonLabel(person)} has no active unpaid jobs to pay.`);
+  }
+
+  const payableAmount = Math.round(selectedItems.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
+  const requestedAmount = payload.amount === undefined || payload.amount === null || payload.amount === "" ? payableAmount : toMoney(payload.amount);
+  if (requestedAmount <= 0) throw new CrmAuthError(400, "Payment amount must be greater than zero.");
+  if (requestedAmount > payableAmount + 0.005) {
+    throw new CrmAuthError(400, `Payment amount cannot exceed ${paymentPersonLabel(person)}'s selected unpaid balance.`);
+  }
+
+  const amount = Math.round(requestedAmount * 100) / 100;
+  const paidOn = optionalText(payload.paid_on) || new Date().toISOString().slice(0, 10);
+  const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
+  const note = optionalText(payload.note);
+  const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
+  const meta = {
+    createdBy: actor.email,
+    batchSource: "unified_payment_ledger",
+    selectedItemCount: selectedItems.length,
+    selectedItemKeys: selectedItems.map((item) => item.itemKey)
+  };
+  const allocations = paymentAllocationRows({
+    person,
+    paymentId: "00000000-0000-0000-0000-000000000000",
+    items: selectedItems,
+    amount,
+    actor
+  });
+
+  if (!allocations.length) {
+    throw new CrmAuthError(400, "No payable allocation rows were created.");
+  }
+
+  const rpcName = person === "ken" ? "crm_create_ken_payment_batch" : "crm_create_commission_payment_batch";
+  const rpcPayload =
+    person === "ken"
+      ? {
+          p_paid_on: paidOn,
+          p_period_month: periodMonth,
+          p_amount: amount,
+          p_note: note,
+          p_created_by_email: actor.email,
+          p_meta: meta,
+          p_allocations: allocations
+        }
+      : {
+          p_recipient: person,
+          p_paid_on: paidOn,
+          p_period_month: periodMonth,
+          p_amount: amount,
+          p_note: note,
+          p_created_by_email: actor.email,
+          p_meta: meta,
+          p_allocations: allocations
+        };
+
+  const { data: paymentId, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
+  if (rpcError || !paymentId) {
+    throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be allocated to jobs.`);
+  }
+
+  const { data: payment, error: paymentError } = await supabase.from(table).select("*").eq("id", String(paymentId)).single();
+  if (paymentError || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be loaded after save.`);
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: person === "ken" ? "ken_payment" : "commission_payment",
+    entityId: String(payment.id),
+    action: "create_batch",
+    after: payment,
+    metadata: {
+      person,
+      allocationCount: allocations.length,
+      allocatedAmount: amount
+    }
+  });
+
+  return {
+    payment,
+    allocations,
+    dashboard: await loadCrmDashboardData(supabase)
+  };
 }
 
 export async function createCommissionPayment(
