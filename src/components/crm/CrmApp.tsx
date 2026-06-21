@@ -5816,11 +5816,11 @@ function BookkeepingBalancePaidCell({
 
   return (
     <span className="crm-bookkeeping-balance-paid-cell">
-      <span className={amountClass}>{toLedgerCurrency(row.balance)}</span>
+      <span className={`crm-bookkeeping-balance-paid-amount ${amountClass}`}>{toLedgerCurrency(row.balance)}</span>
       {canClick ? (
         <button
           type="button"
-          className="crm-partner-paid-button"
+          className="crm-bookkeeping-balance-paid-button crm-partner-paid-button"
           onClick={() => onMarkPaid(row)}
           disabled={busy}
           aria-label={label}
@@ -5829,7 +5829,7 @@ function BookkeepingBalancePaidCell({
           {status}
         </button>
       ) : (
-        <span className="crm-partner-paid-status" aria-label={label} title={label}>
+        <span className="crm-bookkeeping-balance-paid-status crm-partner-paid-status" aria-label={label} title={label}>
           {status}
         </span>
       )}
@@ -5958,7 +5958,7 @@ function BookkeepingSpreadsheet({
               <th>COGS</th>
               <th>Remake</th>
               <th>Installation</th>
-              <th>Balance</th>
+              <th>Balance / Paid</th>
               <th>Ken</th>
               <th>Mike</th>
               <th>Jessica</th>

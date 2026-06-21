@@ -4558,14 +4558,6 @@ body:has(.crm-app-shell) {
   white-space: nowrap;
 }
 
-.crm-bookkeeping-balance-paid-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 104px;
-  white-space: nowrap;
-}
-
 .crm-partner-paid-button,
 .crm-partner-paid-status {
   display: inline-flex;
@@ -4763,6 +4755,37 @@ body:has(.crm-app-shell) {
   margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.crm-bookkeeping-table td span.crm-bookkeeping-balance-paid-cell {
+  display: inline-grid;
+  grid-template-columns: max-content 28px;
+  align-items: center;
+  gap: 10px;
+  min-width: 128px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.crm-bookkeeping-table td span.crm-bookkeeping-balance-paid-amount {
+  display: inline;
+  margin-top: 0;
+  font-size: 14px;
+}
+
+.crm-bookkeeping-balance-paid-button.crm-partner-paid-button,
+.crm-bookkeeping-balance-paid-status.crm-partner-paid-status {
+  width: 28px;
+  height: 28px;
+  flex-basis: 28px;
+}
+
+.crm-bookkeeping-balance-paid-cell .crm-partner-paid-box {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-width: 2px;
+  font-size: 15px;
 }
 
 .crm-bookkeeping-status {
