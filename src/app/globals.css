@@ -4786,6 +4786,25 @@ body:has(.crm-app-shell) {
   letter-spacing: 0.03em;
 }
 
+.crm-bookkeeping-group-total-row td {
+  background: #f7f7f4;
+  border-top: 2px solid #d8d8d2;
+  border-bottom: 2px solid #d8d8d2;
+  color: #2f2f2b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.crm-bookkeeping-group-total-row td:first-child {
+  text-transform: uppercase;
+}
+
+.crm-bookkeeping-group-total-row td span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
 .crm-bookkeeping-pill {
   display: inline-block !important;
   min-width: 80px;

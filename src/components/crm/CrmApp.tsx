@@ -5078,19 +5078,18 @@ function BookkeepingSpreadsheet({
           </thead>
           <tbody>
             {statusGroups.map(([status, groupRows]) => {
-              const groupTotal = groupRows.reduce((sum, item) => sum + item.total, 0);
-              const groupBalance = groupRows.reduce((sum, item) => sum + Math.max(item.balance, 0), 0);
+              const groupTotals = bookkeepingGroupTotals(groupRows);
               return (
                 <Fragment key={`status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={15}>
+                    <td className="crm-bookkeeping-group-head" colSpan={13}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
                         </em>
                         <span className="crm-bookkeeping-group-meta">
-                          {groupRows.length} {groupRows.length === 1 ? "job" : "jobs"} · {toLedgerCurrency(groupTotal)} total
-                          {groupBalance > 0 ? ` · ${toLedgerCurrency(groupBalance)} open` : ""}
+                          {groupRows.length} {groupRows.length === 1 ? "job" : "jobs"} · {toLedgerCurrency(groupTotals.total)} total
+                          {groupTotals.balance > 0 ? ` · ${toLedgerCurrency(groupTotals.balance)} open` : ""}
                         </span>
                       </div>
                     </td>
@@ -5259,6 +5258,24 @@ function BookkeepingSpreadsheet({
                 </td>
               </tr>
                   ))}
+                  <tr className="crm-bookkeeping-group-total-row">
+                    <td>
+                      <strong>{bookkeepingStatusLabelForKey(status)} totals</strong>
+                      <span>{groupRows.length} {groupRows.length === 1 ? "job" : "jobs"}</span>
+                    </td>
+                    <td />
+                    <td />
+                    <td>{toLedgerCurrency(groupTotals.total)}</td>
+                    <td>{toLedgerCurrency(groupTotals.depositPaid)}</td>
+                    <td>-</td>
+                    <td>{toLedgerCurrency(groupTotals.cogs)}</td>
+                    <td>{toLedgerCurrency(groupTotals.installation)}</td>
+                    <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(groupTotals.balance)}</td>
+                    <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.kenCut)}</td>
+                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td>
+                    <td />
+                    <td />
+                  </tr>
                 </Fragment>
               );
             })}
@@ -5342,6 +5359,29 @@ function groupBookkeepingRowsByStatus(rows: CrmBookkeepingRow[]): Array<[string,
     else map.set(key, [row]);
   }
   return [...map.entries()].sort(([a], [b]) => bookkeepingStatusRank(a) - bookkeepingStatusRank(b));
+}
+
+function bookkeepingGroupTotals(rows: CrmBookkeepingRow[]) {
+  return rows.reduce(
+    (totals, row) => ({
+      total: roundCurrency(totals.total + row.total),
+      depositPaid: roundCurrency(totals.depositPaid + row.depositPaid),
+      cogs: roundCurrency(totals.cogs + row.cogs),
+      installation: roundCurrency(totals.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)),
+      balance: roundCurrency(totals.balance + Math.max(row.balance, 0)),
+      kenCut: roundCurrency(totals.kenCut + row.kenCut),
+      profit: roundCurrency(totals.profit + row.remainingProfitBeforeJessica)
+    }),
+    {
+      total: 0,
+      depositPaid: 0,
+      cogs: 0,
+      installation: 0,
+      balance: 0,
+      kenCut: 0,
+      profit: 0
+    }
+  );
 }
 
 function OrderBoard({
