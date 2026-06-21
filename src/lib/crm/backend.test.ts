@@ -3,6 +3,7 @@ import {
   assertMikePaymentAdmin,
   buildDashboardData,
   createCrmQuote,
+  createPartnerPaymentBatch,
   deleteCrmLedgerRow,
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
@@ -435,6 +436,140 @@ describe("partner payment write rules", () => {
     expect(resolveFullPartnerPaymentAmount(undefined, 600)).toBe(600);
     expect(resolveFullPartnerPaymentAmount("", 600)).toBe(600);
     expect(() => resolveFullPartnerPaymentAmount(250, 600)).toThrow(CrmAuthError);
+  });
+
+  it("falls back to commission payment metadata when commission allocation RPC storage is missing", async () => {
+    const commissionPayments: Array<Record<string, unknown>> = [];
+    const calls: Array<{ table: string; action: string; payload?: unknown }> = [];
+    const rowsByTable: Record<string, unknown[]> = {
+      crm_jobs: [job({ id: "job-1", status: "sold", customer_name: "Mike Paid Job" })],
+      crm_quotes: [
+        quote({
+          id: "quote-1",
+          job_id: "job-1",
+          status: "sold",
+          quote_total: 1000,
+          materials_cost: 100,
+          sold_by: "Mike",
+          customer_name: "Mike Paid Job"
+        })
+      ],
+      crm_quote_bookkeeping_entries: [],
+      crm_quote_bookkeeping_payments: [
+        payment({ id: "quote-payment-1", quote_id: "quote-1", job_id: "job-1", amount: 1000 })
+      ],
+      crm_quote_bookkeeping_credits: [],
+      crm_job_expenses: [],
+      crm_installation_invoice_emails: [],
+      crm_ken_payments: [],
+      crm_order_cogs_emails: [],
+      crm_commission_payments: commissionPayments,
+      crm_settings: []
+    };
+
+    class PartnerQuery {
+      private filters: Record<string, unknown> = {};
+      private action: "select" | "insert" = "select";
+      private payload: unknown;
+
+      constructor(private table: string) {}
+
+      select() {
+        return this;
+      }
+
+      order() {
+        return this;
+      }
+
+      limit() {
+        return this;
+      }
+
+      eq(column: string, value: unknown) {
+        this.filters[column] = value;
+        return this;
+      }
+
+      gte() {
+        return this;
+      }
+
+      insert(payload: unknown) {
+        this.action = "insert";
+        this.payload = payload;
+        calls.push({ table: this.table, action: "insert", payload });
+        return this;
+      }
+
+      single() {
+        return Promise.resolve(this.execute(true));
+      }
+
+      maybeSingle() {
+        const result = this.execute(true);
+        return Promise.resolve({ data: Array.isArray(result.data) ? result.data[0] || null : result.data, error: result.error });
+      }
+
+      then<TResult1 = unknown, TResult2 = never>(
+        onfulfilled?: ((value: { data: unknown; error: { code?: string; message?: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+      ) {
+        return Promise.resolve(this.execute(false)).then(onfulfilled, onrejected);
+      }
+
+      private execute(single: boolean) {
+        if (this.table === "crm_commission_payment_allocations") {
+          return { data: null, error: { code: "42P01", message: 'relation "crm_commission_payment_allocations" does not exist' } };
+        }
+        if (this.table === "crm_ken_payment_allocations") {
+          return { data: [], error: null };
+        }
+        if (this.action === "insert") {
+          const payload = this.payload as Record<string, unknown>;
+          const data = { id: `${this.table}-1`, created_at: "2026-06-30T00:00:00.000Z", updated_at: "2026-06-30T00:00:00.000Z", ...payload };
+          if (this.table === "crm_commission_payments") commissionPayments.push(data);
+          return { data, error: null };
+        }
+        const rows = (rowsByTable[this.table] || []).filter((row) =>
+          Object.entries(this.filters).every(([key, value]) => (row as Record<string, unknown>)[key] === value)
+        );
+        return { data: single ? rows[0] || null : rows, error: null };
+      }
+    }
+
+    const supabase = {
+      from(table: string) {
+        return new PartnerQuery(table);
+      },
+      rpc() {
+        return Promise.resolve({
+          data: null,
+          error: { code: "42P01", message: 'relation "crm_commission_payment_allocations" does not exist' }
+        });
+      }
+    } as unknown as Parameters<typeof createPartnerPaymentBatch>[0];
+
+    const result = await createPartnerPaymentBatch(
+      supabase,
+      { person: "mike", item_ids: ["mike:crm_quote:quote-1"] },
+      { email: "805shutters@gmail.com" }
+    );
+
+    expect(calls.find((call) => call.table === "crm_commission_payments")?.payload).toMatchObject({
+      recipient: "mike",
+      amount: 800
+    });
+    expect((result.payment.meta as { selectedItemAllocations?: Array<Record<string, unknown>> }).selectedItemAllocations?.[0]).toMatchObject({
+      person: "mike",
+      item_key: "mike:crm_quote:quote-1",
+      amount: 800
+    });
+    expect(result.dashboard.partnerPaymentLedger.people.mike).toMatchObject({
+      paid: 800,
+      owed: 0,
+      activeJobCount: 0
+    });
   });
 });
 

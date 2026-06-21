@@ -2432,7 +2432,7 @@ export async function createPartnerPaymentBatch(
   const { data: paymentId, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
   let payment: Record<string, unknown>;
   if (rpcError || !paymentId) {
-    if (!isMissingPartnerPaymentRpc(rpcError)) {
+    if (!isMissingPartnerPaymentRpc(rpcError) && !isMissingPartnerAllocationTable(rpcError)) {
       throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be allocated to jobs.`);
     }
     payment = await createPartnerPaymentBatchDirect(supabase, person, paymentRecord, allocations);
