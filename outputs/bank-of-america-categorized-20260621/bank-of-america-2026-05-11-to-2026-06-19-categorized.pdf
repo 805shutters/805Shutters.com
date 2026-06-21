@@ -1,0 +1,340 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+2 0 obj
+<< /Length 2540 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Bank of America Ledger Categorization - Summary) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (Source: doc_44e02d8b02a2_Bank of America.txt) Tj
+0 -10 Td (Date range: 05/11/2026 to 06/19/2026) Tj
+0 -10 Td (Beginning balance: $28,364.67) Tj
+0 -10 Td (Credits: $57,607.35 | Debits: -$81,000.88 | Ending: $4,971.14 | Variance: $0.00) Tj
+0 -10 Td () Tj
+0 -10 Td (Withdrawal classification totals:) Tj
+0 -10 Td (  Business       Count:  48  Amount: -$41,263.99) Tj
+0 -10 Td (  Non-business   Count:  69  Amount: -$30,481.91) Tj
+0 -10 Td (  Needs review   Count:   6  Amount: -$9,254.98) Tj
+0 -10 Td () Tj
+0 -10 Td (Category totals:) Tj
+0 -10 Td (Deposit/Credit     Business deposit  Customer Zelle payment                  12     $15,003.87) Tj
+0 -10 Td (Deposit/Credit     Business deposit  Mobile check deposit                    15     $26,083.50) Tj
+0 -10 Td (Deposit/Credit     Business deposit  Square card processing deposit           5     $14,435.55) Tj
+0 -10 Td (Deposit/Credit     Non-business credit Refund / reimbursement                   2      $2,084.43) Tj
+0 -10 Td (Withdrawal/Debit   Business          Business - Contractor / Job Labor        2     -$3,000.00) Tj
+0 -10 Td (Withdrawal/Debit   Business          Business - MTS Installation Purchases   14     -$4,117.84) Tj
+0 -10 Td (Withdrawal/Debit   Business          Business - Materials / Supplies          5       -$905.95) Tj
+0 -10 Td (Withdrawal/Debit   Business          Business - Software / Admin              7     -$1,194.61) Tj
+0 -10 Td (Withdrawal/Debit   Business          Business - Vendor / Product Payments    20    -$32,045.59) Tj
+0 -10 Td (Withdrawal/Debit   Needs review      Needs Review - Check payment             4     -$9,130.00) Tj
+0 -10 Td (Withdrawal/Debit   Needs review      Needs Review - Uncategorized debit       2       -$124.98) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Auto / Travel            30       -$746.20) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Groceries / Pharmacy / Retail   8       -$117.56) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Insurance / Utilities / Household   8     -$3,253.68) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Medical / Personal Services   3       -$595.24) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Personal / Family        10     -$3,427.23) Tj
+0 -10 Td (Withdrawal/Debit   Non-business      Non-business - Personal Transfers / Owner Draws  10    -$22,342.00) Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+4 0 obj
+<< /Length 5388 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Deposits / Credits) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (Count: 34  Total: $57,607.35) Tj
+0 -10 Td () Tj
+0 -10 Td (Date             Amount Class         Category                         Description) Tj
+0 -10 Td (--------------------------------------------------------------------------------------------------------------------------------) Tj
+0 -10 Td (05/11/2026      $500.00 Business depo Customer Zelle payment           Zelle payment from SHANTANU DIKSHIT for "quote #805-0014. 1st instal) Tj
+0 -10 Td (05/12/2026    $1,500.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/13 3633609327 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/12/2026      $520.00 Business depo Customer Zelle payment           Zelle payment from BRENDA C ANDRADE for "skylight shutters including) Tj
+0 -10 Td (05/12/2026      $500.00 Business depo Customer Zelle payment           Zelle payment from SHANTANU DIKSHIT for "Shutters 2nd installment"; ) Tj
+0 -10 Td (05/13/2026    $1,772.20 Business depo Customer Zelle payment           Zelle payment from CHRISTOPHER AGUILAR for "Quote 805-0021"; Conf# e) Tj
+0 -10 Td (05/13/2026    $1,200.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/13 3777216463 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/14/2026    $5,612.77 Business depo Square card processing deposit   Square Inc DES:SQ260514 ID:T37H1W6H0HSND7J INDN:DBA CALIFORNIA HOMES) Tj
+0 -10 Td (05/14/2026    $1,568.15 Business depo Customer Zelle payment           Zelle payment from SHANTANU DIKSHIT for "3rd installment"; Conf# 99c) Tj
+0 -10 Td (05/15/2026    $3,250.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/15 3635192913 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/18/2026      $900.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/17 3723124228 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/19/2026    $2,880.00 Business depo Customer Zelle payment           Zelle payment from BRIAN A MILLIKIN for "2nd half of 4915 Tyrone Ave) Tj
+0 -10 Td (05/19/2026      $317.00 Business depo Customer Zelle payment           Zelle payment from ELIZABETH MATHIEU for "DEPOSIT"; Conf# T126LZM4C) Tj
+0 -10 Td (05/26/2026    $4,037.02 Business depo Customer Zelle payment           Zelle payment from Karen Aguiar for "Quote #805-0039"; Conf# 0K674AP) Tj
+0 -10 Td (05/26/2026    $3,855.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/24 3784950055 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/26/2026    $2,770.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/24 3728110960 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/26/2026    $2,530.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/27 3642855711 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/26/2026    $2,302.34 Business depo Square card processing deposit   Square Inc DES:SQ260526 ID:T3X7Y5Q593H19J8 INDN:DBA CALIFORNIA HOMES) Tj
+0 -10 Td (05/26/2026    $1,507.50 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/24 3702341663 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/26/2026      $490.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 05/24 3728118586 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (05/28/2026      $241.50 Business depo Customer Zelle payment           Zelle payment from RICHARD P GROPER for "roller install"; Conf# 99ci) Tj
+0 -10 Td (06/01/2026    $1,352.00 Business depo Customer Zelle payment           Zelle payment from PATRICIA RODRIGUEZ for "la crescenta"; Conf# 99cj) Tj
+0 -10 Td (06/01/2026      $857.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/01 3789776311 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/02/2026    $1,602.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/02 3653040006 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/03/2026    $2,438.94 Business depo Square card processing deposit   Square Inc DES:SQ260603 ID:T3DD2SSHR3Q4CGP INDN:DBA CALIFORNIA HOMES) Tj
+0 -10 Td (06/03/2026    $1,750.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/03 3736102636 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/04/2026    $1,540.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/05 3792739369 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/04/2026      $316.00 Business depo Customer Zelle payment           Zelle payment from ELIZABETH MATHIEU for "BALANCE SHUTTERS"; Conf# T) Tj
+0 -10 Td (06/08/2026    $3,213.15 Business depo Square card processing deposit   Square Inc DES:SQ260608 ID:T3GXBC75M612ZMY INDN:DBA CALIFORNIA HOMES) Tj
+0 -10 Td (06/08/2026    $1,925.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/06 3793928269 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/12/2026      $407.00 Business depo Mobile check deposit             BKOFAMERICA MOBILE 06/12 3743608012 DEPOSIT *MOBILE CA) Tj
+0 -10 Td (06/15/2026    $1,351.16 Non-business  Refund / reimbursement           Hotel at Booking.com 06/13 REFUND Wilmington, N DE DEBIT CARD *0197) Tj
+0 -10 Td (06/15/2026      $733.27 Non-business  Refund / reimbursement           Cars on Booking 06/13 REFUND London DEBIT CARD *0197) Tj
+0 -10 Td (06/16/2026      $868.35 Business depo Square card processing deposit   Square Inc DES:SQ260616 ID:T3GAM56213SMPJ9 INDN:DBA CALIFORNIA HOMES) Tj
+0 -10 Td (06/17/2026    $1,000.00 Business depo Customer Zelle payment           Zelle payment from ANDREW KAHN for "payment bal due $360 upon instal) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 7501 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Withdrawals / Debits - Business) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (Count: 48  Total: -$41,263.99) Tj
+0 -10 Td () Tj
+0 -10 Td (Date             Amount Class         Category                         Description) Tj
+0 -10 Td (--------------------------------------------------------------------------------------------------------------------------------) Tj
+0 -10 Td (05/11/2026      -$27.95 Business      Business - Materials / Supplies  THE HOME DEPOT 05/09 MOBILE PURCHASE CAMARILLO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/11/2026      -$75.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/09 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/11/2026     -$591.72 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/09 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/11/2026     -$781.04 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/09 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/11/2026      -$38.00 Business      Business - Software / Admin      INTUIT * DES:QBooks Onl ID:4973199 INDN:KEN HILL CO ID:0000756346 CC) Tj
+0 -10 Td (05/12/2026   -$2,840.26 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:Z0472654055 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/13/2026     -$341.61 Business      Business - Vendor / Product Paym Zelle payment to ONYX SHUTTERS for "52605130632PO No.: Side Mark: CH) Tj
+0 -10 Td (05/13/2026   -$1,078.68 Business      Business - Vendor / Product Paym Zelle payment to ONYX SHUTTERS for "52605130630PO No.: Asimus, Melis) Tj
+0 -10 Td (05/13/2026     -$180.08 Business      Business - Materials / Supplies  THE HOME DEPOT 05/13 MOBILE PURCHASE CAMARILLO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/14/2026   -$1,000.00 Business      Business - Contractor / Job Labo Zelle payment to ryan post Conf# tadpywm5k) Tj
+0 -10 Td (05/15/2026     -$125.44 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/14 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/15/2026   -$3,082.88 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:Q2749816834 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/15/2026   -$1,094.72 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:N1807003707 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/18/2026     -$592.08 Business      Business - Materials / Supplies  LOWE'S #1971 05/16 MOBILE PURCHASE SIMI VALLEY CA DEBIT CARD *0197) Tj
+0 -10 Td (05/18/2026     -$744.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/17 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/19/2026     -$218.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/17 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/19/2026      -$24.19 Business      Business - Software / Admin      WEB*Hostgator.com 05/18 PURCHASE Hostgator.com MA DEBIT CARD *0197) Tj
+0 -10 Td (05/19/2026   -$1,851.25 Business      Business - Vendor / Product Paym Zelle payment to ONYX SHUTTERS for "52605140641 Gutierrez, Maryann C) Tj
+0 -10 Td (05/20/2026      -$75.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/18 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/20/2026      -$98.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/18 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/20/2026      -$23.86 Business      Business - Materials / Supplies  THE HOME DEPOT 05/20 MOBILE PURCHASE INDIO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/20/2026     -$733.81 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:P2701850551 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/20/2026     -$605.11 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:J1562821116 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/21/2026     -$312.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/19 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/21/2026      -$75.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/20 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/21/2026     -$697.64 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/19 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/21/2026      -$75.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/19 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/26/2026     -$484.65 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:J1563008557 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/28/2026     -$125.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/26 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (05/29/2026   -$4,270.11 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:D0475709818 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (05/29/2026   -$2,823.50 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:D0475714891 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/01/2026     -$125.00 Business      Business - MTS Installation Purc IN *MTS INSTALLATION IN 05/28 PURCHASE 805-4826677 CA DEBIT CARD *01) Tj
+0 -10 Td (06/01/2026      -$16.80 Business      Business - Software / Admin      GOOGLE *Worksp 06/01 PURCHASE Mountain View CA DEBIT CARD *0197) Tj
+0 -10 Td (06/01/2026      -$47.62 Business      Business - Software / Admin      GOOGLE *ADS930 06/01 PURCHASE Mountain View CA DEBIT CARD *0197) Tj
+0 -10 Td (06/02/2026   -$1,020.00 Business      Business - Software / Admin      YELPINC* 855-380-9357 06/01 PURCHASE YELP.COM CA DEBIT CARD *0197) Tj
+0 -10 Td (06/02/2026      -$81.98 Business      Business - Materials / Supplies  OFFICE DEPOT # 06/02 MOBILE PURCHASE BOYNTON BEACH FL DEBIT CARD *01) Tj
+0 -10 Td (06/03/2026     -$402.73 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:W0475243343 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/04/2026   -$4,250.15 Business      Business - Vendor / Product Paym TJE COMPANY 06/03 PURCHASE 6269657773 CA DEBIT CARD *0197) Tj
+0 -10 Td (06/04/2026     -$790.81 Business      Business - Vendor / Product Paym TJE COMPANY 06/03 PURCHASE 6269657773 CA DEBIT CARD *0197) Tj
+0 -10 Td (06/04/2026   -$1,622.62 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:Q2752228011 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/04/2026     -$538.11 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:Q2752228105 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/04/2026     -$466.82 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:V0474025688 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/04/2026      -$80.00 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:Z0475359033 INDN:KEN HILL CO ID:1) Tj
+0 -10 Td (06/05/2026      -$10.00 Business      Business - Software / Admin      ONLINE BUSINESS SUITE DIRECT PMT SERVICES) Tj
+0 -10 Td (06/08/2026     -$479.30 Business      Business - Vendor / Product Paym Zelle payment to Onyx for "Wolfe RMK"; Conf# wd01r9gif) Tj
+0 -10 Td (06/10/2026   -$2,000.00 Business      Business - Contractor / Job Labo Zelle payment to Jessica 805 Shutters Conf# v8qsadblj) Tj
+0 -10 Td (06/10/2026      -$38.00 Business      Business - Software / Admin      INTUIT * DES:QBooks Onl ID:5653506 INDN:KEN HILL CO ID:0000756346 CC) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 263 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Withdrawals / Debits - Business \(continued\)) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (06/11/2026   -$4,208.47 Business      Business - Vendor / Product Paym NORMAN WINDOW FA DES:5622362600 ID:W0476067412 INDN:KEN HILL CO ID:1) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 7543 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Withdrawals / Debits - Non-business) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (Count: 69  Total: -$30,481.91) Tj
+0 -10 Td () Tj
+0 -10 Td (Date             Amount Class         Category                         Description) Tj
+0 -10 Td (--------------------------------------------------------------------------------------------------------------------------------) Tj
+0 -10 Td (05/11/2026      -$16.08 Non-business  Non-business - Groceries / Pharm AMAZON PRIME*8M2RY2493 05/08 PURCHASE Amzn.com/bill WA DEBIT CARD *0) Tj
+0 -10 Td (05/12/2026     -$582.50 Non-business  Non-business - Personal / Family GoFundMe Help Us Save O 05/11 PURCHASE GOFUNDME.COM CA DEBIT CARD *0) Tj
+0 -10 Td (05/12/2026     -$200.00 Non-business  Non-business - Personal / Family Zelle Recurring payment to Tammy Conf# tgk7z6j40) Tj
+0 -10 Td (05/13/2026     -$547.00 Non-business  Non-business - Medical / Persona NCU 05/12 PURCHASE 866-7760331 AZ DEBIT CARD *0197) Tj
+0 -10 Td (05/13/2026     -$395.10 Non-business  Non-business - Personal / Family BLUECHEW* U14052789 05/12 PURCHASE BLUECHEW.COM IL DEBIT CARD *0197) Tj
+0 -10 Td (05/13/2026   -$1,258.00 Non-business  Non-business - Personal Transfer Online Banking transfer to CHK 0536 Confirmation# 8670549212) Tj
+0 -10 Td (05/18/2026     -$525.00 Non-business  Non-business - Personal / Family PAYPAL *GOFUNDME HELP U 05/15 PURCHASE 402-935-7733 CA DEBIT CARD *0) Tj
+0 -10 Td (05/18/2026       -$0.99 Non-business  Non-business - Medical / Persona TU *TRANSUNION 05/15 PURCHASE 800-493-3292 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/18/2026      -$19.00 Non-business  Non-business - Groceries / Pharm IC* INSTACART*SUBSCRIP 05/17 PURCHASE INSTACART.COM CA DEBIT CARD *0) Tj
+0 -10 Td (05/18/2026      -$47.25 Non-business  Non-business - Medical / Persona ALIMO INC 05/18 MOBILE PURCHASE CAMARILLO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/18/2026       -$6.96 Non-business  Non-business - Groceries / Pharm CVS/PHARMACY # 05/18 MOBILE PURCHASE Camarillo CA DEBIT CARD *0197) Tj
+0 -10 Td (05/19/2026      -$33.24 Non-business  Non-business - Personal / Family BEST BUY #112 05/19 MOBILE PURCHASE THOUSAND OAKS CA DEBIT CARD *019) Tj
+0 -10 Td (05/19/2026      -$18.72 Non-business  Non-business - Groceries / Pharm CVS/PHARMACY # 05/19 MOBILE PURCHASE Camarillo CA DEBIT CARD *0197) Tj
+0 -10 Td (05/20/2026      -$14.00 Non-business  Non-business - Insurance / Utili KP SCAL RX 01553 05/19 MOBILE PURCHASE CAMARILLO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/20/2026     -$256.70 Non-business  Non-business - Personal / Family SAUCEY* ORDER 05/19 PURCHASE SAUCEY.COM CA DEBIT CARD *0197) Tj
+0 -10 Td (05/20/2026     -$646.00 Non-business  Non-business - Insurance / Utili FARMERS INS CEA 05/19 PURCHASE 877-327-6392 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/20/2026   -$1,287.00 Non-business  Non-business - Insurance / Utili FARMERS INS DES:EFT PYMT ID:g826333590 INDN:KEN HILL CO ID:949635130) Tj
+0 -10 Td (05/20/2026     -$884.25 Non-business  Non-business - Insurance / Utili FOREMOST DES:EPM PYMT ID:3818925493019 INDN:KEN HILL CO ID:949635130) Tj
+0 -10 Td (05/21/2026      -$21.04 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/20 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$17.84 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/20 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$28.96 Non-business  Non-business - Groceries / Pharm WM SUPERCENTER #1746 05/20 PURCHASE 480-345-8686 AZ DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$15.64 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/20 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$11.09 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$10.52 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/21/2026      -$47.30 Non-business  Non-business - Insurance / Utili SoCalGas DES:PAID SCGC ID:1236158600 INDN:301601474316891322 CO ID:6) Tj
+0 -10 Td (05/22/2026       -$5.36 Non-business  Non-business - Groceries / Pharm CVSExtraCare 8007467287 05/21 PURCHASE 800-746-7287 RI DEBIT CARD *0) Tj
+0 -10 Td (05/22/2026      -$14.64 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026      -$11.80 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026      -$13.95 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026      -$14.13 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026       -$7.58 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026      -$17.99 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/22/2026      -$14.35 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/21 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026     -$173.02 Non-business  Non-business - Auto / Travel     QUALITY INN BASTROP 05/22 PURCHASE 5123213303 TX DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026     -$454.00 Non-business  Non-business - Personal / Family GIFTHEALTH*LILLYDIRECT 05/22 PURCHASE GIFTHEALTH.CO OH DEBIT CARD *0) Tj
+0 -10 Td (05/26/2026      -$15.19 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$10.26 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$12.57 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$10.95 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$14.34 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$13.27 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/22 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$90.00 Non-business  Non-business - Auto / Travel     SUPER 8 MOTELS 05/22 PURCHASE MARIANNA FL DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026       -$6.40 Non-business  Non-business - Groceries / Pharm CVS/PHARMACY # 05/23 MOBILE PURCHASE Tallahassee FL DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$16.98 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/23 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$22.52 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/23 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026     -$106.18 Non-business  Non-business - Auto / Travel     TESLA SUBSCRIPTION US 05/23 PURCHASE PALO ALTO CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026      -$19.15 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/23 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 3296 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Withdrawals / Debits - Non-business \(continued\)) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (05/26/2026     -$100.00 Non-business  Non-business - Personal / Family SecurusCorrectionsTech 05/23 PURCHASE 800-8446591 TX DEBIT CARD *019) Tj
+0 -10 Td (05/26/2026      -$16.18 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/24 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026       -$6.86 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/24 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026       -$7.80 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/25 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/27/2026      -$18.17 Non-business  Non-business - Auto / Travel     TESLA SUPERCHARGER US 05/26 PURCHASE 877-7983752 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/27/2026   -$2,000.00 Non-business  Non-business - Personal Transfer Zelle payment to JESSICA ACKLIN Conf# zx2nb9umo) Tj
+0 -10 Td (05/27/2026      -$12.20 Non-business  Non-business - Auto / Travel     Tesla, Inc. SU 05/27 PURCHASE Austin TX DEBIT CARD *0197) Tj
+0 -10 Td (05/27/2026      -$28.92 Non-business  Non-business - Insurance / Utili SO CAL EDISON CO DES:BILL PAYMT ID:700365811696 INDN:HILL TAMMY CO I) Tj
+0 -10 Td (05/27/2026       -$9.99 Non-business  Non-business - Auto / Travel     TESLA MOTORS DES:TESLA MOTO ID:2WC2QDLRBBLAGH9 INDN:KEN HILL CO ID:5) Tj
+0 -10 Td (05/28/2026   -$2,000.00 Non-business  Non-business - Personal Transfer Online Banking transfer to CHK 1864 Confirmation# 7297461285) Tj
+0 -10 Td (05/28/2026     -$329.21 Non-business  Non-business - Insurance / Utili T-MOBILE DES:PCS SVC ID:0923796 INDN:KENNETH HILL CO ID:0000450304 W) Tj
+0 -10 Td (06/01/2026      -$17.00 Non-business  Non-business - Insurance / Utili KAISER FOUNDAT 06/01 PURCHASE OAKLAND CA DEBIT CARD *0197) Tj
+0 -10 Td (06/01/2026   -$4,000.00 Non-business  Non-business - Personal Transfer Zelle payment to Boss Man Conf# vujk2k3fg) Tj
+0 -10 Td (06/02/2026   -$4,000.00 Non-business  Non-business - Personal Transfer Zelle payment to Boss Man Conf# sacqorh73) Tj
+0 -10 Td (06/03/2026      -$10.00 Non-business  Non-business - Personal Transfer Zelle payment to Ken Hill Conf# w6hdhgrfk) Tj
+0 -10 Td (06/03/2026   -$1,990.00 Non-business  Non-business - Personal Transfer Zelle payment to Ken Hill Conf# wp2wafqf6) Tj
+0 -10 Td (06/09/2026      -$16.08 Non-business  Non-business - Groceries / Pharm AMAZON PRIME*7432K95P3 06/08 PURCHASE Amzn.com/bill WA DEBIT CARD *0) Tj
+0 -10 Td (06/09/2026   -$4,000.00 Non-business  Non-business - Personal Transfer Zelle payment to Ken Hill for "Purchase draw"; Conf# skala3xtz) Tj
+0 -10 Td (06/11/2026       -$7.40 Non-business  Non-business - Personal / Family PMUSA 312048 BOYNTON B 06/09 PURCHASE 770-8189036 GA DEBIT CARD *019) Tj
+0 -10 Td (06/11/2026   -$1,000.00 Non-business  Non-business - Personal Transfer Zelle payment to Ken Hill Conf# tv2ukk1ik) Tj
+0 -10 Td (06/15/2026     -$873.29 Non-business  Non-business - Personal / Family BEST BUY 06/15 MOBILE PURCHASE BOYNTON BEACH FL DEBIT CARD *0197) Tj
+0 -10 Td (06/18/2026   -$2,084.00 Non-business  Non-business - Personal Transfer Online Banking transfer to CHK 1864 Confirmation# 7681927088) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 1065 >>
+stream
+BT
+/F1 7 Tf
+28 567 Td
+/F1 10 Tf (Withdrawals / Debits - Needs Review) Tj
+/F1 7 Tf
+0 -10 Td () Tj
+0 -10 Td (Count: 6  Total: -$9,254.98) Tj
+0 -10 Td () Tj
+0 -10 Td (Date             Amount Class         Category                         Description) Tj
+0 -10 Td (--------------------------------------------------------------------------------------------------------------------------------) Tj
+0 -10 Td (05/13/2026   -$1,450.00 Needs review  Needs Review - Check payment     Check 3587) Tj
+0 -10 Td (05/14/2026   -$6,850.00 Needs review  Needs Review - Check payment     Check 3586) Tj
+0 -10 Td (05/15/2026       -$0.99 Needs review  Needs Review - Uncategorized deb IQTRNS 05/15 PURCHASE LIMASSOL DEBIT CARD *0197) Tj
+0 -10 Td (05/26/2026     -$123.99 Needs review  Needs Review - Uncategorized deb SPI*DIRECTV STREAM 05/21 PURCHASE 800-531-5000 CA DEBIT CARD *0197) Tj
+0 -10 Td (05/27/2026      -$30.00 Needs review  Needs Review - Check payment     Check 3588) Tj
+0 -10 Td (05/27/2026     -$800.00 Needs review  Needs Review - Check payment     Check 3589) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 16 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 1 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R 11 0 R 13 0 R 15 0 R] /Count 7 >>
+endobj
+17 0 obj
+<< /Type /Catalog /Pages 16 0 R >>
+endobj
+xref
+0 18
+0000000000 65535 f 
+0000000009 00000 n 
+0000000077 00000 n 
+0000002669 00000 n 
+0000002796 00000 n 
+0000008236 00000 n 
+0000008363 00000 n 
+0000015916 00000 n 
+0000016043 00000 n 
+0000016357 00000 n 
+0000016484 00000 n 
+0000024080 00000 n 
+0000024209 00000 n 
+0000027558 00000 n 
+0000027687 00000 n 
+0000028805 00000 n 
+0000028934 00000 n 
+0000029031 00000 n 
+trailer << /Size 18 /Root 17 0 R >>
+startxref
+29082
+%%EOF
