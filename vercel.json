@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/cron/installation-invoices",
-      "schedule": "0 16 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

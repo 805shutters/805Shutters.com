@@ -30,6 +30,10 @@ const requiredTables = [
   "crm_installation_invoice_emails"
 ];
 
+function hasEnvValue(...keys: string[]) {
+  return keys.some((key) => Boolean(process.env[key]?.trim()));
+}
+
 function getCanonicalSiteOrigin(request: NextRequest) {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
 
@@ -67,6 +71,14 @@ export async function GET(request: NextRequest) {
   const authConfigured = Boolean(supabaseUrl && anonKey);
   const databaseConfigured = Boolean(supabaseUrl && serviceRoleKey);
   const migrationsReady = tableChecks.length > 0 && tableChecks.every((check) => check.ready);
+  const installationInvoiceTableReady =
+    tableChecks.find((check) => check.table === "crm_installation_invoice_emails")?.ready ?? false;
+  const installationInvoiceGmailConfigured =
+    hasEnvValue("GMAIL_805_CLIENT_ID", "GOOGLE_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_ID") &&
+    hasEnvValue("GMAIL_805_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "GOOGLE_CALENDAR_CLIENT_SECRET") &&
+    hasEnvValue("GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN");
+  const installationInvoicePullerReady =
+    databaseConfigured && installationInvoiceTableReady && installationInvoiceGmailConfigured;
 
   // Booking confirmation channels — booleans only, never the secret values.
   const bookingEmailConfigured = Boolean(process.env.RESEND_API_KEY);
@@ -77,12 +89,15 @@ export async function GET(request: NextRequest) {
   );
 
   return NextResponse.json({
-    ready: authConfigured && databaseConfigured && migrationsReady && googleOAuth.enabled,
+    ready: authConfigured && databaseConfigured && migrationsReady && googleOAuth.enabled && installationInvoicePullerReady,
     authConfigured,
     databaseConfigured,
     googleProviderEnabled: googleOAuth.enabled,
     googleProviderError: googleOAuth.error,
     migrationsReady,
+    installationInvoiceGmailConfigured,
+    installationInvoiceTableReady,
+    installationInvoicePullerReady,
     bookingEmailConfigured,
     bookingSmsConfigured,
     supabaseHost: supabaseUrl ? new URL(supabaseUrl).hostname : null,
