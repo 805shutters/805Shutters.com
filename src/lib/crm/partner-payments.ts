@@ -178,11 +178,27 @@ function compareEarnedItems(left: Pick<EarnedItem, "closedAt" | "customerName" |
   return left.itemKey.localeCompare(right.itemKey);
 }
 
+function metadataPaymentPerson(value: unknown): CrmPaymentPerson | null {
+  return value === "ken" || value === "mike" || value === "jessica" ? value : null;
+}
+
+function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
+  const meta = payment.meta || {};
+  return (
+    metadataPaymentPerson(meta.partnerPaymentPerson) ||
+    metadataPaymentPerson(meta.commissionRecipient) ||
+    metadataPaymentPerson(meta.recipient) ||
+    "ken"
+  );
+}
+
 function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
+  const person = paymentPersonFromKenPayment(payment);
+
   return {
     id: payment.id,
-    person: "ken",
-    source: "ken_payment",
+    person,
+    source: person === "ken" ? "ken_payment" : "commission_payment",
     paidOn: payment.paid_on,
     periodMonth: payment.period_month,
     amount: roundCents(payment.amount),

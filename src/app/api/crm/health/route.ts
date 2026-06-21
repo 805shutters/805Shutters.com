@@ -19,7 +19,15 @@ const requiredTables = [
   "crm_customers",
   "crm_customer_products",
   "crm_customer_contracts",
-  "crm_activity_events"
+  "crm_activity_events",
+  "crm_job_expenses",
+  "crm_settings",
+  "crm_ken_payments",
+  "crm_ken_payment_allocations",
+  "crm_order_cogs_emails",
+  "crm_commission_payments",
+  "crm_commission_payment_allocations",
+  "crm_installation_invoice_emails"
 ];
 
 function getCanonicalSiteOrigin(request: NextRequest) {

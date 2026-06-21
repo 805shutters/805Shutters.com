@@ -2345,14 +2345,39 @@ async function createPartnerPaymentBatchDirect(
   const table = person === "ken" ? "crm_ken_payments" : "crm_commission_payments";
   const allocationTable = person === "ken" ? "crm_ken_payment_allocations" : "crm_commission_payment_allocations";
   const paymentRecord = person === "ken" ? record : { recipient: person, ...record };
-  const { data: payment, error: paymentError } = await supabase.from(table).insert(paymentRecord).select("*").single();
+  let allocationTableForPayment: string | null = allocationTable;
+  let { data: payment, error: paymentError } = await supabase.from(table).insert(paymentRecord).select("*").single();
+
+  if ((paymentError || !payment) && person !== "ken") {
+    console.warn(
+      `${paymentPersonLabel(person)} payment table could not be used; storing partner payment metadata in crm_ken_payments fallback.`,
+      paymentError?.message
+    );
+    const meta = typeof record.meta === "object" && record.meta ? record.meta : {};
+    const fallbackRecord = {
+      ...record,
+      meta: {
+        ...meta,
+        partnerPaymentPerson: person,
+        partnerPaymentFallbackTable: "crm_ken_payments",
+        partnerPaymentOriginalTable: table
+      }
+    };
+    const fallbackResult = await supabase.from("crm_ken_payments").insert(fallbackRecord).select("*").single();
+    payment = fallbackResult.data;
+    paymentError = fallbackResult.error;
+    allocationTableForPayment = null;
+  }
+
   if (paymentError || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} payment could not be saved.`);
+
+  if (!allocationTableForPayment) return payment;
 
   const allocationRows = allocations.map((allocation) => ({
     ...allocation,
     payment_id: String(payment.id)
   }));
-  const { error: allocationError } = await supabase.from(allocationTable).insert(allocationRows);
+  const { error: allocationError } = await supabase.from(allocationTableForPayment).insert(allocationRows);
   if (allocationError) {
     console.warn(
       `${paymentPersonLabel(person)} payment allocation rows could not be saved; using payment metadata fallback.`,

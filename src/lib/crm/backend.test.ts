@@ -690,6 +690,137 @@ describe("partner payment write rules", () => {
       activeJobCount: 0
     });
   });
+
+  it("stores commission payment metadata in the existing payment table when commission storage is missing", async () => {
+    const kenPayments: Array<Record<string, unknown>> = [];
+    const calls: Array<{ table: string; action: string; payload?: unknown }> = [];
+    const rowsByTable: Record<string, unknown[]> = {
+      crm_jobs: [job({ id: "job-1", status: "closed", customer_name: "Susan Milani" })],
+      crm_quotes: [
+        quote({
+          id: "quote-1",
+          job_id: "job-1",
+          status: "sold",
+          quote_total: 1000,
+          materials_cost: 100,
+          sold_by: "Mike",
+          customer_name: "Susan Milani"
+        })
+      ],
+      crm_quote_bookkeeping_entries: [],
+      crm_quote_bookkeeping_payments: [
+        payment({ id: "quote-payment-1", quote_id: "quote-1", job_id: "job-1", amount: 1000 })
+      ],
+      crm_quote_bookkeeping_credits: [],
+      crm_job_expenses: [],
+      crm_installation_invoice_emails: [],
+      crm_ken_payments: kenPayments,
+      crm_ken_payment_allocations: [],
+      crm_order_cogs_emails: [],
+      crm_commission_payments: [],
+      crm_commission_payment_allocations: [],
+      crm_settings: []
+    };
+
+    class PartnerQuery {
+      private filters: Record<string, unknown> = {};
+      private action: "select" | "insert" = "select";
+      private payload: unknown;
+
+      constructor(private table: string) {}
+
+      select() {
+        return this;
+      }
+
+      order() {
+        return this;
+      }
+
+      limit() {
+        return this;
+      }
+
+      eq(column: string, value: unknown) {
+        this.filters[column] = value;
+        return this;
+      }
+
+      gte() {
+        return this;
+      }
+
+      insert(payload: unknown) {
+        this.action = "insert";
+        this.payload = payload;
+        calls.push({ table: this.table, action: "insert", payload });
+        return this;
+      }
+
+      single() {
+        return Promise.resolve(this.execute(true));
+      }
+
+      maybeSingle() {
+        const result = this.execute(true);
+        return Promise.resolve({ data: Array.isArray(result.data) ? result.data[0] || null : result.data, error: result.error });
+      }
+
+      then<TResult1 = unknown, TResult2 = never>(
+        onfulfilled?: ((value: { data: unknown; error: { code?: string; message?: string } | null }) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+      ) {
+        return Promise.resolve(this.execute(false)).then(onfulfilled, onrejected);
+      }
+
+      private execute(single: boolean) {
+        if (this.table === "crm_commission_payments") {
+          return { data: null, error: { code: "PGRST205", message: "Could not find the table 'public.crm_commission_payments'" } };
+        }
+        if (this.action === "insert") {
+          const payload = this.payload as Record<string, unknown>;
+          const data = { id: `${this.table}-1`, created_at: "2026-06-30T00:00:00.000Z", updated_at: "2026-06-30T00:00:00.000Z", ...payload };
+          if (this.table === "crm_ken_payments") kenPayments.push(data);
+          return { data, error: null };
+        }
+        const rows = (rowsByTable[this.table] || []).filter((row) =>
+          Object.entries(this.filters).every(([key, value]) => (row as Record<string, unknown>)[key] === value)
+        );
+        return { data: single ? rows[0] || null : rows, error: null };
+      }
+    }
+
+    const supabase = {
+      from(table: string) {
+        return new PartnerQuery(table);
+      },
+      rpc() {
+        return Promise.resolve({
+          data: null,
+          error: { code: "PGRST202", message: "Could not find the function public.crm_create_commission_payment_batch" }
+        });
+      }
+    } as unknown as Parameters<typeof createPartnerPaymentBatch>[0];
+
+    const result = await createPartnerPaymentBatch(
+      supabase,
+      { person: "mike", item_ids: ["mike:crm_quote:quote-1"] },
+      { email: "805shutters@gmail.com" }
+    );
+
+    expect(calls.some((call) => call.table === "crm_commission_payments")).toBe(true);
+    const fallbackPayload = calls.find((call) => call.table === "crm_ken_payments")?.payload as Record<string, unknown>;
+    expect(fallbackPayload).toMatchObject({ amount: 800 });
+    expect(fallbackPayload.meta).toMatchObject({
+      partnerPaymentPerson: "mike",
+      partnerPaymentFallbackTable: "crm_ken_payments"
+    });
+    expect(result.dashboard.partnerPaymentLedger.people.mike).toMatchObject({
+      paid: 800,
+      owed: 0,
+      activeJobCount: 0
+    });
+  });
 });
 
 describe("remake expense writes", () => {
