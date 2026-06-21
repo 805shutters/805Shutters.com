@@ -525,7 +525,8 @@ async function repriceLineItemDesigns(
   if (error) throw new CrmAuthError(502, "Designs could not be repriced.");
   for (const design of (designs as CrmQuoteDesign[]) ?? []) {
     const fields = priceDesignFields(design, dims);
-    await supabase.from("crm_quote_designs").update(fields).eq("id", design.id);
+    const { error: updateError } = await supabase.from("crm_quote_designs").update(fields).eq("id", design.id);
+    if (updateError) throw new CrmAuthError(502, "Design pricing could not be updated.");
   }
 }
 
@@ -581,7 +582,8 @@ export async function upsertDesign(
     savedId = data.id;
     // A line with no current selection auto-selects this new design so it bills.
     if (!lineItem.selected_design_id) {
-      await supabase.from("crm_quote_line_items").update({ selected_design_id: savedId }).eq("id", lineItemId);
+      const { error: selectError } = await supabase.from("crm_quote_line_items").update({ selected_design_id: savedId }).eq("id", lineItemId);
+      if (selectError) throw new CrmAuthError(502, "Design was saved, but could not be selected.");
     }
   }
 
@@ -618,10 +620,11 @@ export async function deleteDesign(
       .filter((d) => d.id !== id)
       .sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
     const next = survivors.find((d) => d.price_status === "ok") ?? survivors[0];
-    await supabase
+    const { error: selectError } = await supabase
       .from("crm_quote_line_items")
       .update({ selected_design_id: next?.id ?? null })
       .eq("id", lineItem.id);
+    if (selectError) throw new CrmAuthError(502, "Replacement design selection could not be saved.");
   }
 
   await recordCrmActivity(supabase, actor, {
@@ -690,15 +693,17 @@ export async function duplicateLineItem(
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };
     const priceFields = priceDesignFields(designInput, dims);
-    const { data: newDesign } = await supabase
+    const { data: newDesign, error: designError } = await supabase
       .from("crm_quote_designs")
       .insert({ line_item_id: copy.id, label: d.label, sort_order: d.sort_order, ...designInput, notes: d.notes, ...priceFields })
       .select("id")
       .single();
+    if (designError || !newDesign) throw new CrmAuthError(502, "Copied window design could not be saved.");
     if (newDesign && source.selected_design_id === d.id) selectedNewId = newDesign.id;
   }
   if (selectedNewId) {
-    await supabase.from("crm_quote_line_items").update({ selected_design_id: selectedNewId }).eq("id", copy.id);
+    const { error: selectError } = await supabase.from("crm_quote_line_items").update({ selected_design_id: selectedNewId }).eq("id", copy.id);
+    if (selectError) throw new CrmAuthError(502, "Copied window design could not be selected.");
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
@@ -739,16 +744,21 @@ export async function advanceQuoteStatus(
   // no entry until won), then stamp the sold date.
   if (nextStatus === "sold") {
     await ensureBookkeepingEntry(supabase, { ...(quote as CrmQuote), status: "sold" });
-    await supabase.from("crm_quote_bookkeeping_entries").update({ sold_date: now.slice(0, 10) }).eq("quote_id", quoteId);
+    const { error: bookErr } = await supabase.from("crm_quote_bookkeeping_entries").update({ sold_date: now.slice(0, 10) }).eq("quote_id", quoteId);
+    if (bookErr) throw new CrmAuthError(502, "Quote bookkeeping sold date could not be updated.");
   }
 
   // Drive the parent job's status (forward-only).
   if (quote.job_id) {
-    const { data: jobRow } = await supabase.from("crm_jobs").select("status").eq("id", quote.job_id).maybeSingle();
+    const { data: jobRow, error: jobFindError } = await supabase.from("crm_jobs").select("status").eq("id", quote.job_id).maybeSingle();
+    if (jobFindError) throw new CrmAuthError(502, "Job status could not be loaded.");
     const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
     if (current) {
       const next = advanceJobStatus(current, jobStatusForQuote(nextStatus));
-      if (next !== current) await supabase.from("crm_jobs").update({ status: next }).eq("id", quote.job_id);
+      if (next !== current) {
+        const { error: jobErr } = await supabase.from("crm_jobs").update({ status: next }).eq("id", quote.job_id);
+        if (jobErr) throw new CrmAuthError(502, "Job status could not be synced.");
+      }
     }
   }
 
@@ -772,12 +782,13 @@ export async function createQuoteForJob(
   jobId: string,
   actor: CrmActor,
 ): Promise<{ quoteId: string; created: boolean }> {
-  const { data: rows } = await supabase
+  const { data: rows, error: findError } = await supabase
     .from("crm_quotes")
     .select("id, status")
     .eq("job_id", jobId)
     .order("created_at", { ascending: false })
     .limit(1);
+  if (findError) throw new CrmAuthError(502, "Existing quotes could not be loaded for this job.");
   const existing = rows?.[0] as { id: string; status: string } | undefined;
   if (existing && existing.status !== "archived" && existing.status !== "lost") {
     return { quoteId: existing.id, created: false };
