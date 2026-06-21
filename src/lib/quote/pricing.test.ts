@@ -178,6 +178,18 @@ describe("catalog integrity", () => {
       }
     }
   });
+
+  it("width-graduated surcharge tables align with their width breakpoints", () => {
+    for (const product of catalog.products) {
+      for (const surcharge of product.surcharges) {
+        if (!surcharge.widthGraduated) continue;
+        expect(
+          surcharge.widthGraduated.prices.length,
+          `${product.id}/${surcharge.id} width-graduated prices`,
+        ).toBe(surcharge.widthGraduated.widths.length);
+      }
+    }
+  });
 });
 
 describe("motorization per-product pricing (Norman 2026 Retail Guide p7)", () => {
@@ -213,6 +225,61 @@ describe("motorization per-product pricing (Norman 2026 Retail Guide p7)", () =>
     expect(motorLine(r)?.wholesaleAmount ?? null).toBe(null);
     expect(r.wholesaleUnitPrice).toBe(null);
     expect(r.wholesaleTotal).toBe(null);
+  });
+});
+
+describe("Automate Home product availability (Norman 2026 Retail Guide p28)", () => {
+  const automateLine = (r: Extract<PriceResult, { ok: true }>, id: string) =>
+    r.surchargeLines.find((l) => l.id === `motor:automate_home:${id}`);
+
+  it("allows the Honeycomb rechargeable/AC motor and bills $682", () => {
+    const r = ok(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: 24,
+      heightInches: 36,
+      motorization: [{ groupId: "automate_home", optionId: "motor_rechargeable_battery_pack_or_ac_adapter" }],
+    }));
+
+    expect(automateLine(r, "motor_rechargeable_battery_pack_or_ac_adapter")?.amount).toBe(682);
+  });
+
+  it("rejects the Honeycomb-only rechargeable/AC motor for Roller", () => {
+    const r = priceDesign({
+      productId: "roller",
+      fabric: "Callie",
+      widthInches: 24,
+      heightInches: 36,
+      motorization: [{ groupId: "automate_home", optionId: "motor_rechargeable_battery_pack_or_ac_adapter" }],
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
+  });
+
+  it("rejects Roller/Roman/PerfectSheer-only low-voltage motor for Honeycomb", () => {
+    const r = priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: 24,
+      heightInches: 36,
+      motorization: [{ groupId: "automate_home", optionId: "low_voltage_dc_motor" }],
+    });
+
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
+  });
+
+  it("allows the Roller rechargeable battery motor and bills $682", () => {
+    const r = ok(priceDesign({
+      productId: "roller",
+      fabric: "Callie",
+      widthInches: 24,
+      heightInches: 36,
+      motorization: [{ groupId: "automate_home", optionId: "motor_rechargeable_battery_pack" }],
+    }));
+
+    expect(automateLine(r, "motor_rechargeable_battery_pack")?.amount).toBe(682);
   });
 });
 
