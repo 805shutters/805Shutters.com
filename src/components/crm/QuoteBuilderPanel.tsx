@@ -92,7 +92,7 @@ const ROOM_PRESETS = [
   "Loft",
 ];
 
-type ProductTypeTile = { type: string; label: string; image: string; defaultProductId: string; count: number };
+type ProductTypeTile = { type: string; label: string; defaultProductId: string; count: number };
 
 export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwitch, embedded }: Props) {
   const [catalog, setCatalog] = useState<UiCatalog | null>(null);
@@ -160,7 +160,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         return {
           type,
           label: typeLabel(type),
-          image: preferred.image,
           defaultProductId: preferred.id,
           count: prods.length,
         };
@@ -463,15 +462,12 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     onClick={() => setActiveType(t.type)}
                     style={{
                       ...productTile,
-                      borderColor: active ? "#111111" : "#d8d8d2",
-                      background: active ? "#0b0b0b" : "#ffffff",
-                      color: active ? "#ffffff" : "#0b0b0b",
+                      borderColor: active ? "#bdb9b0" : "#d8d5cf",
+                      background: active ? "#dedbd5" : "#ebeae6",
+                      color: "#0b0b0b",
+                      boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none",
                     }}
                   >
-                    {t.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={t.image} alt="" width={40} height={30} style={{ objectFit: "cover", borderRadius: 4 }} />
-                    ) : null}
                     <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.1 }}>{t.label}</span>
                   </button>
                 );
@@ -586,10 +582,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           </button>
                         </div>
 
-                        {product?.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={product.image} alt={product.name} width={72} height={54} style={{ objectFit: "cover", borderRadius: 6, marginBottom: 8 }} />
-                        ) : null}
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                           <Field label="Product">
                             <select
