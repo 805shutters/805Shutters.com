@@ -161,6 +161,8 @@ describe("buildPartnerPaymentLedger", () => {
           customerName: "Jessica Customer",
           salesOwner: "jessica",
           remainingProfitBeforeJessica: 800,
+          mikeProfit: 400,
+          jessicaCommission: 400,
           kenCut: 100,
           payments: [bookkeepingPayment({ id: "payment-2", paid_at: "2026-06-20" })]
         }),
@@ -182,6 +184,29 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.people.ken).toMatchObject({ earned: 200, paid: 0, owed: 200, activeJobCount: 2 });
     expect(ledger.people.mike).toMatchObject({ earned: 1000, paid: 0, owed: 1000, activeJobCount: 2 });
     expect(ledger.people.jessica).toMatchObject({ earned: 400, paid: 0, owed: 400, activeJobCount: 1 });
+  });
+
+  it("mirrors the displayed Mike and Jessica payout amounts instead of re-deriving a split", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "displayed-mike-only",
+          salesOwner: "jessica",
+          remainingProfitBeforeJessica: 1000,
+          mikeProfit: 909.6,
+          jessicaCommission: 0
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: []
+    });
+
+    expect(ledger.people.mike.activeItems).toHaveLength(1);
+    expect(ledger.people.mike.activeItems[0]).toMatchObject({
+      itemKey: "mike:manual:displayed-mike-only",
+      remainingAmount: 909.6
+    });
+    expect(ledger.people.jessica.activeItems).toHaveLength(0);
   });
 
   it("marks explicitly allocated jobs paid and resets due balances", () => {
@@ -268,6 +293,7 @@ describe("buildPartnerPaymentLedger", () => {
           id: "newer",
           customerName: "Newer",
           remainingProfitBeforeJessica: 400,
+          mikeProfit: 400,
           payments: [bookkeepingPayment({ id: "newer-payment", paid_at: "2026-06-25" })]
         })
       ],

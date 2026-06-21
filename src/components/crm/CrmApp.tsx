@@ -5756,7 +5756,7 @@ function PartnerPaymentAmountCell({
 }) {
   const payableItem = item || fallbackPartnerPaymentItem(person, row, amount);
   const paid = payableItem?.paymentState === "paid";
-  const canClick = Boolean(canMarkPartnerPaid && payableItem && !paid && payableItem.remainingAmount > 0);
+  const canClick = Boolean(canMarkPartnerPaid && item && !paid && item.remainingAmount > 0);
   const label = paid
     ? `${paymentPersonDisplayName(person)} paid for ${row.customerName}`
     : canClick

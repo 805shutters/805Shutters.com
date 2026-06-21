@@ -2390,9 +2390,10 @@ export async function createPartnerPaymentBatch(
   const person = normalizePaymentPerson(payload.person);
   const dashboard = await loadCrmDashboardData(supabase);
   const selectedKeys = selectedPaymentItemKeys(payload);
-  const activeItems = dashboard.partnerPaymentLedger.people[person].activeItems;
+  const personLedger = dashboard.partnerPaymentLedger.people[person];
+  const activeItems = personLedger.activeItems;
   const selectedItems = selectedKeys
-    ? activeItems.filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
+    ? personLedger.items.filter((item) => (selectedKeys.has(item.itemKey) || selectedKeys.has(item.id)) && item.remainingAmount > 0)
     : activeItems;
 
   if (!selectedItems.length) {

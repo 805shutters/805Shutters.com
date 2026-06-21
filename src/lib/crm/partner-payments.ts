@@ -125,21 +125,11 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
     });
     if (kenItem) items.push(kenItem);
 
-    const profit = roundCents(Math.max(row.remainingProfitBeforeJessica || 0, 0));
-    if (profit <= 0) continue;
+    const mikeItem = createEarnedItem({ row, person: "mike", amount: row.mikeProfit, closedAt });
+    if (mikeItem) items.push(mikeItem);
 
-    if (row.salesOwner === "mike") {
-      const mikeItem = createEarnedItem({ row, person: "mike", amount: profit, closedAt });
-      if (mikeItem) items.push(mikeItem);
-    }
-
-    if (row.salesOwner === "jessica") {
-      const jessicaShare = roundCents(profit * 0.5);
-      const jessicaItem = createEarnedItem({ row, person: "jessica", amount: jessicaShare, closedAt });
-      const mikeItem = createEarnedItem({ row, person: "mike", amount: roundCents(profit - jessicaShare), closedAt });
-      if (jessicaItem) items.push(jessicaItem);
-      if (mikeItem) items.push(mikeItem);
-    }
+    const jessicaItem = createEarnedItem({ row, person: "jessica", amount: row.jessicaCommission, closedAt });
+    if (jessicaItem) items.push(jessicaItem);
   }
 
   return items.sort(compareEarnedItems);
