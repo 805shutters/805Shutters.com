@@ -4691,6 +4691,45 @@ body:has(.crm-app-shell) {
   white-space: nowrap;
 }
 
+.crm-bookkeeping-delete-col {
+  width: 1%;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.crm-bookkeeping-delete {
+  min-height: 34px;
+  padding: 7px 14px;
+  border: 1px solid #d8b3ad;
+  border-radius: 6px;
+  background: #fff7f6;
+  box-shadow: none;
+  color: #b42318;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-bookkeeping-delete:hover:not(:disabled),
+.crm-bookkeeping-delete:focus-visible:not(:disabled) {
+  transform: none;
+  border-color: #b42318;
+  background: #b42318;
+  color: var(--white);
+}
+
+.crm-bookkeeping-delete:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.crm-bookkeeping-delete-na {
+  display: inline-block;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .crm-warning-cell {
   background: #f4f4f2;
   color: #5b5b58 !important;

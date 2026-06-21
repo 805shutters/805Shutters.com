@@ -1561,6 +1561,36 @@ export async function updateCrmQuote(
   return quote as CrmQuote;
 }
 
+export async function deleteCrmBookkeepingEntry(
+  supabase: CrmSupabaseClient,
+  id: string,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quote_bookkeeping_entries")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Bookkeeping row was not found.");
+
+  // Deleting the entry cascades its payments, job expenses, and imported
+  // customer files/products (all FK'd ON DELETE CASCADE) and nulls any credit
+  // links, so the ledger totals reconcile cleanly on the next refresh. The
+  // before-snapshot is kept in the activity log so a mistaken delete is
+  // recoverable.
+  const { error } = await supabase.from("crm_quote_bookkeeping_entries").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Bookkeeping row could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "bookkeeping_entry",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
+}
+
 export async function createCrmBookkeepingEntry(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,

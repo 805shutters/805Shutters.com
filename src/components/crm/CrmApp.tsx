@@ -1127,6 +1127,36 @@ export function CrmApp() {
     }
   }
 
+  async function deleteBookkeepingRow(row: CrmBookkeepingRow) {
+    if (!session) return;
+    // Live quotes belong to the sales pipeline — they leave the ledger by a status
+    // change in Quotes/Orders, not by deletion, so we never delete them from here.
+    if (row.source === "crm_quote") {
+      setMessage("This is a live quote. Change its status in Quotes/Orders to remove it from the ledger.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Delete "${row.customerName}"? This permanently removes the row plus its payments and expenses, and its totals (sales, balance, Ken cut, profit, commission) will be subtracted from the ledger. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, { method: "DELETE" });
+      await refresh();
+      setMessage(`Deleted "${row.customerName}". Ledger totals updated.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Row could not be deleted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateJob(event: FormEvent<HTMLFormElement>, job: CrmJob) {
     event.preventDefault();
     if (!session) return;
@@ -1483,7 +1513,7 @@ export function CrmApp() {
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
-            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={saveBookkeepingCell} />
+            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={saveBookkeepingCell} onDelete={deleteBookkeepingRow} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           </div>
         </section>
@@ -4430,12 +4460,14 @@ function BookkeepingSpreadsheet({
   rows,
   totals,
   busy,
-  onSave
+  onSave,
+  onDelete
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
   busy: boolean;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
+  onDelete: (row: CrmBookkeepingRow) => void;
 }) {
   const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
@@ -4505,6 +4537,7 @@ function BookkeepingSpreadsheet({
               <th>Jessica</th>
               <th>J Paid</th>
               <th>Notes</th>
+              <th className="crm-bookkeeping-delete-col" aria-label="Delete" />
             </tr>
           </thead>
           <tbody>
@@ -4661,6 +4694,27 @@ function BookkeepingSpreadsheet({
                     >
                       {row.notes || "Click to add note"}
                     </BookkeepingCellButton>
+                  )}
+                </td>
+                <td className="crm-bookkeeping-delete-col">
+                  {row.source === "crm_quote" ? (
+                    <span
+                      className="crm-bookkeeping-delete-na"
+                      title="Live quotes leave the ledger by a status change in Quotes/Orders."
+                    >
+                      —
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="crm-bookkeeping-delete"
+                      onClick={() => onDelete(row)}
+                      disabled={busy}
+                      aria-label={`Delete ${row.customerName}`}
+                      title={`Delete ${row.customerName}`}
+                    >
+                      Delete
+                    </button>
                   )}
                 </td>
               </tr>
