@@ -1,15 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_INSTALLATION_INVOICE_MAILBOX,
   InstallationInvoiceCandidate,
   buildInstallationInvoiceGmailQuery,
   buildInstallationInvoiceWorkflowPatches,
   extractInstallationInvoiceDetails,
+  hasInstallationInvoiceGmailAuth,
   matchInstallationInvoiceToCandidate,
   normalizeInstallationInvoiceMailbox,
   resolveInstallationInvoiceGmailQuery,
   normalizeCustomerName
 } from "@/lib/crm/installation-invoices";
+
+const gmailAuthEnvKeys = [
+  "GMAIL_805_CLIENT_ID",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CALENDAR_CLIENT_ID",
+  "GMAIL_805_CLIENT_SECRET",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_CALENDAR_CLIENT_SECRET",
+  "GMAIL_805_REFRESH_TOKEN",
+  "GMAIL_REFRESH_TOKEN",
+  "GOOGLE_CALENDAR_REFRESH_TOKEN",
+  "GMAIL_ACCESS_TOKEN_BROKER_URL",
+  "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_URL",
+  "GMAIL_ACCESS_TOKEN_BROKER_SECRET",
+  "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_SECRET"
+];
+
+function clearGmailAuthEnv() {
+  for (const key of gmailAuthEnvKeys) vi.stubEnv(key, "");
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function candidate(overrides: Partial<InstallationInvoiceCandidate> = {}): InstallationInvoiceCandidate {
   return {
@@ -47,6 +72,33 @@ describe("installation invoice mailbox", () => {
     expect(mailbox).toBe("805shutters@gmail.com");
     expect(query).toContain("to:805shutters@gmail.com");
     expect(query).not.toContain("to:805@805shutters.com");
+  });
+});
+
+describe("installation invoice Gmail auth config", () => {
+  it("accepts direct Gmail OAuth credentials", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret");
+    vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(true);
+  });
+
+  it("accepts a protected access-token broker", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_URL", "https://example.test/gmail-token");
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_SECRET", "broker-secret");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(true);
+  });
+
+  it("rejects incomplete auth config", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_URL", "https://example.test/gmail-token");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(false);
   });
 });
 

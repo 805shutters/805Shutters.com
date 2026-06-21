@@ -172,17 +172,68 @@ function googleOAuthCredentials() {
   const refreshToken = envValue(["GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN"]);
 
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new CrmAuthError(
-      503,
-      "805 Gmail invoice puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID, GMAIL_805_CLIENT_SECRET, and GMAIL_805_REFRESH_TOKEN with Gmail readonly scope."
-    );
+    return null;
   }
 
   return { clientId, clientSecret, refreshToken };
 }
 
+function gmailAccessTokenBrokerConfig() {
+  const url = envValue(["GMAIL_ACCESS_TOKEN_BROKER_URL", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_URL"]);
+  const secret = envValue(["GMAIL_ACCESS_TOKEN_BROKER_SECRET", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_SECRET"]);
+
+  if (!url || !secret) return null;
+  return { url, secret };
+}
+
+export function hasInstallationInvoiceGmailAuth() {
+  return Boolean(googleOAuthCredentials() || gmailAccessTokenBrokerConfig());
+}
+
+async function getBrokeredGmailAccessToken(mailbox: string) {
+  const broker = gmailAccessTokenBrokerConfig();
+  if (!broker) return null;
+
+  const response = await fetch(broker.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${broker.secret}`
+    },
+    body: JSON.stringify({
+      action: "access-token",
+      emailAddress: mailbox
+    })
+  });
+
+  const data = (await response.json().catch(() => null)) as {
+    success?: boolean;
+    accessToken?: string;
+    error?: string;
+  } | null;
+
+  if (!response.ok || !data?.accessToken) {
+    const detail = data?.error || `HTTP ${response.status}`;
+    throw new CrmAuthError(502, `805 Gmail token broker failed: ${detail}`);
+  }
+
+  return data.accessToken;
+}
+
 async function getGmailAccessToken() {
-  const { clientId, clientSecret, refreshToken } = googleOAuthCredentials();
+  const credentials = googleOAuthCredentials();
+  if (!credentials) {
+    const accessToken = await getBrokeredGmailAccessToken(normalizedMailbox());
+    if (accessToken) return accessToken;
+
+    throw new CrmAuthError(
+      503,
+      "805 Gmail invoice puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID, GMAIL_805_CLIENT_SECRET, and GMAIL_805_REFRESH_TOKEN or GMAIL_ACCESS_TOKEN_BROKER_URL and GMAIL_ACCESS_TOKEN_BROKER_SECRET."
+    );
+  }
+
+  const { clientId, clientSecret, refreshToken } = credentials;
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
