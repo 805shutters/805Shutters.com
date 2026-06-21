@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
 import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
@@ -561,6 +561,8 @@ export function CrmApp() {
   const [emailLoginMessage, setEmailLoginMessage] = useState<string | null>(null);
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
@@ -634,12 +636,14 @@ export function CrmApp() {
     const dashboardResult = await crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs");
     setUser(sessionResult);
     setData(dashboardResult);
+    setLastSyncedAt(Date.now());
   }
 
   async function refresh() {
     if (!session) return null;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
     setData(dashboardResult);
+    setLastSyncedAt(Date.now());
     return dashboardResult;
   }
 
@@ -783,6 +787,46 @@ export function CrmApp() {
       listener.subscription.unsubscribe();
     };
   }, [supabase]);
+
+  // Mirror `busy` into a ref so the polling loop can read the latest value
+  // without re-subscribing the interval on every save.
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  // Keep the dashboard live: silently refetch on an interval, and immediately
+  // when the tab regains focus. Skips while a save is in flight (so it can't
+  // clobber an edit) or while the tab is hidden (so it doesn't poll in the
+  // background). A failed background refresh stays silent — no error banner.
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+
+    const sync = async () => {
+      if (cancelled || busyRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      try {
+        const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
+        if (cancelled) return;
+        setData(dashboardResult);
+        setLastSyncedAt(Date.now());
+      } catch {
+        // Background refresh is best-effort; the next tick will retry.
+      }
+    };
+
+    const intervalId = window.setInterval(sync, 30000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") sync();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [session]);
 
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1650,7 +1694,7 @@ export function CrmApp() {
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
-            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={saveBookkeepingCell} onDelete={deleteBookkeepingRow} />
+            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} lastSyncedAt={lastSyncedAt} onSave={saveBookkeepingCell} onDelete={deleteBookkeepingRow} />
             <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           </div>
@@ -4973,12 +5017,14 @@ function BookkeepingSpreadsheet({
   rows,
   totals,
   busy,
+  lastSyncedAt,
   onSave,
   onDelete
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
   busy: boolean;
+  lastSyncedAt: number | null;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
   onDelete: (row: CrmBookkeepingRow) => void;
 }) {
@@ -5012,6 +5058,7 @@ function BookkeepingSpreadsheet({
     await onSave(row, patch);
     closeEdit();
   };
+  const statusGroups = useMemo(() => groupBookkeepingRowsByStatus(rows), [rows]);
 
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
@@ -5022,6 +5069,13 @@ function BookkeepingSpreadsheet({
         </div>
         <div className="crm-bookkeeping-counts" aria-label="Bookkeeping row counts">
           <span>Rows: {totals?.rows || 0}</span>
+          <span
+            className="crm-bookkeeping-live"
+            title={lastSyncedAt ? `Last updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : "Waiting for first sync"}
+          >
+            <span className="crm-bookkeeping-live-dot" aria-hidden="true" />
+            Live{lastSyncedAt ? ` · updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : ""}
+          </span>
         </div>
       </div>
       <div className="crm-bookkeeping-summary-grid">
@@ -5055,7 +5109,25 @@ function BookkeepingSpreadsheet({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
+            {statusGroups.map(([status, groupRows]) => {
+              const groupTotal = groupRows.reduce((sum, item) => sum + item.total, 0);
+              const groupBalance = groupRows.reduce((sum, item) => sum + Math.max(item.balance, 0), 0);
+              return (
+                <Fragment key={`status-group-${status}`}>
+                  <tr className="crm-bookkeeping-group-row">
+                    <td className="crm-bookkeeping-group-head" colSpan={15}>
+                      <div className="crm-bookkeeping-group-inner">
+                        <em className="crm-bookkeeping-status" data-status={status}>
+                          {bookkeepingStatusLabelForKey(status)}
+                        </em>
+                        <span className="crm-bookkeeping-group-meta">
+                          {groupRows.length} {groupRows.length === 1 ? "job" : "jobs"} · {toLedgerCurrency(groupTotal)} total
+                          {groupBalance > 0 ? ` · ${toLedgerCurrency(groupBalance)} open` : ""}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {groupRows.map((row) => (
               <tr className={row.isPaidInFull ? "crm-bookkeeping-row--closed" : undefined} key={bookkeepingRowKey(row)}>
                 <td>
                   {isEditing(row, "customer") ? (
@@ -5064,7 +5136,7 @@ function BookkeepingSpreadsheet({
                     <BookkeepingCellButton ariaLabel={`Edit customer and owner for ${row.customerName}`} onClick={() => openEdit(row, "customer")}>
                       <strong>{row.customerName}</strong>
                       <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
-                      <em className={`crm-bookkeeping-status${row.isPaidInFull ? " crm-bookkeeping-status--closed" : ""}`}>
+                      <em className="crm-bookkeeping-status" data-status={bookkeepingStatusKey(row)}>
                         {bookkeepingStatusLabel(row)}
                       </em>
                     </BookkeepingCellButton>
@@ -5235,7 +5307,10 @@ function BookkeepingSpreadsheet({
                   )}
                 </td>
               </tr>
-            ))}
+                  ))}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
         {!rows.length ? <p className="crm-empty">No bookkeeping rows yet.</p> : null}
@@ -5248,10 +5323,76 @@ function roundCurrency(value: number) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
 
-function bookkeepingStatusLabel(row: CrmBookkeepingRow) {
+// Lifecycle order the ledger groups rows by: open/actionable stages first, with
+// fully-paid ("closed") work parked at the bottom. The per-row badge and the
+// group headers both read from this so the status shown always reflects the
+// live state of the row.
+const BOOKKEEPING_STATUS_ORDER = [
+  "sold",
+  "approved",
+  "ordered",
+  "received",
+  "installed",
+  "invoiced",
+  "paid",
+  "manual",
+  "draft",
+  "sent",
+  "archived",
+  "lost",
+  "closed"
+];
+
+const BOOKKEEPING_STATUS_LABELS: Record<string, string> = {
+  sold: "Sold",
+  approved: "Approved",
+  ordered: "Ordered",
+  received: "Received",
+  installed: "Installed",
+  invoiced: "Invoiced",
+  paid: "Paid",
+  manual: "Manual",
+  legacy: "Legacy",
+  draft: "Draft",
+  sent: "Sent",
+  archived: "Archived",
+  lost: "Lost",
+  closed: "Paid in full"
+};
+
+// The effective, real-time status of a ledger row. Paid-in-full always wins
+// (the balance has hit zero), legacy sheet imports read as "sold"; everything
+// else follows the live quote/entry status.
+function bookkeepingStatusKey(row: CrmBookkeepingRow): string {
   if (row.isPaidInFull) return "closed";
   if (row.source === "legacy_sheet") return "sold";
   return String(row.status);
+}
+
+function bookkeepingStatusRank(status: string) {
+  const index = BOOKKEEPING_STATUS_ORDER.indexOf(status);
+  return index === -1 ? BOOKKEEPING_STATUS_ORDER.length : index;
+}
+
+function bookkeepingStatusLabelForKey(status: string) {
+  return BOOKKEEPING_STATUS_LABELS[status] || status;
+}
+
+function bookkeepingStatusLabel(row: CrmBookkeepingRow) {
+  return bookkeepingStatusLabelForKey(bookkeepingStatusKey(row));
+}
+
+// Bucket rows by their live status, ordered by pipeline stage. Rows arrive
+// already sorted newest-first, so each group stays date-sorted within itself.
+function groupBookkeepingRowsByStatus(rows: CrmBookkeepingRow[]): Array<[string, CrmBookkeepingRow[]]> {
+  const map = new Map<string, CrmBookkeepingRow[]>();
+  for (const row of rows) {
+    const key = bookkeepingStatusKey(row);
+    const list = map.get(key);
+    if (list) list.push(row);
+    else map.set(key, [row]);
+  }
+  return [...map.entries()].sort(([a], [b]) => bookkeepingStatusRank(a) - bookkeepingStatusRank(b));
 }
 
 function OrderBoard({
