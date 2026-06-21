@@ -54,7 +54,7 @@ export function buildCustomerFiles({
     const file = ensureFile(fileMap, key, row.customerName);
     file.bookkeepingRows.push(row);
     file.lifetimeValue += Number(row.total) || 0;
-    file.openBalance += Number(row.balance) || 0;
+    file.openBalance += Math.max(Number(row.balance) || 0, 0);
     file.latestStatus = String(row.status);
     file.latestSoldDate = newestDate(file.latestSoldDate, row.soldDate);
     if (row.notes) file.notes.push(row.notes);

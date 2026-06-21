@@ -126,7 +126,8 @@ export function statusRank(status: CrmQuoteStatus): number {
 /** Canonical mapping from a quote's status to the parent job's status. */
 export function jobStatusForQuote(status: CrmQuoteStatus): CrmJobStatus {
   if (status === "ordered" || status === "received") return "ordered";
-  if (status === "installed" || status === "invoiced" || status === "paid") return "installed";
+  if (status === "paid") return "closed";
+  if (status === "installed" || status === "invoiced") return "installed";
   if (status === "sold" || status === "approved") return "sold";
   if (status === "lost") return "lost";
   return "quoted"; // draft, sent, archived

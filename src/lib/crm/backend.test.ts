@@ -121,7 +121,7 @@ describe("buildDashboardData", () => {
       payoffTarget: 500000
     });
 
-    expect(data.summary.openJobs).toBe(2);
+    expect(data.summary.openJobs).toBe(3);
   });
 });
 

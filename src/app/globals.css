@@ -4335,6 +4335,11 @@ body:has(.crm-app-shell) {
   font-size: 14px;
 }
 
+.crm-bookkeeping-row--closed td {
+  background: #edf7ef;
+  color: #153a24;
+}
+
 .crm-bookkeeping-table td strong,
 .crm-bookkeeping-table td span {
   display: block;
@@ -4358,6 +4363,12 @@ body:has(.crm-app-shell) {
   font-style: normal;
   font-weight: 900;
   text-transform: lowercase;
+}
+
+.crm-bookkeeping-status--closed {
+  background: #d8f0dd;
+  border-color: #3b8b53;
+  color: #174f2b;
 }
 
 .crm-bookkeeping-pill {

@@ -17,7 +17,7 @@ describe("quote → job status mapping", () => {
     expect(jobStatusForQuote("received")).toBe("ordered");
     expect(jobStatusForQuote("installed")).toBe("installed");
     expect(jobStatusForQuote("invoiced")).toBe("installed");
-    expect(jobStatusForQuote("paid")).toBe("installed");
+    expect(jobStatusForQuote("paid")).toBe("closed");
     expect(jobStatusForQuote("lost")).toBe("lost");
   });
 });

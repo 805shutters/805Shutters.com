@@ -168,6 +168,60 @@ function rowsFrom(args: {
   });
 }
 
+describe("paid-in-full status", () => {
+  it("marks a bookkeeping row closed when payments cover the total", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", total_amount: 1000, sales_owner: "mike" })],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 1000 })]
+    });
+    const totals = sumBookkeepingRows([row]);
+
+    expect(row.isPaidInFull).toBe(true);
+    expect(row.status).toBe("closed");
+    expect(row.balance).toBe(0);
+    expect(totals.closedRows).toBe(1);
+    expect(totals.closedTotal).toBe(1000);
+    expect(totals.balance).toBe(0);
+  });
+
+  it("does not let overpayments reduce the open-balance ledger total", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", total_amount: 1000, sales_owner: "mike" })],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 1200 })]
+    });
+    const totals = sumBookkeepingRows([row]);
+
+    expect(row.isPaidInFull).toBe(true);
+    expect(row.status).toBe("closed");
+    expect(row.balance).toBe(-200);
+    expect(totals.balance).toBe(0);
+  });
+
+  it("keeps a quote open when its status says paid but the ledger has a balance", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", status: "paid", quote_total: 1000, deposit_required: 500 })]
+    });
+
+    expect(row.isPaidInFull).toBe(false);
+    expect(row.status).toBe("paid");
+    expect(row.balance).toBe(1000);
+  });
+
+  it("marks a quote row closed when recorded deposit and balance payments cover the quote", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", status: "sold", quote_total: 1000, deposit_required: 500 })],
+      payments: [
+        payment({ id: "p1", quote_id: "q1", payment_label: "Deposit", amount: 500 }),
+        payment({ id: "p2", quote_id: "q1", payment_label: "Balance payment", amount: 500 })
+      ]
+    });
+
+    expect(row.isPaidInFull).toBe(true);
+    expect(row.status).toBe("closed");
+    expect(row.balance).toBe(0);
+  });
+});
+
 describe("Ken cut", () => {
   it("defaults to 10% of the sale total for a Mike sale", () => {
     const [row] = rowsFrom({

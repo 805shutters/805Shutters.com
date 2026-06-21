@@ -5,6 +5,7 @@ import {
   CrmBookkeepingPayment,
   CrmBookkeepingPaymentType,
   CrmBookkeepingRow,
+  CrmBookkeepingStatus,
   CrmBookkeepingSalesOwner,
   CrmBookkeepingTotals,
   CrmJobExpense,
@@ -23,6 +24,10 @@ export const JESSICA_KEN_CUT_EXEMPT_FROM = "2026-06-10";
 // Fixed price the business is being purchased from Ken for. Every dollar paid to
 // Ken (opening balance + recorded checks) counts toward this payoff.
 export const BUSINESS_PAYOFF_TARGET = 500000;
+
+export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" | "balance" | "isPaidInFull">) {
+  return Boolean(row.isPaidInFull);
+}
 
 const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "sold",
@@ -128,7 +133,7 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       totals.creditOut = roundCents(totals.creditOut + row.creditOut);
       totals.cogs = roundCents(totals.cogs + row.cogs);
       totals.expensesTotal = roundCents(totals.expensesTotal + row.expensesTotal);
-      totals.balance = roundCents(totals.balance + row.balance);
+      totals.balance = roundCents(totals.balance + Math.max(row.balance, 0));
       totals.kenCut = roundCents(totals.kenCut + row.kenCut);
       totals.mikeProfit = roundCents(totals.mikeProfit + row.mikeProfit);
       totals.installationAmount = roundCents(
@@ -141,6 +146,10 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       totals.jessicaCommissionOwed = roundCents(
         totals.jessicaCommissionOwed + row.jessicaCommissionOwed
       );
+      if (row.isPaidInFull) {
+        totals.closedRows += 1;
+        totals.closedTotal = roundCents(totals.closedTotal + row.total);
+      }
       if (row.cogs <= 0) totals.missingCogs += 1;
       return totals;
     },
@@ -159,6 +168,8 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       jessicaCommission: 0,
       jessicaCommissionPaid: 0,
       jessicaCommissionOwed: 0,
+      closedRows: 0,
+      closedTotal: 0,
       missingCogs: 0
     }
   );
@@ -178,7 +189,7 @@ export function buildKenPayoffSummary({
   // "Completed" for Ken = the customer has paid in full (zero/negative balance).
   // Each row's kenCut already reflects Jessica's exemption and any override, so
   // exempt jobs correctly contribute $0 to Ken's check.
-  const completedRows = rows.filter((row) => row.total > 0 && row.balance <= 0);
+  const completedRows = rows.filter(isPaidInFullBookkeepingRow);
   const kenAccruedCompleted = roundCents(
     completedRows.reduce((sum, row) => sum + (Number(row.kenCut) || 0), 0)
   );
@@ -340,6 +351,8 @@ function buildEntryRow(
   const creditOut = sumCredits(creditsOut);
   const cogs = Number(entry.cogs_amount) || 0;
   const expensesTotal = sumExpenses(expenses);
+  const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
+  const isPaidInFull = isPaidInFullBalance(total, balance);
   const kenCut = computeKenCut({
     total,
     salesOwner: entry.sales_owner,
@@ -374,7 +387,7 @@ function buildEntryRow(
     creditOut,
     paymentType: entry.payment_type,
     cogs,
-    balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
+    balance,
     kenCut,
     kenCutOverride: entry.ken_cut_override ?? null,
     mikeProfit: profit.mikeProfit,
@@ -390,12 +403,13 @@ function buildEntryRow(
     jessicaCommission: profit.jessicaCommission,
     jessicaCommissionPaidAt: entry.jessica_commission_paid_at,
     jessicaCommissionOwed: entry.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
+    isPaidInFull,
     manufacturerName: entry.manufacturer_name,
     manufacturerOrderRef: entry.manufacturer_order_ref,
     manufacturerOrderUrl: entry.manufacturer_order_url,
     manufacturerDocumentUrl: entry.manufacturer_document_url,
     notes: entry.notes,
-    status: entry.source === "legacy_sheet" ? "legacy" : "manual",
+    status: bookkeepingStatusForBalance(entry.source === "legacy_sheet" ? "legacy" : "manual", total, balance),
     payments,
     creditsIn,
     creditsOut,
@@ -426,6 +440,8 @@ function buildQuoteRow(
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
   const expensesTotal = sumExpenses(expenses);
+  const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
+  const isPaidInFull = isPaidInFullBalance(total, balance);
   const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
   const kenCut = computeKenCut({
@@ -464,7 +480,7 @@ function buildQuoteRow(
     creditOut,
     paymentType: entry?.payment_type || null,
     cogs,
-    balance: roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut)),
+    balance,
     kenCut,
     kenCutOverride: entry?.ken_cut_override ?? null,
     mikeProfit: profit.mikeProfit,
@@ -480,12 +496,13 @@ function buildQuoteRow(
     jessicaCommission: profit.jessicaCommission,
     jessicaCommissionPaidAt: entry?.jessica_commission_paid_at || null,
     jessicaCommissionOwed: entry?.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
+    isPaidInFull,
     manufacturerName: entry?.manufacturer_name || quote.manufacturer_name,
     manufacturerOrderRef: entry?.manufacturer_order_ref || quote.manufacturer_order_ref,
     manufacturerOrderUrl: entry?.manufacturer_order_url || quote.manufacturer_order_url,
     manufacturerDocumentUrl: entry?.manufacturer_document_url || quote.manufacturer_document_url,
     notes: entry?.notes || quote.notes,
-    status: quote.status,
+    status: bookkeepingStatusForBalance(quote.status, total, balance),
     payments,
     creditsIn,
     creditsOut,
@@ -579,6 +596,14 @@ function isDepositPayment(payment: CrmBookkeepingPayment) {
 
 function calculateAppliedRevenue(paidTotal: number, creditIn: number, creditOut: number) {
   return roundCents(paidTotal + creditIn - creditOut);
+}
+
+function isPaidInFullBalance(total: number, balance: number) {
+  return roundCents(total) > 0 && roundCents(balance) <= 0;
+}
+
+function bookkeepingStatusForBalance(status: CrmBookkeepingStatus, total: number, balance: number): CrmBookkeepingStatus {
+  return isPaidInFullBalance(total, balance) ? "closed" : status;
 }
 
 function getInstallationFields(entry: CrmBookkeepingEntry | null) {

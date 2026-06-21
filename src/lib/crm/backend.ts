@@ -4,6 +4,7 @@ import {
   buildAccountabilityQueue,
   buildBookkeepingRows,
   buildKenPayoffSummary,
+  isPaidInFullBookkeepingRow,
   normalizePaymentType,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
@@ -67,6 +68,7 @@ const openSoldBookkeepingStatuses = new Set<CrmBookkeepingRow["status"]>([
   "received",
   "installed",
   "invoiced",
+  "paid",
   "legacy",
   "manual"
 ]);
@@ -79,7 +81,7 @@ const saleOwnerSyncJobStatuses = new Set(["sold", "ordered", "installed", "invoi
 const saleOwnerSyncQuoteStatuses = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"];
 
 function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
-  return row.total > 0 && row.balance > 0 && openSoldBookkeepingStatuses.has(row.status);
+  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && openSoldBookkeepingStatuses.has(row.status);
 }
 
 function countDistinctOpenSoldJobs(rows: CrmBookkeepingRow[]) {

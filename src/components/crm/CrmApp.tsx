@@ -2,7 +2,7 @@
 
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { formatPaymentType } from "@/lib/crm/bookkeeping";
+import { formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
 import { isAllowedCrmEmail } from "@/lib/crm/allowed-users";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -1623,7 +1623,7 @@ function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
 function BookkeepingSnapshot({ rows }: { rows: CrmBookkeepingRow[] }) {
   const needsOrder = rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef);
   const readyInstall = rows.filter((row) => row.status === "received");
-  const openBalances = rows.filter((row) => row.balance > 0).slice(0, 8);
+  const openBalances = rows.filter((row) => !isPaidInFullBookkeepingRow(row) && row.balance > 0).slice(0, 8);
 
   return (
     <section className="crm-ledger">
@@ -1664,12 +1664,13 @@ const OPEN_SOLD_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingRow["status"]>([
   "received",
   "installed",
   "invoiced",
+  "paid",
   "legacy",
   "manual"
 ]);
 
 function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
-  return row.total > 0 && row.balance > 0 && OPEN_SOLD_BOOKKEEPING_STATUSES.has(row.status);
+  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && row.balance > 0 && OPEN_SOLD_BOOKKEEPING_STATUSES.has(row.status);
 }
 
 function uniqueOpenSoldRows(rows: CrmBookkeepingRow[]) {
@@ -3809,7 +3810,7 @@ function SnapshotColumn({
         <article key={`${title}-${row.id}`}>
           <strong>{row.customerName}</strong>
           <span>{row.manufacturerName || row.manufacturerOrderRef || formatShortDate(row.soldDate)}</span>
-          <em>{row.balance > 0 ? toCurrency(row.balance) : row.status}</em>
+          <em>{row.balance > 0 ? toCurrency(row.balance) : bookkeepingStatusLabel(row)}</em>
         </article>
       ))}
       {!rows.length ? <p>{empty}</p> : null}
@@ -4175,6 +4176,7 @@ function BookkeepingSpreadsheet({
     ["Jessica Commission", toLedgerCurrency(totals?.jessicaCommission)],
     ["Jessica Paid", toLedgerCurrency(totals?.jessicaCommissionPaid)],
     ["Jessica Owed", toLedgerCurrency(totals?.jessicaCommissionOwed)],
+    ["Paid In Full", `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}`],
     ["Total Profit", toLedgerCurrency(totalProfit)],
     ["Profit Margin", profitMargin]
   ];
@@ -4221,11 +4223,13 @@ function BookkeepingSpreadsheet({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={`${row.source}-${row.id}`}>
+              <tr className={row.isPaidInFull ? "crm-bookkeeping-row--closed" : undefined} key={`${row.source}-${row.id}`}>
                 <td>
                   <strong>{row.customerName}</strong>
                   <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
-                  <em className="crm-bookkeeping-status">{row.source === "legacy_sheet" ? "sold" : row.status}</em>
+                  <em className={`crm-bookkeeping-status${row.isPaidInFull ? " crm-bookkeeping-status--closed" : ""}`}>
+                    {bookkeepingStatusLabel(row)}
+                  </em>
                 </td>
                 <td>{formatShortDate(row.soldDate)}</td>
                 <td>{toLedgerCurrency(row.total)}</td>
@@ -4274,6 +4278,12 @@ function jessicaLedgerStatus(row: CrmBookkeepingRow) {
   if (row.jessicaCommission > 0) return toLedgerCurrency(row.jessicaCommission);
   if (!row.isInstallationComplete) return "Pending install";
   return "-";
+}
+
+function bookkeepingStatusLabel(row: CrmBookkeepingRow) {
+  if (row.isPaidInFull) return "closed";
+  if (row.source === "legacy_sheet") return "sold";
+  return String(row.status);
 }
 
 function OrderBoard({
