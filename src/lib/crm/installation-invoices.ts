@@ -509,9 +509,23 @@ function extractExplicitCustomerName(text: string) {
   return cleanText(match?.[1]);
 }
 
+function isPlausibleInvoiceCustomerName(value: string | null) {
+  if (!value) return false;
+  return !/\b(?:invoice|installations?|quickbooks|shutters|customer|balance|payment|new\s+mexico)\b/i.test(value);
+}
+
+function extractGreetingCustomerName(text: string) {
+  const match = text.match(/\bDear\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4})\s*,/);
+  const value = cleanText(match?.[1]);
+  return isPlausibleInvoiceCustomerName(value) ? value : null;
+}
+
 function extractNamedCustomer(text: string) {
   const explicit = extractExplicitCustomerName(text);
   if (explicit) return explicit;
+
+  const greeting = extractGreetingCustomerName(text);
+  if (greeting) return greeting;
 
   const patterns = [
     /\b(?:customer|client|bill\s+to|invoice\s+for)\s*[:#-]?\s*([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4})\b/,
@@ -521,7 +535,7 @@ function extractNamedCustomer(text: string) {
   for (const line of text.split(/\n+/)) {
     for (const pattern of patterns) {
       const value = cleanText(line.match(pattern)?.[1]);
-      if (value && !/installations?|invoice|shutters/i.test(value)) return value;
+      if (isPlausibleInvoiceCustomerName(value)) return value;
     }
   }
 

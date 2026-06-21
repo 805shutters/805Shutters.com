@@ -136,6 +136,19 @@ describe("installation invoice extraction", () => {
     expect(extracted.customerName).toBe("Brian Knoll (Knoll psychiatry)");
     expect(extracted.invoiceAmount).toBe(1588.27);
   });
+
+  it("prefers the QuickBooks greeting customer over invoice boilerplate locations", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 311657887 from MTS Installations Inc",
+      body:
+        "Your invoice is ready! BALANCE DUE$90.00 0% APR as low as $16/mo. " +
+        "Dear Ken Hill, Here's your invoice! Thanks for your business. New Mexico"
+    });
+
+    expect(extracted.customerName).toBe("Ken Hill");
+    expect(extracted.invoiceAmount).toBe(90);
+    expect(extracted.invoiceNumber).toBe("311657887");
+  });
 });
 
 describe("installation invoice customer matching", () => {
