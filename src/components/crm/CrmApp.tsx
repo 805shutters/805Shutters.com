@@ -1565,8 +1565,10 @@ export function CrmApp() {
             )}
           </CollapsiblePanel>
 
-          <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
-          <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
+          <div className="crm-bookkeeping-main">
+            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
+            <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
+          </div>
         </section>
       ) : null}
 

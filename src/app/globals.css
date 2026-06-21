@@ -3165,6 +3165,12 @@ body:has(.crm-app-shell) {
   width: min(1800px, 100%);
 }
 
+.crm-bookkeeping-main {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
 .crm-panel,
 .crm-ledger,
 .crm-column,
