@@ -1561,34 +1561,64 @@ export async function updateCrmQuote(
   return quote as CrmQuote;
 }
 
-export async function deleteCrmBookkeepingEntry(
+export async function deleteCrmLedgerRow(
   supabase: CrmSupabaseClient,
   id: string,
   actor: CrmActor
 ) {
-  const { data: existing, error: existingError } = await supabase
+  // A ledger row is either a standalone bookkeeping entry or a live quote.
+  // Resolve which, then delete the broadest parent so the WHOLE sale and all of
+  // its children cascade away: crm_jobs ON DELETE CASCADE removes its quotes,
+  // line items, bookkeeping entries, payments, expenses and customer files (a
+  // quote cascades the same minus the job). Calendar appointments FK to the job
+  // with ON DELETE SET NULL, so they are unlinked, not deleted. This is
+  // intentionally destructive and permanent — the UI confirms before calling it.
+  const { data: entry } = await supabase
     .from("crm_quote_bookkeeping_entries")
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  if (existingError || !existing) throw new CrmAuthError(404, "Bookkeeping row was not found.");
 
-  // Deleting the entry cascades its payments, job expenses, and imported
-  // customer files/products (all FK'd ON DELETE CASCADE) and nulls any credit
-  // links, so the ledger totals reconcile cleanly on the next refresh. The
-  // before-snapshot is kept in the activity log so a mistaken delete is
-  // recoverable.
-  const { error } = await supabase.from("crm_quote_bookkeeping_entries").delete().eq("id", id);
-  if (error) throw new CrmAuthError(502, "Bookkeeping row could not be deleted.");
+  let jobId: string | null = null;
+  let quoteId: string | null = null;
+  let entryId: string | null = null;
+  let before: unknown = null;
+
+  if (entry) {
+    entryId = String(entry.id);
+    jobId = entry.job_id ? String(entry.job_id) : null;
+    quoteId = entry.quote_id ? String(entry.quote_id) : null;
+    before = entry;
+  } else {
+    const { data: quote } = await supabase.from("crm_quotes").select("*").eq("id", id).maybeSingle();
+    if (!quote) throw new CrmAuthError(404, "Ledger row was not found.");
+    quoteId = String(quote.id);
+    jobId = quote.job_id ? String(quote.job_id) : null;
+    before = quote;
+  }
+
+  const target = jobId
+    ? { table: "crm_jobs", id: jobId }
+    : quoteId
+      ? { table: "crm_quotes", id: quoteId }
+      : entryId
+        ? { table: "crm_quote_bookkeeping_entries", id: entryId }
+        : null;
+
+  if (!target) throw new CrmAuthError(404, "Ledger row was not found.");
+
+  const { error } = await supabase.from(target.table).delete().eq("id", target.id);
+  if (error) throw new CrmAuthError(502, "Sale could not be deleted.");
 
   await recordCrmActivity(supabase, actor, {
-    entityType: "bookkeeping_entry",
-    entityId: id,
+    entityType: target.table === "crm_jobs" ? "job" : target.table === "crm_quotes" ? "quote" : "bookkeeping_entry",
+    entityId: target.id,
     action: "delete",
-    before: existing
+    before,
+    metadata: { source: "ledger_full_delete", ledgerRowId: id }
   });
 
-  return { id };
+  return { id, deleted: target };
 }
 
 export async function createCrmBookkeepingEntry(

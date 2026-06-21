@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteCrmBookkeepingEntry, updateCrmBookkeepingEntry } from "@/lib/crm/backend";
+import { deleteCrmLedgerRow, updateCrmBookkeepingEntry } from "@/lib/crm/backend";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 
 export const runtime = "nodejs";
@@ -27,7 +27,7 @@ export async function DELETE(
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const result = await deleteCrmBookkeepingEntry(supabase, id, { email, userId: user.id });
+    const result = await deleteCrmLedgerRow(supabase, id, { email, userId: user.id });
 
     return NextResponse.json(result);
   } catch (error) {
