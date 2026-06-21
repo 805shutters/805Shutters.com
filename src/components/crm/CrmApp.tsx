@@ -4522,6 +4522,7 @@ function BookkeepingSpreadsheet({
           <thead>
             <tr>
               <th>Customer / Quote</th>
+              <th>Sold By</th>
               <th>Date</th>
               <th>Total</th>
               <th>Deposit</th>
@@ -4553,6 +4554,7 @@ function BookkeepingSpreadsheet({
                     </BookkeepingCellButton>
                   )}
                 </td>
+                <td className="crm-bookkeeping-soldby">{saleOwnerDisplayName(row.salesOwner)}</td>
                 <td>
                   {isEditing(row, "soldDate") ? (
                     <BookkeepingInlineTextEditor
@@ -4660,7 +4662,7 @@ function BookkeepingSpreadsheet({
                   )}
                 </td>
                 <td className="crm-ledger-money-good">{toLedgerCurrency(row.mikeProfit)}</td>
-                <td>{jessicaLedgerStatus(row)}</td>
+                <td className="crm-ledger-money-good">{toLedgerCurrency(row.jessicaCommission)}</td>
                 <td>
                   {isEditing(row, "jessicaPaid") ? (
                     <BookkeepingCheckboxEditor
@@ -4726,13 +4728,6 @@ function BookkeepingSpreadsheet({
 
 function roundCurrency(value: number) {
   return Math.round((Number(value) || 0) * 100) / 100;
-}
-
-function jessicaLedgerStatus(row: CrmBookkeepingRow) {
-  if (row.salesOwner === "mike") return "Mike sale";
-  if (row.jessicaCommission > 0) return toLedgerCurrency(row.jessicaCommission);
-  if (!row.isInstallationComplete) return "Pending install";
-  return "-";
 }
 
 function bookkeepingStatusLabel(row: CrmBookkeepingRow) {
