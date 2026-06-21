@@ -58,4 +58,14 @@ describe("buildPricingReference", () => {
     expect(shutter!.priceAxis).toBe("sqft");
     expect(shutter!.pricePerSqft).toBeGreaterThan(0);
   });
+
+  it("exposes full guide reference sections for the CRM pricing page", () => {
+    const norman = ref.products.find((p) => p.productId === "norman_shutters");
+    expect(norman).toBeTruthy();
+    expect(norman!.surcharges.length).toBeGreaterThan(0);
+    expect(ref.globalSurcharges.length).toBeGreaterThan(0);
+    expect(ref.motorization.length).toBeGreaterThan(0);
+    expect(ref.motorization[0].options.length).toBeGreaterThan(0);
+    expect(ref.currency).toBe("USD");
+  });
 });

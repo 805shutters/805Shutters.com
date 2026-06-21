@@ -24,6 +24,12 @@ export type UiSurcharge = {
   widthGraduated: boolean;
 };
 
+export type UiReferenceSurcharge = UiSurcharge & {
+  appliesTo: string;
+  notes: string;
+  sourceType: string;
+};
+
 export type UiProduct = {
   id: string;
   name: string;
@@ -67,13 +73,50 @@ export type UiPricingReferenceProgram = {
   widths: number[];
   heights: number[];
   prices: Array<Array<number | null>>;
+  notes: string[];
+};
+
+export type UiPricingReferenceProduct = {
+  productId: string;
+  productName: string;
+  productType: string;
+  provisional: boolean;
+  source: string | null;
+  surcharges: UiReferenceSurcharge[];
+  notes: string[];
+};
+
+export type UiPricingReferenceMotorizationGroup = {
+  groupId: string;
+  name: string;
+  options: { id: string; name: string; price: number | null; notes: string }[];
+  surcharges: UiReferenceSurcharge[];
+  notes: string[];
 };
 
 export type UiPricingReference = {
   source: string;
   effectiveDate: string;
+  currency: string;
   programs: UiPricingReferenceProgram[];
+  products: UiPricingReferenceProduct[];
+  globalSurcharges: UiReferenceSurcharge[];
+  motorization: UiPricingReferenceMotorizationGroup[];
 };
+
+function projectSurcharge(s: (typeof catalog.products)[number]["surcharges"][number]): UiReferenceSurcharge {
+  return {
+    id: s.id,
+    name: s.name,
+    kind: s.kind,
+    per: s.per,
+    value: s.value,
+    widthGraduated: s.widthGraduated != null,
+    appliesTo: s.appliesTo,
+    notes: s.notes,
+    sourceType: s.sourceType,
+  };
+}
 
 export function buildUiCatalog(): UiCatalog {
   const products: UiProduct[] = catalog.products.map((p) => ({
@@ -139,12 +182,40 @@ export function buildPricingReference(): UiPricingReference {
       widths: program.grid.widths,
       heights: program.grid.heights,
       prices: program.grid.prices,
+      notes: program.notes,
     })),
   );
+
+  const products = catalog.products.map((product) => ({
+    productId: product.id,
+    productName: product.name,
+    productType: product.productType,
+    provisional: product.provisional === true,
+    source: product.source ?? null,
+    surcharges: product.surcharges.map(projectSurcharge),
+    notes: product.notes,
+  }));
+
+  const motorization = Object.entries(catalog.motorization).map(([groupId, group]) => ({
+    groupId,
+    name: group.name,
+    options: group.options.map((option) => ({
+      id: option.id,
+      name: option.name,
+      price: option.price,
+      notes: option.notes,
+    })),
+    surcharges: group.surcharges.map(projectSurcharge),
+    notes: group.notes,
+  }));
 
   return {
     source: catalog.source,
     effectiveDate: catalog.effectiveDate,
+    currency: catalog.currency,
     programs,
+    products,
+    globalSurcharges: catalog.globalRules.surcharges.map(projectSurcharge),
+    motorization,
   };
 }

@@ -4432,6 +4432,308 @@ body:has(.crm-app-shell) {
   gap: 14px;
 }
 
+.crm-pricing-guide {
+  display: grid;
+  gap: 18px;
+}
+
+.crm-pricing-head {
+  align-items: start;
+  margin-bottom: 0;
+}
+
+.crm-pricing-head h2 {
+  margin: 2px 0 5px;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.crm-pricing-head strong {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-pricing-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.crm-pricing-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 46px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #d8d8d2;
+  background: #ffffff;
+  color: #0b0b0b;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-pricing-tabs button.active,
+.crm-pricing-tabs button:hover,
+.crm-pricing-tabs button:focus-visible {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+  transform: none;
+}
+
+.crm-pricing-tabs button span {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid currentColor;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.crm-pricing-product-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  background: #f7f7f5;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-pricing-product-head h3,
+.crm-pricing-reference-block h3,
+.crm-pricing-program-card h4,
+.crm-pricing-motor-grid h4 {
+  margin: 0;
+  font-family: var(--font-body);
+  font-weight: 900;
+}
+
+.crm-pricing-product-head h3 {
+  font-size: 21px;
+}
+
+.crm-pricing-product-head p,
+.crm-pricing-product-head span,
+.crm-pricing-program-card p,
+.crm-pricing-program-card header span,
+.crm-pricing-notes,
+.crm-pricing-reference-table,
+.crm-pricing-motor-grid {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.crm-pricing-product-head p {
+  margin: 4px 0 0;
+  text-transform: capitalize;
+}
+
+.crm-pricing-product-head span {
+  max-width: 420px;
+  text-align: right;
+}
+
+.crm-pricing-programs {
+  display: grid;
+  gap: 16px;
+}
+
+.crm-pricing-program-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-pricing-program-card header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.crm-pricing-program-card h4 {
+  font-size: 16px;
+}
+
+.crm-pricing-program-card p {
+  margin: 3px 0 0;
+}
+
+.crm-pricing-grid-wrap,
+.crm-pricing-reference-table-wrap {
+  overflow: auto;
+  border: 1px solid #d8d8d2;
+  background: #ffffff;
+}
+
+.crm-pricing-grid,
+.crm-pricing-reference-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.crm-pricing-grid {
+  min-width: 900px;
+  font-size: 12px;
+}
+
+.crm-pricing-grid th,
+.crm-pricing-grid td,
+.crm-pricing-reference-table th,
+.crm-pricing-reference-table td {
+  padding: 9px 10px;
+  border-right: 1px solid #d8d8d2;
+  border-bottom: 1px solid #d8d8d2;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.crm-pricing-grid th,
+.crm-pricing-reference-table th {
+  background: #eeeeeb;
+  color: #5b5b58;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.crm-pricing-grid th:first-child,
+.crm-pricing-reference-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+}
+
+.crm-pricing-grid td:first-child,
+.crm-pricing-grid tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #ffffff;
+  color: #0b0b0b;
+  text-align: left;
+}
+
+.crm-pricing-grid td,
+.crm-pricing-reference-table td {
+  color: #0b0b0b;
+  font-weight: 800;
+}
+
+.crm-pricing-sqft {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.crm-pricing-sqft div {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  background: #f7f7f5;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-pricing-sqft span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-pricing-sqft strong {
+  font-size: 22px;
+}
+
+.crm-pricing-notes {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.crm-pricing-reference-block {
+  display: grid;
+  gap: 10px;
+}
+
+.crm-pricing-reference-block h3 {
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.crm-pricing-reference-table {
+  min-width: 840px;
+}
+
+.crm-pricing-reference-table th,
+.crm-pricing-reference-table td {
+  text-align: left;
+}
+
+.crm-pricing-reference-table td:last-child {
+  white-space: normal;
+}
+
+.crm-pricing-motor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.crm-pricing-motor-grid article {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 14px;
+  background: #ffffff;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-pricing-motor-grid h4 {
+  color: #0b0b0b;
+  font-size: 14px;
+}
+
+.crm-pricing-motor-grid article div {
+  display: grid;
+  gap: 6px;
+}
+
+.crm-pricing-motor-grid span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #0b0b0b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.crm-pricing-motor-grid strong {
+  white-space: nowrap;
+}
+
 .crm-order-card {
   display: grid;
   gap: 14px;

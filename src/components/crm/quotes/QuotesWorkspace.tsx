@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmJob, CrmQuote, CrmQuoteStatus } from "@/lib/crm/types";
+import { PricingGuidePanel } from "@/components/crm/PricingGuidePanel";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { STATUS_LABELS, getNextStatus, getAdvanceLabel } from "@/lib/quote/lifecycle";
 import { buildQuoteWorkspaceBuckets } from "@/lib/crm/quote-workspace";
@@ -14,7 +15,7 @@ type Props = {
   onChanged: () => void;
 };
 
-type SubTab = "dashboard" | "builder" | "contract" | "calendar";
+type SubTab = "dashboard" | "builder" | "contract" | "pricing" | "calendar";
 
 // Every non-terminal (non-archived/lost) status gets a pipeline column so a
 // sold-and-progressed quote (approved/invoiced/paid) never silently vanishes.
@@ -234,6 +235,7 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
         {tabBtn("dashboard", "Dashboard")}
         {tabBtn("builder", "Builder", !activeQuoteId)}
         {tabBtn("contract", "Contract", !activeQuoteId)}
+        {tabBtn("pricing", "Pricing")}
         {tabBtn("calendar", "Consultations")}
         {activeQuote ? (
           <span style={{ marginLeft: "auto", fontSize: 13, opacity: 0.7 }}>
@@ -278,6 +280,8 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
           onOpenContract={() => openCustomerContract(activeQuote.id)}
         />
       ) : null}
+
+      {subtab === "pricing" ? <PricingGuidePanel session={session} /> : null}
 
       {subtab === "calendar" ? (
         <Consultations
