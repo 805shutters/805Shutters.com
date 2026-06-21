@@ -1798,8 +1798,35 @@ const DONUT_COLORS = [
 ];
 const WON_JOB_STATUSES: CrmJobStatus[] = ["sold", "ordered", "installed", "invoiced", "closed"];
 const OPEN_JOB_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted"];
-// Mirrors backend.ts `openStatuses` so the Open Jobs metric drill matches the count.
-const SUMMARY_OPEN_STATUSES: CrmJobStatus[] = ["new", "follow_up", "scheduled", "quoted", "sold", "ordered"];
+const OPEN_SOLD_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingRow["status"]>([
+  "sold",
+  "approved",
+  "ordered",
+  "received",
+  "installed",
+  "invoiced",
+  "legacy",
+  "manual"
+]);
+
+function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
+  return row.total > 0 && row.balance > 0 && OPEN_SOLD_BOOKKEEPING_STATUSES.has(row.status);
+}
+
+function uniqueOpenSoldRows(rows: CrmBookkeepingRow[]) {
+  const seenJobIds = new Set<string>();
+  const uniqueRows: CrmBookkeepingRow[] = [];
+
+  for (const row of rows.filter(isOpenSoldBookkeepingRow)) {
+    if (row.jobId) {
+      if (seenJobIds.has(row.jobId)) continue;
+      seenJobIds.add(row.jobId);
+    }
+    uniqueRows.push(row);
+  }
+
+  return uniqueRows;
+}
 
 type DrillPlacement = "summary" | "numbers" | "product" | "closing" | "response";
 type DrillDocument = {
@@ -2062,9 +2089,9 @@ function buildSummaryDrill(
     case "openJobs":
       return {
         title: "Open Jobs",
-        subtitle: "Active jobs in the pipeline",
+        subtitle: "Sold jobs not yet paid in full",
         placement: "summary",
-        entries: jobsToEntries(jobs.filter((job) => SUMMARY_OPEN_STATUSES.includes(job.status)), rows, { files })
+        entries: rowsToEntries(uniqueOpenSoldRows(rows), (row) => row.balance, { jobs, files })
       };
     case "soldJobs":
       return {

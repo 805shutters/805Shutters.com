@@ -19,6 +19,7 @@ import {
 } from "@/lib/booking/availability";
 import {
   CrmAvailabilitySlot,
+  CrmBookkeepingRow,
   CrmBookkeepingCredit,
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
@@ -59,7 +60,16 @@ type CustomerSnapshot = {
   meta?: Record<string, unknown>;
 };
 
-const openStatuses = new Set(["new", "follow_up", "scheduled", "quoted", "sold", "ordered"]);
+const openSoldBookkeepingStatuses = new Set<CrmBookkeepingRow["status"]>([
+  "sold",
+  "approved",
+  "ordered",
+  "received",
+  "installed",
+  "invoiced",
+  "legacy",
+  "manual"
+]);
 const jobStatusSet = new Set<string>(crmJobStatuses);
 const quoteStatusSet = new Set<string>(crmQuoteStatuses);
 const prioritySet = new Set(["low", "normal", "high", "urgent"]);
@@ -67,6 +77,25 @@ const calendarEventTypes = new Set(["sales_consult", "measure", "install", "foll
 const calendarStatuses = new Set(["scheduled", "complete", "canceled", "rescheduled"]);
 const saleOwnerSyncJobStatuses = new Set(["sold", "ordered", "installed", "invoiced", "closed"]);
 const saleOwnerSyncQuoteStatuses = ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"];
+
+function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
+  return row.total > 0 && row.balance > 0 && openSoldBookkeepingStatuses.has(row.status);
+}
+
+function countDistinctOpenSoldJobs(rows: CrmBookkeepingRow[]) {
+  const jobIds = new Set<string>();
+  let rowsWithoutJob = 0;
+
+  for (const row of rows) {
+    if (row.jobId) {
+      jobIds.add(row.jobId);
+    } else {
+      rowsWithoutJob += 1;
+    }
+  }
+
+  return jobIds.size + rowsWithoutJob;
+}
 
 const allowedJobPatchFields = new Set([
   "status",
@@ -637,6 +666,7 @@ export function buildDashboardData({
 
   const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
+  const openSoldBookkeepingRows = bookkeepingRows.filter(isOpenSoldBookkeepingRow);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
   const kenPayoff = buildKenPayoffSummary({
     rows: bookkeepingRows,
@@ -677,7 +707,7 @@ export function buildDashboardData({
     kenPayoff,
     accountability,
     summary: {
-      openJobs: jobsWithQuotes.filter((job) => openStatuses.has(job.status)).length,
+      openJobs: countDistinctOpenSoldJobs(openSoldBookkeepingRows),
       scheduledJobs: jobsWithQuotes.filter((job) => job.status === "scheduled").length,
       quotedJobs: jobsWithQuotes.filter((job) => job.status === "quoted").length,
       soldJobs: jobsWithQuotes.filter((job) => job.status === "sold" || job.status === "ordered").length,
