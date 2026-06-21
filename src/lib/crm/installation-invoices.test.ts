@@ -187,6 +187,21 @@ describe("installation invoice customer matching", () => {
     expect(match.candidate?.entryId).toBe("entry-brian");
   });
 
+  it("matches a common first-name alias when the last name matches", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 311657887 from MTS Installations Inc",
+      body: "BALANCE DUE$90.00 Dear Ken Hill, Here's your invoice!"
+    });
+    const match = matchInstallationInvoiceToCandidate({
+      text: extracted.text,
+      extractedCustomerName: extracted.customerName,
+      candidates: [candidate({ customerName: "Kenneth Hill", entryId: "entry-ken", quoteId: "quote-ken" })]
+    });
+
+    expect(match.status).toBe("matched");
+    expect(match.candidate?.entryId).toBe("entry-ken");
+  });
+
   it("requires review when two customer rows are too close to call", () => {
     const match = matchInstallationInvoiceToCandidate({
       text: "Install invoice for Victoria Norman\nAmount due: $100.00",

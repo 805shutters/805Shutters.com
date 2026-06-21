@@ -15,6 +15,7 @@ type CrmSupabaseClient = SupabaseClient;
 export const DEFAULT_INSTALLATION_INVOICE_MAILBOX = "805shutters@gmail.com";
 const LEGACY_INSTALLATION_INVOICE_MAILBOX = "805@805shutters.com";
 const DEFAULT_MAX_RESULTS = 50;
+const INVOICE_CANDIDATE_LIMIT = 5000;
 const AUTO_APPLY_MIN_NAME_CONFIDENCE = 0.78;
 const AUTO_APPLY_MIN_AMOUNT_CONFIDENCE = 0.7;
 const INSTALLATION_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "invoiced";
@@ -497,6 +498,31 @@ function searchableText(value: string) {
   return ` ${normalizeCustomerName(value)} `;
 }
 
+function firstNameEquivalent(left: string, right: string) {
+  if (left === right) return true;
+  const aliases: Record<string, string[]> = {
+    ken: ["kenneth"],
+    kenneth: ["ken"]
+  };
+  return aliases[left]?.includes(right) || aliases[right]?.includes(left) || false;
+}
+
+function equivalentPersonNameScore(extractedCustomerName: string | null | undefined, candidateName: string) {
+  const extracted = normalizeCustomerName(extractedCustomerName);
+  const candidate = normalizeCustomerName(candidateName);
+  const extractedParts = extracted.split(" ").filter(Boolean);
+  const candidateParts = candidate.split(" ").filter(Boolean);
+  if (extractedParts.length < 2 || candidateParts.length < 2) return 0;
+
+  const extractedFirst = extractedParts[0];
+  const extractedLast = extractedParts[extractedParts.length - 1];
+  const candidateFirst = candidateParts[0];
+  const candidateLast = candidateParts[candidateParts.length - 1];
+
+  if (extractedLast === candidateLast && firstNameEquivalent(extractedFirst, candidateFirst)) return 0.94;
+  return 0;
+}
+
 function extractInvoiceNumber(text: string) {
   const match = text.match(/\binvoice\s*(?:#|number|no\.?)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9-]{2,})\b/i);
   return cleanText(match?.[1]);
@@ -578,6 +604,8 @@ function scoreNameMatch(text: string, candidateName: string, extractedCustomerNa
   if (tokens.length < 2) return 0;
 
   if (extracted && extracted === candidate) return 0.99;
+  const equivalentScore = equivalentPersonNameScore(extractedCustomerName, candidateName);
+  if (equivalentScore) return equivalentScore;
   if (search.includes(` ${candidate} `)) return 0.97;
   if (extracted && (extracted.includes(candidate) || candidate.includes(extracted))) return 0.9;
 
@@ -639,7 +667,8 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       .select(
         "id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,sales_owner,installation_invoice_amount,installation_match_status"
       )
-      .limit(1000),
+      .order("sold_date", { ascending: false, nullsFirst: false })
+      .limit(INVOICE_CANDIDATE_LIMIT),
     supabase
       .from("crm_quotes")
       .select("id,job_id,status,quote_total,materials_cost,sold_by,sold_at,approved_at,ordered_at")
