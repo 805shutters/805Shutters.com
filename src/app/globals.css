@@ -4320,7 +4320,7 @@ body:has(.crm-app-shell) {
 }
 
 .crm-bookkeeping-table--legacy {
-  min-width: 1660px;
+  min-width: 2080px;
   font-size: 13px;
 }
 
@@ -4338,6 +4338,99 @@ body:has(.crm-app-shell) {
 .crm-bookkeeping-row--closed td {
   background: #edf7ef;
   color: #153a24;
+}
+
+.crm-bookkeeping-cell-stack {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-bookkeeping-customer-stack {
+  min-width: 240px;
+}
+
+.crm-bookkeeping-money-stack {
+  min-width: 126px;
+}
+
+.crm-bookkeeping-input,
+.crm-bookkeeping-select,
+.crm-bookkeeping-textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #d8d8d2;
+  border-radius: 0;
+  background: #ffffff;
+  color: var(--ink);
+  box-shadow: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.crm-bookkeeping-input:focus,
+.crm-bookkeeping-select:focus,
+.crm-bookkeeping-textarea:focus {
+  outline: 2px solid #111111;
+  outline-offset: -1px;
+  border-color: #111111;
+}
+
+.crm-bookkeeping-input::placeholder,
+.crm-bookkeeping-textarea::placeholder {
+  color: #777771;
+}
+
+.crm-bookkeeping-customer-input {
+  min-width: 230px;
+  font-weight: 900;
+}
+
+.crm-bookkeeping-date-input {
+  min-width: 128px;
+}
+
+.crm-bookkeeping-number-input {
+  min-width: 116px;
+  text-align: right;
+}
+
+.crm-bookkeeping-textarea {
+  min-width: 260px;
+  min-height: 88px;
+  resize: vertical;
+  white-space: normal;
+}
+
+.crm-bookkeeping-calc {
+  display: block;
+  min-height: 22px;
+  font-weight: 900;
+}
+
+.crm-bookkeeping-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 28px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-bookkeeping-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.crm-bookkeeping-check--compact {
+  min-width: 84px;
 }
 
 .crm-bookkeeping-table td strong,
