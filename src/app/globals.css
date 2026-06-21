@@ -8294,8 +8294,7 @@ html.mobile-menu-open {
 
 .crm-drill-detail-card-head p,
 .crm-drill-subsection p,
-.crm-drill-mini-card span,
-.crm-drill-document-grid span {
+.crm-drill-line-item span {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
@@ -8363,9 +8362,10 @@ html.mobile-menu-open {
 
 .crm-drill-detail-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 8px;
-  padding-top: 2px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding-top: 3px;
+  border-top: 1px solid #d8d8d2;
 }
 
 .crm-drill-compact-section {
@@ -8498,8 +8498,7 @@ html.mobile-menu-open {
 }
 
 .crm-drill-fact > span,
-.crm-drill-mini-card strong,
-.crm-drill-document-grid strong {
+.crm-drill-line-item strong {
   color: var(--accent);
   font-size: 10px;
   font-weight: 900;
@@ -8603,52 +8602,90 @@ html.mobile-menu-open {
   margin: 0;
 }
 
-.crm-drill-mini-grid,
-.crm-drill-document-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 6px;
-}
-
-.crm-drill-mini-grid--single {
-  grid-template-columns: 1fr;
-}
-
-.crm-drill-mini-card,
-.crm-drill-document-grid a {
-  display: grid;
-  gap: 3px;
+.crm-drill-line-section {
   min-width: 0;
-  padding: 8px;
-  background: var(--white);
-  border: 1px solid #d8d8d2;
+  border-bottom: 1px solid #d8d8d2;
+}
+
+.crm-drill-line-section summary {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  padding: 8px 0;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+.crm-drill-line-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.crm-drill-line-section summary::before {
+  content: "+";
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.crm-drill-line-section[open] summary::before {
+  content: "-";
+}
+
+.crm-drill-line-section summary span {
+  min-width: 0;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-drill-line-section summary em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-drill-line-list {
+  display: grid;
+}
+
+.crm-drill-line-item {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 2fr) auto;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 0;
+  border-top: 1px solid #e5e5df;
   color: var(--ink);
   text-decoration: none;
   overflow-wrap: anywhere;
 }
 
-.crm-drill-document-grid a:hover,
-.crm-drill-document-grid a:focus-visible {
-  border-color: var(--ink);
+.crm-drill-line-item:hover,
+.crm-drill-line-item:focus-visible {
+  background: #fbfbfa;
 }
 
-.crm-drill-mini-card em,
-.crm-drill-document-grid em {
+.crm-drill-line-item em {
   color: var(--ink);
   font-size: 12px;
   font-style: normal;
   font-weight: 850;
+  text-align: right;
+  white-space: nowrap;
 }
 
-.crm-drill-notes {
-  margin: 0;
-  padding: 8px;
-  background: var(--white);
-  border: 1px solid #d8d8d2;
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 750;
-  line-height: 1.35;
+.crm-drill-line-item--note {
+  grid-template-columns: minmax(90px, 0.45fr) minmax(0, 1fr) auto;
 }
 
 .crm-sale-owner-control {
@@ -8710,9 +8747,7 @@ html.mobile-menu-open {
 
   .crm-drill-column-grid,
   .crm-drill-compact-grid,
-  .crm-drill-edit-grid,
-  .crm-drill-mini-grid,
-  .crm-drill-document-grid {
+  .crm-drill-edit-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -8748,10 +8783,29 @@ html.mobile-menu-open {
 
   .crm-drill-column-grid,
   .crm-drill-compact-grid,
-  .crm-drill-edit-grid,
-  .crm-drill-mini-grid,
-  .crm-drill-document-grid {
+  .crm-drill-edit-grid {
     grid-template-columns: 1fr;
+  }
+
+  .crm-drill-line-section summary {
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .crm-drill-line-section summary em {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .crm-drill-line-item,
+  .crm-drill-line-item--note {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .crm-drill-line-item em {
+    text-align: left;
+    white-space: normal;
   }
 
   .crm-drill-edit-actions {

@@ -2817,6 +2817,9 @@ function DrillDetailCard({
   const canEditQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
   const hasActivity = Boolean(row && (row.payments.length || row.creditsIn.length || row.creditsOut.length || row.expenses.length));
   const hasDocumentsOrNotes = Boolean(documents.length || notes.length);
+  const activityItemCount = (row?.payments.length || 0) + (row?.creditsIn.length || 0) + (row?.creditsOut.length || 0) + (row?.expenses.length || 0);
+  const documentsAndNotesCount = documents.length + notes.length;
+  const lineItemLabel = (count: number) => `${count} line item${count === 1 ? "" : "s"}`;
   const customerName = job?.customer_name || row?.customerName || file?.customerName || entry.customerName;
   const saveJob = (patch: Record<string, unknown>, message: string) => onSaveField(entry, { job: patch, message });
   const saveRow = (patch: Record<string, unknown>, message: string) => {
@@ -3109,85 +3112,98 @@ function DrillDetailCard({
           <DrillFact label="Next Action" value={job?.next_action || "No next action"} editor={nextActionEditor} wide />
         </div>
 
-          {products.length || hasActivity || hasDocumentsOrNotes ? (
-            <div className="crm-drill-detail-strip">
-              {products.length ? (
-                <section className="crm-drill-compact-section">
-                  <h4>Products</h4>
-                  <div className="crm-drill-mini-grid">
-                    {products.map((product) => (
-                      <div className="crm-drill-mini-card" key={product.id}>
-                        <strong>{[product.room, product.product_type].filter(Boolean).join(" / ")}</strong>
-                        <span>
-                          {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
-                            .filter(Boolean)
-                            .join(" / ") || "Product details pending"}
-                        </span>
-                        <em>
-                          {product.quantity} item{product.quantity === 1 ? "" : "s"}
-                          {product.total_price ? ` / ${toLedgerCurrency(product.total_price)}` : ""}
-                        </em>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {hasActivity ? (
-                <section className="crm-drill-compact-section">
-                  <h4>Payments + Activity</h4>
-                  <div className="crm-drill-mini-grid">
-                    {row?.payments.map((payment) => (
-                      <div className="crm-drill-mini-card" key={payment.id}>
-                        <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
-                        <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
-                        <em>{toLedgerCurrency(payment.amount)}</em>
-                      </div>
-                    ))}
-                    {row?.creditsIn.map((credit) => (
-                      <div className="crm-drill-mini-card" key={`credit-in-${credit.id}`}>
-                        <strong>Credit In</strong>
-                        <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-                        <em>{toLedgerCurrency(credit.amount)}</em>
-                      </div>
-                    ))}
-                    {row?.creditsOut.map((credit) => (
-                      <div className="crm-drill-mini-card" key={`credit-out-${credit.id}`}>
-                        <strong>Credit Out</strong>
-                        <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-                        <em>{toLedgerCurrency(credit.amount)}</em>
-                      </div>
-                    ))}
-                    {row?.expenses.map((expense) => (
-                      <div className="crm-drill-mini-card" key={`expense-${expense.id}`}>
-                        <strong>{expense.label}</strong>
-                        <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
-                        <em>{toLedgerCurrency(expense.amount)}</em>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ) : null}
-
-              {hasDocumentsOrNotes ? (
-                <section className="crm-drill-compact-section">
-                  <h4>Documents + Notes</h4>
-                  {documents.length ? (
-                    <div className="crm-drill-document-grid">
-                      {documents.map((document) => (
-                        <a href={document.url} target="_blank" rel="noreferrer" key={document.id}>
-                          <strong>{document.kind}</strong>
-                          <span>{document.title}</span>
-                          <em>{document.status || "Open copy"}</em>
-                        </a>
-                      ))}
+        {products.length || hasActivity || hasDocumentsOrNotes ? (
+          <div className="crm-drill-detail-strip">
+            {products.length ? (
+              <details className="crm-drill-line-section">
+                <summary>
+                  <span>Products</span>
+                  <em>{lineItemLabel(products.length)}</em>
+                </summary>
+                <div className="crm-drill-line-list">
+                  {products.map((product) => (
+                    <div className="crm-drill-line-item" key={product.id}>
+                      <strong>{[product.room, product.product_type].filter(Boolean).join(" / ") || "Product"}</strong>
+                      <span>
+                        {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
+                          .filter(Boolean)
+                          .join(" / ") || "Product details pending"}
+                      </span>
+                      <em>
+                        {product.quantity} item{product.quantity === 1 ? "" : "s"}
+                        {product.total_price ? ` / ${toLedgerCurrency(product.total_price)}` : ""}
+                      </em>
                     </div>
-                  ) : null}
-                  {notes.length ? <p className="crm-drill-notes">{notes.join(" / ")}</p> : null}
-                </section>
-              ) : null}
-            </div>
-          ) : null}
+                  ))}
+                </div>
+              </details>
+            ) : null}
+
+            {hasActivity ? (
+              <details className="crm-drill-line-section">
+                <summary>
+                  <span>Payments + Activity</span>
+                  <em>{lineItemLabel(activityItemCount)}</em>
+                </summary>
+                <div className="crm-drill-line-list">
+                  {row?.payments.map((payment) => (
+                    <div className="crm-drill-line-item" key={payment.id}>
+                      <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
+                      <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
+                      <em>{toLedgerCurrency(payment.amount)}</em>
+                    </div>
+                  ))}
+                  {row?.creditsIn.map((credit) => (
+                    <div className="crm-drill-line-item" key={`credit-in-${credit.id}`}>
+                      <strong>Credit In</strong>
+                      <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+                      <em>{toLedgerCurrency(credit.amount)}</em>
+                    </div>
+                  ))}
+                  {row?.creditsOut.map((credit) => (
+                    <div className="crm-drill-line-item" key={`credit-out-${credit.id}`}>
+                      <strong>Credit Out</strong>
+                      <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
+                      <em>{toLedgerCurrency(credit.amount)}</em>
+                    </div>
+                  ))}
+                  {row?.expenses.map((expense) => (
+                    <div className="crm-drill-line-item" key={`expense-${expense.id}`}>
+                      <strong>{expense.label}</strong>
+                      <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
+                      <em>{toLedgerCurrency(expense.amount)}</em>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+
+            {hasDocumentsOrNotes ? (
+              <details className="crm-drill-line-section">
+                <summary>
+                  <span>Documents + Notes</span>
+                  <em>{lineItemLabel(documentsAndNotesCount)}</em>
+                </summary>
+                <div className="crm-drill-line-list">
+                  {documents.map((document) => (
+                    <a className="crm-drill-line-item" href={document.url} target="_blank" rel="noreferrer" key={document.id}>
+                      <strong>{document.kind}</strong>
+                      <span>{document.title}</span>
+                      <em>{document.status || "Open copy"}</em>
+                    </a>
+                  ))}
+                  {notes.map((note, index) => (
+                    <div className="crm-drill-line-item crm-drill-line-item--note" key={`note-${index}-${note}`}>
+                      <strong>Note</strong>
+                      <span>{note}</span>
+                      <em>Saved note</em>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </div>
+        ) : null}
         </>
     </article>
   );
