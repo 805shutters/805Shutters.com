@@ -18,9 +18,8 @@ function normalizePerson(value: unknown): CrmPaymentPerson {
 export default async function CrmPaymentsPage({
   searchParams
 }: {
-  searchParams?: Promise<{ person?: string }> | { person?: string };
+  searchParams?: Promise<{ person?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
   return <CrmApp initialTab="payments" initialPaymentPerson={normalizePerson(params.person)} />;
 }
-

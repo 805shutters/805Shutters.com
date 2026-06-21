@@ -71,6 +71,18 @@ function formatCharge(surcharge: UiReferenceSurcharge) {
   return `${money(surcharge.value)}${per}`;
 }
 
+function formatMotorPrice(option: UiPricingReferenceMotorizationGroup["options"][number]) {
+  const mapped = option.priceByProduct ? Object.values(option.priceByProduct) : [];
+  const mappedPrices = mapped.filter((price): price is number => typeof price === "number" && Number.isFinite(price));
+  if (mappedPrices.length) {
+    const min = Math.min(...mappedPrices);
+    const max = Math.max(...mappedPrices);
+    const range = min === max ? money(min) : `${money(min)}-${money(max)}`;
+    return mapped.some((price) => price == null) ? `${range}; N/A by product` : range;
+  }
+  return money(option.price);
+}
+
 function productRank(productId: string) {
   const index = PRODUCT_ORDER.indexOf(productId);
   return index === -1 ? PRODUCT_ORDER.length : index;
@@ -264,7 +276,7 @@ function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
     <div className="crm-pricing-grid-wrap">
       <div className="crm-pricing-grid-legend">
         <span>Retail grid price</span>
-        <strong>Red parentheses = our cost</strong>
+        <strong>Cost appears only when source-backed</strong>
       </div>
       <table className="crm-pricing-grid">
         <thead>
@@ -298,6 +310,13 @@ function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
 
 function PriceCell({ price, cost }: { price: number | null | undefined; cost: number | null | undefined }) {
   if (price == null) return <span className="crm-pricing-empty-cell">-</span>;
+  if (cost == null) {
+    return (
+      <span className="crm-pricing-price-pair" aria-label={`Retail ${money(price)}. No source-backed cost.`}>
+        <span className="crm-pricing-retail-price">{money(price)}</span>
+      </span>
+    );
+  }
   return (
     <span
       className="crm-pricing-price-pair"
@@ -353,7 +372,7 @@ function MotorizationReference({ groups }: { groups: UiPricingReferenceMotorizat
               {group.options.map((option) => (
                 <span key={option.id}>
                   {option.name}
-                  <strong>{money(option.price)}</strong>
+                  <strong>{formatMotorPrice(option)}</strong>
                 </span>
               ))}
             </div>
