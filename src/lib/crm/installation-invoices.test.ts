@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_INSTALLATION_INVOICE_MAILBOX,
   InstallationInvoiceCandidate,
+  buildInstallationInvoiceGmailQuery,
   buildInstallationInvoiceWorkflowPatches,
   extractInstallationInvoiceDetails,
   matchInstallationInvoiceToCandidate,
+  normalizeInstallationInvoiceMailbox,
+  resolveInstallationInvoiceGmailQuery,
   normalizeCustomerName
 } from "@/lib/crm/installation-invoices";
 
@@ -23,6 +27,28 @@ function candidate(overrides: Partial<InstallationInvoiceCandidate> = {}): Insta
     ...overrides
   };
 }
+
+describe("installation invoice mailbox", () => {
+  it("defaults the MTS invoice puller to the 805 Shutters Gmail inbox", () => {
+    const query = buildInstallationInvoiceGmailQuery(DEFAULT_INSTALLATION_INVOICE_MAILBOX);
+
+    expect(DEFAULT_INSTALLATION_INVOICE_MAILBOX).toBe("805shutters@gmail.com");
+    expect(query).toContain("to:805shutters@gmail.com");
+    expect(query).toContain('"MTS Installations"');
+  });
+
+  it("treats the old installation invoice inbox as stale config", () => {
+    const mailbox = normalizeInstallationInvoiceMailbox("805@805shutters.com");
+    const query = resolveInstallationInvoiceGmailQuery(
+      mailbox,
+      'to:805@805shutters.com newer_than:30d (invoice OR "amount due")'
+    );
+
+    expect(mailbox).toBe("805shutters@gmail.com");
+    expect(query).toContain("to:805shutters@gmail.com");
+    expect(query).not.toContain("to:805@805shutters.com");
+  });
+});
 
 describe("installation invoice extraction", () => {
   it("extracts the labeled final invoice amount and invoice number", () => {

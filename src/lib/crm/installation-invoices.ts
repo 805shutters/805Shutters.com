@@ -12,7 +12,8 @@ import {
 
 type CrmSupabaseClient = SupabaseClient;
 
-const DEFAULT_MAILBOX = "805@805shutters.com";
+export const DEFAULT_INSTALLATION_INVOICE_MAILBOX = "805shutters@gmail.com";
+const LEGACY_INSTALLATION_INVOICE_MAILBOX = "805@805shutters.com";
 const DEFAULT_MAX_RESULTS = 50;
 const AUTO_APPLY_MIN_NAME_CONFIDENCE = 0.78;
 const AUTO_APPLY_MIN_AMOUNT_CONFIDENCE = 0.7;
@@ -133,8 +134,22 @@ type WorkflowPatch = {
   jobPatch: Record<string, unknown> | null;
 };
 
-function defaultQuery(mailbox: string) {
-  return `to:${mailbox} newer_than:30d (invoice OR "amount due" OR "balance due" OR "invoice total")`;
+export function buildInstallationInvoiceGmailQuery(mailbox: string) {
+  return `to:${mailbox} newer_than:30d ("MTS Installations" OR invoice OR "amount due" OR "balance due" OR "invoice total")`;
+}
+
+export function normalizeInstallationInvoiceMailbox(value?: string | null) {
+  const mailbox = (value || DEFAULT_INSTALLATION_INVOICE_MAILBOX).trim().toLowerCase();
+  if (!mailbox || mailbox === LEGACY_INSTALLATION_INVOICE_MAILBOX) return DEFAULT_INSTALLATION_INVOICE_MAILBOX;
+  return mailbox;
+}
+
+export function resolveInstallationInvoiceGmailQuery(mailbox: string, value?: string | null) {
+  const query = value?.trim();
+  if (!query || query.includes(`to:${LEGACY_INSTALLATION_INVOICE_MAILBOX}`)) {
+    return buildInstallationInvoiceGmailQuery(mailbox);
+  }
+  return query;
 }
 
 function envValue(keys: string[]) {
@@ -142,7 +157,7 @@ function envValue(keys: string[]) {
 }
 
 function normalizedMailbox(value?: string) {
-  return (value || process.env.INSTALLATION_INVOICE_MAILBOX || DEFAULT_MAILBOX).trim().toLowerCase();
+  return normalizeInstallationInvoiceMailbox(value || process.env.INSTALLATION_INVOICE_MAILBOX);
 }
 
 function maxResultsValue(value?: number) {
@@ -899,7 +914,7 @@ export async function processInstallationInvoiceInbox(
   options: ProcessInstallationInvoiceOptions = {}
 ): Promise<ProcessInstallationInvoiceResult> {
   const mailbox = normalizedMailbox(options.mailbox);
-  const query = options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY || defaultQuery(mailbox);
+  const query = resolveInstallationInvoiceGmailQuery(mailbox, options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY);
   const maxResults = maxResultsValue(options.maxResults);
   const accessToken = await getGmailAccessToken();
   const messageRefs = options.messageIds?.length

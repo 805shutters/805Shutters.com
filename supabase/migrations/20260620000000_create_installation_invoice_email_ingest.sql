@@ -2,7 +2,7 @@ create table if not exists public.crm_installation_invoice_emails (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  mailbox_email text not null default '805@805shutters.com',
+  mailbox_email text not null default '805shutters@gmail.com',
   gmail_message_id text not null,
   gmail_thread_id text,
   gmail_history_id text,

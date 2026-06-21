@@ -29,8 +29,8 @@ GOOGLE_CALENDAR_TIME_ZONE=America/Los_Angeles
 GOOGLE_CALENDAR_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CALENDAR_CLIENT_SECRET=<google-oauth-client-secret>
 GOOGLE_CALENDAR_REFRESH_TOKEN=<805-calendar-refresh-token>
-INSTALLATION_INVOICE_MAILBOX=805@805shutters.com
-INSTALLATION_INVOICE_GMAIL_QUERY='to:805@805shutters.com newer_than:30d (invoice OR "amount due" OR "balance due" OR "invoice total")'
+INSTALLATION_INVOICE_MAILBOX=805shutters@gmail.com
+INSTALLATION_INVOICE_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d ("MTS Installations" OR invoice OR "amount due" OR "balance due" OR "invoice total")'
 INSTALLATION_INVOICE_GMAIL_MAX_RESULTS=50
 INSTALLATION_INVOICE_CRON_SECRET=<optional-cron-secret>
 ORDER_COGS_MAILBOX=805shutters@gmail.com
@@ -168,7 +168,7 @@ amount, note, and created-by metadata.
 
 ## Installation invoice email puller
 
-MTS installation invoices should be sent to `805@805shutters.com`. The CRM can
+MTS installation invoices should be sent to `805shutters@gmail.com`. The CRM can
 pull that mailbox from the Bookkeeping tab or through the Vercel cron route at
 `/api/cron/installation-invoices`.
 
