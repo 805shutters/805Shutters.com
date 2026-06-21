@@ -871,46 +871,6 @@ export function CrmApp() {
     }
   }
 
-  async function createBookkeepingEntry(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!session) return;
-
-    const formData = new FormData(event.currentTarget);
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      await crmFetch<{ entry: unknown }>(session, "/api/crm/bookkeeping", {
-        method: "POST",
-        body: JSON.stringify({
-          source: formString(formData, "source"),
-          customer_name: formString(formData, "customer_name"),
-          sold_date: formString(formData, "sold_date"),
-          total_amount: Number(formString(formData, "total_amount") || 0),
-          deposit_paid: Number(formString(formData, "deposit_paid") || 0),
-          balance_paid: Number(formString(formData, "balance_paid") || 0),
-          payment_type: formString(formData, "payment_type"),
-          cogs_amount: Number(formString(formData, "cogs_amount") || 0),
-          sales_owner: formString(formData, "sales_owner"),
-          manufacturer_name: formString(formData, "manufacturer_name"),
-          manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
-          manufacturer_order_url: formString(formData, "manufacturer_order_url"),
-          installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
-          installation_invoice_number: formString(formData, "installation_invoice_number"),
-          installation_complete: formData.get("installation_complete") === "on",
-          jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
-          notes: formString(formData, "notes")
-        })
-      });
-      event.currentTarget.reset();
-      await refresh();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Bookkeeping row could not be saved.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function updateQuote(event: FormEvent<HTMLFormElement>, quote: CrmQuote) {
     event.preventDefault();
     if (!session) return;
@@ -1455,115 +1415,12 @@ export function CrmApp() {
       ) : null}
 
       {activeTab === "bookkeeping" ? (
-        <section className="crm-workspace crm-bookkeeping-workspace">
-          <CollapsiblePanel
-            title={editRow ? "Edit Row" : "Add Spreadsheet Row"}
-            addLabel="Add Spreadsheet Row"
-            forceOpen={Boolean(editRow)}
-            onClose={() => setEditRow(null)}
-          >
-            {editRow ? (
+        <section className={`crm-workspace crm-bookkeeping-workspace${editRow ? "" : " crm-bookkeeping-workspace--full"}`}>
+          {editRow ? (
+            <CollapsiblePanel title="Edit Row" forceOpen onClose={() => setEditRow(null)}>
               <BookkeepingEditForm row={editRow} busy={busy} onSubmit={editBookkeepingRow} />
-            ) : (
-            <form className="crm-form" onSubmit={createBookkeepingEntry}>
-              <div className="crm-field-row">
-                <label>
-                  Source
-                  <select name="source" defaultValue="manual">
-                    <option value="manual">Manual</option>
-                    <option value="legacy_sheet">Legacy Sheet</option>
-                  </select>
-                </label>
-                <label>
-                  Sold Date
-                  <input name="sold_date" type="date" defaultValue={todayInputValue()} />
-                </label>
-              </div>
-              <label>
-                Customer
-                <input name="customer_name" required placeholder="Customer name" />
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Total
-                  <input name="total_amount" type="number" min="0" step="0.01" required />
-                </label>
-                <label>
-                  COGS
-                  <input name="cogs_amount" type="number" min="0" step="0.01" />
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Deposit Paid
-                  <input name="deposit_paid" type="number" min="0" step="0.01" />
-                </label>
-                <label>
-                  Balance Paid
-                  <input name="balance_paid" type="number" min="0" step="0.01" />
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Payment
-                  <select name="payment_type" defaultValue="other">
-                    {paymentTypes.map((item) => (
-                      <option value={item.value} key={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Sales Owner
-                  <select name="sales_owner" defaultValue="mike">
-                    <option value="mike">Mike</option>
-                    <option value="jessica">Jessica</option>
-                  </select>
-                </label>
-              </div>
-              <div className="crm-field-row">
-                <label>
-                  Manufacturer
-                  <input name="manufacturer_name" placeholder="Norman, Alta, Horizon..." />
-                </label>
-                <label>
-                  Order #
-                  <input name="manufacturer_order_ref" placeholder="Manufacturer order" />
-                </label>
-              </div>
-              <label>
-                Order Link
-                <input name="manufacturer_order_url" placeholder="https://..." />
-              </label>
-              <div className="crm-field-row">
-                <label>
-                  Install Invoice
-                  <input name="installation_invoice_amount" type="number" min="0" step="0.01" />
-                </label>
-                <label>
-                  Invoice #
-                  <input name="installation_invoice_number" placeholder="Invoice number" />
-                </label>
-              </div>
-              <label className="crm-checkbox">
-                <input name="installation_complete" type="checkbox" />
-                Installation complete
-              </label>
-              <label className="crm-checkbox">
-                <input name="jessica_commission_paid" type="checkbox" />
-                Jessica commission paid
-              </label>
-              <label>
-                Notes
-                <textarea name="notes" rows={4} placeholder="Payment notes, order details, install status..." />
-              </label>
-              <button type="submit" disabled={busy}>
-                Save Row
-              </button>
-            </form>
-            )}
-          </CollapsiblePanel>
+            </CollapsiblePanel>
+          ) : null}
 
           <div className="crm-bookkeeping-main">
             <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} onEdit={setEditRow} />
@@ -4359,6 +4216,7 @@ function BookkeepingSpreadsheet({
               <th>Jessica</th>
               <th>J Paid</th>
               <th>Notes</th>
+              <th aria-label="Edit row" />
             </tr>
           </thead>
           <tbody>
@@ -4385,6 +4243,16 @@ function BookkeepingSpreadsheet({
                 <td>
                   <button type="button" className="crm-bookkeeping-note-button" onClick={() => onEdit(row)}>
                     {row.notes || "Click to add note"}
+                  </button>
+                </td>
+                <td className="crm-bookkeeping-action-cell">
+                  <button
+                    type="button"
+                    className="crm-ghost-button crm-bookkeeping-edit-button"
+                    onClick={() => onEdit(row)}
+                    aria-label={`Edit ${row.customerName} bookkeeping row`}
+                  >
+                    Edit
                   </button>
                 </td>
               </tr>

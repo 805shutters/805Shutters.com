@@ -3165,6 +3165,10 @@ body:has(.crm-app-shell) {
   width: min(1800px, 100%);
 }
 
+.crm-bookkeeping-workspace--full {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .crm-bookkeeping-main {
   display: grid;
   gap: 18px;
@@ -4401,6 +4405,14 @@ body:has(.crm-app-shell) {
   border-style: solid;
   border-color: var(--ink);
   color: var(--ink);
+}
+
+.crm-bookkeeping-action-cell {
+  width: 1%;
+}
+
+.crm-bookkeeping-edit-button {
+  white-space: nowrap;
 }
 
 .crm-warning-cell {
