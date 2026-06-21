@@ -8,7 +8,9 @@ import {
   normalizePaymentType,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
+import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
+import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
@@ -24,6 +26,7 @@ import {
   CrmBookkeepingCredit,
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
+  CrmCommissionPayment,
   CrmCalendarEvent,
   CrmCustomer,
   CrmCustomerContract,
@@ -34,6 +37,7 @@ import {
   CrmJobExpense,
   CrmJobStatus,
   CrmKenPayment,
+  CrmOrderCogsEmail,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
@@ -443,6 +447,8 @@ export async function recordCrmActivity(
       | "calendar_event"
       | "customer"
       | "ken_payment"
+      | "commission_payment"
+      | "order_cogs_email"
       | "settings"
       | "session"
       | "system";
@@ -643,8 +649,11 @@ export function buildDashboardData({
   expenses,
   installationInvoiceEmails,
   kenPayments,
+  orderCogsEmails = [],
+  commissionPayments = [],
   openingBalance,
-  payoffTarget
+  payoffTarget,
+  now
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -658,8 +667,11 @@ export function buildDashboardData({
   expenses: CrmJobExpense[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   kenPayments: CrmKenPayment[];
+  orderCogsEmails?: CrmOrderCogsEmail[];
+  commissionPayments?: CrmCommissionPayment[];
   openingBalance: number;
   payoffTarget: number;
+  now?: Date | string;
 }): CrmDashboardData {
   const quotesByJob = new Map<string, number>();
   for (const quote of quotes) {
@@ -668,7 +680,6 @@ export function buildDashboardData({
 
   const bookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
-  const openSoldBookkeepingRows = bookkeepingRows.filter(isOpenSoldBookkeepingRow);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
   const kenPayoff = buildKenPayoffSummary({
     rows: bookkeepingRows,
@@ -676,6 +687,7 @@ export function buildDashboardData({
     openingBalance,
     payoffTarget
   });
+  const commissionSummary = buildCommissionSummary(bookkeepingRows, commissionPayments);
   const customerFiles = buildCustomerFiles({
     customers,
     products,
@@ -703,25 +715,22 @@ export function buildDashboardData({
     bookkeepingCredits: credits,
     jobExpenses: expenses,
     installationInvoiceEmails,
+    orderCogsEmails,
     bookkeepingRows,
     bookkeepingTotals,
     kenPayments,
     kenPayoff,
+    commissionPayments,
+    commissionSummary,
     accountability,
-    summary: {
-      openJobs: countDistinctOpenSoldJobs(openSoldBookkeepingRows),
-      scheduledJobs: jobsWithQuotes.filter((job) => job.status === "scheduled").length,
-      quotedJobs: jobsWithQuotes.filter((job) => job.status === "quoted").length,
-      soldJobs: jobsWithQuotes.filter((job) => job.status === "sold" || job.status === "ordered").length,
-      quotePipeline: jobsWithQuotes.reduce((total, job) => total + toMoney(job.quote_total), 0),
-      depositCollected: jobsWithQuotes.reduce((total, job) => total + toMoney(job.deposit_paid), 0),
-      openBalance: bookkeepingTotals.balance,
-      needsOrder: accountability.filter((item) => item.type === "needs_order").length,
-      missingCogs: bookkeepingTotals.missingCogs,
-      readyToInstall: accountability.filter((item) => item.type === "ready_to_install").length,
-      customerFiles: customerFiles.length,
-      contracts: customerFiles.reduce((total, file) => total + file.contracts.length, 0)
-    }
+    summary: buildDashboardSummaryMetrics({
+      jobs: jobsWithQuotes,
+      quotes,
+      rows: bookkeepingRows,
+      installationInvoiceEmails,
+      orderCogsEmails,
+      now
+    })
   };
 }
 
@@ -739,6 +748,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     expensesResult,
     installationInvoiceEmailsResult,
     kenPaymentsResult,
+    orderCogsEmailsResult,
+    commissionPaymentsResult,
     settingsResult
   ] = await Promise.all([
     // Jobs and quotes use the SAME limit so a job and its quote don't land on
@@ -777,6 +788,16 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .select("*")
       .order("paid_on", { ascending: false, nullsFirst: false })
       .limit(500),
+    supabase
+      .from("crm_order_cogs_emails")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("crm_commission_payments")
+      .select("*")
+      .order("paid_on", { ascending: false, nullsFirst: false })
+      .limit(1000),
     supabase.from("crm_settings").select("*")
   ]);
 
@@ -808,6 +829,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM Ken payments could not be loaded.", kenPaymentsResult.error.message);
   }
 
+  if (orderCogsEmailsResult.error) {
+    console.warn("CRM order COGS emails could not be loaded.", orderCogsEmailsResult.error.message);
+  }
+
+  if (commissionPaymentsResult.error) {
+    console.warn("CRM commission payments could not be loaded.", commissionPaymentsResult.error.message);
+  }
+
   if (settingsResult.error) {
     console.warn("CRM settings could not be loaded.", settingsResult.error.message);
   }
@@ -826,6 +855,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     installationInvoiceEmailsResult.error ? [] : installationInvoiceEmailsResult.data || []
   ) as CrmInstallationInvoiceEmail[];
   const kenPayments = (kenPaymentsResult.error ? [] : kenPaymentsResult.data || []) as CrmKenPayment[];
+  const orderCogsEmails = (orderCogsEmailsResult.error ? [] : orderCogsEmailsResult.data || []) as CrmOrderCogsEmail[];
+  const commissionPayments = (
+    commissionPaymentsResult.error ? [] : commissionPaymentsResult.data || []
+  ) as CrmCommissionPayment[];
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
     value: number;
@@ -848,6 +881,8 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     expenses,
     installationInvoiceEmails,
     kenPayments,
+    orderCogsEmails,
+    commissionPayments,
     openingBalance,
     payoffTarget
   });
@@ -1867,6 +1902,111 @@ export async function updateKenPayment(
   });
 
   return data as CrmKenPayment;
+}
+
+function normalizeCommissionRecipient(value: unknown) {
+  const recipient = normalizeOwner(value);
+  if (recipient === "mike" || recipient === "jessica") return recipient;
+  throw new CrmAuthError(400, "Commission recipient must be Mike or Jessica.");
+}
+
+export async function createCommissionPayment(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const amount = toMoney(payload.amount);
+  if (amount <= 0) throw new CrmAuthError(400, "Commission payment amount must be greater than zero.");
+
+  const record = {
+    recipient: normalizeCommissionRecipient(payload.recipient),
+    paid_on: payload.paid_on || new Date().toISOString().slice(0, 10),
+    period_month: payload.period_month || null,
+    amount,
+    note: optionalText(payload.note),
+    created_by_email: actor.email,
+    meta: { createdBy: actor.email }
+  };
+
+  const { data, error } = await supabase.from("crm_commission_payments").insert(record).select("*").single();
+  if (error || !data) throw new CrmAuthError(502, "Commission payment could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "commission_payment",
+    entityId: data.id,
+    action: "create",
+    after: data
+  });
+
+  return data as CrmCommissionPayment;
+}
+
+export async function deleteCommissionPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_commission_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Commission payment was not found.");
+
+  const { error } = await supabase.from("crm_commission_payments").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Commission payment could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "commission_payment",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
+}
+
+export async function updateCommissionPayment(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_commission_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Commission payment was not found.");
+
+  const patch: Record<string, unknown> = {};
+  if (payload.recipient !== undefined) patch.recipient = normalizeCommissionRecipient(payload.recipient);
+  if (payload.amount !== undefined) {
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Commission payment amount must be greater than zero.");
+    patch.amount = amount;
+  }
+  if (payload.paid_on !== undefined) patch.paid_on = payload.paid_on || null;
+  if (payload.period_month !== undefined) patch.period_month = payload.period_month || null;
+  if (payload.note !== undefined) patch.note = optionalText(payload.note);
+
+  if (!Object.keys(patch).length) {
+    throw new CrmAuthError(400, "No supported commission payment fields provided.");
+  }
+
+  const { data, error } = await supabase
+    .from("crm_commission_payments")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Commission payment could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "commission_payment",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmCommissionPayment;
 }
 
 export async function updateCrmSettings(

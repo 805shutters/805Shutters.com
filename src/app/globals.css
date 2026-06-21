@@ -2841,7 +2841,7 @@ body:has(.crm-app-shell) {
 
 .crm-metrics {
   display: grid;
-  grid-template-columns: repeat(10, minmax(88px, 1fr));
+  grid-template-columns: repeat(9, minmax(96px, 1fr));
   gap: 8px;
   min-width: 0;
 }

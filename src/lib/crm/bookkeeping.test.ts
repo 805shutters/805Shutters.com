@@ -7,9 +7,11 @@ import {
   buildKenPayoffSummary,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
+import { buildCommissionSummary } from "@/lib/crm/commissions";
 import {
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
+  CrmCommissionPayment,
   CrmJobExpense,
   CrmKenPayment,
   CrmQuote
@@ -103,6 +105,22 @@ function kenPayment(overrides: Partial<CrmKenPayment> = {}): CrmKenPayment {
     updated_at: "2026-01-01T00:00:00.000Z",
     paid_on: "2026-06-30",
     period_month: "2026-06-30",
+    amount: 0,
+    note: null,
+    created_by_email: null,
+    meta: {},
+    ...overrides
+  };
+}
+
+function commissionPayment(overrides: Partial<CrmCommissionPayment> = {}): CrmCommissionPayment {
+  return {
+    id: "commission-1",
+    created_at: "2026-06-30T00:00:00.000Z",
+    updated_at: "2026-06-30T00:00:00.000Z",
+    recipient: "mike",
+    paid_on: "2026-06-30",
+    period_month: "2026-06-01",
     amount: 0,
     note: null,
     created_by_email: null,
@@ -544,6 +562,107 @@ describe("sumBookkeepingRows", () => {
     expect(totals.jessicaCommission).toBe(2800); // half of (10000-3000-1000-400)
     expect(totals.jessicaCommissionOwed).toBe(2800);
     expect(totals.mikeProfit).toBe(6300); // e1 2800 + e2 (5000-1000-500) 3500
+  });
+});
+
+describe("buildCommissionSummary", () => {
+  it("earns commission only after close/paid in full and applies Mike/Jessica sale rules", () => {
+    const rows = rowsFrom({
+      entries: [
+        installedEntry({
+          id: "mike-closed",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "mike",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        }),
+        installedEntry({
+          id: "jessica-closed",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "jessica",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        }),
+        installedEntry({
+          id: "jessica-open",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "jessica",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        })
+      ],
+      payments: [
+        payment({ id: "pay-mike", bookkeeping_entry_id: "mike-closed", amount: 10000, paid_at: "2026-07-20" }),
+        payment({ id: "pay-jessica", bookkeeping_entry_id: "jessica-closed", amount: 10000, paid_at: "2026-07-21" })
+      ]
+    });
+
+    const summary = buildCommissionSummary(rows, []);
+
+    expect(summary.monthly).toHaveLength(1);
+    expect(summary.monthly[0]).toMatchObject({
+      periodMonth: "2026-07-01",
+      mikeEarned: 8000,
+      jessicaEarned: 3000,
+      mikePaid: 0,
+      jessicaPaid: 0,
+      mikeBalance: 8000,
+      jessicaBalance: 3000
+    });
+    expect(summary.totals.mikeOwed).toBe(8000);
+    expect(summary.totals.jessicaOwed).toBe(3000);
+  });
+
+  it("subtracts Mike/Jessica payment ledger rows into running balances", () => {
+    const rows = rowsFrom({
+      entries: [
+        installedEntry({
+          id: "mike-closed",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "mike",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        }),
+        installedEntry({
+          id: "jessica-closed",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "jessica",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        })
+      ],
+      payments: [
+        payment({ id: "pay-mike", bookkeeping_entry_id: "mike-closed", amount: 10000, paid_at: "2026-07-20" }),
+        payment({ id: "pay-jessica", bookkeeping_entry_id: "jessica-closed", amount: 10000, paid_at: "2026-07-21" })
+      ]
+    });
+
+    const summary = buildCommissionSummary(rows, [
+      commissionPayment({ id: "mike-check", recipient: "mike", amount: 2500, paid_on: "2026-07-31", period_month: "2026-07-01" }),
+      commissionPayment({
+        id: "jessica-check",
+        recipient: "jessica",
+        amount: 1000,
+        paid_on: "2026-07-31",
+        period_month: "2026-07-01"
+      })
+    ]);
+
+    expect(summary.totals).toMatchObject({
+      mikeEarned: 8000,
+      mikePaid: 2500,
+      mikeOwed: 5500,
+      jessicaEarned: 3000,
+      jessicaPaid: 1000,
+      jessicaOwed: 2000
+    });
+    expect(summary.monthly[0].mikeBalance).toBe(5500);
+    expect(summary.monthly[0].jessicaBalance).toBe(2000);
   });
 });
 

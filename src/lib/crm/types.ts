@@ -32,6 +32,7 @@ export type CrmBookkeepingPaymentType = "zelle" | "cash" | "check" | "credit_car
 export type CrmBookkeepingEntrySource = "crm_quote" | "legacy_sheet" | "manual";
 export type CrmBookkeepingPaymentSource = "crm_quote" | "legacy_sheet" | "manual";
 export type CrmBookkeepingSalesOwner = "mike" | "jessica";
+export type CrmCommissionRecipient = "mike" | "jessica";
 export type CrmInstallationMatchStatus = "unmatched" | "matched" | "needs_review";
 
 export type CrmJob = {
@@ -330,6 +331,39 @@ export type CrmInstallationInvoiceEmail = {
   raw: Record<string, unknown>;
 };
 
+export type CrmOrderCogsEmailStatus = "matched" | "needs_review" | "unmatched" | "skipped" | "error";
+
+export type CrmOrderCogsEmail = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  mailbox_email: string;
+  gmail_message_id: string;
+  gmail_thread_id: string | null;
+  gmail_history_id: string | null;
+  from_email: string | null;
+  to_email: string | null;
+  subject: string | null;
+  sent_at: string | null;
+  snippet: string | null;
+  attachment_names: string[];
+  email_url: string | null;
+  extracted_customer_name: string | null;
+  extracted_order_amount: number | null;
+  extracted_order_number: string | null;
+  extraction_confidence: number;
+  matched_job_id: string | null;
+  matched_quote_id: string | null;
+  matched_bookkeeping_entry_id: string | null;
+  match_status: CrmOrderCogsEmailStatus;
+  match_confidence: number;
+  match_reason: string | null;
+  processed_at: string | null;
+  applied_at: string | null;
+  error_message: string | null;
+  raw: Record<string, unknown>;
+};
+
 export type CrmBookkeepingRow = {
   id: string;
   source: CrmBookkeepingEntrySource | "crm_quote";
@@ -476,14 +510,49 @@ export type CrmSummary = {
   scheduledJobs: number;
   quotedJobs: number;
   soldJobs: number;
-  quotePipeline: number;
+  quotedPipeline: number;
+  soldPipeline: number;
   depositCollected: number;
   openBalance: number;
   needsOrder: number;
   missingCogs: number;
-  readyToInstall: number;
-  customerFiles: number;
-  contracts: number;
+  awaitingProduct: number;
+  installReview: number;
+};
+
+export type CrmCommissionPayment = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  recipient: CrmCommissionRecipient;
+  paid_on: string | null;
+  period_month: string | null;
+  amount: number;
+  note: string | null;
+  created_by_email: string | null;
+  meta: Record<string, unknown>;
+};
+
+export type CrmCommissionMonthlySummary = {
+  periodMonth: string;
+  mikeEarned: number;
+  mikePaid: number;
+  mikeBalance: number;
+  jessicaEarned: number;
+  jessicaPaid: number;
+  jessicaBalance: number;
+};
+
+export type CrmCommissionSummary = {
+  monthly: CrmCommissionMonthlySummary[];
+  totals: {
+    mikeEarned: number;
+    mikePaid: number;
+    mikeOwed: number;
+    jessicaEarned: number;
+    jessicaPaid: number;
+    jessicaOwed: number;
+  };
 };
 
 export type CrmKenPayment = {
@@ -525,10 +594,13 @@ export type CrmDashboardData = {
   bookkeepingCredits: CrmBookkeepingCredit[];
   jobExpenses: CrmJobExpense[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
+  orderCogsEmails: CrmOrderCogsEmail[];
   bookkeepingRows: CrmBookkeepingRow[];
   bookkeepingTotals: CrmBookkeepingTotals;
   kenPayments: CrmKenPayment[];
   kenPayoff: CrmKenPayoffSummary;
+  commissionPayments: CrmCommissionPayment[];
+  commissionSummary: CrmCommissionSummary;
   accountability: CrmAccountabilityItem[];
   summary: CrmSummary;
 };

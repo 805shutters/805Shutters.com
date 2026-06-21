@@ -15,11 +15,23 @@ import {
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import {
+  awaitingProductRows,
+  distinctRowsByJob,
+  missingCogsRows,
+  needToOrderRows,
+  openBalanceRows,
+  openSoldRows,
+  quotedPipelineQuotes,
+  soldRows
+} from "@/lib/crm/dashboard-metrics";
+import {
   CrmAccountabilityItem,
   CrmAvailabilitySlot,
   CrmBookkeepingPaymentType,
   CrmBookkeepingRow,
   CrmCalendarEvent,
+  CrmCommissionPayment,
+  CrmCommissionSummary,
   CrmCustomerFile,
   CrmDashboardData,
   CrmInstallationInvoiceEmail,
@@ -27,13 +39,14 @@ import {
   CrmJobStatus,
   CrmKenPayment,
   CrmKenPayoffSummary,
+  CrmOrderCogsEmail,
   CrmQuote,
   CrmQuoteStatus,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "commissions" | "orders" | "calendar" | "availability" | "payoff";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 type BookkeepingEditableField =
@@ -563,9 +576,11 @@ export function CrmApp() {
   const events = useMemo(() => data?.events || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
+  const orderCogsEmails = useMemo(() => data?.orderCogsEmails || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
+  const commissionPayments = useMemo(() => data?.commissionPayments || [], [data]);
   const statusFilteredJobs = useMemo(
     () => (activeJobStatus ? jobs.filter((job) => job.status === activeJobStatus) : jobs),
     [activeJobStatus, jobs]
@@ -587,7 +602,15 @@ export function CrmApp() {
   }
 
   function openSummaryDrill(metric: string) {
-    const payload = buildSummaryDrill(metric, jobs, rows, customerFiles);
+    const payload = buildSummaryDrill(
+      metric,
+      jobs,
+      quotes,
+      rows,
+      customerFiles,
+      installationInvoiceEmails,
+      orderCogsEmails
+    );
     if (payload) setDrill(payload);
   }
 
@@ -642,6 +665,33 @@ export function CrmApp() {
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Installation invoices could not be pulled.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pullOrderCogs() {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{
+        matched: number;
+        needsReview: number;
+        unmatched: number;
+        skipped: number;
+        errors: number;
+      }>(session, "/api/crm/order-cogs/pull", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      await refresh();
+      setMessage(
+        `Order COGS pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors.`
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Order COGS emails could not be pulled.");
     } finally {
       setBusy(false);
     }
@@ -809,8 +859,11 @@ export function CrmApp() {
         const nextPayload = buildSummaryDrill(
           drill.metric,
           dashboardResult.jobs,
+          dashboardResult.quotes,
           dashboardResult.bookkeepingRows,
-          dashboardResult.customerFiles
+          dashboardResult.customerFiles,
+          dashboardResult.installationInvoiceEmails,
+          dashboardResult.orderCogsEmails
         );
         if (nextPayload) setDrill(nextPayload);
       }
@@ -861,7 +914,17 @@ export function CrmApp() {
 
       const dashboardResult = await refresh();
       if (dashboardResult && drill) {
-        setDrill(rebuildDrillPayload(drill, dashboardResult.jobs, dashboardResult.bookkeepingRows, dashboardResult.customerFiles));
+        setDrill(
+          rebuildDrillPayload(
+            drill,
+            dashboardResult.jobs,
+            dashboardResult.quotes,
+            dashboardResult.bookkeepingRows,
+            dashboardResult.customerFiles,
+            dashboardResult.installationInvoiceEmails,
+            dashboardResult.orderCogsEmails
+          )
+        );
       }
       setMessage(patch.message || `${entry.name} updated.`);
       return true;
@@ -1049,6 +1112,79 @@ export function CrmApp() {
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Ken payment could not be deleted.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function recordCommissionPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, "/api/crm/commission-payments", {
+        method: "POST",
+        body: JSON.stringify({
+          recipient: formString(formData, "recipient"),
+          amount: Number(formString(formData, "amount") || 0),
+          paid_on: formString(formData, "paid_on") || null,
+          period_month: formString(formData, "period_month") || null,
+          note: formString(formData, "note")
+        })
+      });
+
+      event.currentTarget.reset();
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Commission payment could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateCommissionPaymentRow(event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) {
+    event.preventDefault();
+    if (!session) return;
+
+    const formData = new FormData(event.currentTarget);
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/commission-payments/${payment.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          recipient: formString(formData, "recipient"),
+          amount: Number(formString(formData, "amount") || 0),
+          paid_on: formString(formData, "paid_on") || null,
+          period_month: formString(formData, "period_month") || null,
+          note: formString(formData, "note")
+        })
+      });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Commission payment could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteCommissionPaymentRow(id: string) {
+    if (!session) return;
+    if (!window.confirm("Delete this commission payment? It changes Mike/Jessica running balances.")) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/commission-payments/${id}`, { method: "DELETE" });
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Commission payment could not be deleted.");
     } finally {
       setBusy(false);
     }
@@ -1307,14 +1443,13 @@ export function CrmApp() {
         <section className="crm-metrics" aria-label="CRM summary">
           <Metric label="Open Jobs" value={data?.summary.openJobs || 0} onClick={() => openSummaryDrill("openJobs")} />
           <Metric label="Sold Jobs" value={data?.summary.soldJobs || 0} onClick={() => openSummaryDrill("soldJobs")} />
-          <Metric label="Pipeline" value={toCurrency(data?.summary.quotePipeline)} onClick={() => openSummaryDrill("pipeline")} />
+          <Metric label="Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
+          <Metric label="Sold Pipeline" value={toCurrency(data?.summary.soldPipeline)} onClick={() => openSummaryDrill("soldPipeline")} />
           <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
-          <Metric label="Needs Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
+          <Metric label="Need To Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
           <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} onClick={() => openSummaryDrill("missingCogs")} />
-          <Metric label="Ready Install" value={data?.summary.readyToInstall || 0} onClick={() => openSummaryDrill("readyInstall")} />
-          <Metric label="Customer Files" value={data?.summary.customerFiles || 0} onClick={() => openSummaryDrill("customerFiles")} />
-          <Metric label="Jessica Owed" value={toCurrency(data?.bookkeepingTotals.jessicaCommissionOwed)} onClick={() => openSummaryDrill("jessicaOwed")} />
-          <Metric label="Payoff Left" value={toCurrency(data?.kenPayoff.payoffRemaining)} />
+          <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
+          <Metric label="Install Review" value={data?.summary.installReview || 0} onClick={() => openSummaryDrill("installReview")} />
         </section>
       </header>
 
@@ -1327,6 +1462,7 @@ export function CrmApp() {
           ["customers", "Customer Files"],
           ["jobs", "Jobs"],
           ["bookkeeping", "Bookkeeping"],
+          ["commissions", "Commissions"],
           ["orders", "Orders"],
           ["calendar", "Calendar"],
           ["availability", "Open Times"],
@@ -1515,9 +1651,21 @@ export function CrmApp() {
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
             <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={saveBookkeepingCell} onDelete={deleteBookkeepingRow} />
+            <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           </div>
         </section>
+      ) : null}
+
+      {activeTab === "commissions" ? (
+        <CommissionsView
+          summary={data?.commissionSummary}
+          payments={commissionPayments}
+          busy={busy}
+          onRecord={recordCommissionPayment}
+          onEdit={updateCommissionPaymentRow}
+          onDelete={deleteCommissionPaymentRow}
+        />
       ) : null}
 
       {activeTab === "orders" ? (
@@ -1712,9 +1860,9 @@ function AccountabilityBoard({ items }: { items: CrmAccountabilityItem[] }) {
 }
 
 function BookkeepingSnapshot({ rows }: { rows: CrmBookkeepingRow[] }) {
-  const needsOrder = rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef);
-  const readyInstall = rows.filter((row) => row.status === "received");
-  const openBalances = rows.filter((row) => !isPaidInFullBookkeepingRow(row) && row.balance > 0).slice(0, 8);
+  const needsOrder = needToOrderRows(rows);
+  const awaitingProduct = awaitingProductRows(rows);
+  const openBalances = openBalanceRows(rows).slice(0, 8);
 
   return (
     <section className="crm-ledger">
@@ -1725,8 +1873,8 @@ function BookkeepingSnapshot({ rows }: { rows: CrmBookkeepingRow[] }) {
         </div>
       </div>
       <div className="crm-snapshot-grid">
-        <SnapshotColumn title="Needs Ordered" rows={needsOrder} empty="No sold jobs waiting on orders." />
-        <SnapshotColumn title="Ready To Install" rows={readyInstall} empty="No jobs are waiting for install scheduling." />
+        <SnapshotColumn title="Need To Order" rows={needsOrder} empty="No sold jobs waiting on orders." />
+        <SnapshotColumn title="Awaiting Product" rows={awaitingProduct} empty="No ordered jobs are waiting on product." />
         <SnapshotColumn title="Payment Follow-Up" rows={openBalances} empty="No open balances in the active ledger." />
       </div>
     </section>
@@ -1765,18 +1913,7 @@ function isOpenSoldBookkeepingRow(row: CrmBookkeepingRow) {
 }
 
 function uniqueOpenSoldRows(rows: CrmBookkeepingRow[]) {
-  const seenJobIds = new Set<string>();
-  const uniqueRows: CrmBookkeepingRow[] = [];
-
-  for (const row of rows.filter(isOpenSoldBookkeepingRow)) {
-    if (row.jobId) {
-      if (seenJobIds.has(row.jobId)) continue;
-      seenJobIds.add(row.jobId);
-    }
-    uniqueRows.push(row);
-  }
-
-  return uniqueRows;
+  return distinctRowsByJob(openSoldRows(rows));
 }
 
 type DrillPlacement = "summary" | "numbers" | "product" | "closing" | "response";
@@ -2029,91 +2166,185 @@ function filesToEntries(list: CrmCustomerFile[]): DrillEntry[] {
     }));
 }
 
+function quotesToEntries(
+  list: CrmQuote[],
+  jobs: CrmJob[],
+  rows: CrmBookkeepingRow[],
+  files: CrmCustomerFile[]
+): DrillEntry[] {
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const rowMap = rowsByJobId(rows);
+  return [...list]
+    .sort((a, b) => (Number(b.quote_total) || 0) - (Number(a.quote_total) || 0))
+    .map((quote) => {
+      const job = jobsById.get(quote.job_id);
+      if (job) {
+        return {
+          ...jobToEntry(job, rowMap.get(job.id), files),
+          id: quote.id,
+          meta: ["Sent quote", formatShortDate(quote.sent_at), quote.quote_number].filter(Boolean).join(" · "),
+          value: toCurrency(quote.quote_total)
+        };
+      }
+      return {
+        id: quote.id,
+        name: quote.customer_name || quote.quote_number || "Sent quote",
+        customerName: quote.customer_name || "Linked customer",
+        meta: ["Sent quote", formatShortDate(quote.sent_at), quote.quote_number].filter(Boolean).join(" · "),
+        value: toCurrency(quote.quote_total)
+      };
+    });
+}
+
+function reviewEmailsToEntries({
+  installationInvoices,
+  orderCogsEmails,
+  jobs,
+  rows,
+  files
+}: {
+  installationInvoices: CrmInstallationInvoiceEmail[];
+  orderCogsEmails: CrmOrderCogsEmail[];
+  jobs: CrmJob[];
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+}): DrillEntry[] {
+  const reviewInstall = installationInvoices.filter((invoice) => invoice.match_status === "needs_review" || invoice.match_status === "error");
+  const reviewCogs = orderCogsEmails.filter((email) => email.match_status === "needs_review" || email.match_status === "error");
+  const entries: DrillEntry[] = [];
+
+  for (const invoice of reviewInstall) {
+    const row = rows.find((item) => item.id === invoice.matched_bookkeeping_entry_id);
+    const job = jobs.find((item) => item.id === invoice.matched_job_id || item.id === row?.jobId);
+    const customerName = invoice.extracted_customer_name || row?.customerName || job?.customer_name || "Install invoice review";
+    const file = customerFileForName(files, customerName);
+    entries.push({
+      id: `install-review-${invoice.id}`,
+      name: customerName,
+      customerName,
+      meta: ["Install invoice", titleCase(invoice.match_status), invoice.match_reason].filter(Boolean).join(" · "),
+      value: invoice.extracted_invoice_amount ? toCurrency(invoice.extracted_invoice_amount) : undefined,
+      tone: "warn",
+      jobId: invoice.matched_job_id || row?.jobId || null,
+      row,
+      job,
+      file,
+      documents: invoice.email_url
+        ? [{ id: `install-email-${invoice.id}`, title: invoice.subject || "Install invoice email", url: invoice.email_url, status: invoice.match_status, kind: "Gmail" }]
+        : undefined,
+      notes: [invoice.match_reason || invoice.error_message || ""].filter(Boolean)
+    });
+  }
+
+  for (const email of reviewCogs) {
+    const row = rows.find((item) => item.id === email.matched_bookkeeping_entry_id);
+    const job = jobs.find((item) => item.id === email.matched_job_id || item.id === row?.jobId);
+    const customerName = email.extracted_customer_name || row?.customerName || job?.customer_name || "Order COGS review";
+    const file = customerFileForName(files, customerName);
+    entries.push({
+      id: `cogs-review-${email.id}`,
+      name: customerName,
+      customerName,
+      meta: ["Order COGS", titleCase(email.match_status), email.match_reason].filter(Boolean).join(" · "),
+      value: email.extracted_order_amount ? toCurrency(email.extracted_order_amount) : undefined,
+      tone: "warn",
+      jobId: email.matched_job_id || row?.jobId || null,
+      row,
+      job,
+      file,
+      documents: email.email_url
+        ? [{ id: `cogs-email-${email.id}`, title: email.subject || "Order COGS email", url: email.email_url, status: email.match_status, kind: "Gmail" }]
+        : undefined,
+      notes: [email.match_reason || email.error_message || ""].filter(Boolean)
+    });
+  }
+
+  return entries;
+}
+
 // Builds the drill payloads for the global summary band, mirroring backend.ts summary logic.
 function buildSummaryDrill(
   metric: string,
   jobs: CrmJob[],
+  quotes: CrmQuote[],
   rows: CrmBookkeepingRow[],
-  files: CrmCustomerFile[]
+  files: CrmCustomerFile[],
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[] = [],
+  orderCogsEmails: CrmOrderCogsEmail[] = []
 ): DrillPayload | null {
   switch (metric) {
     case "openJobs":
       return {
         title: "Open Jobs",
         subtitle: "Sold jobs not yet paid in full",
+        metric,
         placement: "summary",
         entries: rowsToEntries(uniqueOpenSoldRows(rows), (row) => row.balance, { jobs, files })
       };
     case "soldJobs":
       return {
         title: "Sold Jobs",
-        subtitle: "Sold or ordered",
+        subtitle: "All sold jobs in the ledger",
         metric,
         allowSaleReassignment: true,
         placement: "summary",
-        entries: jobsToEntries(
-          jobs.filter((job) => job.status === "sold" || job.status === "ordered"),
-          rows,
-          { files }
-        ).map((entry) => ({ ...entry, canReassignSale: true }))
+        entries: rowsToEntries(distinctRowsByJob(soldRows(rows)), (row) => row.total, { jobs, files }).map((entry) => ({ ...entry, canReassignSale: true }))
       };
-    case "pipeline":
+    case "quotedPipeline":
       return {
-        title: "Pipeline",
-        subtitle: "Jobs carrying a live quote",
+        title: "Quoted Pipeline",
+        subtitle: "Sent quotes still active for 60 days",
+        metric,
         placement: "summary",
-        entries: jobsToEntries(jobs.filter((job) => (job.quote_total || 0) > 0), rows, { files })
+        entries: quotesToEntries(quotedPipelineQuotes(quotes), jobs, rows, files)
+      };
+    case "soldPipeline":
+      return {
+        title: "Sold Pipeline",
+        subtitle: "Open sold jobs by full sale total",
+        metric,
+        placement: "summary",
+        entries: rowsToEntries(openSoldRows(rows), (row) => row.total, { jobs, files })
       };
     case "openBalance":
       return {
         title: "Open Balance",
         subtitle: "Jobs with money still owed",
+        metric,
         placement: "summary",
-        entries: rowsToEntries(rows.filter((row) => row.balance > 0), (row) => row.balance, { jobs, files })
+        entries: rowsToEntries(openBalanceRows(rows), (row) => row.balance, { jobs, files })
       };
     case "needsOrder":
       return {
-        title: "Needs Order",
-        subtitle: "Sold jobs without a manufacturer order",
+        title: "Need To Order",
+        subtitle: "Sold jobs not yet moved to ordered",
+        metric,
         placement: "summary",
-        entries: rowsToEntries(
-          rows.filter((row) => (row.status === "sold" || row.status === "approved") && !row.manufacturerOrderRef),
-          (row) => row.total,
-          { jobs, files }
-        )
+        entries: rowsToEntries(needToOrderRows(rows), (row) => row.total, { jobs, files })
       };
     case "missingCogs":
       return {
         title: "Missing COGS",
         subtitle: "Cost of goods not yet entered",
-        placement: "summary",
-        entries: rowsToEntries(rows.filter((row) => row.cogs <= 0), (row) => row.total, { jobs, files })
-      };
-    case "readyInstall":
-      return {
-        title: "Ready To Install",
-        subtitle: "Received and awaiting install scheduling",
-        placement: "summary",
-        entries: rowsToEntries(rows.filter((row) => row.status === "received"), (row) => row.total, { jobs, files })
-      };
-    case "customerFiles":
-      return {
-        title: "Customer Files",
-        subtitle: "All customers on file",
-        placement: "summary",
-        entries: filesToEntries(files)
-      };
-    case "jessicaOwed":
-      return {
-        title: "Jessica Owed",
-        subtitle: "Commission owed to Jessica",
         metric,
         placement: "summary",
-        entries: rowsToEntries(
-          rows.filter((row) => row.jessicaCommissionOwed > 0),
-          (row) => row.jessicaCommissionOwed,
-          { jobs, files }
-        )
+        entries: rowsToEntries(missingCogsRows(rows), (row) => row.total, { jobs, files })
+      };
+    case "awaitingProduct":
+      return {
+        title: "Awaiting Product",
+        subtitle: "Ordered jobs waiting on product",
+        metric,
+        placement: "summary",
+        entries: rowsToEntries(awaitingProductRows(rows), (row) => row.total, { jobs, files })
+      };
+    case "installReview":
+      return {
+        title: "Install Review",
+        subtitle: "Install invoices and order COGS emails needing review",
+        metric,
+        placement: "summary",
+        entries: reviewEmailsToEntries({ installationInvoices: installationInvoiceEmails, orderCogsEmails, jobs, rows, files })
       };
     case "jessicaNet":
       return {
@@ -2146,11 +2377,14 @@ function rowValueForDrill(payload: DrillPayload) {
 function rebuildDrillPayload(
   payload: DrillPayload,
   jobs: CrmJob[],
+  quotes: CrmQuote[],
   rows: CrmBookkeepingRow[],
-  files: CrmCustomerFile[]
+  files: CrmCustomerFile[],
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[] = [],
+  orderCogsEmails: CrmOrderCogsEmail[] = []
 ) {
   if (payload.metric) {
-    return buildSummaryDrill(payload.metric, jobs, rows, files) || payload;
+    return buildSummaryDrill(payload.metric, jobs, quotes, rows, files, installationInvoiceEmails, orderCogsEmails) || payload;
   }
 
   const rowValue = rowValueForDrill(payload);
@@ -3271,7 +3505,6 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       installation_invoice_number: formString(formData, "installation_invoice_number"),
       installation_invoice_url: formString(formData, "installation_invoice_url"),
       installation_complete: formData.get("installation_complete") === "on",
-      jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
       ken_cut_override: kenCutOverride === "" ? null : Number(kenCutOverride),
       manufacturer_name: formString(formData, "manufacturer_name"),
       manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
@@ -3526,10 +3759,6 @@ function DrillDetailEditForm({
           <label className="crm-checkbox">
             <input name="installation_complete" type="checkbox" defaultChecked={Boolean(row?.isInstallationComplete)} disabled={!row} />
             Installation complete
-          </label>
-          <label className="crm-checkbox">
-            <input name="jessica_commission_paid" type="checkbox" defaultChecked={Boolean(row?.jessicaCommissionPaidAt)} disabled={!row} />
-            Jessica commission paid
           </label>
         </section>
 
@@ -4154,6 +4383,289 @@ function InstallationInvoiceInbox({
           </tbody>
         </table>
         {!recent.length ? <p className="crm-empty">No installation invoice emails processed yet.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function OrderCogsInbox({
+  emails,
+  onPull,
+  busy
+}: {
+  emails: CrmOrderCogsEmail[];
+  onPull: () => void;
+  busy: boolean;
+}) {
+  const counts = emails.reduce(
+    (current, email) => {
+      current[email.match_status] += 1;
+      return current;
+    },
+    { matched: 0, needs_review: 0, unmatched: 0, skipped: 0, error: 0 }
+  );
+  const recent = emails.slice(0, 12);
+
+  return (
+    <section className="crm-ledger crm-order-cogs-inbox">
+      <div className="crm-section-head">
+        <div>
+          <p className="eyebrow">Order COGS</p>
+          <h2>805 Gmail Reconciliation</h2>
+        </div>
+        <button type="button" onClick={onPull} disabled={busy}>
+          Pull Order COGS
+        </button>
+      </div>
+      <div className="crm-bookkeeping-counts" aria-label="Order COGS pull counts">
+        <span>Matched: {counts.matched}</span>
+        <span>Review: {counts.needs_review}</span>
+        <span>Unmatched: {counts.unmatched}</span>
+        <span>Errors: {counts.error}</span>
+      </div>
+      <div className="crm-bookkeeping-table-wrap">
+        <table className="crm-bookkeeping-table">
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Customer</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recent.map((email) => (
+              <tr key={email.id}>
+                <td>
+                  {email.email_url ? (
+                    <a href={email.email_url} target="_blank" rel="noreferrer">
+                      {email.extracted_order_number || email.subject || "Gmail order"}
+                    </a>
+                  ) : (
+                    email.extracted_order_number || email.subject || "Gmail order"
+                  )}
+                  <span>{formatShortDate(email.sent_at || email.processed_at)}</span>
+                </td>
+                <td>{email.extracted_customer_name || "Needs review"}</td>
+                <td>{email.extracted_order_amount ? toLedgerCurrency(email.extracted_order_amount) : "-"}</td>
+                <td>
+                  <span className={`crm-bookkeeping-pill crm-bookkeeping-pill--${email.match_status}`}>
+                    {titleCase(email.match_status)}
+                  </span>
+                </td>
+                <td>{email.match_reason || email.error_message || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!recent.length ? <p className="crm-empty">No order COGS emails processed yet.</p> : null}
+      </div>
+    </section>
+  );
+}
+
+function CommissionPaymentRow({
+  payment,
+  busy,
+  onEdit,
+  onDelete
+}: {
+  payment: CrmCommissionPayment;
+  busy: boolean;
+  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <tr>
+        <td colSpan={7}>
+          <form
+            className="crm-inline-form"
+            onSubmit={(event) => {
+              onEdit(event, payment);
+              setEditing(false);
+            }}
+          >
+            <select name="recipient" defaultValue={payment.recipient} aria-label="Recipient">
+              <option value="mike">Mike</option>
+              <option value="jessica">Jessica</option>
+            </select>
+            <input name="amount" type="number" min="0" step="0.01" defaultValue={payment.amount} aria-label="Amount" />
+            <input name="paid_on" type="date" defaultValue={payment.paid_on || ""} aria-label="Paid date" />
+            <input name="period_month" type="date" defaultValue={payment.period_month || ""} aria-label="For month" />
+            <input name="note" defaultValue={payment.note || ""} placeholder="Note" aria-label="Note" />
+            <button type="submit" disabled={busy}>
+              Save
+            </button>
+            <button type="button" className="crm-ghost-button" onClick={() => setEditing(false)}>
+              Cancel
+            </button>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td>{titleCase(payment.recipient)}</td>
+      <td>{formatShortDate(payment.paid_on)}</td>
+      <td>{payment.period_month ? formatShortDate(payment.period_month) : "-"}</td>
+      <td>{toLedgerCurrency(payment.amount)}</td>
+      <td>{payment.note || ""}</td>
+      <td>{payment.created_by_email || ""}</td>
+      <td>
+        <button type="button" className="crm-ghost-button" onClick={() => setEditing(true)} disabled={busy}>
+          Edit
+        </button>
+        <button type="button" className="crm-ghost-button" onClick={() => onDelete(payment.id)} disabled={busy}>
+          Delete
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+function CommissionsView({
+  summary,
+  payments,
+  busy,
+  onRecord,
+  onEdit,
+  onDelete
+}: {
+  summary: CrmCommissionSummary | undefined;
+  payments: CrmCommissionPayment[];
+  busy: boolean;
+  onRecord: (event: FormEvent<HTMLFormElement>) => void;
+  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) => void;
+  onDelete: (id: string) => void;
+}) {
+  const totals = summary?.totals || {
+    mikeEarned: 0,
+    mikePaid: 0,
+    mikeOwed: 0,
+    jessicaEarned: 0,
+    jessicaPaid: 0,
+    jessicaOwed: 0
+  };
+  const monthly = summary?.monthly || [];
+  const recentPayments = [...payments].sort((left, right) => dateSortValue(right.paid_on || right.created_at) - dateSortValue(left.paid_on || left.created_at));
+
+  return (
+    <section className="crm-workspace crm-workspace-wide crm-commissions-workspace">
+      <CollapsiblePanel title="Record Commission Payment">
+        <form className="crm-form" onSubmit={onRecord}>
+          <label>
+            Recipient
+            <select name="recipient" defaultValue="mike">
+              <option value="mike">Mike</option>
+              <option value="jessica">Jessica</option>
+            </select>
+          </label>
+          <label>
+            Amount
+            <input name="amount" type="number" min="0" step="0.01" required />
+          </label>
+          <div className="crm-field-row">
+            <label>
+              Paid Date
+              <input name="paid_on" type="date" defaultValue={lastDayOfMonthInputValue()} />
+            </label>
+            <label>
+              For Month
+              <input name="period_month" type="date" defaultValue={lastDayOfMonthInputValue()} />
+            </label>
+          </div>
+          <label>
+            Note
+            <textarea name="note" rows={3} placeholder="Check #, period, adjustment..." />
+          </label>
+          <button type="submit" disabled={busy}>
+            Record Payment
+          </button>
+        </form>
+      </CollapsiblePanel>
+
+      <div className="crm-ledger">
+        <div className="crm-section-head">
+          <div>
+            <p className="eyebrow">Commissions</p>
+            <h2>Mike / Jessica Ledger</h2>
+          </div>
+        </div>
+
+        <div className="crm-bookkeeping-summary-grid crm-commission-summary-grid">
+          {[
+            ["Mike Earned", totals.mikeEarned],
+            ["Mike Paid", totals.mikePaid],
+            ["Mike Balance", totals.mikeOwed],
+            ["Jessica Earned", totals.jessicaEarned],
+            ["Jessica Paid", totals.jessicaPaid],
+            ["Jessica Balance", totals.jessicaOwed]
+          ].map(([label, value]) => (
+            <article className="crm-bookkeeping-summary-card" key={label}>
+              <span>{label}</span>
+              <strong>{toLedgerCurrency(Number(value))}</strong>
+            </article>
+          ))}
+        </div>
+
+        <div className="crm-bookkeeping-table-wrap">
+          <table className="crm-bookkeeping-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Mike Earned</th>
+                <th>Mike Paid</th>
+                <th>Mike Balance</th>
+                <th>Jessica Earned</th>
+                <th>Jessica Paid</th>
+                <th>Jessica Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthly.map((month) => (
+                <tr key={month.periodMonth}>
+                  <td>{formatShortDate(month.periodMonth)}</td>
+                  <td>{toLedgerCurrency(month.mikeEarned)}</td>
+                  <td>{toLedgerCurrency(month.mikePaid)}</td>
+                  <td className={month.mikeBalance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(month.mikeBalance)}</td>
+                  <td>{toLedgerCurrency(month.jessicaEarned)}</td>
+                  <td>{toLedgerCurrency(month.jessicaPaid)}</td>
+                  <td className={month.jessicaBalance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(month.jessicaBalance)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!monthly.length ? <p className="crm-empty">No closed paid-in-full commission months yet.</p> : null}
+        </div>
+
+        <div className="crm-payoff-payments">
+          <h3>Payment History</h3>
+          <table className="crm-bookkeeping-table">
+            <thead>
+              <tr>
+                <th>Recipient</th>
+                <th>Paid Date</th>
+                <th>For Month</th>
+                <th>Amount</th>
+                <th>Note</th>
+                <th>Created By</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {recentPayments.map((payment) => (
+                <CommissionPaymentRow key={payment.id} payment={payment} busy={busy} onEdit={onEdit} onDelete={onDelete} />
+              ))}
+            </tbody>
+          </table>
+          {!recentPayments.length ? <p className="crm-empty">No Mike/Jessica commission payments recorded yet.</p> : null}
+        </div>
       </div>
     </section>
   );

@@ -33,6 +33,10 @@ INSTALLATION_INVOICE_MAILBOX=805@805shutters.com
 INSTALLATION_INVOICE_GMAIL_QUERY='to:805@805shutters.com newer_than:30d (invoice OR "amount due" OR "balance due" OR "invoice total")'
 INSTALLATION_INVOICE_GMAIL_MAX_RESULTS=50
 INSTALLATION_INVOICE_CRON_SECRET=<optional-cron-secret>
+ORDER_COGS_MAILBOX=805shutters@gmail.com
+ORDER_COGS_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d (order OR receipt OR confirmation OR invoice OR "order total" OR "grand total")'
+ORDER_COGS_GMAIL_MAX_RESULTS=50
+ORDER_COGS_CRON_SECRET=<optional-cron-secret>
 GMAIL_805_CLIENT_ID=<google-oauth-client-id-with-gmail-readonly-scope>
 GMAIL_805_CLIENT_SECRET=<google-oauth-client-secret>
 GMAIL_805_REFRESH_TOKEN=<805-gmail-readonly-refresh-token>
@@ -56,6 +60,8 @@ This applies:
 - `crm_quote_bookkeeping_entries` for the transferred bookkeeping spreadsheet rows.
 - `crm_quote_bookkeeping_payments` for deposits, balance payments, and payment method tracking.
 - `crm_quote_bookkeeping_credits` for credits moved between jobs.
+- `crm_order_cogs_emails` for Gmail order-total extraction, matching, and review state.
+- `crm_commission_payments` for Mike/Jessica commission payment history.
 - `crm_accountability_tasks` for durable job-management follow-up work.
 - `crm_calendar_events` for sales calendar appointments.
 - Public self-booking reads `crm_calendar_events` for unavailable slots and writes booked appointments through the server API.
@@ -105,12 +111,28 @@ The 805 bookkeeping ledger mirrors the MTS CRM spreadsheet fields:
 - Ken cut (with per-row override)
 - job expenses
 - net profit (Projected until final)
-- Mike 50% / Jessica 50%
 - sales owner
 - installation invoice
-- Jessica share paid and owed
 - manufacturer, order reference, order link, and document link
 - notes and status
+
+## Dashboard summary boxes
+
+The CRM header summary is sales and operations only:
+
+- Open Jobs
+- Sold Jobs
+- Quoted Pipeline
+- Sold Pipeline
+- Open Balance
+- Need To Order
+- Missing COGS
+- Awaiting Product
+- Install Review
+
+The header intentionally does not show Ready Install, Customer Files, Payoff Left, Mike Owed, Jessica Owed, or Ken Due Now. Customer Files remains a normal CRM tab. Ken payoff details live in `Ken / Payoff`. Mike/Jessica payment tracking lives in `Commissions`.
+
+`Need To Order` is status-based: sold/approved rows count until they move to `ordered`, even when an order number or manufacturer reference is already present.
 
 ## Profit rules
 
@@ -118,23 +140,31 @@ Implemented in `src/lib/crm/bookkeeping.ts` and covered by `npm test`:
 
 - Net profit = sale total - COGS - Ken cut - installation invoice - job
   expenses (`crm_job_expenses` rows added via `POST /api/crm/expenses`).
-- Every job's net profit splits 50/50 between Mike and Jessica, no matter who
-  sold it. The assigned salesperson earns no extra commission; assignment is
-  tracked for accountability and drives the Ken-cut exemption.
 - Ken cut is 10% of the sale total. Jobs sold on or after 2026-06-10 that are
   assigned to Jessica are exempt. Rows sold before that date keep the
   historical 10% so imported sheet math never changes. `ken_cut_override` pins
   an explicit amount (use 0 to waive) when the default rule is wrong.
-- Profit is "final" - and Jessica's 50% becomes owed - only once the
-  installation invoice is settled (match status `matched`) and COGS is
-  entered. Until then the ledger shows the row as Projected, though entered
-  installation amounts are always deducted so projections are not overstated.
+- Mike/Jessica commission is computed in the Commissions tab only after a row
+  is closed/paid in full.
+- Mike sale: Mike receives 100% of remaining profit after COGS, Ken, install
+  invoice, and job expenses.
+- Jessica sale: remaining profit after COGS, Ken, install invoice, and job
+  expenses splits 50% Jessica / 50% Mike.
+- `crm_commission_payments` is the source of truth for payment history. The old
+  `jessica_commission_paid_at` checkbox column is historical compatibility data
+  and is not the payment ledger.
 - Sold rows without a salesperson surface an "Assign salesperson" task in the
   accountability queue and a "Missing sales owner" count in totals.
-- The bookkeeping totals strip mirrors the legacy MTS CRM cards: Total Sales,
-  Open Balance, COGS, Installation, Ken Total Profit, Total Profit (gross,
-  before Ken), Profit Margin, Net Profit (after Ken), Mike 50%, Jessica 50%,
-  Jessica Paid, and Jessica Owed.
+
+## Ken / Payoff and Commissions
+
+`Ken / Payoff` owns payoff settings, Ken payment history, payoff remaining,
+completed-job accruals, and the Ken-due-now view.
+
+`Commissions` owns Mike/Jessica commission tracking. It shows monthly rollups
+for Mike earned/paid/running balance and Jessica earned/paid/running balance,
+then individual payment history rows with recipient, paid date, period month,
+amount, note, and created-by metadata.
 
 ## Installation invoice email puller
 
@@ -168,6 +198,26 @@ Until `GMAIL_805_CLIENT_ID`, `GMAIL_805_CLIENT_SECRET`,
 `GMAIL_805_REFRESH_TOKEN`, and `SUPABASE_SERVICE_ROLE_KEY` are populated
 locally/Vercel-side, the puller can be deployed but cannot read the 805 mailbox
 or write production matches.
+
+## Order COGS email puller
+
+Product order emails should arrive in the configured 805 Gmail mailbox. The CRM
+can pull order COGS from the Bookkeeping tab or through the Vercel cron route at
+`/api/cron/order-cogs`.
+
+The puller:
+
+- searches the configured Gmail query for order/receipt/confirmation emails;
+- extracts customer name, order total, order/vendor reference, Gmail URL, and
+  confidence;
+- matches high-confidence messages to sold/approved/ordered jobs using the
+  linked quote/bookkeeping row and customer name;
+- auto-applies COGS only when the customer and amount are confident;
+- updates `crm_quote_bookkeeping_entries.cogs_amount` and manufacturer/order
+  metadata when available;
+- records every processed message in `crm_order_cogs_emails`;
+- leaves ambiguous names, missing totals, job-only matches, and conflicts in
+  review so they feed Missing COGS / Install Review style work.
 
 ## Importing the MTS CRM data
 
