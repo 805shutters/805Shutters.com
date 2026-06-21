@@ -36,6 +36,18 @@ import {
 type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "orders" | "calendar" | "availability" | "payoff";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
+type BookkeepingEditableField =
+  | "customer"
+  | "soldDate"
+  | "total"
+  | "payment"
+  | "paymentType"
+  | "cogs"
+  | "installation"
+  | "ken"
+  | "jessicaPaid"
+  | "notes";
+type BookkeepingCellEdit = { rowKey: string; field: BookkeepingEditableField } | null;
 
 type CrmUser = {
   email: string;
@@ -388,6 +400,28 @@ function formString(formData: FormData, key: string) {
 
 function dateInputValue(value: string | null | undefined) {
   return value ? String(value).slice(0, 10) : "";
+}
+
+function buildBookkeepingRowPayload(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
+  return {
+    customer_name: row.customerName,
+    sold_date: dateInputValue(row.soldDate),
+    total_amount: row.total,
+    cogs_amount: row.cogs,
+    sales_owner: row.salesOwner || "",
+    payment_type: row.paymentType || "other",
+    payment_amount: 0,
+    payment_label: "Balance payment",
+    paid_at: todayInputValue(),
+    installation_invoice_amount: row.installationInvoiceAmount || 0,
+    installation_complete: row.isInstallationComplete,
+    jessica_commission_paid: Boolean(row.jessicaCommissionPaidAt),
+    ken_cut_override: row.kenCutOverride ?? null,
+    manufacturer_name: row.manufacturerName || "",
+    manufacturer_order_ref: row.manufacturerOrderRef || "",
+    notes: row.notes || "",
+    ...patch
+  };
 }
 
 function dateTimeLocalValue(value: string | null | undefined) {
@@ -1044,37 +1078,21 @@ export function CrmApp() {
     }
   }
 
-  async function editBookkeepingRow(event: FormEvent<HTMLFormElement>, row: CrmBookkeepingRow) {
-    event.preventDefault();
+  async function saveBookkeepingCell(row: CrmBookkeepingRow, patch: Record<string, unknown>) {
     if (!session) return;
 
-    const formData = new FormData(event.currentTarget);
-    const owner = formString(formData, "sales_owner");
-    const customerName = formString(formData, "customer_name");
-    const soldDate = formString(formData, "sold_date");
-    const total = Number(formString(formData, "total_amount") || 0);
-    const cogs = Number(formString(formData, "cogs_amount") || 0);
-    const overrideRaw = formString(formData, "ken_cut_override");
-    const shared = {
-      payment_type: formString(formData, "payment_type") || "other",
-      payment_amount: Number(formString(formData, "payment_amount") || 0),
-      payment_label: formString(formData, "payment_label") || "Balance payment",
-      paid_at: formString(formData, "paid_at") || todayInputValue(),
-      installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
-      installation_complete: formData.get("installation_complete") === "on",
-      jessica_commission_paid: formData.get("jessica_commission_paid") === "on",
-      ken_cut_override: overrideRaw === "" ? null : Number(overrideRaw),
-      manufacturer_name: formString(formData, "manufacturer_name"),
-      manufacturer_order_ref: formString(formData, "manufacturer_order_ref"),
-      notes: formString(formData, "notes")
-    };
+    const payload = buildBookkeepingRowPayload(row, patch);
+    const customerName = String(payload.customer_name || "").trim();
+    const soldDate = String(payload.sold_date || "").trim();
+    const customerNameChanged =
+      Object.prototype.hasOwnProperty.call(patch, "customer_name") && customerName && customerName !== row.customerName;
 
     setBusy(true);
     setMessage(null);
 
     try {
       if (row.source === "crm_quote" && row.quoteId) {
-        if (row.jobId && customerName && customerName !== row.customerName) {
+        if (row.jobId && customerNameChanged) {
           await crmFetch(session, `/api/crm/jobs/${row.jobId}`, {
             method: "PATCH",
             body: JSON.stringify({ customer_name: customerName })
@@ -1083,30 +1101,22 @@ export function CrmApp() {
         await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
           method: "PATCH",
           body: JSON.stringify({
-            ...shared,
-            customer_name: customerName,
+            ...payload,
             ...(soldDate ? { sold_at: soldDate } : {}),
-            quote_total: total,
-            materials_cost: cogs,
-            sold_by: owner
+            quote_total: Number(payload.total_amount || 0),
+            materials_cost: Number(payload.cogs_amount || 0),
+            sold_by: String(payload.sales_owner || "")
           })
         });
       } else {
         await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
           method: "PATCH",
-          body: JSON.stringify({
-            ...shared,
-            customer_name: customerName,
-            sold_date: soldDate,
-            total_amount: total,
-            cogs_amount: cogs,
-            sales_owner: owner
-          })
+          body: JSON.stringify(payload)
         });
       }
       await refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Row could not be updated.");
+      setMessage(error instanceof Error ? error.message : "Cell could not be updated.");
     } finally {
       setBusy(false);
     }
@@ -1468,7 +1478,7 @@ export function CrmApp() {
       {activeTab === "bookkeeping" ? (
         <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
           <div className="crm-bookkeeping-main">
-            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={editBookkeepingRow} />
+            <BookkeepingSpreadsheet rows={rows} totals={data?.bookkeepingTotals} busy={busy} onSave={saveBookkeepingCell} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
           </div>
         </section>
@@ -4113,6 +4123,304 @@ function InstallationInvoiceInbox({
   );
 }
 
+function bookkeepingRowKey(row: CrmBookkeepingRow) {
+  return `${row.source}-${row.id}`;
+}
+
+function BookkeepingCellButton({
+  children,
+  onClick,
+  ariaLabel,
+  className = ""
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  ariaLabel: string;
+  className?: string;
+}) {
+  return (
+    <button type="button" className={`crm-bookkeeping-cell-button ${className}`.trim()} onClick={onClick} aria-label={ariaLabel}>
+      {children}
+    </button>
+  );
+}
+
+function BookkeepingInlineTextEditor({
+  defaultValue,
+  type = "text",
+  min,
+  step,
+  placeholder,
+  busy,
+  onSave,
+  onCancel
+}: {
+  defaultValue: string | number | null | undefined;
+  type?: "text" | "number" | "date";
+  min?: string;
+  step?: string;
+  placeholder?: string;
+  busy: boolean;
+  onSave: (value: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(defaultValue == null ? "" : String(defaultValue));
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave(value.trim());
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form" onSubmit={submit}>
+      <input
+        autoFocus
+        type={type}
+        min={min}
+        step={step}
+        placeholder={placeholder}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BookkeepingInlineSelectEditor({
+  defaultValue,
+  options,
+  busy,
+  onSave,
+  onCancel
+}: {
+  defaultValue: string;
+  options: Array<{ value: string; label: string }>;
+  busy: boolean;
+  onSave: (value: string) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(defaultValue);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave(value);
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form" onSubmit={submit}>
+      <select
+        autoFocus
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      >
+        {options.map((item) => (
+          <option value={item.value} key={item.value}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BookkeepingCustomerEditor({
+  row,
+  busy,
+  onSave,
+  onCancel
+}: {
+  row: CrmBookkeepingRow;
+  busy: boolean;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [customerName, setCustomerName] = useState(row.customerName);
+  const [salesOwner, setSalesOwner] = useState(row.salesOwner || "");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave({ customer_name: customerName.trim(), sales_owner: salesOwner });
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form crm-bookkeeping-inline-form--customer" onSubmit={submit}>
+      <input
+        autoFocus
+        value={customerName}
+        onChange={(event) => setCustomerName(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <select value={salesOwner} onChange={(event) => setSalesOwner(event.target.value)}>
+        <option value="">Unassigned</option>
+        <option value="mike">Mike</option>
+        <option value="jessica">Jessica</option>
+      </select>
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BookkeepingPaymentEditor({
+  busy,
+  onSave,
+  onCancel
+}: {
+  busy: boolean;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [label, setLabel] = useState("Balance payment");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave({
+      payment_amount: Number(amount || 0),
+      payment_label: label.trim() || "Balance payment",
+      paid_at: todayInputValue()
+    });
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form crm-bookkeeping-inline-form--payment" onSubmit={submit}>
+      <input
+        autoFocus
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Amount"
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <input value={label} onChange={(event) => setLabel(event.target.value)} />
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BookkeepingInstallationEditor({
+  row,
+  busy,
+  onSave,
+  onCancel
+}: {
+  row: CrmBookkeepingRow;
+  busy: boolean;
+  onSave: (patch: Record<string, unknown>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [amount, setAmount] = useState(row.installationInvoiceAmount ? String(row.installationInvoiceAmount) : "");
+  const [complete, setComplete] = useState(row.isInstallationComplete);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave({
+      installation_invoice_amount: Number(amount || 0),
+      installation_complete: complete
+    });
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form crm-bookkeeping-inline-form--installation" onSubmit={submit}>
+      <input
+        autoFocus
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Invoice"
+        value={amount}
+        onChange={(event) => setAmount(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancel();
+        }}
+      />
+      <label className="crm-bookkeeping-inline-check">
+        <input type="checkbox" checked={complete} onChange={(event) => setComplete(event.target.checked)} />
+        Done
+      </label>
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
+function BookkeepingCheckboxEditor({
+  checked,
+  busy,
+  onSave,
+  onCancel
+}: {
+  checked: boolean;
+  busy: boolean;
+  onSave: (checked: boolean) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(checked);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onSave(value);
+    onCancel();
+  }
+
+  return (
+    <form className="crm-bookkeeping-inline-form crm-bookkeeping-inline-form--check" onSubmit={submit}>
+      <label className="crm-bookkeeping-inline-check">
+        <input autoFocus type="checkbox" checked={value} onChange={(event) => setValue(event.target.checked)} />
+        Paid
+      </label>
+      <button type="submit" disabled={busy}>
+        Save
+      </button>
+      <button type="button" className="crm-bookkeeping-inline-cancel" onClick={onCancel} disabled={busy}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 function BookkeepingSpreadsheet({
   rows,
   totals,
@@ -4122,8 +4430,9 @@ function BookkeepingSpreadsheet({
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
   busy: boolean;
-  onSave: (event: FormEvent<HTMLFormElement>, row: CrmBookkeepingRow) => void;
+  onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
 }) {
+  const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
     (totals?.total || 0) - (totals?.cogs || 0) - (totals?.installationAmount || 0) - (totals?.expensesTotal || 0)
   );
@@ -4144,6 +4453,15 @@ function BookkeepingSpreadsheet({
     ["Total Profit", toLedgerCurrency(totalProfit)],
     ["Profit Margin", profitMargin]
   ];
+  const isEditing = (row: CrmBookkeepingRow, field: BookkeepingEditableField) =>
+    editingCell?.rowKey === bookkeepingRowKey(row) && editingCell.field === field;
+  const openEdit = (row: CrmBookkeepingRow, field: BookkeepingEditableField) =>
+    setEditingCell({ rowKey: bookkeepingRowKey(row), field });
+  const closeEdit = () => setEditingCell(null);
+  const saveCell = async (row: CrmBookkeepingRow, patch: Record<string, unknown>) => {
+    await onSave(row, patch);
+    closeEdit();
+  };
 
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
@@ -4182,181 +4500,166 @@ function BookkeepingSpreadsheet({
               <th>Jessica</th>
               <th>J Paid</th>
               <th>Notes</th>
-              <th aria-label="Save row" />
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const formId = `crm-bookkeeping-row-${row.source}-${row.id}`;
-              return (
-                <tr className={row.isPaidInFull ? "crm-bookkeeping-row--closed" : undefined} key={`${row.source}-${row.id}`}>
-                  <td>
-                    <form id={formId} onSubmit={(event) => onSave(event, row)} />
-                    <div className="crm-bookkeeping-cell-stack crm-bookkeeping-customer-stack">
-                      <input
-                        form={formId}
-                        name="customer_name"
-                        className="crm-bookkeeping-input crm-bookkeeping-customer-input"
-                        defaultValue={row.customerName}
-                        aria-label={`Customer for ${row.customerName}`}
-                      />
+            {rows.map((row) => (
+              <tr className={row.isPaidInFull ? "crm-bookkeeping-row--closed" : undefined} key={bookkeepingRowKey(row)}>
+                <td>
+                  {isEditing(row, "customer") ? (
+                    <BookkeepingCustomerEditor row={row} busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit customer and owner for ${row.customerName}`} onClick={() => openEdit(row, "customer")}>
+                      <strong>{row.customerName}</strong>
                       <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
-                      <select
-                        form={formId}
-                        name="sales_owner"
-                        className="crm-bookkeeping-select"
-                        defaultValue={row.salesOwner || ""}
-                        aria-label={`Sales owner for ${row.customerName}`}
-                      >
-                        <option value="">Unassigned</option>
-                        <option value="mike">Mike</option>
-                        <option value="jessica">Jessica</option>
-                      </select>
                       <em className={`crm-bookkeeping-status${row.isPaidInFull ? " crm-bookkeeping-status--closed" : ""}`}>
                         {bookkeepingStatusLabel(row)}
                       </em>
-                    </div>
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      name="sold_date"
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "soldDate") ? (
+                    <BookkeepingInlineTextEditor
                       type="date"
-                      className="crm-bookkeeping-input crm-bookkeeping-date-input"
                       defaultValue={dateInputValue(row.soldDate)}
-                      aria-label={`Date for ${row.customerName}`}
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { sold_date: value })}
+                      onCancel={closeEdit}
                     />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      name="total_amount"
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit date for ${row.customerName}`} onClick={() => openEdit(row, "soldDate")}>
+                      {formatShortDate(row.soldDate)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "total") ? (
+                    <BookkeepingInlineTextEditor
                       type="number"
                       min="0"
                       step="0.01"
-                      className="crm-bookkeeping-input crm-bookkeeping-number-input"
                       defaultValue={row.total || ""}
-                      aria-label={`Total for ${row.customerName}`}
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { total_amount: Number(value || 0) })}
+                      onCancel={closeEdit}
                     />
-                  </td>
-                  <td>
-                    <div className="crm-bookkeeping-cell-stack crm-bookkeeping-money-stack">
-                      <span className="crm-bookkeeping-calc">{toLedgerCurrency(row.depositPaid)}</span>
-                      <input
-                        form={formId}
-                        name="payment_amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="crm-bookkeeping-input crm-bookkeeping-number-input"
-                        placeholder="Add payment"
-                        aria-label={`Add payment for ${row.customerName}`}
-                      />
-                      <input
-                        form={formId}
-                        name="payment_label"
-                        className="crm-bookkeeping-input"
-                        placeholder="Payment label"
-                        aria-label={`Payment label for ${row.customerName}`}
-                      />
-                      <input form={formId} name="paid_at" type="hidden" defaultValue={todayInputValue()} />
-                    </div>
-                  </td>
-                  <td>
-                    <select
-                      form={formId}
-                      name="payment_type"
-                      className="crm-bookkeeping-select"
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit total for ${row.customerName}`} onClick={() => openEdit(row, "total")}>
+                      {toLedgerCurrency(row.total)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "payment") ? (
+                    <BookkeepingPaymentEditor busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Add payment for ${row.customerName}`} onClick={() => openEdit(row, "payment")}>
+                      {toLedgerCurrency(row.depositPaid)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "paymentType") ? (
+                    <BookkeepingInlineSelectEditor
                       defaultValue={row.paymentType || "other"}
-                      aria-label={`Payment type for ${row.customerName}`}
-                    >
-                      {paymentTypes.map((item) => (
-                        <option value={item.value} key={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      name="cogs_amount"
+                      options={paymentTypes}
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { payment_type: value })}
+                      onCancel={closeEdit}
+                    />
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit payment type for ${row.customerName}`} onClick={() => openEdit(row, "paymentType")}>
+                      {formatPaymentType(row.paymentType)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "cogs") ? (
+                    <BookkeepingInlineTextEditor
                       type="number"
                       min="0"
                       step="0.01"
-                      className="crm-bookkeeping-input crm-bookkeeping-number-input"
                       defaultValue={row.cogs || ""}
-                      placeholder={row.cogs <= 0 ? "Missing" : undefined}
-                      aria-label={`COGS for ${row.customerName}`}
+                      placeholder="Missing"
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { cogs_amount: Number(value || 0) })}
+                      onCancel={closeEdit}
                     />
-                  </td>
-                  <td>
-                    <div className="crm-bookkeeping-cell-stack crm-bookkeeping-money-stack">
-                      <input
-                        form={formId}
-                        name="installation_invoice_amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="crm-bookkeeping-input crm-bookkeeping-number-input"
-                        defaultValue={row.installationInvoiceAmount || ""}
-                        placeholder="No invoice"
-                        aria-label={`Installation invoice for ${row.customerName}`}
-                      />
-                      <label className="crm-bookkeeping-check">
-                        <input form={formId} name="installation_complete" type="checkbox" defaultChecked={row.isInstallationComplete} />
-                        Done
-                      </label>
-                    </div>
-                  </td>
-                  <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(row.balance)}</td>
-                  <td>
-                    <div className="crm-bookkeeping-cell-stack crm-bookkeeping-money-stack">
-                      <span className="crm-bookkeeping-calc crm-ledger-money-warn">{toLedgerCurrency(row.kenCut)}</span>
-                      <input
-                        form={formId}
-                        name="ken_cut_override"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="crm-bookkeeping-input crm-bookkeeping-number-input"
-                        defaultValue={row.kenCutOverride ?? ""}
-                        placeholder="Override"
-                        aria-label={`Ken override for ${row.customerName}`}
-                      />
-                    </div>
-                  </td>
-                  <td className="crm-ledger-money-good">{toLedgerCurrency(row.mikeProfit)}</td>
-                  <td>{jessicaLedgerStatus(row)}</td>
-                  <td>
-                    <label className="crm-bookkeeping-check crm-bookkeeping-check--compact">
-                      <input
-                        form={formId}
-                        name="jessica_commission_paid"
-                        type="checkbox"
-                        defaultChecked={Boolean(row.jessicaCommissionPaidAt)}
-                      />
-                      Paid
-                    </label>
-                  </td>
-                  <td>
-                    <textarea
-                      form={formId}
-                      name="notes"
-                      rows={3}
-                      className="crm-bookkeeping-textarea"
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit COGS for ${row.customerName}`} onClick={() => openEdit(row, "cogs")}>
+                      {row.cogs <= 0 ? <span className="crm-bookkeeping-pill">Missing</span> : toLedgerCurrency(row.cogs)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "installation") ? (
+                    <BookkeepingInstallationEditor row={row} busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit installation for ${row.customerName}`} onClick={() => openEdit(row, "installation")}>
+                      {row.isInstallationComplete ? toLedgerCurrency(row.installationInvoiceAmount) : "No install invoice"}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(row.balance)}</td>
+                <td>
+                  {isEditing(row, "ken") ? (
+                    <BookkeepingInlineTextEditor
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={row.kenCutOverride ?? ""}
+                      placeholder="Auto"
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { ken_cut_override: value === "" ? null : Number(value || 0) })}
+                      onCancel={closeEdit}
+                    />
+                  ) : (
+                    <BookkeepingCellButton
+                      ariaLabel={`Edit Ken override for ${row.customerName}`}
+                      className="crm-ledger-money-warn"
+                      onClick={() => openEdit(row, "ken")}
+                    >
+                      {toLedgerCurrency(row.kenCut)}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td className="crm-ledger-money-good">{toLedgerCurrency(row.mikeProfit)}</td>
+                <td>{jessicaLedgerStatus(row)}</td>
+                <td>
+                  {isEditing(row, "jessicaPaid") ? (
+                    <BookkeepingCheckboxEditor
+                      checked={Boolean(row.jessicaCommissionPaidAt)}
+                      busy={busy}
+                      onSave={(checked) => saveCell(row, { jessica_commission_paid: checked })}
+                      onCancel={closeEdit}
+                    />
+                  ) : (
+                    <BookkeepingCellButton ariaLabel={`Edit Jessica paid status for ${row.customerName}`} onClick={() => openEdit(row, "jessicaPaid")}>
+                      {row.jessicaCommissionPaidAt ? toLedgerCurrency(row.jessicaCommission) : "-"}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+                <td>
+                  {isEditing(row, "notes") ? (
+                    <BookkeepingInlineTextEditor
                       defaultValue={row.notes || ""}
-                      aria-label={`Notes for ${row.customerName}`}
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { notes: value })}
+                      onCancel={closeEdit}
                     />
-                  </td>
-                  <td className="crm-bookkeeping-action-cell">
-                    <button type="submit" form={formId} className="crm-ghost-button crm-bookkeeping-edit-button" disabled={busy}>
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                  ) : (
+                    <BookkeepingCellButton
+                      ariaLabel={`Edit notes for ${row.customerName}`}
+                      className="crm-bookkeeping-note-cell"
+                      onClick={() => openEdit(row, "notes")}
+                    >
+                      {row.notes || "Click to add note"}
+                    </BookkeepingCellButton>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
         {!rows.length ? <p className="crm-empty">No bookkeeping rows yet.</p> : null}
