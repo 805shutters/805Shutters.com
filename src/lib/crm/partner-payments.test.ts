@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildPartnerPaymentLedger } from "@/lib/crm/partner-payments";
+import {
+  buildPartnerPaymentLedger,
+  buildUnpaidPartnerPaymentItemForRow,
+  partnerPaymentItemKeyForRow
+} from "@/lib/crm/partner-payments";
 import {
   CrmBookkeepingPayment,
   CrmBookkeepingRow,
@@ -149,6 +153,32 @@ function commissionAllocation(overrides: Partial<CrmCommissionPaymentAllocation>
     ...overrides
   };
 }
+
+describe("partner payment row helpers", () => {
+  it("builds the same clickable unpaid item from a paid-in-full row", () => {
+    const paymentRow = row({
+      id: "jessica-row",
+      salesOwner: "jessica",
+      mikeProfit: 300,
+      jessicaCommission: 300,
+      jessicaCommissionOwed: 300
+    });
+    const item = buildUnpaidPartnerPaymentItemForRow("jessica", paymentRow);
+
+    expect(partnerPaymentItemKeyForRow("jessica", paymentRow)).toBe("jessica:manual:jessica-row");
+    expect(item).toMatchObject({
+      itemKey: "jessica:manual:jessica-row",
+      person: "jessica",
+      remainingAmount: 300,
+      paymentState: "unpaid"
+    });
+  });
+
+  it("does not create a clickable payment item for open rows or zero amounts", () => {
+    expect(buildUnpaidPartnerPaymentItemForRow("mike", row({ isPaidInFull: false, balance: 100 }))).toBeNull();
+    expect(buildUnpaidPartnerPaymentItemForRow("jessica", row({ jessicaCommission: 0 }))).toBeNull();
+  });
+});
 
 describe("buildPartnerPaymentLedger", () => {
   it("creates active payable rows only for paid-in-full jobs", () => {

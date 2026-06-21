@@ -11,7 +11,11 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
-import { buildPartnerPaymentLedger, paymentPersonLabel } from "@/lib/crm/partner-payments";
+import {
+  buildPartnerPaymentLedger,
+  buildUnpaidPartnerPaymentItemForRow,
+  paymentPersonLabel
+} from "@/lib/crm/partner-payments";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -2392,9 +2396,31 @@ export async function createPartnerPaymentBatch(
   const selectedKeys = selectedPaymentItemKeys(payload);
   const personLedger = dashboard.partnerPaymentLedger.people[person];
   const activeItems = personLedger.activeItems;
-  const selectedItems = selectedKeys
-    ? personLedger.items.filter((item) => (selectedKeys.has(item.itemKey) || selectedKeys.has(item.id)) && item.remainingAmount > 0)
-    : activeItems;
+  const selectedItemsByKey = new Map<string, CrmPartnerPaymentLedgerItem>();
+  const ledgerMatchedKeys = new Set<string>();
+  const addSelectedItem = (item: CrmPartnerPaymentLedgerItem | null | undefined) => {
+    if (!item || item.remainingAmount <= 0) return;
+    selectedItemsByKey.set(item.itemKey, item);
+  };
+
+  if (selectedKeys) {
+    personLedger.items
+      .filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
+      .forEach((item) => {
+        ledgerMatchedKeys.add(item.itemKey);
+        addSelectedItem(item);
+      });
+    dashboard.bookkeepingRows
+      .map((row) => buildUnpaidPartnerPaymentItemForRow(person, row))
+      .filter((item): item is CrmPartnerPaymentLedgerItem => Boolean(item))
+      .filter((item) => selectedKeys.has(item.itemKey) || selectedKeys.has(item.id))
+      .filter((item) => !ledgerMatchedKeys.has(item.itemKey))
+      .forEach(addSelectedItem);
+  } else {
+    activeItems.forEach(addSelectedItem);
+  }
+
+  const selectedItems = [...selectedItemsByKey.values()].sort(comparePartnerItems);
 
   if (!selectedItems.length) {
     throw new CrmAuthError(400, `${paymentPersonLabel(person)} has no active unpaid jobs to pay.`);

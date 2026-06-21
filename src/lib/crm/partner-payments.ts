@@ -69,6 +69,16 @@ function paidInFullDate(row: CrmBookkeepingRow) {
   return payments.at(-1)?.paid_at || payments.at(-1)?.created_at || row.soldDate;
 }
 
+export function partnerPaymentItemKeyForRow(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
+  return `${person}:${row.source}:${row.id}`;
+}
+
+export function partnerPaymentAmountForRow(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
+  if (person === "ken") return roundCents(row.kenCut);
+  if (person === "jessica") return roundCents(row.jessicaCommission);
+  return roundCents(row.mikeProfit);
+}
+
 function rowIdentity(row: CrmBookkeepingRow) {
   return {
     source: row.source,
@@ -92,7 +102,7 @@ function createEarnedItem({
   const owedAmount = roundCents(amount);
   if (owedAmount <= 0) return null;
   const identity = rowIdentity(row);
-  const itemKey = `${person}:${row.source}:${row.id}`;
+  const itemKey = partnerPaymentItemKeyForRow(person, row);
 
   return {
     id: itemKey,
@@ -133,6 +143,31 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
   }
 
   return items.sort(compareEarnedItems);
+}
+
+export function buildUnpaidPartnerPaymentItemForRow(
+  person: CrmPaymentPerson,
+  row: CrmBookkeepingRow
+): CrmPartnerPaymentLedgerItem | null {
+  const closedAt = paidInFullDate(row);
+  const earnedItem = closedAt
+    ? createEarnedItem({
+        row,
+        person,
+        amount: partnerPaymentAmountForRow(person, row),
+        closedAt
+      })
+    : null;
+  if (!earnedItem) return null;
+
+  return {
+    ...earnedItem,
+    paidAmount: 0,
+    remainingAmount: earnedItem.owedAmount,
+    paymentState: "unpaid",
+    explicitAllocationIds: [],
+    legacyPaidAmount: 0
+  };
 }
 
 function compareEarnedItems(left: Pick<EarnedItem, "closedAt" | "customerName" | "itemKey">, right: Pick<EarnedItem, "closedAt" | "customerName" | "itemKey">) {

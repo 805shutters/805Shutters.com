@@ -4,6 +4,10 @@ import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } 
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
 import { isAllowedCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
+import {
+  buildUnpaidPartnerPaymentItemForRow,
+  partnerPaymentItemKeyForRow
+} from "@/lib/crm/partner-payments";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
@@ -5670,10 +5674,6 @@ function BookkeepingInstallationEditor({
 
 const partnerPaymentPeople: CrmPaymentPerson[] = ["ken", "mike", "jessica"];
 
-function partnerPaymentItemKey(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
-  return `${person}:${row.source}:${row.id}`;
-}
-
 function partnerPaymentItemMap(ledger: CrmDashboardData["partnerPaymentLedger"] | undefined) {
   const map = new Map<string, CrmPartnerPaymentLedgerItem>();
   for (const person of partnerPaymentPeople) {
@@ -5682,59 +5682,6 @@ function partnerPaymentItemMap(ledger: CrmDashboardData["partnerPaymentLedger"] 
     }
   }
   return map;
-}
-
-function fallbackPartnerPaymentPaidOn(row: CrmBookkeepingRow) {
-  if (!row.isPaidInFull) return row.soldDate ? row.soldDate.slice(0, 10) : null;
-  const total = roundCurrency(row.total);
-  if (total <= 0) return row.soldDate ? row.soldDate.slice(0, 10) : null;
-
-  let applied = roundCurrency((row.creditIn || 0) - (row.creditOut || 0));
-  const payments = [...row.payments].sort((left, right) => {
-    const leftTime = Date.parse(left.paid_at || left.created_at || "");
-    const rightTime = Date.parse(right.paid_at || right.created_at || "");
-    return (Number.isFinite(leftTime) ? leftTime : 0) - (Number.isFinite(rightTime) ? rightTime : 0);
-  });
-
-  for (const payment of payments) {
-    applied = roundCurrency(applied + (Number(payment.amount) || 0));
-    if (applied >= total) return (payment.paid_at || payment.created_at || row.soldDate || "").slice(0, 10) || null;
-  }
-
-  return (payments.at(-1)?.paid_at || payments.at(-1)?.created_at || row.soldDate || "").slice(0, 10) || null;
-}
-
-function fallbackPartnerPaymentItem(
-  person: CrmPaymentPerson,
-  row: CrmBookkeepingRow,
-  amount: number
-): CrmPartnerPaymentLedgerItem | undefined {
-  if (!row.isPaidInFull || amount <= 0) return undefined;
-  const itemKey = partnerPaymentItemKey(person, row);
-  const paidOn = fallbackPartnerPaymentPaidOn(row);
-
-  return {
-    id: itemKey,
-    itemKey,
-    person,
-    source: row.source,
-    quoteId: row.quoteId,
-    bookkeepingEntryId: row.source === "crm_quote" ? null : row.id,
-    jobId: row.jobId,
-    customerName: row.customerName,
-    quoteNumber: row.quoteNumber,
-    closedAt: paidOn,
-    periodMonth: paidOn ? `${paidOn.slice(0, 7)}-01` : null,
-    sourceStatus: row.liveStatus || row.status,
-    salesOwner: row.salesOwner,
-    total: row.total,
-    owedAmount: amount,
-    paidAmount: 0,
-    remainingAmount: amount,
-    paymentState: "unpaid",
-    explicitAllocationIds: [],
-    legacyPaidAmount: 0
-  };
 }
 
 function PartnerPaymentAmountCell({
@@ -5754,9 +5701,9 @@ function PartnerPaymentAmountCell({
   busy: boolean;
   onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
 }) {
-  const payableItem = item || fallbackPartnerPaymentItem(person, row, amount);
+  const payableItem = item || buildUnpaidPartnerPaymentItemForRow(person, row);
   const paid = payableItem?.paymentState === "paid";
-  const canClick = Boolean(canMarkPartnerPaid && item && !paid && item.remainingAmount > 0);
+  const canClick = Boolean(canMarkPartnerPaid && payableItem && !paid && payableItem.remainingAmount > 0);
   const label = paid
     ? `${paymentPersonDisplayName(person)} paid for ${row.customerName}`
     : canClick
@@ -6126,7 +6073,7 @@ function BookkeepingSpreadsheet({
                         person="ken"
                         row={row}
                         amount={row.kenCut}
-                        item={paymentItemsByKey.get(partnerPaymentItemKey("ken", row))}
+                        item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("ken", row))}
                         canMarkPartnerPaid={canMarkPartnerPaid}
                         busy={busy}
                         onMarkPartnerPaid={onMarkPartnerPaid}
@@ -6149,7 +6096,7 @@ function BookkeepingSpreadsheet({
                     person="mike"
                     row={row}
                     amount={row.mikeProfit}
-                    item={paymentItemsByKey.get(partnerPaymentItemKey("mike", row))}
+                    item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
                     canMarkPartnerPaid={canMarkPartnerPaid}
                     busy={busy}
                     onMarkPartnerPaid={onMarkPartnerPaid}
@@ -6160,7 +6107,7 @@ function BookkeepingSpreadsheet({
                     person="jessica"
                     row={row}
                     amount={row.jessicaCommission}
-                    item={paymentItemsByKey.get(partnerPaymentItemKey("jessica", row))}
+                    item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("jessica", row))}
                     canMarkPartnerPaid={canMarkPartnerPaid}
                     busy={busy}
                     onMarkPartnerPaid={onMarkPartnerPaid}
