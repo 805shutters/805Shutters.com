@@ -4053,10 +4053,12 @@ function JobCard({
   return (
     <article className="crm-job-card">
       <div className="crm-job-card-head">
-        <h3>{job.customer_name}</h3>
+        <div>
+          <h3>{job.customer_name}</h3>
+          <p>{job.product_interest}</p>
+        </div>
         <span>{job.priority}</span>
       </div>
-      <p>{job.product_interest}</p>
       <dl>
         <div>
           <dt>Phone</dt>
