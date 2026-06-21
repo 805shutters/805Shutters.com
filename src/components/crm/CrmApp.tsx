@@ -2059,6 +2059,137 @@ function titleCase(value: string) {
   return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+function productMixKey(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/\//g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const productMixLabelMap = new Map<string, string>(
+  [
+    ["shutter", "Shutters"],
+    ["shutters", "Shutters"],
+    ["plantation shutter", "Shutters"],
+    ["plantation shutters", "Shutters"],
+    ["roller shade", "Roller Shades"],
+    ["roller shades", "Roller Shades"],
+    ["commercial roller shade", "Commercial Roller Shades"],
+    ["commercial roller shades", "Commercial Roller Shades"],
+    ["solar shade", "Solar Shades"],
+    ["solar shades", "Solar Shades"],
+    ["blackout shade", "Blackout Shades"],
+    ["blackout shades", "Blackout Shades"],
+    ["honeycomb", "Honeycomb Shades"],
+    ["honeycomb shade", "Honeycomb Shades"],
+    ["honeycomb shades", "Honeycomb Shades"],
+    ["roman shade", "Roman Shades"],
+    ["roman shades", "Roman Shades"],
+    ["woven wood shade", "Woven Wood Shades"],
+    ["woven wood shades", "Woven Wood Shades"],
+    ["layered shade", "Layered Shades"],
+    ["layered shades", "Layered Shades"],
+    ["sheer shade", "Sheer Shades"],
+    ["sheer shades", "Sheer Shades"],
+    ["sliding panel shade", "Sliding Panel Shades"],
+    ["sliding panel shades", "Sliding Panel Shades"],
+    ["exterior shade", "Exterior Shades"],
+    ["exterior shades", "Exterior Shades"],
+    ["motorized shade", "Motorized Shades"],
+    ["motorized shades", "Motorized Shades"],
+    ["motorized roller shade", "Motorized Shades"],
+    ["motorized roller shades", "Motorized Shades"],
+    ["drapery", "Drapery"],
+    ["draperies", "Drapery"],
+    ["drape", "Drapery"],
+    ["drapes", "Drapery"],
+    ["vertical blind", "Vertical Blinds"],
+    ["vertical blinds", "Vertical Blinds"],
+    ["mini blind", "Mini Blinds"],
+    ["mini blinds", "Mini Blinds"],
+    ["faux wood blind", "Wood and Faux Wood Blinds"],
+    ["faux wood blinds", "Wood and Faux Wood Blinds"],
+    ["wood blind", "Wood and Faux Wood Blinds"],
+    ["wood blinds", "Wood and Faux Wood Blinds"],
+    ["faux wood wood blinds", "Wood and Faux Wood Blinds"],
+    ["faux wood and wood blinds", "Wood and Faux Wood Blinds"],
+    ["aluminum blind", "Aluminum Blinds"],
+    ["aluminum blinds", "Aluminum Blinds"],
+    ["softwood blind", "Softwood Blinds"],
+    ["softwood blinds", "Softwood Blinds"],
+    ["vertical honeycomb", "Vertical Honeycomb Shades"],
+    ["vertical honeycomb shade", "Vertical Honeycomb Shades"],
+    ["vertical honeycomb shades", "Vertical Honeycomb Shades"],
+    ["skylight", "Skylight Shades"],
+    ["skylights", "Skylight Shades"],
+    ["skylight shade", "Skylight Shades"],
+    ["skylight shades", "Skylight Shades"]
+  ].map(([alias, label]) => [productMixKey(alias), label])
+);
+
+function normalizeProductMixLabel(value: string | null | undefined) {
+  const raw = value?.trim();
+  if (!raw) return null;
+  const key = productMixKey(raw);
+  return productMixLabelMap.get(key) || null;
+}
+
+function splitProductInterest(value: string | null | undefined) {
+  return (value || "")
+    .split(/[,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function productLabelsFromInterest(value: string | null | undefined) {
+  const labels = splitProductInterest(value)
+    .map(normalizeProductMixLabel)
+    .filter((label): label is string => Boolean(label));
+  return Array.from(new Set(labels));
+}
+
+function buildJobProductLabelMap(files: CrmCustomerFile[]) {
+  const quoteToJob = new Map<string, string>();
+  const entryToJob = new Map<string, string>();
+  const labelsByJob = new Map<string, Set<string>>();
+
+  for (const file of files) {
+    for (const quote of file.quotes) {
+      quoteToJob.set(quote.id, quote.job_id);
+    }
+    for (const row of file.bookkeepingRows) {
+      if (row.jobId) entryToJob.set(row.id, row.jobId);
+    }
+  }
+
+  for (const file of files) {
+    for (const product of file.products) {
+      if (product.id.startsWith("job-product-") || product.meta?.source === "crm_job") continue;
+      const label = normalizeProductMixLabel(product.product_type);
+      if (!label) continue;
+      const jobId =
+        product.job_id ||
+        (product.quote_id ? quoteToJob.get(product.quote_id) : null) ||
+        (product.bookkeeping_entry_id ? entryToJob.get(product.bookkeeping_entry_id) : null);
+      if (!jobId) continue;
+      const labels = labelsByJob.get(jobId) || new Set<string>();
+      labels.add(label);
+      labelsByJob.set(jobId, labels);
+    }
+  }
+
+  return labelsByJob;
+}
+
+function addJobToProductBucket(map: Map<string, CrmJob[]>, label: string, job: CrmJob) {
+  const list = map.get(label) || [];
+  list.push(job);
+  map.set(label, list);
+}
+
 function normalizeCustomerName(name: string) {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -2543,15 +2674,30 @@ function CommandDashboard({
     return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, mikeNet, jessicaNet, jessicaNetRows };
   }, [rows]);
 
-  const productMix = useMemo(() => {
+  const productMixReport = useMemo(() => {
     const map = new Map<string, CrmJob[]>();
+    const needsDetails: CrmJob[] = [];
+    const savedProductLabels = buildJobProductLabelMap(files);
+
     for (const job of jobs) {
-      const key = job.product_interest?.trim() || "Unspecified";
-      const list = map.get(key) || [];
-      list.push(job);
-      map.set(key, list);
+      const productLabels = savedProductLabels.get(job.id);
+      let labels = productLabels ? Array.from(productLabels) : [];
+
+      if (!labels.length) {
+        labels = productLabelsFromInterest(job.product_interest);
+      }
+
+      if (!labels.length) {
+        needsDetails.push(job);
+        continue;
+      }
+
+      for (const label of labels) {
+        addJobToProductBucket(map, label, job);
+      }
     }
-    const all = [...map.entries()]
+
+    const slices = [...map.entries()]
       .map(([label, list]) => ({
         label,
         list,
@@ -2559,18 +2705,8 @@ function CommandDashboard({
         value: list.reduce((sum, job) => sum + jobValue(job), 0)
       }))
       .sort((a, b) => b.count - a.count);
-    const top = all.slice(0, 6);
-    const rest = all.slice(6).flatMap((slice) => slice.list);
-    if (rest.length) {
-      top.push({
-        label: "Other",
-        list: rest,
-        count: rest.length,
-        value: rest.reduce((sum, job) => sum + jobValue(job), 0)
-      });
-    }
-    return top;
-  }, [jobs]);
+    return { slices, needsDetails };
+  }, [jobs, files]);
 
   const closing = useMemo(() => {
     function bucketize(list: CrmJob[]) {
@@ -2614,9 +2750,18 @@ function CommandDashboard({
     return { buckets, avg, count: measured.length };
   }, [jobs]);
 
+  const productMix = productMixReport.slices;
+  const productsNeedingDetails = productMixReport.needsDetails;
   const productTotal = productMix.reduce((sum, slice) => sum + slice.count, 0);
   const responseMax = Math.max(1, ...response.buckets.map((bucket) => bucket.list.length));
   const activePlacement = activeDrill?.placement || "summary";
+  const openNeedsProductDetails = () =>
+    onDrill({
+      title: "Needs Product Details",
+      subtitle: `${productsNeedingDetails.length} jobs have no recognized sold product category`,
+      placement: "product",
+      entries: jobsToEntries(productsNeedingDetails, rows, { files })
+    });
   const drillPanel = (placements: DrillPlacement[]) =>
     activeDrill && placements.includes(activePlacement) ? (
       <DrillDetailPanel
@@ -2716,36 +2861,59 @@ function CommandDashboard({
           <div className="crm-section-head">
             <div>
               <p className="eyebrow">Product Mix</p>
-              <h2>Jobs By Product</h2>
+              <h2>Products By Category</h2>
             </div>
             <strong>{productTotal}</strong>
           </div>
           {productTotal ? (
             <div className="crm-donut-row">
               <Donut slices={productMix} total={productTotal} />
-              <ul className="crm-legend">
-                {productMix.map((slice, index) => (
-                  <li key={slice.label}>
-                    <button
-                      type="button"
-                      className="crm-legend-item"
-                      onClick={() =>
-                        onDrill({
-                          title: slice.label,
-                          subtitle: `${slice.count} jobs · ${toCurrency(slice.value)} pipeline`,
-                          placement: "product",
-                          entries: jobsToEntries(slice.list, rows, { files })
-                        })
-                      }
-                    >
-                      <span className="crm-swatch" style={{ background: DONUT_COLORS[index % DONUT_COLORS.length] }} />
-                      <span className="crm-legend-label">{slice.label}</span>
-                      <span className="crm-legend-count">{slice.count}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+              <div className="crm-product-mix-details">
+                <ul className="crm-legend">
+                  {productMix.map((slice, index) => (
+                    <li key={slice.label}>
+                      <button
+                        type="button"
+                        className="crm-legend-item"
+                        onClick={() =>
+                          onDrill({
+                            title: slice.label,
+                            subtitle: `${slice.count} jobs · ${toCurrency(slice.value)} pipeline`,
+                            placement: "product",
+                            entries: jobsToEntries(slice.list, rows, { files })
+                          })
+                        }
+                      >
+                        <span className="crm-swatch" style={{ background: DONUT_COLORS[index % DONUT_COLORS.length] }} />
+                        <span className="crm-legend-label">{slice.label}</span>
+                        <span className="crm-legend-count">{slice.count}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                {productsNeedingDetails.length ? (
+                  <button
+                    type="button"
+                    className="crm-legend-item crm-product-review-button"
+                    onClick={openNeedsProductDetails}
+                  >
+                    <span className="crm-swatch" style={{ background: "transparent", border: "1px dashed var(--muted)" }} />
+                    <span className="crm-legend-label">Needs product details</span>
+                    <span className="crm-legend-count">{productsNeedingDetails.length}</span>
+                  </button>
+                ) : null}
+              </div>
             </div>
+          ) : productsNeedingDetails.length ? (
+            <button
+              type="button"
+              className="crm-legend-item crm-product-review-button"
+              onClick={openNeedsProductDetails}
+            >
+              <span className="crm-swatch" style={{ background: "transparent", border: "1px dashed var(--muted)" }} />
+              <span className="crm-legend-label">Needs product details</span>
+              <span className="crm-legend-count">{productsNeedingDetails.length}</span>
+            </button>
           ) : (
             <p className="crm-empty">No jobs to chart yet.</p>
           )}
@@ -2876,7 +3044,7 @@ function Donut({
         {total}
       </text>
       <text x={100} y={116} textAnchor="middle" className="crm-donut-caption">
-        JOBS
+        PRODUCTS
       </text>
     </svg>
   );
