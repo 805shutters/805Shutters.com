@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDashboardData, enrichCalendarEventsWithJobDetails } from "./backend";
+import { buildDashboardData, createCrmQuote, enrichCalendarEventsWithJobDetails, updateCrmQuote } from "./backend";
 import { CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
 
 function job(overrides: Partial<CrmJob> = {}): CrmJob {
@@ -89,6 +89,119 @@ function payment(overrides: Partial<CrmBookkeepingPayment> = {}): CrmBookkeeping
   };
 }
 
+type RecordedSupabaseCall = {
+  table: string;
+  action: "insert" | "update" | "upsert" | "delete";
+  payload?: unknown;
+  options?: unknown;
+};
+
+function createSupabaseRecorder(options: { job?: CrmJob; existingQuote?: CrmQuote; lineItemCount?: number } = {}) {
+  const calls: RecordedSupabaseCall[] = [];
+  const state = {
+    job: options.job ?? job(),
+    existingQuote: options.existingQuote ?? quote({ status: "ordered" }),
+    lineItemCount: options.lineItemCount ?? 0
+  };
+
+  class QueryRecorder {
+    action: RecordedSupabaseCall["action"] | null = null;
+    payload: unknown;
+    error = null;
+    count: number | null = null;
+    private filters: Record<string, unknown> = {};
+    private selectedColumns = "*";
+
+    constructor(private table: string) {}
+
+    select(columns = "*", options?: { count?: string; head?: boolean }) {
+      this.selectedColumns = columns;
+      if (options?.count === "exact" && options.head) this.count = state.lineItemCount;
+      return this;
+    }
+
+    ilike() {
+      return this;
+    }
+
+    limit() {
+      return this;
+    }
+
+    eq(key: string, value: unknown) {
+      this.filters[key] = value;
+      return this;
+    }
+
+    insert(payload: unknown) {
+      this.action = "insert";
+      this.payload = payload;
+      calls.push({ table: this.table, action: "insert", payload });
+      return this;
+    }
+
+    update(payload: unknown) {
+      this.action = "update";
+      this.payload = payload;
+      calls.push({ table: this.table, action: "update", payload });
+      return this;
+    }
+
+    upsert(payload: unknown, options?: unknown) {
+      this.action = "upsert";
+      this.payload = payload;
+      calls.push({ table: this.table, action: "upsert", payload, options });
+      return this;
+    }
+
+    delete() {
+      this.action = "delete";
+      calls.push({ table: this.table, action: "delete" });
+      return this;
+    }
+
+    async maybeSingle() {
+      if (this.table === "crm_jobs") {
+        if (this.action === "update") return { data: null, error: null };
+        if (this.selectedColumns === "status") return { data: { status: state.job.status }, error: null };
+        return { data: state.job, error: null };
+      }
+      if (this.table === "crm_quotes") return { data: state.existingQuote, error: null };
+      return { data: null, error: null };
+    }
+
+    async single() {
+      if (this.table === "crm_quotes" && this.action === "insert") {
+        const record = this.payload as Partial<CrmQuote>;
+        const data = quote({
+          ...record,
+          id: "quote-created",
+          job_id: String(record.job_id || state.job.id),
+          status: String(record.status || "draft") as CrmQuote["status"]
+        });
+        state.existingQuote = data;
+        return { data, error: null };
+      }
+      if (this.table === "crm_quotes" && this.action === "update") {
+        state.existingQuote = quote({
+          ...state.existingQuote,
+          ...(this.payload as Partial<CrmQuote>)
+        });
+        return { data: state.existingQuote, error: null };
+      }
+      return { data: this.payload ?? null, error: null };
+    }
+  }
+
+  const supabase = {
+    from(table: string) {
+      return new QueryRecorder(table);
+    }
+  } as unknown as Parameters<typeof createCrmQuote>[0];
+
+  return { calls, supabase };
+}
+
 describe("buildDashboardData", () => {
   it("counts Open Jobs as sold jobs that are not paid/completed", () => {
     const data = buildDashboardData({
@@ -122,6 +235,66 @@ describe("buildDashboardData", () => {
     });
 
     expect(data.summary.openJobs).toBe(3);
+  });
+});
+
+describe("quote bookkeeping notes", () => {
+  const actor = { email: "bookkeeper@805shutters.com" };
+
+  it("does not copy customer-facing quote notes into the bookkeeping entry when creating a committed quote", async () => {
+    const { calls, supabase } = createSupabaseRecorder();
+
+    await createCrmQuote(
+      supabase,
+      {
+        job_id: "job-1",
+        status: "ordered",
+        quote_number: "805-2000",
+        quote_total: 1315,
+        notes:
+          '{"__customerEmailNote":"Customer-facing pricing explanation that belongs on the quote, not bookkeeping."}'
+      },
+      actor
+    );
+
+    const entryInsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "insert"
+    );
+    expect(entryInsert?.payload).toMatchObject({
+      source: "crm_quote",
+      quote_id: "quote-created"
+    });
+    expect((entryInsert?.payload as { notes?: unknown }).notes).toBeNull();
+  });
+
+  it("writes bookkeeping_notes to the quote bookkeeping entry without updating quote notes", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingQuote: quote({ id: "quote-1", status: "ordered", notes: "Customer-facing quote note" })
+    });
+
+    await updateCrmQuote(supabase, "quote-1", { bookkeeping_notes: "Ledger-only follow-up" }, actor);
+
+    const quoteUpdate = calls.find((call) => call.table === "crm_quotes" && call.action === "update");
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(quoteUpdate).toBeUndefined();
+    expect(entryUpsert?.payload).toMatchObject({ quote_id: "quote-1", notes: "Ledger-only follow-up" });
+  });
+
+  it("does not copy quote note updates into the quote bookkeeping entry", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingQuote: quote({ id: "quote-1", status: "ordered", notes: "Old quote note" })
+    });
+
+    await updateCrmQuote(supabase, "quote-1", { notes: "New customer-facing quote note" }, actor);
+
+    const quoteUpdate = calls.find((call) => call.table === "crm_quotes" && call.action === "update");
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(quoteUpdate?.payload).toMatchObject({ notes: "New customer-facing quote note" });
+    expect(entryUpsert?.payload).not.toHaveProperty("notes");
   });
 });
 

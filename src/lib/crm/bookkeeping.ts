@@ -336,6 +336,22 @@ export function formatPaymentType(value: CrmBookkeepingPaymentType | null): stri
   }[value];
 }
 
+function cleanBookkeepingNote(note: string | null | undefined, copiedFromQuoteNote?: string | null) {
+  const trimmed = typeof note === "string" ? note.trim() : "";
+  if (!trimmed) return null;
+  if (copiedFromQuoteNote && trimmed === copiedFromQuoteNote.trim()) return null;
+  if (!trimmed.includes("__customerEmailNote")) return trimmed;
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    if (parsed && typeof parsed === "object" && "__customerEmailNote" in parsed) return null;
+  } catch {
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
 function buildEntryRow(
   entry: CrmBookkeepingEntry,
   payments: CrmBookkeepingPayment[],
@@ -408,7 +424,7 @@ function buildEntryRow(
     manufacturerOrderRef: entry.manufacturer_order_ref,
     manufacturerOrderUrl: entry.manufacturer_order_url,
     manufacturerDocumentUrl: entry.manufacturer_document_url,
-    notes: entry.notes,
+    notes: cleanBookkeepingNote(entry.notes),
     status: bookkeepingStatusForBalance(entry.source === "legacy_sheet" ? "legacy" : "manual", total, balance),
     payments,
     creditsIn,
@@ -501,7 +517,7 @@ function buildQuoteRow(
     manufacturerOrderRef: entry?.manufacturer_order_ref || quote.manufacturer_order_ref,
     manufacturerOrderUrl: entry?.manufacturer_order_url || quote.manufacturer_order_url,
     manufacturerDocumentUrl: entry?.manufacturer_document_url || quote.manufacturer_document_url,
-    notes: entry?.notes || quote.notes,
+    notes: cleanBookkeepingNote(entry?.notes, quote.notes),
     status: bookkeepingStatusForBalance(quote.status, total, balance),
     payments,
     creditsIn,

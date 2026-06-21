@@ -1098,15 +1098,20 @@ export function CrmApp() {
             body: JSON.stringify({ customer_name: customerName })
           });
         }
+        const quotePayload: Record<string, unknown> = {
+          ...payload,
+          ...(soldDate ? { sold_at: soldDate } : {}),
+          quote_total: Number(payload.total_amount || 0),
+          materials_cost: Number(payload.cogs_amount || 0),
+          sold_by: String(payload.sales_owner || "")
+        };
+        delete quotePayload.notes;
+        if (Object.prototype.hasOwnProperty.call(patch, "notes")) {
+          quotePayload.bookkeeping_notes = payload.notes;
+        }
         await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
           method: "PATCH",
-          body: JSON.stringify({
-            ...payload,
-            ...(soldDate ? { sold_at: soldDate } : {}),
-            quote_total: Number(payload.total_amount || 0),
-            materials_cost: Number(payload.cogs_amount || 0),
-            sold_by: String(payload.sales_owner || "")
-          })
+          body: JSON.stringify(quotePayload)
         });
       } else {
         await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {

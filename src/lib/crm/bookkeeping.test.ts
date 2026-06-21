@@ -168,6 +168,70 @@ function rowsFrom(args: {
   });
 }
 
+describe("bookkeeping notes", () => {
+  it("does not show quote or contract notes as bookkeeping notes", () => {
+    const [row] = rowsFrom({
+      quotes: [
+        quote({
+          id: "q1",
+          quote_total: 1000,
+          notes:
+            '{"__customerEmailNote":"Customer-facing pricing explanation that belongs on the quote, not bookkeeping."}'
+        })
+      ]
+    });
+
+    expect(row.notes).toBeNull();
+  });
+
+  it("shows notes saved on the bookkeeping entry for a quote row", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", quote_total: 1000 })],
+      entries: [
+        entry({
+          id: "e1",
+          source: "crm_quote",
+          quote_id: "q1",
+          notes: "Bookkeeping-only follow-up note"
+        })
+      ]
+    });
+
+    expect(row.notes).toBe("Bookkeeping-only follow-up note");
+  });
+
+  it("hides a legacy bookkeeping note that was copied from the quote note", () => {
+    const copiedNote = "Contract note that belongs with the quote.";
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", quote_total: 1000, notes: copiedNote })],
+      entries: [
+        entry({
+          id: "e1",
+          source: "crm_quote",
+          quote_id: "q1",
+          notes: copiedNote
+        })
+      ]
+    });
+
+    expect(row.notes).toBeNull();
+  });
+
+  it("hides legacy customer email payloads copied into bookkeeping notes", () => {
+    const [row] = rowsFrom({
+      entries: [
+        entry({
+          id: "e1",
+          notes:
+            '{"__customerEmailNote":"Customer-facing pricing explanation that belongs on the quote, not bookkeeping."}'
+        })
+      ]
+    });
+
+    expect(row.notes).toBeNull();
+  });
+});
+
 describe("paid-in-full status", () => {
   it("marks a bookkeeping row closed when payments cover the total", () => {
     const [row] = rowsFrom({

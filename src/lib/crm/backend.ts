@@ -1363,7 +1363,7 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
       manufacturer_order_ref: optionalText(payload.manufacturer_order_ref),
       manufacturer_order_url: optionalText(payload.manufacturer_order_url),
       manufacturer_document_url: optionalText(payload.manufacturer_document_url),
-      notes: optionalText(payload.notes),
+      notes: optionalText(payload.bookkeeping_notes),
       meta: { createdBy: actor.email }
     });
 
@@ -1443,19 +1443,32 @@ export async function updateCrmQuote(
     if (payload.status === "archived" && !patch.archived_at) patch.archived_at = now;
   }
 
-  if (!Object.keys(patch).length) {
+  const hasEntryOnlyBookkeepingPatch = [
+    "bookkeeping_notes",
+    "installation_invoice_amount",
+    "installation_complete",
+    "ken_cut_override",
+    "jessica_commission_paid"
+  ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+  const hasPaymentPatch = toMoney(payload.payment_amount) > 0;
+
+  if (!Object.keys(patch).length && !hasEntryOnlyBookkeepingPatch && !hasPaymentPatch) {
     throw new CrmAuthError(400, "No supported quote fields provided.");
   }
 
-  patch.meta = {
-    ...(existing.meta || {}),
-    ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
-    lastUpdatedBy: actor.email,
-    lastUpdatedAt: now
-  };
+  let quote = existing as CrmQuote;
+  if (Object.keys(patch).length) {
+    patch.meta = {
+      ...(existing.meta || {}),
+      ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+      lastUpdatedBy: actor.email,
+      lastUpdatedAt: now
+    };
 
-  const { data: quote, error } = await supabase.from("crm_quotes").update(patch).eq("id", id).select("*").single();
-  if (error || !quote) throw new CrmAuthError(502, "Quote could not be updated.");
+    const result = await supabase.from("crm_quotes").update(patch).eq("id", id).select("*").single();
+    if (result.error || !result.data) throw new CrmAuthError(502, "Quote could not be updated.");
+    quote = result.data as CrmQuote;
+  }
 
   const paymentType = normalizePaymentType(optionalText(payload.payment_type)) || "other";
   const paymentAmount = toMoney(payload.payment_amount);
@@ -1493,10 +1506,10 @@ export async function updateCrmQuote(
       manufacturer_order_ref: quote.manufacturer_order_ref || null,
       manufacturer_order_url: quote.manufacturer_order_url || null,
       manufacturer_document_url: quote.manufacturer_document_url || null,
-      notes: quote.notes || null,
       // Entry-only fields (no column on crm_quotes) editable from the ledger.
       // Only written when the caller sends them, so a plain quote update leaves
       // them untouched (upsert updates only the columns present in this object).
+      ...(payload.bookkeeping_notes !== undefined ? { notes: optionalText(payload.bookkeeping_notes) } : {}),
       ...(payload.installation_invoice_amount !== undefined
         ? { installation_invoice_amount: toMoney(payload.installation_invoice_amount) }
         : {}),
