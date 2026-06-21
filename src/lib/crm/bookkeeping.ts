@@ -33,6 +33,7 @@ export function effectiveBookkeepingStatus(
   row: Pick<CrmBookkeepingRow, "source" | "status" | "isPaidInFull" | "liveStatus">
 ): CrmBookkeepingStatus {
   if (row.isPaidInFull) return "closed";
+  if (row.liveStatus === "closed" || row.status === "closed") return "invoiced";
   if (row.liveStatus) return row.liveStatus;
   if (row.status === "manual" || row.status === "legacy") return "sold";
   return row.status;

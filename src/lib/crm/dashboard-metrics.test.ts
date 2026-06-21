@@ -213,4 +213,30 @@ describe("dashboard summary metrics", () => {
     expect(summary.quotedPipeline).toBe(2500);
     expect(summary.soldPipeline).toBe(4500);
   });
+
+  it("keeps closed-status rows with open balances in active sold totals", () => {
+    const rows = [
+      row({
+        id: "closed-with-balance",
+        jobId: "job-closed-open",
+        status: "paid",
+        liveStatus: "closed",
+        total: 7710,
+        balance: 3855,
+        isPaidInFull: false
+      })
+    ];
+
+    const summary = buildDashboardSummaryMetrics({
+      jobs: [job({ id: "job-closed-open", status: "closed" })],
+      quotes: [],
+      rows,
+      installationInvoiceEmails: [],
+      orderCogsEmails: []
+    });
+
+    expect(summary.openJobs).toBe(1);
+    expect(summary.soldPipeline).toBe(7710);
+    expect(summary.openBalance).toBe(3855);
+  });
 });
