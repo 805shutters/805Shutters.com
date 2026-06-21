@@ -5,6 +5,8 @@
 import { catalog } from "./catalog";
 import { productImage } from "./product-images";
 
+export const WHOLESALE_REFERENCE_RATE = 0.3;
+
 export type UiProgram = {
   id: string;
   name: string;
@@ -70,9 +72,11 @@ export type UiPricingReferenceProgram = {
   maxHeight: number | null;
   minSqft: number | null;
   pricePerSqft: number | null;
+  costPerSqft: number | null;
   widths: number[];
   heights: number[];
   prices: Array<Array<number | null>>;
+  costs: Array<Array<number | null>>;
   notes: string[];
 };
 
@@ -116,6 +120,20 @@ function projectSurcharge(s: (typeof catalog.products)[number]["surcharges"][num
     notes: s.notes,
     sourceType: s.sourceType,
   };
+}
+
+function wholesaleReference(price: number | null | undefined): number | null {
+  if (price == null) return null;
+  return Math.round(price * WHOLESALE_REFERENCE_RATE);
+}
+
+function wholesaleReferenceGrid(prices: Array<Array<number | null>>): Array<Array<number | null>> {
+  return prices.map((row) => row.map((price) => wholesaleReference(price)));
+}
+
+function referenceCostPerSqft(pricePerSqft: number | null | undefined): number | null {
+  if (pricePerSqft == null) return null;
+  return Math.round(pricePerSqft * WHOLESALE_REFERENCE_RATE * 100) / 100;
 }
 
 export function buildUiCatalog(): UiCatalog {
@@ -179,9 +197,11 @@ export function buildPricingReference(): UiPricingReference {
       maxHeight: program.maxHeight ?? null,
       minSqft: program.minSqft ?? null,
       pricePerSqft: program.pricePerSqft ?? null,
+      costPerSqft: program.costPerSqft ?? referenceCostPerSqft(program.pricePerSqft),
       widths: program.grid.widths,
       heights: program.grid.heights,
       prices: program.grid.prices,
+      costs: wholesaleReferenceGrid(program.grid.prices),
       notes: program.notes,
     })),
   );

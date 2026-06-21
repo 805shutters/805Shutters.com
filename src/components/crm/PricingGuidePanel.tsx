@@ -51,9 +51,16 @@ async function crmApi<T>(session: Session, path: string): Promise<T> {
   return body as T;
 }
 
-function money(value: number | null | undefined) {
+function money(value: number | null | undefined, fractionDigits?: number) {
   if (value == null || Number.isNaN(Number(value))) return "-";
-  return Number(value).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const numeric = Number(value);
+  const digits = fractionDigits ?? (Number.isInteger(numeric) ? 0 : 2);
+  return numeric.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
 function formatCharge(surcharge: UiReferenceSurcharge) {
@@ -223,7 +230,13 @@ function SqftPricing({ program }: { program: UiPricingReferenceProgram }) {
     <div className="crm-pricing-sqft">
       <div>
         <span>Retail</span>
-        <strong>{program.pricePerSqft == null ? "-" : `${money(program.pricePerSqft)}/sqft`}</strong>
+        <strong>{program.pricePerSqft == null ? "-" : `${money(program.pricePerSqft, 2)}/sqft`}</strong>
+      </div>
+      <div>
+        <span>Our cost</span>
+        <strong className="crm-pricing-cost-value">
+          {program.costPerSqft == null ? "-" : `${money(program.costPerSqft, 2)}/sqft`}
+        </strong>
       </div>
       <div>
         <span>Minimum</span>
@@ -236,8 +249,12 @@ function SqftPricing({ program }: { program: UiPricingReferenceProgram }) {
 function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
   const rows =
     program.priceAxis === "width"
-      ? [{ label: "Price", prices: program.prices[0] || [] }]
-      : program.heights.map((height, index) => ({ label: `${height}"`, prices: program.prices[index] || [] }));
+      ? [{ label: "Price", prices: program.prices[0] || [], costs: program.costs[0] || [] }]
+      : program.heights.map((height, index) => ({
+          label: `${height}"`,
+          prices: program.prices[index] || [],
+          costs: program.costs[index] || [],
+        }));
 
   if (!program.widths.length || !rows.length) {
     return <p className="crm-empty">No grid data for this program.</p>;
@@ -245,6 +262,10 @@ function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
 
   return (
     <div className="crm-pricing-grid-wrap">
+      <div className="crm-pricing-grid-legend">
+        <span>Retail grid price</span>
+        <strong>Red parentheses = our cost</strong>
+      </div>
       <table className="crm-pricing-grid">
         <thead>
           <tr>
@@ -260,13 +281,31 @@ function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
               <th>{row.label}</th>
               {program.widths.map((width, index) => {
                 const price = row.prices[index];
-                return <td key={`${row.label}-${width}`}>{price == null ? "-" : money(price)}</td>;
+                const cost = row.costs[index];
+                return (
+                  <td key={`${row.label}-${width}`}>
+                    <PriceCell price={price} cost={cost} />
+                  </td>
+                );
               })}
             </tr>
           ))}
         </tbody>
       </table>
     </div>
+  );
+}
+
+function PriceCell({ price, cost }: { price: number | null | undefined; cost: number | null | undefined }) {
+  if (price == null) return <span className="crm-pricing-empty-cell">-</span>;
+  return (
+    <span
+      className="crm-pricing-price-pair"
+      aria-label={`Retail ${money(price)}. Our cost ${money(cost)}.`}
+    >
+      <span className="crm-pricing-retail-price">{money(price)}</span>
+      <span className="crm-pricing-cost-price">({money(cost)})</span>
+    </span>
   );
 }
 

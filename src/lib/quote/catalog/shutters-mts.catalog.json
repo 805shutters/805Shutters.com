@@ -21,6 +21,7 @@
             "prices": []
           },
           "pricePerSqft": 39.0,
+          "costPerSqft": 13.1,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -41,6 +42,7 @@
             "prices": []
           },
           "pricePerSqft": 41.5,
+          "costPerSqft": 14.55,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -61,6 +63,7 @@
             "prices": []
           },
           "pricePerSqft": 48.0,
+          "costPerSqft": 17.95,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -81,6 +84,7 @@
             "prices": []
           },
           "pricePerSqft": 44.0,
+          "costPerSqft": 15.85,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -101,6 +105,7 @@
             "prices": []
           },
           "pricePerSqft": 47.0,
+          "costPerSqft": 17.35,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -121,6 +126,7 @@
             "prices": []
           },
           "pricePerSqft": 48.5,
+          "costPerSqft": 18.1,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -618,6 +624,7 @@
             "prices": []
           },
           "pricePerSqft": 31.5,
+          "costPerSqft": 13.5,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -638,6 +645,7 @@
             "prices": []
           },
           "pricePerSqft": 38.5,
+          "costPerSqft": 16.5,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -658,6 +666,7 @@
             "prices": []
           },
           "pricePerSqft": 25.55,
+          "costPerSqft": 10.95,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -678,6 +687,7 @@
             "prices": []
           },
           "pricePerSqft": 28.0,
+          "costPerSqft": 12.0,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -698,6 +708,7 @@
             "prices": []
           },
           "pricePerSqft": 28.0,
+          "costPerSqft": 12.0,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -718,6 +729,7 @@
             "prices": []
           },
           "pricePerSqft": 31.85,
+          "costPerSqft": 13.65,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
@@ -738,6 +750,7 @@
             "prices": []
           },
           "pricePerSqft": 35.0,
+          "costPerSqft": 15.0,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,

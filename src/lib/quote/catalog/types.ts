@@ -28,6 +28,8 @@ export type CatalogProgram = {
   grid: CatalogGrid;
   /** For priceAxis "sqft": retail price per square foot. */
   pricePerSqft?: number | null;
+  /** For priceAxis "sqft": our cost / wholesale price per square foot. */
+  costPerSqft?: number | null;
   /** For priceAxis "sqft": minimum billable square footage (e.g. 8 for shutters). */
   minSqft?: number | null;
   maxWidth: number | null;

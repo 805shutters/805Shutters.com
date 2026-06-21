@@ -4582,6 +4582,29 @@ body:has(.crm-app-shell) {
   background: #ffffff;
 }
 
+.crm-pricing-grid-legend {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  min-width: max-content;
+  padding: 8px 10px;
+  border-bottom: 1px solid #d8d8d2;
+  background: #ffffff;
+  color: #5b5b58;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.crm-pricing-grid-legend strong,
+.crm-pricing-cost-value,
+.crm-pricing-cost-price {
+  color: #b91c1c;
+}
+
 .crm-pricing-grid,
 .crm-pricing-reference-table {
   width: 100%;
@@ -4639,9 +4662,32 @@ body:has(.crm-app-shell) {
   font-weight: 800;
 }
 
+.crm-pricing-price-pair {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: end;
+  gap: 5px;
+  min-width: 74px;
+  white-space: nowrap;
+}
+
+.crm-pricing-retail-price {
+  color: #0b0b0b;
+  font-weight: 900;
+}
+
+.crm-pricing-cost-price {
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.crm-pricing-empty-cell {
+  color: #9a9890;
+}
+
 .crm-pricing-sqft {
   display: grid;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
 }
 

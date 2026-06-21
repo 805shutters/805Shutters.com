@@ -48,6 +48,7 @@ describe("buildPricingReference", () => {
     expect(honeycomb!.widths).toContain(24);
     expect(honeycomb!.heights).toContain(36);
     expect(honeycomb!.prices[0][0]).toBe(212);
+    expect(honeycomb!.costs[0][0]).toBe(64);
   });
 
   it("keeps provisional shutter provenance visible", () => {
@@ -57,6 +58,7 @@ describe("buildPricingReference", () => {
     expect(shutter!.source).toContain("MTS pricingData");
     expect(shutter!.priceAxis).toBe("sqft");
     expect(shutter!.pricePerSqft).toBeGreaterThan(0);
+    expect(shutter!.costPerSqft).toBe(13.1);
   });
 
   it("exposes full guide reference sections for the CRM pricing page", () => {
