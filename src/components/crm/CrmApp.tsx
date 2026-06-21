@@ -521,6 +521,7 @@ export function CrmApp() {
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
   const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
+  const [jobSearch, setJobSearch] = useState("");
 
   const configured = Boolean(supabase);
   const jobs = useMemo(() => data?.jobs || [], [data]);
@@ -531,9 +532,17 @@ export function CrmApp() {
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
-  const visibleJobs = useMemo(
+  const statusFilteredJobs = useMemo(
     () => (activeJobStatus ? jobs.filter((job) => job.status === activeJobStatus) : jobs),
     [activeJobStatus, jobs]
+  );
+  const normalizedJobSearch = jobSearch.trim();
+  const visibleJobs = useMemo(
+    () =>
+      normalizedJobSearch
+        ? statusFilteredJobs.filter((job) => jobMatchesSearch(job, normalizedJobSearch))
+        : statusFilteredJobs,
+    [normalizedJobSearch, statusFilteredJobs]
   );
 
   function openCustomerFile(customerName: string) {
@@ -1338,6 +1347,28 @@ export function CrmApp() {
         <section className="crm-workspace crm-jobs-workspace">
           <div className="crm-job-board">
             <div className="crm-job-toolbar">
+              <div className="crm-job-search-control" role="search" aria-label="Search jobs">
+                <label htmlFor="crm-job-search">Search jobs</label>
+                <div className="crm-job-search-row">
+                  <input
+                    id="crm-job-search"
+                    type="search"
+                    value={jobSearch}
+                    onChange={(event) => setJobSearch(event.target.value)}
+                    placeholder="Customer, phone, city, owner..."
+                  />
+                  {normalizedJobSearch ? (
+                    <button type="button" className="crm-ghost-button" onClick={() => setJobSearch("")}>
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                <span>
+                  {normalizedJobSearch
+                    ? `${visibleJobs.length} of ${statusFilteredJobs.length} ${statusLabel(activeJobStatus).toLowerCase()} jobs`
+                    : "Search all loaded job details"}
+                </span>
+              </div>
               <JobStatusTabs jobs={jobs} activeStatus={activeJobStatus} onChange={setActiveJobStatus} />
               <CollapsiblePanel title="New Sales Job">
                 <form className="crm-form" onSubmit={createJob}>
@@ -1416,7 +1447,13 @@ export function CrmApp() {
               {visibleJobs.map((job) => (
                 <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} busy={busy} />
               ))}
-              {!visibleJobs.length ? <p className="crm-empty">No {statusLabel(activeJobStatus).toLowerCase()} jobs.</p> : null}
+              {!visibleJobs.length ? (
+                <p className="crm-empty">
+                  {normalizedJobSearch
+                    ? `No ${statusLabel(activeJobStatus).toLowerCase()} jobs match "${normalizedJobSearch}".`
+                    : `No ${statusLabel(activeJobStatus).toLowerCase()} jobs.`}
+                </p>
+              ) : null}
             </div>
             <CustomerFilesView
               files={customerFiles}
@@ -3591,6 +3628,45 @@ function customerFileMatchesFilter(file: CrmCustomerFile, filter: CustomerFileFi
 
 function statusLabel(status: JobStatusFilter) {
   return status ? titleCase(status) : "All";
+}
+
+function normalizeJobSearchText(value: unknown) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function compactJobSearchDigits(value: unknown) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function jobMatchesSearch(job: CrmJob, query: string) {
+  const terms = normalizeJobSearchText(query).split(/\s+/).filter(Boolean);
+  const haystackValues = [
+    job.customer_name,
+    job.phone,
+    job.email,
+    job.address,
+    job.city,
+    job.product_interest,
+    job.sales_owner,
+    job.status,
+    job.priority,
+    job.next_action,
+    job.next_action_due,
+    job.notes,
+    job.quote_total,
+    job.estimated_total
+  ];
+  const haystack = normalizeJobSearchText(haystackValues.join(" "));
+  const digitHaystack = compactJobSearchDigits(haystackValues.join(" "));
+
+  return terms.every((term) => {
+    if (haystack.includes(term)) return true;
+    const digits = compactJobSearchDigits(term);
+    return Boolean(digits && digitHaystack.includes(digits));
+  });
 }
 
 function CustomerFilesView({

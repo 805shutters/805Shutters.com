@@ -3217,9 +3217,56 @@ body:has(.crm-app-shell) {
 
 .crm-job-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr) auto;
   gap: 14px;
   align-items: start;
+}
+
+.crm-job-search-control {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-job-search-control label {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-job-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.crm-job-search-row input {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 14px;
+  border: 1px solid #d8d8d2;
+  border-radius: 0;
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.crm-job-search-row input:focus {
+  outline: 2px solid #111111;
+  outline-offset: -1px;
+  border-color: #111111;
+}
+
+.crm-job-search-control span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .crm-job-toolbar .crm-panel-collapsed {
