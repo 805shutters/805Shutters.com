@@ -4999,6 +4999,8 @@ function BookkeepingSpreadsheet({
     ["COGS", toLedgerCurrency(totals?.cogs)],
     ["Installation", toLedgerCurrency(totals?.installationAmount)],
     ["Ken Profit", toLedgerCurrency(totals?.kenCut)],
+    ["Ken's % Monthly Due", toLedgerCurrency(totals?.kenMonthlyDue)],
+    ["Ken's % of Total Closed", toLedgerCurrency(totals?.kenTotalClosed)],
     ["Net Profit", toLedgerCurrency(netProfit)],
     ["Paid In Full", `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}`],
     ["Total Profit", toLedgerCurrency(totalProfit)],
@@ -5293,7 +5295,7 @@ const BOOKKEEPING_STATUS_LABELS: Record<string, string> = {
   sent: "Sent",
   archived: "Archived",
   lost: "Lost",
-  closed: "Paid in full"
+  closed: "Closed"
 };
 
 // The effective, real-time status of a ledger row. Paid-in-full always wins

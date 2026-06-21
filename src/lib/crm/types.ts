@@ -451,6 +451,8 @@ export type CrmBookkeepingTotals = {
   jessicaCommissionOwed: number;
   closedRows: number;
   closedTotal: number;
+  kenMonthlyDue: number;
+  kenTotalClosed: number;
   missingCogs: number;
 };
 

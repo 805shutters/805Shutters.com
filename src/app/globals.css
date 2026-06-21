@@ -4665,76 +4665,95 @@ body:has(.crm-app-shell) {
 }
 
 .crm-bookkeeping-status {
+  --status-bg: #eeeeeb;
+  --status-border: #b8b6ae;
+  --status-ink: #3a3a36;
   display: inline-block;
   margin-top: 8px;
   padding: 4px 9px;
-  background: #eeeeeb;
-  border: 1px solid #b8b6ae;
+  background: var(--status-bg);
+  border: 1px solid var(--status-border);
   border-radius: 999px;
-  color: #3a3a36;
+  color: var(--status-ink);
   font-size: 11px;
   font-style: normal;
-  font-weight: 900;
+  font-weight: 800;
   text-transform: lowercase;
 }
 
 .crm-bookkeeping-status--closed {
-  background: #d8f0dd;
-  border-color: #3b8b53;
-  color: #174f2b;
+  --status-bg: #e6e5df;
+  --status-border: #858179;
+  --status-ink: #272520;
 }
 
-/* Live, colour-coded status badges — one tint per pipeline stage so the row's
-   real-time state reads at a glance. Anything without a tint falls back to the
-   neutral grey base above (manual/legacy/draft/sent). */
-.crm-bookkeeping-status[data-status="sold"] {
-  background: #e3ecfb;
-  border-color: #9cbef0;
-  color: #1c4f9c;
+/* Live status badges reuse the same muted palette as CRM status controls. */
+.crm-bookkeeping-status[data-status="new"],
+.crm-bookkeeping-status[data-status="draft"],
+.crm-bookkeeping-status[data-status="manual"],
+.crm-bookkeeping-status[data-status="legacy"] {
+  --status-bg: #f1f0ec;
+  --status-border: #b5b0a8;
+  --status-ink: #25231f;
 }
 
+.crm-bookkeeping-status[data-status="follow_up"],
+.crm-bookkeeping-status[data-status="sent"] {
+  --status-bg: #f2ede4;
+  --status-border: #b8a987;
+  --status-ink: #3f321d;
+}
+
+.crm-bookkeeping-status[data-status="scheduled"] {
+  --status-bg: #e8edf0;
+  --status-border: #8da0a8;
+  --status-ink: #243a43;
+}
+
+.crm-bookkeeping-status[data-status="quoted"] {
+  --status-bg: #eceaf1;
+  --status-border: #9690a7;
+  --status-ink: #353149;
+}
+
+.crm-bookkeeping-status[data-status="sold"],
 .crm-bookkeeping-status[data-status="approved"] {
-  background: #def0ec;
-  border-color: #86cdbf;
-  color: #0f6b5c;
+  --status-bg: #e7eee6;
+  --status-border: #889c82;
+  --status-ink: #253c24;
 }
 
-.crm-bookkeeping-status[data-status="ordered"] {
-  background: #fbeeca;
-  border-color: #e3c266;
-  color: #8a5b00;
-}
-
+.crm-bookkeeping-status[data-status="ordered"],
 .crm-bookkeeping-status[data-status="received"] {
-  background: #ece2f7;
-  border-color: #c3a6e6;
-  color: #5b2f97;
+  --status-bg: #eee9df;
+  --status-border: #a89879;
+  --status-ink: #43361f;
 }
 
 .crm-bookkeeping-status[data-status="installed"] {
-  background: #d9eef5;
-  border-color: #8fcfe0;
-  color: #155e72;
+  --status-bg: #e2eeee;
+  --status-border: #809a9a;
+  --status-ink: #223f40;
 }
 
 .crm-bookkeeping-status[data-status="invoiced"] {
-  background: #fbe6d6;
-  border-color: #eeb589;
-  color: #9a4a16;
+  --status-bg: #eee8ed;
+  --status-border: #9d8598;
+  --status-ink: #432f3f;
 }
 
 .crm-bookkeeping-status[data-status="paid"],
-.crm-bookkeeping-status[data-status="closed"] {
-  background: #d8f0dd;
-  border-color: #3b8b53;
-  color: #174f2b;
+.crm-bookkeeping-status[data-status="closed"],
+.crm-bookkeeping-status[data-status="archived"] {
+  --status-bg: #e6e5df;
+  --status-border: #858179;
+  --status-ink: #272520;
 }
 
-.crm-bookkeeping-status[data-status="lost"],
-.crm-bookkeeping-status[data-status="archived"] {
-  background: #f3e0df;
-  border-color: #dcaeaa;
-  color: #8a2f2a;
+.crm-bookkeeping-status[data-status="lost"] {
+  --status-bg: #efe7e4;
+  --status-border: #9e857d;
+  --status-ink: #482f2a;
 }
 
 /* Status group header band inside the ledger table */

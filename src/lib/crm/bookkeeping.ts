@@ -143,7 +143,12 @@ export function buildBookkeepingRows({
   });
 }
 
-export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTotals {
+export function sumBookkeepingRows(
+  rows: CrmBookkeepingRow[],
+  options: { month?: string | Date } = {}
+): CrmBookkeepingTotals {
+  const currentMonth = monthKey(options.month ?? new Date());
+
   return rows.reduce<CrmBookkeepingTotals>(
     (totals, row) => {
       totals.rows += 1;
@@ -169,6 +174,10 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       if (row.isPaidInFull) {
         totals.closedRows += 1;
         totals.closedTotal = roundCents(totals.closedTotal + row.total);
+        totals.kenTotalClosed = roundCents(totals.kenTotalClosed + row.kenCut);
+        if (currentMonth && monthKey(closedDateForBookkeepingRow(row)) === currentMonth) {
+          totals.kenMonthlyDue = roundCents(totals.kenMonthlyDue + row.kenCut);
+        }
       }
       if (row.cogs <= 0) totals.missingCogs += 1;
       return totals;
@@ -190,9 +199,62 @@ export function sumBookkeepingRows(rows: CrmBookkeepingRow[]): CrmBookkeepingTot
       jessicaCommissionOwed: 0,
       closedRows: 0,
       closedTotal: 0,
+      kenMonthlyDue: 0,
+      kenTotalClosed: 0,
       missingCogs: 0
     }
   );
+}
+
+function monthKey(value: string | Date | null | undefined) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 7);
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const direct = raw.match(/^(\d{4}-\d{2})/);
+  if (direct) return direct[1];
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 7);
+}
+
+function ledgerDateValue(value: string | null | undefined) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  return raw.slice(0, 10);
+}
+
+function closedDateForBookkeepingRow(row: CrmBookkeepingRow) {
+  if (!row.isPaidInFull) return null;
+  const total = roundCents(row.total);
+  if (total <= 0) return ledgerDateValue(row.soldDate);
+
+  const events = [
+    ...row.payments.map((payment) => ({
+      date: ledgerDateValue(payment.paid_at) || ledgerDateValue(payment.created_at),
+      amount: Number(payment.amount) || 0
+    })),
+    ...row.creditsIn.map((credit) => ({
+      date: ledgerDateValue(credit.credit_date) || ledgerDateValue(credit.created_at),
+      amount: Number(credit.amount) || 0
+    })),
+    ...row.creditsOut.map((credit) => ({
+      date: ledgerDateValue(credit.credit_date) || ledgerDateValue(credit.created_at),
+      amount: -(Number(credit.amount) || 0)
+    }))
+  ]
+    .filter((event): event is { date: string; amount: number } => Boolean(event.date))
+    .sort((left, right) => left.date.localeCompare(right.date));
+
+  let appliedRevenue = 0;
+  for (const event of events) {
+    appliedRevenue = roundCents(appliedRevenue + event.amount);
+    if (appliedRevenue >= total) return event.date;
+  }
+
+  return events.at(-1)?.date || ledgerDateValue(row.soldDate);
 }
 
 export function buildKenPayoffSummary({

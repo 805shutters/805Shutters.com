@@ -624,6 +624,27 @@ describe("sumBookkeepingRows", () => {
     expect(totals.jessicaCommissionOwed).toBe(2800);
     expect(totals.mikeProfit).toBe(6300); // e1 2800 + e2 (5000-1000-500) 3500
   });
+
+  it("tracks Ken's current-month due and running total from closed jobs only", () => {
+    const rows = rowsFrom({
+      entries: [
+        entry({ id: "closed-june", total_amount: 10000, sales_owner: "mike", sold_date: "2026-06-01" }),
+        entry({ id: "closed-july", total_amount: 10000, sales_owner: "mike", sold_date: "2026-06-01" }),
+        entry({ id: "open-june", total_amount: 10000, sales_owner: "mike", sold_date: "2026-06-01" })
+      ],
+      payments: [
+        payment({ id: "p1", bookkeeping_entry_id: "closed-june", amount: 10000, paid_at: "2026-06-20" }),
+        payment({ id: "p2", bookkeeping_entry_id: "closed-july", amount: 5000, paid_at: "2026-06-25" }),
+        payment({ id: "p3", bookkeeping_entry_id: "closed-july", amount: 5000, paid_at: "2026-07-02" }),
+        payment({ id: "p4", bookkeeping_entry_id: "open-june", amount: 5000, paid_at: "2026-06-20" })
+      ]
+    });
+    const totals = sumBookkeepingRows(rows, { month: "2026-06" });
+
+    expect(totals.closedRows).toBe(2);
+    expect(totals.kenMonthlyDue).toBe(1000);
+    expect(totals.kenTotalClosed).toBe(2000);
+  });
 });
 
 describe("buildCommissionSummary", () => {
