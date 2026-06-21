@@ -5644,6 +5644,59 @@ function partnerPaymentItemMap(ledger: CrmDashboardData["partnerPaymentLedger"] 
   return map;
 }
 
+function fallbackPartnerPaymentPaidOn(row: CrmBookkeepingRow) {
+  if (!row.isPaidInFull) return row.soldDate ? row.soldDate.slice(0, 10) : null;
+  const total = roundCurrency(row.total);
+  if (total <= 0) return row.soldDate ? row.soldDate.slice(0, 10) : null;
+
+  let applied = roundCurrency((row.creditIn || 0) - (row.creditOut || 0));
+  const payments = [...row.payments].sort((left, right) => {
+    const leftTime = Date.parse(left.paid_at || left.created_at || "");
+    const rightTime = Date.parse(right.paid_at || right.created_at || "");
+    return (Number.isFinite(leftTime) ? leftTime : 0) - (Number.isFinite(rightTime) ? rightTime : 0);
+  });
+
+  for (const payment of payments) {
+    applied = roundCurrency(applied + (Number(payment.amount) || 0));
+    if (applied >= total) return (payment.paid_at || payment.created_at || row.soldDate || "").slice(0, 10) || null;
+  }
+
+  return (payments.at(-1)?.paid_at || payments.at(-1)?.created_at || row.soldDate || "").slice(0, 10) || null;
+}
+
+function fallbackPartnerPaymentItem(
+  person: CrmPaymentPerson,
+  row: CrmBookkeepingRow,
+  amount: number
+): CrmPartnerPaymentLedgerItem | undefined {
+  if (!row.isPaidInFull || amount <= 0) return undefined;
+  const itemKey = partnerPaymentItemKey(person, row);
+  const paidOn = fallbackPartnerPaymentPaidOn(row);
+
+  return {
+    id: itemKey,
+    itemKey,
+    person,
+    source: row.source,
+    quoteId: row.quoteId,
+    bookkeepingEntryId: row.source === "crm_quote" ? null : row.id,
+    jobId: row.jobId,
+    customerName: row.customerName,
+    quoteNumber: row.quoteNumber,
+    closedAt: paidOn,
+    periodMonth: paidOn ? `${paidOn.slice(0, 7)}-01` : null,
+    sourceStatus: row.liveStatus || row.status,
+    salesOwner: row.salesOwner,
+    total: row.total,
+    owedAmount: amount,
+    paidAmount: 0,
+    remainingAmount: amount,
+    paymentState: "unpaid",
+    explicitAllocationIds: [],
+    legacyPaidAmount: 0
+  };
+}
+
 function PartnerPaymentAmountCell({
   person,
   row,
@@ -5661,8 +5714,9 @@ function PartnerPaymentAmountCell({
   busy: boolean;
   onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
 }) {
-  const paid = item?.paymentState === "paid";
-  const canClick = Boolean(canMarkPartnerPaid && item && !paid && item.remainingAmount > 0);
+  const payableItem = item || fallbackPartnerPaymentItem(person, row, amount);
+  const paid = payableItem?.paymentState === "paid";
+  const canClick = Boolean(canMarkPartnerPaid && payableItem && !paid && payableItem.remainingAmount > 0);
   const label = paid
     ? `${paymentPersonDisplayName(person)} paid for ${row.customerName}`
     : canClick
@@ -5677,11 +5731,11 @@ function PartnerPaymentAmountCell({
   return (
     <span className="crm-partner-paid-cell">
       <span>{toLedgerCurrency(amount)}</span>
-      {canClick && item ? (
+      {canClick && payableItem ? (
         <button
           type="button"
           className="crm-partner-paid-button"
-          onClick={() => onMarkPartnerPaid(person, item, row)}
+          onClick={() => onMarkPartnerPaid(person, payableItem, row)}
           disabled={busy}
           aria-label={label}
           title={label}

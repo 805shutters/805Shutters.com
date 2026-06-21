@@ -4555,6 +4555,7 @@ body:has(.crm-app-shell) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .crm-partner-paid-button,
@@ -4564,7 +4565,10 @@ body:has(.crm-app-shell) {
   justify-content: center;
   width: 20px;
   height: 20px;
+  min-height: 0;
   flex: 0 0 20px;
+  margin: 0;
+  vertical-align: middle;
 }
 
 .crm-partner-paid-button {
@@ -4572,6 +4576,7 @@ body:has(.crm-app-shell) {
   background: transparent;
   padding: 0;
   cursor: pointer;
+  pointer-events: auto;
 }
 
 .crm-partner-paid-button:focus-visible {
@@ -4591,6 +4596,7 @@ body:has(.crm-app-shell) {
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
+  pointer-events: none;
 }
 
 .crm-partner-paid-box--paid {
