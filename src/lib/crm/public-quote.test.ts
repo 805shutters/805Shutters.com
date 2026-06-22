@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions, projectLine } from "./public-quote";
+import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions, projectLine, computeSelectionMoney } from "./public-quote";
+import { DEFAULT_ADJUSTMENTS, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 
 function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
@@ -139,5 +140,38 @@ describe("projectLine (per-line discount on the contract)", () => {
   it("never surfaces a per-line discount on legacy MTS quotes", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 100 });
     expect(projectLine(lineItem({ discount_percent: 15, designs: [d] }), true).discountPercent).toBe(0);
+  });
+});
+
+describe("computeSelectionMoney (Purchase some)", () => {
+  const adj: QuoteAdjustments = { ...DEFAULT_ADJUSTMENTS, taxPercent: 8.25, depositPercent: 50 };
+
+  it("sums all priced items when nothing is filtered", () => {
+    const m = computeSelectionMoney(
+      [
+        { id: "a", lineTotal: 1000, priceReady: true },
+        { id: "b", lineTotal: 500, priceReady: true },
+        { id: "c", lineTotal: 0, priceReady: false },
+      ],
+      DEFAULT_ADJUSTMENTS,
+    );
+    expect(m.selectedLineIds).toEqual(["a", "b"]);
+    expect(m.subtotal).toBe(1500);
+    expect(m.total).toBe(1500);
+  });
+
+  it("drops unselected items and recomputes tax/deposit on the trimmed base", () => {
+    const m = computeSelectionMoney([{ id: "a", lineTotal: 1000, priceReady: true }], adj);
+    expect(m.subtotal).toBe(1000);
+    expect(m.tax).toBe(82.5); // 8.25% of 1000
+    expect(m.total).toBe(1082.5);
+    expect(m.depositDue).toBe(541.25); // 50% of 1082.5
+    expect(m.balanceDue).toBe(541.25);
+  });
+
+  it("excludes items still being priced from the selection", () => {
+    const m = computeSelectionMoney([{ id: "c", lineTotal: 0, priceReady: false }], DEFAULT_ADJUSTMENTS);
+    expect(m.selectedLineIds).toEqual([]);
+    expect(m.total).toBe(0);
   });
 });
