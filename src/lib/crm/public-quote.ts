@@ -6,7 +6,7 @@ import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
-import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
+import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
@@ -69,6 +69,9 @@ export type PublicQuote = {
   balanceDue: number;
   total: number;
   allPriced: boolean;
+  /** Quote-level adjustments (discount/tax/deposit/fees) so a customer subset
+   *  selection can recompute its total with the same engine. */
+  adjustments: QuoteAdjustments;
   business: { name: string; phone: string };
   versions: { token: string; label: string; total: number; signed: boolean; current: boolean }[];
 };
@@ -301,9 +304,66 @@ export async function loadPublicQuoteByToken(
     balanceDue: round2(Math.max(total - depositDue, 0)),
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
+    adjustments: adj,
     business: { name: BUSINESS_NAME, phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || "" },
     versions,
   };
+}
+
+/** Recompute the money breakdown for a chosen subset of line items ("Purchase
+ *  some"). Pure — used by the server route and unit-tested. Same engine as the
+ *  full quote, so the trimmed total the customer signs matches what is billed. */
+export function computeSelectionMoney(
+  lines: { id: string; lineTotal: number; priceReady: boolean }[],
+  adjustments: QuoteAdjustments,
+): {
+  selectedLineIds: string[];
+  subtotal: number;
+  fees: number;
+  discount: number;
+  tax: number;
+  total: number;
+  depositDue: number;
+  balanceDue: number;
+} {
+  const priced = lines.filter((l) => l.priceReady);
+  const subtotal = round2(priced.reduce((s, l) => s + l.lineTotal, 0));
+  const money = computeQuoteMoney(subtotal, adjustments);
+  return {
+    selectedLineIds: priced.map((l) => l.id),
+    subtotal: money.subtotal,
+    fees: money.extrasTotal,
+    discount: money.discountAmount,
+    tax: money.taxAmount,
+    total: money.total,
+    depositDue: money.depositRequired,
+    balanceDue: money.balanceDue,
+  };
+}
+
+export async function computeSelectionTotal(
+  supabase: CrmSupabaseClient,
+  token: string,
+  selectedLineIds?: string[],
+): Promise<{
+  selectedLineIds: string[];
+  subtotal: number;
+  fees: number;
+  discount: number;
+  tax: number;
+  total: number;
+  depositDue: number;
+  balanceDue: number;
+}> {
+  const pub = await loadPublicQuoteByToken(supabase, token);
+  if (!pub) throw new CrmAuthError(404, "This quote link is no longer valid.");
+  const sel = selectedLineIds && selectedLineIds.length ? new Set(selectedLineIds) : null;
+  const lines = (sel ? pub.lines.filter((l) => sel.has(l.id)) : pub.lines).map((l) => ({
+    id: l.id,
+    lineTotal: l.lineTotal,
+    priceReady: l.priceReady,
+  }));
+  return computeSelectionMoney(lines, pub.adjustments);
 }
 
 export function buildSignedShopSms(customerName: string, total: number): string {
@@ -393,7 +453,7 @@ async function syncSignedQuoteArtifacts(
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
-  input: { printedName: string; signature?: string; acknowledgedTotal?: number },
+  input: { printedName: string; signature?: string; acknowledgedTotal?: number; selectedLineIds?: string[] },
 ): Promise<{ ok: true; alreadySigned: boolean }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This quote link is no longer valid.");
@@ -422,7 +482,21 @@ export async function acceptPublicQuote(
   if (!pub || pub.lines.length === 0 || !pub.allPriced || pub.total <= 0) {
     throw new CrmAuthError(409, "This quote isn't finalized yet — please contact us before signing.");
   }
-  const soldTotal = pub.total;
+  // Customer may purchase a subset ("Purchase some"); the sold total reflects
+  // only the chosen items, recomputed with the same engine as the full quote.
+  const selection = input.selectedLineIds && input.selectedLineIds.length ? new Set(input.selectedLineIds) : null;
+  const chosenLines = selection ? pub.lines.filter((l) => selection.has(l.id)) : pub.lines;
+  if (chosenLines.length === 0) {
+    throw new CrmAuthError(400, "Please select at least one item to purchase.");
+  }
+  if (!chosenLines.every((l) => l.priceReady)) {
+    throw new CrmAuthError(409, "One or more selected items isn't finalized yet — please contact us before signing.");
+  }
+  const selectionSubtotal = round2(chosenLines.reduce((s, l) => s + l.lineTotal, 0));
+  const soldTotal = computeQuoteMoney(selectionSubtotal, pub.adjustments).total;
+  const signedSelection = selection
+    ? { lineItemIds: chosenLines.map((l) => l.id), subtotal: selectionSubtotal, total: soldTotal }
+    : null;
 
   // Consent guard: the customer must sign the exact total they were shown. If an
   // admin edited the quote after the page loaded, the displayed total no longer
@@ -444,6 +518,8 @@ export async function acceptPublicQuote(
       sold_at: now,
       customer_signature: signature,
       customer_printed_name: printedName,
+      quote_total: soldTotal,
+      ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
     })
     .eq("id", quote.id)
     .eq("share_token", token)
