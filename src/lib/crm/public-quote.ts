@@ -53,6 +53,8 @@ export type PublicQuoteDesignOption = {
 
 export type PublicQuote = {
   token: string;
+  /** Internal quote id (uuid). Used to reconcile online payments; gated by the token. */
+  id: string;
   quoteNumber: string | null;
   customerName: string;
   status: string;
@@ -289,6 +291,7 @@ export async function loadPublicQuoteByToken(
 
   return {
     token,
+    id: quote.id,
     quoteNumber: quote.quote_number,
     customerName: customerName || "Valued customer",
     status: quote.status,
