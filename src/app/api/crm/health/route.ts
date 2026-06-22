@@ -73,10 +73,15 @@ export async function GET(request: NextRequest) {
   const migrationsReady = tableChecks.length > 0 && tableChecks.every((check) => check.ready);
   const installationInvoiceTableReady =
     tableChecks.find((check) => check.table === "crm_installation_invoice_emails")?.ready ?? false;
-  const installationInvoiceGmailConfigured =
+  const installationInvoiceDirectGmailConfigured =
     hasEnvValue("GMAIL_805_CLIENT_ID", "GOOGLE_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_ID") &&
     hasEnvValue("GMAIL_805_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "GOOGLE_CALENDAR_CLIENT_SECRET") &&
     hasEnvValue("GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN");
+  const installationInvoiceGmailBrokerConfigured =
+    hasEnvValue("GMAIL_ACCESS_TOKEN_BROKER_URL", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_URL") &&
+    hasEnvValue("GMAIL_ACCESS_TOKEN_BROKER_SECRET", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_SECRET");
+  const installationInvoiceGmailConfigured =
+    installationInvoiceDirectGmailConfigured || installationInvoiceGmailBrokerConfigured;
   const installationInvoicePullerReady =
     databaseConfigured && installationInvoiceTableReady && installationInvoiceGmailConfigured;
 
@@ -96,6 +101,8 @@ export async function GET(request: NextRequest) {
     googleProviderError: googleOAuth.error,
     migrationsReady,
     installationInvoiceGmailConfigured,
+    installationInvoiceDirectGmailConfigured,
+    installationInvoiceGmailBrokerConfigured,
     installationInvoiceTableReady,
     installationInvoicePullerReady,
     bookingEmailConfigured,

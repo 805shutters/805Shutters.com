@@ -15,6 +15,7 @@ type CrmSupabaseClient = SupabaseClient;
 export const DEFAULT_INSTALLATION_INVOICE_MAILBOX = "805shutters@gmail.com";
 const LEGACY_INSTALLATION_INVOICE_MAILBOX = "805@805shutters.com";
 const DEFAULT_MAX_RESULTS = 50;
+const INVOICE_CANDIDATE_LIMIT = 5000;
 const AUTO_APPLY_MIN_NAME_CONFIDENCE = 0.78;
 const AUTO_APPLY_MIN_AMOUNT_CONFIDENCE = 0.7;
 const INSTALLATION_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "invoiced";
@@ -106,6 +107,8 @@ export type ProcessInstallationInvoiceResult = {
   unmatched: number;
   skipped: number;
   errors: number;
+  auditTableAvailable: boolean;
+  auditError: string | null;
   invoices: CrmInstallationInvoiceEmail[];
 };
 
@@ -172,17 +175,68 @@ function googleOAuthCredentials() {
   const refreshToken = envValue(["GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN"]);
 
   if (!clientId || !clientSecret || !refreshToken) {
-    throw new CrmAuthError(
-      503,
-      "805 Gmail invoice puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID, GMAIL_805_CLIENT_SECRET, and GMAIL_805_REFRESH_TOKEN with Gmail readonly scope."
-    );
+    return null;
   }
 
   return { clientId, clientSecret, refreshToken };
 }
 
+function gmailAccessTokenBrokerConfig() {
+  const url = envValue(["GMAIL_ACCESS_TOKEN_BROKER_URL", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_URL"]);
+  const secret = envValue(["GMAIL_ACCESS_TOKEN_BROKER_SECRET", "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_SECRET"]);
+
+  if (!url || !secret) return null;
+  return { url, secret };
+}
+
+export function hasInstallationInvoiceGmailAuth() {
+  return Boolean(googleOAuthCredentials() || gmailAccessTokenBrokerConfig());
+}
+
+async function getBrokeredGmailAccessToken(mailbox: string) {
+  const broker = gmailAccessTokenBrokerConfig();
+  if (!broker) return null;
+
+  const response = await fetch(broker.url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${broker.secret}`
+    },
+    body: JSON.stringify({
+      action: "access-token",
+      emailAddress: mailbox
+    })
+  });
+
+  const data = (await response.json().catch(() => null)) as {
+    success?: boolean;
+    accessToken?: string;
+    error?: string;
+  } | null;
+
+  if (!response.ok || !data?.accessToken) {
+    const detail = data?.error || `HTTP ${response.status}`;
+    throw new CrmAuthError(502, `805 Gmail token broker failed: ${detail}`);
+  }
+
+  return data.accessToken;
+}
+
 async function getGmailAccessToken() {
-  const { clientId, clientSecret, refreshToken } = googleOAuthCredentials();
+  const credentials = googleOAuthCredentials();
+  if (!credentials) {
+    const accessToken = await getBrokeredGmailAccessToken(normalizedMailbox());
+    if (accessToken) return accessToken;
+
+    throw new CrmAuthError(
+      503,
+      "805 Gmail invoice puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID, GMAIL_805_CLIENT_SECRET, and GMAIL_805_REFRESH_TOKEN or GMAIL_ACCESS_TOKEN_BROKER_URL and GMAIL_ACCESS_TOKEN_BROKER_SECRET."
+    );
+  }
+
+  const { clientId, clientSecret, refreshToken } = credentials;
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -444,6 +498,31 @@ function searchableText(value: string) {
   return ` ${normalizeCustomerName(value)} `;
 }
 
+function firstNameEquivalent(left: string, right: string) {
+  if (left === right) return true;
+  const aliases: Record<string, string[]> = {
+    ken: ["kenneth"],
+    kenneth: ["ken"]
+  };
+  return aliases[left]?.includes(right) || aliases[right]?.includes(left) || false;
+}
+
+function equivalentPersonNameScore(extractedCustomerName: string | null | undefined, candidateName: string) {
+  const extracted = normalizeCustomerName(extractedCustomerName);
+  const candidate = normalizeCustomerName(candidateName);
+  const extractedParts = extracted.split(" ").filter(Boolean);
+  const candidateParts = candidate.split(" ").filter(Boolean);
+  if (extractedParts.length < 2 || candidateParts.length < 2) return 0;
+
+  const extractedFirst = extractedParts[0];
+  const extractedLast = extractedParts[extractedParts.length - 1];
+  const candidateFirst = candidateParts[0];
+  const candidateLast = candidateParts[candidateParts.length - 1];
+
+  if (extractedLast === candidateLast && firstNameEquivalent(extractedFirst, candidateFirst)) return 0.94;
+  return 0;
+}
+
 function extractInvoiceNumber(text: string) {
   const match = text.match(/\binvoice\s*(?:#|number|no\.?)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9-]{2,})\b/i);
   return cleanText(match?.[1]);
@@ -456,9 +535,23 @@ function extractExplicitCustomerName(text: string) {
   return cleanText(match?.[1]);
 }
 
+function isPlausibleInvoiceCustomerName(value: string | null) {
+  if (!value) return false;
+  return !/\b(?:invoice|installations?|quickbooks|shutters|customer|balance|payment|new\s+mexico)\b/i.test(value);
+}
+
+function extractGreetingCustomerName(text: string) {
+  const match = text.match(/\bDear\s+([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4})\s*,/);
+  const value = cleanText(match?.[1]);
+  return isPlausibleInvoiceCustomerName(value) ? value : null;
+}
+
 function extractNamedCustomer(text: string) {
   const explicit = extractExplicitCustomerName(text);
   if (explicit) return explicit;
+
+  const greeting = extractGreetingCustomerName(text);
+  if (greeting) return greeting;
 
   const patterns = [
     /\b(?:customer|client|bill\s+to|invoice\s+for)\s*[:#-]?\s*([A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){1,4})\b/,
@@ -468,7 +561,7 @@ function extractNamedCustomer(text: string) {
   for (const line of text.split(/\n+/)) {
     for (const pattern of patterns) {
       const value = cleanText(line.match(pattern)?.[1]);
-      if (value && !/installations?|invoice|shutters/i.test(value)) return value;
+      if (isPlausibleInvoiceCustomerName(value)) return value;
     }
   }
 
@@ -511,6 +604,8 @@ function scoreNameMatch(text: string, candidateName: string, extractedCustomerNa
   if (tokens.length < 2) return 0;
 
   if (extracted && extracted === candidate) return 0.99;
+  const equivalentScore = equivalentPersonNameScore(extractedCustomerName, candidateName);
+  if (equivalentScore) return equivalentScore;
   if (search.includes(` ${candidate} `)) return 0.97;
   if (extracted && (extracted.includes(candidate) || candidate.includes(extracted))) return 0.9;
 
@@ -572,7 +667,8 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       .select(
         "id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,sales_owner,installation_invoice_amount,installation_match_status"
       )
-      .limit(1000),
+      .order("sold_date", { ascending: false, nullsFirst: false })
+      .limit(INVOICE_CANDIDATE_LIMIT),
     supabase
       .from("crm_quotes")
       .select("id,job_id,status,quote_total,materials_cost,sold_by,sold_at,approved_at,ordered_at")
@@ -636,6 +732,71 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
 
   for (const job of jobs) {
     if (entryJobIds.has(job.id) || quoteJobIds.has(job.id)) continue;
+    candidates.push({
+      source: "job",
+      customerName: job.customer_name,
+      jobId: job.id,
+      quoteId: null,
+      entryId: null,
+      totalAmount: roundMoney(job.estimated_total),
+      cogsAmount: 0,
+      salesOwner: null,
+      soldDate: null,
+      existingInstallationAmount: 0,
+      existingInstallationMatchStatus: null
+    });
+  }
+
+  return candidates;
+}
+
+function targetedCustomerSearchTerm(customerName: string | null) {
+  const parts = normalizeCustomerName(customerName).split(" ").filter(Boolean);
+  const last = parts.at(-1);
+  return last && last.length >= 3 ? last : null;
+}
+
+async function loadTargetedInvoiceCandidates(supabase: CrmSupabaseClient, customerName: string | null) {
+  const term = targetedCustomerSearchTerm(customerName);
+  if (!term) return [];
+
+  const [entriesResult, jobsResult] = await Promise.all([
+    supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select(
+        "id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,sales_owner,installation_invoice_amount,installation_match_status"
+      )
+      .ilike("customer_name", `%${term}%`)
+      .limit(100),
+    supabase
+      .from("crm_jobs")
+      .select("id,customer_name,status,estimated_total")
+      .ilike("customer_name", `%${term}%`)
+      .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
+      .limit(100)
+  ]);
+
+  if (entriesResult.error || jobsResult.error) return [];
+
+  const entries = (entriesResult.data || []) as EntryRow[];
+  const jobs = (jobsResult.data || []) as JobRow[];
+  const entryJobIds = new Set(entries.map((entry) => entry.job_id).filter(Boolean));
+  const candidates: InstallationInvoiceCandidate[] = entries.map((entry) => ({
+    source: "entry",
+    customerName: entry.customer_name,
+    jobId: entry.job_id,
+    quoteId: entry.quote_id,
+    entryId: entry.id,
+    totalAmount: roundMoney(entry.total_amount),
+    cogsAmount: roundMoney(entry.cogs_amount),
+    salesOwner: entry.sales_owner,
+    soldDate: entry.sold_date,
+    existingInstallationAmount: roundMoney(entry.installation_invoice_amount),
+    existingInstallationMatchStatus: entry.installation_match_status
+  }));
+
+  for (const job of jobs) {
+    if (entryJobIds.has(job.id)) continue;
     candidates.push({
       source: "job",
       customerName: job.customer_name,
@@ -895,17 +1056,38 @@ async function applyInstallationInvoice(
   throw new CrmAuthError(400, "Installation invoice matched a job that has no ledger target.");
 }
 
+type InstallationInvoiceRecordInput = Omit<CrmInstallationInvoiceEmail, "id" | "created_at" | "updated_at">;
+
+function fallbackInvoiceRecord(input: InstallationInvoiceRecordInput, auditError: string | null) {
+  const now = new Date().toISOString();
+  return {
+    id: `gmail:${input.gmail_message_id}`,
+    created_at: now,
+    updated_at: now,
+    ...input,
+    raw: {
+      ...input.raw,
+      auditTableFallback: true,
+      auditError
+    }
+  } satisfies CrmInstallationInvoiceEmail;
+}
+
 async function insertInvoiceRecord(
   supabase: CrmSupabaseClient,
-  input: Omit<CrmInstallationInvoiceEmail, "id" | "created_at" | "updated_at">
+  input: InstallationInvoiceRecordInput,
+  persist: boolean,
+  auditError: string | null
 ) {
+  if (!persist) return fallbackInvoiceRecord(input, auditError);
+
   const { data, error } = await supabase
     .from("crm_installation_invoice_emails")
     .upsert(input, { onConflict: "gmail_message_id" })
     .select("*")
     .single();
 
-  if (error || !data) throw new CrmAuthError(502, "Installation invoice email could not be recorded.");
+  if (error || !data) return fallbackInvoiceRecord(input, error?.message || "Installation invoice email could not be recorded.");
   return data as CrmInstallationInvoiceEmail;
 }
 
@@ -932,6 +1114,8 @@ export async function processInstallationInvoiceInbox(
     unmatched: 0,
     skipped: 0,
     errors: 0,
+    auditTableAvailable: true,
+    auditError: null,
     invoices: []
   };
 
@@ -942,9 +1126,12 @@ export async function processInstallationInvoiceInbox(
     .select("gmail_message_id")
     .in("gmail_message_id", messageIds);
   if (existingResult.error) {
-    throw new CrmAuthError(502, "Installation invoice email table is missing. Run the Supabase migration.");
+    result.auditTableAvailable = false;
+    result.auditError = existingResult.error.message;
   }
-  const existingIds = new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)));
+  const existingIds = result.auditTableAvailable
+    ? new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)))
+    : new Set<string>();
   const candidates = await loadInvoiceCandidates(supabase);
 
   for (const messageId of messageIds) {
@@ -969,11 +1156,21 @@ export async function processInstallationInvoiceInbox(
         attachmentText: pdfExtraction.text,
         attachmentNames: names
       });
-      const match = matchInstallationInvoiceToCandidate({
+      let match = matchInstallationInvoiceToCandidate({
         text: extraction.text,
         extractedCustomerName: extraction.customerName,
         candidates
       });
+      if (match.status === "unmatched" && extraction.customerName) {
+        const targetedCandidates = await loadTargetedInvoiceCandidates(supabase, extraction.customerName);
+        if (targetedCandidates.length) {
+          match = matchInstallationInvoiceToCandidate({
+            text: extraction.text,
+            extractedCustomerName: extraction.customerName,
+            candidates: targetedCandidates
+          });
+        }
+      }
       const decision = autoApplyDecision(match, extraction);
       const candidate = match.candidate;
       let appliedAt: string | null = null;
@@ -1015,7 +1212,7 @@ export async function processInstallationInvoiceInbox(
           pdfExtractionErrors: pdfExtraction.errors,
           bodyPreview: extraction.text.slice(0, 1000)
         }
-      });
+      }, result.auditTableAvailable, result.auditError);
 
       result.invoices.push(invoice);
       result.processed += 1;
@@ -1053,7 +1250,7 @@ export async function processInstallationInvoiceInbox(
           applied_at: null,
           error_message: error instanceof Error ? error.message : "Unknown installation invoice processing error.",
           raw: {}
-        });
+        }, result.auditTableAvailable, result.auditError);
         result.invoices.push(invoice);
       }
     }

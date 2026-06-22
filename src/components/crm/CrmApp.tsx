@@ -3,7 +3,7 @@
 import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
-import { isAllowedCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
+import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
@@ -54,6 +54,7 @@ import {
 } from "@/lib/crm/types";
 
 type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
+type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 type PartnerPaymentRequest = {
@@ -81,6 +82,16 @@ type CrmUser = {
   email: string;
   displayName: string | null;
 };
+type CrmEmailOtpType = "signup" | "invite" | "magiclink" | "recovery" | "email_change" | "email";
+
+class CrmFetchError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuses.map((status) => ({
   status,
@@ -493,10 +504,11 @@ function crmAuthErrorMessage(code: string | null) {
   return null;
 }
 
-function crmRedirectUrl() {
+function crmRedirectUrl(path = "/crm/") {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   const origin = configuredSiteUrl || window.location.origin;
-  return `${origin}/crm/`;
+  const redirectPath = path.startsWith("/") ? path : "/crm/";
+  return `${origin}${redirectPath}`;
 }
 
 function crmApiPath(path: string) {
@@ -522,10 +534,40 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(body.message || "CRM request failed.");
+    throw new CrmFetchError(body.message || "CRM request failed.", response.status);
   }
 
   return body as T;
+}
+
+function isCrmSessionFetchError(error: unknown) {
+  return error instanceof CrmFetchError && error.status === 401;
+}
+
+function crmLoadErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "CRM failed to load.";
+}
+
+function normalizeEmailOtpType(value: string | null): CrmEmailOtpType {
+  if (
+    value === "signup" ||
+    value === "invite" ||
+    value === "magiclink" ||
+    value === "recovery" ||
+    value === "email_change" ||
+    value === "email"
+  ) {
+    return value;
+  }
+
+  return "email";
+}
+
+function removeEmailOtpParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token_hash");
+  url.searchParams.delete("type");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function CollapsiblePanel({
@@ -581,16 +623,20 @@ function CollapsiblePanel({
 
 export function CrmApp({
   initialTab = "command",
-  initialPaymentPerson = "ken"
+  initialPaymentPerson = "ken",
+  mode = "full"
 }: {
   initialTab?: CrmTab;
   initialPaymentPerson?: CrmPaymentPerson;
+  mode?: CrmAppMode;
 } = {}) {
   const supabase = getSupabaseBrowserClient();
+  const isKenMode = mode === "ken";
+  const loginRedirectPath = isKenMode ? "/crm/ken" : "/crm/";
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
-  const [activeTab, setActiveTab] = useState<CrmTab>(initialTab);
+  const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
@@ -654,6 +700,13 @@ export function CrmApp({
   }
 
   function openTab(tab: CrmTab) {
+    if (isKenMode && tab !== "bookkeeping" && tab !== "payoff") {
+      setActiveTab("bookkeeping");
+      setDrill(null);
+      setFocusCustomer(null);
+      return;
+    }
+
     setActiveTab(tab);
     setDrill(null);
     setFocusCustomer(null);
@@ -683,6 +736,13 @@ export function CrmApp({
   async function loadCrm(activeSession: Session) {
     setMessage(null);
     const sessionResult = await crmFetch<CrmUser>(activeSession, "/api/crm/session");
+    if (isKenMode && !isKenCrmEmail(sessionResult.email)) {
+      throw new Error(`Ken's bookkeeping page is only available to ${KEN_CRM_EMAIL}.`);
+    }
+    if (!isKenMode && isKenCrmEmail(sessionResult.email)) {
+      window.location.replace("/crm/ken");
+      return;
+    }
     const dashboardResult = await crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs");
     setUser(sessionResult);
     setData(dashboardResult);
@@ -757,7 +817,12 @@ export function CrmApp({
 
     const email = formString(new FormData(event.currentTarget), "email").toLowerCase();
     if (!email) {
-      setEmailLoginMessage("Enter an approved 805 Shutters email.");
+      setEmailLoginMessage(isKenMode ? `Enter Ken's approved email: ${KEN_CRM_EMAIL}.` : "Enter an approved 805 Shutters email.");
+      return;
+    }
+
+    if (isKenMode && !isKenCrmEmail(email)) {
+      setEmailLoginMessage(`Use Ken's approved email: ${KEN_CRM_EMAIL}.`);
       return;
     }
 
@@ -774,7 +839,7 @@ export function CrmApp({
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: crmRedirectUrl(),
+          emailRedirectTo: crmRedirectUrl(isKenCrmEmail(email) ? "/crm/ken" : loginRedirectPath),
           shouldCreateUser: true
         }
       });
@@ -800,32 +865,80 @@ export function CrmApp({
       return;
     }
 
+    const activeSupabase = supabase;
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: authData }) => {
-      if (!mounted) return;
-      setSession(authData.session);
+    const expiredMessage = isKenMode
+      ? "Ken's login expired. Send a fresh login link to continue."
+      : "Your CRM login expired. Sign in again.";
 
-      if (authData.session) {
-        try {
-          await loadCrm(authData.session);
-        } catch (error) {
-          setMessage(error instanceof Error ? error.message : "CRM failed to load.");
-        }
+    async function clearCrmSession(notice?: string) {
+      await activeSupabase.auth.signOut().catch(() => undefined);
+      if (!mounted) return;
+      setSession(null);
+      setUser(null);
+      setData(null);
+      setMessage(null);
+      if (notice) setEmailLoginMessage(notice);
+    }
+
+    async function handleCrmLoadError(error: unknown) {
+      if (isCrmSessionFetchError(error)) {
+        await clearCrmSession(expiredMessage);
+        return;
       }
 
-      setLoading(false);
-    });
+      setMessage(crmLoadErrorMessage(error));
+    }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    async function consumeEmailOtpCallback() {
+      const url = new URL(window.location.href);
+      const tokenHash = url.searchParams.get("token_hash");
+      if (!tokenHash) return null;
+
+      const { data, error } = await activeSupabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: normalizeEmailOtpType(url.searchParams.get("type"))
+      });
+
+      if (error) throw error;
+      removeEmailOtpParams();
+      return data.session ?? null;
+    }
+
+    async function initializeCrmSession() {
+      try {
+        const callbackSession = await consumeEmailOtpCallback();
+        const activeSession = callbackSession ?? (await activeSupabase.auth.getSession()).data.session;
+        if (!mounted) return;
+        setSession(activeSession);
+
+        if (activeSession) {
+          await loadCrm(activeSession);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        await handleCrmLoadError(error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initializeCrmSession();
+
+    const { data: listener } = activeSupabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
       setSession(nextSession);
       if (nextSession) {
         setLoading(true);
         loadCrm(nextSession)
-          .catch((error) => {
-            setMessage(error instanceof Error ? error.message : "CRM failed to load.");
+          .catch(async (error) => {
+            if (!mounted) return;
+            await handleCrmLoadError(error);
           })
-          .finally(() => setLoading(false));
+          .finally(() => {
+            if (mounted) setLoading(false);
+          });
       } else {
         setUser(null);
         setData(null);
@@ -1572,9 +1685,13 @@ export function CrmApp({
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">Private CRM</p>
-          <h1>CRM login.</h1>
-          <p>Use an approved 805 Shutters email to access sales jobs, quotes, bookkeeping, and calendar.</p>
+          <p className="eyebrow">{isKenMode ? "Ken Portal" : "Private CRM"}</p>
+          <h1>{isKenMode ? "Ken bookkeeping login." : "CRM login."}</h1>
+          <p>
+            {isKenMode
+              ? "Use Ken's approved email to open the read-only bookkeeping and payoff ledger."
+              : "Use an approved 805 Shutters email to access sales jobs, quotes, bookkeeping, and calendar."}
+          </p>
           {authSetupMessage ? <p className="crm-alert">{authSetupMessage}</p> : null}
           {emailLoginMessage ? <p className="crm-alert">{emailLoginMessage}</p> : null}
           <form className="crm-email-login" onSubmit={sendEmailLogin}>
@@ -1584,7 +1701,8 @@ export function CrmApp({
                 name="email"
                 type="email"
                 autoComplete="email"
-                placeholder="jessica@805shutters.com"
+                placeholder={isKenMode ? KEN_CRM_EMAIL : "jessica@805shutters.com"}
+                defaultValue={isKenMode ? KEN_CRM_EMAIL : ""}
                 required
               />
             </label>
@@ -1592,9 +1710,14 @@ export function CrmApp({
               {emailLoginBusy ? "Sending link..." : "Email Login Link"}
             </button>
           </form>
-          <a className="button secondary" href="/api/crm/oauth/google?redirectTo=/crm/">
-            Continue with Google
-          </a>
+          {isKenMode ? null : (
+            <a
+              className="button secondary"
+              href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(loginRedirectPath)}`}
+            >
+              Continue with Google
+            </a>
+          )}
         </section>
       </div>
     );
@@ -1604,7 +1727,7 @@ export function CrmApp({
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">805 CRM</p>
+          <p className="eyebrow">{isKenMode ? "Ken Portal" : "805 CRM"}</p>
           <h1>CRM access is blocked.</h1>
           <p>{message}</p>
           <button type="button" onClick={signOut}>
@@ -1612,6 +1735,21 @@ export function CrmApp({
           </button>
         </section>
       </div>
+    );
+  }
+
+  if (isKenMode) {
+    const activeKenTab = activeTab === "payoff" ? "payoff" : "bookkeeping";
+    return (
+      <KenPortalView
+        activeTab={activeKenTab}
+        rows={rows}
+        data={data}
+        payments={kenPayments}
+        busy={busy}
+        lastSyncedAt={lastSyncedAt}
+        onTabChange={openTab}
+      />
     );
   }
 
@@ -2006,6 +2144,72 @@ export function CrmApp({
         />
       ) : null}
 
+    </div>
+  );
+}
+
+function KenPortalView({
+  activeTab,
+  rows,
+  data,
+  payments,
+  busy,
+  lastSyncedAt,
+  onTabChange
+}: {
+  activeTab: "bookkeeping" | "payoff";
+  rows: CrmBookkeepingRow[];
+  data: CrmDashboardData | null;
+  payments: CrmKenPayment[];
+  busy: boolean;
+  lastSyncedAt: number | null;
+  onTabChange: (tab: CrmTab) => void;
+}) {
+  return (
+    <div className="crm-app-shell crm-ken-app-shell">
+      <header className="crm-topbar crm-ken-topbar">
+        <div className="crm-logo-lockup">
+          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width={227} height={148} />
+          <h1 className="crm-visually-hidden">Ken Portal</h1>
+          <span aria-hidden="true">Ken Portal</span>
+        </div>
+      </header>
+
+      <nav className="crm-tabs" aria-label="Ken CRM sections">
+        <button
+          type="button"
+          className={activeTab === "bookkeeping" ? "active" : ""}
+          onClick={() => onTabChange("bookkeeping")}
+        >
+          Bookkeeping Spreadsheet
+        </button>
+        <button
+          type="button"
+          className={activeTab === "payoff" ? "active" : ""}
+          onClick={() => onTabChange("payoff")}
+        >
+          Monthly Payments / Payoff Ledger
+        </button>
+      </nav>
+
+      {activeTab === "bookkeeping" ? (
+        <section className="crm-workspace crm-bookkeeping-workspace crm-bookkeeping-workspace--full">
+          <div className="crm-bookkeeping-main">
+            <ReadOnlyBookkeepingSpreadsheet
+              rows={rows}
+              totals={data?.bookkeepingTotals}
+              partnerPaymentLedger={data?.partnerPaymentLedger}
+              busy={busy}
+              lastSyncedAt={lastSyncedAt}
+              onOpenPayoff={() => onTabChange("payoff")}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "payoff" ? (
+        <KenPayoffView payoff={data?.kenPayoff} payments={payments} busy={busy} readOnly />
+      ) : null}
     </div>
   );
 }
@@ -5738,6 +5942,221 @@ function PartnerPaymentAmountCell({
   );
 }
 
+function ReadOnlyBookkeepingSpreadsheet({
+  rows,
+  totals,
+  partnerPaymentLedger,
+  busy,
+  lastSyncedAt,
+  onOpenPayoff
+}: {
+  rows: CrmBookkeepingRow[];
+  totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
+  busy: boolean;
+  lastSyncedAt: number | null;
+  onOpenPayoff: () => void;
+}) {
+  const totalProfit = roundCurrency(
+    (totals?.total || 0) -
+      (totals?.cogs || 0) -
+      (totals?.installationAmount || 0) -
+      (totals?.expensesTotal || 0) -
+      (totals?.remakeTotal || 0)
+  );
+  const netProfit = roundCurrency(totalProfit - (totals?.kenCut || 0));
+  const profitMargin = totals?.total ? `${((totalProfit / totals.total) * 100).toFixed(1)}%` : "0.0%";
+  const missingCogs = totals?.missingCogs || 0;
+  const paymentPeople = partnerPaymentLedger?.people;
+  const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
+  const statusGroups = useMemo(() => groupBookkeepingRowsByStatus(rows), [rows]);
+  const summaryCards = [
+    { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
+    { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
+    { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
+    { label: "Remake", value: toLedgerCurrency(-(totals?.remakeTotal || 0)) },
+    { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
+    { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
+    { label: "Ken Profit", value: toLedgerCurrency(totals?.kenCut) },
+    { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), action: onOpenPayoff },
+    { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), action: onOpenPayoff },
+    { label: "Net Profit", value: toLedgerCurrency(netProfit) },
+    { label: "Paid In Full", value: `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}` },
+    { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
+    { label: "Profit Margin", value: profitMargin }
+  ];
+
+  return (
+    <section className="crm-ledger crm-bookkeeping-ledger">
+      <div className="crm-section-head">
+        <div>
+          <p className="eyebrow">Bookkeeping Spreadsheet</p>
+          <h2>Quote Job Ledger</h2>
+        </div>
+        <div className="crm-bookkeeping-counts" aria-label="Bookkeeping row counts">
+          <span>Rows: {totals?.rows || 0}</span>
+          <span
+            className="crm-bookkeeping-live"
+            title={lastSyncedAt ? `Last updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : "Waiting for first sync"}
+          >
+            <span className="crm-bookkeeping-live-dot" aria-hidden="true" />
+            Live{lastSyncedAt ? ` · updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : ""}
+          </span>
+        </div>
+      </div>
+      <div className="crm-bookkeeping-summary-grid">
+        {summaryCards.map((card) =>
+          card.action ? (
+            <button
+              type="button"
+              className="crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button"
+              key={card.label}
+              onClick={card.action}
+            >
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </button>
+          ) : (
+            <article className="crm-bookkeeping-summary-card" key={card.label}>
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+            </article>
+          )
+        )}
+      </div>
+      {missingCogs ? <p className="crm-bookkeeping-alert">{missingCogs} rows missing COGS.</p> : null}
+      <div className="crm-bookkeeping-table-wrap">
+        <table className="crm-bookkeeping-table crm-bookkeeping-table--legacy">
+          <thead>
+            <tr>
+              <th>Customer / Quote</th>
+              <th>Sold By</th>
+              <th>Date</th>
+              <th>Total</th>
+              <th>Deposit</th>
+              <th>PD/W</th>
+              <th>COGS</th>
+              <th>Remake</th>
+              <th>Installation</th>
+              <th>Balance / Paid</th>
+              <th>Ken</th>
+              <th>Mike</th>
+              <th>Jessica</th>
+              <th>Profit</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {statusGroups.map(([status, groupRows]) => {
+              const groupTotals = bookkeepingGroupTotals(groupRows);
+              return (
+                <Fragment key={`readonly-status-group-${status}`}>
+                  <tr className="crm-bookkeeping-group-row">
+                    <td className="crm-bookkeeping-group-head" colSpan={15}>
+                      <div className="crm-bookkeeping-group-inner">
+                        <em className="crm-bookkeeping-status" data-status={status}>
+                          {bookkeepingStatusLabelForKey(status)}
+                        </em>
+                        <span className="crm-bookkeeping-group-meta">
+                          {groupRows.length} {groupRows.length === 1 ? "job" : "jobs"} · {toLedgerCurrency(groupTotals.total)} total
+                          {groupTotals.balance > 0 ? ` · ${toLedgerCurrency(groupTotals.balance)} open` : ""}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {groupRows.map((row) => (
+                    <tr
+                      className={bookkeepingStatusKey(row) === "closed" ? "crm-bookkeeping-row--closed" : undefined}
+                      key={`readonly-${bookkeepingRowKey(row)}`}
+                    >
+                      <td>
+                        <strong>{row.customerName}</strong>
+                        <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
+                        <em className="crm-bookkeeping-status" data-status={bookkeepingStatusKey(row)}>
+                          {bookkeepingStatusLabel(row)}
+                        </em>
+                      </td>
+                      <td className="crm-bookkeeping-soldby">{saleOwnerDisplayName(row.salesOwner)}</td>
+                      <td>{formatShortDate(row.soldDate)}</td>
+                      <td>{toLedgerCurrency(row.total)}</td>
+                      <td>{toLedgerCurrency(row.depositPaid)}</td>
+                      <td>{formatPaymentType(row.paymentType)}</td>
+                      <td>{row.cogs <= 0 ? <span className="crm-bookkeeping-pill">Missing</span> : toLedgerCurrency(row.cogs)}</td>
+                      <td className={row.remakeTotal > 0 ? "crm-ledger-money-warn" : undefined}>{toLedgerCurrency(-row.remakeTotal)}</td>
+                      <td>{row.isInstallationComplete ? toLedgerCurrency(row.installationInvoiceAmount) : "No install invoice"}</td>
+                      <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>
+                        {toLedgerCurrency(row.balance)}
+                      </td>
+                      <td>
+                        <PartnerPaymentAmountCell
+                          person="ken"
+                          row={row}
+                          amount={row.kenCut}
+                          item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("ken", row))}
+                          canMarkPartnerPaid={false}
+                          busy={busy}
+                          onMarkPartnerPaid={() => undefined}
+                        />
+                      </td>
+                      <td className="crm-ledger-money-good">
+                        <PartnerPaymentAmountCell
+                          person="mike"
+                          row={row}
+                          amount={row.mikeProfit}
+                          item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
+                          canMarkPartnerPaid={false}
+                          busy={busy}
+                          onMarkPartnerPaid={() => undefined}
+                        />
+                      </td>
+                      <td>
+                        <PartnerPaymentAmountCell
+                          person="jessica"
+                          row={row}
+                          amount={row.jessicaCommission}
+                          item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("jessica", row))}
+                          canMarkPartnerPaid={false}
+                          busy={busy}
+                          onMarkPartnerPaid={() => undefined}
+                        />
+                      </td>
+                      <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td>
+                      <td>{row.notes || ""}</td>
+                    </tr>
+                  ))}
+                  <tr className="crm-bookkeeping-group-total-row">
+                    <td>
+                      <strong>{bookkeepingStatusLabelForKey(status)} totals</strong>
+                      <span>{groupRows.length} {groupRows.length === 1 ? "job" : "jobs"}</span>
+                    </td>
+                    <td />
+                    <td />
+                    <td>{toLedgerCurrency(groupTotals.total)}</td>
+                    <td>{toLedgerCurrency(groupTotals.depositPaid)}</td>
+                    <td>-</td>
+                    <td>{toLedgerCurrency(groupTotals.cogs)}</td>
+                    <td>{toLedgerCurrency(-groupTotals.remake)}</td>
+                    <td>{toLedgerCurrency(groupTotals.installation)}</td>
+                    <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>
+                      {toLedgerCurrency(groupTotals.balance)}
+                    </td>
+                    <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.kenCut)}</td>
+                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td>
+                    <td>{toLedgerCurrency(groupTotals.jessica)}</td>
+                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td>
+                    <td />
+                  </tr>
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+        {!rows.length ? <p className="crm-empty">No bookkeeping rows yet.</p> : null}
+      </div>
+    </section>
+  );
+}
+
 function BookkeepingBalancePaidCell({
   row,
   busy,
@@ -6917,16 +7336,18 @@ function KenPaymentRow({
   payment,
   busy,
   onEdit,
-  onDelete
+  onDelete,
+  readOnly = false
 }: {
   payment: CrmKenPayment;
   busy: boolean;
-  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
+  onDelete?: (id: string) => void;
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
 
-  if (editing) {
+  if (editing && onEdit) {
     return (
       <tr>
         <td colSpan={5}>
@@ -6959,14 +7380,16 @@ function KenPaymentRow({
       <td>{payment.period_month ? formatShortDate(payment.period_month) : "—"}</td>
       <td>{toCurrency(payment.amount)}</td>
       <td>{payment.note || ""}</td>
-      <td>
-        <button type="button" className="crm-ghost-button" onClick={() => setEditing(true)} disabled={busy}>
-          Edit
-        </button>
-        <button type="button" className="crm-ghost-button" onClick={() => onDelete(payment.id)} disabled={busy}>
-          Delete
-        </button>
-      </td>
+      {readOnly ? null : (
+        <td>
+          <button type="button" className="crm-ghost-button" onClick={() => setEditing(true)} disabled={busy}>
+            Edit
+          </button>
+          <button type="button" className="crm-ghost-button" onClick={() => onDelete?.(payment.id)} disabled={busy}>
+            Delete
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
@@ -6978,15 +7401,17 @@ function KenPayoffView({
   onEdit,
   onDelete,
   onSaveSettings,
-  busy
+  busy,
+  readOnly = false
 }: {
   payoff: CrmKenPayoffSummary | undefined;
   payments: CrmKenPayment[];
-  onRecord: (event: FormEvent<HTMLFormElement>) => void;
-  onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
-  onDelete: (id: string) => void;
-  onSaveSettings: (event: FormEvent<HTMLFormElement>) => void;
+  onRecord?: (event: FormEvent<HTMLFormElement>) => void;
+  onEdit?: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
+  onDelete?: (id: string) => void;
+  onSaveSettings?: (event: FormEvent<HTMLFormElement>) => void;
   busy: boolean;
+  readOnly?: boolean;
 }) {
   const target = payoff?.payoffTarget || 500000;
   const remaining = payoff?.payoffRemaining ?? target;
@@ -6996,6 +7421,7 @@ function KenPayoffView({
 
   return (
     <section className="crm-workspace crm-workspace-wide">
+      {!readOnly && onRecord && onSaveSettings ? (
       <CollapsiblePanel title="Record Ken Payment">
         <form className="crm-form" onSubmit={onRecord}>
           <label>
@@ -7037,6 +7463,7 @@ function KenPayoffView({
           </button>
         </form>
       </CollapsiblePanel>
+      ) : null}
 
       <div className="crm-ledger">
         <div className="crm-section-head">
@@ -7059,6 +7486,11 @@ function KenPayoffView({
         </div>
 
         <div className="crm-payoff-stats">
+          <div>
+            <span>Payoff target</span>
+            <strong>{toCurrency(target)}</strong>
+            <em>purchase total</em>
+          </div>
           <div>
             <span>Due to Ken now</span>
             <strong className={owed > 0 ? "warn" : ""}>{toCurrency(owed)}</strong>
@@ -7090,12 +7522,19 @@ function KenPayoffView({
                 <th>For Month</th>
                 <th>Amount</th>
                 <th>Note</th>
-                <th aria-label="Actions" />
+                {readOnly ? null : <th aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
               {payments.map((payment) => (
-                <KenPaymentRow key={payment.id} payment={payment} busy={busy} onEdit={onEdit} onDelete={onDelete} />
+                <KenPaymentRow
+                  key={payment.id}
+                  payment={payment}
+                  busy={busy}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  readOnly={readOnly}
+                />
               ))}
             </tbody>
           </table>

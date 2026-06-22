@@ -1,15 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_INSTALLATION_INVOICE_MAILBOX,
   InstallationInvoiceCandidate,
   buildInstallationInvoiceGmailQuery,
   buildInstallationInvoiceWorkflowPatches,
   extractInstallationInvoiceDetails,
+  hasInstallationInvoiceGmailAuth,
   matchInstallationInvoiceToCandidate,
   normalizeInstallationInvoiceMailbox,
   resolveInstallationInvoiceGmailQuery,
   normalizeCustomerName
 } from "@/lib/crm/installation-invoices";
+
+const gmailAuthEnvKeys = [
+  "GMAIL_805_CLIENT_ID",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CALENDAR_CLIENT_ID",
+  "GMAIL_805_CLIENT_SECRET",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_CALENDAR_CLIENT_SECRET",
+  "GMAIL_805_REFRESH_TOKEN",
+  "GMAIL_REFRESH_TOKEN",
+  "GOOGLE_CALENDAR_REFRESH_TOKEN",
+  "GMAIL_ACCESS_TOKEN_BROKER_URL",
+  "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_URL",
+  "GMAIL_ACCESS_TOKEN_BROKER_SECRET",
+  "INSTALLATION_INVOICE_GMAIL_ACCESS_TOKEN_BROKER_SECRET"
+];
+
+function clearGmailAuthEnv() {
+  for (const key of gmailAuthEnvKeys) vi.stubEnv(key, "");
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function candidate(overrides: Partial<InstallationInvoiceCandidate> = {}): InstallationInvoiceCandidate {
   return {
@@ -50,6 +75,33 @@ describe("installation invoice mailbox", () => {
   });
 });
 
+describe("installation invoice Gmail auth config", () => {
+  it("accepts direct Gmail OAuth credentials", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret");
+    vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(true);
+  });
+
+  it("accepts a protected access-token broker", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_URL", "https://example.test/gmail-token");
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_SECRET", "broker-secret");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(true);
+  });
+
+  it("rejects incomplete auth config", () => {
+    clearGmailAuthEnv();
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_ACCESS_TOKEN_BROKER_URL", "https://example.test/gmail-token");
+
+    expect(hasInstallationInvoiceGmailAuth()).toBe(false);
+  });
+});
+
 describe("installation invoice extraction", () => {
   it("extracts the labeled final invoice amount and invoice number", () => {
     const extracted = extractInstallationInvoiceDetails({
@@ -83,6 +135,19 @@ describe("installation invoice extraction", () => {
 
     expect(extracted.customerName).toBe("Brian Knoll (Knoll psychiatry)");
     expect(extracted.invoiceAmount).toBe(1588.27);
+  });
+
+  it("prefers the QuickBooks greeting customer over invoice boilerplate locations", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 311657887 from MTS Installations Inc",
+      body:
+        "Your invoice is ready! BALANCE DUE$90.00 0% APR as low as $16/mo. " +
+        "Dear Ken Hill, Here's your invoice! Thanks for your business. New Mexico"
+    });
+
+    expect(extracted.customerName).toBe("Ken Hill");
+    expect(extracted.invoiceAmount).toBe(90);
+    expect(extracted.invoiceNumber).toBe("311657887");
   });
 });
 
@@ -120,6 +185,21 @@ describe("installation invoice customer matching", () => {
 
     expect(match.status).toBe("matched");
     expect(match.candidate?.entryId).toBe("entry-brian");
+  });
+
+  it("matches a common first-name alias when the last name matches", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 311657887 from MTS Installations Inc",
+      body: "BALANCE DUE$90.00 Dear Ken Hill, Here's your invoice!"
+    });
+    const match = matchInstallationInvoiceToCandidate({
+      text: extracted.text,
+      extractedCustomerName: extracted.customerName,
+      candidates: [candidate({ customerName: "Kenneth Hill", entryId: "entry-ken", quoteId: "quote-ken" })]
+    });
+
+    expect(match.status).toBe("matched");
+    expect(match.candidate?.entryId).toBe("entry-ken");
   });
 
   it("requires review when two customer rows are too close to call", () => {

@@ -2635,6 +2635,8 @@ export async function updateCrmSettings(
   payload: Record<string, unknown>,
   actor: CrmActor
 ) {
+  assertMikePaymentAdmin(actor);
+
   const updates: Array<{ key: string; value: number }> = [];
   for (const key of allowedSettingKeys) {
     if (payload[key] === undefined) continue;

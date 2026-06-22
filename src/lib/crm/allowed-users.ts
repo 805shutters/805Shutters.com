@@ -5,6 +5,7 @@ export const allowedCrmEmails = [
 ] as const;
 
 export const MIKE_PAYMENT_ADMIN_EMAIL = "805shutters@gmail.com";
+export const KEN_CRM_EMAIL = "khill31@msn.com";
 
 export function normalizeCrmEmail(email: string) {
   return email.trim().toLowerCase();
@@ -16,4 +17,8 @@ export function isAllowedCrmEmail(email: string) {
 
 export function isMikePaymentAdminEmail(email: string | null | undefined) {
   return Boolean(email && normalizeCrmEmail(email) === MIKE_PAYMENT_ADMIN_EMAIL);
+}
+
+export function isKenCrmEmail(email: string | null | undefined) {
+  return Boolean(email && normalizeCrmEmail(email) === KEN_CRM_EMAIL);
 }
