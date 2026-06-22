@@ -38,6 +38,8 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
   const [live, setLive] = useState<LiveMoney>(fullMoney);
   const [computing, setComputing] = useState(false);
+  const [squareBusy, setSquareBusy] = useState<"deposit" | "balance" | null>(null);
+  const [squareMsg, setSquareMsg] = useState<string | null>(null);
   const reqId = useRef(0);
 
   useEffect(() => {
@@ -80,6 +82,28 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const selectionEmpty = mode === "some" && selected.size === 0;
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
+
+  async function startSquare(type: "deposit" | "balance") {
+    setSquareMsg(null);
+    setSquareBusy(type);
+    try {
+      const res = await fetch(`/api/quote/${quote.token}/square-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentType: type }),
+      });
+      const data = await res.json();
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data?.message || "Could not start card payment.");
+    } catch (e) {
+      setSquareMsg(e instanceof Error ? e.message : "Card payment unavailable.");
+    } finally {
+      setSquareBusy(null);
+    }
+  }
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -205,7 +229,20 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
               <div style={{ fontSize: 12, opacity: 0.6 }}>Send to this number from your bank app</div>
             </div>
           </div>
-          <p style={{ fontSize: 12, opacity: 0.6, margin: "10px 0 0" }}>Please reference your name with Venmo/Zelle. Online card payment is coming soon.</p>
+          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+            {live.depositDue > 0 ? (
+              <button type="button" style={cardBtn} disabled={squareBusy !== null} onClick={() => startSquare("deposit")}>
+                {squareBusy === "deposit" ? "Opening…" : `Pay deposit with card`}
+              </button>
+            ) : null}
+            {live.balanceDue > 0 ? (
+              <button type="button" style={cardBtn} disabled={squareBusy !== null} onClick={() => startSquare("balance")}>
+                {squareBusy === "balance" ? "Opening…" : `Pay balance with card`}
+              </button>
+            ) : null}
+          </div>
+          {squareMsg ? <p style={{ fontSize: 12, color: "#991b1b", margin: "8px 0 0" }}>{squareMsg}</p> : null}
+          <p style={{ fontSize: 12, opacity: 0.6, margin: "10px 0 0" }}>Or pay by Venmo/Zelle above. Please reference your name.</p>
         </div>
       ) : null}
 
@@ -255,6 +292,16 @@ const payBox = {
   padding: 16,
   marginTop: 16,
   background: "#fbfbfa",
+} as const;
+const cardBtn = {
+  border: "none",
+  background: "#0b0b0b",
+  color: "#ffffff",
+  borderRadius: 8,
+  padding: "10px 16px",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
 } as const;
 const radioLabel = { display: "inline-flex", gap: 6, alignItems: "center", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 const discountTag = {
