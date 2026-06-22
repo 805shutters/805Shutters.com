@@ -873,16 +873,15 @@ describe("buildKenPayoffSummary", () => {
     expect(summary.payoffPct).toBe(100);
   });
 
-  it("honors a custom payoff target", () => {
+  it("uses the fixed buyout target even when a stale settings target is present", () => {
     const summary = buildKenPayoffSummary({
       rows: [],
-      payments: [],
-      openingBalance: 45000,
-      payoffTarget: 450000
+      payments: [kenPayment({ amount: 19231.58 })],
+      payoffTarget: 500000
     });
     expect(summary.payoffTarget).toBe(450000);
-    expect(summary.payoffRemaining).toBe(405000);
-    expect(summary.payoffPct).toBe(10);
+    expect(summary.payoffRemaining).toBe(430768.42);
+    expect(summary.payoffPct).toBe(4.3);
   });
 
   it("defaults the target to the business payoff constant", () => {

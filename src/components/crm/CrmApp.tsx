@@ -1475,8 +1475,7 @@ export function CrmApp({
       await crmFetch(session, "/api/crm/settings", {
         method: "PATCH",
         body: JSON.stringify({
-          ken_opening_balance: Number(formString(formData, "ken_opening_balance") || 0),
-          payoff_target: Number(formString(formData, "payoff_target") || 0)
+          ken_opening_balance: Number(formString(formData, "ken_opening_balance") || 0)
         })
       });
       await refresh();
@@ -7498,10 +7497,7 @@ function KenPayoffView({
             Already Paid Ken (opening balance)
             <input name="ken_opening_balance" type="number" min="0" step="0.01" defaultValue={payoff?.openingBalance ?? 0} />
           </label>
-          <label>
-            Total Payoff Target
-            <input name="payoff_target" type="number" min="0" step="100" defaultValue={target} />
-          </label>
+          <p className="crm-help">Total payoff target is fixed at {toCurrency(target)}.</p>
           <button type="submit" disabled={busy}>
             Save Settings
           </button>

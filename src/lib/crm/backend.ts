@@ -1087,7 +1087,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   }>;
   const settingsMap = new Map(settingsRows.map((row) => [row.key, Number(row.value) || 0]));
   const openingBalance = settingsMap.get("ken_opening_balance") ?? 0;
-  const payoffTarget = settingsMap.get("payoff_target") ?? BUSINESS_PAYOFF_TARGET;
+  const payoffTarget = BUSINESS_PAYOFF_TARGET;
   const jobNames = new Map(jobs.map((job) => [job.id, job.customer_name]));
 
   return buildDashboardData({
@@ -2172,7 +2172,7 @@ async function closeBookkeepingJobAfterBalancePaid(
   await updateCrmJob(supabase, jobId, { status: "closed" }, actor);
 }
 
-const allowedSettingKeys = new Set(["payoff_target", "ken_opening_balance"]);
+const allowedSettingKeys = new Set(["ken_opening_balance"]);
 
 export async function createKenPayment(
   supabase: CrmSupabaseClient,

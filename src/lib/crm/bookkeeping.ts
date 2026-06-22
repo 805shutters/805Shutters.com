@@ -263,8 +263,7 @@ function closedDateForBookkeepingRow(row: CrmBookkeepingRow) {
 export function buildKenPayoffSummary({
   rows,
   payments,
-  openingBalance = 0,
-  payoffTarget = BUSINESS_PAYOFF_TARGET
+  openingBalance = 0
 }: {
   rows: CrmBookkeepingRow[];
   payments: CrmKenPayment[];
@@ -283,7 +282,7 @@ export function buildKenPayoffSummary({
     payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
   );
   const opening = roundCents(Math.max(Number(openingBalance) || 0, 0));
-  const target = roundCents(Math.max(Number(payoffTarget) || 0, 0)) || BUSINESS_PAYOFF_TARGET;
+  const target = BUSINESS_PAYOFF_TARGET;
   const kenPaid = roundCents(opening + recordedPayments);
   const payoffRemaining = roundCents(Math.max(target - kenPaid, 0));
   const kenOwed = roundCents(Math.max(kenAccruedCompleted - kenPaid, 0));
