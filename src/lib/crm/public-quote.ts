@@ -450,6 +450,39 @@ async function syncSignedQuoteArtifacts(
   if (error) throw new CrmAuthError(502, "Quote was signed, but the customer contract file could not be saved.");
 }
 
+/**
+ * Bring a sold quote's downstream state to the correct, billed shape: parent job
+ * -> "sold", a bookkeeping ledger row exists, stamped with the sold total. Every
+ * write is hardened (throws on error) so a signed quote never silently misses
+ * bookkeeping. Idempotent, so the fresh-sign path AND the alreadySigned retry
+ * path both call it — a retry after a transient failure self-heals.
+ * Returns the customer phone (for the confirmation text), if any.
+ */
+async function syncSoldBookkeeping(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  soldTotal: number,
+): Promise<string | null> {
+  let customerPhone: string | null = null;
+  if (quote.job_id) {
+    const { data: job, error } = await supabase
+      .from("crm_jobs")
+      .update({ status: "sold" })
+      .eq("id", quote.job_id)
+      .select("phone")
+      .maybeSingle();
+    if (error) throw new CrmAuthError(502, "The sold job could not be updated.");
+    customerPhone = (job as { phone?: string } | null)?.phone ?? null;
+  }
+  await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal });
+  const { error: stampError } = await supabase
+    .from("crm_quote_bookkeeping_entries")
+    .update({ sold_date: new Date().toISOString().slice(0, 10), total_amount: soldTotal })
+    .eq("quote_id", quote.id);
+  if (stampError) throw new CrmAuthError(502, "The signed total could not be saved to bookkeeping.");
+  return customerPhone;
+}
+
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
@@ -460,6 +493,9 @@ export async function acceptPublicQuote(
   if (quote.signed_at) {
     const pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
+      // Convergence: a retry after a transient downstream failure must still bring
+      // the sold job + bookkeeping entry to the correct state (idempotent ops).
+      await syncSoldBookkeeping(supabase, quote, pub.total);
       await syncSignedQuoteArtifacts(
         supabase,
         quote,
@@ -571,24 +607,8 @@ export async function acceptPublicQuote(
       .is("signed_at", null);
   }
 
-  // Sync the parent job + bookkeeping entry to "sold".
-  let customerPhone: string | null = null;
-  if (quote.job_id) {
-    const { data: job } = await supabase
-      .from("crm_jobs")
-      .update({ status: "sold" })
-      .eq("id", quote.job_id)
-      .select("phone, customer_name")
-      .maybeSingle();
-    customerPhone = (job as { phone?: string } | null)?.phone ?? null;
-  }
-  // Alternative versions have no bookkeeping entry until won — ensure one now,
-  // using the authoritative sold total.
-  await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal });
-  await supabase
-    .from("crm_quote_bookkeeping_entries")
-    .update({ sold_date: now.slice(0, 10), total_amount: soldTotal })
-    .eq("quote_id", quote.id);
+  // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
+  const customerPhone = await syncSoldBookkeeping(supabase, quote, soldTotal);
 
   await syncSignedQuoteArtifacts(
     supabase,
