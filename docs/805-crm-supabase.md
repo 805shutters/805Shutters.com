@@ -331,21 +331,22 @@ The public site only exposes the CRM login block at the bottom of the homepage. 
 
 ## Google Calendar sync
 
-When `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, and `GOOGLE_CALENDAR_REFRESH_TOKEN` are set, new website self-bookings and CRM-created calendar appointments are also created in the Google Calendar configured by `GOOGLE_CALENDAR_ID`.
+When `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` are set, new website self-bookings and CRM-created calendar appointments are also created in Google Calendar. Authentication uses a Google Workspace **service account with domain-wide delegation** (no per-user refresh tokens): the service account impersonates each target calendar's owner via the JWT `sub` claim and creates the event directly on that calendar.
 
-Use the Google OAuth scope:
-
-```text
-https://www.googleapis.com/auth/calendar.events
-```
-
-Recommended calendar target:
+Target calendars come from `GOOGLE_CALENDAR_SYNC_TARGETS` (comma-separated), falling back to `GOOGLE_CALENDAR_ID`:
 
 ```text
-805@805shutters.com
+GOOGLE_CALENDAR_SYNC_TARGETS=805@805shutters.com,jessica@805shutters.com
 ```
 
-The CRM stores the created Google event id and HTML link in `crm_calendar_events.meta` as `googleCalendarEventId` and `googleCalendarHtmlLink`. Google Calendar sync is intentionally non-blocking: if Google credentials are missing or the Calendar API rejects a request, the website booking and CRM event still save in Supabase and the sync outcome is recorded in CRM activity metadata.
+Workspace admin setup (one time):
+
+1. Google Cloud Console — enable the **Google Calendar API** in the 805 project.
+2. Create a service account (e.g. `805-calendar-sync`) and enable **domain-wide delegation**.
+3. Workspace Admin console → Security → Access and data control → API Controls → Domain-wide Delegation → add the service account's Client ID with the scopes `https://www.googleapis.com/auth/calendar` and `https://www.googleapis.com/auth/calendar.events`.
+4. Service account → Keys → Add key (JSON). Copy `client_email` and `private_key` into `GOOGLE_SERVICE_ACCOUNT_CLIENT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`.
+
+The CRM stores the created Google event ids and HTML links in `crm_calendar_events.meta` as `googleCalendarEventIds` and `googleCalendarHtmlLinks` (maps keyed by calendar id). Google Calendar sync is intentionally non-blocking: if Google credentials are missing or the Calendar API rejects a request, the website booking and CRM event still save in Supabase and the per-calendar sync outcome is recorded in the booking response, the booking webhook alert, and CRM activity metadata. Confirm the credential is wired with `/api/crm/health` → `googleCalendarSyncConfigured: true`.
 
 ## Public self-booking
 

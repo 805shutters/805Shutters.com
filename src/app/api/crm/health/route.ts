@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllowedCrmEmails } from "@/lib/crm/auth";
 import { getCrmGoogleOAuthStatus } from "@/lib/crm/oauth";
+import { isGoogleCalendarSyncConfigured } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       process.env.TWILIO_AUTH_TOKEN &&
       (process.env.TWILIO_FROM_PHONE || process.env.TWILIO_MESSAGING_SERVICE_SID)
   );
+  const googleCalendarSyncConfigured = isGoogleCalendarSyncConfigured();
 
   return NextResponse.json({
     ready: authConfigured && databaseConfigured && migrationsReady && googleOAuth.enabled && installationInvoicePullerReady,
@@ -107,6 +109,7 @@ export async function GET(request: NextRequest) {
     installationInvoicePullerReady,
     bookingEmailConfigured,
     bookingSmsConfigured,
+    googleCalendarSyncConfigured,
     supabaseHost: supabaseUrl ? new URL(supabaseUrl).hostname : null,
     allowedEmailsConfigured: getAllowedCrmEmails().length > 0,
     allowedEmailCount: getAllowedCrmEmails().length,
