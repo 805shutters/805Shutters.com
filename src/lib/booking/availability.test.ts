@@ -71,6 +71,16 @@ describe("buildBookingAvailability", () => {
     expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
   });
 
+  it("falls back to working-hours slots when published availability is empty for the month", () => {
+    const availability = buildBookingAvailability("2030-06", [], []);
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+    const sunday = availability.days.find((day) => day.date === "2030-06-02");
+
+    expect(monday?.available).toBe(true);
+    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
+    expect(sunday?.available).toBe(false);
+  });
+
   it("blocks overlapping events in fallback mode", () => {
     const availability = buildBookingAvailability("2030-06", [eventAt("2030-06-03", "09:00")]);
     const monday = availability.days.find((day) => day.date === "2030-06-03");
@@ -83,5 +93,10 @@ describe("buildBookingAvailability", () => {
 describe("freeRepsForSlot", () => {
   it("returns an unassigned fallback owner when legacy availability is open", () => {
     expect(freeRepsForSlot("2030-06-03", "09:00", undefined, [])).toEqual(["Unassigned"]);
+  });
+
+  it("treats an empty published-slots month like the working-hours fallback", () => {
+    expect(freeRepsForSlot("2030-06-03", "09:00", [], [])).toEqual(["Unassigned"]);
+    expect(freeRepsForSlot("2030-06-02", "09:00", [], [])).toEqual([]);
   });
 });
