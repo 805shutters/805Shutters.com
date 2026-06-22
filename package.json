@@ -12,6 +12,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:e2e": "playwright test",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
     "audit:site": "python3 scripts/audit_site.py --base-url https://www.805shutters.com --output reports/site-audit.json --markdown reports/site-audit.md --post-sample 20 --workers 8",
@@ -28,6 +29,7 @@
     "postcss": "8.5.15"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@types/node": "24.10.2",
     "@types/react": "19.2.7",
     "@types/react-dom": "19.2.3",
