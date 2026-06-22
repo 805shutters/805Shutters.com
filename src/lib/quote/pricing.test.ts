@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { priceDesign, roundUpIndex, type PriceResult } from "./pricing";
 import { catalog, getProduct } from "./catalog";
+import { toInches } from "./measurements";
 
 function ok(r: PriceResult) {
   if (!r.ok) throw new Error(`expected ok, got ${r.code}: ${r.error}`);
@@ -345,5 +346,61 @@ describe("fuzz sweep: no NaN, no negative, no silent wrong price ever escapes", 
     }
     expect(priced).toBeGreaterThan(0);
     expect(priced + errored).toBeGreaterThan(0);
+  });
+});
+
+describe("sizing grid -> catalog grid pricing", () => {
+  // Models exactly what MeasurementGridModal does on save: toInches(whole, fraction)
+  // per axis, then the backend runs priceDesign on those inches. These prove a grid
+  // pick lands on the correct catalog grid cell and price, round-up included.
+  it("even picks 24 x 36 -> $212 on the 24x36 cell", () => {
+    const r = ok(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: toInches(24, "0"),
+      heightInches: toInches(36, "0"),
+    }));
+    expect(r.matchedWidth).toBe(24);
+    expect(r.matchedHeight).toBe(36);
+    expect(r.total).toBe(212);
+  });
+
+  it("fractional width 24 1/2 x 36 rounds up to the 30 cell -> $254", () => {
+    const w = toInches(24, "1/2");
+    expect(w).toBe(24.5);
+    const r = ok(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: w,
+      heightInches: toInches(36, "0"),
+    }));
+    expect(r.matchedWidth).toBe(30);
+    expect(r.matchedHeight).toBe(36);
+    expect(r.total).toBe(254);
+  });
+
+  it("between-cell picks 25 x 33 round up to 30 x 36 -> $254", () => {
+    const r = ok(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: toInches(25, "0"),
+      heightInches: toInches(33, "0"),
+    }));
+    expect(r.matchedWidth).toBe(30);
+    expect(r.matchedHeight).toBe(36);
+    expect(r.total).toBe(254);
+  });
+
+  it("a 1/16 fraction is not truncated: 30 1/16 pushes past the 30 cell", () => {
+    const w = toInches(30, "1/16");
+    expect(w).toBe(30.0625);
+    const r = ok(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: w,
+      heightInches: toInches(36, "0"),
+    }));
+    expect(r.matchedWidth).toBeGreaterThan(30);
+    expect(Number.isFinite(r.total) && r.total > 0).toBe(true);
   });
 });
