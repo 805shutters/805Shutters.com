@@ -175,7 +175,9 @@ type PriceFields = {
 export function priceDesignFields(
   design: Pick<CrmQuoteDesign, "product_id" | "program_id" | "fabric" | "surcharges" | "motorization">,
   dims: { width_in: number | null; height_in: number | null },
+  discountPercent?: number,
 ): PriceFields {
+  const clampedDiscount = Math.min(100, Math.max(0, Number(discountPercent) || 0));
   const input: PriceInput = {
     productId: design.product_id,
     programId: design.program_id ?? undefined,
@@ -185,6 +187,7 @@ export function priceDesignFields(
     quantity: 1,
     surcharges: design.surcharges ?? [],
     motorization: design.motorization ?? [],
+    ...(clampedDiscount > 0 ? { discountPercent: clampedDiscount } : {}),
   };
   const result = priceDesign(input);
   const now = new Date().toISOString();
@@ -456,6 +459,7 @@ export async function updateLineItem(
   if ("quantity" in payload) patch.quantity = normalizeQuantity(payload.quantity);
   if ("sort_order" in payload && Number.isFinite(Number(payload.sort_order))) patch.sort_order = Number(payload.sort_order);
   let dimsChanged = false;
+  let discountChanged = false;
   if ("width_in" in payload) {
     patch.width_in = optionalDimension(payload.width_in);
     dimsChanged = true;
@@ -463,6 +467,10 @@ export async function updateLineItem(
   if ("height_in" in payload) {
     patch.height_in = optionalDimension(payload.height_in);
     dimsChanged = true;
+  }
+  if ("discount_percent" in payload) {
+    patch.discount_percent = Math.min(100, Math.max(0, Number(payload.discount_percent) || 0));
+    discountChanged = true;
   }
 
   const { data, error } = await supabase
@@ -473,12 +481,13 @@ export async function updateLineItem(
     .single();
   if (error || !data) throw new CrmAuthError(502, "Line item could not be updated.");
 
-  // Measurements feed pricing — reprice all the window's designs when they change.
-  if (dimsChanged) {
+  // Measurements and per-line discount both feed pricing — reprice all the
+  // window's designs when either changes.
+  if (dimsChanged || discountChanged) {
     await repriceLineItemDesigns(supabase, id, {
       width_in: data.width_in as number | null,
       height_in: data.height_in as number | null,
-    });
+    }, Number(data.discount_percent) || 0);
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
@@ -517,6 +526,7 @@ async function repriceLineItemDesigns(
   supabase: CrmSupabaseClient,
   lineItemId: string,
   dims: { width_in: number | null; height_in: number | null },
+  discountPercent?: number,
 ): Promise<void> {
   const { data: designs, error } = await supabase
     .from("crm_quote_designs")
@@ -524,7 +534,7 @@ async function repriceLineItemDesigns(
     .eq("line_item_id", lineItemId);
   if (error) throw new CrmAuthError(502, "Designs could not be repriced.");
   for (const design of (designs as CrmQuoteDesign[]) ?? []) {
-    const fields = priceDesignFields(design, dims);
+    const fields = priceDesignFields(design, dims, discountPercent);
     const { error: updateError } = await supabase.from("crm_quote_designs").update(fields).eq("id", design.id);
     if (updateError) throw new CrmAuthError(502, "Design pricing could not be updated.");
   }
@@ -549,7 +559,7 @@ export async function upsertDesign(
     surcharges: normalizeSurcharges(payload.surcharges),
     motorization: normalizeMotorization(productId, payload.motorization),
   };
-  const priceFields = priceDesignFields(designInput, lineItem);
+  const priceFields = priceDesignFields(designInput, lineItem, Number(lineItem.discount_percent) || 0);
 
   const record = {
     line_item_id: lineItemId,
@@ -676,12 +686,14 @@ export async function duplicateLineItem(
       quantity: source.quantity,
       sort_order: source.sort_order + 1,
       notes: source.notes,
+      discount_percent: Number(source.discount_percent) || 0,
     })
     .select("*")
     .single();
   if (error || !copy) throw new CrmAuthError(502, "Window could not be copied.");
 
   const dims = { width_in: copy.width_in as number | null, height_in: copy.height_in as number | null };
+  const copyDiscount = Number(source.discount_percent) || 0;
   let selectedNewId: string | null = null;
   for (const d of source.designs ?? []) {
     const designInput = {
@@ -692,7 +704,7 @@ export async function duplicateLineItem(
       surcharges: d.surcharges ?? [],
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };
-    const priceFields = priceDesignFields(designInput, dims);
+    const priceFields = priceDesignFields(designInput, dims, copyDiscount);
     const { data: newDesign, error: designError } = await supabase
       .from("crm_quote_designs")
       .insert({ line_item_id: copy.id, label: d.label, sort_order: d.sort_order, ...designInput, notes: d.notes, ...priceFields })

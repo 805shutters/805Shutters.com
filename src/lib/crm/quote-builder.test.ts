@@ -46,6 +46,7 @@ function lineItem(over: Partial<CrmQuoteLineItem>): CrmQuoteLineItem {
     width_in: over.width_in ?? 24,
     height_in: over.height_in ?? 36,
     quantity: over.quantity ?? 1,
+    discount_percent: over.discount_percent ?? 0,
     sort_order: over.sort_order ?? 0,
     selected_design_id: over.selected_design_id ?? null,
     notes: null,
@@ -201,5 +202,28 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
     expect(fields.unit_price).toBe(0);
     expect(fields.price_status).not.toBe("ok");
+  });
+});
+
+describe("priceDesignFields: per-line discount", () => {
+  const design = { product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", fabric: null, surcharges: [], motorization: [] };
+  const dims = { width_in: 24, height_in: 36 };
+
+  it("applies a per-line discount so the stored unit_price is discounted", () => {
+    const full = priceDesignFields(design, dims);
+    const off = priceDesignFields(design, dims, 10);
+    expect(full.unit_price).toBe(212);
+    expect(off.unit_price).toBe(190.8);
+    expect((off.price_breakdown as { discountPercent?: number }).discountPercent).toBe(10);
+  });
+
+  it("treats 0 / undefined discount as no discount", () => {
+    expect(priceDesignFields(design, dims, 0).unit_price).toBe(212);
+    expect(priceDesignFields(design, dims, undefined).unit_price).toBe(212);
+  });
+
+  it("clamps an out-of-range discount into [0,100]", () => {
+    expect(priceDesignFields(design, dims, 200).unit_price).toBe(0);
+    expect(priceDesignFields(design, dims, -10).unit_price).toBe(212);
   });
 });

@@ -134,6 +134,42 @@ describe("quantity & surcharges", () => {
   });
 });
 
+describe("per-line discount", () => {
+  it("applies a percent discount to the per-window retail base", () => {
+    const r = ok(priceDesign({ productId: "honeycomb", programId: HONEYCOMB_9_16, widthInches: 24, heightInches: 36, discountPercent: 10 }));
+    expect(r.discountAmount).toBe(21.2);
+    expect(r.unitPrice).toBe(190.8); // 212 - 10%
+  });
+
+  it("applies the discount to base + motorization combined", () => {
+    const r = ok(priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, motorization: [{ groupId: "smart_motorization", optionId: "motor" }], discountPercent: 10 }));
+    // (base 254 + motor 482) = 736; 10% off -> 662.40
+    expect(r.discountAmount).toBe(73.6);
+    expect(r.unitPrice).toBe(662.4);
+  });
+
+  it("never reduces wholesale/cost (discount is retail-only)", () => {
+    const full = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 24, heightInches: 36 }));
+    const off = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 24, heightInches: 36, discountPercent: 10 }));
+    expect(full.wholesaleUnitPrice).not.toBeNull();
+    expect(off.wholesaleUnitPrice).toBe(full.wholesaleUnitPrice);
+    expect(off.discountAmount).toBe(Math.round(full.base * 0.1 * 100) / 100);
+  });
+
+  it("clamps the discount at 100%", () => {
+    const r = ok(priceDesign({ productId: "honeycomb", programId: HONEYCOMB_9_16, widthInches: 24, heightInches: 36, discountPercent: 200 }));
+    expect(r.discountPercent).toBe(100);
+    expect(r.unitPrice).toBe(0);
+    expect(r.discountAmount).toBe(212);
+  });
+
+  it("multiplies the discounted unit by quantity in the total", () => {
+    const r = ok(priceDesign({ productId: "honeycomb", programId: HONEYCOMB_9_16, widthInches: 24, heightInches: 36, quantity: 2, discountPercent: 10 }));
+    expect(r.unitPrice).toBe(190.8);
+    expect(r.total).toBe(381.6);
+  });
+});
+
 describe("error paths (legacy engine silently mis-priced all of these)", () => {
   it("rejects an unknown fabric instead of defaulting to the cheapest group", () => {
     const r = priceDesign({ productId: "roller", fabric: "DefinitelyNotAFabric", widthInches: 24, heightInches: 36 });
