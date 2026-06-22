@@ -1,6 +1,8 @@
 // Resend email helper. Env-gated and NEVER throws (same contract as Twilio).
 // Env: RESEND_API_KEY + RESEND_FROM ("Name <sender@domain>"). When unset, skips.
 
+import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
+
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
 
 export function isResendConfigured(): boolean {
@@ -84,7 +86,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const quoteLabel = details.quoteNumber ? `Quote ${details.quoteNumber}` : "Your Quote";
   const subject = `Your 805 Shutters quote${total > 0 ? ` - ${amount}` : ""}`;
   const itemText = details.lines?.length ? `\n\nQuote items:\n${details.lines.map((line, index) => textLine(line, index)).join("\n")}` : "";
-  const text = `Hi ${name},\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nReview and approve it here:\n${url}\n\nThank you,\n805 Shutters`;
+  const text = `Hi ${name},\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}\n\nThank you,\n805 Shutters`;
   const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
@@ -95,6 +97,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     </div>
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
+    <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#1f1f1f">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
     <div style="margin:26px 0 18px 0">
       <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve quote</a>
     </div>
