@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type Rea
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
 import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
-import { FRACTION_STEPS, splitInches, toInches } from "@/lib/quote/measurements";
+import { FRACTION_STEPS, formatInches, splitInches, toInches } from "@/lib/quote/measurements";
 
 type Props = {
   session: Session;
@@ -162,6 +162,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [customRoom, setCustomRoom] = useState("");
   const [pricingReference, setPricingReference] = useState<UiPricingReference | null>(null);
   const [showPricingReference, setShowPricingReference] = useState(false);
+  const [measuringId, setMeasuringId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -174,6 +175,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     // windows briefly under the new version's header/total.
     setQuote(null);
     setCustomRoom("");
+    setMeasuringId(null);
     (async () => {
       try {
         const [c, q] = await Promise.all([
@@ -609,8 +611,18 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       placeholder="e.g. Living Room"
                     />
                   </Field>
-                  <Measure label="Width" valueIn={li.width_in} onChange={(v) => patchWindow(li.id, { width_in: v })} />
-                  <Measure label="Height" valueIn={li.height_in} onChange={(v) => patchWindow(li.id, { height_in: v })} />
+                  <Field label="Size (W × H)">
+                    <button
+                      type="button"
+                      style={sizeChip}
+                      disabled={busy}
+                      onClick={() => setMeasuringId(li.id)}
+                    >
+                      {li.width_in && li.height_in
+                        ? `${formatInches(li.width_in)} × ${formatInches(li.height_in)}`
+                        : "＋ Add size"}
+                    </button>
+                  </Field>
                   <Field label="Qty" width={70}>
                     <input
                       type="number"
@@ -794,6 +806,22 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             </button>
 
             <Adjustments key={quote.id} quote={quote} busy={busy} onSave={saveAdjustments} />
+
+            {measuringId ? (() => {
+              const target = quote.lineItems.find((x) => x.id === measuringId);
+              if (!target) return null;
+              return (
+                <MeasurementGridModal
+                  widthIn={target.width_in}
+                  heightIn={target.height_in}
+                  onClose={() => setMeasuringId(null)}
+                  onSave={(w, h) => {
+                    patchWindow(target.id, { width_in: w, height_in: h });
+                    setMeasuringId(null);
+                  }}
+                />
+              );
+            })() : null}
           </div>
         )}
       </div>
@@ -898,33 +926,163 @@ function Field({ label, children, width }: { label: string; children: ReactNode;
   );
 }
 
-function Measure({ label, valueIn, onChange }: { label: string; valueIn: number | null; onChange: (v: number) => void }) {
-  const init = splitInches(valueIn);
-  const [whole, setWhole] = useState(init.whole ? String(init.whole) : "");
-  const [frac, setFrac] = useState<string>(init.fraction);
-  function commit(w: string, f: string) {
-    const decimal = toInches(Number(w) || 0, f);
-    if (Number.isFinite(decimal)) onChange(decimal);
+type MeasStep = "width_whole" | "width_fraction" | "height_whole" | "height_fraction";
+
+// Whole-inch cells offered in the sizing grid (10"-119" covers every standard
+// window treatment; outliers fall back to the manual entry row below the grid).
+const MEAS_WHOLES: number[] = Array.from({ length: 110 }, (_, i) => i + 10);
+
+/**
+ * MTS-style measurement sizing grid: a 4-step click wizard
+ * (W whole -> W fraction -> H whole -> H fraction) plus a manual-entry row.
+ * Self-contained — seeds from the line item's current dimensions on each open
+ * (the panel mounts it only while open), so it never drifts out of sync.
+ */
+function MeasurementGridModal({
+  widthIn,
+  heightIn,
+  onClose,
+  onSave,
+}: {
+  widthIn: number | null;
+  heightIn: number | null;
+  onClose: () => void;
+  onSave: (widthIn: number, heightIn: number) => void;
+}) {
+  const seedW = splitInches(widthIn);
+  const seedH = splitInches(heightIn);
+  const [step, setStep] = useState<MeasStep>("width_whole");
+  const [wWhole, setWWhole] = useState<number>(seedW.whole || 0);
+  const [wFrac, setWFrac] = useState<string>(seedW.fraction);
+  const [hWhole, setHWhole] = useState<number>(seedH.whole || 0);
+  const [hFrac, setHFrac] = useState<string>(seedH.fraction);
+
+  const isWidth = step === "width_whole" || step === "width_fraction";
+  const isFrac = step === "width_fraction" || step === "height_fraction";
+  const axisLabel = isWidth ? "Width" : "Height";
+  const stepTitle = isFrac
+    ? `Select fraction for ${axisLabel.toLowerCase()}`
+    : `Select whole inches for ${axisLabel.toLowerCase()}`;
+  const curWhole = isWidth ? wWhole : hWhole;
+  const curFrac = isWidth ? wFrac : hFrac;
+  const canSave = wWhole > 0 && hWhole > 0;
+
+  function pickWhole(n: number) {
+    if (step === "width_whole") {
+      setWWhole(n);
+      setStep("width_fraction");
+    } else if (step === "height_whole") {
+      setHWhole(n);
+      setStep("height_fraction");
+    }
   }
+  function pickFrac(f: string) {
+    if (step === "width_fraction") {
+      setWFrac(f);
+      setStep("height_whole");
+    } else if (step === "height_fraction") {
+      setHFrac(f);
+      onSave(toInches(wWhole, wFrac), toInches(hWhole, f));
+    }
+  }
+  function back() {
+    if (step === "width_fraction") setStep("width_whole");
+    else if (step === "height_whole") setStep("width_fraction");
+    else if (step === "height_fraction") setStep("height_whole");
+  }
+
   return (
-    <Field label={`${label} (in)`} width={150}>
+    <div className="meas-overlay" role="dialog" aria-modal="true" style={measOverlay}>
+      <div style={measBox}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <strong style={{ fontSize: 17 }}>{axisLabel}</strong>
+          <div style={{ fontSize: 14, display: "flex", gap: 10, alignItems: "center" }}>
+            <span style={{ fontWeight: 600, color: isWidth ? "#111111" : "#8a8a85" }}>
+              W: {wWhole > 0 ? formatInches(toInches(wWhole, wFrac)) : "—"}
+            </span>
+            <span style={{ opacity: 0.5 }}>×</span>
+            <span style={{ fontWeight: 600, color: !isWidth ? "#111111" : "#8a8a85" }}>
+              H: {hWhole > 0 ? formatInches(toInches(hWhole, hFrac)) : "—"}
+            </span>
+          </div>
+        </div>
+        <p style={{ margin: "6px 0 12px", fontSize: 13, opacity: 0.7 }}>{stepTitle}</p>
+
+        <div style={measGrid}>
+          {!isFrac
+            ? MEAS_WHOLES.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => pickWhole(n)}
+                  style={{ ...measCell, ...(n === curWhole ? measCellActive : {}) }}
+                >
+                  {n}
+                </button>
+              ))
+            : FRACTION_STEPS.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => pickFrac(f)}
+                  style={{ ...measCell, ...(f === curFrac ? measCellActive : {}) }}
+                >
+                  {f === "0" ? "0 (even)" : f}
+                </button>
+              ))}
+        </div>
+
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #eeeeeb", display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <MeasManual label="Width" whole={wWhole} frac={wFrac} onWhole={setWWhole} onFrac={setWFrac} />
+          <MeasManual label="Height" whole={hWhole} frac={hFrac} onWhole={setHWhole} onFrac={setHFrac} />
+        </div>
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 14 }}>
+          <button type="button" style={ghostBtn} onClick={back} disabled={step === "width_whole"}>
+            Back
+          </button>
+          <button type="button" style={ghostBtn} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            style={{ ...primaryBtn, marginTop: 0 }}
+            disabled={!canSave}
+            onClick={() => onSave(toInches(wWhole, wFrac), toInches(hWhole, hFrac))}
+          >
+            Save size
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MeasManual({
+  label,
+  whole,
+  frac,
+  onWhole,
+  onFrac,
+}: {
+  label: string;
+  whole: number;
+  frac: string;
+  onWhole: (n: number) => void;
+  onFrac: (f: string) => void;
+}) {
+  return (
+    <Field label={label} width={150}>
       <div style={{ display: "flex", gap: 4 }}>
         <input
           type="number"
           min="0"
           step="1"
-          value={whole}
-          onChange={(e) => setWhole(e.target.value)}
-          onBlur={() => commit(whole, frac)}
+          value={Number.isFinite(whole) ? whole : 0}
+          onChange={(e) => onWhole(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
           style={{ width: 64 }}
         />
-        <select
-          value={frac}
-          onChange={(e) => {
-            setFrac(e.target.value);
-            commit(whole, e.target.value);
-          }}
-        >
+        <select value={frac} onChange={(e) => onFrac(e.target.value)}>
           {FRACTION_STEPS.map((s) => (
             <option key={s} value={s}>
               {s === "0" ? '0"' : `${s}"`}
@@ -1158,4 +1316,56 @@ const customRoomInput: CSSProperties = {
   fontSize: 13,
   width: 146,
   minHeight: 44,
+};
+const sizeChip: CSSProperties = {
+  border: "1px solid #c8d2d8",
+  background: "#edf3f6",
+  borderRadius: 8,
+  padding: "10px 14px",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#10202a",
+  minHeight: 44,
+  minWidth: 160,
+};
+const measOverlay: CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(17,17,17,0.55)",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "flex-start",
+  zIndex: 1100,
+  padding: "24px 12px",
+};
+const measBox: CSSProperties = {
+  background: "#ffffff",
+  color: "#0b0b0b",
+  borderRadius: 12,
+  width: "min(760px, 100%)",
+  maxHeight: "92vh",
+  overflowY: "auto",
+  padding: 20,
+  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+};
+const measGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(54px, 1fr))",
+  gap: 6,
+};
+const measCell: CSSProperties = {
+  height: 44,
+  borderRadius: 8,
+  border: "1px solid #d8d5cf",
+  background: "#fbfbfa",
+  cursor: "pointer",
+  fontSize: 14,
+  fontWeight: 600,
+  color: "#0b0b0b",
+};
+const measCellActive: CSSProperties = {
+  background: "#111111",
+  color: "#ffffff",
+  borderColor: "#111111",
 };
