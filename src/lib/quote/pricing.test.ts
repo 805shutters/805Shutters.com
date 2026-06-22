@@ -95,6 +95,38 @@ describe("quantity & surcharges", () => {
     expect(r.unitPrice).toBe(r.base + 482);
   });
 
+  it("adds BOTH a motor and a remote — multiple specialty items sum (Motor $482 + SmartDial remote $268)", () => {
+    const r = ok(priceDesign({
+      productId: "roller",
+      fabric: "Callie",
+      widthInches: 24,
+      heightInches: 36,
+      motorization: [
+        { groupId: "smart_motorization", optionId: "motor" },
+        { groupId: "smart_motorization", optionId: "smartdial_g2_remote" },
+      ],
+    }));
+    expect(r.base).toBe(254);
+    // Each specialty item is its own line, and BOTH reach the unit price.
+    expect(r.surchargeLines.map((l) => l.id)).toEqual(
+      expect.arrayContaining([
+        "motor:smart_motorization:motor",
+        "motor:smart_motorization:smartdial_g2_remote",
+      ]),
+    );
+    expect(r.unitPrice).toBe(r.base + 482 + 268);
+    expect(r.unitPrice).toBe(1004);
+  });
+
+  it("motorization is per-window: a quantity of 2 bills the motor twice in the total (never once-per-order)", () => {
+    const one = ok(priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
+    const two = ok(priceDesign({ productId: "roller", fabric: "Callie", widthInches: 24, heightInches: 36, quantity: 2, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
+    // Doubling the window count doubles the whole per-window amount (base + motor),
+    // proving the motor is not silently capped at one per order.
+    expect(two.total).toBe(one.unitPrice * 2);
+    expect(two.total).toBe((254 + 482) * 2);
+  });
+
   it("rejects motorization groups that are not valid for the selected product", () => {
     const r = priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] });
     expect(r.ok).toBe(false);
