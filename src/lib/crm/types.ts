@@ -145,6 +145,8 @@ export type CrmQuoteLineItem = {
   width_in: number | null;
   height_in: number | null;
   quantity: number;
+  /** Per-line discount percent (0-100) applied to this window's retail price. */
+  discount_percent: number;
   sort_order: number;
   /** The customer's chosen alternative; only this design is billed. */
   selected_design_id: string | null;

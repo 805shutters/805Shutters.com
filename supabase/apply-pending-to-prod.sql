@@ -540,3 +540,14 @@ alter table public.crm_activity_events
       'order_cogs_email', 'settings', 'session', 'system'
     )
   );
+
+-- ---- Per-line quote discount (applies at pricing time) ---------------------
+-- 20260622120000_add_line_item_discount_percent.sql
+alter table public.crm_quote_line_items
+  add column if not exists discount_percent numeric(5, 2) not null default 0;
+
+alter table public.crm_quote_line_items
+  drop constraint if exists crm_quote_line_items_discount_percent_check;
+alter table public.crm_quote_line_items
+  add constraint crm_quote_line_items_discount_percent_check
+  check (discount_percent >= 0 and discount_percent <= 100);

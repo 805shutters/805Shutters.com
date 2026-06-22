@@ -58,6 +58,8 @@ export type PriceInput = {
   quantity?: number;
   surcharges?: SurchargeSelection[];
   motorization?: MotorizationSelection[];
+  /** Per-line discount percent (0-100), applied to the per-window retail total. */
+  discountPercent?: number;
 };
 
 export type PriceLine = {
@@ -87,8 +89,12 @@ export type PriceBreakdown = {
   /** Internal dealer/wholesale base cost. Null when the source guide exposes retail only. */
   wholesaleBase: number | null;
   surchargeLines: PriceLine[];
-  /** base + all per-window surcharges. */
+  /** base + all per-window surcharges, LESS any per-line discount. */
   unitPrice: number;
+  /** Per-line discount percent applied (0-100). */
+  discountPercent: number;
+  /** Per-window discount dollars applied (retail only; never wholesale or once charges). */
+  discountAmount: number;
   /** Internal dealer/wholesale unit cost. Null when the source guide exposes retail only. */
   wholesaleUnitPrice: number | null;
   quantity: number;
@@ -398,7 +404,12 @@ export function priceDesign(input: PriceInput): PriceResult {
 
   const quantity = normalizeQuantity(input.quantity);
   const unitCents = baseCents + perWindowCents;
-  const totalCents = unitCents * quantity + onceCents;
+  // Per-line discount: applies to the per-window RETAIL (base + surcharges +
+  // motorization) only — never to once charges (e.g. freight) or to wholesale/cost.
+  const discountPercent = Math.min(100, Math.max(0, Number(input.discountPercent) || 0));
+  const discountCents = Math.round((unitCents * discountPercent) / 100);
+  const discountedUnitCents = unitCents - discountCents;
+  const totalCents = discountedUnitCents * quantity + onceCents;
   const wholesaleUnitCents = wholesaleBaseCents == null ? null : wholesaleBaseCents + wholesalePerWindowCents;
   const wholesaleTotalCents =
     wholesaleUnitCents == null ? null : wholesaleUnitCents * quantity + wholesaleOnceCents;
@@ -415,7 +426,9 @@ export function priceDesign(input: PriceInput): PriceResult {
     base: fromCents(baseCents),
     wholesaleBase: wholesaleBaseCents == null ? null : fromCents(wholesaleBaseCents),
     surchargeLines,
-    unitPrice: fromCents(unitCents),
+    unitPrice: fromCents(discountedUnitCents),
+    discountPercent,
+    discountAmount: fromCents(discountCents),
     wholesaleUnitPrice: wholesaleUnitCents == null ? null : fromCents(wholesaleUnitCents),
     quantity,
     onceTotal: fromCents(onceCents),

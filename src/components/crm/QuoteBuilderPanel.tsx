@@ -163,6 +163,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [pricingReference, setPricingReference] = useState<UiPricingReference | null>(null);
   const [showPricingReference, setShowPricingReference] = useState(false);
   const [measuringId, setMeasuringId] = useState<string | null>(null);
+  const [discountMode, setDiscountMode] = useState<"all" | "select">("all");
+  const [selectedForDiscount, setSelectedForDiscount] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -328,6 +330,25 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
   const patchWindow = (id: string, patch: Record<string, unknown>) =>
     mutate(`/api/crm/quote-line-items/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+
+  // Per-line discount: patch one window's discount_percent (clamped server-side too).
+  const setLineDiscount = (id: string, percent: number) =>
+    patchWindow(id, { discount_percent: Math.min(100, Math.max(0, percent)) });
+
+  // Apply a preset discount to every window (All mode) or just the checked ones
+  // (Select mode). Sequential awaits — each patch reprices that line's designs and
+  // recalculates the quote total; `mutate` refreshes the quote after each.
+  const applyBulkDiscount = async (percent: number) => {
+    if (!quote) return;
+    const ids =
+      discountMode === "all"
+        ? quote.lineItems.map((li) => li.id)
+        : quote.lineItems.filter((li) => selectedForDiscount.has(li.id)).map((li) => li.id);
+    for (const id of ids) {
+      await patchWindow(id, { discount_percent: percent });
+    }
+    setSelectedForDiscount(new Set());
+  };
 
   const deleteWindow = (id: string) =>
     mutate(`/api/crm/quote-line-items/${id}`, { method: "DELETE" });
@@ -597,6 +618,28 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
             <div style={{ height: 1, background: "#eeeeeb", margin: "16px 0" }} />
 
+            {/* Per-line discount toolbar — apply a preset % to all or selected windows. */}
+            <div style={discountToolbar}>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>Line discount:</span>
+              <div style={{ display: "inline-flex", border: "1px solid #d8d5cf", borderRadius: 6, overflow: "hidden" }}>
+                <button type="button" style={{ ...segBtn, ...(discountMode === "all" ? segBtnActive : {}) }} onClick={() => setDiscountMode("all")}>All lines</button>
+                <button type="button" style={{ ...segBtn, ...(discountMode === "select" ? segBtnActive : {}) }} onClick={() => setDiscountMode("select")}>Select lines</button>
+              </div>
+              {[10, 15, 20].map((p) => (
+                <button key={p} type="button" style={roomPill} disabled={busy || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(p)}>
+                  {p}% off
+                </button>
+              ))}
+              <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(0)}>
+                Clear
+              </button>
+              {discountMode === "select" ? (
+                <span style={{ fontSize: 12, opacity: 0.7 }}>
+                  {selectedForDiscount.size > 0 ? `${selectedForDiscount.size} selected` : "Check windows below to include them"}
+                </span>
+              ) : null}
+            </div>
+
             {quote.lineItems.length === 0 ? (
               <p style={{ opacity: 0.7 }}>No windows yet. Pick a product line above, then tap a room to start pricing.</p>
             ) : null}
@@ -604,6 +647,21 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             {quote.lineItems.map((li) => (
               <section key={li.id} style={windowCard}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  {discountMode === "select" ? (
+                    <Field label="Include" width={64}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 20, height: 20, margin: "8px 0 0" }}
+                        checked={selectedForDiscount.has(li.id)}
+                        onChange={(e) => {
+                          const next = new Set(selectedForDiscount);
+                          if (e.target.checked) next.add(li.id);
+                          else next.delete(li.id);
+                          setSelectedForDiscount(next);
+                        }}
+                      />
+                    </Field>
+                  ) : null}
                   <Field label="Room / Opening">
                     <input
                       defaultValue={li.room || ""}
@@ -632,6 +690,22 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       onBlur={(e) => patchWindow(li.id, { quantity: e.target.value })}
                     />
                   </Field>
+                  <Field label="Disc %" width={70}>
+                    <input
+                      key={li.discount_percent ?? 0}
+                      type="number"
+                      min="0"
+                      max="100"
+                      defaultValue={li.discount_percent ?? 0}
+                      onBlur={(e) => {
+                        const v = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                        if (v !== (li.discount_percent ?? 0)) setLineDiscount(li.id, v);
+                      }}
+                    />
+                  </Field>
+                  {li.discount_percent ? (
+                    <span style={discountBadge}>{li.discount_percent}% off</span>
+                  ) : null}
                   <button type="button" style={ghostBtn} disabled={busy} onClick={() => duplicateWindow(li.id)}>
                     Duplicate
                   </button>
@@ -1328,6 +1402,40 @@ const sizeChip: CSSProperties = {
   color: "#10202a",
   minHeight: 44,
   minWidth: 160,
+};
+const discountToolbar: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginBottom: 12,
+  padding: 10,
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  background: "#fbfbfa",
+};
+const segBtn: CSSProperties = {
+  border: "none",
+  background: "#ffffff",
+  color: "#0b0b0b",
+  padding: "8px 12px",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 600,
+};
+const segBtnActive: CSSProperties = {
+  background: "#0b0b0b",
+  color: "#ffffff",
+};
+const discountBadge: CSSProperties = {
+  border: "1px solid #b9a23e",
+  background: "#faf3d6",
+  color: "#6b530a",
+  borderRadius: 999,
+  padding: "4px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  alignSelf: "center",
 };
 const measOverlay: CSSProperties = {
   position: "fixed",
