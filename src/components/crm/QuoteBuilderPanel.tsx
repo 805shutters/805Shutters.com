@@ -5,6 +5,8 @@ import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
 import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, formatInches, splitInches, toInches } from "@/lib/quote/measurements";
+import { summarizePriceBreakdown } from "@/lib/quote/price-explanation";
+import type { PriceBreakdown } from "@/lib/quote/pricing";
 
 type Props = {
   session: Session;
@@ -474,6 +476,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <h2 style={{ margin: "2px 0 0" }}>
               {quote?.customer_name || quote?.quote_number || "Quote"} — {money(quote?.quote_total)}
             </h2>
+            <span style={savingPill}>{busy ? "Saving…" : "All changes saved"}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button
@@ -497,6 +500,13 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             ) : null}
           </div>
         </header>
+
+        {quote ? (
+          <div style={floatingTotalStyle} aria-label="Quote total">
+            <span style={{ opacity: 0.7, fontSize: 12, textTransform: "uppercase", letterSpacing: 1 }}>Total</span>
+            <strong style={{ fontSize: 20 }}>{money(quote.quote_total)}</strong>
+          </div>
+        ) : null}
 
         {error ? <p style={errorStyle}>{error}</p> : null}
         {shareUrl ? (
@@ -864,6 +874,13 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             </div>
                           </details>
                         ) : null}
+
+                        {priceOk && design.price_breakdown ? (
+                          <details style={{ marginTop: 8 }}>
+                            <summary style={{ cursor: "pointer", fontSize: 13 }}>Why this price?</summary>
+                            <PriceExplanation breakdown={design.price_breakdown as PriceBreakdown} quantity={Math.max(1, Math.floor(Number(li.quantity) || 1))} />
+                          </details>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1168,6 +1185,35 @@ function MeasManual({
   );
 }
 
+function PriceExplanation({ breakdown, quantity }: { breakdown: PriceBreakdown; quantity: number }) {
+  const rows = summarizePriceBreakdown(breakdown, quantity);
+  return (
+    <div style={{ marginTop: 6, fontSize: 13 }}>
+      {rows.map((row, i) => {
+        const isTotal = row.kind === "total";
+        const isBase = row.kind === "base";
+        const muted = row.kind === "surcharge" || row.kind === "qty" || row.kind === "once";
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "2px 0",
+              fontWeight: isTotal || isBase ? 700 : 400,
+              color: row.kind === "discount" ? "#6b530a" : "#0b0b0b",
+              ...(isTotal ? { borderTop: "1px solid #eeeeeb", marginTop: 4, paddingTop: 4 } : {}),
+            }}
+          >
+            <span style={{ opacity: muted ? 0.75 : 1 }}>{row.label}</span>
+            <span>{row.amount}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DetailControl({ field, value, onChange }: { field: UiDetailField; value: DetailValue | undefined; onChange: (value: DetailValue) => void }) {
   if (field.type === "checkbox") {
     return (
@@ -1332,6 +1378,30 @@ const headerStyle: CSSProperties = {
   alignItems: "center",
   padding: "16px 20px",
   borderBottom: "1px solid #d8d8d2",
+};
+const savingPill: CSSProperties = {
+  display: "inline-block",
+  marginTop: 4,
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: 0.4,
+  textTransform: "uppercase",
+  color: "#6b6b66",
+};
+const floatingTotalStyle: CSSProperties = {
+  position: "fixed",
+  bottom: 16,
+  right: 16,
+  zIndex: 1200,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: 2,
+  background: "#0b0b0b",
+  color: "#ffffff",
+  padding: "10px 16px",
+  borderRadius: 10,
+  boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
 };
 const windowCard: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 10, padding: 14, marginBottom: 14, background: "#fbfbfa" };
 const designCard: CSSProperties = { border: "2px solid #d8d8d2", borderRadius: 8, padding: 12, background: "#ffffff" };
