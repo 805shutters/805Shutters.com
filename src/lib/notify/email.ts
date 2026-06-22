@@ -105,6 +105,24 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   return { subject, html, text };
 }
 
+/** Signed-contract notification emailed to the SHOP when a customer signs.
+ *  Reuses the full contract rendering (line items, total, link) with a signed banner. */
+export function buildSignedQuoteShopEmail(customerName: string, url: string, total: number, details: QuoteEmailDetails = {}): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const base = buildQuoteEmail(customerName, url, total, details);
+  const amount = money(total);
+  const name = customerName && customerName !== "Valued customer" ? customerName : "a customer";
+  const banner = `<div style="background:#0b0b0b;color:#ffffff;border-radius:8px;padding:14px 18px;margin:0 0 18px 0"><strong style="font-size:16px">✅ Signed &amp; approved</strong><div style="font-size:14px;margin-top:4px;opacity:0.92">${escapeHtml(name)} just signed this contract${total > 0 ? ` for <strong>${amount}</strong>` : ""}. Time to order.</div></div>`;
+  return {
+    subject: `✅ Signed contract: ${name}${total > 0 ? ` — ${amount}` : ""}`,
+    html: `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif"><div style="max-width:640px;margin:0 auto;padding:28px 18px">${banner}${base.html}</div></div>`,
+    text: `✅ SIGNED & APPROVED\n${name} just signed this contract${total > 0 ? ` for ${amount}` : ""}. Time to order.\n\n${base.text}`,
+  };
+}
+
 function quoteLinesTable(lines: QuoteEmailLine[]): string {
   const rows = lines.map((line, index) => {
     const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
