@@ -1983,6 +1983,7 @@ export function CrmApp({
             <BookkeepingSpreadsheet
               rows={rows}
               totals={data?.bookkeepingTotals}
+              payoff={data?.kenPayoff}
               commissionSummary={data?.commissionSummary}
               partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
@@ -1993,6 +1994,7 @@ export function CrmApp({
               onMarkBalancePaid={markBookkeepingBalancePaid}
               onMarkPartnerPaid={markPartnerPaymentPaid}
               onDelete={deleteBookkeepingRow}
+              onOpenPayoff={() => openTab("payoff")}
             />
             <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
             <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
@@ -2198,6 +2200,7 @@ function KenPortalView({
             <ReadOnlyBookkeepingSpreadsheet
               rows={rows}
               totals={data?.bookkeepingTotals}
+              payoff={data?.kenPayoff}
               partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
               lastSyncedAt={lastSyncedAt}
@@ -5945,6 +5948,7 @@ function PartnerPaymentAmountCell({
 function ReadOnlyBookkeepingSpreadsheet({
   rows,
   totals,
+  payoff,
   partnerPaymentLedger,
   busy,
   lastSyncedAt,
@@ -5952,6 +5956,7 @@ function ReadOnlyBookkeepingSpreadsheet({
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  payoff?: CrmDashboardData["kenPayoff"];
   partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
   lastSyncedAt: number | null;
@@ -5970,7 +5975,8 @@ function ReadOnlyBookkeepingSpreadsheet({
   const paymentPeople = partnerPaymentLedger?.people;
   const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
   const statusGroups = useMemo(() => groupBookkeepingRowsByStatus(rows), [rows]);
-  const summaryCards = [
+  const buyoutRemaining = payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const summaryCards: Array<{ label: string; value: string; detail?: string; action?: () => void }> = [
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
     { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
@@ -5978,6 +5984,12 @@ function ReadOnlyBookkeepingSpreadsheet({
     { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
     { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
     { label: "Ken Profit", value: toLedgerCurrency(totals?.kenCut) },
+    {
+      label: "Buyout Ledger",
+      value: toLedgerCurrency(buyoutRemaining),
+      detail: `${toLedgerCurrency(payoff?.kenPaid)} paid to Ken Hill`,
+      action: onOpenPayoff
+    },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), action: onOpenPayoff },
     { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), action: onOpenPayoff },
     { label: "Net Profit", value: toLedgerCurrency(netProfit) },
@@ -6015,11 +6027,13 @@ function ReadOnlyBookkeepingSpreadsheet({
             >
               <span>{card.label}</span>
               <strong>{card.value}</strong>
+              {card.detail ? <em>{card.detail}</em> : null}
             </button>
           ) : (
             <article className="crm-bookkeeping-summary-card" key={card.label}>
               <span>{card.label}</span>
               <strong>{card.value}</strong>
+              {card.detail ? <em>{card.detail}</em> : null}
             </article>
           )
         )}
@@ -6206,6 +6220,7 @@ function BookkeepingBalancePaidCell({
 function BookkeepingSpreadsheet({
   rows,
   totals,
+  payoff,
   commissionSummary,
   partnerPaymentLedger,
   busy,
@@ -6215,10 +6230,12 @@ function BookkeepingSpreadsheet({
   onSave,
   onMarkBalancePaid,
   onMarkPartnerPaid,
-  onDelete
+  onDelete,
+  onOpenPayoff
 }: {
   rows: CrmBookkeepingRow[];
   totals: CrmDashboardData["bookkeepingTotals"] | undefined;
+  payoff?: CrmDashboardData["kenPayoff"];
   commissionSummary: CrmCommissionSummary | undefined;
   partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
@@ -6229,6 +6246,7 @@ function BookkeepingSpreadsheet({
   onMarkBalancePaid: (row: CrmBookkeepingRow) => void;
   onMarkPartnerPaid: (person: CrmPaymentPerson, item: CrmPartnerPaymentLedgerItem, row: CrmBookkeepingRow) => void;
   onDelete: (row: CrmBookkeepingRow) => void;
+  onOpenPayoff: () => void;
 }) {
   const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
@@ -6244,7 +6262,14 @@ function BookkeepingSpreadsheet({
   const commissionTotals = commissionSummary?.totals;
   const paymentPeople = partnerPaymentLedger?.people;
   const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
-  const summaryCards = [
+  const buyoutRemaining = payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const summaryCards: Array<{
+    label: string;
+    value: string;
+    detail?: string;
+    action?: () => void;
+    person?: CrmPaymentPerson;
+  }> = [
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
     { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
@@ -6252,6 +6277,12 @@ function BookkeepingSpreadsheet({
     { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
     { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
     { label: "Ken Profit", value: toLedgerCurrency(totals?.kenCut) },
+    {
+      label: "Buyout Ledger",
+      value: toLedgerCurrency(buyoutRemaining),
+      detail: `${toLedgerCurrency(payoff?.kenPaid)} paid to Ken Hill`,
+      action: onOpenPayoff
+    },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), person: "ken" as const },
     { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), person: "ken" as const },
     { label: "Jessica Commission Due", value: toLedgerCurrency(paymentPeople?.jessica.owed ?? commissionTotals?.jessicaOwed), person: "jessica" as const },
@@ -6292,20 +6323,33 @@ function BookkeepingSpreadsheet({
       </div>
       <div className="crm-bookkeeping-summary-grid">
         {summaryCards.map((card) =>
-          card.person ? (
+          card.action ? (
             <button
               type="button"
               className="crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button"
               key={card.label}
-              onClick={() => onOpenPayments(card.person)}
+              onClick={card.action}
             >
               <span>{card.label}</span>
               <strong>{card.value}</strong>
+              {card.detail ? <em>{card.detail}</em> : null}
+            </button>
+          ) : card.person ? (
+            <button
+              type="button"
+              className="crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button"
+              key={card.label}
+              onClick={() => onOpenPayments(card.person!)}
+            >
+              <span>{card.label}</span>
+              <strong>{card.value}</strong>
+              {card.detail ? <em>{card.detail}</em> : null}
             </button>
           ) : (
             <article className="crm-bookkeeping-summary-card" key={card.label}>
               <span>{card.label}</span>
               <strong>{card.value}</strong>
+              {card.detail ? <em>{card.detail}</em> : null}
             </article>
           )
         )}
