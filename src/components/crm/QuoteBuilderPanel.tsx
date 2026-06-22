@@ -359,6 +359,20 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const duplicateWindow = (id: string) =>
     mutate(`/api/crm/quote-line-items/${id}/duplicate`, { method: "POST" });
 
+  // Copy this window's selected spec + size + discount to every other window
+  // (the MTS "Copy All" flow). Confirms first since it overwrites the targets.
+  const copySpecToAll = async (sourceId: string) => {
+    if (!quote) return;
+    const others = quote.lineItems.filter((li) => li.id !== sourceId);
+    if (others.length === 0) return;
+    const ok = window.confirm(`Copy this window's spec, size, and discount to all ${others.length} other window(s)? This overwrites them.`);
+    if (!ok) return;
+    await mutate(`/api/crm/quote-line-items/${sourceId}/copy-spec`, {
+      method: "POST",
+      body: JSON.stringify({ targetIds: others.map((li) => li.id) }),
+    });
+  };
+
   const saveAdjustments = (adj: Record<string, unknown>) =>
     mutate(`/api/crm/quotes/${quoteId}/adjustments`, { method: "PATCH", body: JSON.stringify(adj) });
 
@@ -729,6 +743,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   {li.discount_percent ? (
                     <span style={discountBadge}>{li.discount_percent}% off</span>
                   ) : null}
+                  <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length < 2} onClick={() => copySpecToAll(li.id)}>
+                    Copy to all
+                  </button>
                   <button type="button" style={ghostBtn} disabled={busy} onClick={() => duplicateWindow(li.id)}>
                     Duplicate
                   </button>
