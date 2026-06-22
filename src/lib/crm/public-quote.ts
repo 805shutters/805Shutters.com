@@ -34,6 +34,8 @@ export type PublicQuoteLine = {
   unitPrice: number;
   quantity: number;
   lineTotal: number;
+  /** Per-line discount percent surfaced so the contract can label it (0 = none). */
+  discountPercent: number;
   priceReady: boolean;
 };
 
@@ -167,8 +169,9 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
   };
 }
 
-function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine {
+export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine {
   const qty = Math.max(1, Math.floor(Number(li.quantity) || 1));
+  const discountPercent = Math.min(100, Math.max(0, Number(li.discount_percent) || 0));
   if (legacyMts) {
     const designOptions = [...(li.designs || [])]
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -187,6 +190,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
       quantity: qty,
       lineTotal: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.lineTotal, 0)) : 0,
+      discountPercent: 0,
       priceReady,
     };
   }
@@ -205,6 +209,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
       unitPrice: 0,
       quantity: qty,
       lineTotal: 0,
+      discountPercent,
       priceReady: false
     };
   }
@@ -226,6 +231,7 @@ function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine 
     // Authoritative billed amount (unit x qty + any per-order surcharge) — matches
     // exactly what the quote/bookkeeping bill, so the customer's math reconciles.
     lineTotal,
+    discountPercent,
     priceReady,
   };
 }

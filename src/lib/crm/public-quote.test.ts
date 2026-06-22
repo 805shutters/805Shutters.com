@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions } from "./public-quote";
-import type { CrmQuoteDesign } from "./types";
+import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions, projectLine } from "./public-quote";
+import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 
 function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
   return {
@@ -16,7 +16,7 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
     details: over.details ?? {},
     surcharges: over.surcharges ?? [],
     motorization: over.motorization ?? [],
-    unit_price: 0,
+    unit_price: over.unit_price ?? 0,
     wholesale_unit_price: over.wholesale_unit_price ?? null,
     price_breakdown: over.price_breakdown ?? {},
     price_status: "ok",
@@ -100,5 +100,44 @@ describe("formatDimensions (customer contract)", () => {
     expect(formatDimensions(null, 36)).toBe("Measurements pending");
     expect(formatDimensions(24, null)).toBe("Measurements pending");
     expect(formatDimensions(null, null)).toBe("Measurements pending");
+  });
+});
+
+function lineItem(over: Partial<CrmQuoteLineItem> & { designs?: CrmQuoteDesign[] }): CrmQuoteLineItem {
+  const designs = over.designs ?? [];
+  return {
+    id: over.id ?? "li1",
+    created_at: "",
+    updated_at: "",
+    quote_id: "q1",
+    room: over.room ?? "Living Room",
+    width_in: over.width_in ?? 24,
+    height_in: over.height_in ?? 36,
+    quantity: over.quantity ?? 1,
+    discount_percent: over.discount_percent ?? 0,
+    sort_order: over.sort_order ?? 0,
+    selected_design_id: over.selected_design_id ?? designs[0]?.id ?? null,
+    notes: over.notes ?? null,
+    designs,
+  };
+}
+
+describe("projectLine (per-line discount on the contract)", () => {
+  it("surfaces the line's discount percent alongside the discounted price", () => {
+    const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 190.8 });
+    const line = projectLine(lineItem({ discount_percent: 10, designs: [d] }), false);
+    expect(line.discountPercent).toBe(10);
+    expect(line.unitPrice).toBe(190.8);
+    expect(line.lineTotal).toBe(190.8);
+  });
+
+  it("defaults to 0 discount when none is set", () => {
+    const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
+    expect(projectLine(lineItem({ designs: [d] }), false).discountPercent).toBe(0);
+  });
+
+  it("never surfaces a per-line discount on legacy MTS quotes", () => {
+    const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 100 });
+    expect(projectLine(lineItem({ discount_percent: 15, designs: [d] }), true).discountPercent).toBe(0);
   });
 });
