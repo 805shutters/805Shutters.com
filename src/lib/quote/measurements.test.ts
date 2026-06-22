@@ -77,3 +77,32 @@ describe("splitInches", () => {
     expect(splitInches(29.99)).toEqual({ whole: 30, fraction: "0" });
   });
 });
+
+describe("sizing grid (MeasurementGridModal contract)", () => {
+  it("commits a whole+fraction pick per axis to decimal inches (the grid's onSave transform)", () => {
+    // Width 36 1/2" and Height 48 0" — exactly what the grid's final-fraction click computes.
+    expect(toInches(36, "1/2")).toBe(36.5);
+    expect(toInches(48, "0")).toBe(48);
+  });
+
+  it("re-seeds without drift: a saved size reproduces the same whole+fraction when reopened", () => {
+    // This is the property that prevents the stale-dimension bug: a value the grid
+    // saves, when the grid reopens and re-derives via splitInches, must show the same
+    // pick again across the full whole-inch and fraction range the grid offers.
+    const wholes = [10, 24, 30, 36, 48, 60, 72, 96, 119];
+    for (const whole of wholes) {
+      for (const fraction of FRACTION_STEPS) {
+        const decimal = toInches(whole, fraction);
+        const reseeded = splitInches(decimal);
+        expect(toInches(reseeded.whole, reseeded.fraction)).toBeCloseTo(decimal, 6);
+      }
+    }
+  });
+
+  it("renders a well-formed live readout for every grid fraction", () => {
+    // The modal header shows formatInches(toInches(whole, fraction)).
+    for (const fraction of FRACTION_STEPS) {
+      expect(formatInches(toInches(30, fraction)).endsWith('"')).toBe(true);
+    }
+  });
+});
