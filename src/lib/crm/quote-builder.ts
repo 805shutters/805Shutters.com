@@ -24,7 +24,7 @@ import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
 import { getProduct } from "@/lib/quote/catalog";
 import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/lib/quote/lifecycle";
 import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
-import { getDetailFieldsForProduct, getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
+import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, shutterVariantsFor } from "@/lib/quote/product-options";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -437,6 +437,21 @@ export async function createLineItem(
   // priceable instead of an empty shell. Ignored when the product is unknown.
   const seedProductId = optionalText(payload.seed_product_id);
   if (seedProductId && getProduct(seedProductId)) {
+    // Shutters auto-create the A/B/C material-tier variants as priced alternatives.
+    const variants = shutterVariantsFor(seedProductId);
+    if (variants && variants.length) {
+      let last: CrmQuoteWithItems | null = null;
+      for (let i = 0; i < variants.length; i++) {
+        last = await upsertDesign(
+          supabase,
+          { line_item_id: data.id, product_id: seedProductId, program_id: variants[i].programId, label: variants[i].variant, sort_order: i },
+          actor,
+        );
+      }
+      // The first upsertDesign auto-selected variant A (the value tier) so the
+      // window bills immediately; return the latest refreshed quote.
+      return last ?? recalcQuoteTotals(supabase, quoteId);
+    }
     return upsertDesign(
       supabase,
       { line_item_id: data.id, product_id: seedProductId, label: "A", sort_order: 0 },

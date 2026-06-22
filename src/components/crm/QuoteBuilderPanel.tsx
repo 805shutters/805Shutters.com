@@ -6,6 +6,7 @@ import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/
 import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, formatInches, splitInches, toInches } from "@/lib/quote/measurements";
 import { summarizePriceBreakdown } from "@/lib/quote/price-explanation";
+import { shutterVariantsFor } from "@/lib/quote/product-options";
 import type { PriceBreakdown } from "@/lib/quote/pricing";
 
 type Props = {
@@ -170,6 +171,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [sendChannel, setSendChannel] = useState<"both" | "email" | "sms">("both");
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
+  const [activeDesignTab, setActiveDesignTab] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let active = true;
@@ -185,6 +187,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     setMeasuringId(null);
     setCopySourceId(null);
     setCopyTargets(new Set());
+    setActiveDesignTab({});
     (async () => {
       try {
         const [c, q] = await Promise.all([
@@ -823,8 +826,30 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   </button>
                 </div>
 
+                {shutterVariantsFor(li.designs[0]?.product_id ?? "") && li.designs.length > 1 ? (() => {
+                  const vdef = shutterVariantsFor(li.designs[0]?.product_id ?? "")!;
+                  const activeId = activeDesignTab[li.id] ?? li.selected_design_id ?? li.designs[0]?.id;
+                  return (
+                    <div style={variantTabStrip}>
+                      {li.designs.map((d) => {
+                        const v = vdef.find((x) => x.variant === d.label);
+                        const isActive = d.id === activeId;
+                        const isBilled = li.selected_design_id === d.id;
+                        return (
+                          <button key={d.id} type="button" onClick={() => setActiveDesignTab((prev) => ({ ...prev, [li.id]: d.id }))} style={{ ...variantTab, ...(isActive ? variantTabActive : {}) }}>
+                            <strong>{d.label}</strong>
+                            {v ? <span style={{ opacity: 0.65, marginLeft: 6 }}>{v.label}</span> : null}
+                            <span style={{ marginLeft: 10 }}>{d.price_status === "ok" ? money(d.unit_price) : "—"}</span>
+                            {isBilled ? <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.8 }}>✓ billed</span> : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })() : null}
+
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-                  {li.designs.map((design) => {
+                  {(shutterVariantsFor(li.designs[0]?.product_id ?? "") ? li.designs.filter((d) => d.id === (activeDesignTab[li.id] ?? li.selected_design_id ?? li.designs[0]?.id)) : li.designs).map((design) => {
                     const product = productsById.get(design.product_id);
                     const motorizationGroups = product
                       ? catalog.motorization.filter((group) => product.motorizationGroups.includes(group.groupId))
@@ -1595,6 +1620,28 @@ const copyBar: CSSProperties = {
   borderRadius: 10,
   background: "#fbfbfa",
   color: "#0b0b0b",
+};
+const variantTabStrip: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+  marginTop: 12,
+};
+const variantTab: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  border: "1px solid #d8d5cf",
+  background: "#ffffff",
+  color: "#0b0b0b",
+  borderRadius: 8,
+  padding: "8px 12px",
+  cursor: "pointer",
+  fontSize: 13,
+};
+const variantTabActive: CSSProperties = {
+  borderColor: "#0b0b0b",
+  background: "#0b0b0b",
+  color: "#ffffff",
 };
 const segBtn: CSSProperties = {
   border: "none",

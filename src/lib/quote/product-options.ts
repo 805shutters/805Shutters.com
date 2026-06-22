@@ -409,3 +409,33 @@ export function isCustomerVisibleDetail(productId: string, fieldId: string): boo
   const field = getDetailFieldsForProduct(productId).find((f) => f.id === fieldId);
   return field?.customerVisible !== false;
 }
+
+/**
+ * Shutter "auto-variant" tiers (the A/B/C tabs). When a shutter window is added,
+ * these three material tiers are auto-created as priced design alternatives so the
+ * customer gets a value / premium / specialty comparison. Mapped to the ACTUAL
+ * catalog programs (catalog/shutters-mts.catalog.json):
+ *   Norman: Woodlore (composite, value) / Normandy (real hardwood, premium) /
+ *           Woodlore Aquashield (moisture-proof composite, baths & kitchens)
+ *   Onyx:   Vinyl (value) / Poly composite (mid) / Basswood (real wood, premium)
+ * Tunable: change programId/label here to change the offered tiers.
+ */
+export type ShutterVariant = { variant: string; label: string; programId: string };
+
+export const SHUTTER_VARIANTS: Record<string, ShutterVariant[]> = {
+  norman_shutters: [
+    { variant: "A", label: "Composite", programId: "woodlore" },
+    { variant: "B", label: "Hardwood", programId: "normandy_painted" },
+    { variant: "C", label: "Moisture-proof", programId: "woodlore_aquashield" },
+  ],
+  onyx_shutters: [
+    { variant: "A", label: "Vinyl", programId: "vinyl" },
+    { variant: "B", label: "Poly composite", programId: "poly_composite" },
+    { variant: "C", label: "Wood (basswood)", programId: "stained_basswood" },
+  ],
+};
+
+/** The auto-variant tiers for a shutter product, or null if it isn't a variant shutter. */
+export function shutterVariantsFor(productId: string): ShutterVariant[] | null {
+  return SHUTTER_VARIANTS[productId] ?? null;
+}
