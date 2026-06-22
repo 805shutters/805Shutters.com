@@ -7413,7 +7413,7 @@ function KenPayoffView({
   busy: boolean;
   readOnly?: boolean;
 }) {
-  const target = payoff?.payoffTarget || 500000;
+  const target = payoff?.payoffTarget || 450000;
   const remaining = payoff?.payoffRemaining ?? target;
   const paid = payoff?.kenPaid || 0;
   const pct = payoff?.payoffPct || 0;

@@ -1,6 +1,6 @@
 -- Ken's-cut payments + business payoff tracking.
 --
--- Business is being purchased from Ken for a fixed payoff (default $500,000).
+-- Business is being purchased from Ken for a fixed payoff (default $450,000).
 -- Ken is paid 10% of completed jobs (owner rule June 2026: "completed" = the
 -- customer has paid in full). Every dollar paid to Ken counts toward the payoff.
 --
@@ -15,7 +15,7 @@ create table if not exists public.crm_settings (
 );
 
 insert into public.crm_settings (key, value) values
-  ('payoff_target', 500000),
+  ('payoff_target', 450000),
   ('ken_opening_balance', 0)
 on conflict (key) do nothing;
 

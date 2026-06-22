@@ -23,7 +23,7 @@ export const JESSICA_KEN_CUT_EXEMPT_FROM = "2026-06-10";
 
 // Fixed price the business is being purchased from Ken for. Every dollar paid to
 // Ken (opening balance + recorded checks) counts toward this payoff.
-export const BUSINESS_PAYOFF_TARGET = 500000;
+export const BUSINESS_PAYOFF_TARGET = 450000;
 
 export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" | "balance" | "isPaidInFull">) {
   return Boolean(row.isPaidInFull);

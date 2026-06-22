@@ -850,9 +850,9 @@ describe("buildKenPayoffSummary", () => {
     });
     expect(summary.recordedPayments).toBe(75000);
     expect(summary.kenPaid).toBe(175000);
-    expect(summary.payoffTarget).toBe(500000);
-    expect(summary.payoffRemaining).toBe(325000);
-    expect(summary.payoffPct).toBe(35);
+    expect(summary.payoffTarget).toBe(450000);
+    expect(summary.payoffRemaining).toBe(275000);
+    expect(summary.payoffPct).toBe(38.9);
     expect(summary.isPaidOff).toBe(false);
   });
 
@@ -888,7 +888,7 @@ describe("buildKenPayoffSummary", () => {
   it("defaults the target to the business payoff constant", () => {
     const summary = buildKenPayoffSummary({ rows: [], payments: [] });
     expect(summary.payoffTarget).toBe(BUSINESS_PAYOFF_TARGET);
-    expect(BUSINESS_PAYOFF_TARGET).toBe(500000);
+    expect(BUSINESS_PAYOFF_TARGET).toBe(450000);
   });
 });
 
