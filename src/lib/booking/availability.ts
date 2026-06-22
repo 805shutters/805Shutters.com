@@ -146,7 +146,12 @@ export function buildBookingAvailability(
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
   const today = losAngelesDateString();
-  const usePublishedSlots = Array.isArray(availabilitySlots);
+  // Published slots only RESTRICT availability when some exist for the month. An
+  // empty result (a future month no rep has published yet) must not read as
+  // "nothing bookable" — fall through to the working-hours default instead, so
+  // the calendar never goes dark between months. Matches the AI assistant path,
+  // which already computes availability without published slots.
+  const usePublishedSlots = Array.isArray(availabilitySlots) && availabilitySlots.length > 0;
 
   const days: BookingDay[] = Array.from({ length: daysInMonth }, (_item, index) => {
     const day = index + 1;
@@ -203,7 +208,7 @@ export function freeRepsForSlot(
   const start = zonedTimeToUtc(date, time);
   const end = addMinutes(start, bookingSlotDurationMinutes);
 
-  if (!availabilitySlots) {
+  if (!availabilitySlots || availabilitySlots.length === 0) {
     return dayOfWeek(date) !== 0 && !hasOverlap(events, start, end) ? [fallbackBookingOwner] : [];
   }
 
