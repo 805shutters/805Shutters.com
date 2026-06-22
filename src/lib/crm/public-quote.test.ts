@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeDesign, buildSignedShopSms, buildSignedCustomerSms } from "./public-quote";
+import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions } from "./public-quote";
 import type { CrmQuoteDesign } from "./types";
 
 function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
@@ -87,5 +87,18 @@ describe("signed SMS copy", () => {
   });
   it("customer message thanks them by name", () => {
     expect(buildSignedCustomerSms("Jane")).toContain("Jane");
+  });
+});
+
+describe("formatDimensions (customer contract)", () => {
+  it("formats fractional inches like the builder, not raw decimals", () => {
+    expect(formatDimensions(24.5, 36)).toBe('24 1/2" W × 36" H');
+    expect(formatDimensions(30, 48)).toBe('30" W × 48" H');
+    expect(formatDimensions(47.875, 60.0625)).toBe('47 7/8" W × 60 1/16" H');
+  });
+  it("shows a pending message until both dimensions are set", () => {
+    expect(formatDimensions(null, 36)).toBe("Measurements pending");
+    expect(formatDimensions(24, null)).toBe("Measurements pending");
+    expect(formatDimensions(null, null)).toBe("Measurements pending");
   });
 });
