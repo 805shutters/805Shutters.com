@@ -10,7 +10,8 @@ import {
   resolveFullPartnerPaymentAmount,
   syncRemakeExpense,
   updateCrmBookkeepingEntry,
-  updateCrmQuote
+  updateCrmQuote,
+  updateCrmSettings
 } from "./backend";
 import { CrmAuthError } from "./auth";
 import { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
@@ -554,6 +555,16 @@ describe("partner payment write rules", () => {
     expect(resolveFullPartnerPaymentAmount(undefined, 600)).toBe(600);
     expect(resolveFullPartnerPaymentAmount("", 600)).toBe(600);
     expect(() => resolveFullPartnerPaymentAmount(250, 600)).toThrow(CrmAuthError);
+  });
+
+  it("does not let Ken change payoff settings", async () => {
+    await expect(
+      updateCrmSettings(
+        {} as never,
+        { payoff_target: 500000, ken_opening_balance: 0 },
+        { email: "khill31@msn.com" }
+      )
+    ).rejects.toBeInstanceOf(CrmAuthError);
   });
 
   it("falls back to commission payment metadata when commission allocation storage fails", async () => {

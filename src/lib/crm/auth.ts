@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, User } from "@supabase/supabase-js";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { allowedCrmEmails, isAllowedCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
+import { allowedCrmEmails, isAllowedCrmEmail, isKenCrmEmail, normalizeCrmEmail } from "@/lib/crm/allowed-users";
 
 export class CrmAuthError extends Error {
   status: number;
@@ -14,6 +14,11 @@ export class CrmAuthError extends Error {
 
 export function getAllowedCrmEmails() {
   return [...allowedCrmEmails];
+}
+
+export function isReadOnlyCrmMutation(email: string | null | undefined, method: string) {
+  const normalizedMethod = method.toUpperCase();
+  return isKenCrmEmail(email) && normalizedMethod !== "GET" && normalizedMethod !== "HEAD";
 }
 
 function getBearerToken(request: NextRequest) {
@@ -58,6 +63,10 @@ export async function requireCrmUser(request: NextRequest) {
 
   if (!email || !isAllowedCrmEmail(email)) {
     throw new CrmAuthError(403, "This Google account is not allowed for the 805 CRM.");
+  }
+
+  if (isReadOnlyCrmMutation(email, request.method)) {
+    throw new CrmAuthError(403, "Ken's CRM login is read-only.");
   }
 
   const supabase = getSupabaseServiceClient();
