@@ -103,7 +103,11 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
                               {option.styleName ? ` — ${option.styleName}` : ""}
                             </div>
                             {option.options.length ? (
-                              <div style={{ fontSize: 13, opacity: 0.7 }}>{option.options.join(", ")}</div>
+                              <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.7 }}>
+                                {option.options.map((o, i) => (
+                                  <li key={i}>{o}</li>
+                                ))}
+                              </ul>
                             ) : null}
                           </div>
                         ))}
@@ -115,7 +119,11 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
                           {line.styleName ? ` — ${line.styleName}` : ""}
                         </div>
                         {line.options.length ? (
-                          <div style={{ fontSize: 13, opacity: 0.7 }}>{line.options.join(", ")}</div>
+                          <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.7 }}>
+                            {line.options.map((o, i) => (
+                              <li key={i}>{o}</li>
+                            ))}
+                          </ul>
                         ) : null}
                       </div>
                     )}

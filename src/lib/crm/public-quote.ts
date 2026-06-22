@@ -11,6 +11,7 @@ import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
 import { catalog, getProduct } from "@/lib/quote/catalog";
+import { formatInches } from "@/lib/quote/measurements";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
@@ -69,9 +70,15 @@ export type PublicQuote = {
   versions: { token: string; label: string; total: number; signed: boolean; current: boolean }[];
 };
 
+/** Fractional, installer-readable dimensions for the customer contract
+ *  (e.g. 24.5 -> `24 1/2" W × 36" H`), matching how the builder displays size. */
+export function formatDimensions(widthIn: number | null, heightIn: number | null): string {
+  if (widthIn == null || heightIn == null) return "Measurements pending";
+  return `${formatInches(widthIn)} W × ${formatInches(heightIn)} H`;
+}
+
 function dimensions(li: CrmQuoteLineItem): string {
-  if (li.width_in == null || li.height_in == null) return "Measurements pending";
-  return `${li.width_in}" W × ${li.height_in}" H`;
+  return formatDimensions(li.width_in, li.height_in);
 }
 
 function record(value: unknown): Record<string, unknown> {
