@@ -86,6 +86,9 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
               <td style={td}>
                 <strong>{line.room}</strong>
                 <div style={{ fontSize: 13, opacity: 0.7 }}>{line.dimensions}</div>
+                {line.discountPercent > 0 ? (
+                  <span style={discountTag}>{line.discountPercent}% off applied</span>
+                ) : null}
               </td>
               <td style={td}>
                 {line.priceReady ? (
@@ -193,3 +196,4 @@ const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;
 const optionBox = { border: "1px solid #eeeeeb", borderRadius: 8, padding: "8px 10px", background: "#fafaf8" } as const;
+const discountTag = { display: "inline-block", marginTop: 4, fontSize: 12, fontWeight: 600, color: "#6b530a", background: "#faf3d6", border: "1px solid #b9a23e", borderRadius: 999, padding: "2px 8px" } as const;
