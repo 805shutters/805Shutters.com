@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
+import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { SignQuote } from "./SignQuote";
 
 function money(n: number): string {
@@ -21,7 +22,7 @@ type LiveMoney = {
 /** Interactive line-item table + totals + sign block. Supports the "Purchase all
  *  / Purchase some" flow: the customer can check a subset of windows and the total
  *  recomputes (via the server engine) for only the chosen items. */
-export function QuoteSelection({ quote }: { quote: PublicQuote }) {
+export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; paymentOptions?: PaymentOptions | null }) {
   const fullFees = quote.fees.reduce((s, f) => s + f.amount, 0);
   const fullMoney: LiveMoney = {
     subtotal: quote.subtotal,
@@ -184,6 +185,30 @@ export function QuoteSelection({ quote }: { quote: PublicQuote }) {
         {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
       </div>
 
+      {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
+        <div className="no-print" style={payBox}>
+          <strong>Other ways to pay</strong>
+          {live.depositDue > 0 ? <div style={{ fontSize: 14 }}>Deposit due: {money(live.depositDue)}</div> : null}
+          {live.balanceDue > 0 ? <div style={{ fontSize: 14 }}>Balance due: {money(live.balanceDue)}</div> : null}
+          <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 14 }}>
+                Venmo: <strong>@{paymentOptions.venmoHandle}</strong>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.6 }}>Scan with your phone to pay</div>
+              <div style={{ width: 150, height: 150, marginTop: 6 }} dangerouslySetInnerHTML={{ __html: paymentOptions.venmoQrSvg }} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14 }}>
+                Zelle: <strong>{paymentOptions.zelleDestination}</strong>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.6 }}>Send to this number from your bank app</div>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, opacity: 0.6, margin: "10px 0 0" }}>Please reference your name with Venmo/Zelle. Online card payment is coming soon.</p>
+        </div>
+      ) : null}
+
       {!quote.signed && quote.allPriced ? (
         <div className="no-print">
           {selectionEmpty ? (
@@ -222,6 +247,13 @@ const selectBar = {
   padding: "12px 14px",
   border: "1px solid #d8d8d2",
   borderRadius: 10,
+  background: "#fbfbfa",
+} as const;
+const payBox = {
+  border: "1px solid #d8d8d2",
+  borderRadius: 10,
+  padding: 16,
+  marginTop: 16,
   background: "#fbfbfa",
 } as const;
 const radioLabel = { display: "inline-flex", gap: 6, alignItems: "center", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;

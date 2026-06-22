@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import QRCode from "qrcode";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
+import { VENMO_HANDLE, ZELLE_DESTINATION, venmoProfileUrl } from "@/lib/finance/payment-options";
 import { QuoteSelection } from "./QuoteSelection";
 import { PrintButton } from "./PrintButton";
 
@@ -24,6 +26,9 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
 
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) notFound();
+
+  // Venmo profile QR (static per handle) so the customer can scan to pay.
+  const venmoQrSvg = await QRCode.toString(venmoProfileUrl(), { type: "svg", margin: 1 });
 
   return (
     <main style={wrap}>
@@ -71,7 +76,10 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         </div>
       ) : null}
 
-      <QuoteSelection quote={quote} />
+      <QuoteSelection
+        quote={quote}
+        paymentOptions={{ venmoHandle: VENMO_HANDLE, venmoQrSvg, zelleDestination: ZELLE_DESTINATION }}
+      />
     </main>
   );
 }
