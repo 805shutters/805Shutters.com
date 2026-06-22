@@ -3,11 +3,12 @@
 //   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + E2E_LIVE_OK=1
 // Otherwise skipped (normal `vitest run` never touches the database).
 //
-// This SENDS REAL email + SMS to the customer (and to Jessica/Mike/shop on sign)
-// and creates a real (cleaned-up) job. Run once to validate the live flow:
+// SAFETY: point this at a STAGING/dev Supabase project, not production. It SENDS
+// REAL email + SMS and creates a real (cleaned-up) job + bookkeeping entry, and
+// flips a real job to "sold". Defaults to a clearly-test customer so an accidental
+// run can't text/email a real person — override with real PII ONLY for a deliberate
+// live validation against a non-production project.
 //   E2E_LIVE_OK=1 npx vitest run src/lib/crm/quote-flow.live.test.ts
-//
-// Override the test customer via env if desired:
 //   E2E_CUSTOMER_NAME / E2E_CUSTOMER_PHONE / E2E_CUSTOMER_EMAIL
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -32,9 +33,9 @@ const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const enabled = Boolean(url && key && process.env.E2E_LIVE_OK === "1");
 
 const CUSTOMER = {
-  name: process.env.E2E_CUSTOMER_NAME ?? "Mike Shepard",
-  phone: process.env.E2E_CUSTOMER_PHONE ?? "805-298-5555",
-  email: process.env.E2E_CUSTOMER_EMAIL ?? "mtsshutters@gmail.com",
+  name: process.env.E2E_CUSTOMER_NAME ?? "E2E Test Customer",
+  phone: process.env.E2E_CUSTOMER_PHONE ?? "8055550000",
+  email: process.env.E2E_CUSTOMER_EMAIL ?? "e2e-test@805shutters.com",
 };
 const actor = { email: "e2e@805shutters.com" };
 const MARK = "__E2E_LIVE_TEST__";
