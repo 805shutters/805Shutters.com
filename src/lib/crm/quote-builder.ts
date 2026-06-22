@@ -726,6 +726,60 @@ export async function duplicateLineItem(
   return recalcQuoteTotals(supabase, source.quote_id);
 }
 
+/**
+ * Copy one window's selected-design spec (product/program/fabric/details/
+ * surcharges/motorization) PLUS its dimensions and per-line discount to a set
+ * of target windows — the MTS "Copy All / Copy Some" flow. Targets must belong
+ * to the same quote; each is re-priced, then the quote total is recalculated.
+ */
+export async function copySpecToLineItems(
+  supabase: CrmSupabaseClient,
+  sourceId: string,
+  targetIds: string[],
+  actor: CrmActor,
+): Promise<CrmQuoteWithItems> {
+  const source = await fetchLineItem(supabase, sourceId);
+  const sourceDesign = selectedDesign(source);
+  if (!sourceDesign) {
+    throw new CrmAuthError(400, "Pick a product/spec on this window before copying it.");
+  }
+  const targets = Array.from(new Set(targetIds)).filter((id) => id && id !== sourceId);
+  for (const targetId of targets) {
+    const target = await fetchLineItem(supabase, targetId);
+    if (target.quote_id !== source.quote_id) {
+      throw new CrmAuthError(400, "Every target window must belong to the same quote.");
+    }
+    // 1. Dimensions + per-line discount (reprices all the target's designs).
+    await updateLineItem(supabase, targetId, {
+      width_in: source.width_in,
+      height_in: source.height_in,
+      discount_percent: source.discount_percent ?? 0,
+    }, actor);
+    // 2. Spec into the target's selected design (create one if it has none),
+    //    re-priced against the now-updated dimensions.
+    const targetDesignId = target.selected_design_id ?? target.designs[0]?.id ?? null;
+    const targetLabel = targetDesignId ? target.designs.find((d) => d.id === targetDesignId)?.label ?? "A" : "A";
+    await upsertDesign(supabase, {
+      ...(targetDesignId ? { id: targetDesignId } : {}),
+      line_item_id: targetId,
+      label: targetLabel,
+      product_id: sourceDesign.product_id,
+      program_id: sourceDesign.program_id,
+      fabric: sourceDesign.fabric,
+      details: sourceDesign.details ?? {},
+      surcharges: sourceDesign.surcharges ?? [],
+      motorization: sourceDesign.motorization ?? [],
+    }, actor);
+  }
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: source.quote_id,
+    action: "line_item.copy_spec",
+    metadata: { sourceId, targetCount: targets.length },
+  });
+  return recalcQuoteTotals(supabase, source.quote_id);
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle: advance status (drives the job) + create a quote for a job
 // ---------------------------------------------------------------------------
