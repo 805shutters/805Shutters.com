@@ -168,6 +168,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [discountMode, setDiscountMode] = useState<"all" | "select">("all");
   const [selectedForDiscount, setSelectedForDiscount] = useState<Set<string>>(new Set());
   const [sendChannel, setSendChannel] = useState<"both" | "email" | "sms">("both");
+  const [copySourceId, setCopySourceId] = useState<string | null>(null);
+  const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -181,6 +183,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     setQuote(null);
     setCustomRoom("");
     setMeasuringId(null);
+    setCopySourceId(null);
+    setCopyTargets(new Set());
     (async () => {
       try {
         const [c, q] = await Promise.all([
@@ -370,6 +374,28 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     await mutate(`/api/crm/quote-line-items/${sourceId}/copy-spec`, {
       method: "POST",
       body: JSON.stringify({ targetIds: others.map((li) => li.id) }),
+    });
+  };
+
+  // Copy Some: pick a source, then check a subset of other windows to receive it.
+  const startCopySome = (sourceId: string) => {
+    setDiscountMode("all");
+    setSelectedForDiscount(new Set());
+    setCopySourceId(sourceId);
+    setCopyTargets(new Set());
+  };
+  const cancelCopySome = () => {
+    setCopySourceId(null);
+    setCopyTargets(new Set());
+  };
+  const confirmCopySome = async () => {
+    if (!copySourceId || copyTargets.size === 0) return;
+    const sourceId = copySourceId;
+    const targets = [...copyTargets];
+    cancelCopySome();
+    await mutate(`/api/crm/quote-line-items/${sourceId}/copy-spec`, {
+      method: "POST",
+      body: JSON.stringify({ targetIds: targets }),
     });
   };
 
@@ -681,6 +707,31 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               <p style={{ opacity: 0.7 }}>No windows yet. Pick a product line above, then tap a room to start pricing.</p>
             ) : null}
 
+            {copySourceId ? (() => {
+              const source = quote.lineItems.find((li) => li.id === copySourceId);
+              return (
+                <div style={copyBar}>
+                  <div>
+                    <strong>Copying “{source?.room || "this window"}”</strong>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Check the windows below to update with this spec, size &amp; discount.</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={busy || copyTargets.size === 0}
+                      onClick={confirmCopySome}
+                      style={{ border: "none", background: copyTargets.size === 0 ? "#bdb9b0" : "#0b0b0b", color: "#ffffff", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600 }}
+                    >
+                      Copy to {copyTargets.size}
+                    </button>
+                    <button type="button" style={ghostBtn} onClick={cancelCopySome}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              );
+            })() : null}
+
             {quote.lineItems.map((li) => (
               <section key={li.id} style={windowCard}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -695,6 +746,21 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           if (e.target.checked) next.add(li.id);
                           else next.delete(li.id);
                           setSelectedForDiscount(next);
+                        }}
+                      />
+                    </Field>
+                  ) : null}
+                  {copySourceId && li.id !== copySourceId ? (
+                    <Field label="Copy here" width={80}>
+                      <input
+                        type="checkbox"
+                        style={{ width: 20, height: 20, margin: "8px 0 0" }}
+                        checked={copyTargets.has(li.id)}
+                        onChange={(e) => {
+                          const next = new Set(copyTargets);
+                          if (e.target.checked) next.add(li.id);
+                          else next.delete(li.id);
+                          setCopyTargets(next);
                         }}
                       />
                     </Field>
@@ -745,6 +811,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   ) : null}
                   <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length < 2} onClick={() => copySpecToAll(li.id)}>
                     Copy to all
+                  </button>
+                  <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length < 2 || copySourceId !== null} onClick={() => startCopySome(li.id)}>
+                    Copy to some…
                   </button>
                   <button type="button" style={ghostBtn} disabled={busy} onClick={() => duplicateWindow(li.id)}>
                     Duplicate
@@ -1513,6 +1582,19 @@ const discountToolbar: CSSProperties = {
   border: "1px solid #e2e8f0",
   borderRadius: 8,
   background: "#fbfbfa",
+};
+const copyBar: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  alignItems: "center",
+  flexWrap: "wrap",
+  justifyContent: "space-between",
+  marginBottom: 12,
+  padding: "12px 14px",
+  border: "2px solid #0b0b0b",
+  borderRadius: 10,
+  background: "#fbfbfa",
+  color: "#0b0b0b",
 };
 const segBtn: CSSProperties = {
   border: "none",
