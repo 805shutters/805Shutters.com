@@ -4951,6 +4951,69 @@ body:has(.crm-app-shell) {
   font-weight: 900;
 }
 
+.crm-partner-paid-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.crm-partner-paid-cell > span:first-child {
+  display: inline;
+  margin: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.crm-partner-paid-button,
+.crm-partner-paid-status {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  margin: 0 !important;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  vertical-align: middle;
+}
+
+.crm-partner-paid-button {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.crm-partner-paid-button:hover,
+.crm-partner-paid-button:focus-visible {
+  transform: none;
+}
+
+.crm-partner-paid-box {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 !important;
+  border: 1px solid #9f9f96;
+  background: var(--white);
+  color: transparent;
+  font-family: var(--font-sans);
+  font-size: 12px !important;
+  font-weight: 900;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.crm-partner-paid-box--paid {
+  border-color: #2f9e57;
+  background: #edf7ef;
+  color: #1f7a43;
+}
+
 .crm-bookkeeping-note-button {
   display: block;
   width: 100%;

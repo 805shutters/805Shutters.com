@@ -19,6 +19,7 @@ function line(r: ReturnType<typeof ok>, id: string) {
 
 const PERFECTSHEER = "perfectsheer_perfectsheer_shades_light_filtering";
 const FAUXWOOD = "faux_wood_2in_and_2_1_2in_slats_cordless";
+const SMARTFOLD = "smartfold_smartfold_shades";
 
 describe("width-graduated valance surcharges (H1: no longer billed $0)", () => {
   it("bills the price at the exact width breakpoint", () => {
@@ -40,6 +41,56 @@ describe("width-graduated valance surcharges (H1: no longer billed $0)", () => {
     const base = ok(priceDesign({ productId: "perfectsheer", programId: PERFECTSHEER, widthInches: 36, heightInches: 36 }));
     const withValance = ok(priceDesign({ productId: "perfectsheer", programId: PERFECTSHEER, widthInches: 36, heightInches: 36, surcharges: [{ id: "wood_valance" }] }));
     expect(withValance.total).toBe(base.total + 133);
+  });
+
+  it("bills Soluna Roller fascia and valance tables from guide page 19", () => {
+    const r = ok(priceDesign({
+      productId: "roller",
+      fabric: "Callie",
+      widthInches: 36,
+      heightInches: 36,
+      surcharges: [
+        { id: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in" },
+        { id: "fabric_valance_3_1_2in_4_1_2in_and_6in" },
+        { id: "8in_fabric_valance_and_cassette" },
+        { id: "raceway" },
+      ],
+    }));
+
+    expect(line(r, "fascia_wood_valance_3_1_2in_4_1_2in_and_6in").amount).toBe(133);
+    expect(line(r, "fabric_valance_3_1_2in_4_1_2in_and_6in").amount).toBe(155);
+    expect(line(r, "8in_fabric_valance_and_cassette").amount).toBe(216);
+    expect(line(r, "raceway").amount).toBe(67);
+  });
+
+  it("bills SmartFold valance selections from guide page 21", () => {
+    const r = ok(priceDesign({
+      productId: "smartfold",
+      programId: SMARTFOLD,
+      widthInches: 60,
+      heightInches: 36,
+      surcharges: [
+        { id: "smartfold_fascia_wood_valance" },
+        { id: "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance" },
+        { id: "smartfold_8in_fabric_valance" },
+      ],
+    }));
+
+    expect(line(r, "smartfold_fascia_wood_valance").amount).toBe(171);
+    expect(line(r, "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance").amount).toBe(199);
+    expect(line(r, "smartfold_8in_fabric_valance").amount).toBe(282);
+  });
+
+  it("bills Centerpiece Roman fabric valance from guide page 27", () => {
+    const r = ok(priceDesign({
+      productId: "roman",
+      fabric: "Blake",
+      widthInches: 60,
+      heightInches: 36,
+      surcharges: [{ id: "roman_fabric_valance_surcharge" }],
+    }));
+
+    expect(line(r, "roman_fabric_valance_surcharge").amount).toBe(188);
   });
 });
 

@@ -67,6 +67,7 @@ export type QuoteEmailDetails = {
   fees?: QuoteEmailFee[];
   discount?: number;
   tax?: number;
+  sourceTotalAdjustment?: number;
   depositDue?: number;
   balanceDue?: number;
   logoUrl?: string;
@@ -141,6 +142,7 @@ function quoteSummary(details: QuoteEmailDetails, total: number): string {
     ...(details.fees ?? []).map((fee) => summaryRow(fee.name, fee.amount)),
     details.discount && details.discount > 0 ? summaryRow("Discount", -details.discount) : "",
     details.tax && details.tax > 0 ? summaryRow("Tax", details.tax) : "",
+    details.sourceTotalAdjustment ? summaryRow("Quote adjustment", details.sourceTotalAdjustment) : "",
     `<tr><td style="padding:10px 0 0 0;border-top:2px solid #0b0b0b;font-size:16px;font-weight:700;color:#0b0b0b">Total</td><td align="right" style="padding:10px 0 0 0;border-top:2px solid #0b0b0b;font-size:18px;font-weight:700;color:#0b0b0b">${money(total)}</td></tr>`,
     details.depositDue && details.depositDue > 0 ? summaryRow("Deposit due", details.depositDue) : "",
     details.balanceDue && details.balanceDue > 0 ? summaryRow("Balance", details.balanceDue) : "",

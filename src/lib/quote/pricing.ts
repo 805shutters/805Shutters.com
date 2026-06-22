@@ -147,14 +147,19 @@ export function roundUpIndex(headers: number[], value: number): number {
  * whole foot over. Never under-charges off the largest listed size.
  */
 function widthGraduatedCents(
-  g: { widths: number[]; prices: number[]; additionalFootRate: number },
+  g: { widths: number[]; prices: Array<number | null>; additionalFootRate: number },
   widthInches: number,
-): number {
+): number | null {
   const wi = roundUpIndex(g.widths, widthInches);
-  if (wi >= 0) return toCents(g.prices[wi]);
+  if (wi >= 0) {
+    const price = g.prices[wi];
+    return price == null ? null : toCents(price);
+  }
   const last = g.widths.length - 1;
+  const lastPrice = g.prices[last];
+  if (lastPrice == null) return null;
   const extraFeet = Math.max(0, Math.ceil((widthInches - g.widths[last]) / 12));
-  return toCents(g.prices[last]) + toCents(g.additionalFootRate) * extraFeet;
+  return toCents(lastPrice) + toCents(g.additionalFootRate) * extraFeet;
 }
 
 function resolveProgram(
@@ -301,7 +306,11 @@ export function priceDesign(input: PriceInput): PriceResult {
     if (sc.widthGraduated) {
       // Valance-style charge priced by window width (round up), plus a per-foot
       // overage beyond the largest listed width.
-      amountCents = widthGraduatedCents(sc.widthGraduated, W);
+      const graduatedCents = widthGraduatedCents(sc.widthGraduated, W);
+      if (graduatedCents == null) {
+        return fail("NA_CELL", `${sc.name} is not available at width ${W}".`, warnings);
+      }
+      amountCents = graduatedCents;
       detail = `by width (${W}")`;
       surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), kind: sc.kind, detail });
       perWindowCents += amountCents;
@@ -357,12 +366,23 @@ export function priceDesign(input: PriceInput): PriceResult {
     if (!opt) {
       return fail("MOTORIZATION_UNKNOWN", `Motorization '${sel.groupId}/${sel.optionId}' not found.`, warnings);
     }
-    if (opt.price == null) {
+    // Per-product motor pricing (Norman 2026 Retail Guide p7): when a priceByProduct map is
+    // present and this product is a key, it is authoritative (null = NA -> fail loudly, never
+    // silently fall back). Products not addressed by the map keep the legacy flat `price`.
+    let motorPrice: number | null = opt.price;
+    if (opt.priceByProduct && product.id in opt.priceByProduct) {
+      const mapped = opt.priceByProduct[product.id];
+      if (mapped == null) {
+        return fail("MOTORIZATION_UNKNOWN", `Motorization '${opt.name}' is not available for ${product.name}.`, warnings);
+      }
+      motorPrice = mapped;
+    }
+    if (motorPrice == null) {
       warnings.push(`Motorization '${opt.name}' has no catalog price and was skipped.`);
       continue;
     }
     const units = Math.max(1, Math.round(Number(sel.units) || 1));
-    const amountCents = toCents(opt.price) * units;
+    const amountCents = toCents(motorPrice) * units;
     const wholesaleAmountCents = wholesaleBaseCents == null ? null : amountCents;
     surchargeLines.push({
       id: `motor:${sel.groupId}:${opt.id}`,
@@ -370,7 +390,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       amount: fromCents(amountCents),
       ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }),
       kind: "flat",
-      detail: units > 1 ? `${opt.price} x ${units}` : undefined,
+      detail: units > 1 ? `${motorPrice} x ${units}` : undefined,
     });
     perWindowCents += amountCents;
     if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiDetailField, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, splitInches, toInches } from "@/lib/quote/measurements";
 
 type Props = {
@@ -41,6 +41,29 @@ function money(n: number | null | undefined): string {
   return v.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
+function round2(value: number): number {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function selectedDesign(lineItem: CrmQuoteLineItem): CrmQuoteDesign | null {
+  if (!lineItem.selected_design_id) return null;
+  return lineItem.designs.find((design) => design.id === lineItem.selected_design_id) ?? null;
+}
+
+function designOnceTotal(design: CrmQuoteDesign | null): number {
+  if (!design || design.price_status !== "ok") return 0;
+  const breakdown = design.price_breakdown as { onceTotal?: unknown } | null;
+  const once = breakdown && typeof breakdown.onceTotal === "number" ? breakdown.onceTotal : 0;
+  return round2(Math.max(0, once));
+}
+
+function lineSubtotal(lineItem: CrmQuoteLineItem): number {
+  const design = selectedDesign(lineItem);
+  if (!design || design.price_status !== "ok") return 0;
+  const qty = Math.max(1, Math.floor(Number(lineItem.quantity) || 1));
+  return round2(Number(design.unit_price) * qty + designOnceTotal(design));
+}
+
 /** Short price hint shown next to a surcharge toggle (accurate per unit/basis). */
 function surchargeHint(s: UiSurcharge): string {
   if (s.widthGraduated) return "priced by width";
@@ -51,6 +74,21 @@ function surchargeHint(s: UiSurcharge): string {
   if (s.per === "foot") return `${amt}/ft`;
   if (s.per === "once") return `${amt}/order`;
   return amt;
+}
+
+function motorOptionPrice(productId: string, option: UiMotorizationOption): { price: number | null; unavailable: boolean; pending: boolean } {
+  if (option.priceByProduct && Object.prototype.hasOwnProperty.call(option.priceByProduct, productId)) {
+    const mapped = option.priceByProduct[productId];
+    return { price: mapped ?? null, unavailable: mapped == null, pending: false };
+  }
+  return { price: option.price, unavailable: false, pending: option.price == null };
+}
+
+function motorOptionHint(productId: string, option: UiMotorizationOption): string {
+  const priced = motorOptionPrice(productId, option);
+  if (priced.unavailable) return "(N/A for this product)";
+  if (priced.pending) return "(price pending)";
+  return `(${money(priced.price)})`;
 }
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -596,6 +634,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     const motorizationGroups = product
                       ? catalog.motorization.filter((group) => product.motorizationGroups.includes(group.groupId))
                       : [];
+                    const productId = product?.id ?? design.product_id;
                     const isSelected = li.selected_design_id === design.id;
                     const priceOk = design.price_status === "ok";
                     return (
@@ -719,17 +758,22 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             </summary>
                             <div style={surchargeList}>
                               {motorizationGroups.flatMap((group) =>
-                                group.options.map((option) => (
-                                  <label key={`${group.groupId}:${option.id}`} style={{ display: "flex", gap: 6, fontSize: 13, alignItems: "center" }}>
-                                    <input
-                                      type="checkbox"
-                                      checked={design.motorization.some((m) => m.groupId === group.groupId && m.optionId === option.id)}
-                                      onChange={() => toggleMotorization(li, design, group.groupId, option.id)}
-                                    />
-                                    {group.name}: {option.name}{" "}
-                                    <span style={{ opacity: 0.6 }}>{option.price == null ? "(price pending)" : `(${money(option.price)})`}</span>
-                                  </label>
-                                )),
+                                group.options.map((option) => {
+                                  const selected = design.motorization.some((m) => m.groupId === group.groupId && m.optionId === option.id);
+                                  const priced = motorOptionPrice(productId, option);
+                                  return (
+                                    <label key={`${group.groupId}:${option.id}`} style={{ display: "flex", gap: 6, fontSize: 13, alignItems: "center", opacity: priced.unavailable && !selected ? 0.55 : 1 }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
+                                        disabled={busy || (priced.unavailable && !selected)}
+                                        onChange={() => toggleMotorization(li, design, group.groupId, option.id)}
+                                      />
+                                      {group.name}: {option.name}{" "}
+                                      <span style={{ opacity: 0.6 }}>{motorOptionHint(productId, option)}</span>
+                                    </label>
+                                  );
+                                }),
                               )}
                             </div>
                           </details>
@@ -937,9 +981,7 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
   );
 
   const subtotal = quote.lineItems.reduce((s, li) => {
-    const d = li.designs.find((x) => x.id === li.selected_design_id);
-    if (!d || d.price_status !== "ok") return s;
-    return s + d.unit_price * Math.max(1, li.quantity || 1);
+    return s + lineSubtotal(li);
   }, 0);
   const wholesaleSubtotal = quote.lineItems.reduce<number | null>((sum, li) => {
     if (sum == null) return null;

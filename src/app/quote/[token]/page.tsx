@@ -147,7 +147,7 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
         {quote.tax > 0 ? <Row label="Tax" value={money(quote.tax)} /> : null}
         {quote.sourceTotalAdjustment ? (
           <Row
-            label="MTS saved total adjustment"
+            label="Quote adjustment"
             value={`${quote.sourceTotalAdjustment > 0 ? "" : "− "}${money(Math.abs(quote.sourceTotalAdjustment))}`}
           />
         ) : null}

@@ -6,8 +6,6 @@ import { catalog } from "./catalog";
 import { productImage } from "./product-images";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
 
-export const WHOLESALE_REFERENCE_RATE = 0.3;
-
 export type UiProgram = {
   id: string;
   name: string;
@@ -50,10 +48,17 @@ export type UiProduct = {
   surcharges: UiSurcharge[];
 };
 
+export type UiMotorizationOption = {
+  id: string;
+  name: string;
+  price: number | null;
+  priceByProduct?: Record<string, number | null>;
+};
+
 export type UiMotorizationGroup = {
   groupId: string;
   name: string;
-  options: { id: string; name: string; price: number | null }[];
+  options: UiMotorizationOption[];
 };
 
 export type UiCatalog = {
@@ -98,7 +103,7 @@ export type UiPricingReferenceProduct = {
 export type UiPricingReferenceMotorizationGroup = {
   groupId: string;
   name: string;
-  options: { id: string; name: string; price: number | null; notes: string }[];
+  options: (UiMotorizationOption & { notes: string })[];
   surcharges: UiReferenceSurcharge[];
   notes: string[];
 };
@@ -127,18 +132,8 @@ function projectSurcharge(s: (typeof catalog.products)[number]["surcharges"][num
   };
 }
 
-function wholesaleReference(price: number | null | undefined): number | null {
-  if (price == null) return null;
-  return Math.round(price * WHOLESALE_REFERENCE_RATE);
-}
-
-function wholesaleReferenceGrid(prices: Array<Array<number | null>>): Array<Array<number | null>> {
-  return prices.map((row) => row.map((price) => wholesaleReference(price)));
-}
-
-function referenceCostPerSqft(pricePerSqft: number | null | undefined): number | null {
-  if (pricePerSqft == null) return null;
-  return Math.round(pricePerSqft * WHOLESALE_REFERENCE_RATE * 100) / 100;
+function emptyCostGrid(prices: Array<Array<number | null>>): Array<Array<number | null>> {
+  return prices.map((row) => row.map(() => null));
 }
 
 export function buildUiCatalog(): UiCatalog {
@@ -176,7 +171,12 @@ export function buildUiCatalog(): UiCatalog {
     ([groupId, group]) => ({
       groupId,
       name: group.name,
-      options: group.options.map((o) => ({ id: o.id, name: o.name, price: o.price })),
+      options: group.options.map((o) => ({
+        id: o.id,
+        name: o.name,
+        price: o.price,
+        ...(o.priceByProduct ? { priceByProduct: o.priceByProduct } : {}),
+      })),
     }),
   );
 
@@ -204,11 +204,11 @@ export function buildPricingReference(): UiPricingReference {
       maxHeight: program.maxHeight ?? null,
       minSqft: program.minSqft ?? null,
       pricePerSqft: program.pricePerSqft ?? null,
-      costPerSqft: program.costPerSqft ?? referenceCostPerSqft(program.pricePerSqft),
+      costPerSqft: program.costPerSqft ?? null,
       widths: program.grid.widths,
       heights: program.grid.heights,
       prices: program.grid.prices,
-      costs: wholesaleReferenceGrid(program.grid.prices),
+      costs: emptyCostGrid(program.grid.prices),
       notes: program.notes,
     })),
   );
@@ -230,6 +230,7 @@ export function buildPricingReference(): UiPricingReference {
       id: option.id,
       name: option.name,
       price: option.price,
+      ...(option.priceByProduct ? { priceByProduct: option.priceByProduct } : {}),
       notes: option.notes,
     })),
     surcharges: group.surcharges.map(projectSurcharge),

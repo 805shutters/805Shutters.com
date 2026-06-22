@@ -3233,7 +3233,33 @@
         "Breeze RD": "roller_cordless_fabric_price_group_3_pg3",
         "Remy RD": "roller_cordless_fabric_price_group_3_pg3",
         "Summerland": "roller_cordless_fabric_price_group_3_pg3",
-        "Cory": "roller_cordless_fabric_price_group_3_pg3"
+        "Cory": "roller_cordless_fabric_price_group_3_pg3",
+        "Serene 7%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "Flow 7%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "Windsong 5%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "NA400 3%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "NA400 5%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "NA400 10%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "NA300 3%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "NA300 5%": "roller_cordless_solar_screen_price_group_1_pg1",
+        "Serene 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Serene 3%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Flow 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Flow 5%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Windsong 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Moon 5%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Breeze 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Breeze 3%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "NA300 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "NA400 1%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "NA820 3%": "roller_cordless_solar_screen_price_group_2_pg2",
+        "Lakeview 3%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Lakeview 7%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Lakeview 10%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Meadows 1%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Meadows 3%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Jubilee 3%": "roller_cordless_solar_screen_price_group_3_pg3",
+        "Galaxy 3%": "roller_cordless_solar_screen_price_group_3_pg3"
       },
       "programs": [
         {
@@ -3981,6 +4007,695 @@
             }
           ],
           "notes": []
+        },
+        {
+          "id": "roller_cordless_solar_screen_price_group_1_pg1",
+          "name": "Cordless Solar Screen - Price Group 1",
+          "priceGroup": "1",
+          "priceAxis": "wh",
+          "maxWidth": 120,
+          "maxHeight": 144,
+          "fabricCollections": [
+            {
+              "category": "SOLAR SCREEN",
+              "fabrics": [
+                "Serene 7%",
+                "Flow 7%",
+                "Windsong 5%",
+                "NA400 3%",
+                "NA400 5%",
+                "NA400 10%",
+                "NA300 3%",
+                "NA300 5%"
+              ]
+            }
+          ],
+          "notes": [
+            "Source: Norman 2026 Retail Guide, Page 15 of 40 (Cordless Solar Screen)"
+          ],
+          "grid": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120
+            ],
+            "heights": [
+              36,
+              48,
+              60,
+              72,
+              84,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              [
+                240,
+                258,
+                278,
+                296,
+                314,
+                331,
+                362,
+                382,
+                406,
+                450,
+                474,
+                507,
+                533,
+                577,
+                628
+              ],
+              [
+                259,
+                282,
+                302,
+                325,
+                350,
+                372,
+                412,
+                439,
+                468,
+                519,
+                545,
+                587,
+                614,
+                671,
+                723
+              ],
+              [
+                281,
+                302,
+                326,
+                357,
+                390,
+                421,
+                467,
+                497,
+                535,
+                586,
+                618,
+                666,
+                692,
+                745,
+                795
+              ],
+              [
+                297,
+                325,
+                359,
+                397,
+                430,
+                468,
+                522,
+                558,
+                595,
+                650,
+                677,
+                721,
+                749,
+                809,
+                870
+              ],
+              [
+                318,
+                354,
+                394,
+                434,
+                474,
+                513,
+                573,
+                614,
+                645,
+                697,
+                745,
+                776,
+                809,
+                874,
+                941
+              ],
+              [
+                336,
+                383,
+                428,
+                471,
+                518,
+                563,
+                618,
+                656,
+                690,
+                745,
+                797,
+                831,
+                870,
+                941,
+                1015
+              ],
+              [
+                361,
+                411,
+                461,
+                511,
+                558,
+                600,
+                659,
+                697,
+                737,
+                795,
+                850,
+                890,
+                932,
+                1007,
+                1088
+              ],
+              [
+                387,
+                440,
+                495,
+                546,
+                597,
+                635,
+                697,
+                739,
+                780,
+                844,
+                903,
+                949,
+                990,
+                1078,
+                1160
+              ],
+              [
+                408,
+                470,
+                526,
+                582,
+                627,
+                670,
+                737,
+                780,
+                826,
+                894,
+                956,
+                1002,
+                1049,
+                1141,
+                1235
+              ],
+              [
+                434,
+                498,
+                561,
+                609,
+                659,
+                703,
+                777,
+                823,
+                872,
+                940,
+                1010,
+                1061,
+                1111,
+                1206,
+                1309
+              ]
+            ]
+          }
+        },
+        {
+          "id": "roller_cordless_solar_screen_price_group_2_pg2",
+          "name": "Cordless Solar Screen - Price Group 2",
+          "priceGroup": "2",
+          "priceAxis": "wh",
+          "maxWidth": 120,
+          "maxHeight": 144,
+          "fabricCollections": [
+            {
+              "category": "SOLAR SCREEN",
+              "fabrics": [
+                "Serene 1%",
+                "Serene 3%",
+                "Flow 1%",
+                "Flow 5%",
+                "Windsong 1%",
+                "Moon 5%",
+                "Breeze 1%",
+                "Breeze 3%",
+                "NA300 1%",
+                "NA400 1%",
+                "NA820 3%"
+              ]
+            }
+          ],
+          "notes": [
+            "Source: Norman 2026 Retail Guide, Page 16 of 40 (Cordless Solar Screen)"
+          ],
+          "grid": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120
+            ],
+            "heights": [
+              36,
+              48,
+              60,
+              72,
+              84,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              [
+                261,
+                283,
+                306,
+                325,
+                346,
+                367,
+                406,
+                428,
+                454,
+                503,
+                530,
+                571,
+                600,
+                652,
+                711
+              ],
+              [
+                284,
+                309,
+                334,
+                357,
+                384,
+                416,
+                462,
+                495,
+                526,
+                581,
+                617,
+                660,
+                692,
+                761,
+                818
+              ],
+              [
+                307,
+                334,
+                361,
+                396,
+                434,
+                468,
+                525,
+                561,
+                600,
+                658,
+                699,
+                748,
+                779,
+                842,
+                898
+              ],
+              [
+                328,
+                359,
+                398,
+                439,
+                477,
+                522,
+                587,
+                627,
+                671,
+                733,
+                766,
+                817,
+                846,
+                918,
+                986
+              ],
+              [
+                351,
+                390,
+                437,
+                483,
+                527,
+                574,
+                645,
+                693,
+                728,
+                791,
+                842,
+                877,
+                918,
+                992,
+                1069
+              ],
+              [
+                372,
+                422,
+                474,
+                526,
+                575,
+                628,
+                699,
+                740,
+                778,
+                843,
+                902,
+                945,
+                986,
+                1069,
+                1153
+              ],
+              [
+                399,
+                456,
+                510,
+                571,
+                624,
+                672,
+                745,
+                791,
+                831,
+                902,
+                966,
+                1010,
+                1055,
+                1145,
+                1235
+              ],
+              [
+                428,
+                490,
+                551,
+                611,
+                667,
+                711,
+                791,
+                837,
+                887,
+                957,
+                1023,
+                1073,
+                1123,
+                1220,
+                1317
+              ],
+              [
+                454,
+                523,
+                591,
+                650,
+                701,
+                749,
+                835,
+                887,
+                936,
+                1014,
+                1086,
+                1139,
+                1190,
+                1297,
+                1400
+              ],
+              [
+                483,
+                554,
+                626,
+                684,
+                737,
+                789,
+                877,
+                935,
+                990,
+                1067,
+                1146,
+                1204,
+                1258,
+                1373,
+                1488
+              ]
+            ]
+          }
+        },
+        {
+          "id": "roller_cordless_solar_screen_price_group_3_pg3",
+          "name": "Cordless Solar Screen - Price Group 3",
+          "priceGroup": "3",
+          "priceAxis": "wh",
+          "maxWidth": 120,
+          "maxHeight": 144,
+          "fabricCollections": [
+            {
+              "category": "SOLAR SCREEN",
+              "fabrics": [
+                "Lakeview 3%",
+                "Lakeview 7%",
+                "Lakeview 10%",
+                "Meadows 1%",
+                "Meadows 3%",
+                "Jubilee 3%",
+                "Galaxy 3%"
+              ]
+            }
+          ],
+          "notes": [
+            "Source: Norman 2026 Retail Guide, Page 16 of 40 (Cordless Solar Screen)"
+          ],
+          "grid": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120
+            ],
+            "heights": [
+              36,
+              48,
+              60,
+              72,
+              84,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              [
+                290,
+                322,
+                346,
+                374,
+                404,
+                430,
+                460,
+                488,
+                522,
+                575,
+                608,
+                655,
+                690,
+                754,
+                822
+              ],
+              [
+                322,
+                354,
+                385,
+                419,
+                454,
+                495,
+                533,
+                573,
+                611,
+                673,
+                713,
+                768,
+                805,
+                891,
+                963
+              ],
+              [
+                349,
+                385,
+                423,
+                469,
+                515,
+                561,
+                605,
+                651,
+                701,
+                770,
+                815,
+                879,
+                918,
+                1000,
+                1079
+              ],
+              [
+                376,
+                420,
+                470,
+                525,
+                577,
+                633,
+                683,
+                738,
+                791,
+                863,
+                905,
+                969,
+                1013,
+                1105,
+                1194
+              ],
+              [
+                406,
+                462,
+                519,
+                579,
+                641,
+                699,
+                762,
+                818,
+                868,
+                940,
+                1006,
+                1057,
+                1106,
+                1206,
+                1312
+              ],
+              [
+                436,
+                501,
+                570,
+                636,
+                701,
+                770,
+                829,
+                885,
+                938,
+                1017,
+                1090,
+                1146,
+                1200,
+                1313,
+                1426
+              ],
+              [
+                469,
+                544,
+                620,
+                693,
+                766,
+                829,
+                890,
+                945,
+                1010,
+                1091,
+                1173,
+                1236,
+                1294,
+                1417,
+                1541
+              ],
+              [
+                503,
+                587,
+                668,
+                745,
+                821,
+                885,
+                950,
+                1015,
+                1080,
+                1169,
+                1256,
+                1325,
+                1389,
+                1523,
+                1657
+              ],
+              [
+                541,
+                627,
+                714,
+                799,
+                869,
+                940,
+                1010,
+                1080,
+                1152,
+                1246,
+                1341,
+                1413,
+                1482,
+                1628,
+                1772
+              ],
+              [
+                574,
+                669,
+                764,
+                844,
+                920,
+                992,
+                1070,
+                1146,
+                1222,
+                1320,
+                1422,
+                1499,
+                1576,
+                1732,
+                1888
+              ]
+            ]
+          }
         }
       ],
       "surcharges": [
@@ -4129,40 +4844,204 @@
           "name": "Fascia, Wood Valance (3 1/2\", 4 1/2\" & 6\")",
           "kind": "flat",
           "per": "unit",
-          "value": 0,
+          "value": null,
           "appliesTo": "fascia/valance",
           "notes": "Priced by width. Widths 24,30,36,42,48,54,60,66,72,78,84,90,96,108,120,132,144 => 117,122,133,139,150,161,171,188,204,216,232,249,265,293,326,349,375. Raceway included. For wood valance, add $28 (retail) for every additional foot.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              117,
+              122,
+              133,
+              139,
+              150,
+              161,
+              171,
+              188,
+              204,
+              216,
+              232,
+              249,
+              265,
+              293,
+              326,
+              349,
+              375
+            ],
+            "additionalFootRate": 28
+          }
         },
         {
           "id": "fabric_valance_3_1_2in_4_1_2in_and_6in",
           "name": "Fabric Valance (3 1/2\", 4 1/2\" & 6\")",
           "kind": "flat",
           "per": "unit",
-          "value": 0,
+          "value": null,
           "appliesTo": "fascia/valance",
           "notes": "Priced by width. Widths 24,30,36,42,48,54,60,66,72,78,84,90,96,108,120,132,144 => 133,139,155,161,171,183,199,216,232,249,271,288,304,342,375,403,431. Raceway included. For fabric valance, add $28 (retail) for every additional foot.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              133,
+              139,
+              155,
+              161,
+              171,
+              183,
+              199,
+              216,
+              232,
+              249,
+              271,
+              288,
+              304,
+              342,
+              375,
+              403,
+              431
+            ],
+            "additionalFootRate": 28
+          }
         },
         {
           "id": "8in_fabric_valance_and_cassette",
           "name": "8\" Fabric Valance & Cassette",
           "kind": "flat",
           "per": "unit",
-          "value": 0,
+          "value": null,
           "appliesTo": "fascia/valance",
           "notes": "Priced by width. Widths 24,30,36,42,48,54,60,66,72,78,84,90,96,108,120,132,144 => 188,199,216,227,244,260,282,304,331,354,382,408,431,486,530,552,612. Raceway included. Magnetic hold downs included. For fabric valance, add $28 (retail) for every additional foot.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              188,
+              199,
+              216,
+              227,
+              244,
+              260,
+              282,
+              304,
+              331,
+              354,
+              382,
+              408,
+              431,
+              486,
+              530,
+              552,
+              612
+            ],
+            "additionalFootRate": 28
+          }
         },
         {
           "id": "raceway",
           "name": "Raceway",
           "kind": "flat",
           "per": "unit",
-          "value": 0,
+          "value": null,
           "appliesTo": "fascia/valance",
           "notes": "Priced by width. Widths 24,30,36,42,48,54,60,66,72,78,84,90,96,108,120 => 56,61,67,73,73,78,84,94,100,111,117,122,133,150,161. Widths 132 and 144 = NA (not available).",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              56,
+              61,
+              67,
+              73,
+              73,
+              78,
+              84,
+              94,
+              100,
+              111,
+              117,
+              122,
+              133,
+              150,
+              161,
+              null,
+              null
+            ],
+            "additionalFootRate": 0
+          }
         }
       ],
       "fabricByYard": [],
@@ -5270,6 +6149,53 @@
           "appliesTo": "pillow cover",
           "notes": "Group C",
           "sourceType": "fixed_each"
+        },
+        {
+          "id": "roman_fabric_valance_surcharge",
+          "name": "Fabric Valance Surcharge",
+          "kind": "flat",
+          "per": "unit",
+          "value": null,
+          "widthGraduated": {
+            "widths": [
+              24,
+              31,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              84,
+              96,
+              108,
+              120,
+              132,
+              144
+            ],
+            "prices": [
+              128,
+              133,
+              145,
+              155,
+              161,
+              178,
+              188,
+              204,
+              221,
+              255,
+              293,
+              326,
+              359,
+              387,
+              408
+            ],
+            "additionalFootRate": 0
+          },
+          "appliesTo": "valance",
+          "notes": "ROMAN SHADES ONLY. Fabric Valance surcharge priced by width from the page 27 table.",
+          "sourceType": "per_shade"
         }
       ],
       "fabricByYard": [
@@ -6260,6 +7186,135 @@
           "appliesTo": "miscellaneous",
           "notes": "",
           "sourceType": "fixed_each"
+        },
+        {
+          "id": "smartfold_fascia_wood_valance",
+          "name": "Fascia, Wood Valance",
+          "kind": "flat",
+          "per": "unit",
+          "value": null,
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96
+            ],
+            "prices": [
+              117,
+              122,
+              133,
+              139,
+              150,
+              161,
+              171,
+              188,
+              204,
+              216,
+              232,
+              249,
+              265
+            ],
+            "additionalFootRate": 28
+          },
+          "appliesTo": "valance",
+          "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
+          "sourceType": "per_shade"
+        },
+        {
+          "id": "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance",
+          "name": "3 1/2\", 4 1/2\" & 6\" Fabric Valance",
+          "kind": "flat",
+          "per": "unit",
+          "value": null,
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96
+            ],
+            "prices": [
+              133,
+              139,
+              155,
+              161,
+              171,
+              183,
+              199,
+              216,
+              232,
+              249,
+              271,
+              288,
+              304
+            ],
+            "additionalFootRate": 28
+          },
+          "appliesTo": "valance",
+          "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
+          "sourceType": "per_shade"
+        },
+        {
+          "id": "smartfold_8in_fabric_valance",
+          "name": "8\" Fabric Valance",
+          "kind": "flat",
+          "per": "unit",
+          "value": null,
+          "widthGraduated": {
+            "widths": [
+              24,
+              30,
+              36,
+              42,
+              48,
+              54,
+              60,
+              66,
+              72,
+              78,
+              84,
+              90,
+              96
+            ],
+            "prices": [
+              188,
+              199,
+              216,
+              227,
+              244,
+              260,
+              282,
+              304,
+              331,
+              354,
+              382,
+              408,
+              431
+            ],
+            "additionalFootRate": 28
+          },
+          "appliesTo": "valance",
+          "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
+          "sourceType": "per_shade"
         },
         {
           "id": "additional_valance_foot",
@@ -7965,73 +9020,145 @@
           "id": "motor_rechargeable_battery_pack_or_ac_adapter",
           "name": "Motor (Rechargeable Battery Pack or AC Adapter)",
           "price": 682,
-          "notes": "Portrait Honeycomb: $682; Soluna Roller: NA; Centerpiece Roman: NA; PerfectSheer: NA"
+          "notes": "Portrait Honeycomb: $682; Soluna Roller: NA; Centerpiece Roman: NA; PerfectSheer: NA",
+          "priceByProduct": {
+            "honeycomb": 682,
+            "roller": null,
+            "roman": null,
+            "perfectsheer": null
+          }
         },
         {
           "id": "motor_rechargeable_battery_pack",
           "name": "Motor (Rechargeable Battery Pack)",
           "price": 682,
-          "notes": "Portrait Honeycomb: NA; Soluna Roller: $682; Centerpiece Roman: $682; PerfectSheer: $682"
+          "notes": "Portrait Honeycomb: NA; Soluna Roller: $682; Centerpiece Roman: $682; PerfectSheer: $682",
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 682,
+            "roman": 682,
+            "perfectsheer": 682
+          }
         },
         {
           "id": "low_voltage_dc_motor",
           "name": "Low Voltage DC Motor",
           "price": 814,
-          "notes": "Portrait Honeycomb: NA; Soluna Roller: $814; Centerpiece Roman: $814; PerfectSheer: $814"
+          "notes": "Portrait Honeycomb: NA; Soluna Roller: $814; Centerpiece Roman: $814; PerfectSheer: $814",
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 814,
+            "roman": 814,
+            "perfectsheer": 814
+          }
         },
         {
           "id": "dc_connection_harness",
           "name": "DC Connection Harness",
           "price": 19,
-          "notes": "Portrait Honeycomb: NA; Soluna Roller: $19; Centerpiece Roman: $19; PerfectSheer: $19"
+          "notes": "Portrait Honeycomb: NA; Soluna Roller: $19; Centerpiece Roman: $19; PerfectSheer: $19",
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 19,
+            "roman": 19,
+            "perfectsheer": 19
+          }
         },
         {
           "id": "power_distribution_panel",
           "name": "Power Distribution Panel",
           "price": 1133,
-          "notes": "Portrait Honeycomb: NA; Soluna Roller: $1,133; Centerpiece Roman: $1,133; PerfectSheer: $1,133"
+          "notes": "Portrait Honeycomb: NA; Soluna Roller: $1,133; Centerpiece Roman: $1,133; PerfectSheer: $1,133",
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 1133,
+            "roman": 1133,
+            "perfectsheer": 1133
+          }
         },
         {
           "id": "external_battery_pack",
           "name": "External Battery Pack",
           "price": 230,
-          "notes": "Portrait Honeycomb: NA; Soluna Roller: $230; Centerpiece Roman: $230; PerfectSheer: $230"
+          "notes": "Portrait Honeycomb: NA; Soluna Roller: $230; Centerpiece Roman: $230; PerfectSheer: $230",
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 230,
+            "roman": 230,
+            "perfectsheer": 230
+          }
         },
         {
           "id": "repeater",
           "name": "Repeater",
           "price": 272,
-          "notes": "Portrait Honeycomb: $272; Soluna Roller: $272; Centerpiece Roman: $272; PerfectSheer: $272"
+          "notes": "Portrait Honeycomb: $272; Soluna Roller: $272; Centerpiece Roman: $272; PerfectSheer: $272",
+          "priceByProduct": {
+            "honeycomb": 272,
+            "roller": 272,
+            "roman": 272,
+            "perfectsheer": 272
+          }
         },
         {
           "id": "15_channel_remote",
           "name": "15-Channel Remote",
           "price": 140,
-          "notes": "Portrait Honeycomb: $140; Soluna Roller: $140; Centerpiece Roman: $140; PerfectSheer: $140"
+          "notes": "Portrait Honeycomb: $140; Soluna Roller: $140; Centerpiece Roman: $140; PerfectSheer: $140",
+          "priceByProduct": {
+            "honeycomb": 140,
+            "roller": 140,
+            "roman": 140,
+            "perfectsheer": 140
+          }
         },
         {
           "id": "5_channel_wall_switch",
           "name": "5-Channel Wall switch",
           "price": 163,
-          "notes": "Portrait Honeycomb: $163; Soluna Roller: $163; Centerpiece Roman: $163; PerfectSheer: $163"
+          "notes": "Portrait Honeycomb: $163; Soluna Roller: $163; Centerpiece Roman: $163; PerfectSheer: $163",
+          "priceByProduct": {
+            "honeycomb": 163,
+            "roller": 163,
+            "roman": 163,
+            "perfectsheer": 163
+          }
         },
         {
           "id": "hub",
           "name": "Hub",
           "price": 483,
-          "notes": "Portrait Honeycomb: $483; Soluna Roller: $483; Centerpiece Roman: $483; PerfectSheer: $483"
+          "notes": "Portrait Honeycomb: $483; Soluna Roller: $483; Centerpiece Roman: $483; PerfectSheer: $483",
+          "priceByProduct": {
+            "honeycomb": 483,
+            "roller": 483,
+            "roman": 483,
+            "perfectsheer": 483
+          }
         },
         {
           "id": "charging_kit_5v_1a_charging_box_adapter_charging_cable",
           "name": "Charging kit (5V 1A Charging Box, Adapter, Charging Cable)",
           "price": 103,
-          "notes": "Portrait Honeycomb: $103; Soluna Roller: $103; Centerpiece Roman: $103; PerfectSheer: $103"
+          "notes": "Portrait Honeycomb: $103; Soluna Roller: $103; Centerpiece Roman: $103; PerfectSheer: $103",
+          "priceByProduct": {
+            "honeycomb": 103,
+            "roller": 103,
+            "roman": 103,
+            "perfectsheer": 103
+          }
         },
         {
           "id": "solar_panel",
           "name": "Solar Panel",
           "price": 242,
-          "notes": "Portrait Honeycomb: $242; Soluna Roller: $242; Centerpiece Roman: $242; PerfectSheer: $242"
+          "notes": "Portrait Honeycomb: $242; Soluna Roller: $242; Centerpiece Roman: $242; PerfectSheer: $242",
+          "priceByProduct": {
+            "honeycomb": 242,
+            "roller": 242,
+            "roman": 242,
+            "perfectsheer": 242
+          }
         }
       ],
       "surcharges": [],
@@ -8114,42 +9241,98 @@
           "id": "motor",
           "name": "Motor",
           "price": 482,
+          "priceByProduct": {
+            "honeycomb": 482,
+            "roller": 482,
+            "roman": 482,
+            "perfectsheer": 482,
+            "smartfold": 482,
+            "smartdrape": 642
+          },
           "notes": "Portrait Honeycomb $482, Soluna Roller $482, Centerpiece Roman $482, PerfectSheer & SmartFold $482, SmartDrape $642"
         },
         {
           "id": "dual_motor_for_honeycomb",
           "name": "Dual Motor for Honeycomb",
           "price": 642,
+          "priceByProduct": {
+            "honeycomb": 642,
+            "roller": null,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb only ($642); NA for all others. For honeycomb Day & Night or TDBU."
         },
         {
           "id": "single_motor_for_skylights",
           "name": "Single Motor for Skylights",
           "price": 611,
+          "priceByProduct": {
+            "honeycomb": 611,
+            "roller": null,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb only ($611); NA for all others. Used for Motorized Honeycomb for Skylights."
         },
         {
           "id": "wired_charging_wand",
           "name": "Wired Charging Wand",
           "price": 161,
+          "priceByProduct": {
+            "honeycomb": 161,
+            "roller": 161,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb $161, Soluna Roller $161; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
         },
         {
           "id": "wireless_charging_wand",
           "name": "Wireless Charging Wand",
           "price": 428,
+          "priceByProduct": {
+            "honeycomb": 428,
+            "roller": 428,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb $428, Soluna Roller $428; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
         },
         {
           "id": "dc_connection_harness",
           "name": "DC Connection Harness",
           "price": 11,
+          "priceByProduct": {
+            "honeycomb": 11,
+            "roller": 11,
+            "roman": 11,
+            "perfectsheer": 11,
+            "smartfold": 11,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb $11, Soluna Roller $11, Centerpiece Roman $11, PerfectSheer & SmartFold $11; NA for SmartDrape."
         },
         {
           "id": "power_distribution_panel",
           "name": "Power Distribution Panel",
           "price": 931,
+          "priceByProduct": {
+            "honeycomb": 931,
+            "roller": 931,
+            "roman": 931,
+            "perfectsheer": 931,
+            "smartfold": 931,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb $931, Soluna Roller $931, Centerpiece Roman $931, PerfectSheer & SmartFold $931; NA for SmartDrape."
         },
         {
@@ -8186,18 +9369,42 @@
           "id": "extension_pole_for_charging_wand",
           "name": "Extension Pole for Charging Wand",
           "price": 75,
+          "priceByProduct": {
+            "honeycomb": 75,
+            "roller": 75,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": null
+          },
           "notes": "Portrait Honeycomb $75, Soluna Roller $75; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
         },
         {
           "id": "charging_extension_wand",
           "name": "Charging Extension Wand",
           "price": 75,
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": null,
+            "roman": null,
+            "perfectsheer": null,
+            "smartfold": null,
+            "smartdrape": 75
+          },
           "notes": "SmartDrape only ($75); NA for all others."
         },
         {
           "id": "extension_cable",
           "name": "Extension Cable",
           "price": 43,
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 43,
+            "roman": 43,
+            "perfectsheer": 43,
+            "smartfold": 43,
+            "smartdrape": null
+          },
           "notes": "Soluna Roller $43, Centerpiece Roman $43, PerfectSheer & SmartFold $43; NA for Portrait Honeycomb and SmartDrape."
         },
         {

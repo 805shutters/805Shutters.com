@@ -35,10 +35,31 @@ describe("buildUiCatalog", () => {
     expect(ui.products.find((p) => p.id === "norman_shutters")!.motorizationGroups).toEqual([]);
   });
 
+  it("keeps per-product motorization prices for source-backed UI hints", () => {
+    const smart = ui.motorization.find((g) => g.groupId === "smart_motorization")!;
+    const motor = smart.options.find((o) => o.id === "motor")!;
+    expect(motor.price).toBe(482);
+    expect(motor.priceByProduct?.roller).toBe(482);
+    expect(motor.priceByProduct?.smartdrape).toBe(642);
+
+    const dualMotor = smart.options.find((o) => o.id === "dual_motor_for_honeycomb")!;
+    expect(dualMotor.priceByProduct?.honeycomb).toBe(642);
+    expect(dualMotor.priceByProduct?.roller).toBeNull();
+  });
+
   it("does not leak full price grids to the UI projection", () => {
     const json = JSON.stringify(ui);
     expect(json).not.toContain("\"prices\"");
     expect(json).not.toContain("\"grid\"");
+  });
+
+  it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
+    const roller = ui.products.find((p) => p.id === "roller")!;
+    const solar = roller.programs.filter((pr) => pr.id.includes("solar_screen"));
+    expect(solar.length).toBe(3);
+    expect(roller.programs.map((pr) => pr.id)).toContain("roller_cordless_solar_screen_price_group_1_pg1");
+    const serene = roller.fabrics.find((f) => f.name === "Serene 7%");
+    expect(serene?.programId).toBe("roller_cordless_solar_screen_price_group_1_pg1");
   });
 });
 
@@ -52,7 +73,7 @@ describe("buildPricingReference", () => {
     expect(honeycomb!.widths).toContain(24);
     expect(honeycomb!.heights).toContain(36);
     expect(honeycomb!.prices[0][0]).toBe(212);
-    expect(honeycomb!.costs[0][0]).toBe(64);
+    expect(honeycomb!.costs[0][0]).toBeNull();
   });
 
   it("keeps provisional shutter provenance visible", () => {
@@ -73,5 +94,12 @@ describe("buildPricingReference", () => {
     expect(ref.motorization.length).toBeGreaterThan(0);
     expect(ref.motorization[0].options.length).toBeGreaterThan(0);
     expect(ref.currency).toBe("USD");
+  });
+
+  it("keeps product-specific motorization price maps in the pricing reference", () => {
+    const smart = ref.motorization.find((group) => group.groupId === "smart_motorization")!;
+    const motor = smart.options.find((option) => option.id === "motor")!;
+    expect(motor.priceByProduct?.roller).toBe(482);
+    expect(motor.priceByProduct?.smartdrape).toBe(642);
   });
 });
