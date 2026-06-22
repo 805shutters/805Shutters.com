@@ -141,7 +141,7 @@ export async function ensureBookkeepingEntry(supabase: CrmSupabaseClient, quote:
     const { data: job } = await supabase.from("crm_jobs").select("customer_name").eq("id", quote.job_id).maybeSingle();
     customerName = (job as { customer_name?: string } | null)?.customer_name || customerName;
   }
-  await supabase.from("crm_quote_bookkeeping_entries").insert({
+  const { error } = await supabase.from("crm_quote_bookkeeping_entries").insert({
     quote_id: quote.id,
     job_id: quote.job_id,
     source: "crm_quote",
@@ -152,4 +152,5 @@ export async function ensureBookkeepingEntry(supabase: CrmSupabaseClient, quote:
     cogs_amount: Number(quote.materials_cost) || 0,
     meta: { createdBy: "system:sold" },
   });
+  if (error) throw new CrmAuthError(502, "Signed quote could not be added to the bookkeeping ledger.");
 }

@@ -114,6 +114,21 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(contract?.signed_at).toBeTruthy();
     expect(Number(contract?.total_amount)).toBe(424);
 
+    // Signed quote reaches the bookkeeping ledger with the sold total + sold date
+    const { data: bkEntry } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select("quote_id, job_id, sold_date, total_amount")
+      .eq("quote_id", quoteId)
+      .maybeSingle();
+    expect(bkEntry?.quote_id).toBe(quoteId);
+    expect(bkEntry?.job_id).toBe(jobId);
+    expect(bkEntry?.sold_date).toBeTruthy();
+    expect(Number(bkEntry?.total_amount)).toBe(424);
+
+    // Parent job moved to "sold"
+    const { data: soldJob } = await supabase.from("crm_jobs").select("status").eq("id", jobId).maybeSingle();
+    expect(soldJob?.status).toBe("sold");
+
     // Signing again is idempotent
     const again = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer" });
     expect(again.alreadySigned).toBe(true);
