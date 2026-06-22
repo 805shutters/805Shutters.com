@@ -167,6 +167,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [measuringId, setMeasuringId] = useState<string | null>(null);
   const [discountMode, setDiscountMode] = useState<"all" | "select">("all");
   const [selectedForDiscount, setSelectedForDiscount] = useState<Set<string>>(new Set());
+  const [sendChannel, setSendChannel] = useState<"both" | "email" | "sms">("both");
 
   useEffect(() => {
     let active = true;
@@ -369,13 +370,12 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       const res = await api<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }>(
         session,
         `/api/crm/quotes/${quoteId}/send`,
-        { method: "POST" },
+        { method: "POST", body: JSON.stringify({ channels: { email: sendChannel !== "sms", sms: sendChannel !== "email" } }) },
       );
-      const parts = [
-        res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`,
-        res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`,
-      ];
-      setSendMsg(`Sent — ${parts.join(", ")}. Quote is now "${res.status}".`);
+      const parts: string[] = [];
+      if (sendChannel !== "email") parts.push(res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`);
+      if (sendChannel !== "sms") parts.push(res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`);
+      setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Quote is now "${res.status}".`);
       setShareUrl(res.url);
       const q = await api<{ quote: CrmQuoteWithItems }>(session, `/api/crm/quotes/${quoteId}/builder`);
       setQuote(q.quote);
@@ -385,7 +385,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     } finally {
       setBusy(false);
     }
-  }, [session, quoteId, onChanged]);
+  }, [session, quoteId, onChanged, sendChannel]);
 
   const addVersion = useCallback(async () => {
     setBusy(true);
@@ -479,6 +479,19 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <span style={savingPill}>{busy ? "Saving…" : "All changes saved"}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "inline-flex", border: "1px solid #d8d5cf", borderRadius: 6, overflow: "hidden" }} title="How to send">
+              {(["both", "email", "sms"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  style={{ ...segBtn, ...(sendChannel === c ? segBtnActive : {}) }}
+                  onClick={() => setSendChannel(c)}
+                  title={c === "both" ? "Send email and text" : c === "email" ? "Send email only" : "Send text only"}
+                >
+                  {c === "both" ? "Email + Text" : c === "email" ? "Email" : "Text"}
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               onClick={sendToCustomer}

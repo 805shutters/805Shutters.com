@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildQuoteEmail, sendEmail } from "./email";
+import { buildQuoteEmail, buildSignedQuoteShopEmail, sendEmail } from "./email";
 
 describe("buildQuoteEmail", () => {
   it("includes the amount, link, and customer name", () => {
@@ -74,5 +74,17 @@ describe("sendEmail guards (never throws, no-ops without config)", () => {
     const r = await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
     expect(r.sent).toBe(false);
     expect(r.skipped).toBe("resend not configured");
+  });
+});
+
+describe("buildSignedQuoteShopEmail", () => {
+  it("flags the subject as signed and includes the customer, total, and link", () => {
+    const { subject, html, text } = buildSignedQuoteShopEmail("Jane Smith", "https://x/quote/abc", 4250);
+    expect(subject).toContain("Signed");
+    expect(subject).toContain("$4,250");
+    expect(subject).toContain("Jane Smith");
+    expect(html).toContain("Signed");
+    expect(html).toContain("https://x/quote/abc");
+    expect(text).toContain("SIGNED");
   });
 });

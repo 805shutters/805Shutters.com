@@ -15,7 +15,8 @@ import { formatInches } from "@/lib/quote/measurements";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
-import { sendEmail, buildQuoteEmail } from "@/lib/notify/email";
+import { sendEmail, buildQuoteEmail, buildSignedQuoteShopEmail } from "@/lib/notify/email";
+import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -529,16 +530,42 @@ export async function acceptPublicQuote(
     metadata: { token, total: soldTotal },
   });
 
-  // Notify shop (one or more numbers) + customer. Best-effort; never blocks signing.
-  const shopNumbers = (process.env.CRM_SOLD_QUOTE_SMS_NUMBERS || "")
-    .split(",")
-    .map((s) => s.trim())
+  // Notify shop (Jessica + Mike always, plus any extra CRM_SOLD_QUOTE_SMS_NUMBERS)
+  // + customer. Best-effort; never blocks signing.
+  const shopNumbers = [
+    process.env.JESSICA_805_SALES_SMS_NUMBER,
+    process.env.MIKE_805_SALES_SMS_NUMBER,
+    ...(process.env.CRM_SOLD_QUOTE_SMS_NUMBERS || "").split(",").map((s) => s.trim()),
+  ]
+    .map((s) => (s || "").trim())
     .filter(Boolean);
+  const notified = new Set<string>();
   for (const num of shopNumbers) {
+    if (notified.has(num)) continue;
+    notified.add(num);
     await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal) });
   }
   if (customerPhone) {
     await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
+  }
+
+  // Email the shop a copy of the signed contract (best-effort; never blocks signing).
+  const shopEmail = process.env.CRM_SIGNED_QUOTE_EMAIL || MIKE_PAYMENT_ADMIN_EMAIL;
+  if (shopEmail) {
+    const mail = buildSignedQuoteShopEmail(printedName, publicQuoteUrl(token), soldTotal, {
+      quoteNumber: pub.quoteNumber,
+      lines: pub.lines,
+      subtotal: pub.subtotal,
+      fees: pub.fees,
+      discount: pub.discount,
+      tax: pub.tax,
+      sourceTotalAdjustment: pub.sourceTotalAdjustment,
+      depositDue: pub.depositDue,
+      balanceDue: pub.balanceDue,
+      logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
+      businessPhone: pub.business.phone,
+    });
+    await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
   }
 
   return { ok: true, alreadySigned: false };
@@ -574,7 +601,10 @@ export async function sendQuoteToCustomer(
   supabase: CrmSupabaseClient,
   quoteId: string,
   actor: CrmActor,
+  channels: { email?: boolean; sms?: boolean } = {},
 ): Promise<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }> {
+  const wantSms = channels.sms !== false;
+  const wantEmail = channels.email !== false;
   const { token, url } = await ensureShareToken(supabase, quoteId, actor);
   // Give every sibling version a link too, so the customer can compare them.
   try {
@@ -609,7 +639,9 @@ export async function sendQuoteToCustomer(
   const publicQuote = await loadPublicQuoteByToken(supabase, token);
   const total = publicQuote?.total ?? (Number(quote.quote_total) || 0);
   const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
-  const sms = await sendSms({ to: phone, body: `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}` });
+  const sms = wantSms
+    ? await sendSms({ to: phone, body: `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}` })
+    : { sent: false, skipped: "text message not selected" };
   const mail = buildQuoteEmail(customerName, url, total, {
     quoteNumber: publicQuote?.quoteNumber,
     lines: publicQuote?.lines,
@@ -623,7 +655,9 @@ export async function sendQuoteToCustomer(
     logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
     businessPhone: publicQuote?.business.phone,
   });
-  const emailRes = await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
+  const emailRes = wantEmail
+    ? await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+    : { sent: false, skipped: "email not selected" };
 
   let status = String(quote.status);
   if (status === "draft") {

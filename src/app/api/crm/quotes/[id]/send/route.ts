@@ -4,12 +4,14 @@ import { sendQuoteToCustomer } from "@/lib/crm/public-quote";
 
 export const runtime = "nodejs";
 
-// POST: text + email the customer their quote link and mark the quote "sent".
+// POST: text and/or email the customer their quote link and mark the quote "sent".
+// Body (optional): { channels: { email?: boolean, sms?: boolean } } — defaults to both.
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const result = await sendQuoteToCustomer(supabase, id, { email, userId: user.id });
+    const body = (await request.json().catch(() => ({}))) as { channels?: { email?: boolean; sms?: boolean } };
+    const result = await sendQuoteToCustomer(supabase, id, { email, userId: user.id }, body.channels || {});
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);

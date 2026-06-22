@@ -11,6 +11,7 @@ import {
 import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
+import { syncAppointmentToGoogleCalendars, GoogleCalendarSyncResult } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 import { productInterestOptions } from "@/lib/product-interest-options";
@@ -46,7 +47,9 @@ type BookingAutomationDetails = {
 };
 
 const defaultStaffEmail = "805@805shutters.com";
-const defaultStaffSmsNumbers = ["805-806-9344"];
+// Owner + Jessica are notified on every self-booking in addition to the business
+// line. Merged + deduped with CRM_APPOINTMENT_ALERT_SMS_NUMBERS in staffSmsRecipients().
+const defaultStaffSmsNumbers = ["805-806-9344", "805-298-5555", "805-914-4917"];
 // When more than one rep is free for a slot, assign in this order (primary first).
 const repPriority = ["Jessica", "Mike"];
 
@@ -542,6 +545,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "CRM job could not be saved." }, { status: 502 });
   }
 
+  const calendarEventMeta = {
+    windowCount: windowCount || null,
+    productTypes,
+    bookingSource: "website"
+  };
+
   // The calendar event is the critical scheduling record — create it BEFORE the
   // best-effort draft quote. A unique (assigned_to, start_at) index makes a
   // concurrent double-book fail here (23505) instead of silently double-booking.
@@ -557,11 +566,7 @@ export async function POST(request: NextRequest) {
       end_at: endAt,
       location: address,
       notes: bookingNotes,
-      meta: {
-        windowCount: windowCount || null,
-        productTypes,
-        bookingSource: "website"
-      }
+      meta: calendarEventMeta
     })
     .select("id")
     .single();
@@ -597,6 +602,51 @@ export async function POST(request: NextRequest) {
   });
   if (draftQuoteError) {
     console.error("[booking] auto-draft quote insert failed", { jobId: job.id, message: draftQuoteError.message });
+  }
+
+  // Best-effort mirror to Google Calendar (service account + domain-wide
+  // delegation). Non-blocking by design: a missing credential or a Calendar API
+  // rejection never fails the booking. On success we persist the created Google
+  // event ids + links back onto the calendar row so the CRM has the link.
+  let googleCalendarSync: GoogleCalendarSyncResult = { synced: false, results: [] };
+  try {
+    googleCalendarSync = await syncAppointmentToGoogleCalendars({
+      summary: `${name} consultation`,
+      description: bookingNotes,
+      location: address,
+      startAt,
+      endAt,
+      timeZone: "America/Los_Angeles"
+    });
+
+    if (googleCalendarSync.synced) {
+      const googleCalendarEventIds: Record<string, string> = {};
+      const googleCalendarHtmlLinks: Record<string, string> = {};
+      for (const result of googleCalendarSync.results) {
+        if (result.eventId) {
+          googleCalendarEventIds[result.calendar] = result.eventId;
+          if (result.htmlLink) googleCalendarHtmlLinks[result.calendar] = result.htmlLink;
+        }
+      }
+      const { error: metaUpdateError } = await supabase
+        .from("crm_calendar_events")
+        .update({
+          meta: {
+            ...calendarEventMeta,
+            googleCalendarEventIds,
+            googleCalendarHtmlLinks
+          }
+        })
+        .eq("id", calendarEvent.id);
+      if (metaUpdateError) {
+        console.warn("[booking] google calendar id meta update failed", {
+          calendarEventId: calendarEvent.id,
+          message: metaUpdateError.message
+        });
+      }
+    }
+  } catch (error) {
+    console.warn("[booking] google calendar sync error", error);
   }
 
   const bookingDetails: BookingAutomationDetails = {
@@ -666,7 +716,9 @@ export async function POST(request: NextRequest) {
     emailConfirmationSent,
     staffEmailSent,
     staffSmsAlertCount,
-    assignedSalespersonSms
+    assignedSalespersonSms,
+    googleCalendarSynced: googleCalendarSync.synced,
+    googleCalendarSync: googleCalendarSync.results
   });
 
   return NextResponse.json({
@@ -679,6 +731,8 @@ export async function POST(request: NextRequest) {
     emailConfirmationSent,
     staffEmailSent,
     staffSmsAlertCount,
-    assignedSalespersonSms
+    assignedSalespersonSms,
+    googleCalendarSynced: googleCalendarSync.synced,
+    googleCalendarSync: googleCalendarSync.results
   });
 }
