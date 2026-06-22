@@ -45,7 +45,7 @@ async function getUserFromToken(token: string): Promise<User> {
   const { data, error } = await authClient.auth.getUser(token);
 
   if (error || !data.user?.email) {
-    throw new CrmAuthError(401, "Google session is required.");
+    throw new CrmAuthError(401, "CRM session is required.");
   }
 
   return data.user;
@@ -55,14 +55,14 @@ export async function requireCrmUser(request: NextRequest) {
   const token = getBearerToken(request);
 
   if (!token) {
-    throw new CrmAuthError(401, "Google session is required.");
+    throw new CrmAuthError(401, "CRM session is required.");
   }
 
   const user = await getUserFromToken(token);
   const email = user.email ? normalizeCrmEmail(user.email) : "";
 
   if (!email || !isAllowedCrmEmail(email)) {
-    throw new CrmAuthError(403, "This Google account is not allowed for the 805 CRM.");
+    throw new CrmAuthError(403, "This CRM account is not allowed for the 805 CRM.");
   }
 
   if (isReadOnlyCrmMutation(email, request.method)) {

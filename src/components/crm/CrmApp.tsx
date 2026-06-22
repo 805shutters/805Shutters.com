@@ -82,6 +82,16 @@ type CrmUser = {
   email: string;
   displayName: string | null;
 };
+type CrmEmailOtpType = "signup" | "invite" | "magiclink" | "recovery" | "email_change" | "email";
+
+class CrmFetchError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
 
 const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuses.map((status) => ({
   status,
@@ -524,10 +534,40 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(body.message || "CRM request failed.");
+    throw new CrmFetchError(body.message || "CRM request failed.", response.status);
   }
 
   return body as T;
+}
+
+function isCrmSessionFetchError(error: unknown) {
+  return error instanceof CrmFetchError && error.status === 401;
+}
+
+function crmLoadErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "CRM failed to load.";
+}
+
+function normalizeEmailOtpType(value: string | null): CrmEmailOtpType {
+  if (
+    value === "signup" ||
+    value === "invite" ||
+    value === "magiclink" ||
+    value === "recovery" ||
+    value === "email_change" ||
+    value === "email"
+  ) {
+    return value;
+  }
+
+  return "email";
+}
+
+function removeEmailOtpParams() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token_hash");
+  url.searchParams.delete("type");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 function CollapsiblePanel({
@@ -825,32 +865,80 @@ export function CrmApp({
       return;
     }
 
+    const activeSupabase = supabase;
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data: authData }) => {
-      if (!mounted) return;
-      setSession(authData.session);
+    const expiredMessage = isKenMode
+      ? "Ken's login expired. Send a fresh login link to continue."
+      : "Your CRM login expired. Sign in again.";
 
-      if (authData.session) {
-        try {
-          await loadCrm(authData.session);
-        } catch (error) {
-          setMessage(error instanceof Error ? error.message : "CRM failed to load.");
-        }
+    async function clearCrmSession(notice?: string) {
+      await activeSupabase.auth.signOut().catch(() => undefined);
+      if (!mounted) return;
+      setSession(null);
+      setUser(null);
+      setData(null);
+      setMessage(null);
+      if (notice) setEmailLoginMessage(notice);
+    }
+
+    async function handleCrmLoadError(error: unknown) {
+      if (isCrmSessionFetchError(error)) {
+        await clearCrmSession(expiredMessage);
+        return;
       }
 
-      setLoading(false);
-    });
+      setMessage(crmLoadErrorMessage(error));
+    }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    async function consumeEmailOtpCallback() {
+      const url = new URL(window.location.href);
+      const tokenHash = url.searchParams.get("token_hash");
+      if (!tokenHash) return null;
+
+      const { data, error } = await activeSupabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: normalizeEmailOtpType(url.searchParams.get("type"))
+      });
+
+      if (error) throw error;
+      removeEmailOtpParams();
+      return data.session ?? null;
+    }
+
+    async function initializeCrmSession() {
+      try {
+        const callbackSession = await consumeEmailOtpCallback();
+        const activeSession = callbackSession ?? (await activeSupabase.auth.getSession()).data.session;
+        if (!mounted) return;
+        setSession(activeSession);
+
+        if (activeSession) {
+          await loadCrm(activeSession);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        await handleCrmLoadError(error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initializeCrmSession();
+
+    const { data: listener } = activeSupabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
       setSession(nextSession);
       if (nextSession) {
         setLoading(true);
         loadCrm(nextSession)
-          .catch((error) => {
-            setMessage(error instanceof Error ? error.message : "CRM failed to load.");
+          .catch(async (error) => {
+            if (!mounted) return;
+            await handleCrmLoadError(error);
           })
-          .finally(() => setLoading(false));
+          .finally(() => {
+            if (mounted) setLoading(false);
+          });
       } else {
         setUser(null);
         setData(null);
@@ -1639,7 +1727,7 @@ export function CrmApp({
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
-          <p className="eyebrow">805 CRM</p>
+          <p className="eyebrow">{isKenMode ? "Ken Portal" : "805 CRM"}</p>
           <h1>CRM access is blocked.</h1>
           <p>{message}</p>
           <button type="button" onClick={signOut}>
