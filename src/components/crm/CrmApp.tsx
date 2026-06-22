@@ -26,7 +26,9 @@ import {
   openBalanceRows,
   openSoldRows,
   quotedPipelineQuotes,
-  soldRows
+  soldRows,
+  depositNeededRows,
+  balanceDueCompletedRows
 } from "@/lib/crm/dashboard-metrics";
 import {
   CrmAccountabilityItem,
@@ -1782,6 +1784,36 @@ export function CrmApp({
         </section>
       </header>
 
+      {data?.summary ? (() => {
+        const s = data.summary;
+        const need = s.needsOrder || 0;
+        const dep = s.depositNeeded || 0;
+        const bal = s.balanceDueCompleted || 0;
+        if (need === 0 && dep === 0 && bal === 0) return null;
+        return (
+          <div className="crm-action-alerts" style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0 0" }}>
+            {need > 0 ? (
+              <button type="button" onClick={() => openSummaryDrill("needsOrder")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #d97706", background: "#fef3c7", color: "#92400e", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
+                <span>Need to Order</span>
+                <span style={{ fontWeight: 500 }}>{need} sold job{need === 1 ? "" : "s"} waiting to be ordered</span>
+              </button>
+            ) : null}
+            {dep > 0 ? (
+              <button type="button" onClick={() => openSummaryDrill("depositNeeded")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #dc2626", background: "#fde8e8", color: "#991b1b", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
+                <span>Deposit Needed</span>
+                <span style={{ fontWeight: 500 }}>{dep} job{dep === 1 ? "" : "s"} · {toCurrency(s.depositNeededAmount)} deposit unpaid</span>
+              </button>
+            ) : null}
+            {bal > 0 ? (
+              <button type="button" onClick={() => openSummaryDrill("balanceDueCompleted")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #dc2626", background: "#fde8e8", color: "#991b1b", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
+                <span>Balance Due</span>
+                <span style={{ fontWeight: 500 }}>{bal} completed job{bal === 1 ? "" : "s"} · {toCurrency(s.balanceDueCompletedAmount)} still owed</span>
+              </button>
+            ) : null}
+          </div>
+        );
+      })() : null}
+
       {message ? <p className="crm-alert">{message}</p> : null}
 
       <nav className="crm-tabs" aria-label="CRM sections">
@@ -2847,6 +2879,22 @@ function buildSummaryDrill(
         metric,
         placement: "summary",
         entries: rowsToEntries(needToOrderRows(rows), (row) => row.total, { jobs, files })
+      };
+    case "depositNeeded":
+      return {
+        title: "Deposit Needed",
+        subtitle: "Sold jobs where the deposit hasn't been collected",
+        metric,
+        placement: "summary",
+        entries: rowsToEntries(depositNeededRows(rows), (row) => Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0), { jobs, files })
+      };
+    case "balanceDueCompleted":
+      return {
+        title: "Balance Due",
+        subtitle: "Completed jobs with an unpaid balance",
+        metric,
+        placement: "summary",
+        entries: rowsToEntries(balanceDueCompletedRows(rows), (row) => row.balance, { jobs, files })
       };
     case "missingCogs":
       return {

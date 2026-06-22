@@ -74,6 +74,27 @@ export function openBalanceRows(rows: CrmBookkeepingRow[]) {
   return rows.filter((row) => !isPaidInFullBookkeepingRow(row) && row.balance > 0);
 }
 
+// Completed (work done) job stages — installed, invoiced, or closed.
+const COMPLETED_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingStatus>(["installed", "invoiced", "closed"]);
+
+/** Sold jobs (sold/approved) where the required deposit hasn't been collected. */
+export function depositNeededRows(rows: CrmBookkeepingRow[]) {
+  return rows.filter((row) => {
+    const status = effectiveBookkeepingStatus(row);
+    const isSold = status === "sold" || status === "approved";
+    const due = Number(row.depositDue) || 0;
+    const paid = Number(row.depositPaid) || 0;
+    return isSold && due > 0 && paid < due;
+  });
+}
+
+/** Completed (installed/invoiced/closed) jobs that still owe a balance. */
+export function balanceDueCompletedRows(rows: CrmBookkeepingRow[]) {
+  return rows.filter(
+    (row) => !isPaidInFullBookkeepingRow(row) && Number(row.balance) > 0 && COMPLETED_BOOKKEEPING_STATUSES.has(effectiveBookkeepingStatus(row)),
+  );
+}
+
 export function quotedPipelineQuotes(quotes: CrmQuote[], now: Date | string = new Date()) {
   const nowMs = typeof now === "string" ? Date.parse(now) : now.getTime();
   const cutoffMs = nowMs - 60 * 86_400_000;
@@ -127,6 +148,8 @@ export function buildDashboardSummaryMetrics({
   const missingCogs = missingCogsRows(rows);
   const awaitingProduct = awaitingProductRows(rows);
   const openBalances = openBalanceRows(rows);
+  const depositNeeded = depositNeededRows(rows);
+  const balanceDueCompleted = balanceDueCompletedRows(rows);
 
   return {
     openJobs: distinctRowsByJob(openRows).length,
@@ -138,6 +161,10 @@ export function buildDashboardSummaryMetrics({
     depositCollected: jobs.reduce((total, job) => total + (Number(job.deposit_paid) || 0), 0),
     openBalance: openBalances.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     needsOrder: distinctRowsByJob(needOrder).length,
+    depositNeeded: distinctRowsByJob(depositNeeded).length,
+    depositNeededAmount: depositNeeded.reduce((total, row) => total + Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0), 0),
+    balanceDueCompleted: distinctRowsByJob(balanceDueCompleted).length,
+    balanceDueCompletedAmount: balanceDueCompleted.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     missingCogs: missingCogs.length,
     awaitingProduct: distinctRowsByJob(awaitingProduct).length,
     installReview: orderAndInstallReviewCount(installationInvoiceEmails, orderCogsEmails)

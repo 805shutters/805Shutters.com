@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildDashboardSummaryMetrics,
   needToOrderRows,
-  quotedPipelineQuotes
+  quotedPipelineQuotes,
+  depositNeededRows,
+  balanceDueCompletedRows
 } from "@/lib/crm/dashboard-metrics";
 import { CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 
@@ -161,7 +163,11 @@ describe("dashboard summary metrics", () => {
     expect(Object.keys(summary).sort()).toEqual(
       [
         "awaitingProduct",
+        "balanceDueCompleted",
+        "balanceDueCompletedAmount",
         "depositCollected",
+        "depositNeeded",
+        "depositNeededAmount",
         "installReview",
         "missingCogs",
         "needsOrder",
@@ -238,5 +244,55 @@ describe("dashboard summary metrics", () => {
     expect(summary.openJobs).toBe(1);
     expect(summary.soldPipeline).toBe(7710);
     expect(summary.openBalance).toBe(3855);
+  });
+});
+
+describe("depositNeededRows", () => {
+  it("flags sold jobs where the required deposit hasn't been collected", () => {
+    const rows = [
+      row({ id: "a", jobId: "ja", status: "sold", depositDue: 200, depositPaid: 0, balance: 800 }),
+      row({ id: "b", jobId: "jb", status: "sold", depositDue: 200, depositPaid: 200, balance: 800 }),
+      row({ id: "c", jobId: "jc", status: "sold", depositDue: 0, depositPaid: 0, balance: 1000 }),
+      row({ id: "d", jobId: "jd", status: "ordered", depositDue: 200, depositPaid: 0, balance: 800 }),
+    ];
+    expect(depositNeededRows(rows).map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("summary counts distinct jobs + sums the deposit shortfall", () => {
+    const summary = buildDashboardSummaryMetrics({
+      jobs: [],
+      quotes: [],
+      rows: [
+        row({ id: "a", jobId: "ja", status: "sold", depositDue: 200, depositPaid: 50, balance: 750 }),
+        row({ id: "b", jobId: "jb", status: "sold", depositDue: 300, depositPaid: 0, balance: 1000 }),
+      ],
+    });
+    expect(summary.depositNeeded).toBe(2);
+    expect(summary.depositNeededAmount).toBe(450); // (200-50) + (300-0)
+  });
+});
+
+describe("balanceDueCompletedRows", () => {
+  it("flags completed jobs (installed/invoiced) with an unpaid balance", () => {
+    const rows = [
+      row({ id: "a", jobId: "ja", liveStatus: "installed", balance: 500, isPaidInFull: false }),
+      row({ id: "b", jobId: "jb", status: "sold", balance: 500, isPaidInFull: false }),
+      row({ id: "c", jobId: "jc", liveStatus: "closed", balance: 0, isPaidInFull: false }),
+      row({ id: "d", jobId: "jd", liveStatus: "closed", balance: 500, isPaidInFull: true }),
+    ];
+    expect(balanceDueCompletedRows(rows).map((r) => r.id)).toEqual(["a"]);
+  });
+
+  it("summary sums the unpaid balance for completed jobs", () => {
+    const summary = buildDashboardSummaryMetrics({
+      jobs: [],
+      quotes: [],
+      rows: [
+        row({ id: "a", jobId: "ja", liveStatus: "installed", balance: 400, isPaidInFull: false }),
+        row({ id: "b", jobId: "jb", liveStatus: "closed", balance: 100, isPaidInFull: false }),
+      ],
+    });
+    expect(summary.balanceDueCompleted).toBe(2);
+    expect(summary.balanceDueCompletedAmount).toBe(500);
   });
 });
