@@ -284,7 +284,7 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
       ) : null}
 
       {subtab === "builder" && activeQuoteId ? (
-        <QuoteBuilderPanel embedded session={session} quoteId={activeQuoteId} onClose={() => {}} onChanged={onChanged} onSwitch={setActiveQuoteId} />
+        <QuoteBuilderPanel session={session} quoteId={activeQuoteId} onClose={() => setActiveQuoteId(null)} onChanged={onChanged} onSwitch={setActiveQuoteId} />
       ) : null}
 
       {subtab === "contract" && activeQuote ? (

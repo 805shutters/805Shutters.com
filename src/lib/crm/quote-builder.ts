@@ -452,9 +452,17 @@ export async function createLineItem(
       // window bills immediately; return the latest refreshed quote.
       return last ?? recalcQuoteTotals(supabase, quoteId);
     }
+    // Seed a default style/fabric so the new window is priced immediately (not
+    // "pricing in progress"). Fabric-priced products get their first fabric
+    // (which routes to a price group); program-priced products get the first
+    // program. The rep can change it on the design card.
+    const product = getProduct(seedProductId)!;
+    const fabricPriced = Boolean(product.fabricRouting);
+    const seedFabric = fabricPriced && product.fabricRouting ? Object.keys(product.fabricRouting)[0] : null;
+    const seedProgramId = fabricPriced ? null : (product.programs[0]?.id ?? null);
     return upsertDesign(
       supabase,
-      { line_item_id: data.id, product_id: seedProductId, label: "A", sort_order: 0 },
+      { line_item_id: data.id, product_id: seedProductId, program_id: seedProgramId, fabric: seedFabric, label: "A", sort_order: 0 },
       actor,
     );
   }
