@@ -95,6 +95,10 @@ export type ProcessOrderCogsResult = {
   errors: number;
   archived: number;
   archiveErrors: number;
+  /** First processing error (diagnostic), if any. */
+  lastError?: string;
+  /** First error-record insert failure (diagnostic), if any. */
+  lastInsertError?: string;
   emails: CrmOrderCogsEmail[];
 };
 
@@ -690,7 +694,7 @@ export async function processOrderCogsInbox(
     ? options.messageIds.map((id) => ({ id }))
     : await listGmailMessages(accessToken as string, query, maxResults);
   const records: CrmOrderCogsEmail[] = [];
-  const result = {
+  const result: ProcessOrderCogsResult = {
     mailbox,
     query,
     scanned: messages.length,
@@ -780,6 +784,7 @@ export async function processOrderCogsInbox(
       }
     } catch (error) {
       result.errors += 1;
+      if (!result.lastError) result.lastError = error instanceof Error ? error.message : String(error);
       try {
         const listedWithThread = listed as { threadId?: unknown };
         const listedThreadId = typeof listedWithThread.threadId === "string" ? listedWithThread.threadId : null;
@@ -811,8 +816,11 @@ export async function processOrderCogsInbox(
           raw: {}
         });
         records.push(record);
-      } catch {
+      } catch (insertError) {
         // Keep the batch moving even if the error record cannot be persisted.
+        if (!result.lastInsertError) {
+          result.lastInsertError = insertError instanceof Error ? insertError.message : String(insertError);
+        }
       }
     }
   }
