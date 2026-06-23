@@ -579,7 +579,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         {!quote || !catalog ? (
           <p style={{ padding: 24 }}>Loading…</p>
         ) : (
-          <div style={{ padding: 16, overflowY: "auto" }}>
+          <div style={{ padding: "0 16px 16px", overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, opacity: 0.7 }}>Versions:</span>
               {versions.map((v) => (
@@ -1619,11 +1619,12 @@ const xBtn: CSSProperties = {
 const stickyAddBar: CSSProperties = {
   position: "sticky",
   top: 0,
-  zIndex: 5,
+  zIndex: 10,
+  order: -1,
   background: "#ffffff",
-  margin: "0 -16px 12px",
-  padding: "12px 16px",
-  borderBottom: "1px solid #eeeeeb",
+  margin: "0 -16px 0",
+  padding: "8px 16px",
+  borderBottom: "2px solid #0b0b0b",
 };
 const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 };
 const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
