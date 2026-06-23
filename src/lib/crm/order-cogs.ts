@@ -665,7 +665,9 @@ async function insertOrderCogsRecord(
     .upsert(input, { onConflict: "gmail_message_id" })
     .select("*")
     .single();
-  if (error || !data) throw new CrmAuthError(502, "Order COGS email record could not be saved.");
+  if (error || !data) {
+    throw new CrmAuthError(502, `Order COGS email record could not be saved: ${error?.message || "no row returned"}`);
+  }
   return data as CrmOrderCogsEmail;
 }
 
