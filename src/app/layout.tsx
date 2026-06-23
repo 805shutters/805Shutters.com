@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Bodoni_Moda } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import { CommercialModeProvider } from "@/components/CommercialModeProvider";
-import { MessagingAssistantWidget } from "@/components/MessagingAssistantWidget";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SiteHeader } from "@/components/SiteHeader";
+import { ConditionalChrome } from "@/components/ConditionalChrome";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
@@ -61,12 +58,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             __html: JSON.stringify(localBusinessJsonLd())
           }}
         />
-        <CommercialModeProvider>
-          <SiteHeader />
-          <main>{children}</main>
-          <SiteFooter />
-        </CommercialModeProvider>
-        <MessagingAssistantWidget />
+        <ConditionalChrome>{children}</ConditionalChrome>
       </body>
     </html>
   );
