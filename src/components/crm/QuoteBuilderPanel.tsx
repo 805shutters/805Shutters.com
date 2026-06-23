@@ -576,10 +576,46 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         {sendMsg ? (
           <p style={{ padding: "6px 16px", margin: 0, fontSize: 13, color: "#3a3a36", background: "#eeeeeb" }}>{sendMsg}</p>
         ) : null}
+        {/* PRODUCT + ROOM BAR — non-scrolling, flush to the very top of the page.
+            No labels, no padding above. Everything below scrolls under it. */}
+        {catalog && quote ? (
+          <div style={topBarStyle}>
+            {embedded ? (
+              <div style={{ position: "absolute", top: 4, right: 8 }}>
+                <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">✕</button>
+              </div>
+            ) : null}
+            <div style={tileRow}>
+              {productTypes.map((t) => {
+                const active = t.type === activeType;
+                return (
+                  <button key={t.type} type="button" onClick={() => setActiveType(t.type)}
+                    style={{ ...productTile, borderColor: active ? "#bdb9b0" : "#d8d5cf", background: active ? "#dedbd5" : "#ebeae6", color: "#0b0b0b", boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none" }}>
+                    <span style={productTileLabel}>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ ...tileRow, marginTop: 4 }}>
+              {ROOM_PRESETS.map((room) => (
+                <button key={room} type="button" style={roomPill} disabled={busy || !activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
+              ))}
+              <span style={{ display: "inline-flex", gap: 4 }}>
+                <input value={customRoom} onChange={(e) => setCustomRoom(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && customRoom.trim()) { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); } }}
+                  placeholder="Custom room…" style={{ ...customRoomInput }} />
+                <button type="button" style={roomPill} disabled={busy || !activeTile || !customRoom.trim()}
+                  onClick={() => { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); }}>+ Add</button>
+              </span>
+              <button type="button" style={{ ...roomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>+ Blank window</button>
+            </div>
+          </div>
+        ) : null}
+
         {!quote || !catalog ? (
           <p style={{ padding: 24 }}>Loading…</p>
         ) : (
-          <div style={{ padding: "0 16px 16px", overflowY: "auto", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "8px 16px 16px", overflowY: "auto", flex: 1, minHeight: 0 }}>
             <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
               <span style={{ fontSize: 12, opacity: 0.7 }}>Versions:</span>
               {versions.map((v) => (
@@ -610,86 +646,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             {showPricingReference ? (
               pricingReference ? <PricingReferencePanel reference={pricingReference} /> : <p style={{ fontSize: 13, opacity: 0.7 }}>Loading pricing reference...</p>
             ) : null}
-
-            {/* Sticky add bar: product line + room quick-add stay pinned at the top
-                while the windows scroll underneath. */}
-            <div style={stickyAddBar}>
-            {embedded ? (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
-                <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">✕</button>
-              </div>
-            ) : null}
-            {/* Product line tiles — pick which product the room buttons add. */}
-            <div style={sectionLabel}>Product line</div>
-            <div style={tileRow}>
-              {productTypes.map((t) => {
-                const active = t.type === activeType;
-                return (
-                  <button
-                    key={t.type}
-                    type="button"
-                    onClick={() => setActiveType(t.type)}
-                    style={{
-                      ...productTile,
-                      borderColor: active ? "#bdb9b0" : "#d8d5cf",
-                      background: active ? "#dedbd5" : "#ebeae6",
-                      color: "#0b0b0b",
-                      boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none",
-                    }}
-                  >
-                    <span style={productTileLabel}>{t.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Room quick-add — tap a room to add a window using the active product. */}
-            <div style={{ ...sectionLabel, marginTop: 14 }}>
-              Add a window
-              {activeTile ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {activeTile.label}</span> : null}
-            </div>
-            <div style={tileRow}>
-              {ROOM_PRESETS.map((room) => (
-                <button
-                  key={room}
-                  type="button"
-                  style={roomPill}
-                  disabled={busy || !activeTile}
-                  onClick={() => addWindowWithRoom(room)}
-                >
-                  + {room}
-                </button>
-              ))}
-              <span style={{ display: "inline-flex", gap: 4 }}>
-                <input
-                  value={customRoom}
-                  onChange={(e) => setCustomRoom(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && customRoom.trim()) {
-                      addWindowWithRoom(customRoom.trim());
-                      setCustomRoom("");
-                    }
-                  }}
-                  placeholder="Custom room…"
-                  style={{ ...customRoomInput }}
-                />
-                <button
-                  type="button"
-                  style={roomPill}
-                  disabled={busy || !activeTile || !customRoom.trim()}
-                  onClick={() => {
-                    addWindowWithRoom(customRoom.trim());
-                    setCustomRoom("");
-                  }}
-                >
-                  + Add
-                </button>
-              </span>
-              <button type="button" style={{ ...roomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>
-                + Blank window
-              </button>
-            </div>
-            </div>
 
             <div style={{ height: 1, background: "#eeeeeb", margin: "16px 0" }} />
 
@@ -1616,16 +1572,15 @@ const xBtn: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
 };
-const stickyAddBar: CSSProperties = {
-  position: "sticky",
-  top: 0,
-  zIndex: 10,
-  order: -1,
+const topBarStyle: CSSProperties = {
+  position: "relative",
   background: "#ffffff",
-  margin: "0 -16px 0",
-  padding: "8px 16px",
   borderBottom: "2px solid #0b0b0b",
+  padding: "6px 12px",
+  flexShrink: 0,
+  zIndex: 10,
 };
+const stickyAddBar = topBarStyle;
 const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 };
 const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
 const addBtn: CSSProperties = { border: "1px dashed #b8b6ae", background: "#ffffff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
