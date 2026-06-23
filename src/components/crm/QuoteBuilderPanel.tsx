@@ -585,7 +585,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 <button type="button" onClick={onClose} aria-label="Close quote builder" style={{ ...xBtn, width: 28, height: 28, fontSize: 14, borderRadius: 6 }} title="Exit to CRM">✕</button>
               </div>
             ) : null}
-            <div style={embedded ? { ...tileRow, paddingRight: 36 } : tileRow}>
+            <div style={embedded ? { ...productRow, paddingRight: 36 } : productRow}>
               {productTypes.map((t) => {
                 const active = t.type === activeType;
                 return (
@@ -1595,27 +1595,38 @@ const pricingReferencePanel: CSSProperties = { border: "1px solid #d8d8d2", bord
 const priceCellStyle: CSSProperties = { border: "1px solid #e5e7eb", padding: "5px 7px", textAlign: "right", whiteSpace: "nowrap" };
 const sectionLabel: CSSProperties = { fontSize: 11, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7, marginBottom: 8, fontWeight: 600 };
 const tileRow: CSSProperties = { display: "flex", gap: 0, flexWrap: "wrap", alignItems: "stretch" };
+// All product tiles live on a single no-wrap row and share its width equally
+// (flex: 1 1 0). Labels that don't fit on one line wrap to two inside the cell,
+// so every product type stays on that one row regardless of screen width.
+const productRow: CSSProperties = {
+  display: "flex",
+  flexWrap: "nowrap",
+  alignItems: "stretch",
+  width: "100%",
+};
 const productTile: CSSProperties = {
+  flex: "1 1 0",
+  minWidth: 0,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   border: "1px solid #e2dfd8",
   borderRadius: 0,
-  padding: "5px 11px",
+  padding: "4px 6px",
   cursor: "pointer",
-  minHeight: 28,
-  fontSize: 12.5,
+  minHeight: 30,
+  fontSize: 12,
   fontWeight: 600,
-  lineHeight: 1.1,
+  lineHeight: 1.05,
   textAlign: "center",
-  whiteSpace: "nowrap",
+  textWrap: "balance",
 };
 const productTileLabel: CSSProperties = {
   display: "block",
   color: "inherit",
-  fontSize: 12.5,
+  fontSize: 12,
   fontWeight: 600,
-  lineHeight: 1.1,
+  lineHeight: 1.05,
   textAlign: "center",
 };
 const roomPill: CSSProperties = {
@@ -1635,12 +1646,13 @@ const flushRoomPill: CSSProperties = {
   border: "1px solid #e2dfd8",
   background: "#f7f6f3",
   borderRadius: 0,
-  padding: "5px 10px",
+  padding: "4px 8px",
   cursor: "pointer",
-  fontSize: 12,
+  fontSize: 11.5,
   fontWeight: 500,
   color: "#3a3a36",
-  minHeight: 26,
+  minHeight: 24,
+  whiteSpace: "nowrap",
   marginLeft: -1,
   marginTop: -1,
 };
@@ -1648,10 +1660,10 @@ const customRoomInput: CSSProperties = {
   border: "1px solid #e2dfd8",
   background: "#ffffff",
   borderRadius: 0,
-  padding: "5px 10px",
-  fontSize: 12,
-  width: 118,
-  minHeight: 26,
+  padding: "4px 8px",
+  fontSize: 11.5,
+  width: 108,
+  minHeight: 24,
 };
 const sizeChip: CSSProperties = {
   border: "1px solid #c8d2d8",
