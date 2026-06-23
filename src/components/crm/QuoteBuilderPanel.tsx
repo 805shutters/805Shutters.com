@@ -850,6 +850,36 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   );
                 })() : null}
 
+                {/* Detail summary at the top of the line item — shows the selected
+                    design's fabric, mount, valance, control, etc. as chips so the
+                    key specs are visible at a glance (they populate here as the rep
+                    selects them in the design card below). */}
+                {selectedDesign(li) ? (() => {
+                  const sel = selectedDesign(li)!;
+                  const prod = productsById.get(sel.product_id);
+                  const chips: string[] = [];
+                  if (sel.fabric) chips.push(sel.fabric);
+                  for (const field of prod?.details ?? []) {
+                    const val = (sel.details ?? {})[field.id];
+                    if (val === true) chips.push(field.label);
+                    else if (typeof val === "string" && val) {
+                      const opt = field.options?.find((o) => o.value === val);
+                      chips.push(`${field.label}: ${opt?.label ?? val}`);
+                    }
+                  }
+                  for (const s of sel.surcharges ?? []) {
+                    const name = prod?.surcharges.find((x) => x.id === s.id)?.name;
+                    if (name) chips.push(name);
+                  }
+                  return chips.length ? (
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 2 }}>
+                      {chips.map((c, i) => (
+                        <span key={i} style={{ fontSize: 11, background: "#f0f0ee", borderRadius: 4, padding: "2px 8px", color: "#4d4d49" }}>{c}</span>
+                      ))}
+                    </div>
+                  ) : null;
+                })() : null}
+
                 <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
                   {(shutterVariantsFor(li.designs[0]?.product_id ?? "") ? li.designs.filter((d) => d.id === (activeDesignTab[li.id] ?? li.selected_design_id ?? li.designs[0]?.id)) : li.designs).map((design) => {
                     const product = productsById.get(design.product_id);
@@ -1492,9 +1522,8 @@ const panelStyle: CSSProperties = {
 const embeddedPanelStyle: CSSProperties = {
   background: "#ffffff",
   color: "#0b0b0b",
-  borderRadius: 12,
-  border: "1px solid #e2e8f0",
   width: "100%",
+  minHeight: "100vh",
   display: "flex",
   flexDirection: "column",
 };
