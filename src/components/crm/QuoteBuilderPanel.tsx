@@ -549,11 +549,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <button type="button" onClick={shareLink} style={closeBtn}>
               {shareUrl ? "Link copied ✓" : "Customer link"}
             </button>
-            {!embedded ? (
-              <button type="button" onClick={onClose} style={closeBtn}>
-                Close
-              </button>
-            ) : null}
+            <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">
+              ✕
+            </button>
           </div>
         </header>
 
@@ -611,6 +609,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               pricingReference ? <PricingReferencePanel reference={pricingReference} /> : <p style={{ fontSize: 13, opacity: 0.7 }}>Loading pricing reference...</p>
             ) : null}
 
+            {/* Sticky add bar: product line + room quick-add stay pinned at the top
+                while the windows scroll underneath. */}
+            <div style={stickyAddBar}>
             {/* Product line tiles — pick which product the room buttons add. */}
             <div style={sectionLabel}>Product line</div>
             <div style={tileRow}>
@@ -680,6 +681,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               <button type="button" style={{ ...roomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>
                 + Blank window
               </button>
+            </div>
             </div>
 
             <div style={{ height: 1, background: "#eeeeeb", margin: "16px 0" }} />
@@ -1474,7 +1476,7 @@ const overlayStyle: CSSProperties = {
   display: "flex",
   justifyContent: "center",
   alignItems: "flex-start",
-  zIndex: 1000,
+  zIndex: 9999,
   padding: "24px 12px",
 };
 const panelStyle: CSSProperties = {
@@ -1533,6 +1535,29 @@ const detailGrid: CSSProperties = { display: "grid", gridTemplateColumns: "repea
 const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #eeeeeb", borderRadius: 6 };
 const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0b0b0b", color: "#ffffff", borderRadius: 8, fontSize: 18 };
 const closeBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "6px 14px", cursor: "pointer" };
+const xBtn: CSSProperties = {
+  border: "1px solid #d8d5cf",
+  background: "#ffffff",
+  color: "#0b0b0b",
+  borderRadius: 8,
+  width: 36,
+  height: 36,
+  fontSize: 18,
+  fontWeight: 700,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+const stickyAddBar: CSSProperties = {
+  position: "sticky",
+  top: 0,
+  zIndex: 5,
+  background: "#ffffff",
+  margin: "0 -16px 12px",
+  padding: "12px 16px",
+  borderBottom: "1px solid #eeeeeb",
+};
 const ghostBtn: CSSProperties = { border: "1px solid #d8d8d2", background: "#ffffff", borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 12 };
 const primaryBtn: CSSProperties = { border: "none", background: "#111111", color: "#ffffff", borderRadius: 8, padding: "10px 16px", cursor: "pointer", marginTop: 6, fontWeight: 600 };
 const addBtn: CSSProperties = { border: "1px dashed #b8b6ae", background: "#ffffff", borderRadius: 6, padding: "8px 12px", cursor: "pointer", fontSize: 13 };
