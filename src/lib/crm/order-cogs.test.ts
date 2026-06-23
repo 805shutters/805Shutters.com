@@ -49,7 +49,7 @@ class FakeSupabaseQuery {
   constructor(private readonly db: FakeSupabase, private readonly table: string) {}
 
   select() {
-    this.action = this.action === "upsert" ? "upsert" : "select";
+    // Preserve a prior insert/update/upsert action; a bare read stays "select".
     return this;
   }
 
@@ -104,23 +104,22 @@ class FakeSupabaseQuery {
   private result() {
     if (this.action === "update") {
       this.db.updates.push({ table: this.table, patch: this.patch || {}, filters: this.filters });
-      return { error: null };
+      return { data: { id: this.filters.id, ...(this.patch || {}) }, error: null };
     }
 
-    if (this.action === "insert") {
-      this.db.inserts.push({ table: this.table, row: this.input || {} });
-      return { data: this.input, error: null };
-    }
-
-    if (this.action === "upsert") {
+    if (this.action === "insert" || this.action === "upsert") {
       const record = {
         id: `order-cogs-${this.db.records.length + 1}`,
         created_at: "2026-06-22T00:00:00.000Z",
         updated_at: "2026-06-22T00:00:00.000Z",
         ...(this.input || {})
       };
-      this.db.records.push(record);
-      return { data: record, error: null };
+      if (this.table === "crm_order_cogs_emails") {
+        this.db.records.push(record);
+        return { data: record, error: null };
+      }
+      this.db.inserts.push({ table: this.table, row: this.input || {} });
+      return { data: this.input, error: null };
     }
 
     const rows = this.db.selectRows(this.table);

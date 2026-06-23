@@ -660,11 +660,21 @@ async function insertOrderCogsRecord(
   supabase: CrmSupabaseClient,
   input: Omit<CrmOrderCogsEmail, "id" | "created_at" | "updated_at">
 ) {
-  const { data, error } = await supabase
+  // Manual upsert keyed on gmail_message_id instead of PostgREST `onConflict`: the
+  // latter requires the unique-constraint target to be present in the schema cache,
+  // which fails (PGRST205) right after the table is provisioned. Read + insert/update
+  // uses only the (already-cached) table.
+  const { data: existing } = await supabase
     .from("crm_order_cogs_emails")
-    .upsert(input, { onConflict: "gmail_message_id" })
-    .select("*")
-    .single();
+    .select("id")
+    .eq("gmail_message_id", input.gmail_message_id)
+    .maybeSingle();
+
+  const writer = existing?.id
+    ? supabase.from("crm_order_cogs_emails").update(input).eq("id", existing.id)
+    : supabase.from("crm_order_cogs_emails").insert(input);
+
+  const { data, error } = await writer.select("*").single();
   if (error || !data) {
     throw new CrmAuthError(502, `Order COGS email record could not be saved: ${error?.message || "no row returned"}`);
   }
