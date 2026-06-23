@@ -1,8 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { CrmOrderCogsEmail, CrmOrderCogsEmailStatus } from "@/lib/crm/types";
+import { recordCrmActivity } from "@/lib/crm/backend";
+import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { advanceJobStatus, statusRank } from "@/lib/quote/lifecycle";
+import { CrmJobStatus, CrmQuoteStatus, CrmOrderCogsEmail, CrmOrderCogsEmailStatus } from "@/lib/crm/types";
 
 type CrmSupabaseClient = SupabaseClient;
+type CrmActor = { email: string; userId?: string };
 
 const DEFAULT_MAILBOX = "805shutters@gmail.com";
 const DEFAULT_MAX_RESULTS = 50;
@@ -57,6 +61,8 @@ export type ExtractedOrderCogs = {
   confidence: number;
   amountConfidence: number;
   text: string;
+  /** Vendor name when the email matched a vendor-specific parser (e.g. "Norman"). */
+  manufacturer?: string | null;
 };
 
 type OrderCogsMatch = {
@@ -250,6 +256,77 @@ export function extractOrderCogsFromText(text: string): ExtractedOrderCogs {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Vendor-specific parsers. The generic extractor above handles unknown vendors;
+// vendors that send a fixed, labeled layout get a dedicated parser that reads
+// their structured fields. Add a vendor by writing an extractor + detector and
+// registering both in `extractOrderCogs` below.
+// ---------------------------------------------------------------------------
+
+/** Trailing product words on a Norman side mark / PO (e.g. "Jim Derenthal Roller"). */
+const NORMAN_PRODUCT_SUFFIX =
+  /\s+(roller|shades?|shutters?|blinds?|honeycomb|cellular|romans?|sheers?|drapery|drapes?|drape|verticals?|wood|faux|aluminum|smartdrape|pleated|solar|zebra|dual|motorized|cordless)$/i;
+
+/** Side marks read "<customer> <product...>"; peel the product words off the end. */
+function stripProductSuffix(value: string) {
+  let out = value.trim();
+  while (NORMAN_PRODUCT_SUFFIX.test(out)) out = out.replace(NORMAN_PRODUCT_SUFFIX, "").trim();
+  return out;
+}
+
+/** The next Norman label after a field's value (used to bound a captured value). */
+const NORMAN_FIELD_STOP =
+  /WO\s*#|PO\s*#|Side\s*Mark|Ship\s*Via|Payment\s*Terms|Customer\s*ID|Company\s*Name|Owner\s*Name|Phone|Order\s*Date|Sales\s*Amount|Additional\s*Tariff|Freight\s*Handling|Processing\s*Fee|Tax\s*Amount|Miscellaneous\s*Fee|Total\s*Amount|Checked\s*Out|Ship\s*To|Special\s*Delivery|Pricing|Contact/;
+
+/** Value of a labeled field on the whitespace-collapsed Norman email body. */
+function normanLabeledValue(text: string, label: RegExp) {
+  const source = `${label.source}\\s*[:#-]?\\s*(.+?)\\s*(?=${NORMAN_FIELD_STOP.source}|$)`;
+  return text.match(new RegExp(source, "i"))?.[1]?.trim() || null;
+}
+
+export function isNormanOrderEmail(text: string, fromEmail: string | null) {
+  const haystack = `${fromEmail || ""} ${text}`.toLowerCase();
+  return haystack.includes("normanusa.com") || haystack.includes("norman window fashions");
+}
+
+/**
+ * Parse a Norman "Online Order Confirmation". The end-customer is the dealer's
+ * side mark (PO# / Side Mark), NOT the Company/Owner fields (those are the dealer,
+ * SNS Interiors / Ken Hill). COGS is the Total Amount — the full landed cost the
+ * dealer pays Norman (product + freight + processing fee + tax). WO# is the order ref.
+ */
+export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
+  const normalized = text.replace(/\s+/g, " ").trim();
+
+  const sideMark =
+    normanLabeledValue(normalized, /\bPO\s*#/) || normanLabeledValue(normalized, /\bSide\s*Mark/);
+  const customerName = sideMark ? stripProductSuffix(sideMark) || null : null;
+
+  const totalMatch = normalized.match(/\bTotal\s*Amount\b\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
+  const orderAmount = moneyFrom(totalMatch?.[1]);
+
+  const woMatch = normalized.match(/\bWO\s*#\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i);
+  const orderNumber = woMatch?.[1] || null;
+
+  const confidence = Math.min(1, (customerName ? 0.6 : 0) + (orderAmount ? 0.35 : 0) + (orderNumber ? 0.05 : 0));
+
+  return {
+    customerName,
+    orderAmount,
+    orderNumber,
+    confidence,
+    amountConfidence: orderAmount ? 0.95 : 0,
+    text: normalized,
+    manufacturer: "Norman"
+  };
+}
+
+/** Dispatch to a vendor-specific parser when recognised; else the generic parser. */
+export function extractOrderCogs(text: string, fromEmail: string | null): ExtractedOrderCogs {
+  if (isNormanOrderEmail(text, fromEmail)) return extractNormanOrderCogs(text);
+  return extractOrderCogsFromText(text);
+}
+
 function normalizeTokens(value: string) {
   return value
     .toLowerCase()
@@ -429,24 +506,73 @@ function messageSentAt(message: GmailMessage) {
   return internalDate > 0 ? new Date(internalDate).toISOString() : null;
 }
 
+/**
+ * Mark the matched candidate's job as "ordered" (the order confirmation means the
+ * order was placed with the manufacturer). The quote is the source of truth: advancing
+ * it stamps `ordered_at`, forward-drives the job, logs activity, and safely recalcs
+ * (recalc never touches COGS). Legacy/manual ledger rows with no quote advance the job
+ * directly. Forward-only — never drags a received/installed record back to "ordered".
+ */
+async function markCandidateOrdered(
+  supabase: CrmSupabaseClient,
+  candidate: OrderCogsCandidate,
+  actor: CrmActor
+) {
+  if (candidate.quoteId) {
+    const { data: quoteRow } = await supabase
+      .from("crm_quotes")
+      .select("status")
+      .eq("id", candidate.quoteId)
+      .maybeSingle();
+    const status = (quoteRow as { status?: CrmQuoteStatus } | null)?.status;
+    if (status && statusRank(status) < statusRank("ordered")) {
+      await advanceQuoteStatus(supabase, candidate.quoteId, "ordered", actor);
+    }
+    return;
+  }
+
+  if (candidate.jobId) {
+    const { data: jobRow } = await supabase
+      .from("crm_jobs")
+      .select("status")
+      .eq("id", candidate.jobId)
+      .maybeSingle();
+    const current = (jobRow as { status?: CrmJobStatus } | null)?.status;
+    if (!current) return;
+    const next = advanceJobStatus(current, "ordered");
+    if (next === current) return;
+    const { error } = await supabase.from("crm_jobs").update({ status: next }).eq("id", candidate.jobId);
+    if (error) throw new CrmAuthError(502, "Order email matched, but the job could not be marked ordered.");
+    await recordCrmActivity(supabase, actor, {
+      entityType: "job",
+      entityId: candidate.jobId,
+      action: "status.ordered",
+      metadata: { via: "order-cogs-email", from: current, to: next }
+    });
+  }
+}
+
 async function applyOrderCogs(
   supabase: CrmSupabaseClient,
   candidate: OrderCogsCandidate,
   extraction: ExtractedOrderCogs,
-  message: GmailMessage
-) {
+  message: GmailMessage,
+  actor: CrmActor
+): Promise<{ cogsApplied: boolean }> {
   const amount = extraction.orderAmount;
   if (!amount) throw new CrmAuthError(400, "Order COGS amount is required.");
   const patch = {
     cogs_amount: amount,
     ...(extraction.orderNumber ? { manufacturer_order_ref: extraction.orderNumber } : {}),
+    ...(extraction.manufacturer ? { manufacturer_name: extraction.manufacturer } : {}),
     manufacturer_order_url: gmailUrl(message)
   };
 
   if (candidate.entryId) {
     const { error } = await supabase.from("crm_quote_bookkeeping_entries").update(patch).eq("id", candidate.entryId);
     if (error) throw new CrmAuthError(502, "Order email matched, but COGS could not be updated.");
-    return;
+    await markCandidateOrdered(supabase, candidate, actor);
+    return { cogsApplied: true };
   }
 
   if (candidate.quoteId) {
@@ -456,6 +582,7 @@ async function applyOrderCogs(
       .update({
         materials_cost: amount,
         ...(extraction.orderNumber ? { manufacturer_order_ref: extraction.orderNumber } : {}),
+        ...(extraction.manufacturer ? { manufacturer_name: extraction.manufacturer } : {}),
         manufacturer_order_url: gmailUrl(message)
       })
       .eq("id", candidate.quoteId);
@@ -479,10 +606,14 @@ async function applyOrderCogs(
       { onConflict: "quote_id" }
     );
     if (error) throw new CrmAuthError(502, "Order email matched, but quote bookkeeping COGS could not be saved.");
-    return;
+    await markCandidateOrdered(supabase, candidate, actor);
+    return { cogsApplied: true };
   }
 
-  throw new CrmAuthError(400, "Order email matched a job that has no ledger target.");
+  // Matched a bare sold job with no ledger target: still mark it ordered, but the COGS
+  // has nowhere to land — surface it for manual entry instead of dropping the email.
+  await markCandidateOrdered(supabase, candidate, actor);
+  return { cogsApplied: false };
 }
 
 async function insertOrderCogsRecord(
@@ -515,6 +646,7 @@ export async function processOrderCogsInbox(
   const mailbox = normalizedMailbox(options.mailbox);
   const query = options.query || process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox);
   const maxResults = maxResultsValue(options.maxResults);
+  const actor: CrmActor = { email: options.actorEmail || "order-cogs" };
   const candidates = await loadOrderCogsCandidates(supabase);
   const accessToken = options.messageIds?.length ? null : await getGmailAccessToken();
   const messages = options.messageIds?.length
@@ -539,14 +671,23 @@ export async function processOrderCogsInbox(
       const message = accessToken ? await getGmailMessage(accessToken, listed.id) : ({ id: listed.id } as GmailMessage);
       const headers = message.payload?.headers;
       const text = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
-      const extraction = extractOrderCogsFromText(text);
+      const extraction = extractOrderCogs(text, getHeader(headers, "From"));
       const match = matchOrderCogs(extraction, candidates);
       const review = reviewStatus(extraction, match);
       const now = new Date().toISOString();
 
+      // A confident match flips the matched job to "ordered" and writes COGS. If the
+      // match has no ledger row (a bare sold job), the job is still marked ordered but
+      // the COGS lands in "needs_review" for manual entry rather than being lost.
+      let cogsApplied = true;
       if (review.canApply && match.candidate) {
-        await applyOrderCogs(supabase, match.candidate, extraction, message);
+        ({ cogsApplied } = await applyOrderCogs(supabase, match.candidate, extraction, message, actor));
       }
+      const status = review.canApply && !cogsApplied ? "needs_review" : review.status;
+      const reason =
+        review.canApply && !cogsApplied
+          ? `${review.reason} Job marked ordered, but no ledger row exists yet — enter COGS manually.`
+          : review.reason;
 
       const record = await insertOrderCogsRecord(supabase, {
         mailbox_email: mailbox,
@@ -567,11 +708,11 @@ export async function processOrderCogsInbox(
         matched_job_id: match.candidate?.jobId || null,
         matched_quote_id: match.candidate?.quoteId || null,
         matched_bookkeeping_entry_id: match.candidate?.entryId || null,
-        match_status: review.status,
+        match_status: status,
         match_confidence: match.confidence,
-        match_reason: review.reason,
+        match_reason: reason,
         processed_at: now,
-        applied_at: review.canApply ? now : null,
+        applied_at: review.canApply && cogsApplied ? now : null,
         error_message: null,
         raw: {
           actorEmail: options.actorEmail || null,
