@@ -511,6 +511,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
   const inner = (
       <div style={embedded ? embeddedPanelStyle : panelStyle}>
+        {!embedded ? (
         <header style={headerStyle}>
           <div>
             <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7 }}>
@@ -554,6 +555,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             </button>
           </div>
         </header>
+        ) : null}
 
         {quote ? (
           <div style={floatingTotalStyle} aria-label="Quote total">
@@ -612,6 +614,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             {/* Sticky add bar: product line + room quick-add stay pinned at the top
                 while the windows scroll underneath. */}
             <div style={stickyAddBar}>
+            {embedded ? (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4 }}>
+                <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">✕</button>
+              </div>
+            ) : null}
             {/* Product line tiles — pick which product the room buttons add. */}
             <div style={sectionLabel}>Product line</div>
             <div style={tileRow}>
@@ -1053,6 +1060,37 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             </button>
 
             <Adjustments key={quote.id} quote={quote} busy={busy} onSave={saveAdjustments} />
+
+            {/* Bottom action bar (dedicated page only) — customer/total + send/contract/link.
+                On the overlay mode these live in the header; here they go at the bottom
+                so the top stays clean for product/room add-buttons. */}
+            {embedded ? (
+              <div style={{ marginTop: 16, padding: 14, borderTop: "2px solid #0b0b0b", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div>
+                  <strong>{quote?.customer_name || quote?.quote_number || "Quote"}</strong>
+                  <span style={{ marginLeft: 8, fontSize: 16 }}>{money(quote?.quote_total)}</span>
+                  <span style={{ ...savingPill, marginLeft: 8 }}>{busy ? "Saving…" : "Saved"}</span>
+                </div>
+                <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <div style={{ display: "inline-flex", border: "1px solid #d8d5cf", borderRadius: 6, overflow: "hidden" }}>
+                    {(["both", "email", "sms"] as const).map((c) => (
+                      <button key={c} type="button" style={{ ...segBtn, ...(sendChannel === c ? segBtnActive : {}) }} onClick={() => setSendChannel(c)}>
+                        {c === "both" ? "Email+Text" : c === "email" ? "Email" : "Text"}
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={sendToCustomer} disabled={busy} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
+                    Send
+                  </button>
+                  <button type="button" onClick={openContract} style={closeBtn}>
+                    Contract
+                  </button>
+                  <button type="button" onClick={shareLink} style={closeBtn}>
+                    {shareUrl ? "Link ✓" : "Link"}
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {measuringId ? (() => {
               const target = quote.lineItems.find((x) => x.id === measuringId);
