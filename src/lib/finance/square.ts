@@ -16,6 +16,7 @@ export const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN || "";
 export const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID || "";
 export const SQUARE_WEBHOOK_URL = process.env.SQUARE_WEBHOOK_URL || "";
 export const SQUARE_WEBHOOK_SIGNING_KEY = process.env.SQUARE_WEBHOOK_SIGNING_KEY || "";
+const SQUARE_API_BASE = SQUARE_ENV === "production" ? "https://connect.squareup.com" : "https://connect.squareupsandbox.com";
 
 export function isSquareConfigured(): boolean {
   return Boolean(SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID);
@@ -58,7 +59,7 @@ export async function createSquarePaymentLink(input: {
   buyerEmail?: string | null;
 }): Promise<SquarePaymentLink> {
   if (!isSquareConfigured()) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
-  const res = await fetch("https://connect.squareapis.com/v2/online-checkout/payment-links", {
+  const res = await fetch(`${SQUARE_API_BASE}/v2/online-checkout/payment-links`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
@@ -66,16 +67,18 @@ export async function createSquarePaymentLink(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      idempotencyKey: `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
+      idempotency_key: `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
       description: input.title,
-      checkoutOptions: { allowTipping: false, askForShippingAddress: false },
-      prePopulatedData: input.buyerEmail ? { buyerEmail: input.buyerEmail } : undefined,
-      paymentNote: `quote:${input.quoteId} type:${input.paymentType}`,
+      checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
+      pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,
+      payment_note: `quote:${input.quoteId} type:${input.paymentType}`,
       order: {
-        locationId: SQUARE_LOCATION_ID,
-        referenceId: input.quoteId,
+        location_id: SQUARE_LOCATION_ID,
+        reference_id: input.quoteId,
         metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
-        lineItems: [{ name: input.title, basePriceMoney: { amount: input.amountCents, currency: "USD" } }],
+        line_items: [
+          { name: input.title, quantity: "1", base_price_money: { amount: input.amountCents, currency: "USD" } },
+        ],
       },
     }),
   });
@@ -83,8 +86,11 @@ export async function createSquarePaymentLink(input: {
     const detail = await res.text();
     throw new Error(`Square payment link failed (${res.status}): ${detail.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { paymentLink?: { id?: string; url?: string } };
-  const link = data.paymentLink;
+  const data = (await res.json()) as {
+    payment_link?: { id?: string; url?: string };
+    paymentLink?: { id?: string; url?: string };
+  };
+  const link = data.payment_link ?? data.paymentLink;
   if (!link?.id || !link.url) throw new Error("Square did not return a payment link URL.");
   return { id: link.id, url: link.url };
 }
@@ -97,7 +103,15 @@ export type SquarePaymentFacts = {
   amountCents: number;
   quoteId: string | null;
   paymentType: string | null;
+  orderId: string | null;
 };
+
+function parsePaymentNote(note: unknown): { quoteId: string | null; paymentType: string | null } {
+  if (typeof note !== "string") return { quoteId: null, paymentType: null };
+  const quoteId = note.match(/(?:^|\s)quote:([^\s]+)/)?.[1] ?? null;
+  const paymentType = note.match(/(?:^|\s)type:([^\s]+)/)?.[1] ?? null;
+  return { quoteId, paymentType };
+}
 
 export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | null {
   const e = event as { type?: string; data?: { object?: Record<string, unknown> | null } };
@@ -113,6 +127,8 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     order_id?: string;
     reference_id?: string;
     referenceId?: string;
+    note?: string;
+    payment_note?: string;
     metadata?: Record<string, string> | null;
   };
   const id = payment.id || payment.uid;
@@ -120,9 +136,41 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
   const amountCents =
     Number(payment.total_money?.amount ?? payment.amount_money?.amount ?? 0) || 0;
   const meta = payment.metadata ?? {};
-  const quoteId = meta.quote_id || payment.reference_id || payment.referenceId || null;
-  const paymentType = meta.payment_type ?? null;
-  return { squarePaymentId: id, amountCents, quoteId, paymentType };
+  const note = parsePaymentNote(payment.note ?? payment.payment_note);
+  const quoteId = meta.quote_id || payment.reference_id || payment.referenceId || note.quoteId || null;
+  const paymentType = meta.payment_type ?? note.paymentType ?? null;
+  const orderId = payment.order_id ?? null;
+  return { squarePaymentId: id, amountCents, quoteId, paymentType, orderId };
+}
+
+export async function retrieveSquareOrderPaymentFacts(orderId: string): Promise<Partial<SquarePaymentFacts> | null> {
+  if (!orderId || !SQUARE_ACCESS_TOKEN) return null;
+  const res = await fetch(`${SQUARE_API_BASE}/v2/orders/${encodeURIComponent(orderId)}`, {
+    headers: {
+      Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
+      "Square-Version": SQUARE_VERSION,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    order?: {
+      id?: string;
+      reference_id?: string;
+      referenceId?: string;
+      metadata?: Record<string, string> | null;
+      total_money?: { amount?: number };
+    };
+  };
+  const order = data.order;
+  if (!order) return null;
+  const meta = order.metadata ?? {};
+  return {
+    orderId: order.id ?? orderId,
+    quoteId: meta.quote_id || order.reference_id || order.referenceId || null,
+    paymentType: meta.payment_type ?? null,
+    amountCents: Number(order.total_money?.amount ?? 0) || 0,
+  };
 }
 
 /** Is this a Square event we should record a payment for? */
