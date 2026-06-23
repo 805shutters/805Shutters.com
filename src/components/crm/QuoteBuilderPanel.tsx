@@ -590,24 +590,24 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 const active = t.type === activeType;
                 return (
                   <button key={t.type} type="button" onClick={() => setActiveType(t.type)}
-                    style={{ ...productTile, borderColor: active ? "#bdb9b0" : "#d8d5cf", background: active ? "#dedbd5" : "#ebeae6", color: "#0b0b0b", boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none" }}>
+                    style={{ ...productTile, borderRadius: 0, marginLeft: -2, marginTop: -2, borderColor: active ? "#bdb9b0" : "#d8d5cf", background: active ? "#dedbd5" : "#ebeae6", color: "#0b0b0b", boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none" }}>
                     <span style={productTileLabel}>{t.label}</span>
                   </button>
                 );
               })}
             </div>
-            <div style={{ ...tileRow, marginTop: 4 }}>
+            <div style={tileRow}>
               {ROOM_PRESETS.map((room) => (
-                <button key={room} type="button" style={roomPill} disabled={busy || !activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
+                <button key={room} type="button" style={flushRoomPill} disabled={busy || !activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
               ))}
-              <span style={{ display: "inline-flex", gap: 4 }}>
+              <span style={{ display: "inline-flex", gap: 0 }}>
                 <input value={customRoom} onChange={(e) => setCustomRoom(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && customRoom.trim()) { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); } }}
-                  placeholder="Custom room…" style={{ ...customRoomInput }} />
-                <button type="button" style={roomPill} disabled={busy || !activeTile || !customRoom.trim()}
+                  placeholder="Custom room…" style={{ ...customRoomInput, borderRadius: 0, marginLeft: -1, marginTop: -1 }} />
+                <button type="button" style={flushRoomPill} disabled={busy || !activeTile || !customRoom.trim()}
                   onClick={() => { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); }}>+ Add</button>
               </span>
-              <button type="button" style={{ ...roomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>+ Blank window</button>
+              <button type="button" style={{ ...flushRoomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>+ Blank window</button>
             </div>
           </div>
         ) : null}
@@ -1517,7 +1517,11 @@ const embeddedPanelStyle: CSSProperties = {
   background: "#ffffff",
   color: "#0b0b0b",
   width: "100%",
-  minHeight: "100vh",
+  // Fixed-height app shell: the panel is exactly the viewport, and ONLY the
+  // line-item region (flex:1, overflowY:auto) scrolls. That keeps the product +
+  // room button bar pinned flush to the very top while windows scroll under it.
+  height: "100dvh",
+  overflow: "hidden",
   display: "flex",
   flexDirection: "column",
 };
@@ -1576,7 +1580,9 @@ const topBarStyle: CSSProperties = {
   position: "relative",
   background: "#ffffff",
   borderBottom: "2px solid #0b0b0b",
-  padding: "6px 12px",
+  // Flush to the very top — minimal padding so the bar wastes no vertical space.
+  // 2px top/left cushion absorbs the buttons' negative collapse margins.
+  padding: "2px 4px",
   flexShrink: 0,
   zIndex: 10,
 };
@@ -1588,7 +1594,7 @@ const errorStyle: CSSProperties = { color: "#4d4d49", background: "#f4f4f2", pad
 const pricingReferencePanel: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 8, padding: 12, marginBottom: 14, background: "#fbfbfa" };
 const priceCellStyle: CSSProperties = { border: "1px solid #e5e7eb", padding: "5px 7px", textAlign: "right", whiteSpace: "nowrap" };
 const sectionLabel: CSSProperties = { fontSize: 11, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7, marginBottom: 8, fontWeight: 600 };
-const tileRow: CSSProperties = { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" };
+const tileRow: CSSProperties = { display: "flex", gap: 0, flexWrap: "wrap", alignItems: "stretch" };
 const productTile: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -1623,6 +1629,21 @@ const roomPill: CSSProperties = {
   fontWeight: 700,
   color: "#10202a",
   minHeight: 44,
+};
+// Top-bar variant of roomPill: square edges + negative margins so the 1px
+// borders collapse into single dividers and the pills tile flush, no gaps.
+const flushRoomPill: CSSProperties = {
+  border: "1px solid #c8d2d8",
+  background: "#edf3f6",
+  borderRadius: 0,
+  padding: "10px 14px",
+  cursor: "pointer",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#10202a",
+  minHeight: 44,
+  marginLeft: -1,
+  marginTop: -1,
 };
 const customRoomInput: CSSProperties = {
   border: "1px solid #c8d2d8",
