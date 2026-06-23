@@ -615,8 +615,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         {!quote || !catalog ? (
           <p style={{ padding: 24 }}>Loading…</p>
         ) : (
-          <div style={{ padding: "8px 16px 16px", overflowY: "auto", flex: 1, minHeight: 0 }}>
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ padding: "6px 16px 16px", overflowY: "auto", flex: 1, minHeight: 0 }}>
+            {/* Compact meta strip — versions on the left, pricing source + reference
+                on the right. The verbose provisional note lives in the hover tooltip
+                (it's also shown per-product in the dropdowns) to save vertical space. */}
+            <div style={metaBar}>
               <span style={{ fontSize: 12, opacity: 0.7 }}>Versions:</span>
               {versions.map((v) => (
                 <button
@@ -629,25 +632,22 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   {v.signed ? " ✓" : ""}
                 </button>
               ))}
-              <button type="button" style={addBtn} disabled={busy} onClick={addVersion}>
-                + Add version
+              <button type="button" style={ghostBtn} disabled={busy} onClick={addVersion}>
+                + Version
               </button>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "0 0 12px", flexWrap: "wrap" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#4d4d49" }}>
-                Pricing source: {catalog.source}
-                {catalog.effectiveDate ? ` (${catalog.effectiveDate})` : ""}. Shutter products marked provisional use the legacy MTS shutter rate table until a current guide replaces it.
-              </p>
+              <span
+                title={`Pricing source: ${catalog.source}${catalog.effectiveDate ? ` (${catalog.effectiveDate})` : ""}. Shutter products marked provisional use the legacy MTS shutter rate table until a current guide replaces it.`}
+                style={{ marginLeft: "auto", fontSize: 11, color: "#8a8a85", cursor: "help", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 360 }}
+              >
+                {catalog.source}{catalog.effectiveDate ? ` · ${catalog.effectiveDate}` : ""}
+              </span>
               <button type="button" style={ghostBtn} disabled={busy} onClick={togglePricingReference}>
-                {showPricingReference ? "Hide pricing reference" : "Pricing reference"}
+                {showPricingReference ? "Hide pricing" : "Pricing ref"}
               </button>
             </div>
             {showPricingReference ? (
               pricingReference ? <PricingReferencePanel reference={pricingReference} /> : <p style={{ fontSize: 13, opacity: 0.7 }}>Loading pricing reference...</p>
             ) : null}
-
-            <div style={{ height: 1, background: "#eeeeeb", margin: "16px 0" }} />
 
             {/* Per-line discount toolbar — apply a preset % to all or selected windows. */}
             <div style={discountToolbar}>
@@ -1664,6 +1664,13 @@ const sizeChip: CSSProperties = {
   color: "#10202a",
   minHeight: 44,
   minWidth: 160,
+};
+const metaBar: CSSProperties = {
+  display: "flex",
+  gap: 6,
+  alignItems: "center",
+  flexWrap: "wrap",
+  marginBottom: 8,
 };
 const discountToolbar: CSSProperties = {
   display: "flex",
