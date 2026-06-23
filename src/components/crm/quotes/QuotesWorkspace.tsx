@@ -1,10 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmJob, CrmQuote, CrmQuoteStatus } from "@/lib/crm/types";
 import { PricingGuidePanel } from "@/components/crm/PricingGuidePanel";
-import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { STATUS_LABELS, getNextStatus, getAdvanceLabel } from "@/lib/quote/lifecycle";
 import { buildQuoteWorkspaceBuckets } from "@/lib/crm/quote-workspace";
 
@@ -107,12 +107,10 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
   const activeQuotes = buckets.activeQuotes;
   const activeQuote = useMemo(() => quotes.find((q) => q.id === activeQuoteId) || null, [quotes, activeQuoteId]);
 
+  const router = useRouter();
   const openBuilder = useCallback((quoteId: string) => {
-    setActiveQuoteId(quoteId);
-    setSubtab("builder");
-    setError(null);
-    setMsg(null);
-  }, []);
+    router.push(`/crm/quote/${quoteId}`);
+  }, [router]);
 
   const buildForJob = useCallback(
     async (jobId: string) => {
@@ -281,10 +279,6 @@ export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
           onContract={(id) => { setActiveQuoteId(id); setSubtab("contract"); }}
           onOpenContractLink={openCustomerContract}
         />
-      ) : null}
-
-      {subtab === "builder" && activeQuoteId ? (
-        <QuoteBuilderPanel session={session} quoteId={activeQuoteId} onClose={() => setActiveQuoteId(null)} onChanged={onChanged} onSwitch={setActiveQuoteId} />
       ) : null}
 
       {subtab === "contract" && activeQuote ? (
