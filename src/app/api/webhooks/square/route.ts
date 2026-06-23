@@ -11,6 +11,14 @@ import {
 
 export const runtime = "nodejs";
 
+function webhookSignatureUrls(requestUrl: string) {
+  const urls = new Set([SQUARE_WEBHOOK_URL, requestUrl].filter(Boolean));
+  for (const url of [...urls]) {
+    urls.add(url.endsWith("/") ? url.slice(0, -1) : `${url}/`);
+  }
+  return [...urls];
+}
+
 // Square webhook: signature-verified + idempotent. When a customer pays a deposit
 // or balance via Square, record a credit_card payment on the quote's bookkeeping
 // entry (tagged with the Square payment id) so the ledger + alert boxes update.
@@ -22,7 +30,7 @@ export async function POST(request: NextRequest) {
   const signature =
     request.headers.get("x-square-hmacsha256-signature") ??
     request.headers.get("x-square-hmac-signature");
-  if (!verifySquareWebhookSignature(SQUARE_WEBHOOK_URL, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature)) {
+  if (!webhookSignatureUrls(request.url).some((url) => verifySquareWebhookSignature(url, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature))) {
     return new NextResponse("Invalid signature", { status: 401 });
   }
 
