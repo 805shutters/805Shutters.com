@@ -581,16 +581,16 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         {catalog && quote ? (
           <div style={topBarStyle}>
             {embedded ? (
-              <div style={{ position: "absolute", top: 4, right: 8 }}>
-                <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">✕</button>
+              <div style={{ position: "absolute", top: 2, right: 4 }}>
+                <button type="button" onClick={onClose} aria-label="Close quote builder" style={{ ...xBtn, width: 28, height: 28, fontSize: 14, borderRadius: 6 }} title="Exit to CRM">✕</button>
               </div>
             ) : null}
-            <div style={tileRow}>
+            <div style={embedded ? { ...tileRow, paddingRight: 36 } : tileRow}>
               {productTypes.map((t) => {
                 const active = t.type === activeType;
                 return (
                   <button key={t.type} type="button" onClick={() => setActiveType(t.type)}
-                    style={{ ...productTile, borderRadius: 0, marginLeft: -2, marginTop: -2, borderColor: active ? "#bdb9b0" : "#d8d5cf", background: active ? "#dedbd5" : "#ebeae6", color: "#0b0b0b", boxShadow: active ? "inset 0 0 0 1px #b1ada5" : "none" }}>
+                    style={{ ...productTile, marginLeft: -1, marginTop: -1, ...(active ? { background: "#0b0b0b", borderColor: "#0b0b0b", color: "#ffffff" } : { background: "#ffffff", borderColor: "#e2dfd8", color: "#3a3a36" }) }}>
                     <span style={productTileLabel}>{t.label}</span>
                   </button>
                 );
@@ -1579,10 +1579,10 @@ const xBtn: CSSProperties = {
 const topBarStyle: CSSProperties = {
   position: "relative",
   background: "#ffffff",
-  borderBottom: "2px solid #0b0b0b",
+  borderBottom: "1px solid #cfccc4",
   // Flush to the very top — minimal padding so the bar wastes no vertical space.
-  // 2px top/left cushion absorbs the buttons' negative collapse margins.
-  padding: "2px 4px",
+  // 1px top/left cushion absorbs the buttons' negative collapse margins.
+  padding: "1px 2px",
   flexShrink: 0,
   zIndex: 10,
 };
@@ -1599,24 +1599,23 @@ const productTile: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  border: "2px solid #d8d8d2",
-  borderRadius: 8,
-  padding: "10px 16px",
+  border: "1px solid #e2dfd8",
+  borderRadius: 0,
+  padding: "5px 11px",
   cursor: "pointer",
-  minWidth: 150,
-  minHeight: 46,
-  fontSize: 14,
-  fontWeight: 800,
-  lineHeight: 1.15,
+  minHeight: 28,
+  fontSize: 12.5,
+  fontWeight: 600,
+  lineHeight: 1.1,
   textAlign: "center",
-  textWrap: "balance",
+  whiteSpace: "nowrap",
 };
 const productTileLabel: CSSProperties = {
   display: "block",
-  color: "#0b0b0b",
-  fontSize: 14,
-  fontWeight: 800,
-  lineHeight: 1.15,
+  color: "inherit",
+  fontSize: 12.5,
+  fontWeight: 600,
+  lineHeight: 1.1,
   textAlign: "center",
 };
 const roomPill: CSSProperties = {
@@ -1633,26 +1632,26 @@ const roomPill: CSSProperties = {
 // Top-bar variant of roomPill: square edges + negative margins so the 1px
 // borders collapse into single dividers and the pills tile flush, no gaps.
 const flushRoomPill: CSSProperties = {
-  border: "1px solid #c8d2d8",
-  background: "#edf3f6",
+  border: "1px solid #e2dfd8",
+  background: "#f7f6f3",
   borderRadius: 0,
-  padding: "10px 14px",
+  padding: "5px 10px",
   cursor: "pointer",
-  fontSize: 13,
-  fontWeight: 700,
-  color: "#10202a",
-  minHeight: 44,
+  fontSize: 12,
+  fontWeight: 500,
+  color: "#3a3a36",
+  minHeight: 26,
   marginLeft: -1,
   marginTop: -1,
 };
 const customRoomInput: CSSProperties = {
-  border: "1px solid #c8d2d8",
-  background: "#fbfdfe",
-  borderRadius: 8,
-  padding: "10px 14px",
-  fontSize: 13,
-  width: 146,
-  minHeight: 44,
+  border: "1px solid #e2dfd8",
+  background: "#ffffff",
+  borderRadius: 0,
+  padding: "5px 10px",
+  fontSize: 12,
+  width: 118,
+  minHeight: 26,
 };
 const sizeChip: CSSProperties = {
   border: "1px solid #c8d2d8",
