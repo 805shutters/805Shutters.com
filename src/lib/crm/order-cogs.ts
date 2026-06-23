@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { getBrokeredGmailAccessToken } from "@/lib/crm/installation-invoices";
 import { advanceJobStatus, statusRank } from "@/lib/quote/lifecycle";
 import { CrmJobStatus, CrmQuoteStatus, CrmOrderCogsEmail, CrmOrderCogsEmailStatus } from "@/lib/crm/types";
 
@@ -78,6 +79,8 @@ export type ProcessOrderCogsOptions = {
   maxResults?: number;
   messageIds?: string[];
   actorEmail?: string;
+  /** Archive (remove from inbox) each recognized order email after processing. Default on. */
+  archive?: boolean;
 };
 
 export type ProcessOrderCogsResult = {
@@ -90,6 +93,8 @@ export type ProcessOrderCogsResult = {
   unmatched: number;
   skipped: number;
   errors: number;
+  archived: number;
+  archiveErrors: number;
   emails: CrmOrderCogsEmail[];
 };
 
@@ -118,25 +123,18 @@ function googleOAuthCredentials() {
   const clientSecret = envValue(["GMAIL_805_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "GOOGLE_CALENDAR_CLIENT_SECRET"]);
   const refreshToken = envValue(["GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN"]);
 
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new CrmAuthError(
-      503,
-      "805 Gmail order COGS puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID, GMAIL_805_CLIENT_SECRET, and GMAIL_805_REFRESH_TOKEN with Gmail readonly scope."
-    );
-  }
-
+  if (!clientId || !clientSecret || !refreshToken) return null;
   return { clientId, clientSecret, refreshToken };
 }
 
-async function getGmailAccessToken() {
-  const { clientId, clientSecret, refreshToken } = googleOAuthCredentials();
+async function refreshDirectAccessToken(credentials: { clientId: string; clientSecret: string; refreshToken: string }) {
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      refresh_token: refreshToken,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
+      refresh_token: credentials.refreshToken,
       grant_type: "refresh_token"
     })
   });
@@ -148,6 +146,44 @@ async function getGmailAccessToken() {
   const body = (await response.json()) as { access_token?: string };
   if (!body.access_token) throw new CrmAuthError(502, "Google did not return an access token for order COGS.");
   return body.access_token;
+}
+
+// Mirror the installation-invoice puller: use the direct GMAIL_805_* OAuth creds when
+// present, otherwise fall back to the shared Gmail access-token broker (the 805 prod
+// setup only has the broker configured). Same token is reused for read + archive.
+async function getGmailAccessToken(mailbox: string) {
+  const credentials = googleOAuthCredentials();
+  if (credentials) return refreshDirectAccessToken(credentials);
+
+  const brokered = await getBrokeredGmailAccessToken(mailbox);
+  if (brokered) return brokered;
+
+  throw new CrmAuthError(
+    503,
+    "805 Gmail order COGS puller is missing OAuth credentials. Set GMAIL_805_CLIENT_ID/SECRET/REFRESH_TOKEN (Gmail scope) or the GMAIL_ACCESS_TOKEN_BROKER_URL/SECRET broker."
+  );
+}
+
+/**
+ * Archive a processed message (remove it from the inbox). Needs Gmail `modify` scope —
+ * a readonly token returns 403, which the caller swallows so processing never fails just
+ * because archiving is unavailable.
+ */
+async function archiveGmailMessage(accessToken: string, messageId: string) {
+  const response = await fetch(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ removeLabelIds: ["INBOX"] })
+    }
+  );
+  if (!response.ok) {
+    throw new CrmAuthError(
+      response.status === 403 ? 403 : 502,
+      `Gmail archive failed with ${response.status}${response.status === 403 ? " (token lacks gmail.modify scope)" : ""}.`
+    );
+  }
 }
 
 async function gmailJson<T>(accessToken: string, url: string) {
@@ -647,8 +683,9 @@ export async function processOrderCogsInbox(
   const query = options.query || process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox);
   const maxResults = maxResultsValue(options.maxResults);
   const actor: CrmActor = { email: options.actorEmail || "order-cogs" };
+  const archiveEnabled = options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false";
   const candidates = await loadOrderCogsCandidates(supabase);
-  const accessToken = options.messageIds?.length ? null : await getGmailAccessToken();
+  const accessToken = options.messageIds?.length ? null : await getGmailAccessToken(mailbox);
   const messages = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
     : await listGmailMessages(accessToken as string, query, maxResults);
@@ -663,6 +700,8 @@ export async function processOrderCogsInbox(
     unmatched: 0,
     skipped: 0,
     errors: 0,
+    archived: 0,
+    archiveErrors: 0,
     emails: records
   };
 
@@ -727,6 +766,18 @@ export async function processOrderCogsInbox(
       if (record.match_status === "unmatched") result.unmatched += 1;
       if (record.match_status === "skipped") result.skipped += 1;
       if (record.match_status === "error") result.errors += 1;
+
+      // Archive recognized order emails (applied or queued for review) so the inbox
+      // stays clean. They remain tracked in the CRM order-COGS inbox with a Gmail link.
+      // Archive failure (e.g. a readonly token) never fails the pull.
+      if (archiveEnabled && accessToken && (record.match_status === "matched" || record.match_status === "needs_review")) {
+        try {
+          await archiveGmailMessage(accessToken, message.id);
+          result.archived += 1;
+        } catch {
+          result.archiveErrors += 1;
+        }
+      }
     } catch (error) {
       result.errors += 1;
       try {

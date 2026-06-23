@@ -208,6 +208,9 @@ describe("processOrderCogsInbox", () => {
         if (url.includes("/messages?")) {
           return jsonResponse({ messages: [{ id: "msg-norman" }, { id: "msg-review" }] });
         }
+        if (url.includes("/modify")) {
+          return jsonResponse({ id: "archived" });
+        }
         if (url.includes("/messages/msg-norman")) {
           return jsonResponse({
             id: "msg-norman",
@@ -252,6 +255,9 @@ describe("processOrderCogsInbox", () => {
     expect(result.processed).toBe(2);
     expect(result.matched).toBe(1);
     expect(result.needsReview).toBe(1);
+    // Both recognized order emails (matched + needs_review) are archived out of the inbox.
+    expect(result.archived).toBe(2);
+    expect(result.archiveErrors).toBe(0);
 
     // COGS written to the ledger row (the "bookkeeper spreadsheet" + customer file).
     const cogsUpdate = supabase.updates.find((u) => u.table === "crm_quote_bookkeeping_entries");

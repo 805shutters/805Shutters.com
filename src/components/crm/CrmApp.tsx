@@ -798,13 +798,14 @@ export function CrmApp({
         unmatched: number;
         skipped: number;
         errors: number;
+        archived: number;
       }>(session, "/api/crm/order-cogs/pull", {
         method: "POST",
         body: JSON.stringify({})
       });
       await refresh();
       setMessage(
-        `Order COGS pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors.`
+        `Order COGS pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors, ${result.archived} archived.`
       );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Order COGS emails could not be pulled.");

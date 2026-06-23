@@ -193,7 +193,7 @@ export function hasInstallationInvoiceGmailAuth() {
   return Boolean(googleOAuthCredentials() || gmailAccessTokenBrokerConfig());
 }
 
-async function getBrokeredGmailAccessToken(mailbox: string) {
+export async function getBrokeredGmailAccessToken(mailbox: string) {
   const broker = gmailAccessTokenBrokerConfig();
   if (!broker) return null;
 
