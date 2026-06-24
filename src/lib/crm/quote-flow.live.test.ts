@@ -30,7 +30,11 @@ import {
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const enabled = Boolean(url && key && process.env.E2E_LIVE_OK === "1");
+const liveRequested = process.env.E2E_LIVE_OK === "1";
+const missingRequiredEnv = [
+  ["NEXT_PUBLIC_SUPABASE_URL", url],
+  ["SUPABASE_SERVICE_ROLE_KEY", key],
+].flatMap(([name, value]) => (value ? [] : [name]));
 
 const CUSTOMER = {
   name: process.env.E2E_CUSTOMER_NAME ?? "E2E Test Customer",
@@ -39,16 +43,37 @@ const CUSTOMER = {
 };
 const actor = { email: "e2e@805shutters.com" };
 const MARK = "__E2E_LIVE_TEST__";
+const REQUIRED_TABLES = [
+  "crm_jobs",
+  "crm_quotes",
+  "crm_quote_line_items",
+  "crm_quote_designs",
+  "crm_quote_bookkeeping_entries",
+  "crm_customer_contracts",
+  "crm_customers",
+] as const;
 
-describe.skipIf(!enabled)("quote flow (LIVE front-to-back)", () => {
+describe.skipIf(!liveRequested)("quote flow (LIVE front-to-back)", () => {
   let supabase: SupabaseClient;
   let jobId = "";
   let quoteId = "";
 
   beforeAll(async () => {
+    if (missingRequiredEnv.length) {
+      throw new Error(`E2E_LIVE_OK=1 but required env is missing: ${missingRequiredEnv.join(", ")}`);
+    }
+
     supabase = createClient(url as string, key as string, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    for (const table of REQUIRED_TABLES) {
+      const { error } = await supabase.from(table).select("*").limit(1);
+      if (error) {
+        throw new Error(`E2E Supabase project is missing required table ${table}: ${error.message}`);
+      }
+    }
+
     const job = await createCrmJob(
       supabase,
       {
