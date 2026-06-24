@@ -246,6 +246,15 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </div>
       ) : null}
 
+      {/* Balance terms — shown above the sign section */}
+      <div style={{ marginTop: 20, padding: 14, border: "1px solid #d8d8d2", borderRadius: 8, background: "#fbfbfa", fontSize: 13, lineHeight: 1.6, color: "#4d4d49" }}>
+        <strong style={{ color: "#0b0b0b" }}>Payment at Installation</strong>
+        <p style={{ margin: "6px 0 0" }}>
+          The remaining balance will be collected at the time of installation for all items completed to your satisfaction.
+          If any item requires correction, payment for that item will be deferred until it is fully resolved — you only pay for what's done right.
+        </p>
+      </div>
+
       {!quote.signed && quote.allPriced ? (
         <div className="no-print">
           {selectionEmpty ? (
