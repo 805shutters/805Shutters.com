@@ -21,6 +21,20 @@ export function salesRepSmsNumberForName(assignedTo: string | null | undefined, 
   return null;
 }
 
+/**
+ * Which reps to text when an appointment is assigned to `assignedTo`.
+ * Business rule: Jessica's appointments alert BOTH Jessica and Mike (owner
+ * oversight); Mike's appointments alert ONLY Mike. Unknown/unassigned owners
+ * notify no one. Order is the notification order; duplicates are dropped later.
+ */
+export function assignmentRecipientReps(assignedTo: string | null | undefined): string[] {
+  const normalized = String(assignedTo || "").trim().toLowerCase();
+  if (!normalized || normalized === "unassigned") return [];
+  if (normalized.includes("jessica")) return ["Jessica", "Mike"];
+  if (normalized.includes("mike")) return ["Mike"];
+  return [];
+}
+
 function cleanText(value: string | null | undefined): string | null {
   const text = String(value || "").trim();
   return text || null;
@@ -70,12 +84,37 @@ export function buildCalendarAssignmentSms(input: CalendarAssignmentSmsInput): s
   ].filter(Boolean).join(" ");
 }
 
-export async function sendCalendarAssignmentSms(input: CalendarAssignmentSmsInput): Promise<SmsResult> {
-  const to = salesRepSmsNumberForName(input.assignedTo);
-  if (!to) return { sent: false, skipped: "no assigned salesperson sms number" };
+export type CalendarAssignmentSmsResult = {
+  sent: boolean;
+  deliveries: { rep: string; result: SmsResult }[];
+  skipped?: string;
+};
 
-  return sendSms({
-    to,
-    body: buildCalendarAssignmentSms(input)
-  });
+export async function sendCalendarAssignmentSms(
+  input: CalendarAssignmentSmsInput
+): Promise<CalendarAssignmentSmsResult> {
+  const reps = assignmentRecipientReps(input.assignedTo);
+  if (!reps.length) return { sent: false, deliveries: [], skipped: "no sms recipients for assignee" };
+
+  // Resolve each rep to a configured number, dropping reps with no number set
+  // and de-duping if two reps happen to share the same number.
+  const seenNumbers = new Set<string>();
+  const targets: { rep: string; to: string }[] = [];
+  for (const rep of reps) {
+    const to = salesRepSmsNumberForName(rep);
+    if (!to || seenNumbers.has(to)) continue;
+    seenNumbers.add(to);
+    targets.push({ rep, to });
+  }
+
+  if (!targets.length) {
+    return { sent: false, deliveries: [], skipped: "no configured sms numbers for recipients" };
+  }
+
+  const body = buildCalendarAssignmentSms(input);
+  const deliveries = await Promise.all(
+    targets.map(async ({ rep, to }) => ({ rep, result: await sendSms({ to, body }) }))
+  );
+
+  return { sent: deliveries.some((delivery) => delivery.result.sent), deliveries };
 }
