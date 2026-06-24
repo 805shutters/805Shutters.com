@@ -30,6 +30,9 @@ The Next.js rebuild now supports:
 - Optional Google Ads lead and phone conversion labels.
 - Optional server-side Meta Conversions API `Lead` event from `/api/leads/`,
   deduplicated with the browser event by lead ID.
+- Optional Telegram visitor alerts from `/api/visitor-alerts`, enabled only when
+  `NEXT_PUBLIC_TELEGRAM_VISITOR_ALERTS_ENABLED=true` and Telegram bot/chat env
+  vars are configured.
 
 Production env vars:
 
@@ -42,6 +45,9 @@ NEXT_PUBLIC_META_PIXEL_ID=
 META_PIXEL_ID=
 META_CAPI_ACCESS_TOKEN=
 META_CAPI_TEST_EVENT_CODE=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+NEXT_PUBLIC_TELEGRAM_VISITOR_ALERTS_ENABLED=false
 ```
 
 `META_CAPI_TEST_EVENT_CODE` is only for Events Manager testing and should be

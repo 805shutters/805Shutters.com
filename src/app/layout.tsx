@@ -7,6 +7,7 @@ import "./globals.css";
 import { ConditionalChrome } from "@/components/ConditionalChrome";
 import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
+import { VisitorTelegramTracking } from "@/components/VisitorTelegramTracking";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
 import { site } from "@/lib/site-data";
 import { localBusinessJsonLd } from "@/lib/structured-data";
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <TrackingScripts />
         <RouteTracking />
+        <VisitorTelegramTracking />
         <CrmAuthRedirect />
         <script
           type="application/ld+json"
