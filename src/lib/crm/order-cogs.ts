@@ -801,10 +801,11 @@ export async function processOrderCogsInbox(
       if (status === "error") result.errors += 1;
       if (review.canApply && cogsApplied) result.applied = (result.applied || 0) + 1;
 
-      // Archive recognized order emails (applied or queued for review) so the inbox
-      // stays clean. They remain tracked in the CRM order-COGS inbox with a Gmail link.
-      // Archive failure (e.g. a readonly token) never fails the pull.
-      if (archiveEnabled && accessToken && (status === "matched" || status === "needs_review")) {
+      // Archive ONLY emails we actually applied (job marked Ordered + COGS written).
+      // needs_review / unmatched stay in the inbox so a human can act on them — never
+      // archive an unresolved order out of sight (especially while the audit-log table
+      // is unavailable and can't track them). Archive failure never fails the pull.
+      if (archiveEnabled && accessToken && review.canApply && cogsApplied && status === "matched") {
         try {
           await archiveGmailMessage(accessToken, message.id);
           result.archived += 1;

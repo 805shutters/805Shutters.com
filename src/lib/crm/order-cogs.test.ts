@@ -264,8 +264,8 @@ describe("processOrderCogsInbox", () => {
     expect(result.processed).toBe(2);
     expect(result.matched).toBe(1);
     expect(result.needsReview).toBe(1);
-    // Both recognized order emails (matched + needs_review) are archived out of the inbox.
-    expect(result.archived).toBe(2);
+    // Only the applied (matched) email is archived; the needs_review one stays in the inbox.
+    expect(result.archived).toBe(1);
     expect(result.archiveErrors).toBe(0);
 
     // COGS written to the ledger row (the "bookkeeper spreadsheet" + customer file).
