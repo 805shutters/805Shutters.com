@@ -17,6 +17,10 @@ The homepage source currently shows:
 
 The Next.js rebuild now supports:
 
+- Vercel Web Analytics page views from `@vercel/analytics`.
+- Vercel Speed Insights real-user web-vitals collection from
+  `@vercel/speed-insights`.
+- Vercel custom events for successful lead submissions and tracked phone clicks.
 - Browser Meta Pixel PageView from `NEXT_PUBLIC_META_PIXEL_ID`.
 - Route-change PageView tracking for client-side navigation.
 - Browser Meta `Lead` event after a successful `/api/leads/` submission.
@@ -42,6 +46,14 @@ META_CAPI_TEST_EVENT_CODE=
 
 `META_CAPI_TEST_EVENT_CODE` is only for Events Manager testing and should be
 removed before normal production traffic.
+
+## Vercel dashboard setup
+
+Vercel Web Analytics must be enabled for the `805` project in the Vercel
+dashboard. After enabling or confirming it, deploy the site so Vercel creates
+the `/_vercel/insights/*` and generated intake routes. Speed Insights is
+available on all plans, but the dashboard should still be checked after deploy
+to confirm real-user samples are arriving.
 
 ## Immediate decision
 

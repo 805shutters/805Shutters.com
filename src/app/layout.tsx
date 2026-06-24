@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Archivo, Bodoni_Moda } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
@@ -59,6 +61,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
         <ConditionalChrome>{children}</ConditionalChrome>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

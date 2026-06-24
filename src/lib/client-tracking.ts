@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@vercel/analytics";
 import { getGoogleAdsId } from "@/lib/tracking-config";
 
 type Gtag = (...args: unknown[]) => void;
@@ -63,6 +64,13 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
     },
     eventId ? { eventID: eventId } : undefined
   );
+
+  track("Lead", {
+    interest: params.interest || "consultation",
+    city: params.city || null,
+    page_path: eventParams.page_path,
+    has_event_id: Boolean(eventId)
+  });
 }
 
 export function trackPhoneClick(location: string) {
@@ -81,5 +89,10 @@ export function trackPhoneClick(location: string) {
     content_name: "Phone Click",
     content_category: "window_treatments",
     phone_location: location
+  });
+
+  track("Phone Click", {
+    location,
+    page_path: window.location.pathname
   });
 }
