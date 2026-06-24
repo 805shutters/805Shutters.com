@@ -189,6 +189,17 @@ const legacyRedirects = Object.entries(legacyRedirectSources).flatMap(([destinat
   }))
 );
 
+// Canonicalize the apex domain to the www host so non-www requests don't
+// split ranking signals across two hostnames. The host value is anchored
+// (^...$) so it matches ONLY "805shutters.com" and never the www host,
+// which prevents an infinite redirect loop.
+const canonicalHostRedirect = {
+  source: "/:path*",
+  has: [{ type: "host", value: "^805shutters\\.com$" }],
+  destination: "https://www.805shutters.com/:path*",
+  permanent: true
+};
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -212,7 +223,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return legacyRedirects;
+    return [canonicalHostRedirect, ...legacyRedirects];
   }
 };
 
