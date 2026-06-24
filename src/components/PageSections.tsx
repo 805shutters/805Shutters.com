@@ -1237,6 +1237,38 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </section>
       )}
 
+      <section className="home-about" id="about" aria-label="About 805 Shutters">
+        <div className="content-wrap home-about-inner">
+          <p className="eyebrow">About Us</p>
+          <h2>Locally owned and family operated, right here in Ventura County.</h2>
+          <p>
+            805 Shutters, Shades &amp; Blinds is a family-owned company led by owner Ken Hill.
+            For more than 30 years, homeowners and businesses across Ventura County have trusted
+            us for custom shutters, shades, and blinds &mdash; measured, sold, and installed by a
+            local team, never a national call center.
+          </p>
+          <p>
+            From Camarillo and Thousand Oaks to Ventura, Oxnard, and Simi Valley, we cover the
+            whole county with personal service from the first consultation through final installation.
+          </p>
+          <p className="home-about-promise">
+            We stand behind all of our products &mdash; and we won&rsquo;t stop until you&rsquo;re completely satisfied.
+          </p>
+          <p className="home-about-promise-sub">
+            That commitment to customer service is the reason our neighbors keep coming back and sending
+            their friends. If something isn&rsquo;t right, we make it right.
+          </p>
+          <div className="home-about-actions">
+            <Link className="button primary" href="/book-consultation/">
+              Book your free consultation
+            </Link>
+            <Link className="home-about-link" href="/about/">
+              More about 805 Shutters &rarr;
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="installed-portfolio">
         <div className="content-wrap installed-portfolio-head">
           <p className="eyebrow">{commercialMode ? "Commercial Portfolio" : "Installed Portfolio"}</p>

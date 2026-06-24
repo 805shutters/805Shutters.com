@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { commercialBrand } from "@/lib/commercial-mode-data";
@@ -117,6 +117,19 @@ export function SiteHeader() {
     });
   };
 
+  // On the homepage the "About Us" link smooth-scrolls to the About band instead
+  // of doing a hash navigation; on every other page it falls back to /#about.
+  const scrollToAbout = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isHome) {
+      return;
+    }
+    const target = document.getElementById("about");
+    if (target) {
+      event.preventDefault();
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <>
       <header className="site-header-shell">
@@ -190,6 +203,13 @@ export function SiteHeader() {
               </span>
             </span>
           </div>
+          <Link
+            className="masthead-link masthead-about-link"
+            href="/#about"
+            onClick={scrollToAbout}
+          >
+            About Us
+          </Link>
         </div>
         <Link className={`brand ${isCommercialMode ? "brand--commercial" : "brand--exact"}`} href="/" aria-label={brandName}>
           <span className="brand-text-logo" aria-hidden="true">
