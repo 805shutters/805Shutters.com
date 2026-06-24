@@ -172,7 +172,10 @@ export function buildQuoteInstallerNotesMeta(
 
 export function getQuoteEmailNote(source: unknown): string {
   const meta = parseQuoteMeta(source);
-  return typeof meta.__customerEmailNote === "string" ? meta.__customerEmailNote : "";
+  const custom = typeof meta.__customerEmailNote === "string" ? meta.__customerEmailNote : "";
+  const payment =
+    "Pay your deposit: Venmo @ken-hill-13 · Zelle 805-806-9344 · Card payment available on your quote review page.";
+  return custom ? `${custom}\n\n${payment}` : payment;
 }
 
 export function getQuoteBuilderNote(source: unknown): string {

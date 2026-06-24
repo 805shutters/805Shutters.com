@@ -386,6 +386,18 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           </div>
         </div>
 
+        {/* Payment options — visible to the rep + included in the default message */}
+        <div className="rounded-lg border border-slate-200 bg-emerald-50 p-3 space-y-1">
+          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+            Payment options (included in the message)
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
+            <span>📱 Venmo: <strong>@ken-hill-13</strong></span>
+            <span>🏦 Zelle: <strong>805-806-9344</strong></span>
+            <span>💳 Card: <strong>on the quote page</strong></span>
+          </div>
+        </div>
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={onClose} disabled={sendQuote.isPending}>
             Cancel
