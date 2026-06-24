@@ -1,14 +1,12 @@
 /**
  * Workflow Runs — React Hooks
  *
- * Surfaces the workflow_runs table + v_workflow_health view for Playwright
- * automation workflows (3DB scheduler, 3DB ledger, Rockwood, Lowe's, etc).
- *
- * Mirrors the useAgentOps pattern with foreground-only React Query polling.
+ * Order-agent workflow history is not wired in the 805 Supabase quote port yet.
+ * Keep the React Query surface stable and return empty history until the 805
+ * workflow integration exists.
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
 
 // ============================================================
 // Types
@@ -78,12 +76,7 @@ export function useWorkflowHealth() {
   return useQuery({
     queryKey: workflowRunsKeys.health(),
     queryFn: async (): Promise<WorkflowHealthRow[]> => {
-      const { data, error } = await supabase
-        .from("v_workflow_health" as never)
-        .select("*")
-        .order("workflow_id", { ascending: true });
-      if (error) throw new Error(`Failed to fetch workflow health: ${error.message}`);
-      return (data as unknown as WorkflowHealthRow[]) ?? [];
+      return [];
     },
     refetchInterval: 90_000,
     refetchIntervalInBackground: false,
@@ -99,15 +92,7 @@ export function useWorkflowRuns(workflowId: string | null, limit = 50) {
   return useQuery({
     queryKey: workflowRunsKeys.runs(workflowId, limit),
     queryFn: async (): Promise<WorkflowRun[]> => {
-      let q = supabase
-        .from("workflow_runs" as never)
-        .select("*")
-        .order("started_at", { ascending: false })
-        .limit(limit);
-      if (workflowId) q = q.eq("workflow_id", workflowId);
-      const { data, error } = await q;
-      if (error) throw new Error(`Failed to fetch workflow runs: ${error.message}`);
-      return (data as unknown as WorkflowRun[]) ?? [];
+      return [];
     },
     refetchInterval: 90_000,
     refetchIntervalInBackground: false,
@@ -182,7 +167,7 @@ export const WORKFLOW_LABELS: Record<string, { name: string; brand: string }> = 
   "3db_norman_ship_notice": { name: "3DB Norman Ship Notice", brand: "3 Day Blinds" },
   "3db_norman_delivery": { name: "3DB Norman Delivery Tracker", brand: "3 Day Blinds" },
   "3db_norman_order_agent": { name: "3DB Norman Order Agent", brand: "3 Day Blinds" },
-  quote_norman_order_entry: { name: "Quote Norman Order Entry", brand: "805/MTS Quotes" },
+  quote_norman_order_entry: { name: "Quote Norman Order Entry", brand: "805 Quotes" },
   rockwood_scheduled: { name: "Rockwood Scheduler", brand: "Rockwood" },
   rockwood_message: { name: "Rockwood Message Left", brand: "Rockwood" },
   rockwood_listener: { name: "Rockwood Listener", brand: "Rockwood" },

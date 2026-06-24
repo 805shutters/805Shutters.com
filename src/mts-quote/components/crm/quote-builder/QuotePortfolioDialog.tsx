@@ -12,7 +12,7 @@ import {
 import { Button } from "@mts/components/ui/button";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
-import { uploadMultipleToR2 } from "@mts/lib/r2-upload";
+import { uploadMultipleToR2 } from "@mts/lib/quote-image-upload";
 import { getPortfolioManufacturerImages, type SalesQuoteMedia } from "@mts/lib/quoteProductImages";
 import type { SalesQuote, SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { toast } from "sonner";

@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { toast } from "sonner";
 import {
@@ -37,6 +36,7 @@ import type { SalesQuote } from "@mts/types/quote";
 
 type Channel = "email" | "sms" | "both";
 type EmailType = "quote_only" | "sold_contract";
+type SendQuoteResult = { email?: boolean; sms?: boolean; errors: string[] };
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -75,58 +75,13 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   const contractEmailNeedsSignature =
     needsEmail && emailType === "sold_contract" && !quote.signed_at && !quote.customer_signature;
 
-  const sendQuote = useMutation({
-    mutationFn: async () => {
+  const sendQuote = useMutation<SendQuoteResult, Error>({
+    mutationFn: async (): Promise<SendQuoteResult> => {
       // Validate channel-specific inputs
       if (needsEmail && cleanedEmails.length === 0) throw new Error("Customer email is required");
       if (needsPhone && !phone.trim()) throw new Error("Customer phone is required");
 
-      const note = customMessage.trim() || undefined;
-      const results: { email?: boolean; sms?: boolean; errors: string[] } = { errors: [] };
-
-      if (needsEmail) {
-        const { data, error } = await supabase.functions.invoke("send-quote-email", {
-          body: {
-            quoteId: quote.id,
-            customMessage: note,
-            emailType,
-            recipientEmails: cleanedEmails,
-          },
-        });
-        if (error || (data as any)?.error) {
-          results.errors.push(`Email: ${await getFunctionErrorMessage(error, data)}`);
-        } else {
-          results.email = true;
-        }
-      }
-
-      if (needsPhone) {
-        const { data, error } = await supabase.functions.invoke("send-quote-sms", {
-          body: {
-            quoteId: quote.id,
-            customMessage: note,
-            recipientPhone: phone.trim(),
-            bypassBusinessHours: bypassHours,
-          },
-        });
-        const d = data as any;
-        if (error || d?.error) {
-          if (d?.code === "BUSINESS_HOURS") {
-            results.errors.push(
-              "SMS blocked outside business hours. Check 'Send anyway' to override."
-            );
-          } else {
-            results.errors.push(`SMS: ${await getFunctionErrorMessage(error, data)}`);
-          }
-        } else {
-          results.sms = true;
-        }
-      }
-
-      if (results.errors.length > 0 && !results.email && !results.sms) {
-        throw new Error(results.errors.join(" · "));
-      }
-      return results;
+      throw new Error("805 quote email and SMS sending is not wired yet.");
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
@@ -269,7 +224,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
                 {emails.map((emailValue, index) => (
                   <div key={index} className="flex items-center gap-2">
                     <Input
-                      id={index === 0 ? "send-quote-email" : undefined}
+                      id={index === 0 ? "quote-recipient-email" : undefined}
                       type="email"
                       value={emailValue}
                       onChange={(e) => updateEmailAt(index, e.target.value)}
@@ -431,23 +386,6 @@ function getDefaultEmailType(quote: SalesQuote): EmailType {
   return quote.status === "sold" || quote.signed_at || quote.customer_signature
     ? "sold_contract"
     : "quote_only";
-}
-
-async function getFunctionErrorMessage(error: unknown, data: unknown) {
-  const dataError = (data as any)?.error;
-  if (dataError) return dataError;
-
-  const context = (error as any)?.context;
-  if (context?.json) {
-    try {
-      const body = await context.clone().json();
-      if (body?.error) return body.error;
-    } catch {
-      // Fall through to the Supabase error message.
-    }
-  }
-
-  return (error as Error | undefined)?.message ?? "Unknown edge function error";
 }
 
 // ---- Channel picker button ----

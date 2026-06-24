@@ -152,7 +152,7 @@ export function SalesLedger({ quotes, onOpenQuote }: SalesLedgerProps) {
                   <TableHead className="text-right whitespace-nowrap">Deposit</TableHead>
                   <TableHead className="text-right whitespace-nowrap">Balance</TableHead>
                   <TableHead className="whitespace-nowrap">Pay Method</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">MTS Profit</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Net Profit</TableHead>
                   <TableHead className="whitespace-nowrap">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -198,10 +198,10 @@ export function SalesLedger({ quotes, onOpenQuote }: SalesLedgerProps) {
                   <TableCell
                     className={cn(
                       "text-right tabular-nums",
-                      totals.mtsProfit > 0 ? "text-emerald-700" : "text-rose-700"
+                      totals.netProfit > 0 ? "text-emerald-700" : "text-rose-700"
                     )}
                   >
-                    {formatMoney(totals.mtsProfit)}
+                    {formatMoney(totals.netProfit)}
                   </TableCell>
                   <TableCell />
                 </TableRow>
@@ -220,7 +220,7 @@ function LedgerRowCells({ row, onOpen }: { row: LedgerRow; onOpen?: () => void }
   const dateSold = row.dateSold ? format(new Date(row.dateSold), "MMM d, yyyy") : "—";
   const hasCogs = row.costOfGoods > 0;
   const profitColor =
-    row.mtsProfit > 0 ? "text-emerald-700" : row.mtsProfit < 0 ? "text-rose-700" : "";
+    row.netProfit > 0 ? "text-emerald-700" : row.netProfit < 0 ? "text-rose-700" : "";
 
   return (
     <TableRow className={cn("hover:bg-muted/40", onOpen && "cursor-pointer")} onClick={onOpen}>
@@ -261,7 +261,7 @@ function LedgerRowCells({ row, onOpen }: { row: LedgerRow; onOpen?: () => void }
       </TableCell>
       <TableCell className={cn("text-right tabular-nums font-semibold", profitColor)}>
         {hasCogs ? (
-          formatMoney(row.mtsProfit)
+          formatMoney(row.netProfit)
         ) : (
           <span className="text-muted-foreground italic text-xs">pending</span>
         )}
@@ -284,7 +284,7 @@ function LedgerRowCard({ row, onOpen }: { row: LedgerRow; onOpen?: () => void })
   const dateSold = row.dateSold ? format(new Date(row.dateSold), "MMM d, yyyy") : "—";
   const hasCogs = row.costOfGoods > 0;
   const profitColor =
-    row.mtsProfit > 0 ? "text-emerald-700" : row.mtsProfit < 0 ? "text-rose-700" : "";
+    row.netProfit > 0 ? "text-emerald-700" : row.netProfit < 0 ? "text-rose-700" : "";
 
   return (
     <article
@@ -338,8 +338,8 @@ function LedgerRowCard({ row, onOpen }: { row: LedgerRow; onOpen?: () => void })
           muted={!row.paymentMethod}
         />
         <LedgerCardMetric
-          label="MTS Profit"
-          value={hasCogs ? formatMoney(row.mtsProfit) : "pending"}
+          label="Net Profit"
+          value={hasCogs ? formatMoney(row.netProfit) : "pending"}
           className={hasCogs ? profitColor : "text-muted-foreground"}
         />
       </div>
@@ -365,9 +365,9 @@ function LedgerTotalsCard({ totals }: { totals: ReturnType<typeof sumLedger> }) 
         <LedgerCardMetric label="Deposit" value={formatMoney(totals.depositPaid)} />
         <LedgerCardMetric label="Balance" value={formatMoney(totals.balance)} />
         <LedgerCardMetric
-          label="MTS Profit"
-          value={formatMoney(totals.mtsProfit)}
-          className={totals.mtsProfit > 0 ? "text-emerald-700" : "text-rose-700"}
+          label="Net Profit"
+          value={formatMoney(totals.netProfit)}
+          className={totals.netProfit > 0 ? "text-emerald-700" : "text-rose-700"}
         />
       </div>
     </article>
@@ -414,7 +414,7 @@ function toCsv(rows: LedgerRow[]): string {
     "Deposit",
     "Balance",
     "Payment Method",
-    "MTS Profit",
+    "Net Profit",
     "Status",
     "Manufacturer",
     "Order Ref",
@@ -436,7 +436,7 @@ function toCsv(rows: LedgerRow[]): string {
       r.depositPaid.toFixed(2),
       r.balance.toFixed(2),
       r.paymentMethod ?? "",
-      r.mtsProfit.toFixed(2),
+      r.netProfit.toFixed(2),
       r.statusLabel,
       r.manufacturerName ?? "",
       r.manufacturerOrderRef ?? "",

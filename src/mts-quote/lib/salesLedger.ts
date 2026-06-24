@@ -44,7 +44,7 @@ export interface LedgerRow {
   depositPaid: number;
   balance: number; // grossSale - depositPaid
   paymentMethod: string | null;
-  mtsProfit: number; // grossSale - costOfGoods - ownerCommission
+  netProfit: number; // grossSale - costOfGoods - ownerCommission
   status: QuoteStatus;
   statusLabel: string;
   manufacturerName: string | null;
@@ -58,7 +58,7 @@ export interface LedgerTotals {
   ownerCommission: number;
   depositPaid: number;
   balance: number;
-  mtsProfit: number;
+  netProfit: number;
 }
 
 /**
@@ -71,7 +71,7 @@ export function buildLedgerRow(quote: SalesQuote): LedgerRow {
   const ownerCommission = roundCents(grossSale * OWNER_COMMISSION_RATE);
   const depositPaid = Number(quote.deposit_paid) || 0;
   const balance = roundCents(grossSale - depositPaid);
-  const mtsProfit = roundCents(grossSale - costOfGoods - ownerCommission);
+  const netProfit = roundCents(grossSale - costOfGoods - ownerCommission);
 
   return {
     id: quote.id,
@@ -84,7 +84,7 @@ export function buildLedgerRow(quote: SalesQuote): LedgerRow {
     depositPaid,
     balance,
     paymentMethod: quote.payment_method ?? null,
-    mtsProfit,
+    netProfit,
     status: quote.status,
     statusLabel: LEDGER_STATUS_LABELS[quote.status] ?? quote.status,
     manufacturerName: quote.manufacturer_name ?? null,
@@ -114,7 +114,7 @@ export function sumLedger(rows: LedgerRow[]): LedgerTotals {
     ownerCommission: 0,
     depositPaid: 0,
     balance: 0,
-    mtsProfit: 0,
+    netProfit: 0,
   };
   for (const r of rows) {
     totals.grossSale += r.grossSale;
@@ -122,7 +122,7 @@ export function sumLedger(rows: LedgerRow[]): LedgerTotals {
     totals.ownerCommission += r.ownerCommission;
     totals.depositPaid += r.depositPaid;
     totals.balance += r.balance;
-    totals.mtsProfit += r.mtsProfit;
+    totals.netProfit += r.netProfit;
   }
   // Round the sums once, not per-row
   totals.grossSale = roundCents(totals.grossSale);
@@ -130,7 +130,7 @@ export function sumLedger(rows: LedgerRow[]): LedgerTotals {
   totals.ownerCommission = roundCents(totals.ownerCommission);
   totals.depositPaid = roundCents(totals.depositPaid);
   totals.balance = roundCents(totals.balance);
-  totals.mtsProfit = roundCents(totals.mtsProfit);
+  totals.netProfit = roundCents(totals.netProfit);
   return totals;
 }
 

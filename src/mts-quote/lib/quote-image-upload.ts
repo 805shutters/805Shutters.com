@@ -3,9 +3,6 @@
  * Client-side utility for uploading files to Cloudflare R2 via edge function
  */
 
-import { supabase } from "@mts/integrations/supabase/client";
-import { compressImage } from "@mts/lib/imageCompression";
-
 export interface R2UploadResult {
   success: boolean;
   url?: string;
@@ -90,21 +87,6 @@ export function normalizeR2UploadResponse(input: NormalizeUploadInput): Normaliz
 }
 
 /**
- * Convert a File to base64 string
- */
-async function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = (reader.result as string).split(",")[1];
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
-/**
  * Upload a file to R2 storage
  * @param file - The file to upload
  * @param folder - The target folder (maps to old bucket names)
@@ -116,53 +98,13 @@ export async function uploadToR2(
   folder: R2Folder,
   jobId?: string
 ): Promise<R2UploadResult> {
-  try {
-    // Compress image before upload to stay within edge function payload limits
-    const processedFile = await compressImage(file);
-    const fileData = await fileToBase64(processedFile);
-
-    const { data, error } = await supabase.functions.invoke("r2-upload", {
-      body: {
-        fileName: processedFile.name,
-        fileData,
-        contentType: processedFile.type || "application/octet-stream",
-        folder,
-        jobId,
-      },
-    });
-
-    if (error) {
-      console.error("[R2 Upload] Edge function error:", error);
-      return { success: false, error: error.message };
-    }
-
-    if (!data.success) {
-      return { success: false, error: data.error || "Upload failed" };
-    }
-
-    const normalized = normalizeR2UploadResponse({
-      key: data.key,
-      url: data.url,
-    });
-
-    if (normalized.error) {
-      return { success: false, error: normalized.error };
-    }
-
-    return {
-      success: true,
-      url: normalized.url!,
-      key: normalized.key!,
-      fileName: data.fileName,
-      folder: data.folder,
-    };
-  } catch (error) {
-    console.error("[R2 Upload] Client error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
+  void file;
+  void folder;
+  void jobId;
+  return {
+    success: false,
+    error: "805 quote image upload is not wired yet.",
+  };
 }
 
 /**
