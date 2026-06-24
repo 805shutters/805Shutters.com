@@ -1,0 +1,3987 @@
+import { useState, useEffect, useMemo, useRef, useCallback, type ChangeEvent } from "react";
+import { Card, CardContent, CardHeader } from "@mts/components/ui/card";
+import { Button } from "@mts/components/ui/button";
+import { Input } from "@mts/components/ui/input";
+import { Label } from "@mts/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@mts/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@mts/components/ui/tabs";
+import { Checkbox } from "@mts/components/ui/checkbox";
+import {
+  Copy,
+  CopyCheck,
+  Calculator,
+  FileText,
+  Lightbulb,
+  Lock,
+  Percent,
+  Plus,
+  Ruler,
+  Trash2,
+  X,
+} from "lucide-react";
+import { cn } from "@mts/lib/utils";
+import { formatDimensions } from "@mts/types/quote";
+import {
+  SHUTTER_LOUVER_SIZES,
+  SHUTTER_TILT_TYPES,
+  SHUTTER_HINGE_COLORS,
+  SHUTTER_PANEL_CONFIGS,
+  SHUTTER_AUTO_VARIANTS,
+  ONYX_WOOD_MATERIALS,
+  ONYX_POLY_MATERIALS,
+  ONYX_ORDER_SHUTTER_TYPES,
+  ONYX_SIZE_TYPES,
+  ONYX_MOUNT_TYPES,
+  ONYX_TILT_TYPES,
+  ONYX_HINGE_COLORS,
+  ONYX_PANEL_CONFIGS,
+  ONYX_EXTENSION_ROD_OPTIONS,
+  ONYX_T_POST_OPTIONS,
+  ONYX_ASTRAGAL_OPTIONS,
+  ONYX_TRACK_TYPES,
+  ONYX_SPECIALTY_SHAPES,
+  ONYX_SPECIALTY_CATEGORIES,
+  ONYX_BYPASS_TYPES,
+  ONYX_FOLDING_DIRECTIONS,
+  ONYX_FACIA_TYPES,
+  ONYX_DIVIDER_RAIL_LOCATIONS,
+  ONYX_COLORS,
+  ONYX_POLY_FRAME_TYPES,
+  ONYX_WOOD_FRAME_TYPES,
+  NORMAN_WOODLORE_FRAME_TYPES,
+  ROLLER_MOUNT_TYPES,
+  ROLLER_SHADE_TYPES,
+  ROLLER_LIFT_SYSTEMS,
+  ROLLER_VALANCES,
+  ROLLER_FABRIC_CATEGORIES,
+  getRollerFabricPriceGroup,
+  getRomanFabricPriceGroup,
+  ROMAN_MOUNT_TYPES,
+  ROMAN_LIFT_SYSTEMS,
+  ROMAN_VALANCES,
+  ROMAN_FABRIC_CATEGORY_NAMES,
+  getRomanFabricCategoryForColor,
+  getRomanFabricCategoryName,
+  getRomanFabricCanonicalLabel,
+  getRomanFabricColorsForCategory,
+  HONEYCOMB_MOUNT_TYPES,
+  HONEYCOMB_CELL_SIZES,
+  HONEYCOMB_SHADE_TYPES,
+  HONEYCOMB_LIFT_SYSTEMS,
+  HONEYCOMB_LIGHT_CONTROL,
+  PERFECTSHEER_MOUNT_TYPES,
+  PERFECTSHEER_LIGHT_CONTROL,
+  PERFECTSHEER_LIFT_SYSTEMS,
+  PERFECTSHEER_FABRICS,
+  FAUX_WOOD_MOUNT_TYPES,
+  FAUX_WOOD_SLAT_SIZES,
+  FAUX_WOOD_PRODUCT_LINES,
+  FAUX_WOOD_SMARTPRIVACY_COLORS,
+  FAUX_WOOD_ULTIMATE_COLORS,
+  WOOD_BLIND_MOUNT_TYPES,
+  WOOD_BLIND_SLAT_SIZES,
+  WOOD_BLIND_COLORS,
+  VERTICAL_MOUNT_TYPES,
+  VERTICAL_FABRIC_GROUPS,
+  VERTICAL_CONTROL_TYPES,
+  VERTICAL_STACK_OPTIONS,
+  getVerticalColorsForGroup,
+  getVerticalFabricPriceGroup,
+  SMARTDRAPE_MOUNT_TYPES,
+  SMARTDRAPE_SHADE_TYPES,
+  SMARTDRAPE_FABRICS,
+  SMARTDRAPE_STACK_OPTIONS,
+  SMARTDRAPE_CONTROL_TYPES,
+  SMARTDRAPE_CONTROL_SIDES,
+  PRODUCT_TYPES,
+} from "@mts/lib/quoteConstants";
+import {
+  WOOD_SHUTTER_ROUTES,
+  getAutoShutterRoutePatch,
+  getWoodShutterRoutePatch,
+  type ShutterRoutePatch,
+  type WoodShutterRoute,
+} from "@mts/lib/quoteShutterRouting";
+import {
+  getHoneycombFabricStrings,
+  getHoneycombFabricGroups,
+  getRollerFabricCategories,
+} from "@mts/lib/fabricCatalog";
+import type { SpecialtyShape } from "@mts/lib/quoteConstants";
+import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
+import { calculateDiscountedPrice, removeQuoteDesignDiscount } from "@mts/lib/quoteDiscounts";
+import {
+  FAUX_WOOD_SURCHARGES,
+  HONEYCOMB_SURCHARGES,
+  MOTORIZATION_OPTIONS,
+  ONYX_SHUTTER_FIXED_SURCHARGES,
+  ONYX_SHUTTER_PERCENTAGE_SURCHARGES,
+  PERFECTSHEER_SURCHARGES,
+  ROLLER_MOTORIZATION,
+  ROLLER_SURCHARGES,
+  ROMAN_SURCHARGES,
+  SHUTTER_FIXED_SURCHARGES,
+  SHUTTER_PERCENTAGE_SURCHARGES,
+  SMARTDRAPE_SURCHARGES,
+  VERTICAL_SURCHARGES,
+  WOOD_BLIND_SURCHARGES,
+  type MotorOption,
+  type Surcharge,
+} from "@mts/lib/pricingData";
+import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
+import { parseQuoteOptionText } from "@mts/lib/quoteOptionParser";
+
+interface DesignCardProps {
+  lineItem: SalesQuoteLineItem;
+  instanceIndex: number;
+  designs: SalesQuoteDesign[];
+  onUpdateDesign: (
+    design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
+  ) => void;
+  onCopyAll: () => void;
+  onCopySome: () => void;
+  copyMode: "none" | "all" | "some";
+  isCopyTarget: boolean;
+  isSelectedTarget: boolean;
+  onToggleCopyTarget: () => void;
+  isDiscountTarget?: boolean;
+  isDiscountSelected?: boolean;
+  onToggleDiscountTarget?: () => void;
+  isPriceLocked?: boolean;
+  onOpenMeasurement?: () => void;
+  onDelete?: () => void;
+  onCopyItem?: () => void;
+  onChangeProductType?: (productType: string) => void;
+}
+
+// --- Types ---
+
+// CompletedStep type used dynamically
+type CompletedStep = {
+  key: string;
+  label: string;
+  value: string;
+};
+void (0 as unknown as CompletedStep);
+
+interface DefiningStep {
+  key: string;
+  label: string;
+  field: string;
+  options: readonly string[];
+}
+
+const NORMAN_WOOD_MATERIALS = ["Normandy Painted", "Normandy Stained"] as const;
+
+interface GridOptionButtons {
+  key: string;
+  label: string;
+  field: string;
+  type: "buttons";
+  options: readonly string[];
+}
+
+interface GridOptionSelect {
+  key: string;
+  label: string;
+  field: string;
+  type: "select";
+  options: readonly string[];
+}
+
+interface GridOptionYesNo {
+  key: string;
+  label: string;
+  field: string;
+  type: "yes-no";
+  noFirst?: boolean;
+}
+
+type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo;
+type GridSelectGroup = { label: string; items: readonly string[] };
+
+// --- Helpers ---
+
+const BOOLEAN_FIELDS = new Set(["hard_surface_install", "ladder_over_15ft", "requires_takedown"]);
+
+interface QuoteSurcharge {
+  id: string;
+  name: string;
+  type: "percentage" | "fixed";
+  value: number;
+  quantity: number;
+  category: string;
+  portalLabel?: string;
+}
+
+interface SurchargeCatalogItem extends QuoteSurcharge {
+  applicableTo?: string[];
+}
+
+function slugifySurcharge(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function toCatalogItem(
+  productType: string,
+  surcharge: Surcharge,
+  category: string
+): SurchargeCatalogItem {
+  const portalName =
+    productType === "Smart Drapes" && surcharge.name === "Additional Vanes (6)"
+      ? "Additional SmartDrape Vanes (Pack of 6)"
+      : surcharge.name;
+
+  return {
+    id: slugifySurcharge(
+      `${productType}-${category}-${portalName}-${surcharge.type}-${surcharge.value}`
+    ),
+    name: portalName,
+    portalLabel: portalName,
+    type: surcharge.type,
+    value: surcharge.value,
+    quantity: 1,
+    category,
+    applicableTo: surcharge.applicableTo,
+  };
+}
+
+function dedupeSurcharges(items: SurchargeCatalogItem[]): SurchargeCatalogItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function getSelectedSurcharges(design: SalesQuoteDesign | undefined): QuoteSurcharge[] {
+  const raw = (design?.options_json as Record<string, unknown> | undefined)?.surcharges;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item) => item as Partial<QuoteSurcharge>)
+    .filter((item) => item.id && item.name && item.type && typeof item.value === "number")
+    .map((item) => ({
+      id: item.id as string,
+      name: item.name as string,
+      type: item.type as "percentage" | "fixed",
+      value: item.value as number,
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      category: item.category || "Surcharges",
+      portalLabel: item.portalLabel,
+    }));
+}
+
+function toAutomaticSurcharge(
+  productType: string,
+  surcharge: Surcharge | undefined,
+  category: string,
+  displayName?: string
+): QuoteSurcharge | null {
+  if (!surcharge) return null;
+
+  const item = toCatalogItem(productType, surcharge, category);
+  return {
+    id: item.id,
+    name: displayName || item.name,
+    type: item.type,
+    value: item.value,
+    quantity: 1,
+    category,
+    portalLabel: displayName || item.portalLabel,
+  };
+}
+
+function findSurcharge(catalog: Surcharge[], name: string): Surcharge | undefined {
+  return catalog.find((item) => item.name === name);
+}
+
+function appendSurcharge(items: QuoteSurcharge[], surcharge: QuoteSurcharge | null): void {
+  if (!surcharge || items.some((item) => item.id === surcharge.id)) return;
+  items.push(surcharge);
+}
+
+function getMotorBrand(design: SalesQuoteDesign | undefined): MotorOption["brand"] | undefined {
+  const motorType = design?.motor_type;
+  const remoteType = design?.remote_type;
+  const selected = MOTORIZATION_OPTIONS.find(
+    (option) => option.name === motorType || option.name === remoteType
+  );
+  return selected?.brand;
+}
+
+function getMotorOptionSurcharge(
+  productType: string,
+  optionName: string | null | undefined,
+  preferredBrand?: MotorOption["brand"]
+): QuoteSurcharge | null {
+  if (!optionName) return null;
+
+  const option =
+    MOTORIZATION_OPTIONS.find(
+      (candidate) => candidate.name === optionName && candidate.brand === preferredBrand
+    ) || MOTORIZATION_OPTIONS.find((candidate) => candidate.name === optionName);
+
+  if (!option) return null;
+
+  return {
+    id: slugifySurcharge(`${productType}-automatic-motorization-${option.brand}-${option.name}`),
+    name: `${option.brand}: ${option.name}`,
+    type: "fixed",
+    value: option.price,
+    quantity: 1,
+    category: "Motorization Components",
+    portalLabel: option.name,
+  };
+}
+
+function getAutomaticOptionSurcharges(
+  productType: string,
+  design: SalesQuoteDesign | undefined
+): QuoteSurcharge[] {
+  if (!design) return [];
+
+  const surcharges: QuoteSurcharge[] = [];
+  const opts = (design.options_json as Record<string, unknown> | undefined) || {};
+  const liftSystem = design.lift_system;
+  const lightControl = String(opts.light_control || "");
+  const cellSize = String(opts.cell_size || "");
+  const controlType = String(opts.control_type || "");
+  const hubRequired =
+    opts.hub_required === true ||
+    String(opts.hub_required || "").toLowerCase() === "true" ||
+    String(opts.hub_required || "").toLowerCase() === "yes";
+  const motorBrand = getMotorBrand(design);
+
+  if (productType === "Roller Shades" && liftSystem === "Smart Release") {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
+        "Lift System",
+        "Smart Release"
+      )
+    );
+  }
+
+  if (productType === "Honeycomb Shades" && liftSystem === "Smart Release") {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
+        "Lift System",
+        "Smart Release"
+      )
+    );
+  }
+
+  if (productType === "Honeycomb Shades" && liftSystem === "Top Down-Bottom Up") {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(HONEYCOMB_SURCHARGES, "TDBU (Top Down Bottom Up)"),
+        "Lift System",
+        "Top Down-Bottom Up"
+      )
+    );
+  }
+
+  if (productType === "Honeycomb Shades" && cellSize.includes("SmartFit")) {
+    const smartFitCharge =
+      design.shade_type === "Day/Night*" ? "SmartFit Dual Shade with Frame" : "SmartFit with Frame";
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(HONEYCOMB_SURCHARGES, smartFitCharge),
+        "Cell Size"
+      )
+    );
+  }
+
+  if (
+    (productType === "Roller Shades" || productType === "Roman Shades") &&
+    design.valance === "Premium Wood Valance"
+  ) {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(
+          productType === "Roller Shades" ? ROLLER_SURCHARGES : ROMAN_SURCHARGES,
+          "Premium Wood Light Guard"
+        ),
+        "Valance"
+      )
+    );
+  }
+
+  if (productType === "Sheer Shades" && lightControl === "Room Darkening") {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(PERFECTSHEER_SURCHARGES, "Room Darkening Fabric"),
+        "Light Control",
+        "Room Darkening"
+      )
+    );
+  }
+
+  if (
+    productType === "Smart Drapes" &&
+    (design.shade_type === "Room Darkening" || /room darkening/i.test(design.fabric || ""))
+  ) {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(SMARTDRAPE_SURCHARGES, "Room Darkening"),
+        "Shade Type"
+      )
+    );
+  }
+
+  if (productType === "Vertical Blinds" && controlType === "Cordless Wand Operation") {
+    appendSurcharge(
+      surcharges,
+      toAutomaticSurcharge(
+        productType,
+        findSurcharge(VERTICAL_SURCHARGES, "Wand Control"),
+        "Control Type"
+      )
+    );
+  }
+
+  if (design.motor_type) {
+    appendSurcharge(
+      surcharges,
+      getMotorOptionSurcharge(productType, design.motor_type, motorBrand)
+    );
+  }
+
+  if (design.remote_type) {
+    appendSurcharge(
+      surcharges,
+      getMotorOptionSurcharge(productType, design.remote_type, motorBrand)
+    );
+  }
+
+  if (hubRequired) {
+    appendSurcharge(surcharges, getMotorOptionSurcharge(productType, "Hub", motorBrand));
+  }
+
+  return surcharges;
+}
+
+function getAvailableSurcharges(
+  productType: string,
+  design: SalesQuoteDesign | undefined
+): SurchargeCatalogItem[] {
+  const base: SurchargeCatalogItem[] = [];
+
+  switch (productType) {
+    case "Shutters":
+      if (design?.supplier === "Onyx") {
+        base.push(
+          ...ONYX_SHUTTER_PERCENTAGE_SURCHARGES.map((s) =>
+            toCatalogItem(productType, s, "Onyx Shutter Surcharges")
+          ),
+          ...ONYX_SHUTTER_FIXED_SURCHARGES.map((s) =>
+            toCatalogItem(productType, s, "Onyx Shutter Fixed Surcharges")
+          )
+        );
+      } else {
+        base.push(
+          ...SHUTTER_PERCENTAGE_SURCHARGES.map((s) =>
+            toCatalogItem(productType, s, "Shutter Percentage Surcharges")
+          ),
+          ...SHUTTER_FIXED_SURCHARGES.map((s) =>
+            toCatalogItem(productType, s, "Shutter Fixed Surcharges")
+          )
+        );
+      }
+      break;
+    case "Honeycomb Shades":
+      base.push(
+        ...HONEYCOMB_SURCHARGES.map((s) => toCatalogItem(productType, s, "Honeycomb Surcharges"))
+      );
+      break;
+    case "Roller Shades":
+      base.push(
+        ...ROLLER_SURCHARGES.map((s) => toCatalogItem(productType, s, "Roller Surcharges"))
+      );
+      break;
+    case "Roman Shades":
+      base.push(...ROMAN_SURCHARGES.map((s) => toCatalogItem(productType, s, "Roman Surcharges")));
+      break;
+    case "Sheer Shades":
+      base.push(
+        ...PERFECTSHEER_SURCHARGES.map((s) =>
+          toCatalogItem(productType, s, "PerfectSheer Surcharges")
+        )
+      );
+      break;
+    case "Vertical Blinds":
+      base.push(
+        ...VERTICAL_SURCHARGES.map((s) => toCatalogItem(productType, s, "Vertical Surcharges"))
+      );
+      break;
+    case "Faux Wood Blinds":
+      base.push(
+        ...FAUX_WOOD_SURCHARGES.map((s) => toCatalogItem(productType, s, "Faux Wood Surcharges"))
+      );
+      break;
+    case "Wood Blinds":
+      base.push(
+        ...WOOD_BLIND_SURCHARGES.map((s) => toCatalogItem(productType, s, "Wood Blind Surcharges"))
+      );
+      break;
+    case "Smart Drapes":
+      base.push(
+        ...SMARTDRAPE_SURCHARGES.map((s) => toCatalogItem(productType, s, "SmartDrape Surcharges"))
+      );
+      break;
+    default:
+      break;
+  }
+
+  const opts = (design?.options_json as Record<string, string> | undefined) || {};
+  const motorized = design?.lift_system === "Motorized" || opts.control_type === "Motorized";
+  const supportsMotorization = [
+    "Roller Shades",
+    "Roman Shades",
+    "Honeycomb Shades",
+    "Sheer Shades",
+    "Smart Drapes",
+  ].includes(productType);
+
+  if (supportsMotorization && motorized) {
+    base.push(
+      ...MOTORIZATION_OPTIONS.map((option) => ({
+        id: slugifySurcharge(
+          `${productType}-motorization-${option.brand}-${option.name}-${option.price}`
+        ),
+        name: `${option.brand}: ${option.name}`,
+        portalLabel: option.name,
+        type: "fixed" as const,
+        value: option.price,
+        quantity: 1,
+        category: "Motorization Components",
+      }))
+    );
+
+    if (productType === "Roller Shades") {
+      for (const system of Object.values(ROLLER_MOTORIZATION)) {
+        base.push(
+          ...system.components.map((option) => ({
+            id: slugifySurcharge(
+              `${productType}-roller-motorization-${system.name}-${option.name}-${option.price}`
+            ),
+            name: `${system.name}: ${option.name}`,
+            portalLabel: option.name,
+            type: "fixed" as const,
+            value: option.price,
+            quantity: 1,
+            category: "Roller Motorization Components",
+          }))
+        );
+      }
+    }
+  }
+
+  return dedupeSurcharges(base);
+}
+
+function calculateSurchargeTotal(basePrice: number, surcharges: QuoteSurcharge[]): number {
+  const total = surcharges.reduce((sum, item) => {
+    if (item.type === "percentage") {
+      return sum + basePrice * (item.value / 100);
+    }
+    return sum + item.value * Math.max(1, item.quantity || 1);
+  }, 0);
+
+  return Math.round(total * 100) / 100;
+}
+
+function hasMotorizationSurcharge(surcharges: QuoteSurcharge[]): boolean {
+  return surcharges.some(
+    (item) =>
+      item.category.toLowerCase().includes("motorization") ||
+      item.id.toLowerCase().includes("motorization")
+  );
+}
+
+function formatSurchargePrice(item: Pick<QuoteSurcharge, "type" | "value">): string {
+  if (item.type === "percentage") return `${item.value}%`;
+  return `$${item.value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+}
+
+function formatMoney(value: unknown): string {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "$0";
+  return `$${numeric.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function PriceExplanation({
+  design,
+  productType,
+  rawSqft,
+  sqft,
+}: {
+  design: SalesQuoteDesign | undefined;
+  productType: string;
+  rawSqft: number | null;
+  sqft: number | null;
+}) {
+  if (!design) return null;
+
+  const options = (design.options_json as Record<string, unknown> | undefined) || {};
+  const isManual = options.manual_price_override === true;
+  const hasStoredPricing =
+    options.base_price !== undefined ||
+    options.pricing_grid_width !== undefined ||
+    options.surcharge_total !== undefined ||
+    options.discount_percent !== undefined;
+
+  if (!hasStoredPricing && !isManual && !design.unit_price) return null;
+
+  const gridWidth = Number(options.pricing_grid_width);
+  const gridHeight = Number(options.pricing_grid_height);
+  const hasGridMatch = Number.isFinite(gridWidth) && Number.isFinite(gridHeight);
+  const discountPercent = Number(options.discount_percent) || 0;
+  const surchargeTotal = Number(options.surcharge_total) || 0;
+
+  return (
+    <details className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+      <summary className="cursor-pointer font-semibold text-slate-900">Why this price?</summary>
+      <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+        <div>
+          <span className="font-semibold">Product:</span> {productType}
+        </div>
+        {isManual && (
+          <div>
+            <span className="font-semibold">Mode:</span> manual customer price
+          </div>
+        )}
+        {hasGridMatch && (
+          <div>
+            <span className="font-semibold">Grid cell:</span> {gridWidth}&quot; W x {gridHeight}
+            &quot; H
+          </div>
+        )}
+        {!!options.pricing_grid_key && (
+          <div>
+            <span className="font-semibold">Grid:</span> {String(options.pricing_grid_key)}
+          </div>
+        )}
+        {options.pricing_grid_price !== undefined && (
+          <div>
+            <span className="font-semibold">Grid price:</span>{" "}
+            {formatMoney(options.pricing_grid_price)}
+          </div>
+        )}
+        {options.base_price !== undefined && (
+          <div>
+            <span className="font-semibold">Base:</span> {formatMoney(options.base_price)}
+          </div>
+        )}
+        <div>
+          <span className="font-semibold">Surcharges:</span> {formatMoney(surchargeTotal)}
+        </div>
+        {discountPercent > 0 && (
+          <>
+            <div>
+              <span className="font-semibold">Discount:</span> {discountPercent}% (
+              {formatMoney(options.discount_amount)})
+            </div>
+            <div>
+              <span className="font-semibold">Discount source:</span>{" "}
+              {formatMoney(options.discount_source_price)}
+            </div>
+          </>
+        )}
+        {productType === "Shutters" && rawSqft !== null && sqft !== null && (
+          <div>
+            <span className="font-semibold">Sq ft:</span> {rawSqft.toFixed(2)} actual,{" "}
+            {sqft.toFixed(2)} priced
+          </div>
+        )}
+        <div>
+          <span className="font-semibold">Final:</span> {formatMoney(design.unit_price)}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+/**
+ * Determine price group based on fabric selection
+ */
+function getFabricPriceGroup(
+  productType: string,
+  fabric: string | null,
+  fabricGroup?: string,
+  romanFabricCategory?: string
+): string | undefined {
+  if (!fabric && !fabricGroup && !romanFabricCategory) return undefined;
+
+  if (productType === "Roller Shades" && fabric) {
+    return getRollerFabricPriceGroup(fabric);
+  }
+
+  if (productType === "Roman Shades") {
+    const romanFabricKey = fabric || romanFabricCategory;
+    return romanFabricKey ? getRomanFabricPriceGroup(romanFabricKey) : undefined;
+  }
+
+  if (productType === "Vertical Blinds" && fabricGroup) {
+    return getVerticalFabricPriceGroup(fabricGroup);
+  }
+
+  return undefined;
+}
+
+function getFieldValue(design: SalesQuoteDesign | undefined, field: string): string | null {
+  if (!design) return null;
+  if (field.startsWith("json:")) {
+    const jsonKey = field.slice(5);
+    return (design.options_json as Record<string, string>)?.[jsonKey] || null;
+  }
+  if (BOOLEAN_FIELDS.has(field)) {
+    const val = design[field as keyof SalesQuoteDesign];
+    if (val === true) return "Yes";
+    if (val === false) return "No";
+    return null;
+  }
+  return (design[field as keyof SalesQuoteDesign] as string) || null;
+}
+
+function setFieldValue(
+  field: string,
+  value: unknown,
+  design: SalesQuoteDesign | undefined,
+  onUpdate: (field: string, value: unknown) => void
+) {
+  if (field.startsWith("json:")) {
+    const jsonKey = field.slice(5);
+    const currentJson = (design?.options_json as Record<string, unknown>) || {};
+    onUpdate("options_json", { ...currentJson, [jsonKey]: value });
+  } else if (BOOLEAN_FIELDS.has(field)) {
+    onUpdate(field, value === "Yes");
+  } else {
+    onUpdate(field, value);
+  }
+}
+
+function applyShutterRoutePatch(
+  patch: ShutterRoutePatch,
+  design: SalesQuoteDesign | undefined,
+  onUpdate: (field: string, value: unknown) => void
+) {
+  const currentJson = (design?.options_json as Record<string, unknown>) || {};
+  onUpdate("supplier", patch.supplier);
+  onUpdate("material", patch.material);
+  onUpdate("options_json", { ...currentJson, ...patch.options });
+}
+
+function needsShutterRoutePatch(
+  design: SalesQuoteDesign | undefined,
+  patch: ShutterRoutePatch
+): boolean {
+  const currentJson = (design?.options_json as Record<string, unknown>) || {};
+  if (design?.supplier !== patch.supplier) return true;
+  if ((design?.material || null) !== patch.material) return true;
+
+  return Object.entries(patch.options).some(([key, value]) => (currentJson[key] || null) !== value);
+}
+
+function getShutterProgramName(design: SalesQuoteDesign | undefined): string | undefined {
+  if (!design) return undefined;
+
+  const options = (design.options_json as Record<string, unknown>) || {};
+  if (design.supplier === "Norman") {
+    if (options.material_type === "Composite" && typeof options.composite_subtype === "string") {
+      return options.composite_subtype;
+    }
+    if (typeof design.material === "string" && design.material.trim()) {
+      return design.material;
+    }
+    return undefined;
+  }
+
+  return typeof design.material === "string" && design.material.trim()
+    ? design.material
+    : undefined;
+}
+
+function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<string, unknown> {
+  const {
+    manual_price_override: _manualPriceOverride,
+    sent_price_snapshot: _sentPriceSnapshot,
+    ...rest
+  } = options;
+  return rest;
+}
+
+function ProductTypeSwitcher({
+  productType,
+  onChangeProductType,
+}: {
+  productType: string;
+  onChangeProductType?: (productType: string) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (!onChangeProductType) {
+    return (
+      <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium cursor-default">
+        {productType}
+      </span>
+    );
+  }
+
+  if (!isEditing) {
+    return (
+      <button
+        type="button"
+        onClick={() => setIsEditing(true)}
+        className="inline-flex items-center px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+        title="Change product type for this line item"
+      >
+        {productType}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2" aria-label="Select line item product type">
+      {PRODUCT_TYPES.filter((type) => type !== productType).map((type) => (
+        <button
+          key={type}
+          type="button"
+          onClick={() => {
+            onChangeProductType(type);
+            setIsEditing(false);
+          }}
+          className="inline-flex items-center px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-900 text-xs font-medium hover:border-blue-400 hover:bg-blue-50 transition-colors"
+        >
+          {type}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => setIsEditing(false)}
+        className="inline-flex items-center px-2 py-1 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+        aria-label="Cancel product type change"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function buildDraftShutterDesign(activeVariant: string): SalesQuoteDesign {
+  const patch = getAutoShutterRoutePatch(activeVariant);
+
+  return {
+    id: "",
+    line_item_id: "",
+    variant: activeVariant,
+    product_type: "Shutters",
+    supplier: patch?.supplier ?? null,
+    material: patch?.material ?? null,
+    louver_size: null,
+    tilt_type: null,
+    hinge_color: null,
+    panel_config: null,
+    mount_type: null,
+    shade_type: null,
+    lift_system: null,
+    valance: null,
+    fabric: null,
+    motor_type: null,
+    remote_type: null,
+    hard_surface_install: false,
+    ladder_over_15ft: false,
+    requires_takedown: false,
+    unit_price: 0,
+    notes: null,
+    options_json: patch?.options ?? {},
+    created_at: "",
+  };
+}
+
+function SurchargePicker({
+  productType,
+  design,
+  onUpdate,
+}: {
+  productType: string;
+  design: SalesQuoteDesign | undefined;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design);
+  const savedSurcharges = getSelectedSurcharges(design);
+  const selectedSurcharges = [...automaticSurcharges, ...savedSurcharges];
+  const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
+  const catalog = getAvailableSurcharges(productType, design);
+  const opts = (design?.options_json as Record<string, unknown> | undefined) || {};
+  const basePrice = Number(opts.base_price) || 0;
+  const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+  const selectedIds = new Set(selectedSurcharges.map((item) => item.id));
+  const available = catalog.filter((item) => !selectedIds.has(item.id));
+
+  if (!design || (catalog.length === 0 && selectedSurcharges.length === 0)) {
+    return null;
+  }
+
+  const persistSurcharges = (next: QuoteSurcharge[]) => {
+    onUpdate("options_json", {
+      ...opts,
+      surcharges: next,
+    });
+  };
+
+  const addSurcharge = (id: string) => {
+    const item = catalog.find((catalogItem) => catalogItem.id === id);
+    if (!item) return;
+
+    const existingIndex = savedSurcharges.findIndex((selected) => selected.id === item.id);
+    if (existingIndex >= 0 && item.type === "fixed") {
+      const next = [...savedSurcharges];
+      next[existingIndex] = { ...next[existingIndex], quantity: next[existingIndex].quantity + 1 };
+      persistSurcharges(next);
+    } else if (existingIndex === -1) {
+      persistSurcharges([
+        ...savedSurcharges,
+        {
+          id: item.id,
+          name: item.name,
+          type: item.type,
+          value: item.value,
+          quantity: 1,
+          category: item.category,
+          portalLabel: item.portalLabel,
+        },
+      ]);
+    }
+
+    setAdding(false);
+  };
+
+  const removeSurcharge = (id: string) => {
+    persistSurcharges(savedSurcharges.filter((item) => item.id !== id));
+  };
+
+  const updateQuantity = (id: string, quantity: number) => {
+    persistSurcharges(
+      savedSurcharges.map((item) =>
+        item.id === id ? { ...item, quantity: Math.max(1, quantity || 1) } : item
+      )
+    );
+  };
+
+  return (
+    <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Surcharges:</span>
+        {selectedSurcharges.map((item) => {
+          const isAutomatic = automaticIds.has(item.id);
+          return (
+            <span
+              key={item.id}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-white text-xs"
+              title={item.category}
+            >
+              <span className="font-medium">{item.name}</span>
+              <span className="text-muted-foreground">{formatSurchargePrice(item)}</span>
+              {item.type === "fixed" && !isAutomatic && (
+                <Input
+                  type="number"
+                  min={1}
+                  value={item.quantity}
+                  onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10))}
+                  className="h-6 w-14 px-1 text-xs"
+                  aria-label={`${item.name} quantity`}
+                />
+              )}
+              {!isAutomatic && (
+                <button
+                  type="button"
+                  onClick={() => removeSurcharge(item.id)}
+                  className="text-muted-foreground hover:text-destructive"
+                  title="Remove surcharge"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </span>
+          );
+        })}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setAdding((value) => !value)}
+          className="h-8 border-dashed text-xs"
+          disabled={available.length === 0}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Add Surcharge
+        </Button>
+        {selectedSurcharges.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            Base: ${basePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} + Add-ons: $
+            {surchargeTotal.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+          </span>
+        )}
+      </div>
+
+      {adding && available.length > 0 && (
+        <div className="max-w-xl">
+          <Select onValueChange={addSurcharge}>
+            <SelectTrigger className="h-9 bg-white">
+              <SelectValue placeholder="Select surcharge or add-on..." />
+            </SelectTrigger>
+            <SelectContent className="max-h-80">
+              {available.map((item) => (
+                <SelectItem key={item.id} value={item.id}>
+                  {item.name} · {formatSurchargePrice(item)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SmartOptionInput({
+  productType,
+  design,
+  onUpdateFields,
+}: {
+  productType: string;
+  design: SalesQuoteDesign | undefined;
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [matches, setMatches] = useState<string[]>([]);
+
+  const apply = () => {
+    const result = parseQuoteOptionText(productType, draft);
+    setMatches(result.matches);
+    if (result.matches.length === 0) return;
+
+    const { options_json: parsedOptions, ...directFields } = result.patch;
+    const currentOptions = (design?.options_json as Record<string, unknown>) || {};
+    onUpdateFields({
+      ...directFields,
+      options_json: {
+        ...currentOptions,
+        ...(parsedOptions || {}),
+      },
+    });
+  };
+
+  return (
+    <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Lightbulb className="h-4 w-4 text-blue-700" />
+        <Input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") apply();
+          }}
+          placeholder="Type options, e.g. 3/4 Primrose cordless"
+          className="h-9 min-w-72 flex-1 bg-white text-sm"
+        />
+        <Button type="button" size="sm" onClick={apply} disabled={!draft.trim()}>
+          Apply options
+        </Button>
+      </div>
+      {matches.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {matches.map((match) => (
+            <span
+              key={match}
+              className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-800"
+            >
+              {match}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeferredTextInput({
+  value,
+  onCommit,
+  placeholder,
+  className,
+  autoFocus,
+}: {
+  value: string | null | undefined;
+  onCommit: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  autoFocus?: boolean;
+}) {
+  const committedValue = value || "";
+  const [draft, setDraft] = useState(committedValue);
+
+  useEffect(() => {
+    setDraft(committedValue);
+  }, [committedValue]);
+
+  const commit = () => {
+    if (draft !== committedValue) onCommit(draft);
+  };
+
+  return (
+    <Input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        } else if (e.key === "Escape") {
+          setDraft(committedValue);
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      placeholder={placeholder}
+      className={className}
+      autoFocus={autoFocus}
+    />
+  );
+}
+
+function DeferredNumberInput({
+  value,
+  onCommit,
+  commitOnChange = false,
+  placeholder,
+  className,
+  step = "0.01",
+}: {
+  value: number | string | null | undefined;
+  onCommit: (value: number) => void;
+  commitOnChange?: boolean;
+  placeholder?: string;
+  className?: string;
+  step?: string;
+}) {
+  const committedValue = value === null || value === undefined ? "" : String(value);
+  const [draft, setDraft] = useState(committedValue);
+  const lastCommittedRef = useRef(parseFloat(committedValue) || 0);
+  const draftRef = useRef(committedValue);
+  const editingRef = useRef(false);
+  const onCommitRef = useRef(onCommit);
+  const saveTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onCommitRef.current = onCommit;
+  }, [onCommit]);
+
+  const clearSaveTimer = useCallback(() => {
+    if (saveTimerRef.current !== null) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  }, []);
+
+  const commitDraft = useCallback(
+    (draftValue: string = draftRef.current) => {
+      clearSaveTimer();
+      const next = parseFloat(draftValue);
+      if (!Number.isFinite(next) || next < 0 || next === lastCommittedRef.current) return;
+      lastCommittedRef.current = next;
+      onCommitRef.current(next);
+    },
+    [clearSaveTimer]
+  );
+
+  useEffect(() => {
+    if (editingRef.current) return;
+    setDraft(committedValue);
+    draftRef.current = committedValue;
+    lastCommittedRef.current = parseFloat(committedValue) || 0;
+  }, [committedValue]);
+
+  useEffect(
+    () => () => {
+      if (commitOnChange) commitDraft();
+      else clearSaveTimer();
+    },
+    [clearSaveTimer, commitDraft, commitOnChange]
+  );
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextDraft = event.target.value;
+    setDraft(nextDraft);
+    draftRef.current = nextDraft;
+
+    if (!commitOnChange) return;
+
+    const next = parseFloat(nextDraft);
+    if (!Number.isFinite(next) || next < 0 || next === lastCommittedRef.current) return;
+    clearSaveTimer();
+    saveTimerRef.current = window.setTimeout(() => commitDraft(nextDraft), 200);
+  };
+
+  return (
+    <Input
+      type="number"
+      step={step}
+      value={draft}
+      onChange={handleChange}
+      onFocus={() => {
+        editingRef.current = true;
+      }}
+      onBlur={() => {
+        editingRef.current = false;
+        commitDraft();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        } else if (e.key === "Escape") {
+          setDraft(committedValue);
+          draftRef.current = committedValue;
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className={className}
+      placeholder={placeholder}
+    />
+  );
+}
+
+// --- Step/Grid logic for Standard Shutter ---
+
+function getDefiningSteps(design: SalesQuoteDesign | undefined): DefiningStep[] {
+  const steps: DefiningStep[] = [];
+  const opts = (design?.options_json as Record<string, string>) || {};
+
+  if (design?.variant === "A") {
+    steps.push({
+      key: "wood_route",
+      label: "Wood Type",
+      field: "json:wood_route",
+      options: WOOD_SHUTTER_ROUTES,
+    });
+
+    if (!opts.wood_route) return steps;
+
+    if (opts.wood_route === "Premium Wood") {
+      steps.push({
+        key: "material",
+        label: "Norman Program",
+        field: "material",
+        options: NORMAN_WOOD_MATERIALS,
+      });
+      return steps;
+    }
+
+    steps.push({
+      key: "material",
+      label: "Onyx Program",
+      field: "material",
+      options: ONYX_WOOD_MATERIALS,
+    });
+  }
+
+  return steps;
+}
+
+function isStandardShutterComplete(design: SalesQuoteDesign | undefined): boolean {
+  if (!design?.supplier) return false;
+  const opts = design.options_json as Record<string, string>;
+
+  if (design.supplier === "Norman") {
+    if (!opts?.material_type) return false;
+    if (opts.material_type === "Composite") return opts.composite_subtype === "Woodlore";
+    return !!design.material;
+  }
+
+  if (design.supplier === "Onyx") {
+    if (!opts?.material_type) return false;
+    return !!design.material;
+  }
+
+  return false;
+}
+
+function isTrackedOrSpecialty(design: SalesQuoteDesign | undefined): boolean {
+  if (!design?.supplier || design.supplier !== "Onyx") return false;
+  const shutterType = (design.options_json as Record<string, string>)?.shutter_type;
+  return shutterType === "Tracked Shutter" || shutterType === "Specialty Shutter";
+}
+
+function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): GridOption[] {
+  const isOnyxPolyProgram =
+    !!design?.material &&
+    ONYX_POLY_MATERIALS.includes(design.material as (typeof ONYX_POLY_MATERIALS)[number]);
+  const frameOptions =
+    design?.supplier === "Norman"
+      ? NORMAN_WOODLORE_FRAME_TYPES
+      : isOnyxPolyProgram
+        ? ONYX_POLY_FRAME_TYPES
+        : ONYX_WOOD_FRAME_TYPES;
+
+  if (design?.supplier === "Onyx") {
+    return [
+      {
+        key: "onyx_order_type",
+        label: "Shutter Type",
+        field: "json:onyx_order_type",
+        type: "buttons",
+        options: ONYX_ORDER_SHUTTER_TYPES,
+      },
+      {
+        key: "size_type",
+        label: "W/F",
+        field: "json:size_type",
+        type: "buttons",
+        options: ONYX_SIZE_TYPES,
+      },
+      {
+        key: "onyx_mount",
+        label: "IM / OM",
+        field: "json:onyx_mount",
+        type: "buttons",
+        options: ONYX_MOUNT_TYPES,
+      },
+      {
+        key: "frame_type",
+        label: "Frame Type",
+        field: "json:frame_type",
+        type: "buttons",
+        options: frameOptions,
+      },
+      {
+        key: "louver_size",
+        label: "Louver Size",
+        field: "louver_size",
+        type: "buttons",
+        options: SHUTTER_LOUVER_SIZES,
+      },
+      {
+        key: "color",
+        label: "Color",
+        field: "json:color",
+        type: "select",
+        options: ONYX_COLORS,
+      },
+      {
+        key: "hinge_color",
+        label: "Hinge Color",
+        field: "hinge_color",
+        type: "select",
+        options: ONYX_HINGE_COLORS,
+      },
+      {
+        key: "panel_config",
+        label: "Panel Configuration",
+        field: "panel_config",
+        type: "select",
+        options: ONYX_PANEL_CONFIGS,
+      },
+      {
+        key: "tilt_type",
+        label: "Tilt Rod",
+        field: "tilt_type",
+        type: "select",
+        options: ONYX_TILT_TYPES,
+      },
+      {
+        key: "extension_rod",
+        label: "Extension Rod",
+        field: "json:extension_rod",
+        type: "buttons",
+        options: ONYX_EXTENSION_ROD_OPTIONS,
+      },
+      {
+        key: "t_post",
+        label: "T-Post",
+        field: "json:t_post",
+        type: "buttons",
+        options: ONYX_T_POST_OPTIONS,
+      },
+      {
+        key: "astragal",
+        label: "Astragal",
+        field: "json:astragal",
+        type: "buttons",
+        options: ONYX_ASTRAGAL_OPTIONS,
+      },
+      {
+        key: "hard_surface",
+        label: "Hard Surface Install",
+        field: "hard_surface_install",
+        type: "yes-no",
+        noFirst: true,
+      },
+      {
+        key: "ladder",
+        label: "Requires Ladder Over 15ft",
+        field: "ladder_over_15ft",
+        type: "yes-no",
+        noFirst: true,
+      },
+      {
+        key: "takedown",
+        label: "Requires Takedown",
+        field: "requires_takedown",
+        type: "yes-no",
+        noFirst: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      key: "frame_type",
+      label: "Frame Type",
+      field: "json:frame_type",
+      type: "buttons",
+      options: frameOptions,
+    },
+    {
+      key: "louver_size",
+      label: "Louver Size",
+      field: "louver_size",
+      type: "buttons",
+      options: SHUTTER_LOUVER_SIZES,
+    },
+    {
+      key: "tilt_type",
+      label: "Tilt Type",
+      field: "tilt_type",
+      type: "buttons",
+      options: SHUTTER_TILT_TYPES,
+    },
+    {
+      key: "color",
+      label: "Color",
+      field: "json:color",
+      type: "select",
+      options: ONYX_COLORS,
+    },
+    {
+      key: "hinge_color",
+      label: "Hinge Color",
+      field: "hinge_color",
+      type: "select",
+      options: SHUTTER_HINGE_COLORS,
+    },
+    {
+      key: "panel_config",
+      label: "Panel Configuration",
+      field: "panel_config",
+      type: "select",
+      options: SHUTTER_PANEL_CONFIGS,
+    },
+    {
+      key: "split_tilt",
+      label: "Split Tilt",
+      field: "json:split_tilt",
+      type: "yes-no",
+    },
+    {
+      key: "hard_surface",
+      label: "Hard Surface Install",
+      field: "hard_surface_install",
+      type: "yes-no",
+      noFirst: true,
+    },
+    {
+      key: "ladder",
+      label: "Requires Ladder Over 15ft",
+      field: "ladder_over_15ft",
+      type: "yes-no",
+      noFirst: true,
+    },
+    {
+      key: "takedown",
+      label: "Requires Takedown",
+      field: "requires_takedown",
+      type: "yes-no",
+      noFirst: true,
+    },
+  ];
+}
+
+// --- Small grid components ---
+
+function GridButtonGroup({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: readonly string[];
+  value: string | null;
+  onChange: (v: string) => void;
+}) {
+  if (!options) return null;
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-gray-900">{label}</Label>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={cn(
+              "px-3 py-1.5 rounded-md border text-xs font-medium transition-all",
+              value === opt
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border hover:bg-accent text-gray-900"
+            )}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GridSelect({
+  label,
+  options,
+  value,
+  onChange,
+  grouped,
+}: {
+  label: string;
+  options: readonly string[];
+  value: string | null;
+  onChange: (v: string) => void;
+  grouped?: GridSelectGroup[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-gray-900">{label}</Label>
+      <Select value={value || ""} onValueChange={onChange}>
+        <SelectTrigger className="h-9 text-sm text-gray-900">
+          <SelectValue placeholder="Select..." />
+        </SelectTrigger>
+        <SelectContent>
+          {grouped
+            ? grouped.map((group) => (
+                <div key={group.label}>
+                  <div className="px-2 py-1.5 text-xs font-semibold text-gray-700 bg-accent">
+                    {group.label}
+                  </div>
+                  {(group.items || []).map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {opt}
+                    </SelectItem>
+                  ))}
+                </div>
+              ))
+            : (options || []).map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function GridYesNo({
+  label,
+  value,
+  onChange,
+  noFirst,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string) => void;
+  noFirst?: boolean;
+}) {
+  const items = noFirst ? ["No", "Yes"] : ["Yes", "No"];
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-gray-900">{label}</Label>
+      <div className="flex gap-1.5">
+        {items.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={cn(
+              "px-3 py-1.5 rounded-md border text-xs font-medium transition-all",
+              value === opt
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background border-border hover:bg-accent text-gray-900"
+            )}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Main DesignCard ---
+
+function getPreferredSavedVariant(designs: SalesQuoteDesign[], variants: string[]): string {
+  return variants.find((variant) => designs.some((design) => design.variant === variant)) || "A";
+}
+
+export function DesignCard({
+  lineItem,
+  instanceIndex,
+  designs,
+  onUpdateDesign,
+  onCopyAll,
+  onCopySome,
+  copyMode: _copyMode,
+  isCopyTarget,
+  isSelectedTarget,
+  onToggleCopyTarget,
+  isDiscountTarget = false,
+  isDiscountSelected = false,
+  onToggleDiscountTarget,
+  isPriceLocked = false,
+  onOpenMeasurement,
+  onDelete,
+  onCopyItem,
+  onChangeProductType,
+}: DesignCardProps) {
+  const isShutters = lineItem.product_type === "Shutters";
+  const variants = useMemo(
+    () => (isShutters ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
+    [isShutters]
+  );
+  const [activeVariant, setActiveVariant] = useState(() =>
+    getPreferredSavedVariant(designs, variants)
+  );
+  const userSelectedVariantRef = useRef(false);
+  const lineItemIdRef = useRef(lineItem.id);
+  const [editingRetail, setEditingRetail] = useState(false);
+  const [retailInput, setRetailInput] = useState("");
+  const currentDesign = designs.find((d) => d.variant === activeVariant);
+  const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const discountPercent = Number(currentOptions.discount_percent) || 0;
+  const hasDiscount = Boolean(currentDesign && discountPercent > 0);
+
+  const { getRetailPrice, setRetailPrice } = useRetailPriceStore();
+
+  useEffect(() => {
+    const preferredVariant = getPreferredSavedVariant(designs, variants);
+    const isNewLineItem = lineItemIdRef.current !== lineItem.id;
+
+    if (isNewLineItem) {
+      lineItemIdRef.current = lineItem.id;
+      userSelectedVariantRef.current = false;
+      setActiveVariant(preferredVariant);
+      return;
+    }
+
+    if (!userSelectedVariantRef.current && !currentDesign && activeVariant !== preferredVariant) {
+      setActiveVariant(preferredVariant);
+    }
+  }, [activeVariant, currentDesign, designs, lineItem.id, variants]);
+
+  const handleVariantChange = (variant: string) => {
+    userSelectedVariantRef.current = true;
+    setActiveVariant(variant);
+  };
+
+  // Compute sqft and current retail $/sqft for shutters
+  const widthIn = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
+  const heightIn = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
+  const sqft =
+    isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, true) : null;
+  const rawSqft =
+    isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, false) : null;
+
+  const currentRetailPerSqft =
+    isShutters && currentDesign?.supplier
+      ? getRetailPrice(currentDesign.supplier, getShutterProgramName(currentDesign) ?? "")
+      : null;
+
+  const updateFields = (fields: Partial<SalesQuoteDesign>) => {
+    onUpdateDesign({
+      line_item_id: lineItem.id,
+      variant: activeVariant,
+      product_type: lineItem.product_type,
+      ...fields,
+    });
+  };
+
+  const updateField = (field: string, value: unknown) => {
+    updateFields({
+      [field]: value,
+    });
+  };
+
+  const handleRemoveDiscount = () => {
+    if (!currentDesign || discountPercent <= 0) return;
+    updateFields(removeQuoteDesignDiscount(currentDesign));
+  };
+
+  const handleRecalculateLockedPrice = () => {
+    if (!currentDesign || widthIn === 0 || heightIn === 0) return;
+
+    const opts = (currentDesign.options_json as Record<string, unknown>) || {};
+    const fabricGroup = opts?.fabric_group as string | undefined;
+    const romanFabricCategory = opts?.roman_fabric_category as string | undefined;
+    const cellSize = opts?.cell_size as string | undefined;
+    const shutterProgram = isShutters ? getShutterProgramName(currentDesign) : undefined;
+    const retailOverride =
+      isShutters && currentDesign.supplier && shutterProgram
+        ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
+        : undefined;
+
+    const priceBreakdown = getProductPriceBreakdown({
+      productType: lineItem.product_type,
+      width: widthIn,
+      height: heightIn,
+      priceGroup: getFabricPriceGroup(
+        lineItem.product_type,
+        currentDesign.fabric,
+        fabricGroup,
+        romanFabricCategory
+      ),
+      productLine: opts?.product_line as string | undefined,
+      fabricGroup,
+      shadeType: currentDesign.shade_type || undefined,
+      program: shutterProgram || currentDesign.material || undefined,
+      supplier: currentDesign.supplier || undefined,
+      retailPriceOverride: retailOverride,
+      cellSize,
+      fabric: currentDesign.fabric || undefined,
+    });
+    const basePrice = priceBreakdown.price;
+    if (basePrice === null) return;
+
+    const selectedSurcharges = [
+      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+      ...getSelectedSurcharges(currentDesign),
+    ];
+    const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+    const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
+    const recalculatedOptions = stripPriceFreezeMetadata(opts);
+    const recalculatedDiscountPercent = Number(opts.discount_percent) || 0;
+    const discount =
+      recalculatedDiscountPercent > 0
+        ? calculateDiscountedPrice(sourcePrice, recalculatedDiscountPercent)
+        : { discountAmount: 0, unitPrice: sourcePrice };
+
+    updateFields({
+      unit_price: discount.unitPrice,
+      options_json: {
+        ...recalculatedOptions,
+        base_price: basePrice,
+        surcharge_total: surchargeTotal,
+        pricing_method: priceBreakdown.pricingMethod,
+        ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
+        ...(priceBreakdown.gridPrice !== undefined
+          ? { pricing_grid_price: priceBreakdown.gridPrice }
+          : {}),
+        ...(priceBreakdown.matchedWidth !== undefined
+          ? { pricing_grid_width: priceBreakdown.matchedWidth }
+          : {}),
+        ...(priceBreakdown.matchedHeight !== undefined
+          ? { pricing_grid_height: priceBreakdown.matchedHeight }
+          : {}),
+        ...(priceBreakdown.builtInAdjustment
+          ? { pricing_built_in_adjustment: priceBreakdown.builtInAdjustment }
+          : {}),
+        ...(recalculatedDiscountPercent > 0
+          ? {
+              discount_source_price: sourcePrice,
+              discount_amount: discount.discountAmount,
+            }
+          : {}),
+      },
+    });
+  };
+
+  // Locked contract lines stay frozen unless motorization totals are stale or missing.
+  useEffect(() => {
+    if (!currentDesign || !isPriceLocked) return;
+
+    const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
+    const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
+
+    if (widthInches === 0 || heightInches === 0) return;
+
+    const opts = (currentDesign.options_json as Record<string, unknown>) || {};
+    const fabricGroup = opts?.fabric_group as string | undefined;
+    const romanFabricCategory = opts?.roman_fabric_category as string | undefined;
+    const cellSize = opts?.cell_size as string | undefined;
+    const shutterProgram = isShutters ? getShutterProgramName(currentDesign) : undefined;
+    const retailOverride =
+      isShutters && currentDesign.supplier && shutterProgram
+        ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
+        : undefined;
+
+    const priceBreakdown = getProductPriceBreakdown({
+      productType: lineItem.product_type,
+      width: widthInches,
+      height: heightInches,
+      priceGroup: getFabricPriceGroup(
+        lineItem.product_type,
+        currentDesign.fabric,
+        fabricGroup,
+        romanFabricCategory
+      ),
+      productLine: opts?.product_line as string | undefined,
+      fabricGroup,
+      shadeType: currentDesign.shade_type || undefined,
+      program: shutterProgram || currentDesign.material || undefined,
+      supplier: currentDesign.supplier || undefined,
+      retailPriceOverride: retailOverride,
+      cellSize,
+      fabric: currentDesign.fabric || undefined,
+    });
+    const basePrice = priceBreakdown.price;
+    if (basePrice === null) return;
+
+    const selectedSurcharges = [
+      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+      ...getSelectedSurcharges(currentDesign),
+    ];
+    if (!hasMotorizationSurcharge(selectedSurcharges)) return;
+
+    const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+    const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
+    const discountPercent = Number(opts.discount_percent) || 0;
+    const discount =
+      discountPercent > 0
+        ? calculateDiscountedPrice(sourcePrice, discountPercent)
+        : { discountAmount: 0, unitPrice: sourcePrice };
+    const currentBasePrice = Number(opts.base_price);
+    const currentSurchargeTotal = Number(opts.surcharge_total);
+    const currentDiscountSourcePrice = Number(opts.discount_source_price);
+    const currentDiscountAmount = Number(opts.discount_amount);
+    const currentGridWidth = Number(opts.pricing_grid_width);
+    const currentGridHeight = Number(opts.pricing_grid_height);
+    const currentGridPrice = Number(opts.pricing_grid_price);
+    const currentUnitPrice = Math.round(Number(currentDesign.unit_price || 0) * 100) / 100;
+    const roundedBasePrice = Math.round(basePrice * 100) / 100;
+    const discountMetadataChanged =
+      discountPercent > 0 &&
+      (currentDiscountSourcePrice !== sourcePrice ||
+        currentDiscountAmount !== discount.discountAmount);
+    const pricingMetadataChanged =
+      (priceBreakdown.matchedWidth !== undefined &&
+        currentGridWidth !== priceBreakdown.matchedWidth) ||
+      (priceBreakdown.matchedHeight !== undefined &&
+        currentGridHeight !== priceBreakdown.matchedHeight) ||
+      (priceBreakdown.gridPrice !== undefined && currentGridPrice !== priceBreakdown.gridPrice) ||
+      (priceBreakdown.gridKey !== undefined && opts.pricing_grid_key !== priceBreakdown.gridKey);
+    const storedPricingChanged =
+      currentBasePrice !== basePrice ||
+      currentSurchargeTotal !== surchargeTotal ||
+      discountMetadataChanged ||
+      pricingMetadataChanged;
+    const unitPriceMissingSurcharges = surchargeTotal > 0 && currentUnitPrice === roundedBasePrice;
+
+    if (!storedPricingChanged && !unitPriceMissingSurcharges) return;
+
+    const recalculatedOptions = stripPriceFreezeMetadata(opts);
+
+    updateFields({
+      unit_price: discount.unitPrice,
+      options_json: {
+        ...recalculatedOptions,
+        base_price: basePrice,
+        surcharge_total: surchargeTotal,
+        pricing_method: priceBreakdown.pricingMethod,
+        ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
+        ...(priceBreakdown.gridPrice !== undefined
+          ? { pricing_grid_price: priceBreakdown.gridPrice }
+          : {}),
+        ...(priceBreakdown.matchedWidth !== undefined
+          ? { pricing_grid_width: priceBreakdown.matchedWidth }
+          : {}),
+        ...(priceBreakdown.matchedHeight !== undefined
+          ? { pricing_grid_height: priceBreakdown.matchedHeight }
+          : {}),
+        ...(priceBreakdown.builtInAdjustment
+          ? { pricing_built_in_adjustment: priceBreakdown.builtInAdjustment }
+          : {}),
+        ...(discountPercent > 0
+          ? {
+              discount_source_price: sourcePrice,
+              discount_amount: discount.discountAmount,
+            }
+          : {}),
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    lineItem.width_whole,
+    lineItem.width_fraction,
+    lineItem.height_whole,
+    lineItem.height_fraction,
+    lineItem.product_type,
+    currentDesign?.fabric,
+    currentDesign?.shade_type,
+    currentDesign?.lift_system,
+    currentDesign?.valance,
+    currentDesign?.material,
+    currentDesign?.supplier,
+    currentDesign?.motor_type,
+    currentDesign?.remote_type,
+    currentDesign?.options_json,
+    currentRetailPerSqft,
+    isPriceLocked,
+  ]);
+
+  // Auto-calculate price when options or retail override change
+  useEffect(() => {
+    if (!currentDesign) return;
+
+    const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
+    const heightInches = measurementToInches(lineItem.height_whole, lineItem.height_fraction);
+
+    if (widthInches === 0 || heightInches === 0) return;
+
+    const opts = (currentDesign.options_json as Record<string, unknown>) || {};
+    if (opts.manual_price_override === true) return;
+    if (isPriceLocked) return;
+
+    const fabricGroup = opts?.fabric_group as string | undefined;
+    const romanFabricCategory = opts?.roman_fabric_category as string | undefined;
+    const cellSize = opts?.cell_size as string | undefined;
+
+    // For shutters, pass the retail price override from the store
+    const shutterProgram = isShutters ? getShutterProgramName(currentDesign) : undefined;
+    const retailOverride =
+      isShutters && currentDesign.supplier && shutterProgram
+        ? (getRetailPrice(currentDesign.supplier, shutterProgram) ?? undefined)
+        : undefined;
+
+    const priceBreakdown = getProductPriceBreakdown({
+      productType: lineItem.product_type,
+      width: widthInches,
+      height: heightInches,
+      priceGroup: getFabricPriceGroup(
+        lineItem.product_type,
+        currentDesign.fabric,
+        fabricGroup,
+        romanFabricCategory
+      ),
+      productLine: opts?.product_line as string | undefined,
+      fabricGroup,
+      shadeType: currentDesign.shade_type || undefined,
+      program: shutterProgram || currentDesign.material || undefined,
+      supplier: currentDesign.supplier || undefined,
+      retailPriceOverride: retailOverride,
+      cellSize, // Pass cell size for honeycomb routing
+      fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
+    });
+    const basePrice = priceBreakdown.price;
+
+    if (basePrice !== null) {
+      const selectedSurcharges = [
+        ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+        ...getSelectedSurcharges(currentDesign),
+      ];
+      const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
+      const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
+      const discountPercent = Number(opts.discount_percent) || 0;
+      const discount =
+        discountPercent > 0
+          ? calculateDiscountedPrice(sourcePrice, discountPercent)
+          : { discountAmount: 0, unitPrice: sourcePrice };
+      const calculatedPrice = discount.unitPrice;
+      const currentBasePrice = Number(opts.base_price);
+      const currentSurchargeTotal = Number(opts.surcharge_total);
+      const currentDiscountSourcePrice = Number(opts.discount_source_price);
+      const currentDiscountAmount = Number(opts.discount_amount);
+      const currentGridWidth = Number(opts.pricing_grid_width);
+      const currentGridHeight = Number(opts.pricing_grid_height);
+      const currentGridPrice = Number(opts.pricing_grid_price);
+      const discountMetadataChanged =
+        discountPercent > 0 &&
+        (currentDiscountSourcePrice !== sourcePrice ||
+          currentDiscountAmount !== discount.discountAmount);
+      const pricingMetadataChanged =
+        (priceBreakdown.matchedWidth !== undefined &&
+          currentGridWidth !== priceBreakdown.matchedWidth) ||
+        (priceBreakdown.matchedHeight !== undefined &&
+          currentGridHeight !== priceBreakdown.matchedHeight) ||
+        (priceBreakdown.gridPrice !== undefined && currentGridPrice !== priceBreakdown.gridPrice) ||
+        (priceBreakdown.gridKey !== undefined && opts.pricing_grid_key !== priceBreakdown.gridKey);
+
+      if (
+        currentDesign.unit_price !== calculatedPrice ||
+        currentBasePrice !== basePrice ||
+        currentSurchargeTotal !== surchargeTotal ||
+        discountMetadataChanged ||
+        pricingMetadataChanged
+      ) {
+        updateFields({
+          unit_price: calculatedPrice,
+          options_json: {
+            ...opts,
+            base_price: basePrice,
+            surcharge_total: surchargeTotal,
+            pricing_method: priceBreakdown.pricingMethod,
+            ...(priceBreakdown.gridKey ? { pricing_grid_key: priceBreakdown.gridKey } : {}),
+            ...(priceBreakdown.gridPrice !== undefined
+              ? { pricing_grid_price: priceBreakdown.gridPrice }
+              : {}),
+            ...(priceBreakdown.matchedWidth !== undefined
+              ? { pricing_grid_width: priceBreakdown.matchedWidth }
+              : {}),
+            ...(priceBreakdown.matchedHeight !== undefined
+              ? { pricing_grid_height: priceBreakdown.matchedHeight }
+              : {}),
+            ...(priceBreakdown.builtInAdjustment
+              ? { pricing_built_in_adjustment: priceBreakdown.builtInAdjustment }
+              : {}),
+            ...(discountPercent > 0
+              ? {
+                  discount_source_price: sourcePrice,
+                  discount_amount: discount.discountAmount,
+                }
+              : {}),
+          },
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    lineItem.width_whole,
+    lineItem.width_fraction,
+    lineItem.height_whole,
+    lineItem.height_fraction,
+    lineItem.product_type,
+    currentDesign?.fabric,
+    currentDesign?.shade_type,
+    currentDesign?.lift_system,
+    currentDesign?.valance,
+    currentDesign?.material,
+    currentDesign?.supplier,
+    currentDesign?.motor_type,
+    currentDesign?.remote_type,
+    currentDesign?.options_json,
+    currentRetailPerSqft,
+    isPriceLocked,
+  ]);
+
+  const hasMeasurements = lineItem.width_whole > 0 || lineItem.height_whole > 0;
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white text-foreground shadow-[0_24px_70px_rgba(15,35,70,0.10)] transition-all",
+        isCopyTarget && "ring-2 ring-blue-300/30",
+        isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50",
+        isDiscountTarget && "ring-2 ring-emerald-300/40",
+        isDiscountSelected && "ring-2 ring-emerald-500 bg-emerald-50"
+      )}
+    >
+      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f1f7fc] pb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {isCopyTarget && (
+              <Checkbox checked={isSelectedTarget} onCheckedChange={onToggleCopyTarget} />
+            )}
+            {isDiscountTarget && (
+              <Checkbox
+                aria-label={`Select ${lineItem.room_name} for discount`}
+                checked={isDiscountSelected}
+                onCheckedChange={onToggleDiscountTarget}
+              />
+            )}
+            <div className="flex items-baseline gap-4">
+              <h3 className="text-4xl font-black tracking-[-0.04em] text-slate-950">
+                {lineItem.room_name}
+              </h3>
+              {hasMeasurements ? (
+                <button
+                  onClick={onOpenMeasurement}
+                  className="font-mono text-4xl font-extrabold text-foreground hover:text-primary transition-colors cursor-pointer"
+                  title="Click to update measurements"
+                >
+                  &ndash; {formatDimensions(lineItem)}
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenMeasurement}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-xs font-medium hover:bg-accent transition-all cursor-pointer"
+                  title="Add measurements"
+                >
+                  <Ruler className="h-3 w-3" />
+                  Add Size
+                </button>
+              )}
+              {lineItem.quantity > 1 && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-accent text-xs">
+                  x{lineItem.quantity} (#{instanceIndex + 1})
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+            {/* Sqft + editable $/sqft for shutters */}
+            {isShutters && sqft !== null && currentRetailPerSqft !== null && (
+              <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
+                <span>
+                  {rawSqft !== null ? rawSqft.toFixed(1) : "—"} ft²
+                  {sqft !== rawSqft && <span className="ml-1 text-[10px]">(min 8)</span>}
+                </span>
+                {editingRetail ? (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[10px]">$</span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0.01"
+                      className="w-16 h-5 px-1 text-xs border rounded text-foreground bg-white text-right"
+                      value={retailInput}
+                      autoFocus
+                      onChange={(e) => setRetailInput(e.target.value)}
+                      onBlur={() => {
+                        const val = parseFloat(retailInput);
+                        if (
+                          !isNaN(val) &&
+                          val > 0 &&
+                          currentDesign?.supplier &&
+                          currentDesign?.material
+                        ) {
+                          setRetailPrice(currentDesign.supplier, currentDesign.material, val);
+                        }
+                        setEditingRetail(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          (e.target as HTMLInputElement).blur();
+                        } else if (e.key === "Escape") {
+                          setEditingRetail(false);
+                        }
+                      }}
+                    />
+                    <span className="text-[10px]">/ft²</span>
+                  </div>
+                ) : (
+                  <button
+                    className="hover:text-primary transition-colors cursor-pointer font-medium"
+                    onClick={() => {
+                      setRetailInput(currentRetailPerSqft.toFixed(2));
+                      setEditingRetail(true);
+                    }}
+                    title="Click to edit retail $/sqft"
+                  >
+                    ${currentRetailPerSqft.toFixed(2)}/ft²
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="flex items-center gap-1.5 text-right">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              <div>
+                <span className="text-xl font-bold">
+                  {formatMoney(currentDesign?.unit_price || 0)}
+                </span>
+                <div className="text-xs text-muted-foreground">excl. tax</div>
+              </div>
+            </div>
+            {hasDiscount && (
+              <button
+                type="button"
+                onClick={handleRemoveDiscount}
+                aria-label={`Remove ${discountPercent}% discount from ${lineItem.room_name}`}
+                title="Remove this line item discount"
+                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100"
+              >
+                <Percent className="h-3.5 w-3.5" />
+                {discountPercent}% off
+              </button>
+            )}
+            {onCopyItem && (
+              <Button variant="ghost" size="icon" onClick={onCopyItem} title="Copy line item">
+                <Copy className="h-4 w-4" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onDelete}
+                title="Delete line item"
+                className="text-destructive hover:text-destructive"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Variant tabs */}
+        {variants.length > 1 && (
+          <Tabs value={activeVariant} onValueChange={handleVariantChange}>
+            <TabsList className="bg-transparent gap-2 h-auto p-0">
+              {variants.map((v) => {
+                const label = isShutters
+                  ? SHUTTER_AUTO_VARIANTS.find((sv) => sv.variant === v)?.label || `Quote ${v}`
+                  : `Quote ${v}`;
+                return (
+                  <TabsTrigger
+                    key={v}
+                    value={v}
+                    className="text-xs px-4 py-2 rounded-lg border border-[#93c5fd] bg-white text-black data-[state=active]:bg-[#0077b6] data-[state=active]:text-white data-[state=active]:border-[#005f92] data-[state=active]:shadow-sm"
+                  >
+                    {label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+        )}
+
+        {/* Design options based on product type */}
+        {isShutters ? (
+          <ShutterDesignOptions
+            design={currentDesign}
+            activeVariant={activeVariant}
+            productType={lineItem.product_type}
+            onUpdate={updateField}
+            onUpdateFields={updateFields}
+            onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+            onChangeProductType={onChangeProductType}
+          />
+        ) : (
+          <ShadesAndBlindsOptions
+            design={currentDesign}
+            productType={lineItem.product_type}
+            lineItem={lineItem}
+            onUpdate={updateField}
+            onUpdateFields={updateFields}
+            onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+            onChangeProductType={onChangeProductType}
+          />
+        )}
+
+        {/* Copy actions */}
+        <div className="flex items-center gap-3 pt-2 border-t">
+          <span className="text-xs text-muted-foreground">Copy this design to:</span>
+          <Button variant="outline" size="sm" onClick={onCopyAll} className="text-xs">
+            <Copy className="h-3 w-3 mr-1" />
+            All lines
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCopySome} className="text-xs">
+            <CopyCheck className="h-3 w-3 mr-1" />
+            Some
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Shutter Design Options (restructured with pills + grid) ---
+
+function ShutterDesignOptions({
+  design,
+  activeVariant,
+  productType,
+  onUpdate,
+  onUpdateFields,
+  onRecalculatePrice,
+  onChangeProductType,
+}: {
+  design: SalesQuoteDesign | undefined;
+  activeVariant: string;
+  productType: string;
+  onUpdate: (field: string, value: unknown) => void;
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+  onRecalculatePrice?: () => void;
+  onChangeProductType?: (productType: string) => void;
+}) {
+  const [showNote, setShowNote] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState<string | null>(null);
+  const [confirmedOptions, setConfirmedOptions] = useState<
+    Map<string, { label: string; value: string }>
+  >(new Map());
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  const draftDesign = useMemo(() => buildDraftShutterDesign(activeVariant), [activeVariant]);
+  const workingDesign = design ?? draftDesign;
+  const autoRoutePatchKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const patch = getAutoShutterRoutePatch(activeVariant);
+    if (!design || !patch || !needsShutterRoutePatch(design, patch)) return;
+
+    const routeKey = [
+      activeVariant,
+      design?.id ?? "draft",
+      patch.supplier,
+      patch.material ?? "",
+      JSON.stringify(patch.options),
+    ].join(":");
+
+    if (autoRoutePatchKeyRef.current === routeKey) return;
+    autoRoutePatchKeyRef.current = routeKey;
+    applyShutterRoutePatch(patch, design, onUpdate);
+  }, [activeVariant, design, onUpdate]);
+
+  const handleUpdate = (field: string, value: unknown) => {
+    // When setting a real value, clear the editing flag for this field
+    if (value !== null && value !== undefined && value !== "") {
+      setEditingFields((prev) => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }
+    const patch = getAutoShutterRoutePatch(activeVariant);
+    if (patch && needsShutterRoutePatch(design, patch)) {
+      applyShutterRoutePatch(patch, design, onUpdate);
+    }
+    setFieldValue(field, value, workingDesign, onUpdate);
+  };
+
+  const handleDefiningStepSelect = (step: DefiningStep, value: string) => {
+    if (step.field === "json:wood_route") {
+      applyShutterRoutePatch(getWoodShutterRoutePatch(value as WoodShutterRoute), design, onUpdate);
+      return;
+    }
+
+    handleUpdate(step.field, value);
+  };
+
+  const definingSteps = getDefiningSteps(workingDesign);
+  const standardComplete = isStandardShutterComplete(workingDesign);
+  const useOldSteps = isTrackedOrSpecialty(workingDesign);
+  const optionsJson = (workingDesign.options_json as Record<string, unknown>) || {};
+
+  const handleManualPriceChange = (price: number) => {
+    onUpdateFields({
+      unit_price: price,
+      options_json: { ...optionsJson, manual_price_override: true },
+    });
+  };
+
+  // Build pills from completed defining steps
+  const completedPills: { label: string; value: string; stepIndex: number }[] = [];
+  let nextDefiningStep: DefiningStep | null = null;
+
+  for (let i = 0; i < definingSteps.length; i++) {
+    const value = getFieldValue(workingDesign, definingSteps[i].field);
+    if (value) {
+      completedPills.push({ label: definingSteps[i].label, value, stepIndex: i });
+    } else {
+      nextDefiningStep = definingSteps[i];
+      break;
+    }
+  }
+
+  // Grid options for when standard shutter is fully defined
+  const gridOptions = standardComplete ? getStandardShutterGridOptions(workingDesign) : [];
+
+  // Define option order for standard shutters
+  const optionOrder = gridOptions.map((option) => option.field);
+
+  // Sync confirmedOptions with design values (only for standard shutters)
+  useEffect(() => {
+    if (!standardComplete) {
+      setConfirmedOptions(new Map());
+      return;
+    }
+
+    const newConfirmedOptions = new Map<string, { label: string; value: string }>();
+
+    for (const key of optionOrder) {
+      // Skip fields currently being edited
+      if (editingFields.has(key)) break;
+      const value = getFieldValue(workingDesign, key);
+      if (value !== null && value !== undefined && value !== "") {
+        const option = gridOptions.find((opt) => opt.field === key);
+        if (option) {
+          newConfirmedOptions.set(key, { label: option.label, value });
+        }
+      } else {
+        // Stop at first missing value to maintain order
+        break;
+      }
+    }
+
+    setConfirmedOptions(newConfirmedOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workingDesign, standardComplete, editingFields]);
+
+  // Clear a defining step and all steps after it
+  const handleClearDefiningStep = (stepIndex: number) => {
+    const steps = getDefiningSteps(workingDesign);
+    const stepsToReset = steps.slice(stepIndex);
+    for (const step of stepsToReset) {
+      if (step.field === "json:wood_route") {
+        onUpdate("supplier", null);
+        onUpdate("material", null);
+        const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
+        onUpdate("options_json", {
+          ...currentJson,
+          wood_route: null,
+          material_type: null,
+          composite_subtype: null,
+        });
+        continue;
+      }
+      if (step.field.startsWith("json:")) {
+        const jsonKey = step.field.slice(5);
+        const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
+        onUpdate("options_json", { ...currentJson, [jsonKey]: null });
+      } else {
+        onUpdate(step.field, null);
+      }
+    }
+    // Also clear all grid options when defining steps change
+    for (const field of optionOrder) {
+      handleUpdate(field, null);
+    }
+    const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
+    onUpdate("options_json", {
+      ...currentJson,
+      divider_rail: null,
+      divider_rail_location: null,
+      divider_rail_height: null,
+    });
+  };
+
+  // Handle clicking a badge to re-edit
+  const handleEditOption = (fieldKey: string) => {
+    // Find the index of the clicked option
+    const clickedIndex = optionOrder.indexOf(fieldKey);
+    if (clickedIndex === -1) return;
+
+    // Immediately remove from confirmedOptions so grid re-appears
+    const fieldsToReset = optionOrder.slice(clickedIndex);
+    setConfirmedOptions((prev) => {
+      const next = new Map(prev);
+      for (const field of fieldsToReset) {
+        next.delete(field);
+      }
+      return next;
+    });
+
+    // Mark these fields as editing so useEffect doesn't re-confirm them
+    setEditingFields(new Set(fieldsToReset));
+
+    // Clear values in database
+    for (const field of fieldsToReset) {
+      handleUpdate(field, null);
+    }
+  };
+
+  // Check if all options are confirmed
+  const allOptionsConfirmed = optionOrder.every((key) => confirmedOptions.has(key));
+
+  return (
+    <div className="space-y-3">
+      {/* Pills row */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Product type badge */}
+        <ProductTypeSwitcher productType={productType} onChangeProductType={onChangeProductType} />
+
+        {/* Completed defining steps as pills */}
+        {completedPills.map((pill) => (
+          <button
+            key={pill.stepIndex}
+            onClick={() => handleClearDefiningStep(pill.stepIndex)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
+            title="Click to change"
+          >
+            {pill.label}: {pill.value}
+          </button>
+        ))}
+
+        {/* Confirmed grid options as badges (for standard shutters) */}
+        {standardComplete &&
+          Array.from(confirmedOptions.entries()).map(([key, { label, value }]) => (
+            <button
+              key={key}
+              onClick={() => handleEditOption(key)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
+              title="Click to change"
+            >
+              {label}: {value}
+            </button>
+          ))}
+
+        {/* Add Note button */}
+        <button
+          onClick={() => setShowNote(!showNote)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Add Note
+        </button>
+      </div>
+
+      {/* Note input (expandable) */}
+      {showNote && (
+        <DeferredTextInput
+          value={workingDesign.notes || ""}
+          onCommit={(value) => onUpdate("notes", value)}
+          placeholder="Add a note for the contract..."
+          className="h-8 text-sm"
+          autoFocus
+        />
+      )}
+
+      <SmartOptionInput
+        productType={productType}
+        design={workingDesign}
+        onUpdateFields={onUpdateFields}
+      />
+      <SurchargePicker productType={productType} design={workingDesign} onUpdate={onUpdate} />
+
+      {/* Separator line - only show if there are options to display */}
+      {(nextDefiningStep || (standardComplete && !allOptionsConfirmed) || useOldSteps) && (
+        <div className="border-t border-primary/20" />
+      )}
+
+      {/* Step-by-step wizard for incomplete defining steps */}
+      {nextDefiningStep && nextDefiningStep.options && (
+        <div className="space-y-3">
+          <p className="text-lg text-gray-700 font-medium italic">{nextDefiningStep.label}</p>
+          <div className="inline-flex gap-3 p-2 rounded-xl border-2 border-border bg-accent/30 flex-row flex-wrap">
+            {nextDefiningStep.options.map((opt) => (
+              <button
+                key={opt}
+                onClick={() => handleDefiningStepSelect(nextDefiningStep!, opt)}
+                className="px-6 py-2.5 rounded-lg border-2 border-border bg-background text-base font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* For Tracked/Specialty shutters, use the old step-by-step flow */}
+      {useOldSteps && <LegacyShutterSteps design={workingDesign} onUpdate={onUpdate} />}
+
+      {/* Grid layout for Standard Shutter detail options */}
+      {standardComplete && !allOptionsConfirmed && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+          {gridOptions.map((opt) => {
+            // Skip options that are already confirmed
+            if (confirmedOptions.has(opt.field)) {
+              return null;
+            }
+
+            const value = getFieldValue(workingDesign, opt.field);
+
+            if (opt.type === "buttons") {
+              return (
+                <GridButtonGroup
+                  key={opt.key}
+                  label={opt.label}
+                  options={opt.options}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                />
+              );
+            }
+
+            if (opt.type === "select") {
+              return (
+                <GridSelect
+                  key={opt.key}
+                  label={opt.label}
+                  options={opt.options}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                />
+              );
+            }
+
+            if (opt.type === "yes-no") {
+              return (
+                <GridYesNo
+                  key={opt.key}
+                  label={opt.label}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                  noFirst={opt.noFirst}
+                />
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      )}
+
+      {/* Show More section (divider rail, etc.) */}
+      {standardComplete && allOptionsConfirmed && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMoreOptions(showMoreOptions === "Yes" ? null : "Yes")}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+              {showMoreOptions === "Yes" ? "Hide" : "Show"} More Options
+            </button>
+          </div>
+
+          {showMoreOptions === "Yes" && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+              <GridYesNo
+                label="Divider Rail"
+                value={getFieldValue(workingDesign, "json:divider_rail")}
+                onChange={(v) => handleUpdate("json:divider_rail", v)}
+              />
+              {(design?.options_json as Record<string, string>)?.divider_rail === "Yes" && (
+                <>
+                  <GridButtonGroup
+                    label="Divider Rail Location"
+                    options={ONYX_DIVIDER_RAIL_LOCATIONS}
+                    value={getFieldValue(design, "json:divider_rail_location")}
+                    onChange={(v) => handleUpdate("json:divider_rail_location", v)}
+                  />
+                  {(design?.options_json as Record<string, string>)?.divider_rail_location ===
+                    "Custom" && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Divider Rail Height</Label>
+                      <div className="flex items-center gap-1.5">
+                        <DeferredTextInput
+                          placeholder="Enter height"
+                          className="h-9 w-28 text-sm"
+                          value={
+                            (design?.options_json as Record<string, string>)?.divider_rail_height ||
+                            ""
+                          }
+                          onCommit={(value) => handleUpdate("json:divider_rail_height", value)}
+                        />
+                        <span className="text-sm font-medium">&quot;</span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Price input */}
+      {(standardComplete || useOldSteps) && (
+        <div className="pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Price:</Label>
+            <div className="relative w-32">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                $
+              </span>
+              <DeferredNumberInput
+                value={design?.unit_price || ""}
+                onCommit={handleManualPriceChange}
+                commitOnChange
+                className="pl-5 h-8 text-sm"
+                placeholder="0.00"
+              />
+            </div>
+            {onRecalculatePrice && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRecalculatePrice}
+                className="h-8 rounded-lg text-xs"
+                title="Recalculate this locked contract line"
+              >
+                <Calculator className="mr-1 h-3.5 w-3.5" />
+                Reprice
+              </Button>
+            )}
+          </div>
+          <PriceExplanation design={design} productType={productType} rawSqft={null} sqft={null} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Legacy step-by-step for Tracked/Specialty Shutters ---
+
+function LegacyShutterSteps({
+  design,
+  onUpdate,
+}: {
+  design: SalesQuoteDesign | undefined;
+  onUpdate: (field: string, value: unknown) => void;
+}) {
+  const handleUpdate = (field: string, value: unknown) => {
+    setFieldValue(field, value, design, onUpdate);
+  };
+
+  const shutterType = (design?.options_json as Record<string, string>)?.shutter_type;
+  if (!shutterType) return null;
+
+  if (shutterType === "Specialty Shutter") {
+    const selectedShape = (design?.options_json as Record<string, string>)?.specialty_shape;
+    if (selectedShape) {
+      const shape = ONYX_SPECIALTY_SHAPES.find((s) => s.label === selectedShape);
+      return (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleUpdate("json:specialty_shape", null)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-background text-sm font-medium hover:bg-accent transition-all cursor-pointer group"
+            title="Click to change"
+          >
+            {shape?.image && (
+              <img
+                src={shape.image}
+                alt={selectedShape}
+                className="h-8 w-8 object-contain rounded bg-accent"
+              />
+            )}
+            <span className="text-muted-foreground">Shape:</span>
+            <span className="font-semibold">{selectedShape}</span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-lg text-muted-foreground font-medium italic">Specialty Shape</p>
+        <SpecialtyShapeGrid
+          shapes={ONYX_SPECIALTY_SHAPES}
+          categories={ONYX_SPECIALTY_CATEGORIES}
+          onSelect={(label) => handleUpdate("json:specialty_shape", label)}
+        />
+      </div>
+    );
+  }
+
+  if (shutterType === "Tracked Shutter") {
+    return <TrackedShutterSteps design={design} onUpdate={onUpdate} handleUpdate={handleUpdate} />;
+  }
+
+  return null;
+}
+
+function TrackedShutterSteps({
+  design,
+  onUpdate: _onUpdate,
+  handleUpdate,
+}: {
+  design: SalesQuoteDesign | undefined;
+  onUpdate: (field: string, value: unknown) => void;
+  handleUpdate: (field: string, value: unknown) => void;
+}) {
+  const opts = (design?.options_json as Record<string, string>) || {};
+
+  // Build steps list for tracked shutter
+  interface TrackedStep {
+    key: string;
+    label: string;
+    field: string;
+    options: readonly string[];
+  }
+
+  const steps: TrackedStep[] = [
+    { key: "track_type", label: "Track Type", field: "json:track_type", options: ONYX_TRACK_TYPES },
+  ];
+
+  if (!opts.track_type) {
+    return <StepWizard step={steps[0]} onSelect={(v) => handleUpdate(steps[0].field, v)} />;
+  }
+
+  if (opts.track_type === "Bypass") {
+    steps.push({
+      key: "bypass_type",
+      label: "Bypass Type",
+      field: "json:bypass_type",
+      options: ONYX_BYPASS_TYPES,
+    });
+    if (!opts.bypass_type) {
+      return (
+        <div className="space-y-3">
+          <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+          <StepWizard
+            step={steps[steps.length - 1]}
+            onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+          />
+        </div>
+      );
+    }
+  }
+
+  steps.push({
+    key: "folding_direction",
+    label: "Folding Direction",
+    field: "json:folding_direction",
+    options: ONYX_FOLDING_DIRECTIONS,
+  });
+  if (!opts.folding_direction) {
+    return (
+      <div className="space-y-3">
+        <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+        <StepWizard
+          step={steps[steps.length - 1]}
+          onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+        />
+      </div>
+    );
+  }
+
+  steps.push({
+    key: "facia_type",
+    label: "Facia Type",
+    field: "json:facia_type",
+    options: ONYX_FACIA_TYPES,
+  });
+  if (!opts.facia_type) {
+    return (
+      <div className="space-y-3">
+        <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+        <StepWizard
+          step={steps[steps.length - 1]}
+          onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+        />
+      </div>
+    );
+  }
+
+  steps.push({
+    key: "divider_rail",
+    label: "Divider Rail",
+    field: "json:divider_rail",
+    options: ["Yes", "No"] as const,
+  });
+  if (!opts.divider_rail) {
+    return (
+      <div className="space-y-3">
+        <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+        <StepWizard
+          step={steps[steps.length - 1]}
+          onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+        />
+      </div>
+    );
+  }
+
+  if (opts.divider_rail === "Yes") {
+    steps.push({
+      key: "divider_rail_location",
+      label: "Divider Rail Location",
+      field: "json:divider_rail_location",
+      options: ONYX_DIVIDER_RAIL_LOCATIONS,
+    });
+    if (!opts.divider_rail_location) {
+      return (
+        <div className="space-y-3">
+          <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+          <StepWizard
+            step={steps[steps.length - 1]}
+            onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+          />
+        </div>
+      );
+    }
+  }
+
+  steps.push({
+    key: "color",
+    label: "Color",
+    field: "json:color",
+    options: ONYX_COLORS,
+  });
+  if (!opts.color) {
+    return (
+      <div className="space-y-3">
+        <CompletedPills steps={steps.slice(0, -1)} design={design} onClear={handleUpdate} />
+        <StepWizard
+          step={steps[steps.length - 1]}
+          onSelect={(v) => handleUpdate(steps[steps.length - 1].field, v)}
+        />
+      </div>
+    );
+  }
+
+  // All tracked steps complete
+  return <CompletedPills steps={steps} design={design} onClear={handleUpdate} />;
+}
+
+function CompletedPills({
+  steps,
+  design,
+  onClear,
+}: {
+  steps: { key: string; label: string; field: string }[];
+  design: SalesQuoteDesign | undefined;
+  onClear: (field: string, value: unknown) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {steps.map((step) => {
+        const value = getFieldValue(design, step.field);
+        if (!value) return null;
+        return (
+          <button
+            key={step.key}
+            onClick={() => onClear(step.field, null)}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-background text-sm font-medium hover:bg-accent transition-all cursor-pointer group"
+            title="Click to change"
+          >
+            <span className="text-muted-foreground">{step.label}:</span>
+            <span className="font-semibold">{value}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StepWizard({
+  step,
+  onSelect,
+}: {
+  step: { label: string; options: readonly string[] };
+  onSelect: (v: string) => void;
+}) {
+  if (!step.options) return null;
+  return (
+    <div className="space-y-3">
+      <p className="text-lg text-gray-700 font-medium italic">{step.label}</p>
+      <div className="inline-flex gap-3 p-2 rounded-xl border-2 border-border bg-accent/30 flex-row flex-wrap">
+        {step.options.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onSelect(opt)}
+            className="px-6 py-2.5 rounded-lg border-2 border-border bg-background text-base font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Shades and Blinds Design Options ---
+
+function ShadesAndBlindsOptions({
+  design,
+  productType,
+  lineItem: _lineItem,
+  onUpdate,
+  onUpdateFields,
+  onRecalculatePrice,
+  onChangeProductType,
+}: {
+  design: SalesQuoteDesign | undefined;
+  productType: string;
+  lineItem: SalesQuoteLineItem;
+  onUpdate: (field: string, value: unknown) => void;
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+  onRecalculatePrice?: () => void;
+  onChangeProductType?: (productType: string) => void;
+}) {
+  const [showNote, setShowNote] = useState(false);
+  const [confirmedOptions, setConfirmedOptions] = useState<
+    Map<string, { label: string; value: string }>
+  >(new Map());
+  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+
+  const handleUpdate = (field: string, value: unknown) => {
+    // When setting a real value, clear the editing flag for this field
+    if (value !== null && value !== undefined && value !== "") {
+      setEditingFields((prev) => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }
+    setFieldValue(field, value, design, onUpdate);
+
+    // For Honeycomb Shades: Clear fabric selection when cell size changes
+    if (productType === "Honeycomb Shades" && field === "json:cell_size") {
+      // Check if current fabric is valid for the new cell size
+      const currentFabric = design?.fabric;
+      if (currentFabric && value) {
+        const validFabrics = getHoneycombFabricStrings(value as string);
+        if (!validFabrics.includes(currentFabric)) {
+          // Clear invalid fabric
+          onUpdate("fabric", null);
+        }
+      }
+    }
+
+    if (productType === "Roman Shades" && field === "json:roman_fabric_category") {
+      const currentFabric = design?.fabric;
+      const validColors = getRomanFabricColorsForCategory(value as string);
+      if (currentFabric && !validColors.includes(currentFabric)) {
+        onUpdate("fabric", null);
+      }
+    }
+
+    if (productType === "Roman Shades" && field === "fabric" && typeof value === "string") {
+      const category = getRomanFabricCategoryForColor(value);
+      const currentJson = (design?.options_json as Record<string, unknown>) || {};
+      if (category && currentJson.roman_fabric_category !== category) {
+        onUpdate("options_json", { ...currentJson, roman_fabric_category: category });
+      }
+    }
+  };
+
+  // Define option order for each product type
+  const getOptionOrder = (): string[] => {
+    switch (productType) {
+      case "Roller Shades":
+        return [
+          "mount_type",
+          "shade_type",
+          "lift_system",
+          "valance",
+          "fabric",
+          "motor_type",
+          "hub_required",
+          "remote_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Roman Shades":
+        return [
+          "mount_type",
+          "lift_system",
+          "valance",
+          "json:roman_fabric_category",
+          "fabric",
+          "motor_type",
+          "hub_required",
+          "remote_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Honeycomb Shades":
+        return [
+          "mount_type",
+          "json:cell_size",
+          "shade_type",
+          "lift_system",
+          "json:light_control",
+          "fabric",
+          "motor_type",
+          "json:hub_required",
+          "remote_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Sheer Shades":
+        return [
+          "mount_type",
+          "json:light_control",
+          "lift_system",
+          "fabric",
+          "motor_type",
+          "json:hub_required",
+          "remote_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Faux Wood Blinds":
+        return [
+          "mount_type",
+          "json:slat_size",
+          "json:product_line",
+          "json:color",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Wood Blinds":
+        return [
+          "mount_type",
+          "json:slat_size",
+          "json:color",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Vertical Blinds":
+        return [
+          "mount_type",
+          "json:fabric_group",
+          "json:vertical_color",
+          "json:stack_option",
+          "json:control_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      case "Smart Drapes":
+        return [
+          "mount_type",
+          "shade_type",
+          "fabric",
+          "json:stack_option",
+          "json:control_type",
+          "json:control_side",
+          "motor_type",
+          "json:hub_required",
+          "remote_type",
+          "hard_surface_install",
+          "ladder_over_15ft",
+          "requires_takedown",
+        ];
+      default:
+        return ["hard_surface_install", "ladder_over_15ft", "requires_takedown"];
+    }
+  };
+
+  const optionOrder = getOptionOrder();
+
+  useEffect(() => {
+    if (productType !== "Roman Shades" || !design?.fabric) return;
+
+    const canonicalFabric = getRomanFabricCanonicalLabel(design.fabric);
+    const category =
+      getRomanFabricCategoryForColor(design.fabric) || getRomanFabricCategoryName(design.fabric);
+    const currentJson = (design.options_json as Record<string, unknown>) || {};
+
+    if (canonicalFabric && canonicalFabric !== design.fabric) {
+      onUpdate("fabric", canonicalFabric);
+    }
+
+    if (category && currentJson.roman_fabric_category !== category) {
+      onUpdate("options_json", { ...currentJson, roman_fabric_category: category });
+    }
+  }, [productType, design?.fabric, design?.options_json, onUpdate]);
+
+  // Sync confirmedOptions with design values
+  useEffect(() => {
+    const newConfirmedOptions = new Map<string, { label: string; value: string }>();
+    const gridOptions = getGridOptions();
+
+    for (const key of optionOrder) {
+      // Skip fields currently being edited
+      if (editingFields.has(key)) break;
+      const value = getFieldValue(design, key);
+      if (value !== null && value !== undefined && value !== "") {
+        const option = gridOptions.find((opt) => opt.field === key);
+        if (option) {
+          newConfirmedOptions.set(key, { label: option.label, value });
+        }
+      } else {
+        // Stop at first missing value to maintain order
+        break;
+      }
+    }
+
+    setConfirmedOptions(newConfirmedOptions);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [design, productType, editingFields]);
+
+  // Handle clicking a badge to re-edit
+  const handleEditOption = (fieldKey: string) => {
+    // Find the index of the clicked option
+    const clickedIndex = optionOrder.indexOf(fieldKey);
+    if (clickedIndex === -1) return;
+
+    // Immediately remove from confirmedOptions so grid re-appears
+    const fieldsToReset = optionOrder.slice(clickedIndex);
+    setConfirmedOptions((prev) => {
+      const next = new Map(prev);
+      for (const field of fieldsToReset) {
+        next.delete(field);
+      }
+      return next;
+    });
+
+    // Mark these fields as editing so useEffect doesn't re-confirm them
+    setEditingFields(new Set(fieldsToReset));
+
+    // Clear values in database
+    for (const field of fieldsToReset) {
+      handleUpdate(field, null);
+    }
+  };
+
+  const getGridOptions = (): GridOption[] => {
+    const commonOptions: GridOption[] = [
+      {
+        key: "hard_surface",
+        label: "Hard Surface Install",
+        field: "hard_surface_install",
+        type: "yes-no",
+        noFirst: true,
+      },
+      {
+        key: "ladder",
+        label: "Requires Ladder Over 15ft",
+        field: "ladder_over_15ft",
+        type: "yes-no",
+        noFirst: true,
+      },
+      {
+        key: "takedown",
+        label: "Requires Takedown",
+        field: "requires_takedown",
+        type: "yes-no",
+        noFirst: true,
+      },
+    ];
+
+    switch (productType) {
+      case "Roller Shades": {
+        const liftSystem = getFieldValue(design, "lift_system");
+        const options: GridOption[] = [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: ROLLER_MOUNT_TYPES,
+          },
+          {
+            key: "shade_type",
+            label: "Shade Type",
+            field: "shade_type",
+            type: "buttons",
+            options: ROLLER_SHADE_TYPES,
+          },
+          {
+            key: "lift",
+            label: "Lift System",
+            field: "lift_system",
+            type: "buttons",
+            options: ROLLER_LIFT_SYSTEMS,
+          },
+          {
+            key: "valance",
+            label: "Valance",
+            field: "valance",
+            type: "select",
+            options: ROLLER_VALANCES,
+          },
+          {
+            key: "fabric",
+            label: "Fabric",
+            field: "fabric",
+            type: "select",
+            options: [
+              ...ROLLER_FABRIC_CATEGORIES.roomDarkening,
+              ...ROLLER_FABRIC_CATEGORIES.sheer,
+              ...ROLLER_FABRIC_CATEGORIES.natural,
+              ...ROLLER_FABRIC_CATEGORIES.other,
+            ],
+          },
+        ];
+
+        // Show motorization options if Motorized is selected
+        if (liftSystem === "Motorized") {
+          options.push({
+            key: "motor_type",
+            label: "Motor Type",
+            field: "motor_type",
+            type: "select",
+            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+          });
+          options.push({
+            key: "hub_required",
+            label: "Hub Required",
+            field: "json:hub_required",
+            type: "yes-no",
+            noFirst: true,
+          });
+          options.push({
+            key: "remote_type",
+            label: "Remote Type",
+            field: "remote_type",
+            type: "select",
+            options: [
+              "15-Channel Remote",
+              "5-Channel Wall Switch",
+              "SmartDial Remote",
+              "Basic Remote",
+            ] as readonly string[],
+          });
+        }
+
+        options.push(...commonOptions);
+        return options;
+      }
+
+      case "Roman Shades": {
+        const liftSystem = getFieldValue(design, "lift_system");
+        const romanFabricCategory = getFieldValue(design, "json:roman_fabric_category");
+        const options: GridOption[] = [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: ROMAN_MOUNT_TYPES,
+          },
+          {
+            key: "lift",
+            label: "Lift System",
+            field: "lift_system",
+            type: "buttons",
+            options: ROMAN_LIFT_SYSTEMS,
+          },
+          {
+            key: "valance",
+            label: "Valance",
+            field: "valance",
+            type: "select",
+            options: ROMAN_VALANCES,
+          },
+          {
+            key: "roman_fabric_category",
+            label: "Fabric Category",
+            field: "json:roman_fabric_category",
+            type: "select",
+            options: ROMAN_FABRIC_CATEGORY_NAMES,
+          },
+          {
+            key: "roman_fabric_color",
+            label: "Fabric Color",
+            field: "fabric",
+            type: "select",
+            options: getRomanFabricColorsForCategory(romanFabricCategory),
+          },
+        ];
+
+        // Show motorization options if Motorized is selected
+        if (liftSystem === "Motorized") {
+          options.push({
+            key: "motor_type",
+            label: "Motor Type",
+            field: "motor_type",
+            type: "select",
+            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+          });
+          options.push({
+            key: "hub_required",
+            label: "Hub Required",
+            field: "json:hub_required",
+            type: "yes-no",
+            noFirst: true,
+          });
+          options.push({
+            key: "remote_type",
+            label: "Remote Type",
+            field: "remote_type",
+            type: "select",
+            options: [
+              "15-Channel Remote",
+              "5-Channel Wall Switch",
+              "SmartDial Remote",
+              "Basic Remote",
+            ] as readonly string[],
+          });
+        }
+
+        options.push(...commonOptions);
+        return options;
+      }
+
+      case "Honeycomb Shades": {
+        const liftSystem = getFieldValue(design, "lift_system");
+        const cellSize = getFieldValue(design, "json:cell_size");
+
+        // Filter fabrics based on cell size selection using the new catalog
+        const fabricOptions = cellSize
+          ? getHoneycombFabricStrings(cellSize)
+          : getHoneycombFabricStrings('1/2" Double');
+
+        const options: GridOption[] = [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: HONEYCOMB_MOUNT_TYPES,
+          },
+          {
+            key: "cell_size",
+            label: "Cell Size",
+            field: "json:cell_size",
+            type: "buttons",
+            options: HONEYCOMB_CELL_SIZES,
+          },
+          {
+            key: "shade_type",
+            label: "Shade Type",
+            field: "shade_type",
+            type: "buttons",
+            options: HONEYCOMB_SHADE_TYPES,
+          },
+          {
+            key: "lift",
+            label: "Lift System",
+            field: "lift_system",
+            type: "buttons",
+            options: HONEYCOMB_LIFT_SYSTEMS,
+          },
+          {
+            key: "light_control",
+            label: "Light Control",
+            field: "json:light_control",
+            type: "buttons",
+            options: HONEYCOMB_LIGHT_CONTROL,
+          },
+          {
+            key: "fabric",
+            label: "Fabric",
+            field: "fabric",
+            type: "select",
+            options: fabricOptions,
+          },
+        ];
+
+        // Show motorization options if Motorized is selected
+        if (liftSystem === "Motorized") {
+          options.push({
+            key: "motor_type",
+            label: "Motor Type",
+            field: "motor_type",
+            type: "select",
+            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+          });
+          options.push({
+            key: "hub_required",
+            label: "Hub Required",
+            field: "json:hub_required",
+            type: "yes-no",
+            noFirst: true,
+          });
+          options.push({
+            key: "remote_type",
+            label: "Remote Type",
+            field: "remote_type",
+            type: "select",
+            options: [
+              "15-Channel Remote",
+              "5-Channel Wall Switch",
+              "SmartDial Remote",
+              "Basic Remote",
+            ] as readonly string[],
+          });
+        }
+
+        options.push(...commonOptions);
+        return options;
+      }
+
+      case "Sheer Shades": {
+        const liftSystem = getFieldValue(design, "lift_system");
+        const options: GridOption[] = [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: PERFECTSHEER_MOUNT_TYPES,
+          },
+          {
+            key: "light_control",
+            label: "Light Control",
+            field: "json:light_control",
+            type: "buttons",
+            options: PERFECTSHEER_LIGHT_CONTROL,
+          },
+          {
+            key: "lift",
+            label: "Lift System",
+            field: "lift_system",
+            type: "buttons",
+            options: PERFECTSHEER_LIFT_SYSTEMS,
+          },
+          {
+            key: "fabric",
+            label: "Fabric",
+            field: "fabric",
+            type: "select",
+            options: PERFECTSHEER_FABRICS,
+          },
+        ];
+
+        // Show motorization options if Motorized is selected
+        if (liftSystem === "Motorized") {
+          options.push({
+            key: "motor_type",
+            label: "Motor Type",
+            field: "motor_type",
+            type: "select",
+            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+          });
+          options.push({
+            key: "hub_required",
+            label: "Hub Required",
+            field: "json:hub_required",
+            type: "yes-no",
+            noFirst: true,
+          });
+          options.push({
+            key: "remote_type",
+            label: "Remote Type",
+            field: "remote_type",
+            type: "select",
+            options: [
+              "15-Channel Remote",
+              "5-Channel Wall Switch",
+              "SmartDial Remote",
+              "Basic Remote",
+            ] as readonly string[],
+          });
+        }
+
+        options.push(...commonOptions);
+        return options;
+      }
+
+      case "Faux Wood Blinds": {
+        const productLine = getFieldValue(design, "json:product_line");
+        const colorOptions =
+          productLine === "Ultimate" ? FAUX_WOOD_ULTIMATE_COLORS : FAUX_WOOD_SMARTPRIVACY_COLORS;
+
+        return [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: FAUX_WOOD_MOUNT_TYPES,
+          },
+          {
+            key: "slat_size",
+            label: "Slat Size",
+            field: "json:slat_size",
+            type: "buttons",
+            options: FAUX_WOOD_SLAT_SIZES,
+          },
+          {
+            key: "product_line",
+            label: "Product Line",
+            field: "json:product_line",
+            type: "buttons",
+            options: FAUX_WOOD_PRODUCT_LINES,
+          },
+          {
+            key: "color",
+            label: "Color",
+            field: "json:color",
+            type: "select",
+            options: colorOptions,
+          },
+          ...commonOptions,
+        ];
+      }
+
+      case "Wood Blinds":
+        return [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: WOOD_BLIND_MOUNT_TYPES,
+          },
+          {
+            key: "slat_size",
+            label: "Slat Size",
+            field: "json:slat_size",
+            type: "buttons",
+            options: WOOD_BLIND_SLAT_SIZES,
+          },
+          {
+            key: "color",
+            label: "Color",
+            field: "json:color",
+            type: "select",
+            options: WOOD_BLIND_COLORS,
+          },
+          ...commonOptions,
+        ];
+
+      case "Vertical Blinds": {
+        const fabricGroup = getFieldValue(design, "json:fabric_group");
+        const colorOptions = fabricGroup
+          ? getVerticalColorsForGroup(fabricGroup)
+          : getVerticalColorsForGroup("Classic collection");
+
+        return [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: VERTICAL_MOUNT_TYPES,
+          },
+          {
+            key: "fabric_group",
+            label: "Fabric Group",
+            field: "json:fabric_group",
+            type: "select",
+            options: VERTICAL_FABRIC_GROUPS,
+          },
+          {
+            key: "vertical_color",
+            label: "Color / Material",
+            field: "json:vertical_color",
+            type: "select",
+            options: colorOptions,
+          },
+          {
+            key: "stack",
+            label: "Stack Option",
+            field: "json:stack_option",
+            type: "buttons",
+            options: VERTICAL_STACK_OPTIONS,
+          },
+          {
+            key: "control_type",
+            label: "Control Type",
+            field: "json:control_type",
+            type: "buttons",
+            options: VERTICAL_CONTROL_TYPES,
+          },
+          ...commonOptions,
+        ];
+      }
+
+      case "Smart Drapes": {
+        const controlType = getFieldValue(design, "json:control_type");
+        const options: GridOption[] = [
+          {
+            key: "mount",
+            label: "Mount Type",
+            field: "mount_type",
+            type: "buttons",
+            options: SMARTDRAPE_MOUNT_TYPES,
+          },
+          {
+            key: "shade_type",
+            label: "Shade Type",
+            field: "shade_type",
+            type: "buttons",
+            options: SMARTDRAPE_SHADE_TYPES,
+          },
+          {
+            key: "fabric",
+            label: "Fabric",
+            field: "fabric",
+            type: "select",
+            options: SMARTDRAPE_FABRICS,
+          },
+          {
+            key: "stack",
+            label: "Stack Option",
+            field: "json:stack_option",
+            type: "buttons",
+            options: SMARTDRAPE_STACK_OPTIONS,
+          },
+          {
+            key: "control_type",
+            label: "Control Type",
+            field: "json:control_type",
+            type: "buttons",
+            options: SMARTDRAPE_CONTROL_TYPES,
+          },
+          {
+            key: "control_side",
+            label: "Control Side",
+            field: "json:control_side",
+            type: "buttons",
+            options: SMARTDRAPE_CONTROL_SIDES,
+          },
+        ];
+
+        // Show motorization options if Motorized is selected
+        if (controlType === "Motorized") {
+          options.push({
+            key: "motor_type",
+            label: "Motor Type",
+            field: "motor_type",
+            type: "select",
+            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+          });
+          options.push({
+            key: "hub_required",
+            label: "Hub Required",
+            field: "json:hub_required",
+            type: "yes-no",
+            noFirst: true,
+          });
+          options.push({
+            key: "remote_type",
+            label: "Remote Type",
+            field: "remote_type",
+            type: "select",
+            options: ["15-Channel Remote", "5-Channel Wall Switch"] as readonly string[],
+          });
+        }
+
+        options.push(...commonOptions);
+        return options;
+      }
+
+      default:
+        return commonOptions;
+    }
+  };
+
+  const gridOptions = getGridOptions();
+  const optionsJson = (design?.options_json as Record<string, unknown>) || {};
+
+  const handleManualPriceChange = (price: number) => {
+    onUpdateFields({
+      unit_price: price,
+      options_json: { ...optionsJson, manual_price_override: true },
+    });
+  };
+
+  // Create fabric groups for dropdowns
+  const getFabricGroups = (): GridSelectGroup[] | undefined => {
+    if (productType === "Roller Shades") {
+      // Return categorized fabrics: Room Darkening, Sheer, Natural, Other
+      return getRollerFabricCategories().map((group) => ({
+        label: group.label,
+        items: group.fabrics,
+      }));
+    }
+    if (productType === "Honeycomb Shades") {
+      const cellSize = getFieldValue(design, "json:cell_size");
+      if (cellSize) {
+        return getHoneycombFabricGroups(cellSize);
+      }
+    }
+    return undefined;
+  };
+
+  // Check if all options are confirmed
+  const allOptionsConfirmed = optionOrder.every((key) => confirmedOptions.has(key));
+
+  return (
+    <div className="space-y-3">
+      {/* Pills row */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Product type badge */}
+        <ProductTypeSwitcher productType={productType} onChangeProductType={onChangeProductType} />
+
+        {/* Confirmed options as badges */}
+        {Array.from(confirmedOptions.entries()).map(([key, { label, value }]) => (
+          <button
+            key={key}
+            onClick={() => handleEditOption(key)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
+            title="Click to change"
+          >
+            {label}: {value}
+          </button>
+        ))}
+
+        {/* Add Note button */}
+        <button
+          onClick={() => setShowNote(!showNote)}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Add Note
+        </button>
+      </div>
+
+      {/* Note input (expandable) */}
+      {showNote && (
+        <DeferredTextInput
+          value={design?.notes || ""}
+          onCommit={(value) => onUpdate("notes", value)}
+          placeholder="Add a note for the contract..."
+          className="h-8 text-sm"
+          autoFocus
+        />
+      )}
+
+      <SmartOptionInput productType={productType} design={design} onUpdateFields={onUpdateFields} />
+      <SurchargePicker productType={productType} design={design} onUpdate={onUpdate} />
+
+      {/* Separator line - only show if there are options to display */}
+      {!allOptionsConfirmed && <div className="border-t border-primary/20" />}
+
+      {/* Grid layout for unconfirmed options */}
+      {!allOptionsConfirmed && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+          {gridOptions.map((opt) => {
+            // Skip options that are already confirmed
+            if (confirmedOptions.has(opt.field)) {
+              return null;
+            }
+
+            const value = getFieldValue(design, opt.field);
+
+            if (opt.type === "buttons") {
+              return (
+                <GridButtonGroup
+                  key={opt.key}
+                  label={opt.label}
+                  options={opt.options}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                />
+              );
+            }
+
+            if (opt.type === "select") {
+              // Use grouped select for fabric collections that need section labels.
+              const fabricGroups = opt.field === "fabric" ? getFabricGroups() : undefined;
+              return (
+                <GridSelect
+                  key={opt.key}
+                  label={opt.label}
+                  options={opt.options}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                  grouped={fabricGroups}
+                />
+              );
+            }
+
+            if (opt.type === "yes-no") {
+              return (
+                <GridYesNo
+                  key={opt.key}
+                  label={opt.label}
+                  value={value}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                  noFirst={opt.noFirst}
+                />
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      )}
+
+      {/* Price input - always show when at least one option is confirmed */}
+      {confirmedOptions.size > 0 && (
+        <div className="pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-muted-foreground">Price:</Label>
+            <div className="relative w-32">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                $
+              </span>
+              <DeferredNumberInput
+                value={design?.unit_price || ""}
+                onCommit={handleManualPriceChange}
+                commitOnChange
+                className="pl-5 h-8 text-sm"
+                placeholder="0.00"
+              />
+            </div>
+            {onRecalculatePrice && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRecalculatePrice}
+                className="h-8 rounded-lg text-xs"
+                title="Recalculate this locked contract line"
+              >
+                <Calculator className="mr-1 h-3.5 w-3.5" />
+                Reprice
+              </Button>
+            )}
+          </div>
+          <PriceExplanation design={design} productType={productType} rawSqft={null} sqft={null} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Specialty Shape Grid (kept from original) ---
+
+function SpecialtyShapeGrid({
+  shapes,
+  categories,
+  onSelect,
+}: {
+  shapes: SpecialtyShape[];
+  categories: readonly string[];
+  onSelect: (label: string) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      {categories.map((category) => {
+        const categoryShapes = shapes.filter((s) => s.category === category);
+        if (categoryShapes.length === 0) return null;
+        return (
+          <div key={category} className="space-y-3">
+            <h4 className="text-sm font-bold">{category}</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {categoryShapes.map((shape) => (
+                <button
+                  key={shape.id}
+                  onClick={() => onSelect(shape.label)}
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl border-2 border-border bg-background hover:bg-accent hover:border-primary/50 transition-all group"
+                >
+                  <div className="w-full aspect-square flex items-center justify-center bg-accent/50 rounded-lg overflow-hidden">
+                    <img
+                      src={shape.image}
+                      alt={shape.label}
+                      className="max-h-full max-w-full object-contain"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.style.display = "none";
+                        target.parentElement!.innerHTML = `<span class="text-xs text-center text-muted-foreground px-1">${shape.label}</span>`;
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight">
+                    {shape.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

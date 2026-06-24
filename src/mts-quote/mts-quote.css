@@ -1,0 +1,198 @@
+/*
+ * Scoped styling for the ported MTS quote builder.
+ * Loaded ONLY by the /crm layout, and every rule is confined to
+ * `.mts-quote-scope`, so the plain-CSS marketing site is never affected.
+ *
+ * NOTE: `@tailwind base` (preflight) is intentionally omitted — it emits global
+ * resets that cannot be scoped. Instead we vendor the design tokens and a
+ * scoped equivalent of Tailwind's preflight below, then pull in component +
+ * utility layers (which Tailwind confines via `important: ".mts-quote-scope"`).
+ */
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Design tokens (from MTS src/index.css :root), scoped ---- */
+.mts-quote-scope {
+  --background: 220 33% 97%;
+  --foreground: 220 24% 9%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 24% 9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 24% 9%;
+  --primary: 216 78% 43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214 45% 94%;
+  --secondary-foreground: 220 24% 9%;
+  --muted: 220 30% 94%;
+  --muted-foreground: 220 13% 25%;
+  --accent: 176 76% 34%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 72% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 216 24% 86%;
+  --input: 216 24% 86%;
+  --ring: 216 78% 43%;
+  --radius: 0.375rem;
+  --sidebar-background: 0 0% 100%;
+  --sidebar-foreground: 220 24% 9%;
+  --sidebar-primary: 216 78% 43%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 214 45% 94%;
+  --sidebar-accent-foreground: 220 24% 9%;
+  --sidebar-border: 216 24% 86%;
+  --sidebar-ring: 216 78% 43%;
+  --mts-blue: 216 78% 43%;
+  --mts-blue-light: 212 82% 52%;
+  --mts-teal: 176 76% 34%;
+  --mts-teal-light: 176 52% 89%;
+  --mts-gray: 220 10% 42%;
+  --mts-gray-light: 220 33% 97%;
+  --mts-dark: 220 24% 9%;
+  --status-red: 0 84% 60%;
+  --status-orange: 24 95% 53%;
+  --status-amber: 43 96% 56%;
+  --status-rose: 330 81% 60%;
+  --status-blue: 217 91% 60%;
+  --status-yellow: 48 96% 55%;
+  --status-purple: 270 90% 70%;
+  --status-cyan: 190 95% 55%;
+  --status-emerald: 142 72% 45%;
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
+  --font-sans:
+    "Inter", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Montserrat", system-ui, sans-serif;
+  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+  --shadow-sm: 0 1px 2px 0px hsl(216 78% 43% / 0.06);
+  --shadow: 0 1px 3px 0px hsl(216 78% 43% / 0.08), 0 1px 2px -1px hsl(216 78% 43% / 0.08);
+  --shadow-md: 0 4px 10px -6px hsl(216 78% 43% / 0.18);
+  --shadow-lg: 0 12px 24px -18px hsl(216 78% 43% / 0.24);
+  --shadow-xl: 0 18px 36px -24px hsl(216 78% 43% / 0.28);
+  --shadow-2xl: 0 24px 48px -28px hsl(216 78% 43% / 0.35);
+  --radius-radix: 0.375rem;
+
+  /* Base surface (MTS body { @apply bg-background text-foreground font-sans antialiased }) */
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- Scoped preflight (Tailwind v3 preflight essentials, confined to scope) ---- */
+.mts-quote-scope *,
+.mts-quote-scope ::before,
+.mts-quote-scope ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+  border-color: hsl(var(--border));
+}
+.mts-quote-scope ::before,
+.mts-quote-scope ::after {
+  --tw-content: "";
+}
+.mts-quote-scope h1,
+.mts-quote-scope h2,
+.mts-quote-scope h3,
+.mts-quote-scope h4,
+.mts-quote-scope h5,
+.mts-quote-scope h6 {
+  font-size: inherit;
+  font-weight: inherit;
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+  margin: 0;
+}
+.mts-quote-scope p,
+.mts-quote-scope figure,
+.mts-quote-scope blockquote,
+.mts-quote-scope dl,
+.mts-quote-scope dd,
+.mts-quote-scope pre {
+  margin: 0;
+}
+.mts-quote-scope a {
+  color: inherit;
+  text-decoration: inherit;
+}
+.mts-quote-scope b,
+.mts-quote-scope strong {
+  font-weight: bolder;
+}
+.mts-quote-scope ol,
+.mts-quote-scope ul,
+.mts-quote-scope menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mts-quote-scope button,
+.mts-quote-scope input,
+.mts-quote-scope optgroup,
+.mts-quote-scope select,
+.mts-quote-scope textarea {
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  font-size: 100%;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  margin: 0;
+  padding: 0;
+}
+.mts-quote-scope button,
+.mts-quote-scope select {
+  text-transform: none;
+}
+.mts-quote-scope button,
+.mts-quote-scope input:where([type="button"]),
+.mts-quote-scope input:where([type="reset"]),
+.mts-quote-scope input:where([type="submit"]) {
+  -webkit-appearance: button;
+  appearance: button;
+  background-color: transparent;
+  background-image: none;
+}
+.mts-quote-scope button:not(:disabled),
+.mts-quote-scope [role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+.mts-quote-scope :disabled {
+  cursor: default;
+}
+.mts-quote-scope input::placeholder,
+.mts-quote-scope textarea::placeholder {
+  opacity: 1;
+  color: hsl(var(--muted-foreground));
+}
+.mts-quote-scope img,
+.mts-quote-scope svg,
+.mts-quote-scope video,
+.mts-quote-scope canvas,
+.mts-quote-scope audio,
+.mts-quote-scope iframe,
+.mts-quote-scope embed,
+.mts-quote-scope object {
+  display: block;
+  vertical-align: middle;
+}
+.mts-quote-scope img,
+.mts-quote-scope video {
+  max-width: 100%;
+  height: auto;
+}
+.mts-quote-scope table {
+  border-collapse: collapse;
+  text-indent: 0;
+  border-color: inherit;
+}
+.mts-quote-scope [hidden] {
+  display: none;
+}

@@ -1,0 +1,245 @@
+export interface QuoteTotalLineItem {
+  id: string;
+  quantity?: number | null;
+}
+
+export interface QuoteTotalDesign {
+  line_item_id?: string | null;
+  unit_price?: number | null;
+}
+
+export interface QuoteExtraFee {
+  id: string;
+  name: string;
+  amount: number;
+}
+
+export interface QuoteAdminControls {
+  showExtras: boolean;
+  showDiscount: boolean;
+  showTax: boolean;
+  extraFees: QuoteExtraFee[];
+  discountPercent: number;
+  taxPercent: number;
+  depositPercent: number;
+  progressPercent: number;
+}
+
+export interface QuoteTotalBreakdown {
+  subtotal: number;
+  extrasTotal: number;
+  discountAmount: number;
+  subtotalAfterDiscount: number;
+  taxAmount: number;
+  total: number;
+}
+
+export const DEFAULT_QUOTE_ADMIN_CONTROLS: QuoteAdminControls = {
+  showExtras: false,
+  showDiscount: false,
+  showTax: false,
+  extraFees: [],
+  discountPercent: 0,
+  taxPercent: 0,
+  depositPercent: 50,
+  progressPercent: 0,
+};
+
+export function calculateLineItemDesignTotal(
+  lineItem: QuoteTotalLineItem,
+  designs: QuoteTotalDesign[]
+): number {
+  const quantity = normalizeQuantity(lineItem.quantity);
+  const designTotal = designs.reduce((sum, design) => sum + normalizeMoney(design.unit_price), 0);
+  return roundCurrency(designTotal * quantity);
+}
+
+export function calculateQuoteDesignSubtotal(
+  lineItems: QuoteTotalLineItem[],
+  designs: QuoteTotalDesign[]
+): number {
+  const lineItemsById = new Map(lineItems.map((item) => [item.id, item]));
+  const designsByLineItemId = new Map<string, QuoteTotalDesign[]>();
+
+  designs.forEach((design) => {
+    if (!design.line_item_id) return;
+    const group = designsByLineItemId.get(design.line_item_id) ?? [];
+    group.push(design);
+    designsByLineItemId.set(design.line_item_id, group);
+  });
+
+  let total = 0;
+  designsByLineItemId.forEach((lineDesigns, lineItemId) => {
+    const lineItem = lineItemsById.get(lineItemId);
+    if (!lineItem) return;
+    total += calculateLineItemDesignTotal(lineItem, lineDesigns);
+  });
+
+  return roundCurrency(total);
+}
+
+export function hasPricedQuoteDesigns(designs: QuoteTotalDesign[]): boolean {
+  return designs.some((design) => normalizeMoney(design.unit_price) > 0);
+}
+
+export function shouldPersistQuoteDesignSubtotal(
+  designs: QuoteTotalDesign[],
+  options: { allowZero?: boolean } = {}
+): boolean {
+  return options.allowZero === true || hasPricedQuoteDesigns(designs);
+}
+
+export function resolveQuoteDisplayTotal(
+  storedTotal: number | null | undefined,
+  lineItems: QuoteTotalLineItem[],
+  designs: QuoteTotalDesign[]
+): number {
+  const calculatedTotal = calculateQuoteDesignSubtotal(lineItems, designs);
+  if (calculatedTotal > 0) return calculatedTotal;
+  return roundCurrency(normalizeMoney(storedTotal));
+}
+
+export function calculateQuoteTotalBreakdown(
+  subtotal: number,
+  controls: QuoteAdminControls = DEFAULT_QUOTE_ADMIN_CONTROLS
+): QuoteTotalBreakdown {
+  const extrasTotal = controls.showExtras
+    ? controls.extraFees.reduce((sum, fee) => sum + normalizeMoney(fee.amount), 0)
+    : 0;
+  const discountAmount = controls.showDiscount
+    ? (subtotal + extrasTotal) * (normalizeMoney(controls.discountPercent) / 100)
+    : 0;
+  const subtotalAfterDiscount = subtotal + extrasTotal - discountAmount;
+  const taxAmount = controls.showTax
+    ? subtotalAfterDiscount * (normalizeMoney(controls.taxPercent) / 100)
+    : 0;
+  const total = subtotalAfterDiscount + taxAmount;
+
+  return {
+    subtotal: roundCurrency(subtotal),
+    extrasTotal: roundCurrency(extrasTotal),
+    discountAmount: roundCurrency(discountAmount),
+    subtotalAfterDiscount: roundCurrency(subtotalAfterDiscount),
+    taxAmount: roundCurrency(taxAmount),
+    total: roundCurrency(total),
+  };
+}
+
+export function parseQuoteAdminControls(source: unknown): QuoteAdminControls {
+  const maybeQuote = source as { admin_controls?: unknown; installer_notes?: unknown } | null;
+
+  if (maybeQuote?.admin_controls) {
+    return normalizeAdminControls(maybeQuote.admin_controls);
+  }
+
+  const notes = maybeQuote?.installer_notes;
+  if (typeof notes === "string") {
+    try {
+      const parsed = JSON.parse(notes) as { __adminControls?: unknown };
+      if (parsed.__adminControls) return normalizeAdminControls(parsed.__adminControls);
+    } catch {
+      return DEFAULT_QUOTE_ADMIN_CONTROLS;
+    }
+  }
+
+  if (source && typeof source === "object" && "__adminControls" in source) {
+    return normalizeAdminControls((source as { __adminControls?: unknown }).__adminControls);
+  }
+
+  return DEFAULT_QUOTE_ADMIN_CONTROLS;
+}
+
+export function parseQuoteMeta(source: unknown): Record<string, unknown> {
+  const maybeQuote = source as { installer_notes?: unknown } | null;
+  const notes = maybeQuote?.installer_notes;
+  if (typeof notes !== "string") return {};
+
+  try {
+    const parsed = JSON.parse(notes);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function buildQuoteInstallerNotesMeta(
+  quote: { installer_notes?: string | null },
+  updates: Record<string, unknown>
+): string {
+  const currentMeta = parseQuoteMeta(quote);
+  return JSON.stringify({ ...currentMeta, ...updates });
+}
+
+export function getQuoteEmailNote(source: unknown): string {
+  const meta = parseQuoteMeta(source);
+  return typeof meta.__customerEmailNote === "string" ? meta.__customerEmailNote : "";
+}
+
+export function getQuoteBuilderNote(source: unknown): string {
+  const meta = parseQuoteMeta(source);
+  if (typeof meta.__quoteBuilderNote === "string") return meta.__quoteBuilderNote;
+
+  const maybeQuote = source as { installer_notes?: string | null } | null;
+  return getQuoteCustomerNotes(maybeQuote?.installer_notes) || "";
+}
+
+export function getQuoteCustomerNotes(installerNotes: string | null | undefined): string | null {
+  if (!installerNotes) return null;
+  try {
+    const parsed = JSON.parse(installerNotes) as {
+      __adminControls?: unknown;
+      __customerEmailNote?: unknown;
+      __quoteBuilderNote?: unknown;
+    };
+    if (parsed.__adminControls || parsed.__customerEmailNote || parsed.__quoteBuilderNote) {
+      return null;
+    }
+  } catch {
+    return installerNotes;
+  }
+  return null;
+}
+
+function normalizeQuantity(quantity: number | null | undefined): number {
+  const parsed = Number(quantity);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function normalizeMoney(value: number | null | undefined): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function normalizeAdminControls(raw: unknown): QuoteAdminControls {
+  if (!raw || typeof raw !== "object") return DEFAULT_QUOTE_ADMIN_CONTROLS;
+
+  const obj = raw as Record<string, unknown>;
+  const extraFees = Array.isArray(obj.extraFees)
+    ? obj.extraFees.map((fee, index) => {
+        const normalized = fee as Partial<QuoteExtraFee>;
+        return {
+          id: normalized.id || `fee-${index}`,
+          name: normalized.name || "Extra Fee",
+          amount: normalizeMoney(normalized.amount),
+        };
+      })
+    : [];
+
+  return {
+    showExtras: obj.showExtras === true,
+    showDiscount: obj.showDiscount === true,
+    showTax: obj.showTax === true,
+    extraFees,
+    discountPercent: normalizeMoney(obj.discountPercent as number | null | undefined),
+    taxPercent: normalizeMoney(obj.taxPercent as number | null | undefined),
+    depositPercent:
+      typeof obj.depositPercent === "number"
+        ? normalizeMoney(obj.depositPercent)
+        : DEFAULT_QUOTE_ADMIN_CONTROLS.depositPercent,
+    progressPercent: 0,
+  };
+}
