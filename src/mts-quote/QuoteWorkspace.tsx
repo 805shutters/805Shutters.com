@@ -1,8 +1,8 @@
 "use client";
 
-// Host for the ported MTS quote builder inside the 805 Next.js app.
-// Faithful re-creation of MTS src/pages/crm/QuoteBuilderPage.tsx — the
-// Dashboard / Builder / Contract tab shell — minus the MTS CRMLayout chrome
+// Host for the ported quote builder inside the 805 Next.js app.
+// Faithful re-creation of the original Dashboard / Builder / Contract tab shell
+// minus the old CRMLayout chrome
 // and role-gating (the 805 site is always the 805 operator context; the store
 // already defaults activeAccountId to SHUTTERS_805).
 //
@@ -45,7 +45,8 @@ export function QuoteWorkspace() {
           className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
           data-theme="light"
         >
-          {/* Tab buttons */}
+          {/* Tab buttons (hidden in the full-screen builder — its slim bar carries the toggle + X) */}
+          {effectiveTab !== "builder" && (
           <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
             <div className="flex flex-wrap gap-2">
               {tabs.map((tab) => {
@@ -73,6 +74,7 @@ export function QuoteWorkspace() {
               })}
             </div>
           </div>
+          )}
 
           {/* Tab content */}
           <div>

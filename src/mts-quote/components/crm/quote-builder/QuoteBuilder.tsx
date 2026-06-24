@@ -12,7 +12,7 @@ import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Textarea } from "@mts/components/ui/textarea";
-import { RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent } from "lucide-react";
+import { RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent, X } from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { CollectPaymentDialog } from "./CollectPaymentDialog";
@@ -61,9 +61,20 @@ export function QuoteBuilder() {
     copySourceItemId,
     setCopySource,
     clearCopyTargets,
+    setActiveTab,
   } = useQuoteBuilderStore();
 
   const queryClient = useQueryClient();
+
+  // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
+  // The class is removed on unmount (e.g. when the X switches back to the
+  // dashboard, or Contract opens), which restores the CRM nav.
+  useEffect(() => {
+    if (!activeQuoteId) return;
+    document.body.classList.add("qb-fullscreen");
+    return () => document.body.classList.remove("qb-fullscreen");
+  }, [activeQuoteId]);
+
   const [editingName, setEditingName] = useState(false);
   const [measuringItemId, setMeasuringItemId] = useState<string | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
@@ -650,27 +661,24 @@ export function QuoteBuilder() {
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
 
   return (
-    <div className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,rgba(75,132,190,0.16),transparent_32%),linear-gradient(180deg,#f7fbff_0%,#edf3f8_42%,#f8fafc_100%)] p-6 text-[#1c1c1a]">
-      {/* Quote Group Tabs */}
-      <QuoteGroupTabs />
+    <div className="min-h-screen space-y-3 bg-[#f4f4f2] p-4 text-[#1c1c1a]">
+      {/* Quote group tabs relocated below the command bar */}
 
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 p-5 shadow-[0_24px_70px_rgba(15,35,70,0.12)] backdrop-blur">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#1c1c1a] via-[#67645e] to-[#d6d5cf]" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#67645e]/10 blur-3xl" />
-        <div className="flex items-center justify-between gap-5">
+      {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
+      <div className="sticky top-0 z-30 -mx-4 -mt-4 mb-1 border-b border-[#d8d8d2] bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4">
-            <h1 className="flex items-center gap-3 text-3xl font-black tracking-[-0.04em] text-slate-950">
+            <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
               {quoteLetterColor && (
                 <span
-                  className={`flex h-11 w-11 items-center justify-center rounded-2xl ${quoteLetterColor.bg} text-sm font-black text-white shadow-[0_12px_24px_rgba(15,35,70,0.18)]`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
                 >
                   {quote?.quote_letter}
                 </span>
               )}
-              <span>
+              <span className="leading-none">
                 Quote Builder
-                <span className="block text-xs font-black uppercase tracking-[0.24em] text-slate-500">
+                <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
                   Window treatment studio
                 </span>
               </span>
@@ -773,11 +781,33 @@ export function QuoteBuilder() {
                 <Pencil className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
+            {/* Builder / Contract toggle */}
+            <div className="ml-1 flex overflow-hidden rounded-lg border border-[#d8d8d2]">
+              <span className="bg-[#0b0b0b] px-3 py-1.5 text-xs font-bold text-white">Builder</span>
+              <button
+                onClick={() => setActiveTab("contract")}
+                className="bg-white px-3 py-1.5 text-xs font-bold text-[#1c1c1a] transition hover:bg-[#f4f4f2]"
+              >
+                Contract
+              </button>
+            </div>
+            <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
+            {/* X — exit full-screen back to the Quotes dashboard */}
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              aria-label="Close builder — back to dashboard"
+              title="Close — back to dashboard"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Product Type Buttons */}
+      {/* Quote options + Rooms + Product line — stacked tight to the top */}
+      <QuoteGroupTabs />
+      <RoomPresetButtons onSelect={handleRoomSelect} />
       <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
 
       {/* Discount Controls */}
@@ -863,8 +893,7 @@ export function QuoteBuilder() {
         </div>
       )}
 
-      {/* Room Preset Buttons */}
-      <RoomPresetButtons onSelect={handleRoomSelect} />
+      {/* Rooms relocated to the top control zone (above) */}
 
       {/* Copy Some confirmation bar */}
       {copyMode === "some" && (

@@ -2856,6 +2856,20 @@ body:has(.crm-app-shell) {
   color: var(--ink);
 }
 
+/* Dedicated full-screen Quote Builder: while a quote is open the builder
+   toggles `qb-fullscreen` on <body>, hiding the CRM nav/metrics chrome and
+   removing the shell padding so the builder fills the viewport edge-to-edge. */
+body.qb-fullscreen .crm-topbar,
+body.qb-fullscreen .crm-tabs,
+body.qb-fullscreen .crm-alert {
+  display: none;
+}
+
+body.qb-fullscreen .crm-app-shell {
+  padding: 0;
+  background: var(--paper);
+}
+
 .crm-topbar,
 .crm-tabs,
 .crm-workspace,
