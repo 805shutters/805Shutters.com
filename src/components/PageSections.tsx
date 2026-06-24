@@ -1248,8 +1248,8 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
             local team, never a national call center.
           </p>
           <p>
-            From Camarillo and Thousand Oaks to Ventura, Oxnard, and Simi Valley, we cover the
-            whole county with personal service from the first consultation through final installation.
+            Proudly serving all of Ventura County, North Los Angeles County, and Santa Clarita
+            with personal service from the first consultation through final installation.
           </p>
           <p className="home-about-promise">
             We stand behind all of our products &mdash; and we won&rsquo;t stop until you&rsquo;re completely satisfied.
