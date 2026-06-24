@@ -16,6 +16,7 @@ import {
   losAngelesDateString,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
+import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import {
@@ -1926,7 +1927,7 @@ export function CrmApp({
                   </label>
                   <label>
                     Address
-                    <input name="address" placeholder="Project address" />
+                    <AddressAutocomplete name="address" cityFieldName="city" placeholder="Project address" />
                   </label>
                   <div className="crm-field-row">
                     <label>
@@ -3464,6 +3465,8 @@ type DrillInlineEditor = {
   options?: DrillInlineOption[];
   disabled?: boolean;
   ariaLabel: string;
+  /** When "address", the text field uses Google Places autocomplete. */
+  autocomplete?: "address";
   onSave: (value: string) => Promise<boolean>;
 };
 
@@ -3555,6 +3558,38 @@ function InlineEditableValue({
     );
   }
 
+  const handleControlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void submit();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancel();
+    }
+  };
+
+  if (editor.autocomplete === "address") {
+    return (
+      <AddressAutocomplete
+        className="crm-inline-edit-control"
+        aria-label={editor.ariaLabel}
+        autoFocus
+        value={draft}
+        disabled={editor.disabled || saving}
+        onBlur={() => {
+          void submit();
+        }}
+        onChange={(event) => setDraft(event.target.value)}
+        onResolved={(address) => {
+          setDraft(address.fullAddress);
+          void submit(address.fullAddress);
+        }}
+        onKeyDown={handleControlKeyDown}
+      />
+    );
+  }
+
   return (
     <input
       className="crm-inline-edit-control"
@@ -3569,16 +3604,7 @@ function InlineEditableValue({
         void submit();
       }}
       onChange={(event) => setDraft(event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          void submit();
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          cancel();
-        }
-      }}
+      onKeyDown={handleControlKeyDown}
     />
   );
 }
@@ -3866,6 +3892,7 @@ function DrillDetailCard({
         value: file?.address || job?.address || "",
         disabled: busy,
         ariaLabel: "Edit address",
+        autocomplete: "address",
         onSave: (value) => saveJob({ address: value.trim() }, "Address updated.")
       }
     : undefined;
@@ -4207,7 +4234,7 @@ function DrillDetailEditForm({
           </div>
           <label>
             Address
-            <input name="address" defaultValue={file?.address || job?.address || ""} />
+            <AddressAutocomplete name="address" cityFieldName="city" defaultValue={file?.address || job?.address || ""} />
           </label>
           <div className="crm-field-row">
             <label>
@@ -4868,7 +4895,7 @@ function JobCard({
           </div>
           <label>
             Address
-            <input name="address" defaultValue={job.address || ""} />
+            <AddressAutocomplete name="address" cityFieldName="city" defaultValue={job.address || ""} />
           </label>
           <label>
             Product
@@ -7679,7 +7706,7 @@ function CalendarAppointmentModal({
           </div>
           <label>
             Address
-            <input name="address" placeholder="Project address" />
+            <AddressAutocomplete name="address" cityFieldName="city" placeholder="Project address" />
           </label>
           <div className="crm-field-row">
             <label>

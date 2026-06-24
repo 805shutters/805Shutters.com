@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { productInterestOptions } from "@/lib/product-interest-options";
+import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 
 type AvailabilitySlot = {
   time: string;
@@ -314,7 +315,7 @@ export function BookingCalendar({
                   </div>
                   <label>
                     Address
-                    <input name="address" autoComplete="street-address" required disabled={!selectedTime} />
+                    <AddressAutocomplete name="address" required disabled={!selectedTime} />
                   </label>
                   <div className="field-row">
                     <label>

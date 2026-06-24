@@ -10,6 +10,7 @@ import { MeasurementGridModal } from "./MeasurementGridModal";
 import { DesignCard } from "./DesignCard";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
+import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Textarea } from "@mts/components/ui/textarea";
 import { RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent } from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
@@ -742,11 +743,15 @@ export function QuoteBuilder() {
                     }
                   }}
                 />
-                <Input
+                <AddressAutocomplete
+                  inputAs={Input}
                   defaultValue={quote?.customer_address || ""}
                   placeholder="City / Address"
                   className="w-48"
                   onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
+                  onResolved={(address) =>
+                    updateQuote.mutate({ customer_address: address.fullAddress })
+                  }
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       updateQuote.mutate({

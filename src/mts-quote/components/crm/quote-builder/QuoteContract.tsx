@@ -7,6 +7,7 @@ import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@mts/components/ui/card";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
+import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Label } from "@mts/components/ui/label";
 import { Switch } from "@mts/components/ui/switch";
 import {
@@ -717,9 +718,13 @@ export function QuoteContract() {
               </div>
               <div className="space-y-1">
                 <Label>Address</Label>
-                <Input
+                <AddressAutocomplete
+                  inputAs={Input}
                   defaultValue={quote.customer_address || ""}
                   onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
+                  onResolved={(address) =>
+                    updateQuote.mutate({ customer_address: address.fullAddress })
+                  }
                 />
               </div>
               <div className="col-span-full space-y-1">
