@@ -184,6 +184,16 @@ describe("extractNormanOrderCogs", () => {
     expect(result.manufacturer).toBe("Norman");
     expect(result.amountConfidence).toBeGreaterThanOrEqual(0.7);
   });
+
+  it("strips a trailing re-order number from a last-name-first side mark", () => {
+    const result = extractNormanOrderCogs(
+      "WO#: 8800217950 PO#: SAUCEDO MICHELLE 2 Side Mark: SAUCEDO MICHELLE 2 Ship Via: Air Total Amount: $312.40"
+    );
+    // The trailing "2" (a re-order marker) is removed so it matches the CRM customer.
+    expect(result.customerName).toBe("SAUCEDO MICHELLE");
+    expect(result.orderNumber).toBe("8800217950");
+    expect(result.orderAmount).toBe(312.4);
+  });
 });
 
 describe("processOrderCogsInbox", () => {

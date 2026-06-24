@@ -95,9 +95,13 @@ export type ProcessOrderCogsResult = {
   errors: number;
   archived: number;
   archiveErrors: number;
+  /** Emails whose job was actually marked ordered + COGS written. */
+  applied?: number;
+  /** Emails whose audit-log record could not be saved (core job update still applied). */
+  recordErrors?: number;
   /** First processing error (diagnostic), if any. */
   lastError?: string;
-  /** First error-record insert failure (diagnostic), if any. */
+  /** First audit-log insert failure (diagnostic), if any. */
   lastInsertError?: string;
   emails: CrmOrderCogsEmail[];
 };
@@ -303,14 +307,16 @@ export function extractOrderCogsFromText(text: string): ExtractedOrderCogs {
 // registering both in `extractOrderCogs` below.
 // ---------------------------------------------------------------------------
 
-/** Trailing product words on a Norman side mark / PO (e.g. "Jim Derenthal Roller"). */
-const NORMAN_PRODUCT_SUFFIX =
-  /\s+(roller|shades?|shutters?|blinds?|honeycomb|cellular|romans?|sheers?|drapery|drapes?|drape|verticals?|wood|faux|aluminum|smartdrape|pleated|solar|zebra|dual|motorized|cordless)$/i;
+// Trailing tokens to peel off a Norman side mark to recover the bare customer name:
+// product words ("Roller", "Shade") and re-order/unit markers ("2", "#2", "redo") —
+// e.g. "Jim Derenthal Roller" -> "Jim Derenthal", "SAUCEDO MICHELLE 2" -> "SAUCEDO MICHELLE".
+const NORMAN_SIDE_MARK_SUFFIX =
+  /\s+(#?\d+|roller|shades?|shutters?|blinds?|honeycomb|cellular|romans?|sheers?|drapery|drapes?|drape|verticals?|wood|faux|aluminum|smartdrape|pleated|solar|zebra|dual|motorized|cordless|re-?do|remake|reorder)$/i;
 
-/** Side marks read "<customer> <product...>"; peel the product words off the end. */
+/** Side marks read "<customer> <product...> <rev#>"; peel the trailing markers off. */
 function stripProductSuffix(value: string) {
   let out = value.trim();
-  while (NORMAN_PRODUCT_SUFFIX.test(out)) out = out.replace(NORMAN_PRODUCT_SUFFIX, "").trim();
+  while (NORMAN_SIDE_MARK_SUFFIX.test(out)) out = out.replace(NORMAN_SIDE_MARK_SUFFIX, "").trim();
   return out;
 }
 
@@ -744,49 +750,61 @@ export async function processOrderCogsInbox(
           ? `${review.reason} Job marked ordered, but no ledger row exists yet — enter COGS manually.`
           : review.reason;
 
-      const record = await insertOrderCogsRecord(supabase, {
-        mailbox_email: mailbox,
-        gmail_message_id: message.id,
-        gmail_thread_id: message.threadId || null,
-        gmail_history_id: message.historyId || null,
-        from_email: getHeader(headers, "From"),
-        to_email: getHeader(headers, "To"),
-        subject: getHeader(headers, "Subject"),
-        sent_at: messageSentAt(message),
-        snippet: message.snippet || null,
-        attachment_names: attachmentNames(message.payload),
-        email_url: gmailUrl(message),
-        extracted_customer_name: extraction.customerName,
-        extracted_order_amount: extraction.orderAmount,
-        extracted_order_number: extraction.orderNumber,
-        extraction_confidence: extraction.confidence,
-        matched_job_id: match.candidate?.jobId || null,
-        matched_quote_id: match.candidate?.quoteId || null,
-        matched_bookkeeping_entry_id: match.candidate?.entryId || null,
-        match_status: status,
-        match_confidence: match.confidence,
-        match_reason: reason,
-        processed_at: now,
-        applied_at: review.canApply && cogsApplied ? now : null,
-        error_message: null,
-        raw: {
-          actorEmail: options.actorEmail || null,
-          textPreview: extraction.text.slice(0, 1000)
+      // The audit/review log (crm_order_cogs_emails) is best-effort and OFF the critical
+      // path: the job's status + COGS were already written above to tables that the
+      // schema cache always has. A failure here (e.g. the new table's PostgREST schema
+      // cache is stale) must not undo the applied COGS or block archiving.
+      try {
+        const record = await insertOrderCogsRecord(supabase, {
+          mailbox_email: mailbox,
+          gmail_message_id: message.id,
+          gmail_thread_id: message.threadId || null,
+          gmail_history_id: message.historyId || null,
+          from_email: getHeader(headers, "From"),
+          to_email: getHeader(headers, "To"),
+          subject: getHeader(headers, "Subject"),
+          sent_at: messageSentAt(message),
+          snippet: message.snippet || null,
+          attachment_names: attachmentNames(message.payload),
+          email_url: gmailUrl(message),
+          extracted_customer_name: extraction.customerName,
+          extracted_order_amount: extraction.orderAmount,
+          extracted_order_number: extraction.orderNumber,
+          extraction_confidence: extraction.confidence,
+          matched_job_id: match.candidate?.jobId || null,
+          matched_quote_id: match.candidate?.quoteId || null,
+          matched_bookkeeping_entry_id: match.candidate?.entryId || null,
+          match_status: status,
+          match_confidence: match.confidence,
+          match_reason: reason,
+          processed_at: now,
+          applied_at: review.canApply && cogsApplied ? now : null,
+          error_message: null,
+          raw: {
+            actorEmail: options.actorEmail || null,
+            textPreview: extraction.text.slice(0, 1000)
+          }
+        });
+        records.push(record);
+      } catch (recordError) {
+        result.recordErrors = (result.recordErrors || 0) + 1;
+        if (!result.lastInsertError) {
+          result.lastInsertError = recordError instanceof Error ? recordError.message : String(recordError);
         }
-      });
+      }
 
-      records.push(record);
       result.processed += 1;
-      if (record.match_status === "matched") result.matched += 1;
-      if (record.match_status === "needs_review") result.needsReview += 1;
-      if (record.match_status === "unmatched") result.unmatched += 1;
-      if (record.match_status === "skipped") result.skipped += 1;
-      if (record.match_status === "error") result.errors += 1;
+      if (status === "matched") result.matched += 1;
+      if (status === "needs_review") result.needsReview += 1;
+      if (status === "unmatched") result.unmatched += 1;
+      if (status === "skipped") result.skipped += 1;
+      if (status === "error") result.errors += 1;
+      if (review.canApply && cogsApplied) result.applied = (result.applied || 0) + 1;
 
       // Archive recognized order emails (applied or queued for review) so the inbox
       // stays clean. They remain tracked in the CRM order-COGS inbox with a Gmail link.
       // Archive failure (e.g. a readonly token) never fails the pull.
-      if (archiveEnabled && accessToken && (record.match_status === "matched" || record.match_status === "needs_review")) {
+      if (archiveEnabled && accessToken && (status === "matched" || status === "needs_review")) {
         try {
           await archiveGmailMessage(accessToken, message.id);
           result.archived += 1;
