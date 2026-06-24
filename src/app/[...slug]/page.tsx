@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
-import { allPages, commercialCityName, getPageBySlug, site, slugForPath } from "@/lib/site-data";
-import { commercialSubPageJsonLd, commercialWindowCoveringsJsonLd } from "@/lib/structured-data";
+import { allPages, commercialCityName, getPageBySlug, ogDefaults, site, slugForPath } from "@/lib/site-data";
+import { commercialSubPageJsonLd, commercialWindowCoveringsJsonLd, faqPageJsonLd } from "@/lib/structured-data";
 
 type PageProps = {
   params: Promise<{
@@ -34,6 +34,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     robots: page.noIndex ? { index: false, follow: false } : undefined,
     openGraph: {
+      ...ogDefaults,
       title: page.title,
       description: page.description,
       url: `${site.baseUrl}${page.path}`,
@@ -60,7 +61,9 @@ export default async function DynamicPage({ params }: PageProps) {
       ? commercialWindowCoveringsJsonLd(page)
       : page.path.includes("commercial")
         ? commercialSubPageJsonLd(page, commercialCityName(page.path))
-        : null;
+        : page.path === "/faq/"
+          ? faqPageJsonLd(page)
+          : null;
 
   return (
     <>

@@ -66,6 +66,14 @@ export const site = {
   ]
 };
 
+// Shared Open Graph fields spread into every page's `openGraph` so social
+// shares carry consistent branding (og:site_name / og:locale / og:type).
+export const ogDefaults = {
+  type: "website",
+  siteName: "805 Shutters",
+  locale: "en_US"
+} as const;
+
 export const images = {
   hero: "/images/805-hero-window-treatments.png",
   shutters:

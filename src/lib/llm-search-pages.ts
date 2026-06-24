@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { site } from "./site-data";
+import { ogDefaults, site } from "./site-data";
 
 export type AnswerPageSection = {
   heading: string;
@@ -234,6 +234,8 @@ export function answerPageMetadata(page: AnswerPage): Metadata {
       canonical: page.path
     },
     openGraph: {
+      ...ogDefaults,
+      type: "article",
       title: page.title,
       description: page.description,
       url: `${site.baseUrl}${page.path}`,

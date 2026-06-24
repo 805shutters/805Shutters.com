@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { PageSections } from "@/components/PageSections";
-import { homePage, site } from "@/lib/site-data";
+import { homePage, ogDefaults, site } from "@/lib/site-data";
 
 export const metadata: Metadata = {
   title: homePage.title,
@@ -9,6 +9,7 @@ export const metadata: Metadata = {
     canonical: "/"
   },
   openGraph: {
+    ...ogDefaults,
     title: homePage.title,
     description: homePage.description,
     url: site.baseUrl,

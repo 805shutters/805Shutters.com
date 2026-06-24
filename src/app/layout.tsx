@@ -35,16 +35,41 @@ const archivo = Archivo({
   variable: "--font-archivo"
 });
 
+const defaultTitle = "805 Shutters, Shades & Blinds";
+const defaultDescription =
+  "Custom shutters, shades, blinds, and commercial window coverings across Ventura County.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(site.baseUrl),
   title: {
-    default: "805 Shutters, Shades & Blinds",
+    default: defaultTitle,
     template: "%s"
   },
-  description:
-    "Custom shutters, shades, blinds, and commercial window coverings across Ventura County.",
+  description: defaultDescription,
   alternates: {
     canonical: "/"
+  },
+  openGraph: {
+    type: "website",
+    siteName: "805 Shutters",
+    locale: "en_US",
+    title: defaultTitle,
+    description: defaultDescription,
+    url: site.baseUrl,
+    images: [
+      {
+        url: "/images/805-hero-window-treatments.png",
+        width: 1774,
+        height: 887,
+        alt: "Custom window treatments installed in a Ventura County home"
+      }
+    ]
+  },
+  // Only declare the card type here. X/Twitter falls back to each page's
+  // og:title / og:description / og:image, so per-page shares stay specific
+  // instead of being overridden by a generic site-wide twitter:title.
+  twitter: {
+    card: "summary_large_image"
   }
 };
 

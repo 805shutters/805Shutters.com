@@ -109,6 +109,48 @@ export function localBusinessJsonLd() {
   };
 }
 
+export function faqPageJsonLd(page: SitePage) {
+  const pageUrl = `${site.baseUrl}${page.path}`;
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "FAQPage",
+        "@id": `${pageUrl}#faq`,
+        url: pageUrl,
+        name: page.title,
+        mainEntity: page.sections.map((section) => ({
+          "@type": "Question",
+          name: section.heading,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: section.body
+          }
+        }))
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${pageUrl}#breadcrumb`,
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: "Home",
+            item: site.baseUrl
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: page.h1,
+            item: pageUrl
+          }
+        ]
+      }
+    ]
+  };
+}
+
 export function answerPageJsonLd(page: AnswerPage) {
   const pageUrl = `${site.baseUrl}${page.path}`;
 

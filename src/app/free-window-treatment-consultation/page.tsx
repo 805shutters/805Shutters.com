@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LeadForm } from "@/components/LeadForm";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
-import { site } from "@/lib/site-data";
+import { ogDefaults, site } from "@/lib/site-data";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     canonical: "/free-window-treatment-consultation/"
   },
   openGraph: {
+    ...ogDefaults,
     title: "Free Window Treatment Consultation | 805 Shutters",
     description:
       "Compare custom shutters, shades, blinds, and window coverings with a local Ventura County installer.",

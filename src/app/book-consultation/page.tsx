@@ -1,12 +1,28 @@
 import type { Metadata } from "next";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
+import { ogDefaults, site } from "@/lib/site-data";
+
+const bookingTitle = "Book a Free In-Home Consultation | 805 Shutters";
+const bookingDescription =
+  "Book a free in-home consultation with 805 Shutters for custom shutters, shades, blinds, drapery, and exterior shades in Ventura County.";
 
 export const metadata: Metadata = {
-  title: "Book a Free In-Home Consultation | 805 Shutters",
-  description:
-    "Book a free in-home consultation with 805 Shutters for custom shutters, shades, blinds, drapery, and exterior shades in Ventura County.",
+  title: bookingTitle,
+  description: bookingDescription,
   alternates: {
     canonical: "/book-consultation/"
+  },
+  openGraph: {
+    ...ogDefaults,
+    title: bookingTitle,
+    description: bookingDescription,
+    url: `${site.baseUrl}/book-consultation/`,
+    images: [
+      {
+        url: "/images/805-hero-window-treatments.png",
+        alt: "Custom window treatments installed in a Ventura County home"
+      }
+    ]
   }
 };
 
