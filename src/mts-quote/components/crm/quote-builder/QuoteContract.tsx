@@ -59,8 +59,6 @@ import { send805SoldQuoteNotification } from "@mts/lib/quoteSoldNotification";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
-// Next.js: served from /public instead of a Vite asset import (still a URL string, as before)
-const mtsLogo = "/mts-quote/mts-logo.webp";
 
 const paymentIcons: Record<string, typeof FileText> = {
   check: FileText,
@@ -88,14 +86,6 @@ const CONTRACT_HEADERS: Record<
     logoUrl: "/brand/805-shutters-logo-header.png",
     logoAlt: "805 Shutters logo",
     logoPanelClass: "bg-white",
-  },
-  [ACCOUNT_IDS.MTS_INSTALLATIONS]: {
-    title: "MTS INSTALLATIONS AND REPAIRS",
-    phone: "(805) 298-5555",
-    website: "mtsinstallationsandrepairs.com",
-    logoUrl: mtsLogo,
-    logoAlt: "MTS Installations and Repairs logo",
-    logoPanelClass: "bg-slate-50",
   },
 };
 
@@ -466,7 +456,7 @@ export function QuoteContract() {
   const balanceAmount = totalAmount - depositAmount;
   const customerEmailNote = quote ? getQuoteEmailNote(quote) : "";
 
-  const companyName = quote ? getAccountName(quote.account_id) : "MTS Installations";
+  const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
 
   if (!activeQuoteId || !quote) {

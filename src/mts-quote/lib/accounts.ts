@@ -28,9 +28,6 @@ export const ACCOUNT_IDS = {
 
   // Independent accounts
   ANNA_MORALES: "2458c7e6-0058-41fe-824c-e49cedf3132b",
-
-  // MTS internal
-  MTS_INSTALLATIONS: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 } as const;
 
 // Type for account ID values
@@ -52,7 +49,6 @@ export const ACCOUNT_NAMES: Record<string, string> = {
   [ACCOUNT_IDS.ANNA_MORALES]: "Anna Morales",
   [ACCOUNT_IDS.THREE_DAY_BLINDS]: "3 Day Blinds",
   [ACCOUNT_IDS.SEABREEZE]: "Seabreeze",
-  [ACCOUNT_IDS.MTS_INSTALLATIONS]: "MTS Installations",
 };
 
 // ============= Name → ID Lookup =============
@@ -111,10 +107,6 @@ export const ACCOUNT_NAME_TO_ID: Record<string, string> = {
 
   // California Homes → redirects to 805 Shutters (same company)
   "california homes": ACCOUNT_IDS.SHUTTERS_805,
-
-  // MTS Installations
-  "mts installations": ACCOUNT_IDS.MTS_INSTALLATIONS,
-  mts: ACCOUNT_IDS.MTS_INSTALLATIONS,
 };
 
 // ============= Helper Functions =============
@@ -150,7 +142,6 @@ export const SHORT_ACCOUNT_NAMES: Record<string, string> = {
   "3 Day Blinds": "3DB",
   "818 Shutters and Shades": "818 S&S",
   "805 Shutters": "805",
-  "MTS Installations": "MTS",
   "Costco (WPM)": "Costco",
   "Rockwood Shutters": "Rockwood",
   "Pasadena Shades": "Pasadena",
@@ -182,7 +173,6 @@ export const QUICKBOOKS_ACCOUNT_IDS = [
   ACCOUNT_IDS.PASADENA_SHADES,
   ACCOUNT_IDS.ANNA_MORALES,
   ACCOUNT_IDS.SEABREEZE,
-  ACCOUNT_IDS.MTS_INSTALLATIONS,
 ] as const;
 
 /** Accounts that require takedown/haul away selection */
