@@ -650,14 +650,14 @@ export function QuoteBuilder() {
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
 
   return (
-    <div className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,rgba(75,132,190,0.16),transparent_32%),linear-gradient(180deg,#f7fbff_0%,#edf3f8_42%,#f8fafc_100%)] p-6 text-[#1a1f36]">
+    <div className="min-h-screen space-y-6 bg-[radial-gradient(circle_at_top_left,rgba(75,132,190,0.16),transparent_32%),linear-gradient(180deg,#f7fbff_0%,#edf3f8_42%,#f8fafc_100%)] p-6 text-[#1c1c1a]">
       {/* Quote Group Tabs */}
       <QuoteGroupTabs />
 
       {/* Header */}
       <div className="relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/85 p-5 shadow-[0_24px_70px_rgba(15,35,70,0.12)] backdrop-blur">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#173152] via-[#2f83bd] to-[#9ac7df]" />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#2f83bd]/10 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#1c1c1a] via-[#67645e] to-[#d6d5cf]" />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#67645e]/10 blur-3xl" />
         <div className="flex items-center justify-between gap-5">
           <div className="flex items-center gap-4">
             <h1 className="flex items-center gap-3 text-3xl font-black tracking-[-0.04em] text-slate-950">
@@ -688,7 +688,7 @@ export function QuoteBuilder() {
               <Button
                 size="sm"
                 onClick={() => setShowSendDialog(true)}
-                className="rounded-xl bg-gradient-to-br from-[#2f83bd] to-[#0d4d78] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#246f9f] hover:to-[#0b4268]"
+                className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
                 title="Email or text the quote link to the customer"
               >
                 <Send className="h-4 w-4 mr-2" />
@@ -763,7 +763,7 @@ export function QuoteBuilder() {
               </div>
             ) : (
               <button
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#2f83bd] hover:text-[#0d4d78]"
+                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
                 onClick={() => setEditingName(true)}
               >
                 {quote?.customer_name || "Add Customer"}{" "}

@@ -152,14 +152,14 @@ function FilterTile({
 }) {
   const activeClasses = isBw
     ? "bg-black !text-white border-2 border-black ring-2 ring-black/20"
-    : "bg-[#0077b6] !text-white border-2 border-[#005f92] ring-2 ring-[#0077b6]/20";
+    : "bg-[#67645e] !text-white border-2 border-[#4c4b46] ring-2 ring-[#67645e]/20";
 
   const inactiveClasses =
     variant === "lifecycle" && status
       ? cn(LIFECYCLE_TILE_BG[status], "border hover:shadow-md")
       : isBw
-        ? "bg-white border border-[#d4d4d4] hover:border-black hover:shadow-md"
-        : "bg-[#dbeafe] border border-[#93c5fd] hover:border-[#0077b6] hover:shadow-md";
+        ? "bg-white border border-[#d6d5cf] hover:border-black hover:shadow-md"
+        : "bg-[#e7e6e2] border border-[#d6d5cf] hover:border-[#0b0b0b] hover:shadow-md";
 
   return (
     <button

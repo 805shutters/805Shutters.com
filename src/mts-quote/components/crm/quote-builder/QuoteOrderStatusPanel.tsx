@@ -65,7 +65,7 @@ export function QuoteOrderStatusPanel({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#0f5d82] p-5 text-white">
+      <div className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#343330] p-5 text-white">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">

@@ -1,6 +1,76 @@
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
+// ── 805 metal palettes ──────────────────────────────────────────────────────
+// The quote builder was ported from MTS (cobalt blue + teal). To match the 805
+// Shutters brand (classic black / white / platinum, accented only with shades
+// of silver), every chromatic Tailwind family is remapped onto a warm-neutral
+// "metal" ramp below. Because this config is scoped to ./src/mts-quote only
+// (with `important: ".mts-quote-scope"`), these overrides never touch the
+// plain-CSS marketing site. Ramps stay monotonic light→dark so hover/active
+// shade steps (e.g. hover:bg-x-700 over bg-x-600) still darken correctly.
+
+// Pewter — the master warm-platinum ramp. Drives every neutral + decorative
+// family (slate/gray/blue/sky/cyan/teal/indigo/violet/purple/fuchsia/pink…).
+const pewter = {
+  50: "#faf9f7",
+  100: "#f3f3f0",
+  200: "#e7e6e2",
+  300: "#d6d5cf",
+  400: "#b6b4ac",
+  500: "#898680",
+  600: "#67645e",
+  700: "#4c4b46",
+  800: "#343330",
+  900: "#1d1d1b",
+  950: "#0b0b0b",
+};
+
+// Brushed steel — a faintly cool silver for "positive" status (sold / success).
+const steel = {
+  50: "#f5f7f5",
+  100: "#eaefea",
+  200: "#d8e0db",
+  300: "#c2cdc5",
+  400: "#9aa89e",
+  500: "#75847a",
+  600: "#5a665e",
+  700: "#454e49",
+  800: "#313732",
+  900: "#1c201d",
+  950: "#0c0f0d",
+};
+
+// Champagne — a warm aged-brass silver for "in-progress" status (ordered / warning).
+const champagne = {
+  50: "#f8f7f3",
+  100: "#efece3",
+  200: "#e2dccc",
+  300: "#cfc6b0",
+  400: "#b3a988",
+  500: "#8c836a",
+  600: "#6b6453",
+  700: "#4f4a3e",
+  800: "#36332b",
+  900: "#1e1c18",
+  950: "#0d0c0a",
+};
+
+// Oxidized iron — a deeply muted warm metal for destructive / danger states.
+const iron = {
+  50: "#f8f5f4",
+  100: "#efe7e5",
+  200: "#e0d2cf",
+  300: "#ccb6b1",
+  400: "#b08e87",
+  500: "#8a655e",
+  600: "#6d4a44",
+  700: "#503631",
+  800: "#362422",
+  900: "#1f1514",
+  950: "#0e0a09",
+};
+
 // Scoped Tailwind for the ported MTS quote builder ONLY.
 // - `content` is limited to the ported module so utilities are generated only for it.
 // - `important: ".mts-quote-scope"` confines every utility to descendants of the
@@ -54,6 +124,31 @@ export default {
         ],
       },
       colors: {
+        // 805 metal remaps — desaturate every MTS-era chromatic family into the
+        // black/white/platinum/silver brand. Neutral + decorative families share
+        // the pewter ramp; status families keep a faint metallic hue so the
+        // dashboard pipeline (sold / ordered / danger) stays legible.
+        slate: pewter,
+        gray: pewter,
+        zinc: pewter,
+        neutral: pewter,
+        stone: pewter,
+        blue: pewter,
+        sky: pewter,
+        cyan: pewter,
+        teal: pewter,
+        indigo: pewter,
+        violet: pewter,
+        purple: pewter,
+        fuchsia: pewter,
+        pink: pewter,
+        emerald: steel,
+        green: steel,
+        amber: champagne,
+        yellow: champagne,
+        orange: champagne,
+        red: iron,
+        rose: iron,
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

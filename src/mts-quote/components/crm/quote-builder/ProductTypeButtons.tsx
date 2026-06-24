@@ -20,8 +20,8 @@ export function ProductTypeButtons({ selected, onSelect }: ProductTypeButtonsPro
             className={cn(
               "rounded-2xl border px-4 py-2.5 text-sm font-bold text-slate-800 shadow-sm transition-all duration-200",
               selected === type
-                ? "border-[#1f78b4] bg-gradient-to-br from-[#1f78b4] to-[#0e4f82] text-white shadow-[0_12px_24px_rgba(31,120,180,0.24)]"
-                : "border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-0.5 hover:border-[#8abce5] hover:shadow-[0_12px_24px_rgba(15,35,70,0.10)]"
+                ? "border-[#67645e] bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_12px_24px_rgba(31,120,180,0.24)]"
+                : "border-slate-200 bg-gradient-to-br from-white to-slate-50 hover:-translate-y-0.5 hover:border-[#d6d5cf] hover:shadow-[0_12px_24px_rgba(15,35,70,0.10)]"
             )}
           >
             {type}

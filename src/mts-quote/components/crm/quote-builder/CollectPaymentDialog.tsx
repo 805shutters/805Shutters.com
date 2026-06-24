@@ -186,7 +186,7 @@ export function CollectPaymentDialog({
                     className={cn(
                       "flex items-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
                       active
-                        ? cn(m.color, "ring-2 ring-offset-1 ring-[#0077b6]/40")
+                        ? cn(m.color, "ring-2 ring-offset-1 ring-[#0b0b0b]/40")
                         : "bg-white border-slate-200 text-slate-700 hover:border-slate-400"
                     )}
                   >

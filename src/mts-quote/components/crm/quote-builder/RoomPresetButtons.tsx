@@ -30,7 +30,7 @@ export function RoomPresetButtons({ onSelect }: RoomPresetButtonsProps) {
           <button
             key={room}
             onClick={() => onSelect(room)}
-            className="rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-sm font-bold text-[#173152] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#173152] hover:bg-[#173152] hover:text-white hover:shadow-[0_14px_28px_rgba(15,35,70,0.16)]"
+            className="rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-sm font-bold text-[#1c1c1a] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1c1c1a] hover:bg-[#1c1c1a] hover:text-white hover:shadow-[0_14px_28px_rgba(15,35,70,0.16)]"
           >
             {room}
           </button>
@@ -56,7 +56,7 @@ export function RoomPresetButtons({ onSelect }: RoomPresetButtonsProps) {
         ) : (
           <button
             onClick={() => setShowCustom(true)}
-            className="flex items-center gap-1 rounded-full border border-dashed border-[#173152] bg-white/80 px-4 py-2 text-sm font-bold text-slate-500 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#173152] hover:text-white"
+            className="flex items-center gap-1 rounded-full border border-dashed border-[#1c1c1a] bg-white/80 px-4 py-2 text-sm font-bold text-slate-500 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1c1c1a] hover:text-white"
           >
             <Plus className="h-3 w-3" />
             Custom

@@ -75,7 +75,7 @@ export function SalesLedger({ quotes, onOpenQuote }: SalesLedgerProps) {
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b bg-gradient-to-br from-slate-50 to-white">
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Package className="h-5 w-5 text-[#0077b6]" />
+            <Package className="h-5 w-5 text-[#0b0b0b]" />
             Sales Ledger
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">

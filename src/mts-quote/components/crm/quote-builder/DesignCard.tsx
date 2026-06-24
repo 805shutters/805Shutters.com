@@ -2110,7 +2110,7 @@ export function DesignCard({
         isDiscountSelected && "ring-2 ring-emerald-500 bg-emerald-50"
       )}
     >
-      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f1f7fc] pb-4">
+      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {isCopyTarget && (
@@ -2261,7 +2261,7 @@ export function DesignCard({
                   <TabsTrigger
                     key={v}
                     value={v}
-                    className="text-xs px-4 py-2 rounded-lg border border-[#93c5fd] bg-white text-black data-[state=active]:bg-[#0077b6] data-[state=active]:text-white data-[state=active]:border-[#005f92] data-[state=active]:shadow-sm"
+                    className="text-xs px-4 py-2 rounded-lg border border-[#d6d5cf] bg-white text-black data-[state=active]:bg-[#0b0b0b] data-[state=active]:text-white data-[state=active]:border-[#1c1c1a] data-[state=active]:shadow-sm"
                   >
                     {label}
                   </TabsTrigger>

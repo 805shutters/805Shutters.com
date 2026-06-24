@@ -183,7 +183,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-[#0077b6]" />
+            <Send className="h-5 w-5 text-[#0b0b0b]" />
             Send Quote to Customer
           </DialogTitle>
           <DialogDescription>
@@ -410,7 +410,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
               (needsPhone && !phone.trim()) ||
               contractEmailNeedsSignature
             }
-            className="bg-[#0077b6] hover:bg-[#005f92]"
+            className="bg-[#0b0b0b] hover:bg-[#1c1c1a]"
           >
             <Send className="h-4 w-4 mr-2" />
             {sendQuote.isPending ? "Sending…" : sendLabel}
@@ -470,8 +470,8 @@ function ChannelButton({
       className={cn(
         "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
         active
-          ? "bg-[#0077b6] text-white border-[#0077b6] ring-2 ring-offset-1 ring-[#0077b6]/30"
-          : "bg-white border-slate-200 text-slate-700 hover:border-[#0077b6]"
+          ? "bg-[#0b0b0b] text-white border-[#0b0b0b] ring-2 ring-offset-1 ring-[#0b0b0b]/30"
+          : "bg-white border-slate-200 text-slate-700 hover:border-[#0b0b0b]"
       )}
     >
       <Icon className="h-4 w-4" />

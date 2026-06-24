@@ -2,64 +2,69 @@ import { ACCOUNT_IDS } from "./accounts";
 
 export const QUOTE_ACCOUNTS = [
   { id: ACCOUNT_IDS.SHUTTERS_805, name: "805 Shutters", prefix: "805" },
-  { id: ACCOUNT_IDS.MTS_INSTALLATIONS, name: "MTS Installations", prefix: "MTS" },
 ] as const;
 
-// Colors for multi-quote options (Quote A, B, C, etc.)
+// Colors for multi-quote options (Quote A, B, C, etc.).
+// 805 brand: each option is a DISTINCT shade of metal (onyx → graphite → pewter
+// → brushed steel → bronze → blue-steel) rather than a rainbow hue, so multi-
+// option quotes stay distinguishable while matching the black/white/platinum
+// scheme. Each tone is dark enough to carry white text (used on `bg`) and to
+// read as text on white (used on `text` / inline `hex`). Arbitrary values are
+// literal here so the scoped Tailwind build generates them.
 export const QUOTE_OPTION_COLORS = [
   {
     letter: "A",
-    bg: "bg-blue-500",
-    border: "border-blue-500",
-    text: "text-blue-700",
-    light: "bg-blue-50",
-    ring: "ring-blue-500/30",
-    hex: "#3b82f6",
+    bg: "bg-[#1f1e1c]", // onyx
+    border: "border-[#1f1e1c]",
+    text: "text-[#1f1e1c]",
+    light: "bg-[#ededeb]",
+    ring: "ring-[#1f1e1c]/30",
+    hex: "#1f1e1c",
   },
   {
     letter: "B",
-    bg: "bg-violet-500",
-    border: "border-violet-500",
-    text: "text-violet-700",
-    light: "bg-violet-50",
-    ring: "ring-violet-500/30",
-    hex: "#8b5cf6",
+    bg: "bg-[#3d3b37]", // graphite
+    border: "border-[#3d3b37]",
+    text: "text-[#3d3b37]",
+    light: "bg-[#ececeb]",
+    ring: "ring-[#3d3b37]/30",
+    hex: "#3d3b37",
   },
   {
     letter: "C",
-    bg: "bg-emerald-500",
-    border: "border-emerald-500",
-    text: "text-emerald-700",
-    light: "bg-emerald-50",
-    ring: "ring-emerald-500/30",
-    hex: "#10b981",
+    bg: "bg-[#5a574f]", // pewter
+    border: "border-[#5a574f]",
+    text: "text-[#5a574f]",
+    light: "bg-[#edebe7]",
+    ring: "ring-[#5a574f]/30",
+    hex: "#5a574f",
   },
   {
     letter: "D",
-    bg: "bg-orange-500",
-    border: "border-orange-500",
-    text: "text-orange-700",
-    light: "bg-orange-50",
-    ring: "ring-orange-500/30",
-    hex: "#f97316",
+    bg: "bg-[#5d6661]", // brushed steel (cool)
+    border: "border-[#5d6661]",
+    text: "text-[#4a524e]",
+    light: "bg-[#e8ecea]",
+    ring: "ring-[#5d6661]/30",
+    hex: "#5d6661",
   },
   {
     letter: "E",
-    bg: "bg-pink-500",
-    border: "border-pink-500",
-    text: "text-pink-700",
-    light: "bg-pink-50",
-    ring: "ring-pink-500/30",
-    hex: "#ec4899",
+    bg: "bg-[#6b6453]", // bronze / champagne (warm)
+    border: "border-[#6b6453]",
+    text: "text-[#5a543f]",
+    light: "bg-[#efece3]",
+    ring: "ring-[#6b6453]/30",
+    hex: "#6b6453",
   },
   {
     letter: "F",
-    bg: "bg-teal-500",
-    border: "border-teal-500",
-    text: "text-teal-700",
-    light: "bg-teal-50",
-    ring: "ring-teal-500/30",
-    hex: "#14b8a6",
+    bg: "bg-[#535a61]", // blue-steel (cool)
+    border: "border-[#535a61]",
+    text: "text-[#454a50]",
+    light: "bg-[#e8ebee]",
+    ring: "ring-[#535a61]/30",
+    hex: "#535a61",
   },
 ] as const;
 

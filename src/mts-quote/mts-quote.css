@@ -11,67 +11,80 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---- Design tokens (from MTS src/index.css :root), scoped ---- */
+/* ---- Design tokens ----
+ * Re-skinned from the MTS palette (cobalt blue + teal) to the 805 Shutters
+ * brand: classic black / white / platinum, accented only with shades of
+ * silver (pewter). Values mirror the marketing site's CSS vars in
+ * src/app/globals.css — ink #0b0b0b, muted #5b5b58, pewter accent #7d7a72,
+ * line #d8d8d2, platinum #e5e4e2 / #f4f4f2, paper #fbfbfa. HSL triplets so
+ * shadcn's `hsl(var(--x))` and opacity modifiers keep working.
+ */
 .mts-quote-scope {
-  --background: 220 33% 97%;
-  --foreground: 220 24% 9%;
+  --background: 60 13% 98%; /* paper #fbfbfa */
+  --foreground: 0 0% 4%; /* ink #0b0b0b */
   --card: 0 0% 100%;
-  --card-foreground: 220 24% 9%;
+  --card-foreground: 0 0% 4%;
   --popover: 0 0% 100%;
-  --popover-foreground: 220 24% 9%;
-  --primary: 216 78% 43%;
+  --popover-foreground: 0 0% 4%;
+  --primary: 0 0% 4%; /* ink — black primary buttons, like the site */
   --primary-foreground: 0 0% 100%;
-  --secondary: 214 45% 94%;
-  --secondary-foreground: 220 24% 9%;
-  --muted: 220 30% 94%;
-  --muted-foreground: 220 13% 25%;
-  --accent: 176 76% 34%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 72% 50%;
+  --secondary: 60 9% 93%; /* soft platinum #eeeeeb */
+  --secondary-foreground: 0 0% 4%;
+  --muted: 60 8% 95%; /* platinum-soft #f4f4f2 */
+  --muted-foreground: 40 4% 40%; /* pewter/muted text */
+  --accent: 60 9% 93%; /* platinum hover surface (no vivid accent on brand) */
+  --accent-foreground: 0 0% 4%;
+  --destructive: 12 18% 38%; /* oxidized-iron — muted, not alarm-red */
   --destructive-foreground: 0 0% 100%;
-  --border: 216 24% 86%;
-  --input: 216 24% 86%;
-  --ring: 216 78% 43%;
-  --radius: 0.375rem;
+  --border: 60 8% 84%; /* line #d8d8d2 */
+  --input: 60 8% 84%;
+  --ring: 40 4% 45%; /* pewter focus ring */
+  --radius: 0.125rem; /* near-square, matches the site's crisp editorial edges */
   --sidebar-background: 0 0% 100%;
-  --sidebar-foreground: 220 24% 9%;
-  --sidebar-primary: 216 78% 43%;
+  --sidebar-foreground: 0 0% 4%;
+  --sidebar-primary: 0 0% 4%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 214 45% 94%;
-  --sidebar-accent-foreground: 220 24% 9%;
-  --sidebar-border: 216 24% 86%;
-  --sidebar-ring: 216 78% 43%;
-  --mts-blue: 216 78% 43%;
-  --mts-blue-light: 212 82% 52%;
-  --mts-teal: 176 76% 34%;
-  --mts-teal-light: 176 52% 89%;
-  --mts-gray: 220 10% 42%;
-  --mts-gray-light: 220 33% 97%;
-  --mts-dark: 220 24% 9%;
-  --status-red: 0 84% 60%;
-  --status-orange: 24 95% 53%;
-  --status-amber: 43 96% 56%;
-  --status-rose: 330 81% 60%;
-  --status-blue: 217 91% 60%;
-  --status-yellow: 48 96% 55%;
-  --status-purple: 270 90% 70%;
-  --status-cyan: 190 95% 55%;
-  --status-emerald: 142 72% 45%;
-  --success: 142 76% 36%;
+  --sidebar-accent: 60 9% 93%;
+  --sidebar-accent-foreground: 0 0% 4%;
+  --sidebar-border: 60 8% 84%;
+  --sidebar-ring: 40 4% 45%;
+  /* MTS brand vars repointed to 805 metal so `bg-mts-blue` etc. read as ink/pewter */
+  --mts-blue: 0 0% 4%; /* ink */
+  --mts-blue-light: 0 0% 15%; /* graphite */
+  --mts-teal: 44 5% 47%; /* pewter #7d7a72 */
+  --mts-teal-light: 40 5% 89%; /* platinum #e5e4e2 */
+  --mts-gray: 40 4% 40%;
+  --mts-gray-light: 60 13% 98%;
+  --mts-dark: 0 0% 4%;
+  /* Status hues muted to faint metallic tints (pipeline stays legible, stays on-brand) */
+  --status-red: 12 18% 42%;
+  --status-orange: 38 14% 45%;
+  --status-amber: 40 16% 48%;
+  --status-rose: 350 8% 50%;
+  --status-blue: 210 6% 45%;
+  --status-yellow: 45 16% 50%;
+  --status-purple: 280 5% 48%;
+  --status-cyan: 190 6% 45%;
+  --status-emerald: 150 8% 42%;
+  --success: 150 8% 38%; /* brushed-steel green */
   --success-foreground: 0 0% 100%;
   --font-sans:
-    "Inter", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  --font-heading: "Montserrat", system-ui, sans-serif;
+    "Helvetica Neue", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, Arial, sans-serif;
+  --font-heading: "Helvetica Neue", "Segoe UI", system-ui, Arial, sans-serif;
+  /* 805 display serif (Theano Didot / Bodoni), loaded by the root layout */
+  --font-display-805:
+    var(--font-theano-didot, "Theano Didot"), Didot, "Bodoni 72", "Bodoni 72 Oldstyle",
+    var(--font-bodoni-moda, "Bodoni Moda"), "Times New Roman", serif;
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 2px 0px hsl(216 78% 43% / 0.06);
-  --shadow: 0 1px 3px 0px hsl(216 78% 43% / 0.08), 0 1px 2px -1px hsl(216 78% 43% / 0.08);
-  --shadow-md: 0 4px 10px -6px hsl(216 78% 43% / 0.18);
-  --shadow-lg: 0 12px 24px -18px hsl(216 78% 43% / 0.24);
-  --shadow-xl: 0 18px 36px -24px hsl(216 78% 43% / 0.28);
-  --shadow-2xl: 0 24px 48px -28px hsl(216 78% 43% / 0.35);
-  --radius-radix: 0.375rem;
+  --shadow-sm: 0 1px 2px 0px hsl(40 6% 12% / 0.06);
+  --shadow: 0 1px 3px 0px hsl(40 6% 12% / 0.1), 0 1px 2px -1px hsl(40 6% 12% / 0.08);
+  --shadow-md: 0 4px 10px -6px hsl(40 6% 12% / 0.16);
+  --shadow-lg: 0 12px 24px -18px hsl(40 6% 12% / 0.2);
+  --shadow-xl: 0 18px 36px -24px hsl(40 6% 12% / 0.24);
+  --shadow-2xl: 0 24px 48px -28px hsl(40 6% 12% / 0.3);
+  --radius-radix: 0.125rem;
 
   /* Base surface (MTS body { @apply bg-background text-foreground font-sans antialiased }) */
   background-color: hsl(var(--background));
@@ -167,6 +180,14 @@
   font-family: var(--font-heading);
   letter-spacing: -0.015em;
   margin: 0;
+}
+/* Major titles use the 805 display serif (the marketing site's editorial look);
+   small h3–h6 UI labels stay on the crisp sans for legibility in dense panels. */
+.mts-quote-scope h1,
+.mts-quote-scope h2 {
+  font-family: var(--font-display-805);
+  font-weight: 400;
+  letter-spacing: 0.005em;
 }
 .mts-quote-scope p,
 .mts-quote-scope figure,

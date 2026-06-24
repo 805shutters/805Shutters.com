@@ -485,8 +485,8 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
               activeAccountId === account.id
                 ? account.prefix === "805"
                   ? "bg-black text-white border-2 border-black shadow-lg shadow-black/15"
-                  : "bg-[#0077b6] text-white border-2 border-[#005f92] shadow-lg shadow-[#0077b6]/15"
-                : "bg-white border border-[#bfdbfe] text-[#1a1f36] hover:border-[#0077b6] hover:shadow-md"
+                  : "bg-[#67645e] text-white border-2 border-[#4c4b46] shadow-lg shadow-[#67645e]/20"
+                : "bg-white border border-[#d6d5cf] text-[#1c1c1a] hover:border-[#0b0b0b] hover:shadow-md"
             )}
           >
             {account.name}
