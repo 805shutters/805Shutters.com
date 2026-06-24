@@ -4,11 +4,20 @@ import {
   verifySquareWebhookSignature,
   extractSquarePaymentFacts,
   isSquarePaidPaymentEvent,
+  retrieveSquareOrderPaymentFacts,
   SQUARE_WEBHOOK_SIGNING_KEY,
   SQUARE_WEBHOOK_URL,
 } from "@/lib/finance/square";
 
 export const runtime = "nodejs";
+
+function webhookSignatureUrls(requestUrl: string) {
+  const urls = new Set([SQUARE_WEBHOOK_URL, requestUrl].filter(Boolean));
+  for (const url of [...urls]) {
+    urls.add(url.endsWith("/") ? url.slice(0, -1) : `${url}/`);
+  }
+  return [...urls];
+}
 
 // Square webhook: signature-verified + idempotent. When a customer pays a deposit
 // or balance via Square, record a credit_card payment on the quote's bookkeeping
@@ -18,8 +27,10 @@ export async function POST(request: NextRequest) {
   if (!supabase) return new NextResponse("Service unavailable", { status: 503 });
 
   const raw = await request.text();
-  const signature = request.headers.get("x-square-hmac-signature");
-  if (!verifySquareWebhookSignature(SQUARE_WEBHOOK_URL, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature)) {
+  const signature =
+    request.headers.get("x-square-hmacsha256-signature") ??
+    request.headers.get("x-square-hmac-signature");
+  if (!webhookSignatureUrls(request.url).some((url) => verifySquareWebhookSignature(url, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature))) {
     return new NextResponse("Invalid signature", { status: 401 });
   }
 
@@ -35,7 +46,20 @@ export async function POST(request: NextRequest) {
 
   for (const event of events) {
     if (!isSquarePaidPaymentEvent(event)) continue;
-    const facts = extractSquarePaymentFacts(event);
+    const baseFacts = extractSquarePaymentFacts(event);
+    const orderFacts =
+      baseFacts?.orderId && (!baseFacts.quoteId || !baseFacts.paymentType || baseFacts.amountCents <= 0)
+        ? await retrieveSquareOrderPaymentFacts(baseFacts.orderId)
+        : null;
+    const facts = baseFacts
+      ? {
+          ...baseFacts,
+          quoteId: baseFacts.quoteId ?? orderFacts?.quoteId ?? null,
+          paymentType: baseFacts.paymentType ?? orderFacts?.paymentType ?? null,
+          amountCents: baseFacts.amountCents > 0 ? baseFacts.amountCents : (orderFacts?.amountCents ?? 0),
+          orderId: baseFacts.orderId ?? orderFacts?.orderId ?? null,
+        }
+      : null;
     if (!facts || !facts.quoteId || facts.amountCents <= 0) continue;
 
     // Idempotency: skip if this Square payment is already recorded.
