@@ -47,6 +47,12 @@ function publishedSlot(date: string, time: string): CrmAvailabilitySlot {
 }
 
 describe("buildBookingAvailability", () => {
+  it("offers appointment starts on the hour and half hour", () => {
+    expect(bookingSlotTimes).toHaveLength(17);
+    expect(bookingSlotTimes.slice(0, 5)).toEqual(["08:00", "08:30", "09:00", "09:30", "10:00"]);
+    expect(bookingSlotTimes.at(-1)).toBe("16:00");
+  });
+
   it("falls back to weekday slots when the availability table is unavailable", () => {
     const availability = buildBookingAvailability("2030-06", []);
     const monday = availability.days.find((day) => day.date === "2030-06-03");
@@ -69,6 +75,14 @@ describe("buildBookingAvailability", () => {
 
     expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(true);
     expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
+  });
+
+  it("uses published half-hour CRM availability slots", () => {
+    const availability = buildBookingAvailability("2030-06", [], [publishedSlot("2030-06-03", "09:30")]);
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "09:30")?.available).toBe(true);
+    expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(false);
   });
 
   it("falls back to working-hours slots when published availability is empty for the month", () => {

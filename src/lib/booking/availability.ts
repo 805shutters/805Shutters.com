@@ -2,8 +2,13 @@ import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
 const timeZone = "America/Los_Angeles";
 export const bookingSlotTimes = Array.from(
-  { length: 9 },
-  (_item, index) => `${String(index + 8).padStart(2, "0")}:00`
+  { length: 17 },
+  (_item, index) => {
+    const totalMinutes = 8 * 60 + index * 30;
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  }
 );
 export const bookingSlotDurationMinutes = 60;
 export const fallbackBookingOwner = "Unassigned";

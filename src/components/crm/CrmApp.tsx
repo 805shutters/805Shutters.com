@@ -117,14 +117,10 @@ const customerFileFilters: Array<{ value: CustomerFileFilter; label: string }> =
   { value: "ordered", label: "Ordered" },
   { value: "completed", label: "Completed" }
 ];
-const calendarSlotHours = bookingSlotTimes.map((time) => Number(time.slice(0, 2)));
+const calendarSlotTimes = bookingSlotTimes;
 const calendarTimeFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
-  timeZone: "America/Los_Angeles"
-});
-const calendarHourFormatter = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
   timeZone: "America/Los_Angeles"
 });
 const calendarDayFormatter = new Intl.DateTimeFormat("en-US", {
@@ -156,7 +152,7 @@ const calendarLongDayFormatter = new Intl.DateTimeFormat("en-US", {
 
 type CalendarSlotSelection = {
   date: string;
-  hour: number;
+  time: string;
   startAt: string;
   endAt: string;
 };
@@ -258,28 +254,24 @@ function calendarMonthDays(value: string) {
   return Array.from({ length: dayCount }, (_item, index) => addCalendarDays(gridStart, index));
 }
 
-function calendarTimeValue(hour: number) {
-  return `${String(hour).padStart(2, "0")}:00`;
+function calendarSlotStart(date: string, time: string) {
+  return zonedTimeToUtc(date, time);
 }
 
-function calendarSlotStart(date: string, hour: number) {
-  return zonedTimeToUtc(date, calendarTimeValue(hour));
-}
-
-function calendarSlotSelection(date: string, hour: number): CalendarSlotSelection {
-  const start = calendarSlotStart(date, hour);
+function calendarSlotSelection(date: string, time: string): CalendarSlotSelection {
+  const start = calendarSlotStart(date, time);
   const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
 
   return {
     date,
-    hour,
+    time,
     startAt: start.toISOString(),
     endAt: end.toISOString()
   };
 }
 
-function formatCalendarHour(hour: number) {
-  return calendarHourFormatter.format(calendarSlotStart("2026-01-05", hour));
+function formatCalendarSlotTime(time: string) {
+  return calendarTimeFormatter.format(calendarSlotStart("2026-01-05", time));
 }
 
 function formatCalendarSlotRange(slot: CalendarSlotSelection) {
@@ -310,8 +302,8 @@ function isActiveCalendarEvent(event: CrmCalendarEvent) {
   return event.status === "scheduled" || event.status === "rescheduled";
 }
 
-function findCalendarEventForSlot(events: CrmCalendarEvent[], date: string, hour: number) {
-  const selection = calendarSlotSelection(date, hour);
+function findCalendarEventForSlot(events: CrmCalendarEvent[], date: string, time: string) {
+  const selection = calendarSlotSelection(date, time);
   const slotStart = new Date(selection.startAt);
   const slotEnd = new Date(selection.endAt);
 
@@ -323,8 +315,8 @@ function findCalendarEventForSlot(events: CrmCalendarEvent[], date: string, hour
   });
 }
 
-function isPastCalendarSlot(date: string, hour: number) {
-  const selection = calendarSlotSelection(date, hour);
+function isPastCalendarSlot(date: string, time: string) {
+  const selection = calendarSlotSelection(date, time);
   return new Date(selection.endAt) <= new Date();
 }
 
@@ -340,9 +332,9 @@ function calendarEventPlacement(event: CrmCalendarEvent, days: string[]) {
   if (dayIndex < 0) return null;
 
   const day = days[dayIndex];
-  const overlappingRows = calendarSlotHours
-    .map((hour, index) => {
-      const slot = calendarSlotSelection(day, hour);
+  const overlappingRows = calendarSlotTimes
+    .map((time, index) => {
+      const slot = calendarSlotSelection(day, time);
       return eventStart < new Date(slot.endAt) && eventEnd > new Date(slot.startAt) ? index : -1;
     })
     .filter((index) => index >= 0);
@@ -7288,7 +7280,10 @@ function CalendarTimelineGrid({
 }) {
   return (
     <div className="crm-calendar-grid-wrap">
-      <div className={`crm-calendar-grid crm-calendar-grid--${view}`}>
+      <div
+        className={`crm-calendar-grid crm-calendar-grid--${view}`}
+        style={{ gridTemplateRows: `48px repeat(${calendarSlotTimes.length}, 76px)` }}
+      >
         <div className="crm-calendar-time-head" style={{ gridColumn: 1, gridRow: 1 }}>Time</div>
         {days.map((day, dayIndex) => (
           <div className="crm-calendar-day-head" key={day} style={{ gridColumn: dayIndex + 2, gridRow: 1 }}>
@@ -7298,24 +7293,24 @@ function CalendarTimelineGrid({
           </div>
         ))}
 
-        {calendarSlotHours.map((hour, rowIndex) => (
-          <Fragment key={hour}>
+        {calendarSlotTimes.map((time, rowIndex) => (
+          <Fragment key={time}>
             <div className="crm-calendar-time-label" style={{ gridColumn: 1, gridRow: rowIndex + 2 }}>
-              <strong>{formatCalendarHour(hour)}</strong>
-              <span>{formatCalendarHour(hour + 1)}</span>
+              <strong>{formatCalendarSlotTime(time)}</strong>
+              <span>{calendarTimeFormatter.format(new Date(calendarSlotSelection("2026-01-05", time).endAt))}</span>
             </div>
             {days.map((day, dayIndex) => {
-              const event = findCalendarEventForSlot(events, day, hour);
-              const past = isPastCalendarSlot(day, hour);
-              const slot = calendarSlotSelection(day, hour);
+              const event = findCalendarEventForSlot(events, day, time);
+              const past = isPastCalendarSlot(day, time);
+              const slot = calendarSlotSelection(day, time);
 
               return (
                 <button
                   type="button"
-                  aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarHour(hour)}`}
+                  aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarSlotTime(time)}`}
                   className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
                   disabled={Boolean(event) || past}
-                  key={`${day}-${hour}`}
+                  key={`${day}-${time}`}
                   onClick={() => onSelectSlot(slot)}
                   style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
                 >

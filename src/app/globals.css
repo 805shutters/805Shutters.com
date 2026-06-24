@@ -3633,7 +3633,7 @@ body:has(.crm-app-shell) {
 
 .crm-calendar-grid {
   display: grid;
-  grid-template-rows: 48px repeat(9, 142px);
+  grid-template-rows: 48px repeat(17, 76px);
   background: #d8d8d2;
   gap: 1px;
 }
@@ -3708,8 +3708,8 @@ body:has(.crm-app-shell) {
   display: grid;
   align-content: start;
   gap: 2px;
-  min-height: 142px;
-  padding: 7px 8px;
+  min-height: 76px;
+  padding: 6px 7px;
   background: #fbfbfa;
 }
 
@@ -3726,7 +3726,7 @@ body:has(.crm-app-shell) {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 142px;
+  min-height: 76px;
   width: 100%;
   padding: 4px;
   border: 0;
@@ -4065,7 +4065,7 @@ body:has(.crm-app-shell) {
 
 .crm-availability-grid {
   width: 100%;
-  min-width: 1180px;
+  min-width: 1720px;
   border-collapse: separate;
   border-spacing: 0;
 }
