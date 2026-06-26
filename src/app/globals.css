@@ -2938,6 +2938,16 @@ body.qb-fullscreen .crm-app-shell {
   color: var(--ink);
 }
 
+.crm-delete-button {
+  margin-left: auto;
+  color: #b42318;
+  border-color: #e4b4ae;
+}
+
+.crm-delete-button:hover:not(:disabled) {
+  background: #fbeae8;
+}
+
 .crm-alert {
   width: min(1500px, 100%);
   margin: 18px auto 0;

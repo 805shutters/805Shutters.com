@@ -1627,6 +1627,27 @@ export function CrmApp({
     }
   }
 
+  async function deleteJob(job: CrmJob) {
+    if (!session) return;
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${job.customer_name}"? This removes the job from your list.`)) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/jobs/${job.id}`, { method: "DELETE" });
+      await refresh();
+      setMessage(`Deleted "${job.customer_name}".`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Job could not be deleted.");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateKenPaymentRow(event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) {
     event.preventDefault();
     if (!session) return;
@@ -1982,7 +2003,7 @@ export function CrmApp({
             </div>
             <div className="crm-job-list" aria-label={`${statusLabel(activeJobStatus)} jobs`}>
               {visibleJobs.map((job) => (
-                <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} busy={busy} />
+                <JobCard job={job} key={job.id} onStatusChange={updateJobStatus} onSave={updateJob} onDelete={deleteJob} busy={busy} />
               ))}
               {!visibleJobs.length ? (
                 <p className="crm-empty">
@@ -4842,11 +4863,13 @@ function JobCard({
   job,
   onStatusChange,
   onSave,
+  onDelete,
   busy
 }: {
   job: CrmJob;
   onStatusChange: (job: CrmJob, status: CrmJobStatus) => void;
   onSave: (event: FormEvent<HTMLFormElement>, job: CrmJob) => void;
+  onDelete: (job: CrmJob) => void;
   busy: boolean;
 }) {
   const [editing, setEditing] = useState(false);
@@ -4921,6 +4944,17 @@ function JobCard({
             </button>
             <button type="button" className="crm-ghost-button" onClick={() => setEditing(false)}>
               Cancel
+            </button>
+            <button
+              type="button"
+              className="crm-ghost-button crm-delete-button"
+              disabled={busy}
+              onClick={() => {
+                setEditing(false);
+                onDelete(job);
+              }}
+            >
+              Delete
             </button>
           </div>
         </form>

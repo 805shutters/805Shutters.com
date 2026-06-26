@@ -1057,7 +1057,13 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM settings could not be loaded.", settingsResult.error.message);
   }
 
-  const jobs = (jobsResult.data || []) as CrmJob[];
+  // Tombstoned jobs (soft-deleted via meta.deleted_at) are hidden everywhere:
+  // the job list, the quote/order dropdowns, and the bookkeeping job-name
+  // lookups all read from this array. The row stays in the table so a delete
+  // is recoverable and never destroys a linked quote or sale.
+  const jobs = ((jobsResult.data || []) as CrmJob[]).filter(
+    (job) => !objectMeta((job as { meta?: unknown }).meta).deleted_at
+  );
   const quotes = (quotesResult.data || []) as CrmQuote[];
   const events = (eventsResult.data || []) as CrmCalendarEvent[];
   const customers = (customersResult.data || []) as CrmCustomer[];
@@ -1196,6 +1202,57 @@ export async function updateCrmJob(
   });
 
   return data as CrmJob;
+}
+
+// Quote statuses that mean a recorded sale exists in the bookkeeping ledger.
+const soldQuoteStatusGuard = new Set(saleOwnerSyncQuoteStatuses);
+
+export async function deleteCrmJob(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_jobs")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "CRM job was not found.");
+
+  // Guard against the wiped-sale failure mode: never hide a job that carries a
+  // sold quote, or that sale's customer name would vanish from the ledger. A
+  // real sale must be removed from bookkeeping first; this delete is for leads
+  // and abandoned/test jobs only.
+  const { data: quoteRows, error: quoteError } = await supabase
+    .from("crm_quotes")
+    .select("status")
+    .eq("job_id", id);
+  if (quoteError) throw new CrmAuthError(502, "Job quotes could not be checked before deleting.");
+  if ((quoteRows || []).some((row) => soldQuoteStatusGuard.has(String(row.status)))) {
+    throw new CrmAuthError(
+      409,
+      "This job has a sold quote in the bookkeeping ledger. Remove the sale from bookkeeping before deleting the job."
+    );
+  }
+
+  // Soft-delete tombstone, matching deleteCrmLedgerRow: the row is preserved so
+  // the action is recoverable and no linked quote is physically destroyed.
+  const meta = {
+    ...objectMeta((existing as { meta?: unknown }).meta),
+    deleted_at: new Date().toISOString(),
+    deleted_by: actor.email,
+    deleted_by_user_id: actor.userId || null,
+    delete_source: "job_delete"
+  };
+  const { error } = await supabase.from("crm_jobs").update({ meta }).eq("id", id);
+  if (error) throw new CrmAuthError(502, "CRM job could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: id,
+    action: "delete",
+    before: existing,
+    after: { ...existing, meta },
+    metadata: { source: "job_delete" }
+  });
+
+  return { id };
 }
 
 async function syncSaleOwnerForJob(
