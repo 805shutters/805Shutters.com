@@ -110,12 +110,45 @@ function hasOverlap(events: CrmCalendarEvent[], slotStart: Date, slotEnd: Date) 
   });
 }
 
-function ownersOfferingSlot(availabilitySlots: CrmAvailabilitySlot[], slotStart: Date) {
-  const target = slotStart.getTime();
-  const owners = availabilitySlots
-    .filter((slot) => (slot.status || "available") === "available" && new Date(slot.start_at).getTime() === target)
-    .map((slot) => slot.owner);
-  return Array.from(new Set(owners));
+// True if the union of `windows` (each [startMs, endMs]) fully covers [start, end]
+// with no gaps. Used so a 60-min appointment can start on the half-hour whenever
+// the rep's published availability spans the whole hour.
+function windowsCover(windows: Array<[number, number]>, start: number, end: number) {
+  const sorted = [...windows].sort((a, b) => a[0] - b[0]);
+  let cursor = start;
+  for (const [windowStart, windowEnd] of sorted) {
+    if (windowEnd <= cursor) continue; // ends before the cursor — contributes nothing
+    if (windowStart > cursor) return false; // gap before this window — not continuous
+    cursor = Math.max(cursor, windowEnd);
+    if (cursor >= end) return true;
+  }
+  return cursor >= end;
+}
+
+// Reps whose published availability fully covers the [slotStart, slotEnd] window.
+// Coverage (not exact start match) lets customers pick :30 start times: a rep open
+// 8:00–10:00 covers an 8:30–9:30 appointment even though only 8:00 and 9:00 were
+// published as 60-min open slots.
+function ownersOfferingSlot(availabilitySlots: CrmAvailabilitySlot[], slotStart: Date, slotEnd: Date) {
+  const startMs = slotStart.getTime();
+  const endMs = slotEnd.getTime();
+  const windowsByOwner = new Map<string, Array<[number, number]>>();
+
+  for (const slot of availabilitySlots) {
+    if ((slot.status || "available") !== "available") continue;
+    const windowStart = new Date(slot.start_at).getTime();
+    const windowEnd = new Date(slot.end_at).getTime();
+    if (!Number.isFinite(windowStart) || !Number.isFinite(windowEnd)) continue;
+    const windows = windowsByOwner.get(slot.owner) ?? [];
+    windows.push([windowStart, windowEnd]);
+    windowsByOwner.set(slot.owner, windows);
+  }
+
+  const owners: string[] = [];
+  for (const [owner, windows] of windowsByOwner) {
+    if (windowsCover(windows, startMs, endMs)) owners.push(owner);
+  }
+  return owners;
 }
 
 // A rep can take a slot only if they are not already booked, and no office-wide
@@ -167,7 +200,7 @@ export function buildBookingAvailability(
       const start = zonedTimeToUtc(date, time);
       const end = addMinutes(start, bookingSlotDurationMinutes);
       const available = usePublishedSlots
-        ? !isPast && repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start), start, end, events).length > 0
+        ? !isPast && repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events).length > 0
         : !isPast && !isSunday && !hasOverlap(events, start, end);
 
       return {
@@ -217,7 +250,7 @@ export function freeRepsForSlot(
     return dayOfWeek(date) !== 0 && !hasOverlap(events, start, end) ? [fallbackBookingOwner] : [];
   }
 
-  return repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start), start, end, events);
+  return repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events);
 }
 
 export function bookingEndIso(date: string, time: string) {
