@@ -6367,6 +6367,45 @@ body:has(.booking-page--focused) .assistant-widget {
   font-weight: 800;
 }
 
+.booking-submit-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.booking-submit-row button {
+  min-height: 56px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.booking-submit-secondary {
+  border-color: var(--platinum-deep);
+  background: var(--platinum);
+  color: var(--ink);
+}
+
+.booking-submit-secondary:not(:disabled):hover {
+  border-color: var(--ink);
+  background: var(--platinum-deep);
+}
+
+.booking-submit-secondary:disabled,
+.booking-submit-row button:disabled {
+  border-color: #d8d8d2;
+  background: #f4f4f2;
+  color: #8f8c84;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .booking-submit-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .booking-complete {
   grid-column: 1 / -1;
   display: grid;

@@ -11,6 +11,7 @@ export type CalendarAssignmentSmsInput = {
   customerName?: string | null;
   phone?: string | null;
   productInterest?: string | null;
+  followUpRequested?: boolean | null;
 };
 
 export function salesRepSmsNumberForName(assignedTo: string | null | undefined, env: EnvMap = process.env): string | null {
@@ -74,13 +75,20 @@ export function buildCalendarAssignmentSms(input: CalendarAssignmentSmsInput): s
   const location = cleanText(input.location);
   const phone = cleanText(input.phone);
   const product = cleanText(input.productInterest);
+  const followUp =
+    input.followUpRequested == null
+      ? null
+      : input.followUpRequested
+        ? "Follow-up requested to confirm details."
+        : "No follow-up meeting needed.";
 
   return [
     `805 Shutters: New calendar appointment assigned to ${assignedTo}.`,
     `${customerName}, ${when}.`,
     location ? `Address: ${location}.` : null,
     phone ? `Phone: ${phone}.` : null,
-    product ? `Product: ${product}.` : null
+    product ? `Product: ${product}.` : null,
+    followUp
   ].filter(Boolean).join(" ");
 }
 

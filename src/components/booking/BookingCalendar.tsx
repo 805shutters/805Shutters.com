@@ -163,6 +163,9 @@ export function BookingCalendar({
     event.preventDefault();
     if (!selectedDate || !selectedTime) return;
 
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const followUpRequested = submitter?.value === "follow-up";
+
     const formData = new FormData(event.currentTarget);
     setSubmitting(true);
     setMessage(null);
@@ -182,7 +185,8 @@ export function BookingCalendar({
           windowCount: String(formData.get("windowCount") || ""),
           email: String(formData.get("email") || ""),
           productTypes: selectedProductTypes,
-          notes: String(formData.get("notes") || "")
+          notes: String(formData.get("notes") || ""),
+          followUpRequested
         })
       });
       const body = await response.json();
@@ -351,9 +355,25 @@ export function BookingCalendar({
                     <textarea name="notes" rows={3} disabled={!selectedTime} />
                   </label>
                   {message ? <p className={`booking-message ${isErrorMessage(message) ? "error" : ""}`}>{message}</p> : null}
-                  <button type="submit" disabled={!selectedTime || submitting}>
-                    {submitting ? "Booking..." : "Submit Appointment"}
-                  </button>
+                  <div className="booking-submit-row">
+                    <button
+                      type="submit"
+                      name="followUp"
+                      value="follow-up"
+                      disabled={!selectedTime || submitting}
+                    >
+                      {submitting ? "Booking..." : "Submit – request a follow-up to confirm details"}
+                    </button>
+                    <button
+                      type="submit"
+                      name="followUp"
+                      value="none"
+                      className="booking-submit-secondary"
+                      disabled={!selectedTime || submitting}
+                    >
+                      {submitting ? "Booking..." : "Submit – no follow-up needed"}
+                    </button>
+                  </div>
                 </form>
               ) : null}
             </div>

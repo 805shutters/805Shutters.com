@@ -28,6 +28,7 @@ type BookingPayload = {
   email?: string;
   productTypes?: string[] | string;
   notes?: string;
+  followUpRequested?: boolean;
 };
 
 type BookingAutomationDetails = {
@@ -42,6 +43,7 @@ type BookingAutomationDetails = {
   productInterest: string;
   productTypes: string[];
   notes: string;
+  followUpRequested: boolean;
   startAt: string;
   endAt: string;
 };
@@ -209,6 +211,7 @@ async function sendStaffSmsAlerts(details: BookingAutomationDetails) {
   const body = [
     `New 805 booking: ${details.name}`,
     formatAppointmentForSms(details.startAt),
+    details.followUpRequested ? "FOLLOW-UP REQUESTED to confirm details" : "No follow-up meeting needed",
     `Phone: ${details.phone}`,
     details.email ? `Email: ${details.email}` : null,
     `Address: ${details.address}`,
@@ -405,6 +408,7 @@ export async function POST(request: NextRequest) {
   const windowCount = Number.isFinite(parsedWindowCount) ? Math.max(0, parsedWindowCount) : 0;
   const productTypes = normalizeProductTypes(payload.productTypes);
   const productInterest = productTypes.length ? productTypes.join(", ") : "consultation";
+  const followUpRequested = payload.followUpRequested === true;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return NextResponse.json({ message: "Choose an appointment date and time." }, { status: 400 });
@@ -476,6 +480,9 @@ export async function POST(request: NextRequest) {
   const endAt = bookingEndIso(date, time);
   const bookingNotes = [
     `Self-booked appointment.`,
+    followUpRequested
+      ? `Customer requested a follow-up to confirm details.`
+      : `Customer indicated no follow-up needed.`,
     windowCount ? `Windows: ${windowCount}` : null,
     productTypes.length ? `Product interest: ${productInterest}` : null,
     notes ? `Customer notes: ${notes}` : null
@@ -498,6 +505,7 @@ export async function POST(request: NextRequest) {
         address,
         windowCount: windowCount || null,
         productTypes,
+        followUpRequested,
         appointmentDate: date,
         appointmentTime: time,
         userAgent: request.headers.get("user-agent"),
@@ -533,6 +541,7 @@ export async function POST(request: NextRequest) {
       meta: {
         windowCount: windowCount || null,
         productTypes,
+        followUpRequested,
         bookingSource: "website"
       }
     })
@@ -546,6 +555,7 @@ export async function POST(request: NextRequest) {
   const calendarEventMeta = {
     windowCount: windowCount || null,
     productTypes,
+    followUpRequested,
     bookingSource: "website"
   };
 
@@ -659,6 +669,7 @@ export async function POST(request: NextRequest) {
     productInterest,
     productTypes,
     notes,
+    followUpRequested,
     startAt,
     endAt
   };
@@ -691,7 +702,8 @@ export async function POST(request: NextRequest) {
       location: address,
       customerName: name,
       phone,
-      productInterest
+      productInterest,
+      followUpRequested
     })
   ]);
 
