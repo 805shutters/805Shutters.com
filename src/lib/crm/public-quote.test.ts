@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { describeDesign, buildSignedShopSms, buildSignedCustomerSms, formatDimensions, projectLine, computeSelectionMoney } from "./public-quote";
+import {
+  buildSignedContractSnapshot,
+  describeDesign,
+  buildSignedShopSms,
+  buildSignedCustomerSms,
+  formatDimensions,
+  projectLine,
+  computeSelectionMoney,
+  type PublicQuote,
+} from "./public-quote";
 import { DEFAULT_ADJUSTMENTS, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 
@@ -173,5 +182,69 @@ describe("computeSelectionMoney (Purchase some)", () => {
     const m = computeSelectionMoney([{ id: "c", lineTotal: 0, priceReady: false }], DEFAULT_ADJUSTMENTS);
     expect(m.selectedLineIds).toEqual([]);
     expect(m.total).toBe(0);
+  });
+});
+
+describe("buildSignedContractSnapshot", () => {
+  it("archives the exact customer-safe signed quote without wholesale/internal pricing", () => {
+    const d = design({
+      id: "selected-design",
+      product_id: "onyx_shutters",
+      program_id: "painted_basswood",
+      unit_price: 393.75,
+      wholesale_unit_price: 168.75,
+      price_breakdown: {
+        wholesaleUnitPrice: 168.75,
+        wholesaleTotal: 337.5,
+        profit: 225,
+        internalMargin: 225,
+      },
+    });
+    const line = projectLine(lineItem({ id: "line-1", quantity: 2, designs: [d], selected_design_id: d.id }), false);
+    const pub: PublicQuote = {
+      token: "share-token",
+      id: "quote-1",
+      quoteNumber: "805-100",
+      customerName: "Jane Smith",
+      status: "sold",
+      signed: true,
+      signedAt: "2026-06-27T12:00:00.000Z",
+      lines: [line],
+      subtotal: line.lineTotal,
+      fees: [{ name: "Install", amount: 100 }],
+      discount: 0,
+      tax: 0,
+      sourceTotalAdjustment: 0,
+      depositDue: 443.75,
+      balanceDue: 443.75,
+      total: 887.5,
+      allPriced: true,
+      adjustments: DEFAULT_ADJUSTMENTS,
+      business: { name: "805 Shutters", phone: "805-555-1212" },
+      versions: [],
+    };
+
+    const snapshot = buildSignedContractSnapshot(pub, "2026-06-27T12:00:00.000Z", "Jane Smith");
+
+    expect(snapshot).toMatchObject({
+      schema: "805_signed_quote_contract_v1",
+      customerPrintedName: "Jane Smith",
+      quote: { id: "quote-1", quoteNumber: "805-100" },
+      totals: { total: 887.5, depositDue: 443.75, balanceDue: 443.75 },
+    });
+    expect(snapshot.lines[0]).toMatchObject({
+      lineItemId: "line-1",
+      room: "Living Room",
+      productName: "Onyx Shutters",
+      quantity: 2,
+      unitPrice: 393.75,
+      lineTotal: 787.5,
+    });
+    const serialized = JSON.stringify(snapshot).toLowerCase();
+    expect(serialized).not.toContain("wholesale");
+    expect(serialized).not.toContain("internal");
+    expect(serialized).not.toContain("profit");
+    expect(serialized).not.toContain("168.75");
+    expect(serialized).not.toContain("337.5");
   });
 });

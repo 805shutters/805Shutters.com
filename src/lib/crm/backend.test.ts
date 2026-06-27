@@ -8,6 +8,7 @@ import {
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
   resolveFullPartnerPaymentAmount,
+  resolveQuoteBookkeepingCustomerName,
   syncRemakeExpense,
   updateCrmBookkeepingEntry,
   updateCrmQuote,
@@ -423,6 +424,29 @@ describe("buildDashboardData", () => {
 describe("quote bookkeeping notes", () => {
   const actor = { email: "bookkeeper@805shutters.com" };
 
+  it("resolves quote bookkeeping customer names without falling back over real data", () => {
+    expect(
+      resolveQuoteBookkeepingCustomerName({
+        payloadCustomerName: "  Payload Customer  ",
+        existingEntryCustomerName: "Ledger Customer",
+        jobCustomerName: "Job Customer"
+      })
+    ).toBe("Payload Customer");
+    expect(
+      resolveQuoteBookkeepingCustomerName({
+        existingEntryCustomerName: "Ledger Customer",
+        jobCustomerName: "Job Customer"
+      })
+    ).toBe("Ledger Customer");
+    expect(
+      resolveQuoteBookkeepingCustomerName({
+        existingEntryCustomerName: "Linked job",
+        jobCustomerName: "Job Customer"
+      })
+    ).toBe("Job Customer");
+    expect(resolveQuoteBookkeepingCustomerName({})).toBe("Linked job");
+  });
+
   it("does not copy customer-facing quote notes into the bookkeeping entry when creating a committed quote", async () => {
     const { calls, supabase } = createSupabaseRecorder();
 
@@ -477,6 +501,25 @@ describe("quote bookkeeping notes", () => {
     );
     expect(quoteUpdate?.payload).toMatchObject({ notes: "New customer-facing quote note" });
     expect(entryUpsert?.payload).not.toHaveProperty("notes");
+  });
+
+  it("preserves the existing bookkeeping customer name when quote updates omit customer_name", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1", customer_name: "Linked Job Customer" }),
+      existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "ordered" }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", customer_name: "Actual Ledger Customer" })
+    });
+
+    await updateCrmQuote(supabase, "quote-1", { manufacturer_order_ref: "PO-123" }, actor);
+
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(entryUpsert?.payload).toMatchObject({
+      quote_id: "quote-1",
+      customer_name: "Actual Ledger Customer",
+      manufacturer_order_ref: "PO-123"
+    });
   });
 
   it("records a balance-paid checkbox payment and closes a quote-backed job", async () => {

@@ -78,6 +78,76 @@ export type PublicQuote = {
   versions: { token: string; label: string; total: number; signed: boolean; current: boolean }[];
 };
 
+export type SignedContractSnapshot = {
+  schema: "805_signed_quote_contract_v1";
+  signedAt: string;
+  customerPrintedName: string;
+  customerName: string;
+  business: PublicQuote["business"];
+  quote: { id: string; quoteNumber: string | null };
+  lines: Array<{
+    lineItemId: string;
+    room: string;
+    dimensions: string;
+    productName: string;
+    styleName: string;
+    options: string[];
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+    discountPercent: number;
+    designOptions: PublicQuoteDesignOption[];
+  }>;
+  totals: {
+    subtotal: number;
+    fees: { name: string; amount: number }[];
+    discount: number;
+    tax: number;
+    sourceTotalAdjustment: number;
+    depositDue: number;
+    balanceDue: number;
+    total: number;
+  };
+};
+
+export function buildSignedContractSnapshot(
+  pub: PublicQuote,
+  signedAt: string,
+  printedName: string,
+): SignedContractSnapshot {
+  return {
+    schema: "805_signed_quote_contract_v1",
+    signedAt,
+    customerPrintedName: printedName,
+    customerName: pub.customerName,
+    business: pub.business,
+    quote: { id: pub.id, quoteNumber: pub.quoteNumber },
+    lines: pub.lines.map((line) => ({
+      lineItemId: line.id,
+      room: line.room,
+      dimensions: line.dimensions,
+      productName: line.productName,
+      styleName: line.styleName,
+      options: [...line.options],
+      unitPrice: line.unitPrice,
+      quantity: line.quantity,
+      lineTotal: line.lineTotal,
+      discountPercent: line.discountPercent,
+      designOptions: line.designOptions.map((option) => ({ ...option })),
+    })),
+    totals: {
+      subtotal: pub.subtotal,
+      fees: pub.fees.map((fee) => ({ ...fee })),
+      discount: pub.discount,
+      tax: pub.tax,
+      sourceTotalAdjustment: pub.sourceTotalAdjustment,
+      depositDue: pub.depositDue,
+      balanceDue: pub.balanceDue,
+      total: pub.total,
+    },
+  };
+}
+
 /** Fractional, installer-readable dimensions for the customer contract
  *  (e.g. 24.5 -> `24 1/2" W × 36" H`), matching how the builder displays size. */
 export function formatDimensions(widthIn: number | null, heightIn: number | null): string {
@@ -446,6 +516,7 @@ async function syncSignedQuoteArtifacts(
       meta: {
         customer_printed_name: printedName,
         source: "public_quote_signature",
+        contract_snapshot: buildSignedContractSnapshot(pub, signedAt, printedName),
       },
     },
     { onConflict: "external_source,external_id" },
@@ -531,10 +602,28 @@ export async function acceptPublicQuote(
   if (!chosenLines.every((l) => l.priceReady)) {
     throw new CrmAuthError(409, "One or more selected items isn't finalized yet — please contact us before signing.");
   }
-  const selectionSubtotal = round2(chosenLines.reduce((s, l) => s + l.lineTotal, 0));
-  const soldTotal = computeQuoteMoney(selectionSubtotal, pub.adjustments).total;
+  const selectedMoney = computeSelectionMoney(
+    chosenLines.map((line) => ({ id: line.id, lineTotal: line.lineTotal, priceReady: line.priceReady })),
+    pub.adjustments,
+  );
+  const soldTotal = selectedMoney.total;
+  const signedPub: PublicQuote = selection
+    ? {
+        ...pub,
+        lines: chosenLines,
+        subtotal: selectedMoney.subtotal,
+        discount: selectedMoney.discount,
+        tax: selectedMoney.tax,
+        sourceTotalAdjustment: 0,
+        depositDue: selectedMoney.depositDue,
+        balanceDue: selectedMoney.balanceDue,
+        total: soldTotal,
+        signed: true,
+        signedAt: now,
+      }
+    : { ...pub, total: soldTotal, signed: true, signedAt: now };
   const signedSelection = selection
-    ? { lineItemIds: chosenLines.map((l) => l.id), subtotal: selectionSubtotal, total: soldTotal }
+    ? { lineItemIds: chosenLines.map((l) => l.id), subtotal: selectedMoney.subtotal, total: soldTotal }
     : null;
 
   // Consent guard: the customer must sign the exact total they were shown. If an
@@ -617,7 +706,7 @@ export async function acceptPublicQuote(
     supabase,
     { ...quote, signed_at: now, sold_at: now, customer_signature: signature, customer_printed_name: printedName },
     token,
-    { ...pub, total: soldTotal, signed: true, signedAt: now },
+    signedPub,
     now,
     printedName,
   );
@@ -652,17 +741,17 @@ export async function acceptPublicQuote(
   const shopEmail = process.env.CRM_SIGNED_QUOTE_EMAIL || MIKE_PAYMENT_ADMIN_EMAIL;
   if (shopEmail) {
     const mail = buildSignedQuoteShopEmail(printedName, publicQuoteUrl(token), soldTotal, {
-      quoteNumber: pub.quoteNumber,
-      lines: pub.lines,
-      subtotal: pub.subtotal,
-      fees: pub.fees,
-      discount: pub.discount,
-      tax: pub.tax,
-      sourceTotalAdjustment: pub.sourceTotalAdjustment,
-      depositDue: pub.depositDue,
-      balanceDue: pub.balanceDue,
+      quoteNumber: signedPub.quoteNumber,
+      lines: signedPub.lines,
+      subtotal: signedPub.subtotal,
+      fees: signedPub.fees,
+      discount: signedPub.discount,
+      tax: signedPub.tax,
+      sourceTotalAdjustment: signedPub.sourceTotalAdjustment,
+      depositDue: signedPub.depositDue,
+      balanceDue: signedPub.balanceDue,
       logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
-      businessPhone: pub.business.phone,
+      businessPhone: signedPub.business.phone,
     });
     await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
   }

@@ -8,7 +8,15 @@ import { randomUUID } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
-import type { CrmQuote } from "@/lib/crm/types";
+import { computeQuoteMoney, parseAdjustments, priceDesignFields, quoteSubtotal } from "@/lib/crm/quote-money";
+import type {
+  CrmQuote,
+  CrmQuoteDesign,
+  CrmQuoteDetailValue,
+  CrmQuoteLineItem,
+  CrmQuoteMotorizationSelection,
+  CrmQuoteSurchargeSelection,
+} from "@/lib/crm/types";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -34,6 +42,135 @@ async function fetchQuoteRow(supabase: CrmSupabaseClient, quoteId: string): Prom
   const { data, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
   if (error || !data) throw new CrmAuthError(404, "Quote was not found.");
   return data as CrmQuote;
+}
+
+function record(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function cloneQuoteMeta(source: CrmQuote, actor: CrmActor, label: string): Record<string, unknown> {
+  const {
+    contract_snapshot: _contractSnapshot,
+    signed_selection: _signedSelection,
+    lastUpdatedAt: _lastUpdatedAt,
+    lastUpdatedBy: _lastUpdatedBy,
+    ...sourceMeta
+  } = record(source.meta);
+  return {
+    ...sourceMeta,
+    createdBy: actor.email,
+    createdAsVersionOf: source.id,
+    createdAsVersionLabel: source.quote_label || "A",
+    quoteVersionLabel: label,
+    versionCreatedAt: new Date().toISOString(),
+  };
+}
+
+function detailsRecord(value: unknown): Record<string, CrmQuoteDetailValue> {
+  return record(value) as Record<string, CrmQuoteDetailValue>;
+}
+
+function surchargeList(value: unknown): CrmQuoteSurchargeSelection[] {
+  return Array.isArray(value) ? (value as CrmQuoteSurchargeSelection[]) : [];
+}
+
+function motorizationList(value: unknown): CrmQuoteMotorizationSelection[] {
+  return Array.isArray(value) ? (value as CrmQuoteMotorizationSelection[]) : [];
+}
+
+function sortedDesigns(lineItem: CrmQuoteLineItem): CrmQuoteDesign[] {
+  return [...(lineItem.designs ?? [])].sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label));
+}
+
+async function cloneQuoteBuilderRows(
+  supabase: CrmSupabaseClient,
+  source: CrmQuote,
+  targetQuoteId: string,
+): Promise<void> {
+  const { data, error } = await supabase
+    .from("crm_quote_line_items")
+    .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
+    .eq("quote_id", source.id);
+  if (error) throw new CrmAuthError(502, "Source quote windows could not be loaded.");
+
+  const sourceItems = ((data as CrmQuoteLineItem[]) ?? [])
+    .map((item) => ({ ...item, designs: sortedDesigns({ ...item, designs: item.designs ?? [] }) }))
+    .sort((a, b) => a.sort_order - b.sort_order);
+  if (!sourceItems.length) return;
+
+  const clonedLineItems: CrmQuoteLineItem[] = [];
+  for (const item of sourceItems) {
+    const { data: lineData, error: lineError } = await supabase
+      .from("crm_quote_line_items")
+      .insert({
+        quote_id: targetQuoteId,
+        room: item.room,
+        width_in: item.width_in,
+        height_in: item.height_in,
+        quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+        sort_order: item.sort_order,
+        notes: item.notes,
+        discount_percent: Math.min(100, Math.max(0, Number(item.discount_percent) || 0)),
+      })
+      .select("*")
+      .single();
+    const clonedLine = lineData as CrmQuoteLineItem | null;
+    if (lineError || !clonedLine) throw new CrmAuthError(502, "Quote version window could not be copied.");
+
+    const clonedDesigns: CrmQuoteDesign[] = [];
+    const dims = { width_in: clonedLine.width_in, height_in: clonedLine.height_in };
+    const discountPercent = Number(clonedLine.discount_percent) || 0;
+    let selectedNewId: string | null = null;
+    for (const design of sortedDesigns(item)) {
+      const designInput = {
+        product_id: design.product_id,
+        program_id: design.program_id,
+        fabric: design.fabric,
+        details: detailsRecord(design.details),
+        surcharges: surchargeList(design.surcharges),
+        motorization: motorizationList(design.motorization),
+      };
+      const priceFields = priceDesignFields(designInput, dims, discountPercent);
+      const { data: designData, error: designError } = await supabase
+        .from("crm_quote_designs")
+        .insert({
+          line_item_id: clonedLine.id,
+          label: design.label,
+          sort_order: design.sort_order,
+          ...designInput,
+          notes: design.notes,
+          ...priceFields,
+        })
+        .select("*")
+        .single();
+      const clonedDesign = designData as CrmQuoteDesign | null;
+      if (designError || !clonedDesign) throw new CrmAuthError(502, "Quote version design could not be copied.");
+      clonedDesigns.push(clonedDesign);
+      if (item.selected_design_id === design.id) selectedNewId = clonedDesign.id;
+    }
+
+    if (selectedNewId) {
+      const { error: selectError } = await supabase
+        .from("crm_quote_line_items")
+        .update({ selected_design_id: selectedNewId })
+        .eq("id", clonedLine.id);
+      if (selectError) throw new CrmAuthError(502, "Quote version selected design could not be saved.");
+    }
+    clonedLineItems.push({ ...clonedLine, selected_design_id: selectedNewId, designs: clonedDesigns });
+  }
+
+  const money = computeQuoteMoney(quoteSubtotal(clonedLineItems), parseAdjustments(source.meta));
+  const { error: quoteError } = await supabase
+    .from("crm_quotes")
+    .update({
+      quote_total: money.total,
+      discount: money.discountAmount,
+      tax: money.taxAmount,
+      deposit_required: money.depositRequired,
+      balance_due: money.balanceDue,
+    })
+    .eq("id", targetQuoteId);
+  if (quoteError) throw new CrmAuthError(502, "Quote version total could not be recalculated.");
 }
 
 export async function listQuoteVersions(supabase: CrmSupabaseClient, quoteId: string): Promise<QuoteVersion[]> {
@@ -87,16 +224,20 @@ export async function createQuoteVersion(
         job_id: source.job_id,
         quote_number: source.quote_number ? `${source.quote_number}-${label}` : null,
         status: "draft",
-        quote_total: 0,
-        materials_cost: 0,
-        labor_cost: 0,
-        discount: 0,
-        tax: 0,
-        deposit_required: 0,
-        balance_due: 0,
+        quote_total: Number(source.quote_total) || 0,
+        materials_cost: Number(source.materials_cost) || 0,
+        labor_cost: Number(source.labor_cost) || 0,
+        discount: Number(source.discount) || 0,
+        tax: Number(source.tax) || 0,
+        deposit_required: Number(source.deposit_required) || 0,
+        balance_due: Number(source.balance_due) || 0,
+        customer_email: source.customer_email || null,
+        customer_phone: source.customer_phone || null,
+        customer_address: source.customer_address || null,
         quote_group_id: groupId,
         quote_label: label,
-        meta: { createdBy: actor.email, createdAsVersionOf: source.id },
+        notes: source.notes || null,
+        meta: cloneQuoteMeta(source, actor, label),
       })
       .select("id")
       .single();
@@ -114,6 +255,8 @@ export async function createQuoteVersion(
     throw new CrmAuthError(502, "New quote version could not be created.");
   }
   if (!createdId) throw new CrmAuthError(409, "Could not assign a unique version label. Please retry.");
+
+  await cloneQuoteBuilderRows(supabase, source, createdId);
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",

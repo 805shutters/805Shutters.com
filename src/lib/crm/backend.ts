@@ -271,6 +271,27 @@ function optionalText(value: unknown) {
   return trimmed || null;
 }
 
+export function resolveQuoteBookkeepingCustomerName(input: {
+  payloadCustomerName?: unknown;
+  quoteCustomerName?: unknown;
+  existingEntryCustomerName?: unknown;
+  jobCustomerName?: unknown;
+}) {
+  const payloadName = optionalText(input.payloadCustomerName);
+  if (payloadName) return payloadName;
+
+  const existingName = optionalText(input.existingEntryCustomerName);
+  if (existingName && existingName !== "Linked job") return existingName;
+
+  const quoteName = optionalText(input.quoteCustomerName);
+  if (quoteName) return quoteName;
+
+  const jobName = optionalText(input.jobCustomerName);
+  if (jobName) return jobName;
+
+  return existingName || "Linked job";
+}
+
 function requiredText(value: unknown, message: string) {
   const trimmed = optionalText(value);
   if (!trimmed) throw new CrmAuthError(400, message);
@@ -1844,11 +1865,32 @@ export async function updateCrmQuote(
   // Don't materialize a ledger entry for an unsold draft/sent quote (matches the
   // create path and the builder, which only create the entry once sold).
   const maintainEntry = quote.status !== "draft" && quote.status !== "sent";
+  let entryCustomerName = "Linked job";
+  if (maintainEntry) {
+    const { data: existingEntry } = await supabase
+      .from("crm_quote_bookkeeping_entries")
+      .select("customer_name")
+      .eq("quote_id", id)
+      .maybeSingle();
+    const { data: linkedJob } = quote.job_id
+      ? await supabase
+          .from("crm_jobs")
+          .select("customer_name")
+          .eq("id", quote.job_id)
+          .maybeSingle()
+      : { data: null };
+    entryCustomerName = resolveQuoteBookkeepingCustomerName({
+      payloadCustomerName: payload.customer_name,
+      quoteCustomerName: quote.customer_name,
+      existingEntryCustomerName: (existingEntry as { customer_name?: unknown } | null)?.customer_name,
+      jobCustomerName: (linkedJob as { customer_name?: unknown } | null)?.customer_name,
+    });
+  }
   const entryRecord = {
       quote_id: id,
       job_id: quote.job_id,
       source: "crm_quote",
-      customer_name: optionalText(payload.customer_name) || "Linked job",
+      customer_name: entryCustomerName,
       sold_date: quote.sold_at ? String(quote.sold_at).slice(0, 10) : null,
       total_amount: toMoney(quote.quote_total),
       payment_type: paymentType,
