@@ -629,17 +629,19 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               </div>
             ) : null}
             <div style={embedded ? { ...productRow, paddingRight: 36 } : productRow}>
+              <span style={productGroupLabel}>Product Type</span>
               {productTypes.map((t) => {
                 const active = t.type === activeType;
                 return (
                   <button key={t.type} type="button" onClick={() => setActiveType(t.type)}
-                    style={{ ...productTile, marginLeft: -1, marginTop: -1, ...(active ? { background: "#0b0b0b", borderColor: "#0b0b0b", color: "#ffffff" } : { background: "#ffffff", borderColor: "#e2dfd8", color: "#3a3a36" }) }}>
+                    style={{ ...productTile, marginLeft: -1, marginTop: -1, ...(active ? { background: "#2f4a3c", borderColor: "#2f4a3c", color: "#ffffff" } : { background: "#eef4e8", borderColor: "#c8d8bf", color: "#203624" }) }}>
                     <span style={productTileLabel}>{t.label}</span>
                   </button>
                 );
               })}
             </div>
             <div style={tileRow}>
+              <span style={roomGroupLabel}>Room Names</span>
               {ROOM_PRESETS.map((room) => (
                 <button key={room} type="button" style={flushRoomPill} disabled={!activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
               ))}
@@ -1667,6 +1669,40 @@ const productRow: CSSProperties = {
   alignItems: "stretch",
   width: "100%",
 };
+const productGroupLabel: CSSProperties = {
+  flex: "0 0 84px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 30,
+  marginTop: -1,
+  border: "1px solid #2f4a3c",
+  background: "#2f4a3c",
+  color: "#ffffff",
+  fontSize: 9.5,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  lineHeight: 1,
+  textTransform: "uppercase",
+};
+const roomGroupLabel: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 24,
+  marginLeft: 0,
+  marginTop: -1,
+  padding: "4px 8px",
+  border: "1px solid #1f4259",
+  background: "#1f4259",
+  color: "#ffffff",
+  fontSize: 9.5,
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  lineHeight: 1,
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+};
 const productTile: CSSProperties = {
   flex: "1 1 0",
   minWidth: 0,
@@ -1706,24 +1742,25 @@ const roomPill: CSSProperties = {
 // Top-bar variant of roomPill: square edges + negative margins so the 1px
 // borders collapse into single dividers and the pills tile flush, no gaps.
 const flushRoomPill: CSSProperties = {
-  border: "1px solid #e2dfd8",
-  background: "#f7f6f3",
+  border: "1px solid #bfd4df",
+  background: "#edf5fa",
   borderRadius: 0,
   padding: "4px 8px",
   cursor: "pointer",
   fontSize: 11.5,
-  fontWeight: 500,
-  color: "#3a3a36",
+  fontWeight: 600,
+  color: "#17364a",
   minHeight: 24,
   whiteSpace: "nowrap",
   marginLeft: -1,
   marginTop: -1,
 };
 const customRoomInput: CSSProperties = {
-  border: "1px solid #e2dfd8",
-  background: "#ffffff",
+  border: "1px solid #bfd4df",
+  background: "#f8fbfd",
   borderRadius: 0,
   padding: "4px 8px",
+  color: "#17364a",
   fontSize: 11.5,
   width: 108,
   minHeight: 24,
