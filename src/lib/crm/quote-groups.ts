@@ -9,6 +9,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { computeQuoteMoney, parseAdjustments, priceDesignFields, quoteSubtotal } from "@/lib/crm/quote-money";
+import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 import type {
   CrmQuote,
   CrmQuoteDesign,
@@ -131,20 +132,18 @@ async function cloneQuoteBuilderRows(
         motorization: motorizationList(design.motorization),
       };
       const priceFields = priceDesignFields(designInput, dims, discountPercent);
-      const { data: designData, error: designError } = await supabase
-        .from("crm_quote_designs")
-        .insert({
+      const clonedDesign = await saveQuoteDesignRecord<CrmQuoteDesign>(
+        {
           line_item_id: clonedLine.id,
           label: design.label,
           sort_order: design.sort_order,
           ...designInput,
           notes: design.notes,
           ...priceFields,
-        })
-        .select("*")
-        .single();
-      const clonedDesign = designData as CrmQuoteDesign | null;
-      if (designError || !clonedDesign) throw new CrmAuthError(502, "Quote version design could not be copied.");
+        },
+        (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("*").single(),
+        "Quote version design could not be copied.",
+      );
       clonedDesigns.push(clonedDesign);
       if (item.selected_design_id === design.id) selectedNewId = clonedDesign.id;
     }

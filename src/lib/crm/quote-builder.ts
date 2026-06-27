@@ -46,6 +46,7 @@ import { getProduct } from "@/lib/quote/catalog";
 import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/lib/quote/lifecycle";
 import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, shutterVariantsFor } from "@/lib/quote/product-options";
+import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -399,8 +400,11 @@ async function repriceLineItemDesigns(
   if (error) throw new CrmAuthError(502, "Designs could not be repriced.");
   for (const design of (designs as CrmQuoteDesign[]) ?? []) {
     const fields = priceDesignFields(design, dims, discountPercent);
-    const { error: updateError } = await supabase.from("crm_quote_designs").update(fields).eq("id", design.id);
-    if (updateError) throw new CrmAuthError(502, "Design pricing could not be updated.");
+    await saveQuoteDesignRecord<{ id: string }>(
+      { ...fields },
+      (nextRecord) => supabase.from("crm_quote_designs").update(nextRecord).eq("id", design.id).select("id").single(),
+      "Design pricing could not be updated.",
+    );
   }
 }
 
@@ -441,21 +445,26 @@ export async function upsertDesign(
     // item. The service-role client bypasses RLS, so without this a design could
     // be reparented to a different window/quote and re-priced against the wrong
     // dimensions (corrupting both quotes). Scope the update by line_item_id too.
-    const { data, error } = await supabase
-      .from("crm_quote_designs")
-      .update(record)
-      .eq("id", designId)
-      .eq("line_item_id", lineItemId)
-      .select("*")
-      .single();
-    if (error || !data) throw new CrmAuthError(404, "Design was not found on this window.");
+    const data = await saveQuoteDesignRecord<CrmQuoteDesign>(
+      record,
+      (nextRecord) =>
+        supabase
+          .from("crm_quote_designs")
+          .update(nextRecord)
+          .eq("id", designId)
+          .eq("line_item_id", lineItemId)
+          .select("*")
+          .single(),
+      "Design was not found on this window.",
+      404,
+    );
     savedId = data.id;
   } else {
-    const { data, error } = await supabase.from("crm_quote_designs").insert(record).select("*").single();
-    if (error || !data) {
-      const detail = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" | ");
-      throw new CrmAuthError(502, detail ? `Design could not be saved: ${detail}` : "Design could not be saved.");
-    }
+    const data = await saveQuoteDesignRecord<CrmQuoteDesign>(
+      record,
+      (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("*").single(),
+      "Design could not be saved.",
+    );
     savedId = data.id;
     // A line with no current selection auto-selects this new design so it bills.
     if (!lineItem.selected_design_id) {
@@ -572,12 +581,11 @@ export async function duplicateLineItem(
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };
     const priceFields = priceDesignFields(designInput, dims, copyDiscount);
-    const { data: newDesign, error: designError } = await supabase
-      .from("crm_quote_designs")
-      .insert({ line_item_id: copy.id, label: d.label, sort_order: d.sort_order, ...designInput, notes: d.notes, ...priceFields })
-      .select("id")
-      .single();
-    if (designError || !newDesign) throw new CrmAuthError(502, "Copied window design could not be saved.");
+    const newDesign = await saveQuoteDesignRecord<{ id: string }>(
+      { line_item_id: copy.id, label: d.label, sort_order: d.sort_order, ...designInput, notes: d.notes, ...priceFields },
+      (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("id").single(),
+      "Copied window design could not be saved.",
+    );
     if (newDesign && source.selected_design_id === d.id) selectedNewId = newDesign.id;
   }
   if (selectedNewId) {
