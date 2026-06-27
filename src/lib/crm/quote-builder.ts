@@ -452,7 +452,10 @@ export async function upsertDesign(
     savedId = data.id;
   } else {
     const { data, error } = await supabase.from("crm_quote_designs").insert(record).select("*").single();
-    if (error || !data) throw new CrmAuthError(502, "Design could not be saved.");
+    if (error || !data) {
+      const detail = [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" | ");
+      throw new CrmAuthError(502, detail ? `Design could not be saved: ${detail}` : "Design could not be saved.");
+    }
     savedId = data.id;
     // A line with no current selection auto-selects this new design so it bills.
     if (!lineItem.selected_design_id) {
