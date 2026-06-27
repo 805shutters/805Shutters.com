@@ -269,6 +269,7 @@ type RunState = {
   quoteIds: string[];
   results: Array<Record<string, unknown>>;
   cleanupErrors: string[];
+  diagnostics: Record<string, unknown>;
 };
 
 function suppressExternalNotifications() {
@@ -356,19 +357,23 @@ async function buildScenario(supabase: SupabaseClient, state: RunState, scenario
 
   let built = await loadQuoteBuilder(supabase, quote.id);
   for (const line of scenario.lines) {
-    built = await createLineItem(
-      supabase,
-      {
-        quote_id: quote.id,
-        room: line.room,
-        width_in: line.width,
-        height_in: line.height,
-        quantity: line.quantity,
-        seed_product_id: line.seedProductId,
-        notes: line.notes,
-      },
-      actor,
-    );
+    try {
+      built = await createLineItem(
+        supabase,
+        {
+          quote_id: quote.id,
+          room: line.room,
+          width_in: line.width,
+          height_in: line.height,
+          quantity: line.quantity,
+          seed_product_id: line.seedProductId,
+          notes: line.notes,
+        },
+        actor,
+      );
+    } catch (error) {
+      throw new Error(`${scenario.label}/${line.room} createLineItem failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
     let lineItem = built.lineItems.find((item) => item.room === line.room);
     assert(lineItem, `Line item ${line.room} was not created.`);
 
@@ -379,7 +384,14 @@ async function buildScenario(supabase: SupabaseClient, state: RunState, scenario
     }
 
     for (let designIndex = 0; designIndex < (line.designs ?? []).length; designIndex += 1) {
-      built = await upsertDesign(supabase, { line_item_id: lineItem.id, sort_order: designIndex, ...line.designs![designIndex] }, actor);
+      const designSpec = line.designs![designIndex];
+      try {
+        built = await upsertDesign(supabase, { line_item_id: lineItem.id, sort_order: designIndex, ...designSpec }, actor);
+      } catch (error) {
+        throw new Error(
+          `${scenario.label}/${line.room}/${designSpec.product_id}:${designSpec.label} upsertDesign failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
       lineItem = built.lineItems.find((item) => item.id === lineItem?.id);
       assert(lineItem, `Line item ${line.room} disappeared after design.`);
     }
@@ -502,13 +514,28 @@ async function runFiveQuoteE2e() {
     quoteIds: [],
     results: [],
     cleanupErrors: [],
+    diagnostics: {},
   };
   try {
+    const { data: designColumns } = await supabase
+      .from("information_schema.columns")
+      .select("column_name, data_type, is_nullable")
+      .eq("table_schema", "public")
+      .eq("table_name", "crm_quote_designs")
+      .order("ordinal_position");
+    state.diagnostics.designColumns = designColumns;
     for (let index = 0; index < scenarios.length; index += 1) {
       await buildScenario(supabase, state, scenarios[index], index);
     }
     assert(state.results.length === 5, "Did not finish all five scenarios.");
     return { ok: true, cleaned: true, ...state };
+  } catch (error) {
+    return {
+      ok: false,
+      cleaned: true,
+      error: error instanceof Error ? error.message : String(error),
+      ...state,
+    };
   } finally {
     await cleanup(supabase, state);
   }
@@ -521,7 +548,7 @@ export async function POST(request: NextRequest) {
   }
   try {
     const result = await runFiveQuoteE2e();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: result.ok ? 200 : 500 });
   } catch (error) {
     return NextResponse.json(
       {
