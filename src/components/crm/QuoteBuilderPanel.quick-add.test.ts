@@ -28,4 +28,13 @@ describe("QuoteBuilderPanel room quick-add source contract", () => {
     expect(source).toContain("quoteRef.current?.lineItems.length ?? 0");
     expect(source).not.toContain("sort_order: quote?.lineItems.length ?? 0");
   });
+
+  it("renders selected option details as tight square boxes", () => {
+    expect(source).toContain("const selectedOptionSummaryRow: CSSProperties = {");
+    expect(source).toContain("const selectedOptionSummaryBox: CSSProperties = {");
+    expect(source).toContain("style={selectedOptionSummaryRow}");
+    expect(source).toContain("borderRadius: 0");
+    expect(source).toContain("marginLeft: i === 0 ? 0 : -1");
+    expect(source).not.toContain('borderRadius: 4, padding: "2px 8px"');
+  });
 });

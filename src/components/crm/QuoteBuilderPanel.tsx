@@ -857,7 +857,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 })() : null}
 
                 {/* Detail summary at the top of the line item — shows the selected
-                    design's fabric, mount, valance, control, etc. as chips so the
+                    design's fabric, mount, valance, control, etc. as boxes so the
                     key specs are visible at a glance (they populate here as the rep
                     selects them in the design card below). */}
                 {selectedDesign(li) ? (() => {
@@ -878,9 +878,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     if (name) chips.push(name);
                   }
                   return chips.length ? (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 2 }}>
+                    <div style={selectedOptionSummaryRow}>
                       {chips.map((c, i) => (
-                        <span key={i} style={{ fontSize: 11, background: "#f0f0ee", borderRadius: 4, padding: "2px 8px", color: "#4d4d49" }}>{c}</span>
+                        <span key={i} style={{ ...selectedOptionSummaryBox, marginLeft: i === 0 ? 0 : -1 }}>{c}</span>
                       ))}
                     </div>
                   ) : null;
@@ -1601,6 +1601,26 @@ const floatingTotalStyle: CSSProperties = {
 };
 const windowCard: CSSProperties = { border: "1px solid #d8d8d2", borderRadius: 10, padding: 14, marginBottom: 14, background: "#fbfbfa" };
 const designCard: CSSProperties = { border: "2px solid #d8d8d2", borderRadius: 8, padding: 12, background: "#ffffff" };
+const selectedOptionSummaryRow: CSSProperties = {
+  display: "flex",
+  gap: 0,
+  flexWrap: "wrap",
+  alignItems: "stretch",
+  marginBottom: 2,
+};
+const selectedOptionSummaryBox: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: 24,
+  border: "1px solid #d8d5cf",
+  borderRadius: 0,
+  background: "#ffffff",
+  padding: "5px 10px",
+  color: "#3a3a36",
+  fontSize: 12,
+  fontWeight: 600,
+  lineHeight: 1.1,
+};
 const detailGrid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #eeeeeb" };
 const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #eeeeeb", borderRadius: 6 };
 const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0b0b0b", color: "#ffffff", borderRadius: 8, fontSize: 18 };
