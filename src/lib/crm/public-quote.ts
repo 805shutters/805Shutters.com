@@ -560,7 +560,7 @@ async function syncSoldBookkeeping(
 export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
-  input: { printedName: string; signature?: string; acknowledgedTotal?: number; selectedLineIds?: string[] },
+  input: { printedName: string; signature?: string; acknowledgedTotal?: number; selectedLineIds?: string[]; notify?: boolean },
 ): Promise<{ ok: true; alreadySigned: boolean }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This quote link is no longer valid.");
@@ -718,42 +718,44 @@ export async function acceptPublicQuote(
     metadata: { token, total: soldTotal },
   });
 
-  // Notify shop (Jessica + Mike always, plus any extra CRM_SOLD_QUOTE_SMS_NUMBERS)
-  // + customer. Best-effort; never blocks signing.
-  const shopNumbers = [
-    process.env.JESSICA_805_SALES_SMS_NUMBER,
-    process.env.MIKE_805_SALES_SMS_NUMBER,
-    ...(process.env.CRM_SOLD_QUOTE_SMS_NUMBERS || "").split(",").map((s) => s.trim()),
-  ]
-    .map((s) => (s || "").trim())
-    .filter(Boolean);
-  const notified = new Set<string>();
-  for (const num of shopNumbers) {
-    if (notified.has(num)) continue;
-    notified.add(num);
-    await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal) });
-  }
-  if (customerPhone) {
-    await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
-  }
+  if (input.notify !== false) {
+    // Notify shop (Jessica + Mike always, plus any extra CRM_SOLD_QUOTE_SMS_NUMBERS)
+    // + customer. Best-effort; never blocks signing.
+    const shopNumbers = [
+      process.env.JESSICA_805_SALES_SMS_NUMBER,
+      process.env.MIKE_805_SALES_SMS_NUMBER,
+      ...(process.env.CRM_SOLD_QUOTE_SMS_NUMBERS || "").split(",").map((s) => s.trim()),
+    ]
+      .map((s) => (s || "").trim())
+      .filter(Boolean);
+    const notified = new Set<string>();
+    for (const num of shopNumbers) {
+      if (notified.has(num)) continue;
+      notified.add(num);
+      await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal) });
+    }
+    if (customerPhone) {
+      await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
+    }
 
-  // Email the shop a copy of the signed contract (best-effort; never blocks signing).
-  const shopEmail = process.env.CRM_SIGNED_QUOTE_EMAIL || MIKE_PAYMENT_ADMIN_EMAIL;
-  if (shopEmail) {
-    const mail = buildSignedQuoteShopEmail(printedName, publicQuoteUrl(token), soldTotal, {
-      quoteNumber: signedPub.quoteNumber,
-      lines: signedPub.lines,
-      subtotal: signedPub.subtotal,
-      fees: signedPub.fees,
-      discount: signedPub.discount,
-      tax: signedPub.tax,
-      sourceTotalAdjustment: signedPub.sourceTotalAdjustment,
-      depositDue: signedPub.depositDue,
-      balanceDue: signedPub.balanceDue,
-      logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
-      businessPhone: signedPub.business.phone,
-    });
-    await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
+    // Email the shop a copy of the signed contract (best-effort; never blocks signing).
+    const shopEmail = process.env.CRM_SIGNED_QUOTE_EMAIL || MIKE_PAYMENT_ADMIN_EMAIL;
+    if (shopEmail) {
+      const mail = buildSignedQuoteShopEmail(printedName, publicQuoteUrl(token), soldTotal, {
+        quoteNumber: signedPub.quoteNumber,
+        lines: signedPub.lines,
+        subtotal: signedPub.subtotal,
+        fees: signedPub.fees,
+        discount: signedPub.discount,
+        tax: signedPub.tax,
+        sourceTotalAdjustment: signedPub.sourceTotalAdjustment,
+        depositDue: signedPub.depositDue,
+        balanceDue: signedPub.balanceDue,
+        logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
+        businessPhone: signedPub.business.phone,
+      });
+      await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
+    }
   }
 
   return { ok: true, alreadySigned: false };

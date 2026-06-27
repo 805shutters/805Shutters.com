@@ -94,7 +94,7 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(publicQuote?.signed).toBe(false);
 
     // Customer signs -> sold
-    const result = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer" });
+    const result = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer", notify: false });
     expect(result.ok).toBe(true);
 
     const after = await loadQuoteBuilder(supabase, quoteId);
@@ -130,7 +130,7 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(soldJob?.status).toBe("sold");
 
     // Signing again is idempotent
-    const again = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer" });
+    const again = await acceptPublicQuote(supabase, share.token, { printedName: "Test Customer", notify: false });
     expect(again.alreadySigned).toBe(true);
   });
 

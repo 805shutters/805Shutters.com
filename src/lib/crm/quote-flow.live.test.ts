@@ -3,11 +3,10 @@
 //   NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + E2E_LIVE_OK=1
 // Otherwise skipped (normal `vitest run` never touches the database).
 //
-// SAFETY: point this at a STAGING/dev Supabase project, not production. It SENDS
-// REAL email + SMS and creates a real (cleaned-up) job + bookkeeping entry, and
-// flips a real job to "sold". Defaults to a clearly-test customer so an accidental
-// run can't text/email a real person — override with real PII ONLY for a deliberate
-// live validation against a non-production project.
+// SAFETY: point this at a STAGING/dev Supabase project, not production. It creates
+// a real (cleaned-up) job + bookkeeping entry and flips a real job to "sold".
+// External email/SMS is disabled unless E2E_NOTIFY_OK=1 is also set. Defaults to a
+// clearly-test customer; override with real PII only for a deliberate validation.
 //   E2E_LIVE_OK=1 npx vitest run src/lib/crm/quote-flow.live.test.ts
 //   E2E_CUSTOMER_NAME / E2E_CUSTOMER_PHONE / E2E_CUSTOMER_EMAIL
 
@@ -31,6 +30,7 @@ import {
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const enabled = Boolean(url && key && process.env.E2E_LIVE_OK === "1");
+const notify = process.env.E2E_NOTIFY_OK === "1";
 
 const CUSTOMER = {
   name: process.env.E2E_CUSTOMER_NAME ?? "E2E Test Customer",
@@ -109,13 +109,13 @@ describe.skipIf(!enabled)("quote flow (LIVE front-to-back)", () => {
       const discounted = built.lineItems.find((l) => l.room === "Bedroom")!.designs[0];
       expect(discounted.price_status).toBe("ok");
 
-      // 3. Share + send the contract (REAL email + SMS to the customer)
+      // 3. Share + send the contract. External delivery is separately gated.
       const share = await ensureShareToken(supabase, quoteId, actor);
-      const sent = await sendQuoteToCustomer(supabase, quoteId, actor, { email: true, sms: true });
+      const sent = await sendQuoteToCustomer(supabase, quoteId, actor, { email: notify, sms: notify });
       expect(sent.url).toBeTruthy();
 
       // 4. Customer signs -> sold
-      const result = await acceptPublicQuote(supabase, share.token, { printedName: CUSTOMER.name });
+      const result = await acceptPublicQuote(supabase, share.token, { printedName: CUSTOMER.name, notify });
       expect(result.ok).toBe(true);
 
       // 5. Verify the full chain
