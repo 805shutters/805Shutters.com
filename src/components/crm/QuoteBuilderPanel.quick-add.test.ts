@@ -1,0 +1,31 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+const source = readFileSync(
+  fileURLToPath(new URL("./QuoteBuilderPanel.tsx", import.meta.url)),
+  "utf8",
+);
+
+describe("QuoteBuilderPanel room quick-add source contract", () => {
+  it("queues repeated room taps and keeps their selected product line", () => {
+    expect(source).toContain("const quickAddQueueRef = useRef<Promise<void>>(Promise.resolve());");
+    expect(source).toContain("const run = quickAddQueueRef.current");
+    expect(source).toContain("quickAddQueueRef.current = run;");
+    expect(source).toContain("const seedProductId = activeTile?.defaultProductId;");
+    expect(source).toContain("seed_product_id: seedProductId");
+  });
+
+  it("does not disable preset room buttons during a pending save", () => {
+    expect(source).toContain(
+      'disabled={!activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>',
+    );
+    expect(source).not.toContain("disabled={busy || !activeTile}");
+    expect(source).not.toContain("disabled={isSaving || !activeTile}");
+  });
+
+  it("orders queued quick-adds from the latest returned quote", () => {
+    expect(source).toContain("quoteRef.current?.lineItems.length ?? 0");
+    expect(source).not.toContain("sort_order: quote?.lineItems.length ?? 0");
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
 import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
@@ -172,6 +172,13 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const [copySourceId, setCopySourceId] = useState<string | null>(null);
   const [copyTargets, setCopyTargets] = useState<Set<string>>(new Set());
   const [activeDesignTab, setActiveDesignTab] = useState<Record<string, string>>({});
+  const [pendingQuickAdds, setPendingQuickAdds] = useState(0);
+  const quoteRef = useRef<CrmQuoteWithItems | null>(null);
+  const quickAddQueueRef = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    quoteRef.current = quote;
+  }, [quote]);
 
   useEffect(() => {
     let active = true;
@@ -196,6 +203,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         ]);
         if (!active) return;
         setCatalog(c.catalog);
+        quoteRef.current = q.quote;
         setQuote(q.quote);
         setVersions(q.versions || []);
       } catch (e) {
@@ -256,6 +264,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       setError(null);
       try {
         const res = await api<{ quote: CrmQuoteWithItems }>(session, path, init);
+        quoteRef.current = res.quote;
         setQuote(res.quote);
         onChanged?.();
       } catch (e) {
@@ -265,6 +274,38 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       }
     },
     [session, onChanged],
+  );
+
+  const enqueueLineItemCreate = useCallback(
+    (payload: Record<string, unknown>) => {
+      setPendingQuickAdds((count) => count + 1);
+      setError(null);
+
+      const run = quickAddQueueRef.current
+        .catch(() => undefined)
+        .then(async () => {
+          const res = await api<{ quote: CrmQuoteWithItems }>(session, `/api/crm/quotes/${quoteId}/builder`, {
+            method: "POST",
+            body: JSON.stringify({
+              ...payload,
+              sort_order: quoteRef.current?.lineItems.length ?? 0,
+            }),
+          });
+          quoteRef.current = res.quote;
+          setQuote(res.quote);
+          onChanged?.();
+        })
+        .catch((e) => {
+          setError(e instanceof Error ? e.message : "Save failed.");
+        })
+        .finally(() => {
+          setPendingQuickAdds((count) => Math.max(0, count - 1));
+        });
+
+      quickAddQueueRef.current = run;
+      return run;
+    },
+    [session, quoteId, onChanged],
   );
 
   const ensureCustomerLink = useCallback(async () => {
@@ -319,24 +360,23 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     }
   }, [session, showPricingReference, pricingReference]);
 
-  const addWindow = () =>
-    mutate(`/api/crm/quotes/${quoteId}/builder`, {
-      method: "POST",
-      body: JSON.stringify({ room: "", quantity: 1, sort_order: quote?.lineItems.length ?? 0 }),
-    });
+  const addWindow = () => enqueueLineItemCreate({ room: "", quantity: 1 });
 
   // Tap a room preset (or custom room) to add a window pre-loaded with the
   // active product line as design "A" — the MTS-style quick-add flow.
-  const addWindowWithRoom = (room: string) =>
-    mutate(`/api/crm/quotes/${quoteId}/builder`, {
-      method: "POST",
-      body: JSON.stringify({
-        room,
-        quantity: 1,
-        sort_order: quote?.lineItems.length ?? 0,
-        seed_product_id: activeTile?.defaultProductId,
-      }),
+  const addWindowWithRoom = (room: string) => {
+    const seedProductId = activeTile?.defaultProductId;
+    if (!seedProductId) {
+      setError("Select a product line first.");
+      return;
+    }
+
+    enqueueLineItemCreate({
+      room,
+      quantity: 1,
+      seed_product_id: seedProductId,
     });
+  };
 
   const patchWindow = (id: string, patch: Record<string, unknown>) =>
     mutate(`/api/crm/quote-line-items/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
@@ -421,6 +461,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Quote is now "${res.status}".`);
       setShareUrl(res.url);
       const q = await api<{ quote: CrmQuoteWithItems }>(session, `/api/crm/quotes/${quoteId}/builder`);
+      quoteRef.current = q.quote;
       setQuote(q.quote);
       onChanged?.();
     } catch (e) {
@@ -509,6 +550,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     return saveDesign(li, design, { motorization: next });
   };
 
+  const isSaving = busy || pendingQuickAdds > 0;
+
   const inner = (
       <div style={embedded ? embeddedPanelStyle : panelStyle}>
         {!embedded ? (
@@ -520,7 +563,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <h2 style={{ margin: "2px 0 0" }}>
               {quote?.customer_name || quote?.quote_number || "Quote"} — {money(quote?.quote_total)}
             </h2>
-            <span style={savingPill}>{busy ? "Saving…" : "All changes saved"}</span>
+            <span style={savingPill}>{isSaving ? "Saving…" : "All changes saved"}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <div style={{ display: "inline-flex", border: "1px solid #d8d5cf", borderRadius: 6, overflow: "hidden" }} title="How to send">
@@ -539,7 +582,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             <button
               type="button"
               onClick={sendToCustomer}
-              disabled={busy}
+              disabled={isSaving}
               style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}
             >
               Send to customer
@@ -598,16 +641,16 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             </div>
             <div style={tileRow}>
               {ROOM_PRESETS.map((room) => (
-                <button key={room} type="button" style={flushRoomPill} disabled={busy || !activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
+                <button key={room} type="button" style={flushRoomPill} disabled={!activeTile} onClick={() => addWindowWithRoom(room)}>+ {room}</button>
               ))}
               <span style={{ display: "inline-flex", gap: 0 }}>
                 <input value={customRoom} onChange={(e) => setCustomRoom(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && customRoom.trim()) { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); } }}
                   placeholder="Custom room…" style={{ ...customRoomInput, borderRadius: 0, marginLeft: -1, marginTop: -1 }} />
-                <button type="button" style={flushRoomPill} disabled={busy || !activeTile || !customRoom.trim()}
+                <button type="button" style={flushRoomPill} disabled={!activeTile || !customRoom.trim()}
                   onClick={() => { addWindowWithRoom(customRoom.trim()); setCustomRoom(""); }}>+ Add</button>
               </span>
-              <button type="button" style={{ ...flushRoomPill, borderStyle: "dashed" }} disabled={busy} onClick={addWindow}>+ Blank window</button>
+              <button type="button" style={{ ...flushRoomPill, borderStyle: "dashed" }} disabled={isSaving} onClick={addWindow}>+ Blank window</button>
             </div>
           </div>
         ) : null}
@@ -632,7 +675,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   {v.signed ? " ✓" : ""}
                 </button>
               ))}
-              <button type="button" style={ghostBtn} disabled={busy} onClick={addVersion}>
+              <button type="button" style={ghostBtn} disabled={isSaving} onClick={addVersion}>
                 + Version
               </button>
               <span
@@ -641,7 +684,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               >
                 {catalog.source}{catalog.effectiveDate ? ` · ${catalog.effectiveDate}` : ""}
               </span>
-              <button type="button" style={ghostBtn} disabled={busy} onClick={togglePricingReference}>
+              <button type="button" style={ghostBtn} disabled={isSaving} onClick={togglePricingReference}>
                 {showPricingReference ? "Hide pricing" : "Pricing ref"}
               </button>
             </div>
@@ -657,11 +700,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 <button type="button" style={{ ...segBtn, ...(discountMode === "select" ? segBtnActive : {}) }} onClick={() => setDiscountMode("select")}>Select lines</button>
               </div>
               {[10, 15, 20].map((p) => (
-                <button key={p} type="button" style={roomPill} disabled={busy || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(p)}>
+                <button key={p} type="button" style={roomPill} disabled={isSaving || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(p)}>
                   {p}% off
                 </button>
               ))}
-              <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(0)}>
+              <button type="button" style={ghostBtn} disabled={isSaving || quote.lineItems.length === 0} onClick={() => applyBulkDiscount(0)}>
                 Clear
               </button>
               {discountMode === "select" ? (
@@ -686,7 +729,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <button
                       type="button"
-                      disabled={busy || copyTargets.size === 0}
+                      disabled={isSaving || copyTargets.size === 0}
                       onClick={confirmCopySome}
                       style={{ border: "none", background: copyTargets.size === 0 ? "#bdb9b0" : "#0b0b0b", color: "#ffffff", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontWeight: 600 }}
                     >
@@ -744,7 +787,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     <button
                       type="button"
                       style={sizeChip}
-                      disabled={busy}
+                      disabled={isSaving}
                       onClick={() => setMeasuringId(li.id)}
                     >
                       {li.width_in && li.height_in
@@ -777,16 +820,16 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   {li.discount_percent ? (
                     <span style={discountBadge}>{li.discount_percent}% off</span>
                   ) : null}
-                  <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length < 2} onClick={() => copySpecToAll(li.id)}>
+                  <button type="button" style={ghostBtn} disabled={isSaving || quote.lineItems.length < 2} onClick={() => copySpecToAll(li.id)}>
                     Copy to all
                   </button>
-                  <button type="button" style={ghostBtn} disabled={busy || quote.lineItems.length < 2 || copySourceId !== null} onClick={() => startCopySome(li.id)}>
+                  <button type="button" style={ghostBtn} disabled={isSaving || quote.lineItems.length < 2 || copySourceId !== null} onClick={() => startCopySome(li.id)}>
                     Copy to some…
                   </button>
-                  <button type="button" style={ghostBtn} disabled={busy} onClick={() => duplicateWindow(li.id)}>
+                  <button type="button" style={ghostBtn} disabled={isSaving} onClick={() => duplicateWindow(li.id)}>
                     Duplicate
                   </button>
-                  <button type="button" style={ghostBtn} disabled={busy} onClick={() => deleteWindow(li.id)}>
+                  <button type="button" style={ghostBtn} disabled={isSaving} onClick={() => deleteWindow(li.id)}>
                     Remove window
                   </button>
                 </div>
@@ -860,7 +903,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                               type="radio"
                               name={`sel-${li.id}`}
                               checked={isSelected}
-                              disabled={busy}
+                              disabled={isSaving}
                               onChange={() => selectDesign(li.id, design.id)}
                             />
                             Option {design.label}
@@ -873,7 +916,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                               </span>
                             ) : null}
                           </span>
-                          <button type="button" style={ghostBtn} disabled={busy} onClick={() => deleteDesign(design.id)}>
+                          <button type="button" style={ghostBtn} disabled={isSaving} onClick={() => deleteDesign(design.id)}>
                             ✕
                           </button>
                         </div>
@@ -981,7 +1024,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                                       <input
                                         type="checkbox"
                                         checked={selected}
-                                        disabled={busy || (priced.unavailable && !selected)}
+                                        disabled={isSaving || (priced.unavailable && !selected)}
                                         onChange={() => toggleMotorization(li, design, group.groupId, option.id)}
                                       />
                                       {group.name}: {option.name}{" "}
@@ -1004,18 +1047,18 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     );
                   })}
 
-                  <button type="button" style={addBtn} disabled={busy} onClick={() => addDesign(li)}>
+                  <button type="button" style={addBtn} disabled={isSaving} onClick={() => addDesign(li)}>
                     + Add alternative option
                   </button>
                 </div>
               </section>
             ))}
 
-            <button type="button" style={primaryBtn} disabled={busy} onClick={addWindow}>
+            <button type="button" style={primaryBtn} disabled={isSaving} onClick={addWindow}>
               + Add window
             </button>
 
-            <Adjustments key={quote.id} quote={quote} busy={busy} onSave={saveAdjustments} />
+            <Adjustments key={quote.id} quote={quote} busy={isSaving} onSave={saveAdjustments} />
 
             {/* Bottom action bar (dedicated page only) — customer/total + send/contract/link.
                 On the overlay mode these live in the header; here they go at the bottom
@@ -1025,7 +1068,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                 <div>
                   <strong>{quote?.customer_name || quote?.quote_number || "Quote"}</strong>
                   <span style={{ marginLeft: 8, fontSize: 16 }}>{money(quote?.quote_total)}</span>
-                  <span style={{ ...savingPill, marginLeft: 8 }}>{busy ? "Saving…" : "Saved"}</span>
+                  <span style={{ ...savingPill, marginLeft: 8 }}>{isSaving ? "Saving…" : "Saved"}</span>
                 </div>
                 <div style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                   <div style={{ display: "inline-flex", border: "1px solid #d8d5cf", borderRadius: 6, overflow: "hidden" }}>
@@ -1035,7 +1078,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       </button>
                     ))}
                   </div>
-                  <button type="button" onClick={sendToCustomer} disabled={busy} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
+                  <button type="button" onClick={sendToCustomer} disabled={isSaving} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
                     Send
                   </button>
                   <button type="button" onClick={openContract} style={closeBtn}>
