@@ -30,13 +30,31 @@ export async function POST(request: NextRequest) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   assert(supabaseUrl && serviceKey, "Supabase service credentials are not configured.");
 
-  const body = (await request.json().catch(() => ({}))) as { to?: string };
+  const body = (await request.json().catch(() => ({}))) as { to?: string; quoteId?: string };
   const to = (body.to || MIKE_PAYMENT_ADMIN_EMAIL).trim().toLowerCase();
   assert(to === MIKE_PAYMENT_ADMIN_EMAIL, "Sample quote recipient is not allowed.");
 
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+  process.env.RESEND_FROM = process.env.RESEND_FROM || "805 Shutters <onboarding@resend.dev>";
+
+  if (body.quoteId) {
+    const sent = await sendQuoteToCustomer(supabase, body.quoteId, actor, { email: true, sms: false });
+    const refreshed = await loadQuoteBuilder(supabase, body.quoteId);
+    return NextResponse.json({
+      ok: sent.email.sent === true,
+      recipient: to,
+      quoteId: body.quoteId,
+      quoteNumber: refreshed.quote_number,
+      total: refreshed.quote_total,
+      url: sent.url,
+      email: sent.email,
+      sms: sent.sms,
+      status: sent.status,
+    }, { status: sent.email.sent ? 200 : 500 });
+  }
+
   const marker = `__SAMPLE_QUOTE_EMAIL_${Date.now()}__`;
   const displayName = `Mike Shepard ${marker}`;
   const address = "2162 Brookhill Drive, Camarillo, CA 93010";
