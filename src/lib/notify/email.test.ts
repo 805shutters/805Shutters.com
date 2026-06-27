@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildQuoteEmail, buildSignedQuoteShopEmail, sendEmail } from "./email";
+import { buildQuoteEmail, buildSignedQuoteShopEmail, isResendConfigured, sendEmail } from "./email";
 
 describe("buildQuoteEmail", () => {
   it("includes the amount, link, and customer name", () => {
@@ -64,6 +64,7 @@ describe("sendEmail guards (never throws, no-ops without config)", () => {
   beforeEach(() => {
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_FROM;
+    delete process.env.BOOKING_EMAIL_FROM;
   });
   it("skips with no recipient", async () => {
     const r = await sendEmail({ to: "", subject: "s", html: "h", text: "t" });
@@ -74,6 +75,10 @@ describe("sendEmail guards (never throws, no-ops without config)", () => {
     const r = await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
     expect(r.sent).toBe(false);
     expect(r.skipped).toBe("resend not configured");
+  });
+  it("uses the default quote sender when only the Resend API key is configured", () => {
+    process.env.RESEND_API_KEY = "test-key";
+    expect(isResendConfigured()).toBe(true);
   });
 });
 

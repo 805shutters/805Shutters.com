@@ -1,12 +1,18 @@
 // Resend email helper. Env-gated and NEVER throws (same contract as Twilio).
-// Env: RESEND_API_KEY + RESEND_FROM ("Name <sender@domain>"). When unset, skips.
+// Env: RESEND_API_KEY + optional RESEND_FROM / BOOKING_EMAIL_FROM.
 
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
 
+const DEFAULT_EMAIL_FROM = "805 Shutters <appointments@805shutters.com>";
+
+function resendFromAddress(): string {
+  return process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || DEFAULT_EMAIL_FROM;
+}
+
 export function isResendConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
+  return Boolean(process.env.RESEND_API_KEY && resendFromAddress());
 }
 
 export async function sendEmail(input: {
@@ -27,7 +33,7 @@ export async function sendEmail(input: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: process.env.RESEND_FROM,
+        from: resendFromAddress(),
         to: [to],
         subject: input.subject,
         html: input.html,
