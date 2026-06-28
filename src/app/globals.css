@@ -4321,6 +4321,53 @@ body.qb-fullscreen .crm-app-shell {
   font-weight: 400;
 }
 
+.crm-calendar-management-bar {
+  display: flex;
+  justify-content: end;
+  width: min(1680px, 100%);
+  margin: 18px auto 0;
+}
+
+.crm-calendar-management-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(132px, 1fr));
+  width: min(420px, 100%);
+  padding: 3px;
+  background: #eeeeeb;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-calendar-management-switch button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #5b5b58;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-calendar-management-switch button.active,
+.crm-calendar-management-switch button:hover,
+.crm-calendar-management-switch button:focus-visible {
+  background: #ffffff;
+  border-color: #d8d8d2;
+  color: #0b0b0b;
+  box-shadow: none;
+  transform: none;
+}
+
+.crm-calendar-management-bar + .crm-calendar-board {
+  margin-top: 10px;
+}
+
+.crm-availability-workspace--embedded {
+  width: min(1680px, 100%);
+  margin-top: 10px;
+}
+
 .crm-calendar-board {
   width: min(1680px, 100%);
   margin: 18px auto 0;
@@ -7932,9 +7979,14 @@ body:has(.booking-page--focused) .assistant-widget {
     padding: 16px;
   }
 
+  .crm-calendar-management-bar,
   .crm-calendar-actions,
   .crm-slot-actions {
     justify-content: stretch;
+  }
+
+  .crm-calendar-management-switch {
+    width: 100%;
   }
 
   .crm-calendar-actions button,

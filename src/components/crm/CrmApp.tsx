@@ -158,11 +158,16 @@ type CalendarSlotSelection = {
   endAt: string;
 };
 type CalendarView = "day" | "week" | "month";
+type CalendarManagementMode = "appointments" | "availability";
 
 const calendarViewOptions: Array<{ value: CalendarView; label: string }> = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" }
+];
+const calendarManagementOptions: Array<{ value: CalendarManagementMode; label: string }> = [
+  { value: "appointments", label: "Appointments" },
+  { value: "availability", label: "Open Times" }
 ];
 
 function todayInputValue() {
@@ -643,6 +648,7 @@ export function CrmApp({
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
+  const [calendarManagementMode, setCalendarManagementMode] = useState<CalendarManagementMode>("appointments");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
@@ -2155,24 +2161,31 @@ export function CrmApp({
         </section>
       ) : null}
 
-      {activeTab === "calendar" ? (
+      {activeTab === "calendar" && session ? (
         <>
-          <CalendarPlanner
-            events={events}
-            anchorDate={calendarDate}
-            view={calendarView}
-            onDateChange={setCalendarDate}
-            onViewChange={setCalendarView}
-            onSelectSlot={setSelectedCalendarSlot}
-          />
-          {selectedCalendarSlot ? (
-            <CalendarAppointmentModal
-              busy={busy}
-              selectedSlot={selectedCalendarSlot}
-              onClose={() => setSelectedCalendarSlot(null)}
-              onSubmit={createAppointmentFromSlot}
-            />
-          ) : null}
+          <CalendarManagementToggle mode={calendarManagementMode} onModeChange={setCalendarManagementMode} />
+          {calendarManagementMode === "availability" ? (
+            <AvailabilityBoard session={session} events={events} embedded />
+          ) : (
+            <>
+              <CalendarPlanner
+                events={events}
+                anchorDate={calendarDate}
+                view={calendarView}
+                onDateChange={setCalendarDate}
+                onViewChange={setCalendarView}
+                onSelectSlot={setSelectedCalendarSlot}
+              />
+              {selectedCalendarSlot ? (
+                <CalendarAppointmentModal
+                  busy={busy}
+                  selectedSlot={selectedCalendarSlot}
+                  onClose={() => setSelectedCalendarSlot(null)}
+                  onSubmit={createAppointmentFromSlot}
+                />
+              ) : null}
+            </>
+          )}
         </>
       ) : null}
 
@@ -2192,6 +2205,32 @@ export function CrmApp({
         />
       ) : null}
 
+    </div>
+  );
+}
+
+function CalendarManagementToggle({
+  mode,
+  onModeChange
+}: {
+  mode: CalendarManagementMode;
+  onModeChange: (mode: CalendarManagementMode) => void;
+}) {
+  return (
+    <div className="crm-calendar-management-bar">
+      <div className="crm-calendar-management-switch" aria-label="Calendar management mode">
+        {calendarManagementOptions.map((option) => (
+          <button
+            type="button"
+            aria-pressed={mode === option.value}
+            className={mode === option.value ? "active" : ""}
+            key={option.value}
+            onClick={() => onModeChange(option.value)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -7031,7 +7070,15 @@ function isSlotBooked(owner: string, date: string, time: string, events: CrmCale
   );
 }
 
-function AvailabilityBoard({ session, events }: { session: Session; events: CrmCalendarEvent[] }) {
+function AvailabilityBoard({
+  session,
+  events,
+  embedded = false
+}: {
+  session: Session;
+  events: CrmCalendarEvent[];
+  embedded?: boolean;
+}) {
   const [owner, setOwner] = useState("Jessica");
   const [month, setMonth] = useState(currentMonthValue());
   const [slots, setSlots] = useState<AvailabilitySlotRow[]>([]);
@@ -7121,7 +7168,7 @@ function AvailabilityBoard({ session, events }: { session: Session; events: CrmC
   }
 
   return (
-    <section className="crm-workspace crm-workspace-wide crm-availability-workspace">
+    <section className={`crm-workspace crm-workspace-wide crm-availability-workspace${embedded ? " crm-availability-workspace--embedded" : ""}`}>
       <aside className="crm-panel">
         <h2>Open Times</h2>
         <p className="crm-help">
