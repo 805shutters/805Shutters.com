@@ -14,7 +14,6 @@ import type {
   CrmQuoteDetailValue,
   CrmQuoteLineItem,
   CrmQuoteMotorizationSelection,
-  CrmQuoteSurchargeSelection,
   CrmQuoteWithItems,
   CrmQuote,
   CrmJobStatus,
@@ -74,20 +73,6 @@ function optionalDimension(value: unknown): number | null {
 function normalizeQuantity(value: unknown): number {
   const n = Math.floor(Number(value));
   return Number.isFinite(n) && n >= 1 ? n : 1;
-}
-function normalizeSurcharges(value: unknown): CrmQuoteSurchargeSelection[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((v) => (v && typeof v === "object" ? v : null))
-    .filter(Boolean)
-    .map((v) => {
-      const o = v as Record<string, unknown>;
-      const id = optionalText(o.id);
-      if (!id) return null;
-      const units = Number(o.units);
-      return { id, ...(Number.isFinite(units) && units > 1 ? { units } : {}) };
-    })
-    .filter(Boolean) as CrmQuoteSurchargeSelection[];
 }
 function normalizeMotorization(productId: string, value: unknown): CrmQuoteMotorizationSelection[] {
   if (!Array.isArray(value)) return [];
@@ -424,7 +409,7 @@ export async function upsertDesign(
     program_id: optionalText(payload.program_id),
     fabric: optionalText(payload.fabric),
     details: normalizeDetails(productId, payload.details),
-    surcharges: normalizeSurcharges(payload.surcharges),
+    surcharges: [],
     motorization: normalizeMotorization(productId, payload.motorization),
   };
   const priceFields = priceDesignFields(designInput, lineItem, Number(lineItem.discount_percent) || 0);
@@ -577,7 +562,7 @@ export async function duplicateLineItem(
       program_id: d.program_id,
       fabric: d.fabric,
       details: normalizeDetails(d.product_id, d.details ?? {}),
-      surcharges: d.surcharges ?? [],
+      surcharges: [],
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };
     const priceFields = priceDesignFields(designInput, dims, copyDiscount);
@@ -603,7 +588,7 @@ export async function duplicateLineItem(
 
 /**
  * Copy one window's selected-design spec (product/program/fabric/details/
- * surcharges/motorization) PLUS its dimensions and per-line discount to a set
+ * motorization) PLUS its dimensions and per-line discount to a set
  * of target windows — the MTS "Copy All / Copy Some" flow. Targets must belong
  * to the same quote; each is re-priced, then the quote total is recalculated.
  */
@@ -642,7 +627,6 @@ export async function copySpecToLineItems(
       program_id: sourceDesign.program_id,
       fabric: sourceDesign.fabric,
       details: sourceDesign.details ?? {},
-      surcharges: sourceDesign.surcharges ?? [],
       motorization: sourceDesign.motorization ?? [],
     }, actor);
   }

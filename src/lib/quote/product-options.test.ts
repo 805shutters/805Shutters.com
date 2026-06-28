@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SHUTTER_VARIANTS, shutterVariantsFor } from "./product-options";
+import { getDetailFieldsForProduct, SHUTTER_VARIANTS, shutterVariantsFor } from "./product-options";
 import { catalog } from "./catalog";
 
 describe("SHUTTER_VARIANTS (product-grounded)", () => {
@@ -31,5 +31,35 @@ describe("SHUTTER_VARIANTS (product-grounded)", () => {
   it("returns null for non-shutter products", () => {
     expect(shutterVariantsFor("roller")).toBeNull();
     expect(shutterVariantsFor("nope")).toBeNull();
+  });
+});
+
+describe("catalog-backed surcharge detail fields", () => {
+  it("shows Light Guard options only when the product has priced catalog IDs", () => {
+    const rollerLightGuard = getDetailFieldsForProduct("roller").find((field) => field.id === "light_guard");
+    expect(rollerLightGuard?.options?.map((option) => option.value)).toEqual([
+      "none",
+      "basic_light_guard",
+      "premium_wood_light_guard",
+      "lightguard_360",
+    ]);
+
+    const perfectSheerLightGuard = getDetailFieldsForProduct("perfectsheer").find((field) => field.id === "light_guard");
+    expect(perfectSheerLightGuard?.options?.map((option) => option.value)).toEqual([
+      "none",
+      "basic_light_guard",
+      "premium_wood_light_guard",
+    ]);
+
+    const smartFoldLightGuard = getDetailFieldsForProduct("smartfold").find((field) => field.id === "light_guard");
+    expect(smartFoldLightGuard?.options?.map((option) => option.value)).toEqual(["none", "basic_light_guard"]);
+    expect(getDetailFieldsForProduct("honeycomb").some((field) => field.id === "light_guard")).toBe(false);
+  });
+
+  it("shows product-specific priced add-on fields only when the catalog supports them", () => {
+    expect(getDetailFieldsForProduct("roller").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "keystone", "magnetic_hold_down"]));
+    expect(getDetailFieldsForProduct("smartdrape").map((field) => field.id)).toEqual(expect.arrayContaining(["aluminum_shim", "keystone"]));
+    expect(getDetailFieldsForProduct("citylights_aluminum").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "side_mount_bracket"]));
+    expect(getDetailFieldsForProduct("palladian_shelf").map((field) => field.id)).not.toContain("shim");
   });
 });

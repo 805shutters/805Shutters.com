@@ -1,4 +1,5 @@
-import type { CrmQuoteDesign, CrmQuoteLineItem } from "@/lib/crm/types";
+import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteSurchargeSelection } from "@/lib/crm/types";
+import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
 
 export function round2(value: number): number {
@@ -125,6 +126,7 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): Quot
 }
 
 type PriceFields = {
+  surcharges: CrmQuoteSurchargeSelection[];
   unit_price: number;
   wholesale_unit_price: number | null;
   price_breakdown: Record<string, unknown>;
@@ -132,12 +134,18 @@ type PriceFields = {
   priced_at: string;
 };
 
+type PriceableDesign = Pick<CrmQuoteDesign, "product_id" | "program_id" | "fabric" | "motorization"> & {
+  details?: CrmQuoteDesign["details"] | null;
+  surcharges?: CrmQuoteDesign["surcharges"] | null;
+};
+
 export function priceDesignFields(
-  design: Pick<CrmQuoteDesign, "product_id" | "program_id" | "fabric" | "surcharges" | "motorization">,
+  design: PriceableDesign,
   dims: { width_in: number | null; height_in: number | null },
   discountPercent?: number,
 ): PriceFields {
   const clampedDiscount = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+  const surcharges = deriveAutomaticSurcharges(design.product_id, design.details ?? {}) as CrmQuoteSurchargeSelection[];
   const input: PriceInput = {
     productId: design.product_id,
     programId: design.program_id ?? undefined,
@@ -145,7 +153,7 @@ export function priceDesignFields(
     widthInches: Number(dims.width_in),
     heightInches: Number(dims.height_in),
     quantity: 1,
-    surcharges: design.surcharges ?? [],
+    surcharges,
     motorization: design.motorization ?? [],
     ...(clampedDiscount > 0 ? { discountPercent: clampedDiscount } : {}),
   };
@@ -153,6 +161,7 @@ export function priceDesignFields(
   const now = new Date().toISOString();
   if (result.ok) {
     return {
+      surcharges,
       unit_price: round2(result.unitPrice),
       wholesale_unit_price: result.wholesaleUnitPrice == null ? null : round2(result.wholesaleUnitPrice),
       price_breakdown: result,
@@ -161,6 +170,7 @@ export function priceDesignFields(
     };
   }
   return {
+    surcharges,
     unit_price: 0,
     wholesale_unit_price: null,
     price_breakdown: { error: result.error, code: result.code, warnings: result.warnings },

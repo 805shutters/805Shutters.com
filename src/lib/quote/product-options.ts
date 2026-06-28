@@ -1,3 +1,9 @@
+import {
+  AUTOMATIC_CHECKBOX_DETAIL_IDS,
+  getProductLightGuardSurcharges,
+  resolveAutomaticCheckboxSurcharge,
+} from "./automatic-surcharges";
+
 export type QuoteDetailOption = {
   value: string;
   label: string;
@@ -67,6 +73,28 @@ const installationFields: QuoteDetailField[] = [
   { id: "ladder_over_15ft", label: "Ladder over 15 ft", type: "checkbox", customerVisible: false },
   { id: "requires_takedown", label: "Existing treatment takedown", type: "checkbox", customerVisible: false },
 ];
+
+function automaticSurchargeFields(productId: string): QuoteDetailField[] {
+  const fields: QuoteDetailField[] = [];
+  const lightGuardOptions = getProductLightGuardSurcharges(productId).map((surcharge) => ({
+    value: surcharge.id,
+    label: surcharge.name,
+  }));
+  if (lightGuardOptions.length > 0) {
+    fields.push({
+      id: "light_guard",
+      label: "Light guard",
+      type: "select",
+      options: [{ value: "none", label: "None" }, ...lightGuardOptions],
+    });
+  }
+  for (const detailId of AUTOMATIC_CHECKBOX_DETAIL_IDS) {
+    const surcharge = resolveAutomaticCheckboxSurcharge(productId, detailId);
+    if (!surcharge) continue;
+    fields.push({ id: detailId, label: surcharge.name, type: "checkbox" });
+  }
+  return fields;
+}
 
 const shutterFields: QuoteDetailField[] = [
   {
@@ -387,7 +415,9 @@ const productMotorizationGroups: Record<string, string[]> = {
 };
 
 export function getDetailFieldsForProduct(productId: string): QuoteDetailField[] {
-  return productDetails[productId] ?? [];
+  const base = productDetails[productId] ?? [];
+  const automatic = automaticSurchargeFields(productId);
+  return automatic.length ? [...base, ...automatic] : base;
 }
 
 export function getMotorizationGroupsForProduct(productId: string): string[] {

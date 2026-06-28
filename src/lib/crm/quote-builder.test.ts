@@ -175,6 +175,26 @@ describe("priceDesignFields (server-side engine integration)", () => {
     expect(fields.wholesale_unit_price).toBeNull();
   });
 
+  it("derives canonical surcharges from details and ignores client-provided manual surcharges", () => {
+    const fields = priceDesignFields(
+      {
+        product_id: "roller",
+        program_id: null,
+        fabric: "Callie",
+        details: { light_guard: "lightguard_360" },
+        surcharges: [{ id: "shim" }],
+        motorization: [],
+      },
+      { width_in: 24, height_in: 36 },
+    );
+    expect(fields.price_status).toBe("ok");
+    expect(fields.surcharges).toEqual([{ id: "lightguard_360" }]);
+    expect((fields.price_breakdown as { surchargeLines?: Array<{ id: string; amount: number }> }).surchargeLines).toEqual([
+      { id: "lightguard_360", label: "LightGuard 360", amount: 375, kind: "flat" },
+    ]);
+    expect(fields.unit_price).toBe(629);
+  });
+
   it("prices internal wholesale for shutter designs", () => {
     const fields = priceDesignFields(
       { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },

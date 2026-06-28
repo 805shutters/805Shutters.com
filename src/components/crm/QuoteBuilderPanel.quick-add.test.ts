@@ -37,4 +37,13 @@ describe("QuoteBuilderPanel room quick-add source contract", () => {
     expect(source).toContain("marginLeft: i === 0 ? 0 : -1");
     expect(source).not.toContain('borderRadius: 4, padding: "2px 8px"');
   });
+
+  it("does not render or post the old manual surcharge selector", () => {
+    expect(source).not.toContain("Options &amp; upgrades");
+    expect(source).not.toContain("toggleSurcharge");
+    expect(source).not.toContain("surchargeHint");
+    expect(source).not.toContain("surcharges: design.surcharges");
+    expect(source).not.toContain("Select surcharge or add-on");
+    expect(source).not.toContain("Add Surcharge");
+  });
 });

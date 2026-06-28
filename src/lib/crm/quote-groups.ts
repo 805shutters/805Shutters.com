@@ -16,7 +16,6 @@ import type {
   CrmQuoteDetailValue,
   CrmQuoteLineItem,
   CrmQuoteMotorizationSelection,
-  CrmQuoteSurchargeSelection,
 } from "@/lib/crm/types";
 
 type CrmSupabaseClient = SupabaseClient;
@@ -69,10 +68,6 @@ function cloneQuoteMeta(source: CrmQuote, actor: CrmActor, label: string): Recor
 
 function detailsRecord(value: unknown): Record<string, CrmQuoteDetailValue> {
   return record(value) as Record<string, CrmQuoteDetailValue>;
-}
-
-function surchargeList(value: unknown): CrmQuoteSurchargeSelection[] {
-  return Array.isArray(value) ? (value as CrmQuoteSurchargeSelection[]) : [];
 }
 
 function motorizationList(value: unknown): CrmQuoteMotorizationSelection[] {
@@ -128,7 +123,7 @@ async function cloneQuoteBuilderRows(
         program_id: design.program_id,
         fabric: design.fabric,
         details: detailsRecord(design.details),
-        surcharges: surchargeList(design.surcharges),
+        surcharges: [],
         motorization: motorizationList(design.motorization),
       };
       const priceFields = priceDesignFields(designInput, dims, discountPercent);

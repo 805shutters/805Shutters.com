@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct, UiSurcharge } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, formatInches, splitInches, toInches } from "@/lib/quote/measurements";
 import { summarizePriceBreakdown } from "@/lib/quote/price-explanation";
 import { shutterVariantsFor } from "@/lib/quote/product-options";
@@ -65,18 +65,6 @@ function lineSubtotal(lineItem: CrmQuoteLineItem): number {
   if (!design || design.price_status !== "ok") return 0;
   const qty = Math.max(1, Math.floor(Number(lineItem.quantity) || 1));
   return round2(Number(design.unit_price) * qty + designOnceTotal(design));
-}
-
-/** Short price hint shown next to a surcharge toggle (accurate per unit/basis). */
-function surchargeHint(s: UiSurcharge): string {
-  if (s.widthGraduated) return "priced by width";
-  if (s.kind === "percent") return `${s.value}%`;
-  const amt = money(s.value);
-  if (s.per === "sqft") return `${amt}/sq ft`;
-  if (s.per === "side") return `${amt}/side`;
-  if (s.per === "foot") return `${amt}/ft`;
-  if (s.per === "once") return `${amt}/order`;
-  return amt;
 }
 
 function motorOptionPrice(productId: string, option: UiMotorizationOption): { price: number | null; unavailable: boolean; pending: boolean } {
@@ -518,7 +506,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         program_id: design.program_id,
         fabric: design.fabric,
         details: design.details ?? {},
-        surcharges: design.surcharges,
         motorization: design.motorization,
         ...changes,
       }),
@@ -526,14 +513,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
   const deleteDesign = (id: string) =>
     mutate(`/api/crm/quote-designs/${id}`, { method: "DELETE" });
-
-  const toggleSurcharge = (li: CrmQuoteLineItem, design: CrmQuoteDesign, surchargeId: string) => {
-    const has = design.surcharges.some((s) => s.id === surchargeId);
-    const next = has
-      ? design.surcharges.filter((s) => s.id !== surchargeId)
-      : [...design.surcharges, { id: surchargeId }];
-    return saveDesign(li, design, { surcharges: next });
-  };
 
   const setDetail = (li: CrmQuoteLineItem, design: CrmQuoteDesign, key: string, value: DetailValue) => {
     const next = { ...(design.details ?? {}) };
@@ -875,10 +854,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       chips.push(`${field.label}: ${opt?.label ?? val}`);
                     }
                   }
-                  for (const s of sel.surcharges ?? []) {
-                    const name = prod?.surcharges.find((x) => x.id === s.id)?.name;
-                    if (name) chips.push(name);
-                  }
                   return chips.length ? (
                     <div style={selectedOptionSummaryRow}>
                       {chips.map((c, i) => (
@@ -927,7 +902,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           <Field label="Product">
                             <select
                               value={design.product_id}
-                              onChange={(e) => saveDesign(li, design, { product_id: e.target.value, program_id: null, fabric: null, details: {}, surcharges: [], motorization: [] })}
+                              onChange={(e) => saveDesign(li, design, { product_id: e.target.value, program_id: null, fabric: null, details: {}, motorization: [] })}
                             >
                               {catalog.products.map((p) => (
                                 <option key={p.id} value={p.id}>
@@ -988,27 +963,6 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                           <p style={{ color: "#4d4d49", fontSize: 13, margin: "8px 0 0" }}>
                             {String((design.price_breakdown as { error?: string }).error)}
                           </p>
-                        ) : null}
-
-                        {product && product.surcharges.length > 0 ? (
-                          <details style={{ marginTop: 8 }}>
-                            <summary style={{ cursor: "pointer", fontSize: 13 }}>
-                              Options &amp; upgrades ({design.surcharges.length} selected)
-                            </summary>
-                            <div style={surchargeList}>
-                              {product.surcharges.map((s) => (
-                                <label key={s.id} style={{ display: "flex", gap: 6, fontSize: 13, alignItems: "center" }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={design.surcharges.some((x) => x.id === s.id)}
-                                    onChange={() => toggleSurcharge(li, design, s.id)}
-                                  />
-                                  {s.name}{" "}
-                                  <span style={{ opacity: 0.6 }}>({surchargeHint(s)})</span>
-                                </label>
-                              ))}
-                            </div>
-                          </details>
                         ) : null}
 
                         {motorizationGroups.length > 0 ? (
