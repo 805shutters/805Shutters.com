@@ -333,8 +333,8 @@ export function BookingCalendar({
               </div>
             </fieldset>
 
-            <fieldset className="booking-product-options">
-              <legend>Approximately how many windows do you need covered?</legend>
+            <fieldset className="booking-product-options" aria-label="Approximately how many windows do you need covered?">
+              <h3>Approximately how many windows do you need covered?</h3>
               <div className="booking-count-grid">
                 {windowCountOptions.map((option) => (
                   <button
