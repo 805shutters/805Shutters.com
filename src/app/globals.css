@@ -6004,15 +6004,26 @@ body:has(.booking-page--focused) .assistant-widget {
   color: #111111;
 }
 
-.booking-panel--page .booking-slots button:not(:disabled):hover,
+.booking-panel--page .booking-slots button:not(:disabled):hover {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: none;
+  transform: none;
+}
+
 .booking-panel--page .booking-product-grid button:not(:disabled):hover,
 .booking-panel--page .booking-product-grid button:not(:disabled):focus-visible,
 .booking-panel--page .booking-count-grid button:not(:disabled):hover,
 .booking-panel--page .booking-count-grid button:not(:disabled):focus-visible {
   border-color: #111111;
-  background: #111111;
-  color: #ffffff;
-  box-shadow: none;
+  background:
+    linear-gradient(180deg, #f7f7f5, #d8d8d2);
+  color: #111111;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(17, 17, 17, 0.16),
+    0 12px 24px rgba(17, 17, 17, 0.12);
   transform: none;
 }
 
@@ -6043,16 +6054,34 @@ body:has(.booking-page--focused) .assistant-widget {
   color: #7d7a72;
 }
 
+.booking-panel--page .booking-product-grid {
+  grid-auto-rows: clamp(76px, 5.4vw, 96px);
+}
+
+.booking-panel--page .booking-count-grid {
+  grid-auto-rows: minmax(48px, auto);
+}
+
 .booking-panel--page .booking-product-grid button,
 .booking-panel--page .booking-count-grid button {
-  min-height: 46px;
-  border-color: #111111;
+  display: grid;
+  min-height: 100%;
+  height: 100%;
+  align-content: center;
+  justify-content: center;
+  border-color: rgba(17, 17, 17, 0.82);
   border-radius: 0;
-  background: #ffffff;
-  box-shadow: none;
+  background:
+    linear-gradient(180deg, rgba(244, 244, 242, 0.98), rgba(229, 228, 226, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(184, 182, 174, 0.42),
+    0 8px 18px rgba(17, 17, 17, 0.07);
   color: #111111;
-  font-size: 13px;
-  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  line-height: 1.18;
+  text-align: center;
   text-transform: uppercase;
 }
 
@@ -6390,26 +6419,37 @@ body:has(.booking-page--focused) .assistant-widget {
 .booking-count-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  grid-auto-rows: minmax(78px, auto);
   gap: 10px;
+}
+
+.booking-count-grid {
+  grid-auto-rows: minmax(48px, auto);
 }
 
 .booking-product-grid button,
 .booking-count-grid button {
-  min-height: 48px;
+  display: grid;
+  min-height: 100%;
+  height: 100%;
+  align-content: center;
   justify-content: center;
-  padding: 9px 12px;
-  border-color: #d8d8d2;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-color: rgba(17, 17, 17, 0.58);
+  border-radius: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 244, 242, 0.94));
+    linear-gradient(180deg, rgba(244, 244, 242, 0.98), rgba(229, 228, 226, 0.96));
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.86) inset,
-    0 7px 16px rgba(17, 17, 17, 0.08);
-  color: #3a3a36;
-  font-size: 14px;
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(184, 182, 174, 0.42),
+    0 8px 18px rgba(17, 17, 17, 0.07);
+  color: #111111;
+  font-size: 12.5px;
   font-weight: 800;
-  line-height: 1.15;
+  line-height: 1.18;
+  letter-spacing: 0.08em;
   text-align: center;
+  text-transform: uppercase;
   white-space: normal;
   transition:
     background 160ms ease,
@@ -6423,10 +6463,13 @@ body:has(.booking-page--focused) .assistant-widget {
 .booking-product-grid button:not(:disabled):focus-visible,
 .booking-count-grid button:not(:disabled):hover,
 .booking-count-grid button:not(:disabled):focus-visible {
-  border-color: #9a9890;
+  border-color: #111111;
+  background:
+    linear-gradient(180deg, #f7f7f5, #d8d8d2);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 10px 22px rgba(17, 17, 17, 0.14);
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(17, 17, 17, 0.16),
+    0 12px 24px rgba(17, 17, 17, 0.12);
   transform: translateY(-1px);
 }
 
