@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
+import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
 import { productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
@@ -67,14 +68,6 @@ function formatSelectedDate(date: string | null) {
   }).format(new Date(`${date}T12:00:00`));
 }
 
-function appointmentLengthFromWindowCount(windowCount: string | number | undefined) {
-  const count = Number(windowCount || 0);
-  if (!Number.isFinite(count) || count <= 0) return "";
-  const minutes = Math.ceil(count / 5) * 60;
-  const hours = minutes / 60;
-  return Number.isInteger(hours) ? `${hours} hour${hours === 1 ? "" : "s"}` : `${minutes} minutes`;
-}
-
 function appointmentLengthFromMinutes(minutes: number | undefined) {
   if (!minutes || !Number.isFinite(minutes)) return "";
   const hours = minutes / 60;
@@ -119,7 +112,7 @@ export function BookingCalendar({
   const customerInfoRef = useRef<HTMLFormElement>(null);
 
   const projectDetailsReady = Boolean(selectedWindowCount && serviceAddress.trim());
-  const selectedAppointmentLength = appointmentLengthFromWindowCount(selectedWindowCount);
+  const selectedAppointmentLength = bookingDurationLabelForWindowCount(selectedWindowCount);
   const availabilityAppointmentLength =
     appointmentLengthFromMinutes(availability?.appointmentDurationMinutes) || selectedAppointmentLength;
 

@@ -5,6 +5,9 @@ import {
   maxBookingTravelMiles,
   type BookingGeoPoint
 } from "@/lib/booking/geo";
+import { bookingDurationForWindowCount, bookingSlotDurationMinutes } from "@/lib/booking/duration";
+
+export { bookingDurationForWindowCount, bookingSlotDurationMinutes };
 
 const timeZone = "America/Los_Angeles";
 export const bookingSlotTimes = Array.from(
@@ -16,8 +19,6 @@ export const bookingSlotTimes = Array.from(
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   }
 );
-export const bookingSlotDurationMinutes = 60;
-export const bookingWindowCoveringsPerHour = 5;
 export const fallbackBookingOwner = "Unassigned";
 
 type SupabaseQueryError = {
@@ -44,11 +45,6 @@ export type BookingAvailabilityOptions = {
   travelPoint?: BookingGeoPoint | null;
   maxTravelMiles?: number;
 };
-
-export function bookingDurationForWindowCount(windowCount: number) {
-  if (!Number.isFinite(windowCount) || windowCount <= 0) return bookingSlotDurationMinutes;
-  return Math.ceil(windowCount / bookingWindowCoveringsPerHour) * bookingSlotDurationMinutes;
-}
 
 function formatParts(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {

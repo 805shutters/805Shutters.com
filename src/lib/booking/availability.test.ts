@@ -60,7 +60,11 @@ describe("buildBookingAvailability", () => {
     expect(bookingDurationForWindowCount(1)).toBe(60);
     expect(bookingDurationForWindowCount(5)).toBe(60);
     expect(bookingDurationForWindowCount(6)).toBe(120);
-    expect(bookingDurationForWindowCount(15)).toBe(180);
+    expect(bookingDurationForWindowCount(10)).toBe(120);
+    expect(bookingDurationForWindowCount(15)).toBe(120);
+    expect(bookingDurationForWindowCount(20)).toBe(120);
+    expect(bookingDurationForWindowCount(21)).toBe(180);
+    expect(bookingDurationForWindowCount(31)).toBe(180);
   });
 
   it("offers appointment starts on the hour and half hour", () => {
