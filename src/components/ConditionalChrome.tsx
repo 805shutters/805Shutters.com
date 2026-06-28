@@ -13,8 +13,8 @@ import { SiteHeader } from "./SiteHeader";
 export function ConditionalChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  // Dedicated quote-builder route — no site header, footer, or chat widget.
-  if (pathname?.startsWith("/crm/quote/")) {
+  // Dedicated CRM app routes — no site header, footer, or chat widget.
+  if (pathname?.startsWith("/crm/quote/") || pathname?.startsWith("/crm/mobile")) {
     return <main>{children}</main>;
   }
 
