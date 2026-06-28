@@ -5836,12 +5836,15 @@ body:has(.booking-page--focused) .assistant-widget {
   background: #ffffff;
 }
 
-.booking-panel--page .booking-project-panel h3 {
+.booking-panel--page .booking-project-panel h3,
+.booking-panel--page .booking-address-heading {
   color: #111111;
   font-family: var(--font-display);
   font-size: clamp(25px, 2vw, 34px);
   font-weight: 400;
+  letter-spacing: 0;
   line-height: 1.05;
+  text-transform: none;
 }
 
 .booking-panel--page .booking-project-button {
@@ -6177,12 +6180,15 @@ body:has(.booking-page--focused) .assistant-widget {
   background: #ffffff;
 }
 
-.booking-project-panel h3 {
+.booking-project-panel h3,
+.booking-address-heading {
   margin: 0;
   color: #111111;
   font-family: var(--font-body);
   font-size: 22px;
   font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .booking-project-panel label {
