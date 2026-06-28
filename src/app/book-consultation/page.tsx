@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
 import { ogDefaults, site } from "@/lib/site-data";
 
@@ -30,6 +31,9 @@ export default function BookConsultationPage() {
   return (
     <section className="booking-page booking-page--focused">
       <header className="booking-page__masthead">
+        <Link className="booking-page__home-link" href="/" aria-label="Return to homepage">
+          ×
+        </Link>
         <h1>Let's Book!</h1>
         <img
           className="booking-page__masthead-logo"

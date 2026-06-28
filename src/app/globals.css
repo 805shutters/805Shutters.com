@@ -5749,6 +5749,7 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-page__masthead {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -5759,6 +5760,28 @@ body:has(.booking-page--focused) .assistant-widget {
   border: 1px solid #111111;
   border-bottom: 0;
   background: #ffffff;
+}
+
+.booking-page__home-link {
+  position: absolute;
+  top: clamp(10px, 1.3vw, 18px);
+  right: clamp(10px, 1.3vw, 18px);
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid transparent;
+  color: #111111;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.booking-page__home-link:hover,
+.booking-page__home-link:focus-visible {
+  border-color: #111111;
+  outline: none;
 }
 
 .booking-page__masthead h1 {
