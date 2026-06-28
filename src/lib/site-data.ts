@@ -26,6 +26,7 @@ export type SitePage = {
   gallery?: {
     image: string;
     imageAlt: string;
+    video?: string;
   }[];
   sections: PageSection[];
   cta?: string;
@@ -95,6 +96,11 @@ export const images = {
 };
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
+  {
+    image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
+    imageAlt: "Motorized roller shades installed across living room patio-view windows",
+    video: "/videos/motorized-roller-shades-living-room-view.m4v"
+  },
   {
     image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
     imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"

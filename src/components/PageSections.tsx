@@ -400,6 +400,13 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   },
   {
     category: "Shades",
+    title: "Motorized Living Room Shades",
+    image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
+    imageAlt: "Motorized roller shades installed across living room patio-view windows",
+    video: "/videos/motorized-roller-shades-living-room-view.m4v"
+  },
+  {
+    category: "Shades",
     title: "Corner Cellular Shades",
     image: "/images/portfolio-enhanced/uploaded-corner-cellular-shades-card.jpg",
     imageAlt: "Cellular shades installed on two corner windows in a Ventura County home"
@@ -807,10 +814,24 @@ export function PageSections({ page }: { page: SitePage }) {
       </section>
 
       {activePage.gallery?.length ? (
-        <section className="content-wrap page-gallery" aria-label={`${activePage.h1} photos`}>
+        <section className="content-wrap page-gallery" aria-label={`${activePage.h1} media`}>
           {activePage.gallery.map((item) => (
-            <figure className="page-gallery-item" key={item.image}>
-              <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
+            <figure className="page-gallery-item" key={item.video ?? item.image}>
+              {item.video ? (
+                <video
+                  aria-label={item.imageAlt}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  poster={item.image}
+                  preload="metadata"
+                >
+                  <source src={item.video} type="video/mp4" />
+                </video>
+              ) : (
+                <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
+              )}
             </figure>
           ))}
         </section>

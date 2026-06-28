@@ -1198,6 +1198,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
 
 .page-gallery {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: clamp(14px, 2vw, 24px);
   padding: clamp(32px, 5vw, 64px) 0 0;
@@ -1210,7 +1211,8 @@ body:has(.home-editorial).site-header-solid .category-dot {
   border: 1px solid var(--line);
 }
 
-.page-gallery-item img {
+.page-gallery-item img,
+.page-gallery-item video {
   display: block;
   width: 100%;
   height: auto;
@@ -2337,6 +2339,7 @@ body.commercial-mode .home-hero-actions .button.primary {
 
 .installed-portfolio-grid {
   display: grid;
+  align-items: start;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(14px, 2.2vw, 28px);
 }
