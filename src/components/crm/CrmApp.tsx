@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
@@ -14,6 +14,7 @@ import {
   bookingSlotDurationMinutes,
   bookingSlotTimes,
   losAngelesDateString,
+  losAngelesTimeString,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
@@ -264,9 +265,9 @@ function calendarSlotStart(date: string, time: string) {
   return zonedTimeToUtc(date, time);
 }
 
-function calendarSlotSelection(date: string, time: string): CalendarSlotSelection {
+function calendarSlotSelection(date: string, time: string, durationMinutes = bookingSlotDurationMinutes): CalendarSlotSelection {
   const start = calendarSlotStart(date, time);
-  const end = new Date(start.getTime() + bookingSlotDurationMinutes * 60 * 1000);
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
 
   return {
     date,
@@ -379,11 +380,34 @@ function calendarEventsForRange(events: CrmCalendarEvent[], startDay: string, en
 }
 
 function calendarEventDurationLabel(event: CrmCalendarEvent) {
-  const minutes = Math.max(0, Math.round((new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) / 60000));
+  const minutes = calendarEventDurationMinutes(event);
   if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
+function calendarEventDurationMinutes(event: CrmCalendarEvent) {
+  const minutes = Math.max(0, Math.round((new Date(event.end_at).getTime() - new Date(event.start_at).getTime()) / 60000));
+  return minutes || bookingSlotDurationMinutes;
+}
+
+function calendarEventDateValue(event: CrmCalendarEvent) {
+  return losAngelesDateString(new Date(event.start_at));
+}
+
+function calendarEventTimeValue(event: CrmCalendarEvent) {
+  return losAngelesTimeString(new Date(event.start_at));
+}
+
+function calendarEventTimeOptions(event: CrmCalendarEvent) {
+  const time = calendarEventTimeValue(event);
+  if (calendarSlotTimes.includes(time)) return calendarSlotTimes;
+  return [...calendarSlotTimes, time].sort();
+}
+
+function canRescheduleCalendarEvent(event: CrmCalendarEvent) {
+  return isActiveCalendarEvent(event) && event.event_type !== "block";
 }
 
 function calendarEventToneClassName(event: CrmCalendarEvent) {
@@ -650,6 +674,7 @@ export function CrmApp({
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [calendarManagementMode, setCalendarManagementMode] = useState<CalendarManagementMode>("appointments");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
+  const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
@@ -1279,6 +1304,47 @@ export function CrmApp({
     } finally {
       setBusy(false);
     }
+  }
+
+  async function rescheduleCalendarEvent(calendarEvent: CrmCalendarEvent, slot: CalendarSlotSelection) {
+    if (!session) return;
+
+    if (isPastCalendarSlot(slot.date, slot.time)) {
+      setMessage("Choose an upcoming appointment time.");
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch<{ event: CrmCalendarEvent }>(session, "/api/crm/calendar", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: calendarEvent.id,
+          start_at: slot.startAt,
+          end_at: slot.endAt
+        })
+      });
+      setReschedulingCalendarEvent(null);
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Appointment could not be rescheduled.");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function rescheduleCalendarEventFromForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reschedulingCalendarEvent) return;
+
+    const formData = new FormData(event.currentTarget);
+    const date = formString(formData, "date");
+    const time = formString(formData, "time");
+    const slot = calendarSlotSelection(date, time, calendarEventDurationMinutes(reschedulingCalendarEvent));
+    await rescheduleCalendarEvent(reschedulingCalendarEvent, slot);
   }
 
   async function recordKenPayment(event: FormEvent<HTMLFormElement>) {
@@ -2175,6 +2241,8 @@ export function CrmApp({
                 onDateChange={setCalendarDate}
                 onViewChange={setCalendarView}
                 onSelectSlot={setSelectedCalendarSlot}
+                onRescheduleRequest={setReschedulingCalendarEvent}
+                onRescheduleEvent={rescheduleCalendarEvent}
               />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
@@ -2182,6 +2250,14 @@ export function CrmApp({
                   selectedSlot={selectedCalendarSlot}
                   onClose={() => setSelectedCalendarSlot(null)}
                   onSubmit={createAppointmentFromSlot}
+                />
+              ) : null}
+              {reschedulingCalendarEvent ? (
+                <CalendarRescheduleModal
+                  busy={busy}
+                  event={reschedulingCalendarEvent}
+                  onClose={() => setReschedulingCalendarEvent(null)}
+                  onSubmit={rescheduleCalendarEventFromForm}
                 />
               ) : null}
             </>
@@ -7282,7 +7358,9 @@ function CalendarPlanner({
   view,
   onDateChange,
   onViewChange,
-  onSelectSlot
+  onSelectSlot,
+  onRescheduleRequest,
+  onRescheduleEvent
 }: {
   events: CrmCalendarEvent[];
   anchorDate: string;
@@ -7290,6 +7368,8 @@ function CalendarPlanner({
   onDateChange: (date: string) => void;
   onViewChange: (view: CalendarView) => void;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
+  onRescheduleRequest: (event: CrmCalendarEvent) => void;
+  onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
 }) {
   const today = losAngelesDateString();
   const weekStart = startOfCalendarWeek(anchorDate);
@@ -7369,7 +7449,14 @@ function CalendarPlanner({
       {view === "month" ? (
         <CalendarMonthGrid days={monthDays} events={visibleEvents} monthStart={monthStart} today={today} onOpenDay={openDay} />
       ) : (
-        <CalendarTimelineGrid days={timelineDays} events={visibleEvents} onSelectSlot={onSelectSlot} view={view} />
+        <CalendarTimelineGrid
+          days={timelineDays}
+          events={visibleEvents}
+          onSelectSlot={onSelectSlot}
+          onRescheduleRequest={onRescheduleRequest}
+          onRescheduleEvent={onRescheduleEvent}
+          view={view}
+        />
       )}
     </section>
   );
@@ -7379,17 +7466,82 @@ function CalendarTimelineGrid({
   days,
   events,
   onSelectSlot,
+  onRescheduleRequest,
+  onRescheduleEvent,
   view
 }: {
   days: string[];
   events: CrmCalendarEvent[];
   onSelectSlot: (slot: CalendarSlotSelection) => void;
+  onRescheduleRequest: (event: CrmCalendarEvent) => void;
+  onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
   view: "day" | "week";
 }) {
+  function draggedEvent(dragEvent: DragEvent<HTMLElement>) {
+    const eventId =
+      dragEvent.dataTransfer.getData("application/x-crm-calendar-event-id") ||
+      dragEvent.dataTransfer.getData("text/plain");
+    return events.find((calendarEvent) => calendarEvent.id === eventId && canRescheduleCalendarEvent(calendarEvent)) || null;
+  }
+
+  function slotFromGridPointer(dragEvent: DragEvent<HTMLDivElement>, calendarEvent: CrmCalendarEvent) {
+    const rect = dragEvent.currentTarget.getBoundingClientRect();
+    const x = dragEvent.clientX - rect.left;
+    const y = dragEvent.clientY - rect.top;
+    const timeColumnWidth = 58;
+    const headerHeight = 48;
+    const rowHeight = 76;
+
+    if (x < timeColumnWidth || y < headerHeight) return null;
+
+    const dayColumnWidth = (rect.width - timeColumnWidth) / days.length;
+    const dayIndex = Math.floor((x - timeColumnWidth) / dayColumnWidth);
+    const slotIndex = Math.floor((y - headerHeight) / rowHeight);
+
+    if (dayIndex < 0 || dayIndex >= days.length || slotIndex < 0 || slotIndex >= calendarSlotTimes.length) return null;
+
+    const date = days[dayIndex];
+    const time = calendarSlotTimes[slotIndex];
+    return calendarSlotSelection(date, time, calendarEventDurationMinutes(calendarEvent));
+  }
+
+  function handleGridDragOver(dragEvent: DragEvent<HTMLDivElement>) {
+    const calendarEvent = draggedEvent(dragEvent);
+    if (!calendarEvent) return;
+    const slot = slotFromGridPointer(dragEvent, calendarEvent);
+    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+
+    dragEvent.preventDefault();
+    dragEvent.dataTransfer.dropEffect = "move";
+  }
+
+  function handleGridDrop(dragEvent: DragEvent<HTMLDivElement>) {
+    const calendarEvent = draggedEvent(dragEvent);
+    if (!calendarEvent) return;
+    const slot = slotFromGridPointer(dragEvent, calendarEvent);
+    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+
+    dragEvent.preventDefault();
+    onRescheduleEvent(calendarEvent, slot);
+  }
+
+  function handleEventDragStart(dragEvent: DragEvent<HTMLElement>, calendarEvent: CrmCalendarEvent) {
+    if (!canRescheduleCalendarEvent(calendarEvent)) {
+      dragEvent.preventDefault();
+      return;
+    }
+
+    dragEvent.dataTransfer.effectAllowed = "move";
+    dragEvent.dataTransfer.setData("application/x-crm-calendar-event-id", calendarEvent.id);
+    dragEvent.dataTransfer.setData("text/plain", calendarEvent.id);
+  }
+
   return (
     <div className="crm-calendar-grid-wrap">
       <div
         className={`crm-calendar-grid crm-calendar-grid--${view}`}
+        onDragOver={handleGridDragOver}
+        onDrop={handleGridDrop}
         style={{ gridTemplateRows: `48px repeat(${calendarSlotTimes.length}, 76px)` }}
       >
         <div className="crm-calendar-time-head" style={{ gridColumn: 1, gridRow: 1 }}>Time</div>
@@ -7434,12 +7586,15 @@ function CalendarTimelineGrid({
           if (!placement) return null;
           const detailLines = calendarEventDescriptionLines(event);
           const descriptionLabel = calendarEventDescriptionLabel(event);
+          const canReschedule = canRescheduleCalendarEvent(event);
 
           return (
             <article
               aria-label={descriptionLabel}
               className={calendarEventClassName(event)}
+              draggable={canReschedule}
               key={event.id}
+              onDragStart={(dragEvent) => handleEventDragStart(dragEvent, event)}
               style={{
                 gridColumn: placement.column,
                 gridRow: `${placement.rowStart} / ${placement.rowEnd}`
@@ -7459,6 +7614,13 @@ function CalendarTimelineGrid({
                   <p key={line}>{line}</p>
                 ))}
               </div>
+              {canReschedule ? (
+                <div className="crm-calendar-event-actions">
+                  <button type="button" draggable={false} onClick={() => onRescheduleRequest(event)}>
+                    Reschedule
+                  </button>
+                </div>
+              ) : null}
             </article>
           );
         })}
@@ -7817,6 +7979,68 @@ function CalendarAppointmentModal({
             </button>
             <button type="submit" disabled={busy}>
               {busy ? "Saving..." : "Save Appointment"}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+function CalendarRescheduleModal({
+  event,
+  busy,
+  onClose,
+  onSubmit
+}: {
+  event: CrmCalendarEvent;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  const date = calendarEventDateValue(event);
+  const time = calendarEventTimeValue(event);
+
+  return (
+    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close reschedule form" onClick={onClose} />
+      <section className="crm-slot-form-panel">
+        <div className="crm-slot-form-head">
+          <div>
+            <p className="eyebrow">Reschedule</p>
+            <h2 id="crm-reschedule-modal-title">{calendarEventCustomerLabel(event)}</h2>
+          </div>
+          <button type="button" className="crm-slot-close" aria-label="Close reschedule form" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="crm-slot-time-summary">
+          {formatCalendarLongDay(date)} - {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
+          {calendarTimeFormatter.format(new Date(event.end_at))}
+        </p>
+        <form className="crm-form" onSubmit={onSubmit}>
+          <div className="crm-field-row">
+            <label>
+              Date
+              <input name="date" type="date" required defaultValue={date} />
+            </label>
+            <label>
+              Time
+              <select name="time" required defaultValue={time}>
+                {calendarEventTimeOptions(event).map((option) => (
+                  <option value={option} key={option}>
+                    {formatCalendarSlotTime(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="crm-slot-actions">
+            <button type="button" className="crm-ghost-button" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={busy}>
+              {busy ? "Saving..." : "Save New Time"}
             </button>
           </div>
         </form>

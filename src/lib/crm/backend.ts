@@ -1321,15 +1321,21 @@ async function syncSaleOwnerForJob(
 async function assertCalendarWindowAvailable(
   supabase: CrmSupabaseClient,
   startAt: string,
-  endAt: string
+  endAt: string,
+  excludeEventId?: string
 ) {
-  const { data, error } = await supabase
+  let query = supabase
     .from("crm_calendar_events")
     .select("id,title,start_at,end_at")
     .in("status", ["scheduled", "rescheduled"])
     .lt("start_at", endAt)
-    .gt("end_at", startAt)
-    .limit(1);
+    .gt("end_at", startAt);
+
+  if (excludeEventId) {
+    query = query.neq("id", excludeEventId);
+  }
+
+  const { data, error } = await query.limit(1);
 
   if (error) throw new CrmAuthError(502, "Calendar availability could not be checked.");
   if (data?.length) throw new CrmAuthError(409, "That CRM calendar window is already booked.");
@@ -1443,6 +1449,80 @@ export async function createCrmCalendarEvent(
       assignedSalespersonSms,
       googleCalendarSynced: googleCalendarSync.synced,
       googleCalendarSync: googleCalendarSync.results
+    }
+  });
+
+  return data as CrmCalendarEvent;
+}
+
+export async function rescheduleCrmCalendarEvent(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const eventId = requiredText(payload.id, "Calendar event is required.");
+  const startAt = requiredText(payload.start_at, "Start and end are required.");
+  const endAt = requiredText(payload.end_at, "Start and end are required.");
+  const startDate = new Date(startAt);
+  const endDate = new Date(endAt);
+
+  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime()) || endDate <= startDate) {
+    throw new CrmAuthError(400, "Calendar event end time must be after its start time.");
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_calendar_events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (existingError) throw new CrmAuthError(502, "Calendar event could not be loaded.");
+  if (!existing) throw new CrmAuthError(404, "Calendar event was not found.");
+  if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
+    throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
+  }
+
+  await assertCalendarWindowAvailable(supabase, startAt, endAt, eventId);
+
+  const update = {
+    start_at: startAt,
+    end_at: endAt,
+    status: "rescheduled",
+    meta: metadataWithActor({ meta: existing.meta }, actor, "rescheduledBy")
+  };
+
+  const { data, error } = await supabase
+    .from("crm_calendar_events")
+    .update(update)
+    .eq("id", eventId)
+    .select("*")
+    .single();
+
+  if (error || !data) throw new CrmAuthError(502, "Calendar event could not be rescheduled.");
+
+  if (existing.job_id) {
+    const { data: job, error: jobError } = await supabase
+      .from("crm_jobs")
+      .update({
+        appointment_start: startAt,
+        appointment_end: endAt
+      })
+      .eq("id", existing.job_id)
+      .select("*")
+      .maybeSingle();
+
+    if (jobError) throw new CrmAuthError(502, "Appointment moved, but the linked job could not be updated.");
+    if (job) await syncCustomerFromJob(supabase, job as CrmJob);
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "calendar_event",
+    entityId: data.id,
+    action: "reschedule",
+    before: existing,
+    after: data,
+    metadata: {
+      jobId: existing.job_id || null
     }
   });
 
