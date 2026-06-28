@@ -317,10 +317,7 @@ export function BookingCalendar({
               <h3>Do you know which type of product your interested in? (optional)</h3>
             </div>
 
-            <fieldset className="booking-product-options">
-              <legend>
-                Product interest <span className="booking-optional">optional</span>
-              </legend>
+            <fieldset className="booking-product-options" aria-label="Product interest">
               <div className="booking-product-grid">
                 {productInterestOptions.map((productType) => (
                   <button
