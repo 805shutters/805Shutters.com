@@ -157,6 +157,7 @@ type CalendarSlotSelection = {
   time: string;
   startAt: string;
   endAt: string;
+  availableOwners?: string[];
 };
 type CalendarView = "day" | "week" | "month";
 type CalendarManagementMode = "appointments" | "availability";
@@ -2235,6 +2236,7 @@ export function CrmApp({
           ) : (
             <>
               <CalendarPlanner
+                session={session}
                 events={events}
                 anchorDate={calendarDate}
                 view={calendarView}
@@ -7096,6 +7098,47 @@ const AVAILABILITY_REPS = ["Jessica", "Mike"];
 
 type AvailabilitySlotRow = CrmAvailabilitySlot & { date: string; time: string };
 
+function availabilitySlotKey(date: string, time: string) {
+  return `${date} ${time}`;
+}
+
+function availabilityMonthValue(date: string) {
+  return date.slice(0, 7);
+}
+
+function buildAvailabilityLookup(slots: AvailabilitySlotRow[]) {
+  const lookup = new Map<string, string[]>();
+
+  slots.forEach((slot) => {
+    if ((slot.status || "available") !== "available") return;
+    const key = availabilitySlotKey(slot.date, slot.time);
+    const owners = lookup.get(key) || [];
+    if (!owners.includes(slot.owner)) owners.push(slot.owner);
+    lookup.set(
+      key,
+      owners.sort((first, second) => {
+        const firstIndex = AVAILABILITY_REPS.indexOf(first);
+        const secondIndex = AVAILABILITY_REPS.indexOf(second);
+        return (firstIndex < 0 ? 99 : firstIndex) - (secondIndex < 0 ? 99 : secondIndex);
+      })
+    );
+  });
+
+  return lookup;
+}
+
+function availabilityOwnersLabel(owners: string[]) {
+  if (!owners.length) return "No open time";
+  return `Open for ${owners.join(", ")}`;
+}
+
+function isSlotOpenForCalendarEvent(owners: string[], event: CrmCalendarEvent) {
+  if (!owners.length) return false;
+  const assignedTo = cleanCalendarText(event.assigned_to);
+  if (!assignedTo || assignedTo === "Unassigned") return true;
+  return owners.includes(assignedTo);
+}
+
 function currentMonthValue() {
   return losAngelesDateString().slice(0, 7);
 }
@@ -7353,6 +7396,7 @@ function AvailabilityBoard({
 }
 
 function CalendarPlanner({
+  session,
   events,
   anchorDate,
   view,
@@ -7362,6 +7406,7 @@ function CalendarPlanner({
   onRescheduleRequest,
   onRescheduleEvent
 }: {
+  session: Session;
   events: CrmCalendarEvent[];
   anchorDate: string;
   view: CalendarView;
@@ -7376,16 +7421,63 @@ function CalendarPlanner({
   const weekDays = useMemo(() => calendarWeekDays(startOfCalendarWeek(anchorDate)), [anchorDate]);
   const monthStart = startOfCalendarMonth(anchorDate);
   const monthDays = useMemo(() => calendarMonthDays(anchorDate), [anchorDate]);
-  const timelineDays = view === "day" ? [anchorDate] : weekDays;
+  const timelineDays = useMemo(() => (view === "day" ? [anchorDate] : weekDays), [anchorDate, view, weekDays]);
   const rangeStart = view === "month" ? monthDays[0] : timelineDays[0];
   const rangeEnd = view === "month" ? addCalendarDays(monthDays[monthDays.length - 1], 1) : addCalendarDays(timelineDays[timelineDays.length - 1], 1);
   const visibleEvents = calendarEventsForRange(events, rangeStart, rangeEnd);
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlotRow[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const availabilityMonths = useMemo(
+    () => (view === "month" ? [] : Array.from(new Set(timelineDays.map(availabilityMonthValue)))),
+    [timelineDays, view]
+  );
+  const availabilityMonthKey = availabilityMonths.join("|");
   const rangeLabel =
     view === "day"
       ? formatCalendarLongDay(anchorDate)
       : view === "week"
         ? `${formatCalendarDay(weekStart)} - ${formatCalendarDay(weekDays[weekDays.length - 1])}`
         : formatCalendarMonth(monthStart);
+
+  useEffect(() => {
+    let active = true;
+    const months = availabilityMonthKey ? availabilityMonthKey.split("|") : [];
+
+    if (!months.length) {
+      setAvailabilitySlots([]);
+      setAvailabilityLoading(false);
+      setAvailabilityError(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    setAvailabilityLoading(true);
+    setAvailabilityError(null);
+
+    Promise.all(
+      months.map((month) =>
+        crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`)
+      )
+    )
+      .then((results) => {
+        if (!active) return;
+        setAvailabilitySlots(results.flatMap((result) => result.slots || []));
+      })
+      .catch((error) => {
+        if (!active) return;
+        setAvailabilitySlots([]);
+        setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
+      })
+      .finally(() => {
+        if (active) setAvailabilityLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [availabilityMonthKey, session]);
 
   function moveCalendar(direction: -1 | 1) {
     if (view === "day") {
@@ -7445,6 +7537,7 @@ function CalendarPlanner({
         <strong>{rangeLabel}</strong>
         <span>{visibleEvents.length} scheduled</span>
       </div>
+      {availabilityError && view !== "month" ? <p className="crm-calendar-open-times-error">{availabilityError}</p> : null}
 
       {view === "month" ? (
         <CalendarMonthGrid days={monthDays} events={visibleEvents} monthStart={monthStart} today={today} onOpenDay={openDay} />
@@ -7452,6 +7545,8 @@ function CalendarPlanner({
         <CalendarTimelineGrid
           days={timelineDays}
           events={visibleEvents}
+          availabilitySlots={availabilitySlots}
+          availabilityLoading={availabilityLoading}
           onSelectSlot={onSelectSlot}
           onRescheduleRequest={onRescheduleRequest}
           onRescheduleEvent={onRescheduleEvent}
@@ -7465,6 +7560,8 @@ function CalendarPlanner({
 function CalendarTimelineGrid({
   days,
   events,
+  availabilitySlots,
+  availabilityLoading,
   onSelectSlot,
   onRescheduleRequest,
   onRescheduleEvent,
@@ -7472,11 +7569,19 @@ function CalendarTimelineGrid({
 }: {
   days: string[];
   events: CrmCalendarEvent[];
+  availabilitySlots: AvailabilitySlotRow[];
+  availabilityLoading: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
   onRescheduleRequest: (event: CrmCalendarEvent) => void;
   onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
   view: "day" | "week";
 }) {
+  const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
+
+  function availabilityOwnersForSlot(date: string, time: string) {
+    return availabilityLookup.get(availabilitySlotKey(date, time)) || [];
+  }
+
   function draggedEvent(dragEvent: DragEvent<HTMLElement>) {
     const eventId =
       dragEvent.dataTransfer.getData("application/x-crm-calendar-event-id") ||
@@ -7509,7 +7614,8 @@ function CalendarTimelineGrid({
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
-    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+    const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
+    if (!slot || isPastCalendarSlot(slot.date, slot.time) || !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
 
     dragEvent.preventDefault();
     dragEvent.dataTransfer.dropEffect = "move";
@@ -7519,7 +7625,8 @@ function CalendarTimelineGrid({
     const calendarEvent = draggedEvent(dragEvent);
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
-    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+    const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
+    if (!slot || isPastCalendarSlot(slot.date, slot.time) || !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
 
     dragEvent.preventDefault();
     onRescheduleEvent(calendarEvent, slot);
@@ -7562,20 +7669,38 @@ function CalendarTimelineGrid({
             {days.map((day, dayIndex) => {
               const event = findCalendarEventForSlot(events, day, time);
               const past = isPastCalendarSlot(day, time);
+              const openOwners = availabilityOwnersForSlot(day, time);
+              const available = openOwners.length > 0;
+              const pending = availabilityLoading && !available;
               const slot = calendarSlotSelection(day, time);
+              const selectable = !event && !past && available && !availabilityLoading;
+              const slotLabel = event ? "Booked" : past ? "Past" : pending ? "Checking" : available ? "Available" : "Blocked";
+              const slotDetail = event
+                ? "Scheduled"
+                : past
+                  ? "Unavailable"
+                  : pending
+                    ? "Open times"
+                    : available
+                      ? availabilityOwnersLabel(openOwners)
+                      : "No open time";
 
               return (
                 <button
                   type="button"
-                  aria-label={`${event ? "Booked" : "Add appointment"} ${formatCalendarLongDay(day)} ${formatCalendarSlotTime(time)}`}
-                  className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}`}
-                  disabled={Boolean(event) || past}
+                  aria-label={`${slotLabel} ${formatCalendarLongDay(day)} ${formatCalendarSlotTime(time)}`}
+                  className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}${
+                    !event && !past && !pending && available ? " crm-calendar-slot--available" : ""
+                  }${!event && !past && !pending && !available ? " crm-calendar-slot--blocked" : ""}${
+                    pending ? " crm-calendar-slot--pending" : ""
+                  }`}
+                  disabled={!selectable}
                   key={`${day}-${time}`}
-                  onClick={() => onSelectSlot(slot)}
+                  onClick={() => onSelectSlot({ ...slot, availableOwners: openOwners })}
                   style={{ gridColumn: dayIndex + 2, gridRow: rowIndex + 2 }}
                 >
-                  <span>{event ? "Booked" : "Open"}</span>
-                  <small>{event ? "Scheduled" : "Add appointment"}</small>
+                  <span>{slotLabel}</span>
+                  <small>{slotDetail}</small>
                 </button>
               );
             })}
@@ -7912,6 +8037,8 @@ function CalendarAppointmentModal({
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 }) {
+  const defaultAssignedTo = selectedSlot.availableOwners?.[0] || "Unassigned";
+
   return (
     <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-slot-modal-title">
       <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment form" onClick={onClose} />
@@ -7962,7 +8089,7 @@ function CalendarAppointmentModal({
             </label>
             <label>
               Assigned
-              <select name="assigned_to" defaultValue="Unassigned">
+              <select name="assigned_to" defaultValue={defaultAssignedTo}>
                 {ownerOptions.map((item) => (
                   <option key={item}>{item}</option>
                 ))}

@@ -4441,6 +4441,13 @@ body.qb-fullscreen .crm-app-shell {
   color: var(--accent);
 }
 
+.crm-calendar-open-times-error {
+  margin: -8px 0 12px;
+  color: #8f2525;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .crm-calendar-grid-wrap {
   overflow-x: auto;
   border: 1px solid #d8d8d2;
@@ -4551,6 +4558,14 @@ body.qb-fullscreen .crm-app-shell {
   text-align: center;
 }
 
+.crm-calendar-slot--available,
+.crm-calendar-slot--blocked,
+.crm-calendar-slot--pending {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+}
+
 .crm-calendar-slot:hover {
   transform: none;
 }
@@ -4577,6 +4592,43 @@ body.qb-fullscreen .crm-app-shell {
   font-size: 10px;
   font-weight: 800;
   line-height: 1.3;
+}
+
+.crm-calendar-slot--available span,
+.crm-calendar-slot--blocked span,
+.crm-calendar-slot--pending span {
+  opacity: 1;
+}
+
+.crm-calendar-slot--available small,
+.crm-calendar-slot--blocked small,
+.crm-calendar-slot--pending small {
+  display: block;
+}
+
+.crm-calendar-slot--available {
+  background: #f7fbf3;
+  color: #0b0b0b;
+}
+
+.crm-calendar-slot--available small {
+  color: #326434;
+}
+
+.crm-calendar-slot--blocked {
+  background: #f0efed;
+  color: #65635e;
+  cursor: not-allowed;
+}
+
+.crm-calendar-slot--blocked small {
+  color: #8a8780;
+}
+
+.crm-calendar-slot--pending {
+  background: #fbfbfa;
+  color: #77746d;
+  cursor: progress;
 }
 
 .crm-calendar-slot:not(:disabled):hover span,
