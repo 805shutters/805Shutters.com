@@ -45,7 +45,8 @@ const windowCountOptions = [
   { label: "21-25", value: "25" },
   { label: "26-30", value: "30" },
   { label: "31-35", value: "35" },
-  { label: "36-40", value: "40" }
+  { label: "36-40", value: "40" },
+  { label: "41+", value: "41" }
 ];
 
 function currentMonth() {
