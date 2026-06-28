@@ -313,7 +313,6 @@ export function BookingCalendar({
         <>
           <div className="booking-project-panel">
             <div>
-              <p className="eyebrow">Project Details</p>
               <h3>Do you know which type of product your interested in? (optional)</h3>
             </div>
 
