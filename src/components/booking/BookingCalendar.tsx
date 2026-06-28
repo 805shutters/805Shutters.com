@@ -366,7 +366,7 @@ export function BookingCalendar({
                 disabled={!projectDetailsReady || loading}
                 onClick={showAvailability}
               >
-                {loading ? "Checking availability..." : "Show available times"}
+                {loading ? "Checking availability..." : "Show dates and times"}
               </button>
               {selectedAppointmentLength ? (
                 <p className="booking-helper booking-helper--flush">
