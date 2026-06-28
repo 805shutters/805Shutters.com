@@ -5799,9 +5799,10 @@ body:has(.booking-page--focused) .assistant-widget {
 
 .booking-page__masthead-logo {
   justify-self: end;
-  width: clamp(116px, 11vw, 178px);
+  width: clamp(174px, 16.5vw, 267px);
   height: auto;
   filter: none;
+  transform: translateX(-10%);
 }
 
 .booking-page__intro {
@@ -7330,7 +7331,7 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .booking-page__masthead-logo {
-    width: clamp(78px, 22vw, 106px);
+    width: clamp(117px, 33vw, 159px);
   }
 
   .booking-page__intro {
