@@ -354,7 +354,7 @@ export function BookingCalendar({
             </fieldset>
 
             <label>
-              Service address
+              What address should we go to?
               <AddressAutocomplete
                 name="projectAddress"
                 value={serviceAddress}
