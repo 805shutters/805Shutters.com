@@ -119,9 +119,7 @@ export function BookingCalendar({
   const slotsRef = useRef<HTMLDivElement>(null);
   const customerInfoRef = useRef<HTMLFormElement>(null);
 
-  const projectDetailsReady = Boolean(
-    selectedProductTypes.length > 0 && selectedWindowCount && serviceAddress.trim()
-  );
+  const projectDetailsReady = Boolean(selectedWindowCount && serviceAddress.trim());
   const selectedAppointmentLength = appointmentLengthFromWindowCount(selectedWindowCount);
   const availabilityAppointmentLength =
     appointmentLengthFromMinutes(availability?.appointmentDurationMinutes) || selectedAppointmentLength;
@@ -315,11 +313,13 @@ export function BookingCalendar({
           <div className="booking-project-panel">
             <div>
               <p className="eyebrow">Project Details</p>
-              <h3>Tell us what we are measuring first.</h3>
+              <h3>Do you know which type of product your interested in? (optional)</h3>
             </div>
 
             <fieldset className="booking-product-options">
-              <legend>Product interest</legend>
+              <legend>
+                Product interest <span className="booking-optional">optional</span>
+              </legend>
               <div className="booking-product-grid">
                 {productInterestOptions.map((productType) => (
                   <button

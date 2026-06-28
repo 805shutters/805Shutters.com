@@ -434,13 +434,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!productTypes.length) {
-    return NextResponse.json(
-      { message: "Choose at least one product type before selecting an appointment." },
-      { status: 400 }
-    );
-  }
-
   if (windowCount <= 0) {
     return NextResponse.json(
       { message: "Choose the approximate number of window coverings before selecting an appointment." },
