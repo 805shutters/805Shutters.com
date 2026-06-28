@@ -80,12 +80,12 @@ describe("805 mobile appointment helpers", () => {
     expect(mobileAppointmentDurationMinutes(event())).toBe(120);
   });
 
-  it("builds exact ETA SMS copy with fallback copy", () => {
+  it("builds exact in-route SMS copy", () => {
     expect(buildMobileEtaSms({ customerName: "Pat Smith", etaMinutes: 24 })).toBe(
-      "805 Shutters: Hi Pat, we're on our way to your appointment and should arrive in about 24 minutes."
+      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters"
     );
     expect(buildMobileEtaSms({ customerName: "Pat Smith", etaMinutes: null })).toBe(
-      "805 Shutters: Hi Pat, we're on our way to your appointment."
+      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters"
     );
   });
 

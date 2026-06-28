@@ -542,8 +542,8 @@ export function MobileAppointmentApp() {
       setEtaMessage(
         result.messageSent
           ? result.eta?.text
-            ? `Text sent. ETA ${result.eta.text}.`
-            : "Text sent. ETA was not available."
+            ? `Text sent. Drive time ${result.eta.text}.`
+            : "Text sent."
           : `Text not sent: ${result.sms.skipped || result.sms.error || "SMS unavailable"}.`
       );
       openDirections(address);

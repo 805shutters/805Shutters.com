@@ -146,11 +146,7 @@ export function customerFirstName(customerName: string | null | undefined) {
 
 export function buildMobileEtaSms(input: { customerName?: string | null; etaMinutes?: number | null }) {
   const firstName = customerFirstName(input.customerName);
-  if (input.etaMinutes && input.etaMinutes > 0) {
-    return `805 Shutters: Hi ${firstName}, we're on our way to your appointment and should arrive in about ${input.etaMinutes} minutes.`;
-  }
-
-  return `805 Shutters: Hi ${firstName}, we're on our way to your appointment.`;
+  return `Hi ${firstName}, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters`;
 }
 
 export async function calculateMobileDriveEta(input: {
