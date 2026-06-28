@@ -14,6 +14,7 @@ const details: SelfBookingCustomerDetails = {
   email: "taylor@example.com",
   address: "123 Main St, Ventura",
   windowCount: 7,
+  appointmentDurationMinutes: 120,
   productInterest: "Plantation Shutters, Roller Shades",
   productTypes: ["Plantation Shutters", "Roller Shades"],
   bookingNotes: "Self-booked appointment.\nWindows: 7\nProduct interest: Plantation Shutters, Roller Shades\nCustomer notes: Upstairs first",
@@ -40,6 +41,7 @@ describe("self-booking customer snapshot", () => {
         bookingSource: "website",
         appointmentStart: "2026-06-25T17:00:00.000Z",
         appointmentEnd: "2026-06-25T18:00:00.000Z",
+        appointmentDurationMinutes: 120,
         windowCount: 7,
         productTypes: ["Plantation Shutters", "Roller Shades"]
       }
@@ -61,7 +63,8 @@ describe("self-booking customer snapshot", () => {
         calendarEventId: "event-1",
         productInterest: "Plantation Shutters, Roller Shades",
         productTypes: ["Plantation Shutters", "Roller Shades"],
-        windowCount: 7
+        windowCount: 7,
+        appointmentDurationMinutes: 120
       }
     });
     expect(product.description).toContain("Approx. windows: 7");
@@ -73,6 +76,7 @@ describe("self-booking customer snapshot", () => {
       {
         ...details,
         windowCount: 0,
+        appointmentDurationMinutes: 60,
         productInterest: "consultation",
         productTypes: [],
         bookingNotes: ""

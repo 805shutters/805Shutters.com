@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   bookingEndIso,
+  bookingDurationForWindowCount,
   buildBookingAvailability,
-  fallbackBookingOwner,
   freeRepsForSlot,
   isAvailabilitySlotsMissing,
   monthRangeUtc,
   zonedTimeToUtc
 } from "@/lib/booking/availability";
+import { addGeoPointsToEvents, geocodeBookingAddress, maxBookingTravelMiles } from "@/lib/booking/geo";
 import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
@@ -40,6 +41,7 @@ type BookingAutomationDetails = {
   email: string;
   address: string;
   windowCount: number;
+  appointmentDurationMinutes: number;
   productInterest: string;
   productTypes: string[];
   notes: string;
@@ -216,6 +218,7 @@ async function sendStaffSmsAlerts(details: BookingAutomationDetails) {
     details.email ? `Email: ${details.email}` : null,
     `Address: ${details.address}`,
     details.windowCount ? `Windows: ${details.windowCount}` : null,
+    `Length: ${formatDuration(details.appointmentDurationMinutes)}`,
     details.productTypes.length ? `Interest: ${details.productInterest}` : null
   ]
     .filter(Boolean)
@@ -246,6 +249,11 @@ function formatAppointmentForEmail(startAt: string) {
   }).format(new Date(startAt));
 }
 
+function formatDuration(minutes: number) {
+  const hours = minutes / 60;
+  return Number.isInteger(hours) ? `${hours} hour${hours === 1 ? "" : "s"}` : `${minutes} minutes`;
+}
+
 function bookingPlainText(details: BookingAutomationDetails, customerFacing: boolean) {
   const appointmentLabel = formatAppointmentForEmail(details.startAt);
 
@@ -257,6 +265,7 @@ function bookingPlainText(details: BookingAutomationDetails, customerFacing: boo
       "You're all set — your free in-home consultation with 805 Shutters is confirmed.",
       "",
       `When:  ${appointmentLabel}`,
+      `Length: ${formatDuration(details.appointmentDurationMinutes)}`,
       `Where: ${details.address}`,
       details.productTypes.length ? `Interested in: ${details.productInterest}` : null,
       "",
@@ -279,6 +288,7 @@ function bookingPlainText(details: BookingAutomationDetails, customerFacing: boo
     details.email ? `Email: ${details.email}` : null,
     `Address: ${details.address}`,
     details.windowCount ? `Approximate window quantity: ${details.windowCount}` : null,
+    `Estimated appointment length: ${formatDuration(details.appointmentDurationMinutes)}`,
     details.productTypes.length ? `Product interest: ${details.productInterest}` : null,
     details.notes ? `Notes: ${details.notes}` : null,
     "",
@@ -294,6 +304,7 @@ function bookingHtml(details: BookingAutomationDetails, customerFacing: boolean)
   if (customerFacing) {
     const firstName = escapeHtml(details.name.trim().split(/\s+/)[0] || "there");
     const appointmentLabel = escapeHtml(formatAppointmentForEmail(details.startAt));
+    const appointmentLength = escapeHtml(formatDuration(details.appointmentDurationMinutes));
     const address = escapeHtml(details.address);
     const interest = details.productTypes.length
       ? `<p style="margin:6px 0 0;color:#555">Interested in: ${escapeHtml(details.productInterest)}</p>`
@@ -305,6 +316,7 @@ function bookingHtml(details: BookingAutomationDetails, customerFacing: boolean)
   <div style="background:#f5f4f2;border-radius:12px;padding:18px 20px;margin:0 0 22px">
     <p style="margin:0 0 4px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#999">Your consultation</p>
     <p style="margin:0 0 10px;font-size:17px;font-weight:600">${appointmentLabel}</p>
+    <p style="margin:0 0 6px;color:#555">Estimated length: ${appointmentLength}</p>
     <p style="margin:0;color:#555">${address}</p>
     ${interest}
   </div>
@@ -405,7 +417,8 @@ export async function POST(request: NextRequest) {
   const email = clean(payload.email);
   const notes = clean(payload.notes);
   const parsedWindowCount = Number(payload.windowCount || 0);
-  const windowCount = Number.isFinite(parsedWindowCount) ? Math.max(0, parsedWindowCount) : 0;
+  const windowCount = Number.isFinite(parsedWindowCount) ? Math.max(0, Math.ceil(parsedWindowCount)) : 0;
+  const appointmentDurationMinutes = bookingDurationForWindowCount(windowCount);
   const productTypes = normalizeProductTypes(payload.productTypes);
   const productInterest = productTypes.length ? productTypes.join(", ") : "consultation";
   const followUpRequested = payload.followUpRequested === true;
@@ -421,11 +434,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!productTypes.length) {
+    return NextResponse.json(
+      { message: "Choose at least one product type before selecting an appointment." },
+      { status: 400 }
+    );
+  }
+
+  if (windowCount <= 0) {
+    return NextResponse.json(
+      { message: "Choose the approximate number of window coverings before selecting an appointment." },
+      { status: 400 }
+    );
+  }
+
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return NextResponse.json(
       { message: "Booking requires the dedicated 805 Supabase service-role key." },
       { status: 503 }
+    );
+  }
+
+  const geocodeResult = await geocodeBookingAddress(address);
+  if (geocodeResult.configured && !geocodeResult.point) {
+    return NextResponse.json(
+      { message: "Enter a complete service address so we can check nearby appointments." },
+      { status: 400 }
     );
   }
 
@@ -450,7 +485,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Calendar could not be checked." }, { status: 502 });
   }
 
-  const existingEvents = (eventsResult.data || []) as CrmCalendarEvent[];
+  const existingEvents = geocodeResult.point
+    ? await addGeoPointsToEvents((eventsResult.data || []) as CrmCalendarEvent[])
+    : ((eventsResult.data || []) as CrmCalendarEvent[]);
   let availabilitySlots: CrmAvailabilitySlot[] | undefined = slotsResult.error
     ? undefined
     : ((slotsResult.data || []) as CrmAvailabilitySlot[]);
@@ -459,7 +496,11 @@ export async function POST(request: NextRequest) {
     availabilitySlots = (await listCrmAvailabilityFallbackSlots(supabase, month)) as CrmAvailabilitySlot[];
   }
 
-  const availability = buildBookingAvailability(month, existingEvents, availabilitySlots);
+  const availabilityOptions = {
+    appointmentDurationMinutes,
+    travelPoint: geocodeResult.point
+  };
+  const availability = buildBookingAvailability(month, existingEvents, availabilitySlots, availabilityOptions);
   const selectedDay = availability.days.find((day) => day.date === date);
   const selectedSlot = selectedDay?.slots.find((slot) => slot.time === time);
 
@@ -467,28 +508,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }
 
-  const assignedRep = availabilitySlots
-    ? pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents))
-    : slotsResult.error
-      ? fallbackBookingOwner
-      : pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents));
+  const assignedRep = pickRep(freeRepsForSlot(date, time, availabilitySlots, existingEvents, availabilityOptions));
   if (!assignedRep) {
     return NextResponse.json({ message: "That appointment time is no longer available." }, { status: 409 });
   }
 
   const startAt = zonedTimeToUtc(date, time).toISOString();
-  const endAt = bookingEndIso(date, time);
+  const endAt = bookingEndIso(date, time, appointmentDurationMinutes);
   const bookingNotes = [
     `Self-booked appointment.`,
     followUpRequested
       ? `Customer requested a follow-up to confirm details.`
       : `Customer indicated no follow-up needed.`,
     windowCount ? `Windows: ${windowCount}` : null,
+    `Estimated appointment length: ${formatDuration(appointmentDurationMinutes)}`,
     productTypes.length ? `Product interest: ${productInterest}` : null,
     notes ? `Customer notes: ${notes}` : null
   ]
     .filter(Boolean)
     .join("\n");
+  const bookingGeoMeta = {
+    appointmentDurationMinutes,
+    appointmentDurationLabel: formatDuration(appointmentDurationMinutes),
+    bookingGeo: geocodeResult.point,
+    travelRule: {
+      maxMiles: maxBookingTravelMiles,
+      enforced: Boolean(geocodeResult.point)
+    }
+  };
 
   const { data: lead, error: leadError } = await supabase
     .from("leads")
@@ -504,6 +551,7 @@ export async function POST(request: NextRequest) {
       meta: {
         address,
         windowCount: windowCount || null,
+        ...bookingGeoMeta,
         productTypes,
         followUpRequested,
         appointmentDate: date,
@@ -540,6 +588,7 @@ export async function POST(request: NextRequest) {
       notes: bookingNotes,
       meta: {
         windowCount: windowCount || null,
+        ...bookingGeoMeta,
         productTypes,
         followUpRequested,
         bookingSource: "website"
@@ -554,6 +603,7 @@ export async function POST(request: NextRequest) {
 
   const calendarEventMeta = {
     windowCount: windowCount || null,
+    ...bookingGeoMeta,
     productTypes,
     followUpRequested,
     bookingSource: "website"
@@ -666,6 +716,7 @@ export async function POST(request: NextRequest) {
     email,
     address,
     windowCount,
+    appointmentDurationMinutes,
     productInterest,
     productTypes,
     notes,
@@ -717,6 +768,10 @@ export async function POST(request: NextRequest) {
     email,
     address,
     windowCount,
+    appointmentDurationMinutes,
+    appointmentDurationLabel: formatDuration(appointmentDurationMinutes),
+    bookingGeo: geocodeResult.point,
+    travelRule: bookingGeoMeta.travelRule,
     productTypes,
     productInterest,
     appointmentStart: startAt,

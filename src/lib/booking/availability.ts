@@ -1,4 +1,10 @@
-import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
+import type { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
+import {
+  calendarEventGeoPoint,
+  distanceMiles,
+  maxBookingTravelMiles,
+  type BookingGeoPoint
+} from "@/lib/booking/geo";
 
 const timeZone = "America/Los_Angeles";
 export const bookingSlotTimes = Array.from(
@@ -11,6 +17,7 @@ export const bookingSlotTimes = Array.from(
   }
 );
 export const bookingSlotDurationMinutes = 60;
+export const bookingWindowCoveringsPerHour = 5;
 export const fallbackBookingOwner = "Unassigned";
 
 type SupabaseQueryError = {
@@ -31,6 +38,17 @@ export type BookingDay = {
   available: boolean;
   slots: BookingSlot[];
 };
+
+export type BookingAvailabilityOptions = {
+  appointmentDurationMinutes?: number;
+  travelPoint?: BookingGeoPoint | null;
+  maxTravelMiles?: number;
+};
+
+export function bookingDurationForWindowCount(windowCount: number) {
+  if (!Number.isFinite(windowCount) || windowCount <= 0) return bookingSlotDurationMinutes;
+  return Math.ceil(windowCount / bookingWindowCoveringsPerHour) * bookingSlotDurationMinutes;
+}
 
 function formatParts(date: Date) {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -97,6 +115,11 @@ function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60 * 1000);
 }
 
+function appointmentDuration(options: BookingAvailabilityOptions = {}) {
+  const duration = Number(options.appointmentDurationMinutes || bookingSlotDurationMinutes);
+  return Number.isFinite(duration) && duration > 0 ? duration : bookingSlotDurationMinutes;
+}
+
 export function isAvailabilitySlotsMissing(error: SupabaseQueryError) {
   return error?.code === "PGRST205" && Boolean(error.message?.includes("crm_availability_slots"));
 }
@@ -151,14 +174,39 @@ function ownersOfferingSlot(availabilitySlots: CrmAvailabilitySlot[], slotStart:
   return owners;
 }
 
+function isSameLosAngelesDay(left: Date, right: Date) {
+  return losAngelesDateString(left) === losAngelesDateString(right);
+}
+
+function isWithinTravelRange(
+  owner: string,
+  slotStart: Date,
+  events: CrmCalendarEvent[],
+  travelPoint: BookingGeoPoint | null | undefined,
+  maxTravelMiles: number
+) {
+  if (!travelPoint) return true;
+  const numericMaxTravelMiles = Number.isFinite(maxTravelMiles) ? maxTravelMiles : maxBookingTravelMiles;
+
+  return !events.some((event) => {
+    if (event.status === "canceled" || event.event_type === "block") return false;
+    if (owner !== fallbackBookingOwner && event.assigned_to !== owner) return false;
+    if (!isSameLosAngelesDay(new Date(event.start_at), slotStart)) return false;
+    const eventPoint = calendarEventGeoPoint(event);
+    return Boolean(eventPoint && distanceMiles(travelPoint, eventPoint) > numericMaxTravelMiles);
+  });
+}
+
 // A rep can take a slot only if they are not already booked, and no office-wide
 // "block" event covers the window. Returns the subset of `owners` that are free.
 function repsFreeForWindow(
   owners: string[],
   slotStart: Date,
   slotEnd: Date,
-  events: CrmCalendarEvent[]
+  events: CrmCalendarEvent[],
+  options: BookingAvailabilityOptions = {}
 ) {
+  const maxTravelMiles = Number.isFinite(options.maxTravelMiles) ? Number(options.maxTravelMiles) : maxBookingTravelMiles;
   return owners.filter(
     (owner) =>
       !events.some(
@@ -167,7 +215,8 @@ function repsFreeForWindow(
           (event.event_type === "block" || event.assigned_to === owner) &&
           new Date(event.start_at) < slotEnd &&
           new Date(event.end_at) > slotStart
-      )
+      ) &&
+      isWithinTravelRange(owner, slotStart, events, options.travelPoint, maxTravelMiles)
   );
 }
 
@@ -176,10 +225,17 @@ function dayOfWeek(date: string) {
   return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
 }
 
+function fitsFallbackWorkingDay(date: string, slotEnd: Date) {
+  const lastStartTime = bookingSlotTimes[bookingSlotTimes.length - 1];
+  const workingDayEnd = addMinutes(zonedTimeToUtc(date, lastStartTime), bookingSlotDurationMinutes);
+  return slotEnd.getTime() <= workingDayEnd.getTime();
+}
+
 export function buildBookingAvailability(
   month: string,
   events: CrmCalendarEvent[] = [],
-  availabilitySlots?: CrmAvailabilitySlot[]
+  availabilitySlots?: CrmAvailabilitySlot[],
+  options: BookingAvailabilityOptions = {}
 ) {
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -190,6 +246,7 @@ export function buildBookingAvailability(
   // the calendar never goes dark between months. Matches the AI assistant path,
   // which already computes availability without published slots.
   const usePublishedSlots = Array.isArray(availabilitySlots) && availabilitySlots.length > 0;
+  const durationMinutes = appointmentDuration(options);
 
   const days: BookingDay[] = Array.from({ length: daysInMonth }, (_item, index) => {
     const day = index + 1;
@@ -198,10 +255,21 @@ export function buildBookingAvailability(
     const isSunday = dayOfWeek(date) === 0;
     const slots = bookingSlotTimes.map((time) => {
       const start = zonedTimeToUtc(date, time);
-      const end = addMinutes(start, bookingSlotDurationMinutes);
+      const end = addMinutes(start, durationMinutes);
       const available = usePublishedSlots
-        ? !isPast && repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events).length > 0
-        : !isPast && !isSunday && !hasOverlap(events, start, end);
+        ? !isPast &&
+          repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events, options).length > 0
+        : !isPast &&
+          !isSunday &&
+          fitsFallbackWorkingDay(date, end) &&
+          !hasOverlap(events, start, end) &&
+          isWithinTravelRange(
+            fallbackBookingOwner,
+            start,
+            events,
+            options.travelPoint,
+            options.maxTravelMiles || maxBookingTravelMiles
+          );
 
       return {
         time,
@@ -241,18 +309,30 @@ export function freeRepsForSlot(
   date: string,
   time: string,
   availabilitySlots: CrmAvailabilitySlot[] | undefined,
-  events: CrmCalendarEvent[]
+  events: CrmCalendarEvent[],
+  options: BookingAvailabilityOptions = {}
 ) {
   const start = zonedTimeToUtc(date, time);
-  const end = addMinutes(start, bookingSlotDurationMinutes);
+  const end = addMinutes(start, appointmentDuration(options));
 
   if (!availabilitySlots || availabilitySlots.length === 0) {
-    return dayOfWeek(date) !== 0 && !hasOverlap(events, start, end) ? [fallbackBookingOwner] : [];
+    return dayOfWeek(date) !== 0 &&
+      fitsFallbackWorkingDay(date, end) &&
+      !hasOverlap(events, start, end) &&
+      isWithinTravelRange(
+        fallbackBookingOwner,
+        start,
+        events,
+        options.travelPoint,
+        options.maxTravelMiles || maxBookingTravelMiles
+      )
+      ? [fallbackBookingOwner]
+      : [];
   }
 
-  return repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events);
+  return repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events, options);
 }
 
-export function bookingEndIso(date: string, time: string) {
-  return addMinutes(zonedTimeToUtc(date, time), bookingSlotDurationMinutes).toISOString();
+export function bookingEndIso(date: string, time: string, durationMinutes = bookingSlotDurationMinutes) {
+  return addMinutes(zonedTimeToUtc(date, time), durationMinutes).toISOString();
 }

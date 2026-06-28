@@ -5830,6 +5830,33 @@ body:has(.booking-page--focused) .assistant-widget {
   border-bottom: 1px solid #111111;
 }
 
+.booking-panel--page .booking-project-panel {
+  padding: clamp(22px, 2.5vw, 32px) clamp(24px, 3.5vw, 44px);
+  border-bottom: 1px solid #111111;
+  background: #ffffff;
+}
+
+.booking-panel--page .booking-project-panel h3 {
+  color: #111111;
+  font-family: var(--font-display);
+  font-size: clamp(25px, 2vw, 34px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.booking-panel--page .booking-project-button {
+  border-color: #111111;
+  background: #111111;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.booking-panel--page .booking-project-button:disabled {
+  border-color: #d8d8d2;
+  background: #f4f4f2;
+  color: #7d7a72;
+}
+
 .booking-panel--page .booking-calendar-head {
   grid-template-columns: 76px 1fr 76px;
   min-height: 124px;
@@ -5979,7 +6006,9 @@ body:has(.booking-page--focused) .assistant-widget {
 
 .booking-panel--page .booking-slots button:not(:disabled):hover,
 .booking-panel--page .booking-product-grid button:not(:disabled):hover,
-.booking-panel--page .booking-product-grid button:not(:disabled):focus-visible {
+.booking-panel--page .booking-product-grid button:not(:disabled):focus-visible,
+.booking-panel--page .booking-count-grid button:not(:disabled):hover,
+.booking-panel--page .booking-count-grid button:not(:disabled):focus-visible {
   border-color: #111111;
   background: #111111;
   color: #ffffff;
@@ -6014,7 +6043,8 @@ body:has(.booking-page--focused) .assistant-widget {
   color: #7d7a72;
 }
 
-.booking-panel--page .booking-product-grid button {
+.booking-panel--page .booking-product-grid button,
+.booking-panel--page .booking-count-grid button {
   min-height: 46px;
   border-color: #111111;
   border-radius: 0;
@@ -6028,7 +6058,10 @@ body:has(.booking-page--focused) .assistant-widget {
 
 .booking-panel--page .booking-product-grid button.active,
 .booking-panel--page .booking-product-grid button.active:not(:disabled):hover,
-.booking-panel--page .booking-product-grid button.active:not(:disabled):focus-visible {
+.booking-panel--page .booking-product-grid button.active:not(:disabled):focus-visible,
+.booking-panel--page .booking-count-grid button.active,
+.booking-panel--page .booking-count-grid button.active:not(:disabled):hover,
+.booking-panel--page .booking-count-grid button.active:not(:disabled):focus-visible {
   border-color: #111111;
   background: #111111;
   box-shadow: none;
@@ -6036,7 +6069,8 @@ body:has(.booking-page--focused) .assistant-widget {
   transform: none;
 }
 
-.booking-panel--page .booking-product-grid button:disabled {
+.booking-panel--page .booking-product-grid button:disabled,
+.booking-panel--page .booking-count-grid button:disabled {
   border-color: #d8d8d2;
   background: #f4f4f2;
   box-shadow: none;
@@ -6103,6 +6137,51 @@ body:has(.booking-page--focused) .assistant-widget {
 .booking-calendar-shell {
   padding: 0;
   background: #ffffff;
+}
+
+.booking-project-panel {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 18px;
+  padding: 24px 28px;
+  border-bottom: 1px solid #d8d8d2;
+  background: #ffffff;
+}
+
+.booking-project-panel h3 {
+  margin: 0;
+  color: #111111;
+  font-family: var(--font-body);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.booking-project-panel label {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.booking-project-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.booking-project-button {
+  min-height: 48px;
+  padding: 12px 18px;
+  background: #111111;
+  color: #ffffff;
+}
+
+.booking-project-button:disabled {
+  border-color: #d8d8d2;
+  background: #f4f4f2;
+  color: #8f8c84;
+  cursor: not-allowed;
 }
 
 .booking-calendar-head {
@@ -6307,13 +6386,15 @@ body:has(.booking-page--focused) .assistant-widget {
   text-transform: lowercase;
 }
 
-.booking-product-grid {
+.booking-product-grid,
+.booking-count-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
   gap: 10px;
 }
 
-.booking-product-grid button {
+.booking-product-grid button,
+.booking-count-grid button {
   min-height: 48px;
   justify-content: center;
   padding: 9px 12px;
@@ -6339,7 +6420,9 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-product-grid button:not(:disabled):hover,
-.booking-product-grid button:not(:disabled):focus-visible {
+.booking-product-grid button:not(:disabled):focus-visible,
+.booking-count-grid button:not(:disabled):hover,
+.booking-count-grid button:not(:disabled):focus-visible {
   border-color: #9a9890;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
@@ -6347,7 +6430,8 @@ body:has(.booking-page--focused) .assistant-widget {
   transform: translateY(-1px);
 }
 
-.booking-product-grid button.active {
+.booking-product-grid button.active,
+.booking-count-grid button.active {
   border-color: #111111;
   background:
     linear-gradient(180deg, #111111, #0b0b0b);
@@ -6359,7 +6443,9 @@ body:has(.booking-page--focused) .assistant-widget {
 }
 
 .booking-product-grid button.active:not(:disabled):hover,
-.booking-product-grid button.active:not(:disabled):focus-visible {
+.booking-product-grid button.active:not(:disabled):focus-visible,
+.booking-count-grid button.active:not(:disabled):hover,
+.booking-count-grid button.active:not(:disabled):focus-visible {
   border-color: #111111;
   box-shadow:
     inset 0 2px 8px rgba(0, 0, 0, 0.42),
@@ -6367,7 +6453,8 @@ body:has(.booking-page--focused) .assistant-widget {
   transform: translateY(1px);
 }
 
-.booking-product-grid button:disabled {
+.booking-product-grid button:disabled,
+.booking-count-grid button:disabled {
   background: #eeeeeb;
   border-color: #d8d8d2;
   box-shadow: none;
@@ -6378,6 +6465,10 @@ body:has(.booking-page--focused) .assistant-widget {
 .booking-message {
   margin: 0;
   font-weight: 800;
+}
+
+.booking-helper--flush {
+  padding: 0;
 }
 
 .booking-submit-row {

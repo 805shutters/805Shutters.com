@@ -497,6 +497,7 @@ export type CrmCalendarEvent = {
   end_at: string;
   location: string | null;
   notes: string | null;
+  meta?: Record<string, unknown> | null;
   customer_name?: string;
   customer_phone?: string | null;
   customer_email?: string | null;

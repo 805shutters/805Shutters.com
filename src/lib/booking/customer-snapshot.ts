@@ -10,6 +10,7 @@ export type SelfBookingCustomerDetails = {
   email: string;
   address: string;
   windowCount: number;
+  appointmentDurationMinutes: number;
   productInterest: string;
   productTypes: string[];
   bookingNotes: string;
@@ -33,6 +34,7 @@ export function buildSelfBookingCustomerSnapshot(details: SelfBookingCustomerDet
       bookingSource: "website",
       appointmentStart: details.startAt,
       appointmentEnd: details.endAt,
+      appointmentDurationMinutes: details.appointmentDurationMinutes,
       windowCount: details.windowCount || null,
       productTypes: details.productTypes
     }
@@ -62,6 +64,7 @@ export function buildSelfBookingProductRecord(details: SelfBookingCustomerDetail
       productInterest: details.productInterest,
       productTypes: details.productTypes,
       windowCount: details.windowCount || null,
+      appointmentDurationMinutes: details.appointmentDurationMinutes,
       appointmentStart: details.startAt,
       appointmentEnd: details.endAt
     }
