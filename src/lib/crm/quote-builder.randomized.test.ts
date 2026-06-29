@@ -28,6 +28,7 @@ import {
   getDetailFieldsForProduct,
   getMotorizationGroupsForProduct,
 } from "@/lib/quote/product-options";
+import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 
 type Dimensions = { width_in: number; height_in: number };
 type PricedBreakdown = {
@@ -310,6 +311,15 @@ describe("quote builder randomized fabric/color pricing", () => {
       expect(fields.unit_price, label).toBe(breakdown.unitPrice);
       expect(Number.isFinite(fields.unit_price), label).toBe(true);
       expect(fields.surcharges.some((item) => item.id === "__ignored_client_surcharge__"), label).toBe(false);
+
+      const expectedDetailSurcharges = deriveAutomaticSurcharges(row.productId, normalized.details);
+      for (const surcharge of expectedDetailSurcharges) {
+        expect(fields.surcharges.some((item) => item.id === surcharge.id), `${label} derived ${surcharge.id}`).toBe(true);
+        expect(
+          breakdown.surchargeLines?.some((item) => item.id === surcharge.id && item.amount > 0),
+          `${label} priced ${surcharge.id}`,
+        ).toBe(true);
+      }
 
       const hiddenSurcharge = normalized.details[PRODUCT_COLOR_SURCHARGE_DETAIL];
       if (typeof hiddenSurcharge === "string") {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getDetailFieldsForProduct, SHUTTER_VARIANTS, shutterVariantsFor } from "./product-options";
 import { catalog } from "./catalog";
+import { deriveAutomaticSurcharges } from "./automatic-surcharges";
 
 describe("SHUTTER_VARIANTS (product-grounded)", () => {
   it("offers A/B/C tiers for each shutter manufacturer", () => {
@@ -59,7 +60,7 @@ describe("catalog-backed surcharge detail fields", () => {
   it("shows product-specific priced add-on fields only when the catalog supports them", () => {
     expect(getDetailFieldsForProduct("roller").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "keystone", "magnetic_hold_down"]));
     expect(getDetailFieldsForProduct("smartdrape").map((field) => field.id)).toEqual(expect.arrayContaining(["aluminum_shim", "keystone"]));
-    expect(getDetailFieldsForProduct("citylights_aluminum").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "side_mount_bracket"]));
+    expect(getDetailFieldsForProduct("citylights_aluminum").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "side_mount_bracket_available_in_2in_only"]));
     expect(getDetailFieldsForProduct("palladian_shelf").map((field) => field.id)).not.toContain("shim");
   });
 
@@ -76,7 +77,35 @@ describe("catalog-backed surcharge detail fields", () => {
       { value: "fabric_valance_6", label: '6" Fabric Valance*' },
       { value: "fabric_valance_8", label: '8" Fabric Valance*' },
       { value: "modern_wood_valance_4_1_2", label: '4 1/2" Modern Wood Valance*' },
-      { value: "cassette", label: "Cassette" },
+      { value: "cassette", label: "Cassette*" },
     ]);
+  });
+
+  it("can derive every guide-priced product surcharge from a visible detail field", () => {
+    const ignoredCatalogHelpers = new Set(["valance_additional_foot", "additional_valance_foot"]);
+    for (const product of catalog.products) {
+      const fields = getDetailFieldsForProduct(product.id);
+      const reachable = new Set<string>();
+      for (const field of fields) {
+        if (field.type === "checkbox") {
+          for (const surcharge of deriveAutomaticSurcharges(product.id, { [field.id]: true })) {
+            reachable.add(surcharge.id);
+          }
+          continue;
+        }
+        for (const option of field.options ?? []) {
+          if (!option.value || option.value === "none" || option.value === "no") continue;
+          for (const surcharge of deriveAutomaticSurcharges(product.id, { [field.id]: option.value })) {
+            reachable.add(surcharge.id);
+          }
+        }
+      }
+
+      for (const surcharge of product.surcharges) {
+        const priceable = surcharge.value != null || surcharge.widthGraduated != null;
+        if (!priceable || ignoredCatalogHelpers.has(surcharge.id)) continue;
+        expect(reachable.has(surcharge.id), `${product.id} missing selectable detail for ${surcharge.id}`).toBe(true);
+      }
+    }
   });
 });

@@ -111,6 +111,25 @@ describe("width-graduated valance surcharges (H1: no longer billed $0)", () => {
     expect(line(r, "smartfold_8in_fabric_valance").amount).toBe(282);
   });
 
+  it("bills blind valance selections that were stored as note-only width tables", () => {
+    const faux = ok(priceDesign({
+      productId: "faux_wood",
+      programId: FAUXWOOD,
+      widthInches: 36,
+      heightInches: 36,
+      surcharges: deriveAutomaticSurcharges("faux_wood", { valance: "designer_crown" }),
+    }));
+    expect(line(faux, "valance_surcharge").amount).toBe(40);
+
+    const smartPrivacy = ok(priceDesign({
+      productId: "smartprivacy_faux",
+      widthInches: 36,
+      heightInches: 36,
+      surcharges: deriveAutomaticSurcharges("smartprivacy_faux", { valance: "modern_curved" }),
+    }));
+    expect(line(smartPrivacy, "valance").amount).toBe(40);
+  });
+
   it("bills Centerpiece Roman fabric valance from guide page 27", () => {
     const r = ok(priceDesign({
       productId: "roman",
