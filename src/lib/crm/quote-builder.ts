@@ -118,7 +118,7 @@ function normalizeDetails(productId: string, value: unknown): Record<string, Crm
   return normalized;
 }
 
-function normalizeProductColorSelection(
+export function normalizeQuoteBuilderColorSelection(
   productId: string,
   fabric: string | null,
   programId: string | null,
@@ -467,7 +467,7 @@ export async function upsertDesign(
 
   const programId = optionalText(payload.program_id);
   const fabric = optionalText(payload.fabric);
-  const colorSelection = normalizeProductColorSelection(
+  const colorSelection = normalizeQuoteBuilderColorSelection(
     productId,
     fabric,
     programId,
@@ -627,7 +627,7 @@ export async function duplicateLineItem(
   const copyDiscount = Number(source.discount_percent) || 0;
   let selectedNewId: string | null = null;
   for (const d of source.designs ?? []) {
-    const colorSelection = normalizeProductColorSelection(
+    const colorSelection = normalizeQuoteBuilderColorSelection(
       d.product_id,
       d.fabric,
       d.program_id,
