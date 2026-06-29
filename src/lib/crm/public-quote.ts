@@ -12,6 +12,12 @@ import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
 import { catalog, getProduct } from "@/lib/quote/catalog";
 import { formatInches } from "@/lib/quote/measurements";
+import {
+  normanRollerFabricLabel,
+  NORMAN_ROLLER_COLOR_CODE_DETAIL,
+  NORMAN_ROLLER_COLOR_NAME_DETAIL,
+  NORMAN_ROLLER_PRODUCT_ID,
+} from "@/lib/quote/norman-roller-fabrics";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
@@ -208,6 +214,21 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   let styleName = "";
   if (design.program_id) {
     styleName = product?.programs.find((p) => p.id === design.program_id)?.name ?? "";
+  }
+  const details = record(design.details);
+  const fabricColorCode = details[NORMAN_ROLLER_COLOR_CODE_DETAIL];
+  const fabricColorName = details[NORMAN_ROLLER_COLOR_NAME_DETAIL];
+  if (
+    design.product_id === NORMAN_ROLLER_PRODUCT_ID &&
+    design.fabric &&
+    typeof fabricColorCode === "string" &&
+    typeof fabricColorName === "string"
+  ) {
+    styleName = normanRollerFabricLabel({
+      collection: design.fabric,
+      colorCode: fabricColorCode,
+      colorName: fabricColorName,
+    });
   }
   if (!styleName && design.fabric) styleName = design.fabric;
   const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];

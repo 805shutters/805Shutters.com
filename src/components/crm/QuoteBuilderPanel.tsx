@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteWithItems } from "@/lib/crm/types";
-import type { UiCatalog, UiDetailField, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct } from "@/lib/quote/ui-catalog";
+import type { UiCatalog, UiDetailField, UiFabricColor, UiMotorizationOption, UiPricingReference, UiPricingReferenceProgram, UiProduct } from "@/lib/quote/ui-catalog";
 import { FRACTION_STEPS, formatInches, splitInches, toInches } from "@/lib/quote/measurements";
 import { summarizePriceBreakdown } from "@/lib/quote/price-explanation";
 import { shutterVariantsFor } from "@/lib/quote/product-options";
@@ -83,6 +83,9 @@ function motorOptionHint(productId: string, option: UiMotorizationOption): strin
 }
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
+const FABRIC_RESULT_LIMIT = 18;
+const FABRIC_COLOR_CODE_DETAIL = "fabric_color_code";
+const FABRIC_COLOR_NAME_DETAIL = "fabric_color_name";
 
 // Friendly labels for the catalog's productType keys, shown on the product-line
 // tiles. Any type missing here falls back to a title-cased version of the key.
@@ -104,6 +107,16 @@ const PRODUCT_TYPE_LABELS: Record<string, string> = {
 
 function typeLabel(t: string): string {
   return PRODUCT_TYPE_LABELS[t] || t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function fabricColorLabel(row: Pick<UiFabricColor, "collection" | "colorCode" | "colorName">): string {
+  return `${row.colorCode} - ${row.colorName} | ${row.collection}`;
+}
+
+function selectedFabricColor(product: UiProduct | undefined, design: CrmQuoteDesign): UiFabricColor | null {
+  const code = design.details?.[FABRIC_COLOR_CODE_DETAIL];
+  if (typeof code !== "string" || !code) return null;
+  return product?.fabricColors.find((row) => row.collection === design.fabric && row.colorCode === code) ?? null;
 }
 
 // Quick-add room buttons (union of the old MTS quote-builder and measure-form room presets).
@@ -845,7 +858,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   const sel = selectedDesign(li)!;
                   const prod = productsById.get(sel.product_id);
                   const chips: string[] = [];
-                  if (sel.fabric) chips.push(sel.fabric);
+                  const color = selectedFabricColor(prod, sel);
+                  if (color) chips.push(fabricColorLabel(color));
+                  else if (sel.fabric) chips.push(sel.fabric);
                   for (const field of prod?.details ?? []) {
                     const val = (sel.details ?? {})[field.id];
                     if (val === true) chips.push(field.label);
@@ -913,7 +928,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             </select>
                           </Field>
 
-                          {product && product.programs.length > 1 ? (
+                          {product && product.programs.length > 1 && product.fabrics.length === 0 ? (
                             <Field label="Program / Style">
                               <select
                                 value={design.program_id || ""}
@@ -929,7 +944,32 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             </Field>
                           ) : null}
 
-                          {product && product.fabrics.length > 0 ? (
+                          {product && product.fabricColors.length > 0 ? (
+                            <Field label="Fabric color" width={360}>
+                              <FabricColorAutocomplete
+                                product={product}
+                                design={design}
+                                disabled={isSaving}
+                                onSelect={(row) =>
+                                  saveDesign(li, design, {
+                                    fabric: row.collection,
+                                    program_id: null,
+                                    details: {
+                                      ...(design.details ?? {}),
+                                      [FABRIC_COLOR_CODE_DETAIL]: row.colorCode,
+                                      [FABRIC_COLOR_NAME_DETAIL]: row.colorName,
+                                    },
+                                  })
+                                }
+                                onClear={() => {
+                                  const next = { ...(design.details ?? {}) };
+                                  delete next[FABRIC_COLOR_CODE_DETAIL];
+                                  delete next[FABRIC_COLOR_NAME_DETAIL];
+                                  return saveDesign(li, design, { fabric: null, program_id: null, details: next });
+                                }}
+                              />
+                            </Field>
+                          ) : product && product.fabrics.length > 0 ? (
                             <Field label="Fabric">
                               <select
                                 value={design.fabric || ""}
@@ -1070,6 +1110,115 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   return embedded ? inner : (
     <div className="qb-overlay" role="dialog" aria-modal="true" style={overlayStyle}>
       {inner}
+    </div>
+  );
+}
+
+function FabricColorAutocomplete({
+  product,
+  design,
+  disabled,
+  onSelect,
+  onClear,
+}: {
+  product: UiProduct;
+  design: CrmQuoteDesign;
+  disabled: boolean;
+  onSelect: (row: UiFabricColor) => void;
+  onClear: () => void;
+}) {
+  const selected = selectedFabricColor(product, design);
+  const selectedLabel = selected ? fabricColorLabel(selected) : (design.fabric ?? "");
+  const [query, setQuery] = useState(selectedLabel);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setQuery(selectedLabel);
+  }, [selectedLabel]);
+
+  const results = useMemo(() => {
+    const normalized = query.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const parts = normalized.split(" ").filter(Boolean);
+    const matches = parts.length
+      ? product.fabricColors.filter((row) => parts.every((part) => row.searchText.includes(part)))
+      : product.fabricColors;
+    return [...matches]
+      .sort((a, b) => {
+        if (a.available !== b.available) return a.available ? -1 : 1;
+        return `${a.collection} ${a.colorCode}`.localeCompare(`${b.collection} ${b.colorCode}`);
+      })
+      .slice(0, FABRIC_RESULT_LIMIT);
+  }, [product.fabricColors, query]);
+
+  return (
+    <div style={fabricSearchWrap}>
+      <div style={fabricSearchInputRow}>
+        <input
+          value={query}
+          disabled={disabled}
+          onFocus={() => setOpen(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+          }}
+          placeholder="Search F1515, Ecru, Garden..."
+          style={fabricSearchInput}
+        />
+        {selected || design.fabric ? (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setQuery("");
+              setOpen(false);
+              onClear();
+            }}
+            style={fabricClearBtn}
+            aria-label="Clear fabric color"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {open ? (
+        <div style={fabricResultMenu}>
+          {results.length ? (
+            results.map((row) => (
+              <button
+                key={`${row.collection}:${row.colorCode}`}
+                type="button"
+                disabled={disabled || !row.available}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => {
+                  if (!row.available) return;
+                  setQuery(fabricColorLabel(row));
+                  setOpen(false);
+                  onSelect(row);
+                }}
+                style={{
+                  ...fabricResultBtn,
+                  ...(!row.available ? fabricResultUnavailable : {}),
+                  ...(selected?.collection === row.collection && selected?.colorCode === row.colorCode ? fabricResultSelected : {}),
+                }}
+              >
+                {row.imageUrl ? (
+                  <img src={row.imageUrl} alt="" width={36} height={36} style={fabricResultImage} loading="lazy" />
+                ) : null}
+                <span style={{ minWidth: 0 }}>
+                  <span style={fabricResultTitle}>{row.colorCode} - {row.colorName}</span>
+                  <span style={fabricResultMeta}>
+                    {row.collection} / {row.fabricType || "Fabric"}
+                    {row.frStatus ? ` / ${row.frStatus}` : ""}
+                  </span>
+                  {!row.available ? <span style={fabricUnavailableText}>Price group needed before quoting</span> : null}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div style={fabricNoResults}>No Norman roller fabric colors found.</div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1591,6 +1740,80 @@ const selectedOptionSummaryBox: CSSProperties = {
   fontWeight: 600,
   lineHeight: 1.1,
 };
+const fabricSearchWrap: CSSProperties = { position: "relative", width: "100%" };
+const fabricSearchInputRow: CSSProperties = { display: "flex", gap: 4, width: "100%" };
+const fabricSearchInput: CSSProperties = {
+  flex: "1 1 auto",
+  minWidth: 0,
+};
+const fabricClearBtn: CSSProperties = {
+  border: "1px solid #d8d8d2",
+  background: "#ffffff",
+  borderRadius: 6,
+  padding: "4px 8px",
+  cursor: "pointer",
+  fontSize: 12,
+};
+const fabricResultMenu: CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 4px)",
+  left: 0,
+  right: 0,
+  zIndex: 50,
+  maxHeight: 340,
+  overflowY: "auto",
+  border: "1px solid #cfcac1",
+  borderRadius: 8,
+  background: "#ffffff",
+  boxShadow: "0 12px 28px rgba(0,0,0,0.16)",
+  padding: 4,
+};
+const fabricResultBtn: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  border: "1px solid transparent",
+  background: "#ffffff",
+  borderRadius: 6,
+  padding: 6,
+  cursor: "pointer",
+  textAlign: "left",
+};
+const fabricResultSelected: CSSProperties = { borderColor: "#111111", background: "#f4f4f2" };
+const fabricResultUnavailable: CSSProperties = { opacity: 0.58, cursor: "not-allowed" };
+const fabricResultImage: CSSProperties = {
+  flex: "0 0 36px",
+  borderRadius: 4,
+  objectFit: "cover",
+  background: "#efede8",
+};
+const fabricResultTitle: CSSProperties = {
+  display: "block",
+  color: "#111111",
+  fontSize: 12,
+  fontWeight: 700,
+  lineHeight: 1.2,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const fabricResultMeta: CSSProperties = {
+  display: "block",
+  color: "#5f5f59",
+  fontSize: 11,
+  lineHeight: 1.2,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const fabricUnavailableText: CSSProperties = {
+  display: "block",
+  color: "#6b530a",
+  fontSize: 11,
+  lineHeight: 1.2,
+};
+const fabricNoResults: CSSProperties = { padding: 10, fontSize: 12, color: "#5f5f59" };
 const detailGrid: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #eeeeeb" };
 const surchargeList: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, maxHeight: 180, overflowY: "auto", marginTop: 8, padding: 8, border: "1px solid #eeeeeb", borderRadius: 6 };
 const totalsBar: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, padding: "12px 16px", background: "#0b0b0b", color: "#ffffff", borderRadius: 8, fontSize: 18 };

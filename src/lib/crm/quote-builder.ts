@@ -46,6 +46,12 @@ import { advanceJobStatus, jobStatusForQuote, STATUS_TIMESTAMP_COLUMN } from "@/
 import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, shutterVariantsFor } from "@/lib/quote/product-options";
 import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
+import {
+  findNormanRollerFabricColor,
+  NORMAN_ROLLER_COLOR_CODE_DETAIL,
+  NORMAN_ROLLER_COLOR_NAME_DETAIL,
+  NORMAN_ROLLER_PRODUCT_ID,
+} from "@/lib/quote/norman-roller-fabrics";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -107,6 +113,35 @@ function normalizeDetails(productId: string, value: unknown): Record<string, Crm
     normalized[field.id] = text;
   }
   return normalized;
+}
+
+function normalizeFabricColorDetails(
+  productId: string,
+  fabric: string | null,
+  programId: string | null,
+  value: unknown,
+  base: Record<string, CrmQuoteDetailValue>,
+): Record<string, CrmQuoteDetailValue> {
+  if (productId !== NORMAN_ROLLER_PRODUCT_ID) return base;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+  const input = value as Record<string, unknown>;
+  const colorCode = optionalText(input[NORMAN_ROLLER_COLOR_CODE_DETAIL]);
+  if (!colorCode) return base;
+  if (!fabric) {
+    throw new CrmAuthError(400, "Pick a Norman roller fabric collection before selecting a fabric color.");
+  }
+  const row = findNormanRollerFabricColor(fabric, colorCode);
+  if (!row) {
+    throw new CrmAuthError(400, "That Norman roller fabric color is not available with a verified price group.");
+  }
+  if (programId && programId !== row.programId) {
+    throw new CrmAuthError(400, "That Norman roller fabric color does not match the selected price program.");
+  }
+  return {
+    ...base,
+    [NORMAN_ROLLER_COLOR_CODE_DETAIL]: row.colorCode,
+    [NORMAN_ROLLER_COLOR_NAME_DETAIL]: row.colorName,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -404,11 +439,19 @@ export async function upsertDesign(
 
   const lineItem = await fetchLineItem(supabase, lineItemId);
 
+  const programId = optionalText(payload.program_id);
+  const fabric = optionalText(payload.fabric);
   const designInput = {
     product_id: productId,
-    program_id: optionalText(payload.program_id),
-    fabric: optionalText(payload.fabric),
-    details: normalizeDetails(productId, payload.details),
+    program_id: programId,
+    fabric,
+    details: normalizeFabricColorDetails(
+      productId,
+      fabric,
+      programId,
+      payload.details,
+      normalizeDetails(productId, payload.details),
+    ),
     surcharges: [],
     motorization: normalizeMotorization(productId, payload.motorization),
   };
@@ -561,7 +604,13 @@ export async function duplicateLineItem(
       product_id: d.product_id,
       program_id: d.program_id,
       fabric: d.fabric,
-      details: normalizeDetails(d.product_id, d.details ?? {}),
+      details: normalizeFabricColorDetails(
+        d.product_id,
+        d.fabric,
+        d.program_id,
+        d.details ?? {},
+        normalizeDetails(d.product_id, d.details ?? {}),
+      ),
       surcharges: [],
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };

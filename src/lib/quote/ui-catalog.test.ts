@@ -20,6 +20,23 @@ describe("buildUiCatalog", () => {
     expect(roller.fabrics.every((f) => typeof f.programId === "string")).toBe(true);
   });
 
+  it("exposes every Norman roller fabric color with verified pricing availability", () => {
+    const roller = ui.products.find((p) => p.id === "roller")!;
+    expect(roller.fabricColors).toHaveLength(343);
+    expect(roller.fabricColors.filter((row) => row.available)).toHaveLength(342);
+    expect(roller.fabricColors.find((row) => row.colorCode === "F1515")).toMatchObject({
+      collection: "Garden",
+      colorName: "Ecru",
+      programId: "roller_cordless_fabric_price_group_3_pg3",
+      available: true,
+    });
+    expect(roller.fabricColors.find((row) => row.collection === "Luxe")).toMatchObject({
+      colorCode: "F0818",
+      available: false,
+      programId: null,
+    });
+  });
+
   it("includes shutters flagged provisional with sqft programs", () => {
     const norman = ui.products.find((p) => p.id === "norman_shutters")!;
     expect(norman.provisional).toBe(true);

@@ -3,6 +3,11 @@
 // motorization) without shipping the full price grids to the browser.
 
 import { catalog } from "./catalog";
+import {
+  NORMAN_ROLLER_PRODUCT_ID,
+  normanRollerFabricColors,
+  type NormanRollerFabricColor,
+} from "./norman-roller-fabrics";
 import { productImage } from "./product-images";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
 
@@ -14,6 +19,20 @@ export type UiProgram = {
 };
 
 export type UiFabric = { name: string; programId: string };
+
+export type UiFabricColor = Pick<
+  NormanRollerFabricColor,
+  | "collection"
+  | "fabricType"
+  | "colorCode"
+  | "colorName"
+  | "publicColorName"
+  | "frStatus"
+  | "imageUrl"
+  | "programId"
+  | "available"
+  | "searchText"
+>;
 
 export type UiSurcharge = {
   id: string;
@@ -43,6 +62,7 @@ export type UiProduct = {
   /** Products are chosen by fabric when fabrics is non-empty, else by program. */
   programs: UiProgram[];
   fabrics: UiFabric[];
+  fabricColors: UiFabricColor[];
   details: UiDetailField[];
   motorizationGroups: string[];
   surcharges: UiSurcharge[];
@@ -155,6 +175,21 @@ export function buildUiCatalog(): UiCatalog {
           .map(([name, programId]) => ({ name, programId }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [],
+    fabricColors:
+      p.id === NORMAN_ROLLER_PRODUCT_ID
+        ? normanRollerFabricColors.map((row) => ({
+            collection: row.collection,
+            fabricType: row.fabricType,
+            colorCode: row.colorCode,
+            colorName: row.colorName,
+            publicColorName: row.publicColorName,
+            frStatus: row.frStatus,
+            imageUrl: row.imageUrl,
+            programId: row.programId,
+            available: row.available,
+            searchText: row.searchText,
+          }))
+        : [],
     details: getDetailFieldsForProduct(p.id),
     motorizationGroups: getMotorizationGroupsForProduct(p.id),
     surcharges: p.surcharges.map((s) => ({

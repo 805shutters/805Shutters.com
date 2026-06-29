@@ -53,6 +53,12 @@ describe("worked examples (prices verified against the Norman 2026 guide PDF)", 
     expect(r.base).toBe(254);
   });
 
+  it("roller shade routes Garden fabric colors through fabric price group 3, 24x36 = $307", () => {
+    const r = ok(priceDesign({ productId: "roller", fabric: "Garden", widthInches: 24, heightInches: 36 }));
+    expect(r.programId).toBe("roller_cordless_fabric_price_group_3_pg3");
+    expect(r.base).toBe(307);
+  });
+
   it("palladian shelf is width-only priced: 24\" = $122, 30\" rounds to 32\" = $161", () => {
     const id = "palladian_shelf_palladian_shelf_with_product";
     const a = ok(priceDesign({ productId: "palladian_shelf", programId: id, widthInches: 24, heightInches: 0 }));

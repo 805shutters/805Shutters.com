@@ -47,6 +47,17 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
     expect(d.styleName).toBe("Callie");
   });
 
+  it("uses the exact Norman roller fabric color when one is selected", () => {
+    const d = describeDesign(
+      design({
+        product_id: "roller",
+        fabric: "Garden",
+        details: { fabric_color_code: "F1515", fabric_color_name: "Ecru" },
+      }),
+    );
+    expect(d.styleName).toBe("F1515 - Ecru | Garden");
+  });
+
   it("resolves surcharge option names", () => {
     const d = describeDesign(design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", surcharges: [{ id: "shim" }] }));
     expect(d.options.some((o) => /shim/i.test(o))).toBe(true);
