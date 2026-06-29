@@ -438,6 +438,10 @@ function calendarEventCustomerLabel(event: CrmCalendarEvent) {
   return cleanCalendarText(event.customer_name) || cleanCalendarText(event.title) || "Appointment";
 }
 
+function calendarEventAssignmentLabel(event: CrmCalendarEvent) {
+  return cleanCalendarText(event.assigned_to) || "Unassigned";
+}
+
 function calendarEventDescriptionLines(event: CrmCalendarEvent) {
   const address = cleanCalendarText(event.customer_address || event.location);
   const city = cleanCalendarText(event.customer_city);
@@ -447,7 +451,6 @@ function calendarEventDescriptionLines(event: CrmCalendarEvent) {
     cleanCalendarText(event.customer_phone) ? `Phone: ${cleanCalendarText(event.customer_phone)}` : null,
     address ? `Address: ${address}` : null,
     city ? `City: ${city}` : null,
-    cleanCalendarText(event.assigned_to) ? `Assigned: ${cleanCalendarText(event.assigned_to)}` : null,
     cleanCalendarText(event.product_interest) ? `Product: ${cleanCalendarText(event.product_interest)}` : null,
     notes ? `Notes: ${notes}` : null
   ].filter((line): line is string => Boolean(line));
@@ -457,8 +460,9 @@ function calendarEventDescriptionLabel(event: CrmCalendarEvent) {
   return [
     `${calendarTimeFormatter.format(new Date(event.start_at))} - ${calendarTimeFormatter.format(new Date(event.end_at))}`,
     calendarEventCustomerLabel(event),
+    event.event_type === "block" ? null : `Scheduled for: ${calendarEventAssignmentLabel(event)}`,
     ...calendarEventDescriptionLines(event)
-  ].join(". ");
+  ].filter((line): line is string => Boolean(line)).join(". ");
 }
 
 function formString(formData: FormData, key: string) {
@@ -8173,6 +8177,7 @@ function CalendarTimelineGrid({
           const detailLines = calendarEventDescriptionLines(event);
           const descriptionLabel = calendarEventDescriptionLabel(event);
           const canReschedule = canRescheduleCalendarEvent(event);
+          const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
 
           return (
             <article
@@ -8194,7 +8199,10 @@ function CalendarTimelineGrid({
                 </span>
                 <b>{calendarEventDurationLabel(event)}</b>
               </div>
-              <h3>{calendarEventCustomerLabel(event)}</h3>
+              <div className="crm-calendar-event-heading">
+                <h3>{calendarEventCustomerLabel(event)}</h3>
+                {assignmentLabel ? <span className="crm-calendar-event-owner-badge">{assignmentLabel}</span> : null}
+              </div>
               <div className="crm-calendar-event-details">
                 {detailLines.map((line) => (
                   <p key={line}>{line}</p>

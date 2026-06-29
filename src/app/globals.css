@@ -4785,10 +4785,10 @@ body.qb-fullscreen .crm-app-shell {
   padding: 6px 8px;
   overflow-x: hidden;
   overflow-y: auto;
-  background: #f4f4f2;
-  border: 1px solid #b8b6ae;
+  background: #111111;
+  border: 1px solid #0b0b0b;
   border-radius: 3px;
-  color: #0b0b0b;
+  color: #ffffff;
   box-shadow: none;
 }
 
@@ -4800,15 +4800,11 @@ body.qb-fullscreen .crm-app-shell {
   cursor: grabbing;
 }
 
-.crm-calendar-event-block--mike {
+.crm-calendar-event-block--mike,
+.crm-calendar-event-block--jessica,
+.crm-calendar-event-block--unassigned {
   background: #111111;
   border-color: #0b0b0b;
-  color: #ffffff;
-}
-
-.crm-calendar-event-block--unassigned {
-  background: #3a3a36;
-  border-color: #2b2b28;
   color: #ffffff;
 }
 
@@ -4845,7 +4841,15 @@ body.qb-fullscreen .crm-app-shell {
   white-space: nowrap;
 }
 
-.crm-calendar-event-block h3 {
+.crm-calendar-event-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-calendar-event-heading h3 {
+  flex: 1 1 auto;
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
@@ -4853,6 +4857,27 @@ body.qb-fullscreen .crm-app-shell {
   font-size: 13px;
   font-weight: 900;
   line-height: 1.15;
+}
+
+.crm-calendar-event-owner-badge {
+  flex: 0 1 auto;
+  max-width: 48%;
+  padding: 2px 5px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 3px;
+  color: inherit;
+  font-size: 9px;
+  font-weight: 950;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-calendar-event-block--block .crm-calendar-event-owner-badge {
+  background: rgba(17, 17, 17, 0.08);
+  border-color: rgba(17, 17, 17, 0.18);
 }
 
 .crm-calendar-event-details {
@@ -5001,8 +5026,8 @@ body.qb-fullscreen .crm-app-shell {
   min-width: 0;
   padding: 5px 6px;
   overflow: hidden;
-  background: #3a3a36;
-  border: 1px solid #2b2b28;
+  background: #111111;
+  border: 1px solid #0b0b0b;
   border-radius: 3px;
   color: #ffffff;
 }
@@ -5013,14 +5038,10 @@ body.qb-fullscreen .crm-app-shell {
   gap: 5px;
 }
 
-.crm-calendar-month-event.crm-calendar-event-block--mike {
+.crm-calendar-month-event.crm-calendar-event-block--mike,
+.crm-calendar-month-event.crm-calendar-event-block--jessica {
   background: #111111;
   border-color: #0b0b0b;
-}
-
-.crm-calendar-month-event.crm-calendar-event-block--jessica {
-  background: #245743;
-  border-color: #174433;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--block {
