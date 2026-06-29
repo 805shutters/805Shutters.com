@@ -82,6 +82,7 @@ export type PublicQuote = {
   balanceDue: number;
   total: number;
   allPriced: boolean;
+  hasOnyxShutters: boolean;
   /** Quote-level adjustments (discount/tax/deposit/fees) so a customer subset
    *  selection can recompute its total with the same engine. */
   adjustments: QuoteAdjustments;
@@ -119,6 +120,7 @@ export type SignedContractSnapshot = {
     balanceDue: number;
     total: number;
   };
+  hasOnyxShutters: boolean;
 };
 
 export function buildSignedContractSnapshot(
@@ -156,6 +158,7 @@ export function buildSignedContractSnapshot(
       balanceDue: pub.balanceDue,
       total: pub.total,
     },
+    hasOnyxShutters: pub.hasOnyxShutters,
   };
 }
 
@@ -209,6 +212,30 @@ function legacyDesignSnapshot(design: CrmQuoteDesign): {
     productType: typeof breakdown.productType === "string" ? breakdown.productType : undefined,
     details,
   };
+}
+
+function designIsOnyxShutters(design: CrmQuoteDesign): boolean {
+  if (design.product_id === "onyx_shutters") return true;
+
+  const legacy = legacyDesignSnapshot(design);
+  if (legacy?.productType && /onyx/i.test(legacy.productType) && /shutter/i.test(legacy.productType)) {
+    return true;
+  }
+
+  return legacy?.details?.some((detail) => {
+    const value = `${detail.label} ${detail.value}`;
+    return /onyx/i.test(value) && /shutter|supplier|manufacturer/i.test(value);
+  }) ?? false;
+}
+
+function lineItemHasOnyxShutters(lineItem: CrmQuoteLineItem, legacyMts: boolean): boolean {
+  if (legacyMts) return (lineItem.designs || []).some(designIsOnyxShutters);
+  const design = selectedDesign(lineItem);
+  return design ? designIsOnyxShutters(design) : false;
+}
+
+function quoteHasOnyxManufacturer(quote: CrmQuote): boolean {
+  return /onyx/i.test(quote.manufacturer_name || "");
 }
 
 /** Customer-readable description of a design from the catalog (no prices leaked beyond unit_price). */
@@ -364,6 +391,9 @@ export async function loadPublicQuoteByToken(
     .sort((a, b) => a.sort_order - b.sort_order);
   const legacyMts = isLegacyMtsQuote(quote);
   const lines = lineItems.map((lineItem) => projectLine(lineItem, legacyMts));
+  const hasOnyxShutters =
+    quoteHasOnyxManufacturer(quote) ||
+    lineItems.some((lineItem) => lineItemHasOnyxShutters(lineItem, legacyMts));
   const subtotal = round2(lines.reduce((s, l) => s + l.lineTotal, 0));
   // Rebuild the full money breakdown from line items + adjustments (same engine
   // the builder uses), so Subtotal − discount + tax + fees = Total exactly. This
@@ -407,6 +437,7 @@ export async function loadPublicQuoteByToken(
     balanceDue: round2(Math.max(total - depositDue, 0)),
     total,
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
+    hasOnyxShutters,
     adjustments: adj,
     business: { name: BUSINESS_NAME, phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || "" },
     versions,

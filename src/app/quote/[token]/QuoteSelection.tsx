@@ -246,8 +246,56 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </div>
       ) : null}
 
+      {quote.hasOnyxShutters ? (
+        <details open style={termsBox}>
+          <summary style={summaryStyle}>Onyx Shutters Manufacturer Warranty</summary>
+          <div style={{ marginTop: 10 }}>
+            <p style={{ margin: "0 0 10px" }}>
+              Your shutters are manufactured by Onyx Shutters, one of the manufacturers used by
+              805 Shutters. Onyx Shutters provides manufacturer warranty coverage to the original
+              purchaser when the shutters are properly installed, properly operated, and properly
+              maintained.
+            </p>
+            <strong style={{ color: "#0b0b0b" }}>Manufacturer warranty coverage</strong>
+            <ul style={termsList}>
+              <li>Limited lifetime warranty on shutter mechanisms.</li>
+              <li>7-year warranty on paint color fastness.</li>
+              <li>7-year warranty against warping and cracking.</li>
+              <li>2-year warranty on color fastness for stained wood shutters.</li>
+            </ul>
+            <p style={{ margin: "10px 0 0" }}>
+              Warranty coverage begins from the original date of purchase and applies to the
+              original purchaser.
+            </p>
+            <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
+              Manufacturer exclusions
+            </strong>
+            <ul style={termsList}>
+              <li>Improper installation, operation, or maintenance.</li>
+              <li>Abuse, misuse, customer-performed repairs, accidents, or alterations.</li>
+              <li>Acts of God and normal wear and tear.</li>
+            </ul>
+            <strong style={{ display: "block", marginTop: 12, color: "#0b0b0b" }}>
+              Color matching
+            </strong>
+            <p style={{ margin: "6px 0 0" }}>
+              Custom color matches and color matches between separate orders are not guaranteed due
+              to material, finish, dye lot, and production variations. Once a custom color sample has
+              been approved, resulting color variation is not covered by the Onyx manufacturer
+              warranty.
+            </p>
+            <p style={{ margin: "10px 0 0" }}>
+              If a warranty concern arises, please contact 805 Shutters. We will review the concern,
+              request photos if needed, and help coordinate the claim process with Onyx Shutters.
+              Manufacturer warranty approval, repair, replacement, or remake decisions are subject
+              to Onyx Shutters&apos; review and warranty terms.
+            </p>
+          </div>
+        </details>
+      ) : null}
+
       {/* Balance terms — shown above the sign section */}
-      <div style={{ marginTop: 20, padding: 14, border: "1px solid #d8d8d2", borderRadius: 8, background: "#fbfbfa", fontSize: 13, lineHeight: 1.6, color: "#4d4d49" }}>
+      <div style={termsBox}>
         <strong style={{ color: "#0b0b0b" }}>Payment at Installation</strong>
         <p style={{ margin: "6px 0 0" }}>
           The remaining balance is due at installation for all products that have been installed.
@@ -316,6 +364,26 @@ const cardBtn = {
   cursor: "pointer",
 } as const;
 const radioLabel = { display: "inline-flex", gap: 6, alignItems: "center", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
+const termsBox = {
+  marginTop: 20,
+  padding: 14,
+  border: "1px solid #d8d8d2",
+  borderRadius: 8,
+  background: "#fbfbfa",
+  fontSize: 13,
+  lineHeight: 1.6,
+  color: "#4d4d49",
+} as const;
+const summaryStyle = {
+  cursor: "pointer",
+  fontSize: 15,
+  fontWeight: 700,
+  color: "#0b0b0b",
+} as const;
+const termsList = {
+  margin: "6px 0 0",
+  paddingLeft: 20,
+} as const;
 const discountTag = {
   display: "inline-block",
   marginTop: 4,

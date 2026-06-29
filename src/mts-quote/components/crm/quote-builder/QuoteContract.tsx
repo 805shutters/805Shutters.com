@@ -67,6 +67,19 @@ const paymentIcons: Record<string, typeof FileText> = {
   cash: Banknote,
 };
 
+function hasOnyxShutterProducts(
+  lineItems: SalesQuoteLineItem[],
+  designs: SalesQuoteDesign[]
+): boolean {
+  return designs.some((design) => {
+    const lineItem = lineItems.find((item) => item.id === design.line_item_id);
+    const supplier = design.supplier?.trim().toLowerCase();
+    const productType = (design.product_type || lineItem?.product_type || "").trim().toLowerCase();
+
+    return supplier === "onyx" && productType === "shutters";
+  });
+}
+
 // Account-specific contract header branding
 const CONTRACT_HEADERS: Record<
   string,
@@ -458,6 +471,13 @@ export function QuoteContract() {
 
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
+  const contractLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
+  const contractDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
+  const includesOnyxShutters = hasOnyxShutterProducts(contractLineItems, contractDesigns);
+  const workmanshipWarrantyNumber = includesOnyxShutters ? 3 : 2;
+  const serviceFeesNumber = workmanshipWarrantyNumber + 1;
+  const claimsNumber = serviceFeesNumber + 1;
+  const exclusionsNumber = claimsNumber + 1;
 
   if (!activeQuoteId || !quote) {
     return (
@@ -1082,9 +1102,59 @@ export function QuoteContract() {
                 </p>
               </AccordionContent>
             </AccordionItem>
+            {includesOnyxShutters && (
+              <AccordionItem value="onyx-shutters">
+                <AccordionTrigger>2. Onyx Shutters Manufacturer Warranty</AccordionTrigger>
+                <AccordionContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Your shutters are manufactured by Onyx Shutters, one of the manufacturers used
+                    by {companyName}. Onyx Shutters provides manufacturer warranty coverage to the
+                    original purchaser when the shutters are properly installed, properly operated,
+                    and properly maintained.
+                  </p>
+                  <div>
+                    <p className="font-semibold text-foreground">Manufacturer warranty coverage:</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      <li>Limited lifetime warranty on shutter mechanisms.</li>
+                      <li>7-year warranty on paint color fastness.</li>
+                      <li>7-year warranty against warping and cracking.</li>
+                      <li>2-year warranty on color fastness for stained wood shutters.</li>
+                    </ul>
+                  </div>
+                  <p>
+                    Warranty coverage begins from the original date of purchase and applies to the
+                    original purchaser.
+                  </p>
+                  <div>
+                    <p className="font-semibold text-foreground">Manufacturer exclusions:</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      <li>Improper installation, operation, or maintenance.</li>
+                      <li>Abuse, misuse, customer-performed repairs, accidents, or alterations.</li>
+                      <li>Acts of God and normal wear and tear.</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-foreground">Color matching:</p>
+                    <p className="mt-2">
+                      Custom color matches and color matches between separate orders are not
+                      guaranteed due to material, finish, dye lot, and production variations. Once a
+                      custom color sample has been approved, resulting color variation is not covered
+                      by the Onyx manufacturer warranty.
+                    </p>
+                  </div>
+                  <p>
+                    If a warranty concern arises, please contact {companyName}. We will review the
+                    concern, request photos if needed, and help coordinate the claim process with
+                    Onyx Shutters. Manufacturer warranty approval, repair, replacement, or remake
+                    decisions are subject to Onyx Shutters' review and warranty terms.
+                  </p>
+                </AccordionContent>
+              </AccordionItem>
+            )}
             <AccordionItem value="workmanship">
               <AccordionTrigger>
-                2. {companyName} Installation Workmanship Warranty (First 12 Months)
+                {workmanshipWarrantyNumber}. {companyName} Installation Workmanship Warranty (First
+                12 Months)
               </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground">
                 <p>
@@ -1095,7 +1165,9 @@ export function QuoteContract() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="service-fees">
-              <AccordionTrigger>3. Service & Labor Fees (After 12 Months)</AccordionTrigger>
+              <AccordionTrigger>
+                {serviceFeesNumber}. Service & Labor Fees (After 12 Months)
+              </AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground">
                 <p>
                   After the 12-month workmanship warranty period, service calls and labor for
@@ -1104,7 +1176,7 @@ export function QuoteContract() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="claims">
-              <AccordionTrigger>4. Warranty Claim & Service Process</AccordionTrigger>
+              <AccordionTrigger>{claimsNumber}. Warranty Claim & Service Process</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground">
                 <p>
                   To initiate a warranty claim or service request, please contact {companyName}. We
@@ -1113,7 +1185,7 @@ export function QuoteContract() {
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="exclusions">
-              <AccordionTrigger>5. Exclusions & Limitations</AccordionTrigger>
+              <AccordionTrigger>{exclusionsNumber}. Exclusions & Limitations</AccordionTrigger>
               <AccordionContent className="text-sm text-muted-foreground">
                 <p>
                   Warranties do not cover damage caused by normal wear and tear, misuse, abuse,

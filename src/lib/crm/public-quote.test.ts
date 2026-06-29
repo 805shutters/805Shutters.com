@@ -245,6 +245,7 @@ describe("buildSignedContractSnapshot", () => {
       balanceDue: 443.75,
       total: 887.5,
       allPriced: true,
+      hasOnyxShutters: true,
       adjustments: DEFAULT_ADJUSTMENTS,
       business: { name: "805 Shutters", phone: "805-555-1212" },
       versions: [],
@@ -257,6 +258,7 @@ describe("buildSignedContractSnapshot", () => {
       customerPrintedName: "Jane Smith",
       quote: { id: "quote-1", quoteNumber: "805-100" },
       totals: { total: 887.5, depositDue: 443.75, balanceDue: 443.75 },
+      hasOnyxShutters: true,
     });
     expect(snapshot.lines[0]).toMatchObject({
       lineItemId: "line-1",
