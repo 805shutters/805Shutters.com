@@ -661,166 +661,171 @@ export function QuoteBuilder() {
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
 
   return (
-    <div className="min-h-screen space-y-3 bg-[#f4f4f2] p-4 text-[#1c1c1a]">
+    <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
       {/* Quote group tabs relocated below the command bar */}
 
-      {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
-      <div className="sticky top-0 z-30 -mx-4 -mt-4 mb-1 border-b border-[#d8d8d2] bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4">
-            <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
-              {quoteLetterColor && (
-                <span
-                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
-                >
-                  {quote?.quote_letter}
-                </span>
-              )}
-              <span className="leading-none">
-                Quote Builder
-                <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
-                  Window treatment studio
-                </span>
-              </span>
-            </h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => freshStart.mutate()}
-              className="rounded-xl border-slate-200 bg-white shadow-sm"
-            >
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Fresh Start
-            </Button>
-            {quote && (
-              <Button
-                size="sm"
-                onClick={() => setShowSendDialog(true)}
-                className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                title="Email or text the quote link to the customer"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                Send Quote
-              </Button>
-            )}
-            {quote && (quote.status === "sold" || quote.status === "ordered") && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowPaymentDialog("deposit")}
-                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                title="Record a deposit payment"
-              >
-                <DollarSign className="h-4 w-4 mr-1" />
-                Deposit
-              </Button>
-            )}
-            {quote && quote.status === "received" && (
-              <Button
-                size="sm"
-                onClick={() => setShowPaymentDialog("balance")}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                title="Record COD at install — auto-flips to Complete"
-              >
-                <DollarSign className="h-4 w-4 mr-1" />
-                Collect COD
-              </Button>
-            )}
-            {quote && (
-              <QuoteStatusPill status={quote.status} quoteId={quote.id} showAdvance size="md" />
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  defaultValue={quote?.customer_name || ""}
-                  placeholder="Customer Name"
-                  className="w-48"
-                  autoFocus
-                  onBlur={(e) => {
-                    updateQuote.mutate({ customer_name: e.target.value });
-                    setEditingName(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateQuote.mutate({
-                        customer_name: (e.target as HTMLInputElement).value,
-                      });
-                      setEditingName(false);
-                    }
-                  }}
-                />
-                <AddressAutocomplete
-                  inputAs={Input}
-                  defaultValue={quote?.customer_address || ""}
-                  placeholder="City / Address"
-                  className="w-48"
-                  onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
-                  onResolved={(address) =>
-                    updateQuote.mutate({ customer_address: address.fullAddress })
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      updateQuote.mutate({
-                        customer_address: (e.target as HTMLInputElement).value,
-                      });
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <button
-                className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
-                onClick={() => setEditingName(true)}
-              >
-                {quote?.customer_name || "Add Customer"}{" "}
-                {quote?.customer_address && (
-                  <span className="text-muted-foreground text-sm">· {quote.customer_address}</span>
+      <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
+        {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
+        <div className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-4">
+              <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
+                {quoteLetterColor && (
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
+                  >
+                    {quote?.quote_letter}
+                  </span>
                 )}
-                <Pencil className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
-            {/* Builder / Contract toggle */}
-            <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
-              <button
-                type="button"
-                aria-pressed="true"
-                className="quote-view-toggle__button quote-view-toggle__button--active"
-                onClick={() => setActiveTab("builder")}
+                <span className="leading-none">
+                  Quote Builder
+                  <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
+                    Window treatment studio
+                  </span>
+                </span>
+              </h1>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => freshStart.mutate()}
+                className="rounded-xl border-slate-200 bg-white shadow-sm"
               >
-                Builder
-              </button>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Fresh Start
+              </Button>
+              {quote && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowSendDialog(true)}
+                  className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
+                  title="Email or text the quote link to the customer"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Quote
+                </Button>
+              )}
+              {quote && (quote.status === "sold" || quote.status === "ordered") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowPaymentDialog("deposit")}
+                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                  title="Record a deposit payment"
+                >
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Deposit
+                </Button>
+              )}
+              {quote && quote.status === "received" && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowPaymentDialog("balance")}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  title="Record COD at install — auto-flips to Complete"
+                >
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  Collect COD
+                </Button>
+              )}
+              {quote && (
+                <QuoteStatusPill status={quote.status} quoteId={quote.id} showAdvance size="md" />
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    defaultValue={quote?.customer_name || ""}
+                    placeholder="Customer Name"
+                    className="w-48"
+                    autoFocus
+                    onBlur={(e) => {
+                      updateQuote.mutate({ customer_name: e.target.value });
+                      setEditingName(false);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updateQuote.mutate({
+                          customer_name: (e.target as HTMLInputElement).value,
+                        });
+                        setEditingName(false);
+                      }
+                    }}
+                  />
+                  <AddressAutocomplete
+                    inputAs={Input}
+                    defaultValue={quote?.customer_address || ""}
+                    placeholder="City / Address"
+                    className="w-48"
+                    onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
+                    onResolved={(address) =>
+                      updateQuote.mutate({ customer_address: address.fullAddress })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updateQuote.mutate({
+                          customer_address: (e.target as HTMLInputElement).value,
+                        });
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <button
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
+                  onClick={() => setEditingName(true)}
+                >
+                  {quote?.customer_name || "Add Customer"}{" "}
+                  {quote?.customer_address && (
+                    <span className="text-muted-foreground text-sm">· {quote.customer_address}</span>
+                  )}
+                  <Pencil className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+              {/* Builder / Contract toggle */}
+              <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
+                <button
+                  type="button"
+                  aria-pressed="true"
+                  className="quote-view-toggle__button quote-view-toggle__button--active"
+                  onClick={() => setActiveTab("builder")}
+                >
+                  Builder
+                </button>
+                <button
+                  type="button"
+                  aria-pressed="false"
+                  onClick={() => setActiveTab("contract")}
+                  className="quote-view-toggle__button"
+                >
+                  Contract
+                </button>
+              </div>
+              <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
+              {/* X - exit full-screen back to the Quotes dashboard */}
               <button
-                type="button"
-                aria-pressed="false"
-                onClick={() => setActiveTab("contract")}
-                className="quote-view-toggle__button"
+                onClick={() => setActiveTab("dashboard")}
+                aria-label="Close builder - back to dashboard"
+                title="Close - back to dashboard"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
               >
-                Contract
+                <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
-            {/* X — exit full-screen back to the Quotes dashboard */}
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              aria-label="Close builder — back to dashboard"
-              title="Close — back to dashboard"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
+        </div>
+
+        <div className="quote-add-controls" aria-label="Add quote line item">
+          <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
+          <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
         </div>
       </div>
 
-      {/* Quote options + product type + rooms - stacked tight to the top */}
-      <QuoteGroupTabs />
-      <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
-      <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
+      <div className="quote-builder-scroll-flow space-y-3">
+        <QuoteGroupTabs />
 
-      {/* Discount Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-sm">
+        {/* Discount Controls */}
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-emerald-800">
             <Percent className="h-4 w-4" />
@@ -863,23 +868,23 @@ export function QuoteBuilder() {
             </Button>
           ))}
         </div>
-      </div>
+        </div>
 
-      <div
-        className={cn(
-          "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.16em]",
-          isSavingQuote
-            ? "border-amber-300 bg-amber-50 text-amber-800"
-            : "border-emerald-200 bg-emerald-50 text-emerald-700"
-        )}
-        role="status"
-        aria-live="polite"
-      >
-        {isSavingQuote ? "Saving quote..." : "Quote saved"}
-      </div>
+        <div
+          className={cn(
+            "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.16em]",
+            isSavingQuote
+              ? "border-amber-300 bg-amber-50 text-amber-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          {isSavingQuote ? "Saving quote..." : "Quote saved"}
+        </div>
 
-      {quote && (
-        <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+        {quote && (
+          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between gap-3">
             <label
               htmlFor="quote-builder-note"
@@ -899,14 +904,14 @@ export function QuoteBuilder() {
             placeholder="Add quote-level notes..."
             className="min-h-20 resize-y border-slate-200 bg-white text-sm"
           />
-        </div>
-      )}
+          </div>
+        )}
 
       {/* Rooms relocated to the top control zone (above) */}
 
       {/* Copy Some confirmation bar */}
-      {copyMode === "some" && (
-        <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        {copyMode === "some" && (
+          <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-lg">
           <span className="text-sm text-muted-foreground">
             Copy Some is active. Click the checkbox on each target line item to copy immediately.
           </span>
@@ -924,43 +929,44 @@ export function QuoteBuilder() {
           >
             Cancel
           </Button>
-        </div>
-      )}
+          </div>
+        )}
 
       {/* Line Items with Design Cards */}
-      {expandedItems.length === 0 ? (
-        <div className="bg-card border rounded-xl p-6 text-center text-muted-foreground text-sm">
-          Select a product type and room to add line items.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {expandedItems.map(({ item, instanceIndex }) => (
-            <DesignCard
-              key={`${item.id}-${instanceIndex}`}
-              lineItem={item}
-              instanceIndex={instanceIndex}
-              designs={designs.filter((d) => d.line_item_id === item.id)}
-              onUpdateDesign={(design) => upsertDesign.mutate(design)}
-              onCopyAll={() => handleCopyAll(item.id)}
-              onCopySome={() => handleCopySome(item.id)}
-              copyMode={copyMode}
-              isCopyTarget={copyMode === "some" && copySourceItemId !== item.id}
-              isSelectedTarget={copiedCopyTargets.includes(item.id)}
-              onToggleCopyTarget={() => handleCopySomeTarget(item.id)}
-              isDiscountTarget={discountMode === "selected"}
-              isDiscountSelected={selectedDiscountLineIds.includes(item.id)}
-              onToggleDiscountTarget={() => toggleDiscountTarget(item.id)}
-              isPriceLocked={isActiveQuotePriceLocked}
-              onOpenMeasurement={() => handleOpenMeasurement(item.id)}
-              onDelete={() => deleteLineItem.mutate(item.id)}
-              onCopyItem={() => copyLineItem.mutate(item.id)}
-              onChangeProductType={(productType) =>
-                changeLineItemProductType.mutate({ id: item.id, productType })
-              }
-            />
-          ))}
-        </div>
-      )}
+        {expandedItems.length === 0 ? (
+          <div className="bg-card border rounded-xl p-6 text-center text-muted-foreground text-sm">
+            Select a product type and room to add line items.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {expandedItems.map(({ item, instanceIndex }) => (
+              <DesignCard
+                key={`${item.id}-${instanceIndex}`}
+                lineItem={item}
+                instanceIndex={instanceIndex}
+                designs={designs.filter((d) => d.line_item_id === item.id)}
+                onUpdateDesign={(design) => upsertDesign.mutate(design)}
+                onCopyAll={() => handleCopyAll(item.id)}
+                onCopySome={() => handleCopySome(item.id)}
+                copyMode={copyMode}
+                isCopyTarget={copyMode === "some" && copySourceItemId !== item.id}
+                isSelectedTarget={copiedCopyTargets.includes(item.id)}
+                onToggleCopyTarget={() => handleCopySomeTarget(item.id)}
+                isDiscountTarget={discountMode === "selected"}
+                isDiscountSelected={selectedDiscountLineIds.includes(item.id)}
+                onToggleDiscountTarget={() => toggleDiscountTarget(item.id)}
+                isPriceLocked={isActiveQuotePriceLocked}
+                onOpenMeasurement={() => handleOpenMeasurement(item.id)}
+                onDelete={() => deleteLineItem.mutate(item.id)}
+                onCopyItem={() => copyLineItem.mutate(item.id)}
+                onChangeProductType={(productType) =>
+                  changeLineItemProductType.mutate({ id: item.id, productType })
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Measurement Grid Modal */}
       <MeasurementGridModal
