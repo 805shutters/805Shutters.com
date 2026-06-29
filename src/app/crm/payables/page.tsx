@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { CrmApp } from "@/components/crm/CrmApp";
 import type { CrmPaymentPerson } from "@/lib/crm/types";
 
 export const metadata: Metadata = {
@@ -15,11 +15,11 @@ function normalizePerson(value: unknown): CrmPaymentPerson {
   return "ken";
 }
 
-export default async function CrmPaymentsPage({
+export default async function CrmPayablesPage({
   searchParams
 }: {
   searchParams?: Promise<{ person?: string }>;
 }) {
   const params = searchParams ? await searchParams : {};
-  redirect(`/crm/payables?person=${normalizePerson(params.person)}`);
+  return <CrmApp initialTab="payments" initialPaymentPerson={normalizePerson(params.person)} />;
 }

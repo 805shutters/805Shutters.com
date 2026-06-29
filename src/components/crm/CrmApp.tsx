@@ -491,7 +491,11 @@ function moneyTargetPatch(
 
 function setPaymentLedgerUrl(person: CrmPaymentPerson) {
   if (typeof window === "undefined") return;
-  window.history.pushState({}, "", `/crm/payments?person=${person}`);
+  window.history.pushState({}, "", `/crm/payables?person=${person}`);
+}
+
+function isPayablesRoutePath(pathname: string) {
+  return pathname.startsWith("/crm/payables") || pathname.startsWith("/crm/payments");
 }
 
 function dateInputValue(value: string | null | undefined) {
@@ -766,7 +770,7 @@ export function CrmApp({
     setFocusCustomer(null);
     if (tab === "payments") {
       setPaymentLedgerUrl(activePaymentPerson);
-    } else if (typeof window !== "undefined" && window.location.pathname.startsWith("/crm/payments")) {
+    } else if (typeof window !== "undefined" && isPayablesRoutePath(window.location.pathname)) {
       window.history.pushState({}, "", "/crm/");
     }
   }
@@ -1981,11 +1985,10 @@ export function CrmApp({
           ["customers", "Customer Files"],
           ["jobs", "Jobs"],
           ["bookkeeping", "Bookkeeping"],
-          ["payments", "Payments"],
+          ["payments", "Payables"],
           ["orders", "Orders"],
           ["calendar", "Calendar"],
-          ["availability", "Open Times"],
-          ["payoff", "Ken / Payoff"]
+          ["availability", "Open Times"]
         ].map(([tab, label]) => (
           <button
             type="button"
@@ -5626,7 +5629,31 @@ function OrderCogsInbox({
   );
 }
 
-const paymentPeople: CrmPaymentPerson[] = ["ken", "jessica", "mike"];
+const paymentPeople: CrmPaymentPerson[] = ["ken", "mike", "jessica"];
+
+type PayablesZelleConfig = {
+  recipientName: string;
+  zelleIdentifier: string | null;
+  zelleQrUrl: string | null;
+};
+
+const payablesZelleConfig: Record<CrmPaymentPerson, PayablesZelleConfig> = {
+  ken: {
+    recipientName: "Ken",
+    zelleIdentifier: null,
+    zelleQrUrl: null
+  },
+  mike: {
+    recipientName: "Mike",
+    zelleIdentifier: null,
+    zelleQrUrl: null
+  },
+  jessica: {
+    recipientName: "Jessica",
+    zelleIdentifier: null,
+    zelleQrUrl: null
+  }
+};
 
 function paymentPersonDisplayName(person: CrmPaymentPerson) {
   if (person === "ken") return "Ken";
@@ -5642,6 +5669,52 @@ function paymentStateDisplay(state: CrmPartnerPaymentLedgerItem["paymentState"])
 
 function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
   return Math.round(items.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
+}
+
+function ZellePaymentPanel({ person, amountDue }: { person: CrmPaymentPerson; amountDue: number }) {
+  const config = payablesZelleConfig[person];
+  const [copied, setCopied] = useState(false);
+  const zelleIdentifier = config.zelleIdentifier;
+  const zelleQrUrl = config.zelleQrUrl;
+
+  useEffect(() => {
+    setCopied(false);
+  }, [person]);
+
+  async function copyZelleIdentifier() {
+    if (!zelleIdentifier || typeof navigator === "undefined" || !navigator.clipboard) return;
+    await navigator.clipboard.writeText(zelleIdentifier);
+    setCopied(true);
+  }
+
+  return (
+    <section className="crm-zelle-panel" aria-label={`${config.recipientName} Zelle payment`}>
+      <div>
+        <p className="eyebrow">Zelle Payment</p>
+        <h3>{config.recipientName}</h3>
+      </div>
+      <div className="crm-zelle-facts">
+        <p>
+          <span>Current Owed</span>
+          <strong>{toLedgerCurrency(amountDue)}</strong>
+        </p>
+        <p>
+          <span>Recipient</span>
+          <strong>{zelleIdentifier || "Not configured"}</strong>
+        </p>
+      </div>
+      <div className="crm-zelle-actions">
+        <button type="button" className="crm-ghost-button" disabled={!zelleIdentifier} onClick={copyZelleIdentifier}>
+          {zelleIdentifier ? (copied ? "Copied" : "Copy Zelle Info") : "Zelle Not Configured"}
+        </button>
+        {zelleQrUrl ? (
+          <a className="crm-ghost-button crm-zelle-link" href={zelleQrUrl} target="_blank" rel="noreferrer">
+            Open Zelle Link
+          </a>
+        ) : null}
+      </div>
+    </section>
+  );
 }
 
 function PartnerPaymentsView({
@@ -5662,6 +5735,7 @@ function PartnerPaymentsView({
   const [reviewDate, setReviewDate] = useState(todayInputValue());
   const [reviewNote, setReviewNote] = useState("");
   const activeItems = ledger?.people[activePerson]?.activeItems || [];
+  const activePersonLedger = ledger?.people[activePerson];
   const activeHistory = (ledger?.history || []).filter((batch) => batch.person === activePerson);
   const selectedItems = activeItems.filter((item) => selectedItemKeys.has(item.itemKey));
   const selectedTotal = sumPartnerRemaining(selectedItems);
@@ -5745,8 +5819,8 @@ function PartnerPaymentsView({
       <div className="crm-ledger">
         <div className="crm-section-head">
           <div>
-            <p className="eyebrow">Payments</p>
-            <h2>Partner Payment Ledger</h2>
+            <p className="eyebrow">Internal Payables</p>
+            <h2>Payables</h2>
           </div>
           <button type="button" disabled={busy || !activeItems.length} onClick={openReview}>
             Pay {paymentPersonDisplayName(activePerson)}
@@ -5774,6 +5848,8 @@ function PartnerPaymentsView({
             );
           })}
         </div>
+
+        <ZellePaymentPanel person={activePerson} amountDue={activePersonLedger?.owed || 0} />
 
         <CollapsiblePanel title="Manual / Partial Payment">
           <form className="crm-form" onSubmit={submitManualPayment} key={activePerson}>
@@ -5820,7 +5896,7 @@ function PartnerPaymentsView({
 
         <div className="crm-payoff-payments">
           <div className="crm-payment-ledger-head">
-            <h3>{paymentPersonDisplayName(activePerson)} Active Ledger</h3>
+            <h3>{paymentPersonDisplayName(activePerson)} Active Payables</h3>
             {activeItems.length ? (
               <button type="button" className="crm-ghost-button" onClick={toggleAll}>
                 {allSelected ? "Clear Selection" : "Select All"}

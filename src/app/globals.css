@@ -9584,6 +9584,67 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   border-bottom: 1px solid var(--line);
 }
 
+.crm-zelle-panel {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.75fr) minmax(280px, 1.5fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-zelle-panel h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.crm-zelle-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.crm-zelle-facts p {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--white);
+}
+
+.crm-zelle-facts span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-zelle-facts strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.crm-zelle-actions {
+  display: flex;
+  justify-content: end;
+  gap: 8px;
+}
+
+.crm-zelle-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  text-decoration: none;
+}
+
 .crm-payment-ledger-head {
   display: flex;
   align-items: center;
@@ -9663,6 +9724,19 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 
   .crm-payment-person-grid {
     padding-inline: 16px;
+  }
+
+  .crm-zelle-panel {
+    grid-template-columns: 1fr;
+    padding-inline: 16px;
+  }
+
+  .crm-zelle-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-zelle-actions {
+    justify-content: start;
   }
 
   .crm-payment-details p,
