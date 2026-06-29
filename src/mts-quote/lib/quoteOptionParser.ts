@@ -122,8 +122,21 @@ function matchRoller(text: string, patch: FieldPatch, matches: string[]) {
   if (lift) setField(patch, "lift_system", lift, matches, "Lift System");
 
   const valance = matchOption(text, ROLLER_VALANCES, {
-    "Standard Cassette Valance": ["standard cassette", "cassette"],
-    "No Valance / Open Roll": ["open roll", "no valance"],
+    "No Valance": ["open roll", "no valance", "no valance open roll"],
+    "Square Fascia*": ["square fascia"],
+    "Plain Curved Fascia*": ["plain curved fascia"],
+    "Curved Fascia with Fabric*": ["decorative fabric valance", "curved fascia fabric"],
+    '3 1/2" Fabric Valance*': ["3 1/2 fabric valance", "3.5 fabric valance"],
+    '4 1/2" Fabric Valance*': ["4 1/2 fabric valance", "4.5 fabric valance"],
+    '6" Fabric Valance*': ["6 fabric valance"],
+    '8" Fabric Valance*': ["8 fabric valance"],
+    '4 1/2" Modern Wood Valance*': [
+      "premium wood valance",
+      "modern wood valance",
+      "4 1/2 modern wood valance",
+      "4.5 modern wood valance",
+    ],
+    "Cassette*": ["standard cassette", "cassette"],
   });
   if (valance) setField(patch, "valance", valance, matches, "Valance");
 
@@ -335,7 +348,13 @@ function matchOption<T extends string>(
 }
 
 function allWordsMatch(text: string, candidate: string): boolean {
-  const words = candidate.split(" ").filter((word) => word.length > 1 && !/^\d+$/.test(word));
+  const rawWords = candidate.split(" ").filter(Boolean);
+  const numericWords = rawWords.filter((word) => /\d/.test(word));
+  if (numericWords.length > 0 && !numericWords.every((word) => text.includes(word))) {
+    return false;
+  }
+
+  const words = rawWords.filter((word) => word.length > 1 && !/^\d+$/.test(word));
   return words.length > 1 && words.every((word) => text.includes(word));
 }
 

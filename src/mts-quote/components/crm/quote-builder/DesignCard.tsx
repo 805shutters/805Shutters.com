@@ -431,10 +431,11 @@ function getAutomaticOptionSurcharges(
     );
   }
 
-  if (
-    (productType === "Roller Shades" || productType === "Roman Shades") &&
-    design.valance === "Premium Wood Valance"
-  ) {
+  const selectedValance = typeof design.valance === "string" ? design.valance.toLowerCase() : "";
+  const hasWoodValance =
+    selectedValance.includes("premium wood") || selectedValance.includes("modern wood");
+
+  if ((productType === "Roller Shades" || productType === "Roman Shades") && hasWoodValance) {
     appendSurcharge(
       surcharges,
       toAutomaticSurcharge(

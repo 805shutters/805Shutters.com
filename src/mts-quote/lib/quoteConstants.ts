@@ -615,10 +615,16 @@ export const ROLLER_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
 export const ROLLER_SHADE_TYPES = ["Single Shade", "Dual Rollers", "Common Valance"] as const;
 export const ROLLER_LIFT_SYSTEMS = ["Cordless", "Smart Release", "Motorized"] as const;
 export const ROLLER_VALANCES = [
-  "Standard Cassette Valance",
-  "Decorative Fabric Valance",
-  "Premium Wood Valance",
-  "No Valance / Open Roll",
+  "No Valance",
+  "Square Fascia*",
+  "Plain Curved Fascia*",
+  "Curved Fascia with Fabric*",
+  '3 1/2" Fabric Valance*',
+  '4 1/2" Fabric Valance*',
+  '6" Fabric Valance*',
+  '8" Fabric Valance*',
+  '4 1/2" Modern Wood Valance*',
+  "Cassette*",
 ] as const;
 
 // Roller Shade Fabrics - COMPLETE catalog from 818 site (70 fabrics, 4 categories)
