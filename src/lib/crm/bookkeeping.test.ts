@@ -953,4 +953,14 @@ describe("deposit/balance only count recorded money (H7/M10/L16)", () => {
     expect(row.paidTotal).toBe(2000);
     expect(row.balance).toBe(2000);
   });
+
+  it("lets standalone bookkeeping rows override the displayed deposit due", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", total_amount: 4000, meta: { deposit_required: 1200 } })],
+    });
+
+    expect(row.depositDue).toBe(1200);
+    expect(row.depositPaid).toBe(0);
+    expect(row.balance).toBe(4000);
+  });
 });

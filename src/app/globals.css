@@ -11017,6 +11017,52 @@ html.mobile-menu-open {
   text-transform: none;
 }
 
+.crm-inline-edit-composite {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(72px, 1fr);
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-inline-edit-composite label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.crm-inline-edit-composite label span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.crm-inline-edit-composite input {
+  width: 100%;
+  min-width: 0;
+  min-height: 26px;
+  padding: 4px 6px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.crm-inline-edit-composite button {
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .crm-drill-contact-line .crm-inline-edit-control {
   width: min(220px, 100%);
   min-height: 26px;

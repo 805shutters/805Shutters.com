@@ -328,6 +328,91 @@ async function recordBalanceAdjustmentCredit(
   return { direction, amount, previousBalance, targetBalance };
 }
 
+type PaymentTargetAdjustmentResult = {
+  kind: "deposit_paid" | "balance_paid";
+  amount: number;
+  previousAmount: number;
+  targetAmount: number;
+};
+
+async function recordPaymentTargetAdjustments(
+  supabase: CrmSupabaseClient,
+  target:
+    | { kind: "quote"; quote: CrmQuote }
+    | { kind: "entry"; entry: CrmBookkeepingEntry },
+  payload: Record<string, unknown>,
+  actor: CrmActor
+): Promise<PaymentTargetAdjustmentResult[]> {
+  const requestedTargets = [
+    { payloadKey: "deposit_paid_target", kind: "deposit_paid" as const, label: "Deposit adjustment" },
+    { payloadKey: "balance_paid_target", kind: "balance_paid" as const, label: "Balance payment adjustment" }
+  ].filter((item) => hasPayloadKey(payload, item.payloadKey));
+
+  if (!requestedTargets.length) return [];
+
+  const isQuote = target.kind === "quote";
+  const targetId = isQuote ? target.quote.id : target.entry.id;
+  const paymentKey = isQuote ? "quote_id" : "bookkeeping_entry_id";
+  const { data, error } = await supabase
+    .from("crm_quote_bookkeeping_payments")
+    .select("payment_label,amount")
+    .eq(paymentKey, targetId);
+
+  if (error) throw new CrmAuthError(502, "Payment adjustment could not read the current ledger.");
+
+  const payments = (data || []) as Array<{ payment_label?: unknown; amount?: unknown }>;
+  const currentDepositPaid = sumAmounts(
+    payments.filter((payment) => String(payment.payment_label || "").toLowerCase().includes("deposit"))
+  );
+  const currentBalancePaid = sumAmounts(
+    payments.filter((payment) => !String(payment.payment_label || "").toLowerCase().includes("deposit"))
+  );
+  const paymentType =
+    normalizePaymentType(optionalText(payload.payment_type)) ||
+    (target.kind === "entry" ? target.entry.payment_type : null) ||
+    "other";
+  const paidAt = optionalText(payload.paid_at) || new Date().toISOString().slice(0, 10);
+  const source = isQuote ? "crm_quote" : target.entry.source === "legacy_sheet" ? "legacy_sheet" : "manual";
+  const records: Record<string, unknown>[] = [];
+  const adjustments: PaymentTargetAdjustmentResult[] = [];
+
+  for (const requested of requestedTargets) {
+    const targetAmount = toMoney(payload[requested.payloadKey]);
+    const previousAmount = requested.kind === "deposit_paid" ? currentDepositPaid : currentBalancePaid;
+    const amount = roundMoney(targetAmount - previousAmount);
+    if (Math.abs(amount) < 0.01) continue;
+
+    adjustments.push({ kind: requested.kind, amount, previousAmount, targetAmount });
+    records.push({
+      [paymentKey]: targetId,
+      job_id: isQuote ? target.quote.job_id : target.entry.job_id,
+      payment_label: requested.label,
+      payment_type: paymentType,
+      amount,
+      paid_at: paidAt,
+      source,
+      notes:
+        optionalText(payload.payment_notes) ||
+        `Set ${requested.kind === "deposit_paid" ? "deposit paid" : "balance paid"} from ${adjustmentMoney(previousAmount)} to ${adjustmentMoney(targetAmount)}`,
+      meta: {
+        createdBy: actor.email,
+        createdAt: new Date().toISOString(),
+        paymentTargetAdjustment: true,
+        adjustmentKind: requested.kind,
+        previousAmount,
+        targetAmount
+      }
+    });
+  }
+
+  if (!records.length) return [];
+
+  const { error: insertError } = await supabase.from("crm_quote_bookkeeping_payments").insert(records);
+  if (insertError) throw new CrmAuthError(502, "Payment adjustment could not be saved.");
+
+  return adjustments;
+}
+
 export function assertMikePaymentAdmin(actor: CrmActor) {
   if (!isMikePaymentAdminEmail(actor.email)) {
     throw new CrmAuthError(403, "Only Mike can record or edit partner payments.");
@@ -1950,12 +2035,14 @@ export async function updateCrmQuote(
     .select("id", { count: "exact", head: true })
     .eq("quote_id", id);
   const builderManaged = (lineItemCount ?? 0) > 0;
-  const serverPricedFields = new Set(["quote_total", "discount", "tax", "deposit_required", "balance_due"]);
+  const serverPricedFields = new Set(["quote_total", "discount", "tax", "balance_due"]);
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
   const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
   const hasBalanceAdjustment = hasPayloadKey(payload, "balance_due_target");
+  const hasPaymentTargetAdjustment =
+    hasPayloadKey(payload, "deposit_paid_target") || hasPayloadKey(payload, "balance_paid_target");
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedQuotePatchFields.has(key)) continue;
@@ -1985,11 +2072,13 @@ export async function updateCrmQuote(
     "installation_complete",
     "ken_cut_override",
     "remake_amount",
-    "balance_due_target"
+    "balance_due_target",
+    "deposit_paid_target",
+    "balance_paid_target"
   ].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
   const hasPaymentPatch = toMoney(payload.payment_amount) > 0;
 
-  if (!Object.keys(patch).length && !hasEntryOnlyBookkeepingPatch && !hasPaymentPatch) {
+  if (!Object.keys(patch).length && !hasEntryOnlyBookkeepingPatch && !hasPaymentPatch && !hasPaymentTargetAdjustment) {
     throw new CrmAuthError(400, "No supported quote fields provided.");
   }
 
@@ -2025,6 +2114,9 @@ export async function updateCrmQuote(
     if (paymentError) throw new CrmAuthError(502, "Quote was updated, but payment failed to save.");
   }
 
+  const paymentTargetAdjustments = hasPaymentTargetAdjustment
+    ? await recordPaymentTargetAdjustments(supabase, { kind: "quote", quote }, payload, actor)
+    : [];
   const balanceAdjustment = hasBalanceAdjustment
     ? await recordBalanceAdjustmentCredit(supabase, { kind: "quote", quote }, payload, actor)
     : null;
@@ -2129,7 +2221,10 @@ export async function updateCrmQuote(
     action: "update",
     before: existing,
     after: quote,
-    metadata: balanceAdjustment ? { balanceAdjustment } : undefined
+    metadata:
+      balanceAdjustment || paymentTargetAdjustments.length
+        ? { balanceAdjustment, paymentTargetAdjustments }
+        : undefined
   });
 
   return quote as CrmQuote;
@@ -2325,7 +2420,11 @@ export async function updateCrmBookkeepingEntry(
   const patch: Record<string, unknown> = {};
   const hasRemakeAmount = hasPayloadKey(payload, "remake_amount");
   const hasBalanceAdjustment = hasPayloadKey(payload, "balance_due_target");
+  const hasDepositDueTarget = hasPayloadKey(payload, "deposit_required");
+  const hasPaymentTargetAdjustment =
+    hasPayloadKey(payload, "deposit_paid_target") || hasPayloadKey(payload, "balance_paid_target");
   const markBalancePaid = payload.mark_balance_paid === true;
+  const entryMetaPatch = hasDepositDueTarget ? { deposit_required: toMoney(payload.deposit_required) } : {};
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedEntryPatchFields.has(key)) continue;
@@ -2350,15 +2449,24 @@ export async function updateCrmBookkeepingEntry(
     patch.installation_matched_at = payload.installation_complete ? now : null;
   }
 
-  if (!Object.keys(patch).length && !toMoney(payload.payment_amount) && !hasRemakeAmount && !markBalancePaid && !hasBalanceAdjustment) {
+  if (
+    !Object.keys(patch).length &&
+    !toMoney(payload.payment_amount) &&
+    !hasRemakeAmount &&
+    !markBalancePaid &&
+    !hasBalanceAdjustment &&
+    !hasDepositDueTarget &&
+    !hasPaymentTargetAdjustment
+  ) {
     throw new CrmAuthError(400, "No supported bookkeeping fields provided.");
   }
 
   let entry = existing;
-  if (Object.keys(patch).length) {
+  if (Object.keys(patch).length || hasDepositDueTarget) {
     patch.meta = {
       ...(existing.meta || {}),
       ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+      ...entryMetaPatch,
       lastUpdatedBy: actor.email,
       lastUpdatedAt: now
     };
@@ -2391,6 +2499,9 @@ export async function updateCrmBookkeepingEntry(
     if (paymentError) throw new CrmAuthError(502, "Bookkeeping row was updated, but payment failed to save.");
   }
 
+  const paymentTargetAdjustments = hasPaymentTargetAdjustment
+    ? await recordPaymentTargetAdjustments(supabase, { kind: "entry", entry: entry as CrmBookkeepingEntry }, payload, actor)
+    : [];
   const balanceAdjustment = hasBalanceAdjustment
     ? await recordBalanceAdjustmentCredit(supabase, { kind: "entry", entry: entry as CrmBookkeepingEntry }, payload, actor)
     : null;
@@ -2419,7 +2530,10 @@ export async function updateCrmBookkeepingEntry(
     action: "update",
     before: existing,
     after: entry,
-    metadata: balanceAdjustment ? { balanceAdjustment } : undefined
+    metadata:
+      balanceAdjustment || paymentTargetAdjustments.length
+        ? { balanceAdjustment, paymentTargetAdjustments }
+        : undefined
   });
 
   return entry as CrmBookkeepingEntry;

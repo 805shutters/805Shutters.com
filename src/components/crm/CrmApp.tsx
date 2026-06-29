@@ -474,6 +474,19 @@ function balanceDueTargetPatch(formData: FormData, row: CrmBookkeepingRow) {
   };
 }
 
+function moneyTargetPatch(
+  formData: FormData,
+  inputName: string,
+  payloadKey: string,
+  currentValue: number
+) {
+  const rawTarget = formString(formData, inputName);
+  if (rawTarget === "") return {};
+  const target = roundCurrency(Number(rawTarget));
+  if (!Number.isFinite(target) || Math.abs(target - roundCurrency(currentValue)) < 0.01) return {};
+  return { [payloadKey]: target };
+}
+
 function setPaymentLedgerUrl(person: CrmPaymentPerson) {
   if (typeof window === "undefined") return;
   window.history.pushState({}, "", `/crm/payments?person=${person}`);
@@ -3759,6 +3772,118 @@ function InlineEditableValue({
   );
 }
 
+type DrillDepositEditor = {
+  depositPaidValue: string;
+  depositDueValue: string;
+  disabled?: boolean;
+  onSave: (values: { depositPaid: string; depositDue: string }) => Promise<boolean>;
+};
+
+function InlineDepositValue({
+  value,
+  editor
+}: {
+  value: string;
+  editor?: DrillDepositEditor;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [depositPaid, setDepositPaid] = useState(editor?.depositPaidValue ?? "");
+  const [depositDue, setDepositDue] = useState(editor?.depositDueValue ?? "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) {
+      setDepositPaid(editor?.depositPaidValue ?? "");
+      setDepositDue(editor?.depositDueValue ?? "");
+    }
+  }, [editor?.depositPaidValue, editor?.depositDueValue, editing]);
+
+  if (!editor) return <span>{value}</span>;
+
+  const cancel = () => {
+    setDepositPaid(editor.depositPaidValue);
+    setDepositDue(editor.depositDueValue);
+    setEditing(false);
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (depositPaid === editor.depositPaidValue && depositDue === editor.depositDueValue) {
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    const saved = await editor.onSave({ depositPaid, depositDue });
+    setSaving(false);
+    if (saved) setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="crm-inline-edit-value"
+        onClick={() => {
+          setDepositPaid(editor.depositPaidValue);
+          setDepositDue(editor.depositDueValue);
+          setEditing(true);
+        }}
+        disabled={editor.disabled || saving}
+        aria-label={`Edit deposit paid and due: ${value}`}
+      >
+        <span>{value}</span>
+      </button>
+    );
+  }
+
+  return (
+    <form className="crm-inline-edit-composite" onSubmit={submit}>
+      <label>
+        <span>Paid</span>
+        <input
+          autoFocus
+          type="number"
+          min="0"
+          step="0.01"
+          value={depositPaid}
+          disabled={editor.disabled || saving}
+          onChange={(event) => setDepositPaid(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      </label>
+      <label>
+        <span>Due</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={depositDue}
+          disabled={editor.disabled || saving}
+          onChange={(event) => setDepositDue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      </label>
+      <button type="submit" disabled={editor.disabled || saving}>
+        Save
+      </button>
+      <button type="button" disabled={editor.disabled || saving} onClick={cancel}>
+        Cancel
+      </button>
+    </form>
+  );
+}
+
 function DrillDetailPanel({
   payload,
   busy,
@@ -3981,6 +4106,30 @@ function DrillDetailCard({
         onSave: (value) => saveRow({ balance_due_target: moneyPatch(value) }, "Balance updated.")
       }
     : undefined;
+  const depositEditor: DrillDepositEditor | undefined = row
+    ? {
+        depositPaidValue: moneyEditorValue(row.depositPaid),
+        depositDueValue: moneyEditorValue(row.depositDue),
+        disabled: busy,
+        onSave: ({ depositPaid, depositDue }) =>
+          saveRow(
+            {
+              deposit_paid_target: moneyPatch(depositPaid),
+              deposit_required: moneyPatch(depositDue)
+            },
+            "Deposit updated."
+          )
+      }
+    : undefined;
+  const balancePaidEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "number",
+        value: moneyEditorValue(row.balancePaid),
+        disabled: busy,
+        ariaLabel: "Edit balance paid",
+        onSave: (value) => saveRow({ balance_paid_target: moneyPatch(value) }, "Balance paid updated.")
+      }
+    : undefined;
   const cogsEditor: DrillInlineEditor | undefined = row
     ? {
         type: "number",
@@ -4131,8 +4280,8 @@ function DrillDetailCard({
               <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
               <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
               <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} editor={balanceEditor} />
-              <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
-              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
+              <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} depositEditor={depositEditor} />
+              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} editor={balancePaidEditor} />
               <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
               <DrillFact
                 label="COGS"
@@ -4307,6 +4456,9 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       payment_label: formString(formData, "payment_label") || "Balance payment",
       paid_at: formString(formData, "paid_at") || null,
       ...balanceDueTargetPatch(formData, row),
+      ...moneyTargetPatch(formData, "deposit_paid_target", "deposit_paid_target", row.depositPaid),
+      ...moneyTargetPatch(formData, "deposit_required", "deposit_required", row.depositDue),
+      ...moneyTargetPatch(formData, "balance_paid_target", "balance_paid_target", row.balancePaid),
       remake_amount: formString(formData, "remake_amount"),
       installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
       installation_invoice_number: formString(formData, "installation_invoice_number"),
@@ -4502,6 +4654,20 @@ function DrillDetailEditForm({
           </div>
           <div className="crm-field-row">
             <label>
+              Deposit Paid
+              <input name="deposit_paid_target" type="number" min="0" step="0.01" defaultValue={row?.depositPaid ?? ""} disabled={!row} />
+            </label>
+            <label>
+              Deposit Due
+              <input name="deposit_required" type="number" min="0" step="0.01" defaultValue={row?.depositDue ?? ""} disabled={!row} />
+            </label>
+            <label>
+              Balance Paid
+              <input name="balance_paid_target" type="number" min="0" step="0.01" defaultValue={row?.balancePaid ?? ""} disabled={!row} />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
               Payment Label
               <input name="payment_label" placeholder="Balance payment" disabled={!row} />
             </label>
@@ -4614,19 +4780,25 @@ function DrillFact({
   value,
   tone,
   wide,
-  editor
+  editor,
+  depositEditor
 }: {
   label: string;
   value: string;
   tone?: "warn" | "good";
   wide?: boolean;
   editor?: DrillInlineEditor;
+  depositEditor?: DrillDepositEditor;
 }) {
   return (
     <div className={`crm-drill-fact ${tone || ""} ${wide ? "wide" : ""}`}>
       <span>{label}</span>
       <strong>
-        <InlineEditableValue value={value} editor={editor} />
+        {depositEditor ? (
+          <InlineDepositValue value={value} editor={depositEditor} />
+        ) : (
+          <InlineEditableValue value={value} editor={editor} />
+        )}
       </strong>
     </div>
   );

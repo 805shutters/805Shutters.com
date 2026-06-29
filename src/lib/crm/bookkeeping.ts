@@ -479,7 +479,7 @@ function buildEntryRow(
     quoteNumber: entry.imported_sheet_row ? `Sheet row ${entry.imported_sheet_row}` : null,
     soldDate: entry.sold_date,
     total,
-    depositDue: roundCents(total * 0.5),
+    depositDue: entryDepositDue(entry, total),
     depositPaid,
     balancePaid,
     paidTotal,
@@ -517,6 +517,16 @@ function buildEntryRow(
     expensesTotal,
     remakeTotal
   };
+}
+
+function entryDepositDue(entry: CrmBookkeepingEntry, total: number) {
+  const meta = entry.meta && typeof entry.meta === "object" && !Array.isArray(entry.meta) ? entry.meta : {};
+  const target = (meta as Record<string, unknown>).deposit_required;
+  if (target !== null && target !== undefined && target !== "") {
+    const amount = Number(target);
+    if (Number.isFinite(amount)) return roundCents(Math.max(amount, 0));
+  }
+  return roundCents(total * 0.5);
 }
 
 function buildQuoteRow(
