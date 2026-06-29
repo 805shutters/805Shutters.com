@@ -38,7 +38,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const [selected, setSelected] = useState<Set<string>>(new Set(quote.lines.map((l) => l.id)));
   const [live, setLive] = useState<LiveMoney>(fullMoney);
   const [computing, setComputing] = useState(false);
-  const [squareBusy, setSquareBusy] = useState<"deposit" | "balance" | null>(null);
+  const [squareBusy, setSquareBusy] = useState<"deposit" | null>(null);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
   const reqId = useRef(0);
 
@@ -83,14 +83,14 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const acknowledgedTotal = live.total;
   const selectedLineIds = mode === "some" ? [...selected] : undefined;
 
-  async function startSquare(type: "deposit" | "balance") {
+  async function startSquare(type: "deposit") {
     setSquareMsg(null);
     setSquareBusy(type);
     try {
       const res = await fetch(`/api/quote/${quote.token}/square-checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentType: type }),
+        body: JSON.stringify({ paymentType: type, ...(selectedLineIds ? { selectedLineIds } : {}) }),
       });
       const data = await res.json();
       if (data?.url) {
@@ -204,7 +204,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(live.total)} strong />
         </div>
-        {live.depositDue > 0 ? <Row label="Deposit due" value={money(live.depositDue)} /> : null}
+        {live.depositDue > 0 ? <Row label="Deposit due" value={money(live.depositDue)} highlight /> : null}
         {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
         {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
       </div>
@@ -212,7 +212,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
         <div className="no-print" style={payBox}>
           <strong>Other ways to pay</strong>
-          {live.depositDue > 0 ? <div style={{ fontSize: 14 }}>Deposit due: {money(live.depositDue)}</div> : null}
+          {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit due: {money(live.depositDue)}</div> : null}
           {live.balanceDue > 0 ? <div style={{ fontSize: 14 }}>Balance due: {money(live.balanceDue)}</div> : null}
           <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
             <div>
@@ -233,11 +233,6 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
             {live.depositDue > 0 ? (
               <button type="button" style={cardBtn} disabled={squareBusy !== null} onClick={() => startSquare("deposit")}>
                 {squareBusy === "deposit" ? "Opening…" : `Pay deposit with card`}
-              </button>
-            ) : null}
-            {live.balanceDue > 0 ? (
-              <button type="button" style={cardBtn} disabled={squareBusy !== null} onClick={() => startSquare("balance")}>
-                {squareBusy === "balance" ? "Opening…" : `Pay balance with card`}
               </button>
             ) : null}
           </div>
@@ -324,11 +319,11 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   );
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Row({ label, value, strong, highlight }: { label: string; value: string; strong?: boolean; highlight?: boolean }) {
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: strong ? 20 : 15 }}>
-      <span style={{ opacity: 0.8 }}>{label}</span>
-      <span style={{ fontWeight: strong ? 700 : 500 }}>{value}</span>
+    <div style={highlight ? depositDueRow : { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: strong ? 20 : 15 }}>
+      <span style={{ opacity: highlight ? 1 : 0.8 }}>{label}</span>
+      <span style={{ fontWeight: strong || highlight ? 700 : 500 }}>{value}</span>
     </div>
   );
 }
@@ -352,6 +347,30 @@ const payBox = {
   padding: 16,
   marginTop: 16,
   background: "#fbfbfa",
+} as const;
+const depositDueRow = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginTop: 6,
+  padding: "8px 10px",
+  border: "2px solid #dc2626",
+  borderRadius: 8,
+  background: "#fff1f2",
+  color: "#991b1b",
+  fontSize: 15,
+  fontWeight: 700,
+} as const;
+const depositDueCallout = {
+  display: "inline-block",
+  marginTop: 8,
+  padding: "6px 10px",
+  border: "2px solid #dc2626",
+  borderRadius: 8,
+  background: "#fff1f2",
+  color: "#991b1b",
+  fontSize: 14,
+  fontWeight: 700,
 } as const;
 const cardBtn = {
   border: "none",
