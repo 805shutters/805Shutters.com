@@ -814,12 +814,12 @@ export interface ShutterProgram {
 }
 
 export const NORMAN_SHUTTER_PROGRAMS: ShutterProgram[] = [
-  { name: "Woodlore", wholesalePrice: 13.1, retailPrice: 39.0, tariff: 0 },
+  { name: "Woodlore", wholesalePrice: 13.1, retailPrice: 34.0, tariff: 0 },
   { name: "Woodlore Plus", wholesalePrice: 14.55, retailPrice: 41.5, tariff: 0 },
   { name: "Woodlore Aquashield", wholesalePrice: 17.95, retailPrice: 48.0, tariff: 0 },
   { name: "Brightwood", wholesalePrice: 15.85, retailPrice: 44.0, tariff: 0 },
-  { name: "Normandy Painted", wholesalePrice: 17.35, retailPrice: 47.0, tariff: 0 },
-  { name: "Normandy Stained", wholesalePrice: 18.1, retailPrice: 48.5, tariff: 0 },
+  { name: "Normandy Painted", wholesalePrice: 17.35, retailPrice: 38.0, tariff: 0 },
+  { name: "Normandy Stained", wholesalePrice: 18.1, retailPrice: 42.0, tariff: 0 },
 ];
 
 // ========== ONYX SHUTTERS PRICING ==========
@@ -833,13 +833,13 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   {
     name: "Painted Basswood",
     wholesalePrice: 13.5,
-    retailPrice: calculateOnyxRetailPrice(13.5),
+    retailPrice: 38.0,
     tariff: 0,
   },
   {
     name: "Stained Basswood",
     wholesalePrice: 16.5,
-    retailPrice: calculateOnyxRetailPrice(16.5),
+    retailPrice: 42.0,
     tariff: 0,
   },
   {
@@ -869,7 +869,7 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   {
     name: "Poly Composite",
     wholesalePrice: 15.0,
-    retailPrice: calculateOnyxRetailPrice(15.0),
+    retailPrice: 30.0,
     tariff: 0,
   },
 ];

@@ -244,7 +244,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
       { width_in: 30, height_in: 60 },
     );
     expect(fields.price_status).toBe("ok");
-    expect(fields.unit_price).toBe(393.75);
+    expect(fields.unit_price).toBe(475);
     expect(fields.wholesale_unit_price).toBe(168.75);
   });
 

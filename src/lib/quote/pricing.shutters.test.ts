@@ -12,50 +12,69 @@ function ok(r: PriceResult) {
 }
 
 describe("shutter $/sqft pricing", () => {
-  it("Norman Woodlore ($39/sqft): 30x60 = 12.5 sqft = $487.50", () => {
+  it("uses the configured shutter retail square-foot rates", () => {
+    const cases = [
+      ["Poly", "onyx_shutters", "poly_composite", 30],
+      ["Composite", "norman_shutters", "woodlore", 34],
+      ["Painted Wood - Norman", "norman_shutters", "normandy_painted", 38],
+      ["Painted Wood - Onyx", "onyx_shutters", "painted_basswood", 38],
+      ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 42],
+      ["Stained Wood - Onyx", "onyx_shutters", "stained_basswood", 42],
+    ] as const;
+
+    for (const [label, productId, programId, pricePerSqft] of cases) {
+      const r = ok(priceDesign({ productId, programId, widthInches: 30, heightInches: 60 }));
+      expect(r.sqft, label).toBe(12.5);
+      expect(r.billableSqft, label).toBe(12.5);
+      expect(r.base, label).toBe(12.5 * pricePerSqft);
+      expect(r.total, label).toBe(12.5 * pricePerSqft);
+    }
+  });
+
+  it("Norman Woodlore Composite ($34/sqft): 30x60 = 12.5 sqft = $425", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60 }));
     expect(r.sqft).toBe(12.5);
     expect(r.billableSqft).toBe(12.5);
-    expect(r.base).toBe(487.5);
+    expect(r.base).toBe(425);
     expect(r.wholesaleBase).toBe(163.75);
     expect(r.wholesaleUnitPrice).toBe(163.75);
-    expect(r.total).toBe(487.5);
+    expect(r.total).toBe(425);
   });
 
-  it("applies the 8 sq ft minimum: Woodlore 24x24 (4 sqft) bills 8 sqft = $312", () => {
+  it("applies the 8 sq ft minimum: Woodlore 24x24 (4 sqft) bills 8 sqft = $272", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 24, heightInches: 24 }));
     expect(r.sqft).toBe(4);
     expect(r.billableSqft).toBe(8);
-    expect(r.base).toBe(312);
+    expect(r.base).toBe(272);
   });
 
-  it("Onyx Painted Basswood ($31.50/sqft derived): 30x60 = $393.75", () => {
+  it("Onyx Painted Basswood ($38/sqft): 30x60 = $475", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
-    expect(r.base).toBe(393.75);
+    expect(r.base).toBe(475);
     expect(r.wholesaleBase).toBe(168.75);
     expect(r.wholesaleUnitPrice).toBe(168.75);
   });
 
   it("Onyx Stained Basswood keeps retail and portal-supported wholesale separate", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
-    expect(r.base).toBe(481.25);
+    expect(r.base).toBe(525);
     expect(r.wholesaleBase).toBe(206.25);
-    expect(r.unitPrice).toBe(481.25);
+    expect(r.unitPrice).toBe(525);
     expect(r.wholesaleUnitPrice).toBe(206.25);
   });
 
   it("percent surcharge (Cafe Shutters 30%) applies off the sqft base", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges: [{ id: "cafe_shutters" }] }));
-    expect(r.surchargeLines[0].amount).toBe(146.25); // 30% of 487.50
+    expect(r.surchargeLines[0].amount).toBe(127.5); // 30% of 425.00
     expect(r.surchargeLines[0].wholesaleAmount).toBe(49.13); // 30% of 163.75
-    expect(r.unitPrice).toBe(633.75);
+    expect(r.unitPrice).toBe(552.5);
     expect(r.wholesaleUnitPrice).toBe(212.88);
   });
 
   it("real per-sqft surcharge (Onyx Hidden Tilt Rod $1.20/sqft) — fixes the legacy 'set quantity to sqft' hack", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges: [{ id: "hidden_tilt_rod" }] }));
     expect(r.surchargeLines[0].amount).toBe(15); // 1.20 * 12.5 sqft
-    expect(r.unitPrice).toBe(408.75); // 393.75 + 15
+    expect(r.unitPrice).toBe(490); // 475 + 15
   });
 
   it("shutter products are flagged provisional", () => {

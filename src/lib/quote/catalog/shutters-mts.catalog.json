@@ -20,7 +20,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 39.0,
+          "pricePerSqft": 34.0,
           "costPerSqft": 13.1,
           "minSqft": 8,
           "maxWidth": null,
@@ -104,7 +104,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 47.0,
+          "pricePerSqft": 38.0,
           "costPerSqft": 17.35,
           "minSqft": 8,
           "maxWidth": null,
@@ -125,7 +125,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 48.5,
+          "pricePerSqft": 42.0,
           "costPerSqft": 18.1,
           "minSqft": 8,
           "maxWidth": null,
@@ -623,7 +623,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 31.5,
+          "pricePerSqft": 38.0,
           "costPerSqft": 13.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -644,7 +644,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 38.5,
+          "pricePerSqft": 42.0,
           "costPerSqft": 16.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -749,7 +749,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 35.0,
+          "pricePerSqft": 30.0,
           "costPerSqft": 15.0,
           "minSqft": 8,
           "maxWidth": null,
