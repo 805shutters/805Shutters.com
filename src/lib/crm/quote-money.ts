@@ -67,6 +67,8 @@ export type QuoteAdjustments = {
   discountFlat: number;
   taxPercent: number;
   depositPercent: number;
+  balanceDueOverride: number | null;
+  balanceAdjustmentNote: string | null;
   fees: QuoteFee[];
 };
 
@@ -75,12 +77,26 @@ export const DEFAULT_ADJUSTMENTS: QuoteAdjustments = {
   discountFlat: 0,
   taxPercent: 0,
   depositPercent: 0,
+  balanceDueOverride: null,
+  balanceAdjustmentNote: null,
   fees: [],
 };
 
 function nonNeg(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function nullableNonNeg(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? round2(n) : null;
+}
+
+function optionalText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
 }
 
 export function parseAdjustments(meta: unknown): QuoteAdjustments {
@@ -97,6 +113,8 @@ export function parseAdjustments(meta: unknown): QuoteAdjustments {
     discountFlat: nonNeg(o.discountFlat),
     taxPercent: Math.min(100, nonNeg(o.taxPercent)),
     depositPercent: Math.min(100, nonNeg(o.depositPercent)),
+    balanceDueOverride: nullableNonNeg(o.balanceDueOverride),
+    balanceAdjustmentNote: optionalText(o.balanceAdjustmentNote),
     fees,
   };
 }
@@ -110,6 +128,8 @@ export type QuoteMoney = {
   total: number;
   depositRequired: number;
   balanceDue: number;
+  calculatedBalanceDue: number;
+  balanceAdjustment: number;
 };
 
 export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): QuoteMoney {
@@ -119,10 +139,24 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): Quot
   const discountAmount = round2(Math.min(preDiscount, Math.max(0, rawDiscount)));
   const taxableBase = round2(Math.max(preDiscount - discountAmount, 0));
   const taxAmount = round2(taxableBase * (adj.taxPercent / 100));
-  const total = round2(taxableBase + taxAmount);
-  const depositRequired = round2(total * (adj.depositPercent / 100));
-  const balanceDue = round2(Math.max(total - depositRequired, 0));
-  return { subtotal: round2(subtotal), extrasTotal, discountAmount, taxableBase, taxAmount, total, depositRequired, balanceDue };
+  const calculatedTotal = round2(taxableBase + taxAmount);
+  const depositRequired = round2(calculatedTotal * (adj.depositPercent / 100));
+  const calculatedBalanceDue = round2(Math.max(calculatedTotal - depositRequired, 0));
+  const balanceDue = adj.balanceDueOverride == null ? calculatedBalanceDue : round2(Math.max(adj.balanceDueOverride, 0));
+  const balanceAdjustment = round2(calculatedBalanceDue - balanceDue);
+  const total = adj.balanceDueOverride == null ? calculatedTotal : round2(depositRequired + balanceDue);
+  return {
+    subtotal: round2(subtotal),
+    extrasTotal,
+    discountAmount,
+    taxableBase,
+    taxAmount,
+    total,
+    depositRequired,
+    balanceDue,
+    calculatedBalanceDue,
+    balanceAdjustment,
+  };
 }
 
 type PriceFields = {

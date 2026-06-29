@@ -148,6 +148,23 @@ describe("computeQuoteMoney (discount / tax / deposit / fees)", () => {
     expect(m.discountAmount).toBe(1000);
     expect(m.total).toBe(0);
   });
+
+  it("lets staff pin the remaining balance while keeping the deposit amount stable", () => {
+    const m = computeQuoteMoney(816, { ...DEFAULT_ADJUSTMENTS, depositPercent: 50, balanceDueOverride: 300 });
+    expect(m.depositRequired).toBe(408);
+    expect(m.calculatedBalanceDue).toBe(408);
+    expect(m.balanceDue).toBe(300);
+    expect(m.balanceAdjustment).toBe(108);
+    expect(m.total).toBe(708);
+  });
+
+  it("allows a balance correction above the calculated balance", () => {
+    const m = computeQuoteMoney(816, { ...DEFAULT_ADJUSTMENTS, depositPercent: 50, balanceDueOverride: 450 });
+    expect(m.depositRequired).toBe(408);
+    expect(m.balanceDue).toBe(450);
+    expect(m.balanceAdjustment).toBe(-42);
+    expect(m.total).toBe(858);
+  });
 });
 
 describe("parseAdjustments", () => {
@@ -160,7 +177,14 @@ describe("parseAdjustments", () => {
     expect(a.discountPercent).toBe(100); // clamped
     expect(a.taxPercent).toBe(8);
     expect(a.depositPercent).toBe(0); // negative -> 0
+    expect(a.balanceDueOverride).toBeNull();
     expect(a.fees).toEqual([{ name: "X", amount: 50 }]);
+  });
+
+  it("normalizes balance overrides and notes", () => {
+    const a = parseAdjustments({ adjustments: { balanceDueOverride: "408.125", balanceAdjustmentNote: "second discount" } });
+    expect(a.balanceDueOverride).toBe(408.13);
+    expect(a.balanceAdjustmentNote).toBe("second discount");
   });
 });
 

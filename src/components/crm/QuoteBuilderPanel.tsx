@@ -1401,6 +1401,12 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
   const [discountPercent, setDiscountPercent] = useState(adj.discountPercent ? String(adj.discountPercent) : "");
   const [taxPercent, setTaxPercent] = useState(adj.taxPercent ? String(adj.taxPercent) : "");
   const [depositPercent, setDepositPercent] = useState(adj.depositPercent ? String(adj.depositPercent) : "");
+  const [balanceDueOverride, setBalanceDueOverride] = useState(
+    adj.balanceDueOverride === null || adj.balanceDueOverride === undefined ? "" : String(adj.balanceDueOverride),
+  );
+  const [balanceAdjustmentNote, setBalanceAdjustmentNote] = useState(
+    typeof adj.balanceAdjustmentNote === "string" ? adj.balanceAdjustmentNote : "",
+  );
   const [fees, setFees] = useState<{ name: string; amount: string }[]>(
     Array.isArray(adj.fees)
       ? (adj.fees as { name?: unknown; amount?: unknown }[]).map((f) => ({ name: String(f.name ?? ""), amount: String(f.amount ?? "") }))
@@ -1423,6 +1429,8 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
       discountPercent: Number(discountPercent) || 0,
       taxPercent: Number(taxPercent) || 0,
       depositPercent: Number(depositPercent) || 0,
+      balanceDueOverride: balanceDueOverride.trim() === "" ? null : Number(balanceDueOverride),
+      balanceAdjustmentNote: balanceAdjustmentNote.trim() || null,
       fees: fees.filter((f) => Number(f.amount) > 0).map((f) => ({ name: f.name || "Fee", amount: Number(f.amount) })),
     });
   }
@@ -1439,6 +1447,12 @@ function Adjustments({ quote, busy, onSave }: { quote: CrmQuoteWithItems; busy: 
         </Field>
         <Field label="Deposit %" width={90}>
           <input type="number" min="0" max="100" value={depositPercent} onChange={(e) => setDepositPercent(e.target.value)} />
+        </Field>
+        <Field label="Balance $" width={110}>
+          <input type="number" min="0" step="0.01" value={balanceDueOverride} onChange={(e) => setBalanceDueOverride(e.target.value)} />
+        </Field>
+        <Field label="Balance note" width={190}>
+          <input value={balanceAdjustmentNote} onChange={(e) => setBalanceAdjustmentNote(e.target.value)} placeholder="Discount / correction" />
         </Field>
       </div>
       <div style={{ marginTop: 10 }}>
