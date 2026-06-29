@@ -805,10 +805,10 @@ export function QuoteBuilder() {
         </div>
       </div>
 
-      {/* Quote options + Rooms + Product line — stacked tight to the top */}
+      {/* Quote options + product type + rooms — stacked tight to the top */}
       <QuoteGroupTabs />
-      <RoomPresetButtons onSelect={handleRoomSelect} />
       <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
+      <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
 
       {/* Discount Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-sm">

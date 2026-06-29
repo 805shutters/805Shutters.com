@@ -10,7 +10,7 @@ export function ProductTypeButtons({ selected, onSelect }: ProductTypeButtonsPro
   return (
     <div className="rounded-[1.5rem] border border-white/80 bg-white/70 p-3 shadow-[0_18px_45px_rgba(15,35,70,0.08)] backdrop-blur">
       <div className="mb-2 px-1 text-[0.7rem] font-black uppercase tracking-[0.22em] text-slate-500">
-        Product line
+        Product type
       </div>
       <div className="flex flex-wrap gap-2">
         {PRODUCT_TYPES.map((type) => (
