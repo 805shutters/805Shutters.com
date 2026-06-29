@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import {
   verifySquareWebhookSignature,
   squarePaymentLinksUrl,
+  squarePaymentLinkRequestBody,
   squareEnvironment,
   dollarsToCents,
   extractSquarePaymentFacts,
@@ -66,6 +67,28 @@ describe("Square endpoint configuration", () => {
         else process.env[key] = value;
       }
     }
+  });
+});
+
+describe("squarePaymentLinkRequestBody", () => {
+  it("uses Square REST API snake_case fields", () => {
+    const body = squarePaymentLinkRequestBody(
+      {
+        amountCents: 54125,
+        title: "Deposit - 805 Shutters",
+        quoteId: "quote-1",
+        paymentType: "deposit",
+        buyerEmail: "customer@example.com",
+      },
+      "LOCATION1",
+    );
+    expect(body.order.location_id).toBe("LOCATION1");
+    expect(body.order.reference_id).toBe("quote-1");
+    expect(body.order.line_items[0].base_price_money).toEqual({ amount: 54125, currency: "USD" });
+    expect(body.checkout_options).toEqual({ allow_tipping: false, ask_for_shipping_address: false });
+    expect(body.pre_populated_data).toEqual({ buyer_email: "customer@example.com" });
+    expect("locationId" in body.order).toBe(false);
+    expect("lineItems" in body.order).toBe(false);
   });
 });
 

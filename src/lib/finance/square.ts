@@ -71,17 +71,34 @@ export function verifySquareWebhookSignature(
 }
 
 export type SquarePaymentLink = { id: string; url: string };
-
-/** Create a Square Online Checkout payment link for a fixed amount.
- *  The quote id + payment type ride in the order metadata so the webhook can
- *  reconcile the payment back to this quote. */
-export async function createSquarePaymentLink(input: {
+export type SquarePaymentLinkInput = {
   amountCents: number;
   title: string;
   quoteId: string;
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
-}): Promise<SquarePaymentLink> {
+};
+
+export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, locationId: string) {
+  return {
+    idempotency_key: `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
+    description: input.title,
+    checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
+    pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,
+    payment_note: `quote:${input.quoteId} type:${input.paymentType}`,
+    order: {
+      location_id: locationId,
+      reference_id: input.quoteId,
+      metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
+      line_items: [{ name: input.title, base_price_money: { amount: input.amountCents, currency: "USD" } }],
+    },
+  };
+}
+
+/** Create a Square Online Checkout payment link for a fixed amount.
+ *  The quote id + payment type ride in the order metadata so the webhook can
+ *  reconcile the payment back to this quote. */
+export async function createSquarePaymentLink(input: SquarePaymentLinkInput): Promise<SquarePaymentLink> {
   const accessToken = squareAccessToken();
   const locationId = squareLocationId();
   if (!accessToken || !locationId) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
@@ -92,26 +109,14 @@ export async function createSquarePaymentLink(input: {
       "Square-Version": SQUARE_VERSION,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      idempotencyKey: `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
-      description: input.title,
-      checkoutOptions: { allowTipping: false, askForShippingAddress: false },
-      prePopulatedData: input.buyerEmail ? { buyerEmail: input.buyerEmail } : undefined,
-      paymentNote: `quote:${input.quoteId} type:${input.paymentType}`,
-      order: {
-        locationId,
-        referenceId: input.quoteId,
-        metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
-        lineItems: [{ name: input.title, basePriceMoney: { amount: input.amountCents, currency: "USD" } }],
-      },
-    }),
+    body: JSON.stringify(squarePaymentLinkRequestBody(input, locationId)),
   });
   if (!res.ok) {
     const detail = await res.text();
     throw new Error(`Square payment link failed (${res.status}): ${detail.slice(0, 300)}`);
   }
-  const data = (await res.json()) as { paymentLink?: { id?: string; url?: string } };
-  const link = data.paymentLink;
+  const data = (await res.json()) as { payment_link?: { id?: string; url?: string }; paymentLink?: { id?: string; url?: string } };
+  const link = data.payment_link ?? data.paymentLink;
   if (!link?.id || !link.url) throw new Error("Square did not return a payment link URL.");
   return { id: link.id, url: link.url };
 }
