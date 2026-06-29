@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildSignedContractSnapshot,
   describeDesign,
+  buildQuoteShareSms,
   buildSignedShopSms,
   buildSignedCustomerSms,
   formatDimensions,
@@ -116,6 +117,14 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
 });
 
 describe("signed SMS copy", () => {
+  it("quote share message uses the requested 805 Shutters copy", () => {
+    const msg = buildQuoteShareSms("https://www.805shutters.com/quote/test-token");
+    expect(msg).toBe(
+      "Thank you for the opportunity to cover your windows with 805 Shutters! Please see the attached quote:\n\nQuote: https://www.805shutters.com/quote/test-token"
+    );
+    expect(msg).not.toContain("Review & approve");
+  });
+
   it("shop message has the customer name and total", () => {
     const msg = buildSignedShopSms("Jane Smith", 4250);
     expect(msg).toContain("Jane Smith");

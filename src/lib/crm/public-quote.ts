@@ -508,6 +508,10 @@ export function buildSignedCustomerSms(customerName: string): string {
   return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Reply with any questions.`;
 }
 
+export function buildQuoteShareSms(url: string): string {
+  return `Thank you for the opportunity to cover your windows with 805 Shutters! Please see the attached quote:\n\nQuote: ${url}`;
+}
+
 function publicQuoteUrl(token: string): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
   return base ? `${base}/quote/${token}` : `/quote/${token}`;
@@ -918,9 +922,7 @@ export async function sendQuoteToCustomer(
   const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
   const requestedPhone = options.phone?.trim() || phone;
   const note = options.note?.trim();
-  const smsBody = note
-    ? `${BUSINESS_NAME}: ${note}\n\nReview & approve: ${url}`
-    : `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}`;
+  const smsBody = buildQuoteShareSms(url);
   const sms = wantSms
     ? await sendSms({ to: requestedPhone, body: smsBody })
     : { sent: false, skipped: "text message not selected" };

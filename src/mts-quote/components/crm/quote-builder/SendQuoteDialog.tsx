@@ -335,29 +335,27 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
             <DialogSection
               title="Message"
               description={
-                channel === "sms"
-                  ? "This replaces the default SMS intro."
-                  : "This appears before the default email message."
+                needsEmail
+                  ? "This appears before the default email message. Texts use the standard quote link message."
+                  : "Texts use the standard quote link message."
               }
             >
               <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="send-quote-note" className="text-sm font-semibold text-slate-900">
-                    Optional note
-                  </Label>
-                  <Textarea
-                    id="send-quote-note"
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    placeholder={
-                      channel === "sms"
-                        ? "Hi Jane, here's your quote."
-                        : "Hi Jane, as promised, here's the quote from our visit on Tuesday."
-                    }
-                    rows={channel === "sms" ? 2 : 4}
-                    className="min-h-[96px] resize-y"
-                  />
-                </div>
+                {needsEmail && (
+                  <div className="space-y-2">
+                    <Label htmlFor="send-quote-note" className="text-sm font-semibold text-slate-900">
+                      Optional note
+                    </Label>
+                    <Textarea
+                      id="send-quote-note"
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="Hi Jane, as promised, here's the quote from our visit on Tuesday."
+                      rows={4}
+                      className="min-h-[96px] resize-y"
+                    />
+                  </div>
+                )}
 
                 {needsPhone && (
                   <label className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
