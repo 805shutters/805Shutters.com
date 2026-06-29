@@ -3610,7 +3610,7 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-metrics {
   display: grid;
-  grid-template-columns: repeat(9, minmax(96px, 1fr));
+  grid-template-columns: repeat(11, minmax(82px, 1fr));
   gap: 8px;
   min-width: 0;
 }
@@ -3641,6 +3641,25 @@ body.qb-fullscreen .crm-app-shell {
   line-height: 1;
 }
 
+.crm-metric--warning {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #92400e;
+}
+
+.crm-metric--danger {
+  background: #fde8e8;
+  border-color: #dc2626;
+  color: #991b1b;
+}
+
+.crm-metric--warning span,
+.crm-metric--warning strong,
+.crm-metric--danger span,
+.crm-metric--danger strong {
+  color: inherit;
+}
+
 .crm-metric-button {
   min-height: 0;
   text-align: left;
@@ -3650,6 +3669,22 @@ body.qb-fullscreen .crm-app-shell {
 .crm-metric-button:hover {
   transform: translateY(-2px);
   border-color: var(--ink);
+}
+
+.crm-metric-button.crm-metric--warning {
+  color: #92400e;
+}
+
+.crm-metric-button.crm-metric--danger {
+  color: #991b1b;
+}
+
+.crm-metric-button.crm-metric--warning:hover {
+  border-color: #b45309;
+}
+
+.crm-metric-button.crm-metric--danger:hover {
+  border-color: #b91c1c;
 }
 
 .crm-tabs {

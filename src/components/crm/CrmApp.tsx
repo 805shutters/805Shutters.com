@@ -1872,6 +1872,12 @@ export function CrmApp({
     );
   }
 
+  const summary = data?.summary;
+  const needsOrderCount = summary?.needsOrder || 0;
+  const depositNeededCount = summary?.depositNeeded || 0;
+  const balanceDueCompletedCount = summary?.balanceDueCompleted || 0;
+  const missingCogsCount = summary?.missingCogs || 0;
+
   return (
     <div className="crm-app-shell">
       {builderQuoteId && session ? (
@@ -1895,42 +1901,14 @@ export function CrmApp({
           <Metric label="Quoted Pipeline" value={toCurrency(data?.summary.quotedPipeline)} onClick={() => openSummaryDrill("quotedPipeline")} />
           <Metric label="Sold Pipeline" value={toCurrency(data?.summary.soldPipeline)} onClick={() => openSummaryDrill("soldPipeline")} />
           <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
-          <Metric label="Need To Order" value={data?.summary.needsOrder || 0} onClick={() => openSummaryDrill("needsOrder")} />
-          <Metric label="Missing COGS" value={data?.summary.missingCogs || 0} onClick={() => openSummaryDrill("missingCogs")} />
+          <Metric label="Need To Order" value={needsOrderCount} tone={needsOrderCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("needsOrder")} />
+          <Metric label="Deposit Needed" value={depositNeededCount} tone={depositNeededCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("depositNeeded")} />
+          <Metric label="Balance Due" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
+          <Metric label="Missing COGS" value={missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
           <Metric label="Install Review" value={data?.summary.installReview || 0} onClick={() => openSummaryDrill("installReview")} />
         </section>
       </header>
-
-      {data?.summary ? (() => {
-        const s = data.summary;
-        const need = s.needsOrder || 0;
-        const dep = s.depositNeeded || 0;
-        const bal = s.balanceDueCompleted || 0;
-        if (need === 0 && dep === 0 && bal === 0) return null;
-        return (
-          <div className="crm-action-alerts" style={{ display: "flex", gap: 12, flexWrap: "wrap", margin: "16px 0 0" }}>
-            {need > 0 ? (
-              <button type="button" onClick={() => openSummaryDrill("needsOrder")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #d97706", background: "#fef3c7", color: "#92400e", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
-                <span>Need to Order</span>
-                <span style={{ fontWeight: 500 }}>{need} sold job{need === 1 ? "" : "s"} waiting to be ordered</span>
-              </button>
-            ) : null}
-            {dep > 0 ? (
-              <button type="button" onClick={() => openSummaryDrill("depositNeeded")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #dc2626", background: "#fde8e8", color: "#991b1b", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
-                <span>Deposit Needed</span>
-                <span style={{ fontWeight: 500 }}>{dep} job{dep === 1 ? "" : "s"} · {toCurrency(s.depositNeededAmount)} deposit unpaid</span>
-              </button>
-            ) : null}
-            {bal > 0 ? (
-              <button type="button" onClick={() => openSummaryDrill("balanceDueCompleted")} style={{ display: "flex", flexDirection: "column", gap: 2, textAlign: "left", cursor: "pointer", border: "2px solid #dc2626", background: "#fde8e8", color: "#991b1b", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 700 }}>
-                <span>Balance Due</span>
-                <span style={{ fontWeight: 500 }}>{bal} completed job{bal === 1 ? "" : "s"} · {toCurrency(s.balanceDueCompletedAmount)} still owed</span>
-              </button>
-            ) : null}
-          </div>
-        );
-      })() : null}
 
       {message ? <p className="crm-alert">{message}</p> : null}
 
@@ -2413,22 +2391,26 @@ function KenPortalView({
 function Metric({
   label,
   value,
+  tone,
   onClick
 }: {
   label: string;
   value: number | string;
+  tone?: "warning" | "danger";
   onClick?: () => void;
 }) {
+  const className = ["crm-metric", tone ? `crm-metric--${tone}` : "", onClick ? "crm-metric-button" : ""].filter(Boolean).join(" ");
+
   if (onClick) {
     return (
-      <button type="button" className="crm-metric crm-metric-button" onClick={onClick}>
+      <button type="button" className={className} onClick={onClick}>
         <span>{label}</span>
         <strong>{value}</strong>
       </button>
     );
   }
   return (
-    <div className="crm-metric">
+    <div className={className}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
