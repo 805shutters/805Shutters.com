@@ -80,6 +80,7 @@ export type QuoteEmailDetails = {
   balanceDue?: number;
   logoUrl?: string;
   businessPhone?: string;
+  personalNote?: string | null;
 };
 
 export function buildQuoteEmail(customerName: string, url: string, total: number, details: QuoteEmailDetails = {}): {
@@ -91,8 +92,10 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const name = customerName && customerName !== "Valued customer" ? customerName : "there";
   const quoteLabel = details.quoteNumber ? `Quote ${details.quoteNumber}` : "Your Quote";
   const subject = `Your 805 Shutters quote${total > 0 ? ` - ${amount}` : ""}`;
+  const personalNote = details.personalNote?.trim();
+  const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
   const itemText = details.lines?.length ? `\n\nQuote items:\n${details.lines.map((line, index) => textLine(line, index)).join("\n")}` : "";
-  const text = `Hi ${name},\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}\n\nThank you,\n805 Shutters`;
+  const text = `Hi ${name},${personalNoteText}\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}\n\nThank you,\n805 Shutters`;
   const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
@@ -101,6 +104,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
       <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">Ready for review</h1>
       <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#1f1f1f">Hi ${escapeHtml(name)}, your quote${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
     </div>
+    ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#fbfbfa;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#1f1f1f">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
     <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#1f1f1f">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>

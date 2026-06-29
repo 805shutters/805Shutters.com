@@ -819,10 +819,10 @@ export async function sendQuoteToCustomer(
   supabase: CrmSupabaseClient,
   quoteId: string,
   actor: CrmActor,
-  channels: { email?: boolean; sms?: boolean } = {},
-): Promise<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }> {
-  const wantSms = channels.sms !== false;
-  const wantEmail = channels.email !== false;
+  options: { email?: boolean; sms?: boolean; emailRecipients?: string[]; phone?: string | null; note?: string | null } = {},
+): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
+  const wantSms = options.sms !== false;
+  const wantEmail = options.email !== false;
   const { token, url } = await ensureShareToken(supabase, quoteId, actor);
   // Give every sibling version a link too, so the customer can compare them.
   try {
@@ -857,8 +857,13 @@ export async function sendQuoteToCustomer(
   const publicQuote = await loadPublicQuoteByToken(supabase, token);
   const total = publicQuote?.total ?? (Number(quote.quote_total) || 0);
   const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
+  const requestedPhone = options.phone?.trim() || phone;
+  const note = options.note?.trim();
+  const smsBody = note
+    ? `${note}\n\nReview & approve: ${url}`
+    : `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}`;
   const sms = wantSms
-    ? await sendSms({ to: phone, body: `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}` })
+    ? await sendSms({ to: requestedPhone, body: smsBody })
     : { sent: false, skipped: "text message not selected" };
   const mail = buildQuoteEmail(customerName, url, total, {
     quoteNumber: publicQuote?.quoteNumber,
@@ -872,9 +877,12 @@ export async function sendQuoteToCustomer(
     balanceDue: publicQuote?.balanceDue,
     logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
     businessPhone: publicQuote?.business.phone,
+    personalNote: note,
   });
+  const requestedEmails = uniqueEmails(options.emailRecipients);
+  const emailRecipients = requestedEmails.length ? requestedEmails : email ? [email] : [];
   const emailRes = wantEmail
-    ? await sendEmail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+    ? await sendEmailToMany(emailRecipients, mail)
     : { sent: false, skipped: "email not selected" };
 
   let status = String(quote.status);
@@ -902,4 +910,36 @@ export async function sendQuoteToCustomer(
   });
 
   return { url, sms, email: emailRes, status };
+}
+
+function uniqueEmails(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set<string>();
+  const emails: string[] = [];
+  for (const value of values) {
+    const email = String(value || "").trim();
+    const key = email.toLowerCase();
+    if (!email || seen.has(key)) continue;
+    seen.add(key);
+    emails.push(email);
+  }
+  return emails;
+}
+
+async function sendEmailToMany(
+  recipients: string[],
+  mail: { subject: string; html: string; text: string },
+): Promise<{ sent: boolean; skipped?: string; error?: string }> {
+  if (!recipients.length) return { sent: false, skipped: "no recipient email" };
+  const results = await Promise.all(
+    recipients.map((to) => sendEmail({ to, subject: mail.subject, html: mail.html, text: mail.text })),
+  );
+  const sentCount = results.filter((result) => result.sent).length;
+  if (sentCount > 0) return { sent: true };
+  const firstFailure = results.find((result) => result.error || result.skipped);
+  return {
+    sent: false,
+    skipped: firstFailure?.skipped,
+    error: firstFailure?.error,
+  };
 }

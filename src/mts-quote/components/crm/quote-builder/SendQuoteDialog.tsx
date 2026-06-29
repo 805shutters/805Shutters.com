@@ -2,6 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@mts/lib/queryKeys";
+import { supabase } from "@mts/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -39,6 +40,14 @@ import type { SalesQuote } from "@mts/types/quote";
 type Channel = "email" | "sms" | "both";
 type EmailType = "quote_only" | "sold_contract";
 type SendQuoteResult = { email?: boolean; sms?: boolean; errors: string[] };
+type SendQuoteResponse = {
+  url?: string;
+  status?: string;
+  email?: { sent?: boolean; skipped?: string; error?: string };
+  sms?: { sent?: boolean; skipped?: string; error?: string };
+  message?: string;
+  error?: string;
+};
 
 interface SendQuoteDialogProps {
   open: boolean;
@@ -83,7 +92,41 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
       if (needsEmail && cleanedEmails.length === 0) throw new Error("Customer email is required");
       if (needsPhone && !phone.trim()) throw new Error("Customer phone is required");
 
-      throw new Error("805 quote email and SMS sending is not wired yet.");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("CRM session is required.");
+
+      const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/send`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channels: { email: needsEmail, sms: needsPhone },
+          emails: needsEmail ? cleanedEmails : [],
+          phone: needsPhone ? phone.trim() : null,
+          note: customMessage.trim() || null,
+          emailType,
+          bypassHours,
+        }),
+      });
+      const data = (await response.json().catch(() => ({}))) as SendQuoteResponse;
+      if (!response.ok) throw new Error(data.message || data.error || "Failed to send quote");
+
+      const errors: string[] = [];
+      if (needsEmail && !data.email?.sent) {
+        errors.push(`Email ${data.email?.error || data.email?.skipped || "was not sent"}`);
+      }
+      if (needsPhone && !data.sms?.sent) {
+        errors.push(`Text ${data.sms?.error || data.sms?.skipped || "was not sent"}`);
+      }
+
+      return {
+        email: Boolean(data.email?.sent),
+        sms: Boolean(data.sms?.sent),
+        errors,
+      };
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
