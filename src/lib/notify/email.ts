@@ -5,7 +5,7 @@ import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
 
-const DEFAULT_EMAIL_FROM = "805 Shutters <appointments@805shutters.com>";
+const DEFAULT_EMAIL_FROM = "805 Shutters <805@805shutters.com>";
 
 function resendFromAddress(): string {
   return process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || DEFAULT_EMAIL_FROM;

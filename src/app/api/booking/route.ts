@@ -348,7 +348,7 @@ async function sendBookingEmail({
   replyTo?: string | null;
 }) {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.BOOKING_EMAIL_FROM || "805 Shutters <appointments@805shutters.com>";
+  const from = process.env.BOOKING_EMAIL_FROM || process.env.RESEND_FROM || "805 Shutters <805@805shutters.com>";
   if (!apiKey || !from || !to.length) return false;
 
   const payload: Record<string, unknown> = {
