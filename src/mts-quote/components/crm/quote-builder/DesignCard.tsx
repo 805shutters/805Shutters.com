@@ -78,24 +78,18 @@ import {
   PERFECTSHEER_MOUNT_TYPES,
   PERFECTSHEER_LIGHT_CONTROL,
   PERFECTSHEER_LIFT_SYSTEMS,
-  PERFECTSHEER_FABRICS,
   FAUX_WOOD_MOUNT_TYPES,
   FAUX_WOOD_SLAT_SIZES,
   FAUX_WOOD_PRODUCT_LINES,
-  FAUX_WOOD_SMARTPRIVACY_COLORS,
-  FAUX_WOOD_ULTIMATE_COLORS,
   WOOD_BLIND_MOUNT_TYPES,
   WOOD_BLIND_SLAT_SIZES,
-  WOOD_BLIND_COLORS,
   VERTICAL_MOUNT_TYPES,
   VERTICAL_FABRIC_GROUPS,
   VERTICAL_CONTROL_TYPES,
   VERTICAL_STACK_OPTIONS,
-  getVerticalColorsForGroup,
   getVerticalFabricPriceGroup,
   SMARTDRAPE_MOUNT_TYPES,
   SMARTDRAPE_SHADE_TYPES,
-  SMARTDRAPE_FABRICS,
   SMARTDRAPE_STACK_OPTIONS,
   SMARTDRAPE_CONTROL_TYPES,
   SMARTDRAPE_CONTROL_SIDES,
@@ -109,7 +103,6 @@ import {
   type WoodShutterRoute,
 } from "@mts/lib/quoteShutterRouting";
 import {
-  getHoneycombFabricStrings,
   getHoneycombFabricGroups,
 } from "@mts/lib/fabricCatalog";
 import {
@@ -124,6 +117,25 @@ import {
   searchMtsRollerFabricColors,
   type MtsRollerFabricColor,
 } from "@mts/lib/normanRollerFabricCatalog";
+import {
+  PRODUCT_COLOR_CODE_DETAIL,
+  PRODUCT_COLOR_COLLECTION_DETAIL,
+  PRODUCT_COLOR_ID_DETAIL,
+  PRODUCT_COLOR_NAME_DETAIL,
+  PRODUCT_COLOR_PRODUCT_ID_DETAIL,
+  PRODUCT_COLOR_PROGRAM_DETAIL,
+  PRODUCT_COLOR_SURCHARGE_DETAIL,
+  PRODUCT_COLOR_TYPE_DETAIL,
+  findMtsProductColorById,
+  findMtsProductColorBySelection,
+  getMtsProductColorFieldLabel,
+  getMtsProductColorProgramLabel,
+  getMtsProductColorValue,
+  productColorLabel,
+  searchMtsProductColors,
+  supportsMtsProductColorSearch,
+  type ProductColorOption,
+} from "@mts/lib/productColorCatalog";
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
@@ -821,6 +833,84 @@ function setFieldValue(
   }
 }
 
+function getJsonFieldKey(field: string): string | null {
+  return field.startsWith("json:") ? field.slice(5) : null;
+}
+
+function getDependentProductColorField(productType: string, changedField: string): string | null {
+  if (productType === "Roman Shades" && changedField === "json:roman_fabric_category") {
+    return "fabric";
+  }
+  if (
+    productType === "Honeycomb Shades" &&
+    (changedField === "json:cell_size" || changedField === "json:light_control")
+  ) {
+    return "fabric";
+  }
+  if (productType === "Sheer Shades" && changedField === "json:light_control") {
+    return "fabric";
+  }
+  if (productType === "Smart Drapes" && changedField === "shade_type") {
+    return "fabric";
+  }
+  if (productType === "Faux Wood Blinds" && changedField === "json:product_line") {
+    return "json:color";
+  }
+  if (productType === "Vertical Blinds" && changedField === "json:fabric_group") {
+    return "json:vertical_color";
+  }
+  return null;
+}
+
+function withJsonField(
+  optionsJson: Record<string, unknown>,
+  field: string,
+  value: unknown
+): Record<string, unknown> {
+  const jsonKey = getJsonFieldKey(field);
+  return jsonKey ? { ...optionsJson, [jsonKey]: value } : optionsJson;
+}
+
+function getLightControlFromProductColor(row: ProductColorOption): string | null {
+  const type = `${row.fabricType} ${row.collection}`.toLowerCase();
+  if (type.includes("room darkening") || type.includes("blackout")) return "Room Darkening";
+  if (type.includes("light filtering") || type.includes("sheer")) return "Light Filtering";
+  return null;
+}
+
+function getSmartDrapeShadeTypeFromProductColor(row: ProductColorOption): string | null {
+  const type = `${row.fabricType} ${row.collection}`.toLowerCase();
+  if (type.includes("room darkening")) return "Room Darkening";
+  if (type.includes("essentials") || type.includes("lakeshore")) return "Light Filtering Essentials";
+  if (type.includes("light filtering")) return "Light Filtering";
+  return null;
+}
+
+function getHoneycombCellSizeFromProgram(programId: string | null | undefined): string | null {
+  switch (programId) {
+    case "honeycomb_9_16in_cordless_single_cell":
+      return '9/16" Single Cell';
+    case "honeycomb_1_2in_cordless_double":
+      return '1/2" Double Cell';
+    case "honeycomb_3_8in_cordless_single_and_3_4in_single":
+    case "honeycomb_flame_resistant_fabrics":
+      return '3/8" Single Cell';
+    case "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1":
+    case "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2":
+      return '3/4" Single Cell';
+    case "honeycomb_3_4in_cordless_double_and_1_1_4in_single":
+      return '3/4" Double Cell';
+    default:
+      return null;
+  }
+}
+
+function getFauxWoodProductLineFromProductId(productId: string): string | null {
+  if (productId === "smartprivacy_faux") return "SmartPrivacy";
+  if (productId === "faux_wood") return "Ultimate";
+  return null;
+}
+
 function applyShutterRoutePatch(
   patch: ShutterRoutePatch,
   design: SalesQuoteDesign | undefined,
@@ -871,13 +961,16 @@ function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<stri
   return rest;
 }
 
-function withoutRollerFabricColorDetails(options: Record<string, unknown>): Record<string, unknown> {
+function withoutProductColorDetails(options: Record<string, unknown>): Record<string, unknown> {
   const {
     [ROLLER_FABRIC_COLOR_ID_DETAIL]: _fabricColorId,
     [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: _fabricColorCollection,
     [ROLLER_FABRIC_COLOR_CODE_DETAIL]: _fabricColorCode,
     [ROLLER_FABRIC_COLOR_NAME_DETAIL]: _fabricColorName,
     [ROLLER_FABRIC_COLOR_TYPE_DETAIL]: _fabricColorType,
+    [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: _fabricProductId,
+    [PRODUCT_COLOR_PROGRAM_DETAIL]: _fabricProgramId,
+    [PRODUCT_COLOR_SURCHARGE_DETAIL]: _fabricSurchargeId,
     ...rest
   } = options;
   return rest;
@@ -893,8 +986,8 @@ function getFabricCompletedDisplayValue(
   value: string
 ): string {
   const options = (design?.options_json as Record<string, unknown> | undefined) || {};
-  const code = stringOption(options, ROLLER_FABRIC_COLOR_CODE_DETAIL);
-  const name = stringOption(options, ROLLER_FABRIC_COLOR_NAME_DETAIL);
+  const code = stringOption(options, PRODUCT_COLOR_CODE_DETAIL);
+  const name = stringOption(options, PRODUCT_COLOR_NAME_DETAIL);
   return code && name ? `${value}: ${code} - ${name}` : value;
 }
 
@@ -904,7 +997,9 @@ function getCompletedDisplayValue(
 ): string | null {
   const value = getFieldValue(design, field);
   if (!value) return null;
-  if (field === "fabric") return getFabricCompletedDisplayValue(design, value);
+  if (field === "fabric" || field === "json:color" || field === "json:vertical_color") {
+    return getFabricCompletedDisplayValue(design, value);
+  }
   return value;
 }
 
@@ -1802,6 +1897,137 @@ function RollerFabricAutocomplete({
   );
 }
 
+function ProductColorAutocomplete({
+  productType,
+  field,
+  value,
+  optionsJson,
+  onSelect,
+  onClear,
+}: {
+  productType: string;
+  field: string;
+  value: string | null;
+  optionsJson: Record<string, unknown>;
+  onSelect: (fabricColor: ProductColorOption) => void;
+  onClear: () => void;
+}) {
+  const selectedColor =
+    findMtsProductColorById(productType, optionsJson, stringOption(optionsJson, PRODUCT_COLOR_ID_DETAIL)) ||
+    findMtsProductColorBySelection(
+      productType,
+      optionsJson,
+      stringOption(optionsJson, PRODUCT_COLOR_COLLECTION_DETAIL),
+      stringOption(optionsJson, PRODUCT_COLOR_CODE_DETAIL),
+      stringOption(optionsJson, PRODUCT_COLOR_NAME_DETAIL)
+    );
+  const selectedLabel = selectedColor ? getMtsProductColorValue(selectedColor) : value ?? "";
+  const [query, setQuery] = useState(selectedLabel);
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  useEffect(() => {
+    if (!hasDraft) setQuery(selectedLabel);
+  }, [hasDraft, selectedLabel]);
+
+  const results = useMemo(
+    () => searchMtsProductColors(productType, optionsJson, query, { includeUnavailable: true, limit: 60 }),
+    [optionsJson, productType, query]
+  );
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextQuery = event.target.value;
+    setQuery(nextQuery);
+    setIsOpen(true);
+    setHasDraft(true);
+
+    if (selectedLabel && nextQuery.trim() !== selectedLabel.trim()) {
+      onClear();
+    }
+  };
+
+  const handleSelect = (fabricColor: ProductColorOption) => {
+    setQuery(getMtsProductColorValue(fabricColor));
+    setIsOpen(false);
+    setHasDraft(false);
+    onSelect(fabricColor);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setIsOpen(false);
+    setHasDraft(false);
+    onClear();
+  };
+
+  const label = getMtsProductColorFieldLabel(productType, field);
+  const noResultsLabel = label === "Color Search" ? "No Norman color matches." : "No Norman fabric matches.";
+
+  return (
+    <div className="relative col-span-2 space-y-1.5 lg:col-span-2">
+      <Label className="text-xs text-gray-900">{label}</Label>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
+          placeholder="Search collection, color, or code..."
+          autoComplete="off"
+          className="h-9 pl-8 pr-8 text-sm text-gray-900"
+        />
+        {(query || value) && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label={`Clear ${label.toLowerCase()}`}
+            title={`Clear ${label.toLowerCase()}`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 max-h-72 w-full min-w-[22rem] overflow-auto rounded-md border border-border bg-background shadow-lg">
+          {results.length > 0 ? (
+            results.map((fabricColor) => {
+              const disabled =
+                !fabricColor.available || fabricColor.requiresProgram || !fabricColor.programId;
+              return (
+                <button
+                  key={fabricColor.id}
+                  type="button"
+                  disabled={disabled}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    if (disabled) return;
+                    handleSelect(fabricColor);
+                  }}
+                  className={cn(
+                    "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
+                    selectedColor?.id === fabricColor.id && "bg-accent"
+                  )}
+                >
+                  <span className="font-medium text-gray-950">{productColorLabel(fabricColor)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {fabricColor.fabricType || fabricColor.collection} ·{" "}
+                    {getMtsProductColorProgramLabel(productType, fabricColor.programId)}
+                    {fabricColor.requiresProgram ? " · choose a type first" : ""}
+                  </span>
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-3 py-2 text-sm text-muted-foreground">{noResultsLabel}</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GridYesNo({
   label,
   value,
@@ -1963,6 +2189,7 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
@@ -2047,6 +2274,7 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
@@ -2185,6 +2413,7 @@ export function DesignCard({
       fabricGroup,
       shadeType: currentDesign.shade_type || undefined,
       program: shutterProgram || currentDesign.material || undefined,
+      catalogProgramId: opts?.[PRODUCT_COLOR_PROGRAM_DETAIL] as string | undefined,
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize, // Pass cell size for honeycomb routing
@@ -3205,15 +3434,53 @@ function ShadesAndBlindsOptions({
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
 
   const handleUpdate = (field: string, value: unknown) => {
+    const currentJson = (design?.options_json as Record<string, unknown>) || {};
+    const emptyValue = value === null || value === undefined || value === "";
+
     if (
       productType === "Roller Shades" &&
       field === "fabric" &&
-      (value === null || value === undefined || value === "")
+      emptyValue
     ) {
-      const currentJson = (design?.options_json as Record<string, unknown>) || {};
       onUpdateFields({
         fabric: null,
-        options_json: withoutRollerFabricColorDetails(currentJson),
+        options_json: withoutProductColorDetails(currentJson),
+      });
+      return;
+    }
+
+    if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
+      let nextJson = withoutProductColorDetails(currentJson);
+      const jsonKey = getJsonFieldKey(field);
+      if (jsonKey) {
+        nextJson = { ...nextJson, [jsonKey]: null };
+      }
+      onUpdateFields({
+        ...(field === "fabric" ? { fabric: null } : {}),
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    const dependentProductColorField = getDependentProductColorField(productType, field);
+    if (dependentProductColorField) {
+      setEditingFields((prev) => {
+        const next = new Set(prev);
+        if (!emptyValue) next.delete(field);
+        next.add(dependentProductColorField);
+        return next;
+      });
+
+      let nextJson = withJsonField(withoutProductColorDetails(currentJson), field, value);
+      const dependentJsonKey = getJsonFieldKey(dependentProductColorField);
+      if (dependentJsonKey) {
+        nextJson = { ...nextJson, [dependentJsonKey]: null };
+      }
+
+      onUpdateFields({
+        ...(getJsonFieldKey(field) ? {} : { [field]: value }),
+        ...(dependentProductColorField === "fabric" ? { fabric: null } : {}),
+        options_json: nextJson,
       });
       return;
     }
@@ -3228,30 +3495,13 @@ function ShadesAndBlindsOptions({
     }
     setFieldValue(field, value, design, onUpdate);
 
-    // For Honeycomb Shades: Clear fabric selection when cell size changes
-    if (productType === "Honeycomb Shades" && field === "json:cell_size") {
-      // Check if current fabric is valid for the new cell size
-      const currentFabric = design?.fabric;
-      if (currentFabric && value) {
-        const validFabrics = getHoneycombFabricStrings(value as string);
-        if (!validFabrics.includes(currentFabric)) {
-          // Clear invalid fabric
-          onUpdate("fabric", null);
-        }
-      }
-    }
-
-    if (productType === "Roman Shades" && field === "json:roman_fabric_category") {
-      const currentFabric = design?.fabric;
-      const validColors = getRomanFabricColorsForCategory(value as string);
-      if (currentFabric && !validColors.includes(currentFabric)) {
-        onUpdate("fabric", null);
-      }
-    }
-
-    if (productType === "Roman Shades" && field === "fabric" && typeof value === "string") {
+    if (
+      productType === "Roman Shades" &&
+      field === "fabric" &&
+      typeof value === "string" &&
+      !stringOption(currentJson, PRODUCT_COLOR_ID_DETAIL)
+    ) {
       const category = getRomanFabricCategoryForColor(value);
-      const currentJson = (design?.options_json as Record<string, unknown>) || {};
       if (category && currentJson.roman_fabric_category !== category) {
         onUpdate("options_json", { ...currentJson, roman_fabric_category: category });
       }
@@ -3371,11 +3621,12 @@ function ShadesAndBlindsOptions({
 
   useEffect(() => {
     if (productType !== "Roman Shades" || !design?.fabric) return;
+    const currentJson = (design.options_json as Record<string, unknown>) || {};
+    if (stringOption(currentJson, PRODUCT_COLOR_ID_DETAIL)) return;
 
     const canonicalFabric = getRomanFabricCanonicalLabel(design.fabric);
     const category =
       getRomanFabricCategoryForColor(design.fabric) || getRomanFabricCategoryName(design.fabric);
-    const currentJson = (design.options_json as Record<string, unknown>) || {};
 
     if (canonicalFabric && canonicalFabric !== design.fabric) {
       onUpdate("fabric", canonicalFabric);
@@ -3537,7 +3788,6 @@ function ShadesAndBlindsOptions({
 
       case "Roman Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
-        const romanFabricCategory = getFieldValue(design, "json:roman_fabric_category");
         const options: GridOption[] = [
           {
             key: "mount",
@@ -3572,7 +3822,7 @@ function ShadesAndBlindsOptions({
             label: "Fabric Color",
             field: "fabric",
             type: "select",
-            options: getRomanFabricColorsForCategory(romanFabricCategory),
+            options: [] as readonly string[],
           },
         ];
 
@@ -3612,12 +3862,6 @@ function ShadesAndBlindsOptions({
 
       case "Honeycomb Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
-        const cellSize = getFieldValue(design, "json:cell_size");
-
-        // Filter fabrics based on cell size selection using the new catalog
-        const fabricOptions = cellSize
-          ? getHoneycombFabricStrings(cellSize)
-          : getHoneycombFabricStrings('1/2" Double');
 
         const options: GridOption[] = [
           {
@@ -3660,7 +3904,7 @@ function ShadesAndBlindsOptions({
             label: "Fabric",
             field: "fabric",
             type: "select",
-            options: fabricOptions,
+            options: [] as readonly string[],
           },
         ];
 
@@ -3727,7 +3971,7 @@ function ShadesAndBlindsOptions({
             label: "Fabric",
             field: "fabric",
             type: "select",
-            options: PERFECTSHEER_FABRICS,
+            options: [] as readonly string[],
           },
         ];
 
@@ -3766,10 +4010,6 @@ function ShadesAndBlindsOptions({
       }
 
       case "Faux Wood Blinds": {
-        const productLine = getFieldValue(design, "json:product_line");
-        const colorOptions =
-          productLine === "Ultimate" ? FAUX_WOOD_ULTIMATE_COLORS : FAUX_WOOD_SMARTPRIVACY_COLORS;
-
         return [
           {
             key: "mount",
@@ -3797,7 +4037,7 @@ function ShadesAndBlindsOptions({
             label: "Color",
             field: "json:color",
             type: "select",
-            options: colorOptions,
+            options: [] as readonly string[],
           },
           ...commonOptions,
         ];
@@ -3824,17 +4064,12 @@ function ShadesAndBlindsOptions({
             label: "Color",
             field: "json:color",
             type: "select",
-            options: WOOD_BLIND_COLORS,
+            options: [] as readonly string[],
           },
           ...commonOptions,
         ];
 
       case "Vertical Blinds": {
-        const fabricGroup = getFieldValue(design, "json:fabric_group");
-        const colorOptions = fabricGroup
-          ? getVerticalColorsForGroup(fabricGroup)
-          : getVerticalColorsForGroup("Classic collection");
-
         return [
           {
             key: "mount",
@@ -3855,7 +4090,7 @@ function ShadesAndBlindsOptions({
             label: "Color / Material",
             field: "json:vertical_color",
             type: "select",
-            options: colorOptions,
+            options: [] as readonly string[],
           },
           {
             key: "stack",
@@ -3897,7 +4132,7 @@ function ShadesAndBlindsOptions({
             label: "Fabric",
             field: "fabric",
             type: "select",
-            options: SMARTDRAPE_FABRICS,
+            options: [] as readonly string[],
           },
           {
             key: "stack",
@@ -3975,8 +4210,10 @@ function ShadesAndBlindsOptions({
     onUpdateFields({
       fabric: fabricColor.collection,
       options_json: {
-        ...optionsJson,
+        ...withoutProductColorDetails(optionsJson),
         [ROLLER_FABRIC_COLOR_ID_DETAIL]: fabricColor.id,
+        [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: "roller",
+        [PRODUCT_COLOR_PROGRAM_DETAIL]: fabricColor.programId,
         [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: fabricColor.collection,
         [ROLLER_FABRIC_COLOR_CODE_DETAIL]: fabricColor.colorCode,
         [ROLLER_FABRIC_COLOR_NAME_DETAIL]: fabricColor.colorName,
@@ -3993,7 +4230,90 @@ function ShadesAndBlindsOptions({
     });
     onUpdateFields({
       fabric: null,
-      options_json: withoutRollerFabricColorDetails(optionsJson),
+      options_json: withoutProductColorDetails(optionsJson),
+    });
+  };
+
+  const handleProductColorSelect = (field: string, fabricColor: ProductColorOption) => {
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      next.delete(field);
+      return next;
+    });
+
+    const selectedValue = getMtsProductColorValue(fabricColor);
+    let nextJson: Record<string, unknown> = {
+      ...withoutProductColorDetails(optionsJson),
+      ...fabricColor.automaticDetails,
+      [PRODUCT_COLOR_ID_DETAIL]: fabricColor.id,
+      [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: fabricColor.productId,
+      [PRODUCT_COLOR_PROGRAM_DETAIL]: fabricColor.programId,
+      [PRODUCT_COLOR_COLLECTION_DETAIL]: fabricColor.collection,
+      [PRODUCT_COLOR_CODE_DETAIL]: fabricColor.colorCode,
+      [PRODUCT_COLOR_NAME_DETAIL]: fabricColor.colorName,
+      [PRODUCT_COLOR_TYPE_DETAIL]: fabricColor.fabricType,
+    };
+    const patch: Record<string, unknown> = {};
+    const jsonKey = getJsonFieldKey(field);
+
+    if (jsonKey) {
+      nextJson = { ...nextJson, [jsonKey]: selectedValue };
+    } else {
+      patch[field] = selectedValue;
+    }
+
+    if (productType === "Roman Shades") {
+      nextJson.roman_fabric_category = fabricColor.collection;
+    }
+
+    if (productType === "Honeycomb Shades") {
+      const inferredCellSize = getHoneycombCellSizeFromProgram(fabricColor.programId);
+      const inferredLightControl = getLightControlFromProductColor(fabricColor);
+      if (inferredCellSize && !nextJson.cell_size) nextJson.cell_size = inferredCellSize;
+      if (inferredLightControl && !nextJson.light_control) nextJson.light_control = inferredLightControl;
+    }
+
+    if (productType === "Sheer Shades") {
+      const inferredLightControl = getLightControlFromProductColor(fabricColor);
+      if (inferredLightControl) nextJson.light_control = inferredLightControl;
+    }
+
+    if (productType === "Smart Drapes") {
+      const inferredShadeType = getSmartDrapeShadeTypeFromProductColor(fabricColor);
+      if (inferredShadeType) patch.shade_type = inferredShadeType;
+    }
+
+    if (productType === "Vertical Blinds") {
+      nextJson.fabric_group = fabricColor.collection;
+    }
+
+    if (productType === "Faux Wood Blinds") {
+      const inferredProductLine = getFauxWoodProductLineFromProductId(fabricColor.productId);
+      if (inferredProductLine) nextJson.product_line = inferredProductLine;
+    }
+
+    onUpdateFields({
+      ...patch,
+      options_json: nextJson,
+    });
+  };
+
+  const handleProductColorClear = (field: string) => {
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      next.add(field);
+      return next;
+    });
+
+    let nextJson = withoutProductColorDetails(optionsJson);
+    const jsonKey = getJsonFieldKey(field);
+    if (jsonKey) {
+      nextJson = { ...nextJson, [jsonKey]: null };
+    }
+
+    onUpdateFields({
+      ...(field === "fabric" ? { fabric: null } : {}),
+      options_json: nextJson,
     });
   };
 
@@ -4081,6 +4401,20 @@ function ShadesAndBlindsOptions({
             }
 
             if (opt.type === "select") {
+              if (supportsMtsProductColorSearch(productType, opt.field, optionsJson)) {
+                return (
+                  <ProductColorAutocomplete
+                    key={opt.key}
+                    productType={productType}
+                    field={opt.field}
+                    value={value}
+                    optionsJson={optionsJson}
+                    onSelect={(fabricColor) => handleProductColorSelect(opt.field, fabricColor)}
+                    onClear={() => handleProductColorClear(opt.field)}
+                  />
+                );
+              }
+
               if (productType === "Roller Shades" && opt.field === "fabric") {
                 return (
                   <RollerFabricAutocomplete

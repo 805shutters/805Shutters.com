@@ -22,6 +22,7 @@ import {
   getRomanFabricPriceGroup,
   getVerticalFabricPriceGroup,
 } from "./quoteConstants";
+import { getMtsGridKeyForCatalogProgram } from "./productColorCatalog";
 
 /**
  * Round dimension UP to nearest 6"
@@ -186,6 +187,7 @@ export interface PriceLookupOptions {
   fabricGroup?: string;
   shadeType?: string;
   program?: string;
+  catalogProgramId?: string;
   supplier?: string;
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
@@ -243,6 +245,12 @@ function getFabricSurcharge(fabric?: string): number {
   return 0;
 }
 
+function getCatalogGridKey(productType: string, options: PriceLookupOptions): string | null {
+  return options.catalogProgramId
+    ? getMtsGridKeyForCatalogProgram(productType, options.catalogProgramId)
+    : null;
+}
+
 /**
  * Honeycomb Shades
  * Routes to correct grid based on cell size + fabric selection
@@ -250,7 +258,9 @@ function getFabricSurcharge(fabric?: string): number {
  */
 export function getHoneycombPrice(options: PriceLookupOptions): number | null {
   const { width, height, cellSize, fabric } = options;
-  const gridKey = cellSize && fabric ? getHoneycombGrid(cellSize, fabric) : "general_3_4_double";
+  const gridKey =
+    getCatalogGridKey("Honeycomb Shades", options) ??
+    (cellSize && fabric ? getHoneycombGrid(cellSize, fabric) : "general_3_4_double");
 
   const grid = HONEYCOMB_PRICING[gridKey as keyof typeof HONEYCOMB_PRICING];
   if (!grid) return null;
@@ -269,9 +279,9 @@ export function getHoneycombPrice(options: PriceLookupOptions): number | null {
  */
 export function getRollerPrice(options: PriceLookupOptions): number | null {
   const { priceGroup, fabric, width, height } = options;
-  const gridKey = fabric
+  const gridKey = getCatalogGridKey("Roller Shades", options) ?? (fabric
     ? getRollerFabricPriceGroup(fabric)
-    : priceGroup?.toLowerCase().replace(" ", "") || "group1";
+    : priceGroup?.toLowerCase().replace(" ", "") || "group1");
 
   const grid = ROLLER_PRICING[gridKey as keyof typeof ROLLER_PRICING];
 
@@ -287,9 +297,9 @@ export function getRollerPrice(options: PriceLookupOptions): number | null {
 export function getRomanPrice(options: PriceLookupOptions): number | null {
   const { priceGroup, fabric, width, height } = options;
 
-  const gridKey = fabric
+  const gridKey = getCatalogGridKey("Roman Shades", options) ?? (fabric
     ? getRomanFabricPriceGroup(fabric)
-    : priceGroup?.toLowerCase().replace(" ", "") || "group1";
+    : priceGroup?.toLowerCase().replace(" ", "") || "group1");
 
   const grid = ROMAN_PRICING[gridKey as keyof typeof ROMAN_PRICING];
 
@@ -302,7 +312,8 @@ export function getRomanPrice(options: PriceLookupOptions): number | null {
  * Sheer Shades (PerfectSheer)
  */
 export function getPerfectSheerPrice(options: PriceLookupOptions): number | null {
-  const grid = PERFECTSHEER_PRICING.light_filtering;
+  const gridKey = getCatalogGridKey("Sheer Shades", options) ?? "light_filtering";
+  const grid = PERFECTSHEER_PRICING[gridKey as keyof typeof PERFECTSHEER_PRICING];
   return lookupGridPrice(grid, options.width, options.height);
 }
 
@@ -313,7 +324,9 @@ export function getPerfectSheerPrice(options: PriceLookupOptions): number | null
 export function getVerticalPrice(options: PriceLookupOptions): number | null {
   const { fabricGroup, width, height } = options;
 
-  const gridKey = fabricGroup ? getVerticalFabricPriceGroup(fabricGroup) : "group1";
+  const gridKey =
+    getCatalogGridKey("Vertical Blinds", options) ??
+    (fabricGroup ? getVerticalFabricPriceGroup(fabricGroup) : "group1");
 
   const grid = VERTICAL_PRICING[gridKey as keyof typeof VERTICAL_PRICING];
 
@@ -328,8 +341,10 @@ export function getVerticalPrice(options: PriceLookupOptions): number | null {
 export function getFauxWoodPrice(options: PriceLookupOptions): number | null {
   const { productLine = "SmartPrivacy", width, height } = options;
 
-  const gridKey = productLine.toLowerCase() === "smartprivacy" ? "smartPrivacy" : "ultimate";
-  const grid = FAUX_WOOD_PRICING[gridKey];
+  const gridKey =
+    getCatalogGridKey("Faux Wood Blinds", options) ??
+    (productLine.toLowerCase() === "smartprivacy" ? "smartPrivacy" : "ultimate");
+  const grid = FAUX_WOOD_PRICING[gridKey as keyof typeof FAUX_WOOD_PRICING];
 
   if (!grid) return null;
 
@@ -340,7 +355,8 @@ export function getFauxWoodPrice(options: PriceLookupOptions): number | null {
  * Wood Blinds
  */
 export function getWoodBlindPrice(options: PriceLookupOptions): number | null {
-  const grid = WOOD_BLINDS_PRICING.ultimate;
+  const gridKey = getCatalogGridKey("Wood Blinds", options) ?? "ultimate";
+  const grid = WOOD_BLINDS_PRICING[gridKey as keyof typeof WOOD_BLINDS_PRICING];
   return lookupGridPrice(grid, options.width, options.height);
 }
 
@@ -348,7 +364,8 @@ export function getWoodBlindPrice(options: PriceLookupOptions): number | null {
  * Smart Drapes
  */
 export function getSmartDrapePrice(options: PriceLookupOptions): number | null {
-  const grid = SMARTDRAPE_PRICING.light_filtering;
+  const gridKey = getCatalogGridKey("Smart Drapes", options) ?? "light_filtering";
+  const grid = SMARTDRAPE_PRICING[gridKey as keyof typeof SMARTDRAPE_PRICING];
   return lookupGridPrice(grid, options.width, options.height);
 }
 
@@ -436,9 +453,10 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
   switch (productType) {
     case "Honeycomb Shades": {
       const gridKey =
-        options.cellSize && options.fabric
+        getCatalogGridKey(productType, options) ??
+        (options.cellSize && options.fabric
           ? getHoneycombGrid(options.cellSize, options.fabric)
-          : "general_3_4_double";
+          : "general_3_4_double");
       const builtInAdjustment = getFabricSurcharge(options.fabric);
       return gridBreakdown(
         options,
@@ -448,9 +466,9 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
       );
     }
     case "Roller Shades": {
-      const gridKey = options.fabric
+      const gridKey = getCatalogGridKey(productType, options) ?? (options.fabric
         ? getRollerFabricPriceGroup(options.fabric)
-        : options.priceGroup?.toLowerCase().replace(" ", "") || "group1";
+        : options.priceGroup?.toLowerCase().replace(" ", "") || "group1");
       return gridBreakdown(
         options,
         ROLLER_PRICING[gridKey as keyof typeof ROLLER_PRICING],
@@ -458,17 +476,23 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
       );
     }
     case "Roman Shades": {
-      const gridKey = options.fabric
+      const gridKey = getCatalogGridKey(productType, options) ?? (options.fabric
         ? getRomanFabricPriceGroup(options.fabric)
-        : options.priceGroup?.toLowerCase().replace(" ", "") || "group1";
+        : options.priceGroup?.toLowerCase().replace(" ", "") || "group1");
       return gridBreakdown(options, ROMAN_PRICING[gridKey as keyof typeof ROMAN_PRICING], gridKey);
     }
-    case "Sheer Shades":
-      return gridBreakdown(options, PERFECTSHEER_PRICING.light_filtering, "light_filtering");
+    case "Sheer Shades": {
+      const gridKey = getCatalogGridKey(productType, options) ?? "light_filtering";
+      return gridBreakdown(
+        options,
+        PERFECTSHEER_PRICING[gridKey as keyof typeof PERFECTSHEER_PRICING],
+        gridKey
+      );
+    }
     case "Vertical Blinds": {
-      const gridKey = options.fabricGroup
-        ? getVerticalFabricPriceGroup(options.fabricGroup)
-        : "group1";
+      const gridKey =
+        getCatalogGridKey(productType, options) ??
+        (options.fabricGroup ? getVerticalFabricPriceGroup(options.fabricGroup) : "group1");
       return gridBreakdown(
         options,
         VERTICAL_PRICING[gridKey as keyof typeof VERTICAL_PRICING],
@@ -477,13 +501,30 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     }
     case "Faux Wood Blinds": {
       const gridKey =
-        options.productLine?.toLowerCase() === "ultimate" ? "ultimate" : "smartPrivacy";
-      return gridBreakdown(options, FAUX_WOOD_PRICING[gridKey], gridKey);
+        getCatalogGridKey(productType, options) ??
+        (options.productLine?.toLowerCase() === "ultimate" ? "ultimate" : "smartPrivacy");
+      return gridBreakdown(
+        options,
+        FAUX_WOOD_PRICING[gridKey as keyof typeof FAUX_WOOD_PRICING],
+        gridKey
+      );
     }
-    case "Wood Blinds":
-      return gridBreakdown(options, WOOD_BLINDS_PRICING.ultimate, "ultimate");
-    case "Smart Drapes":
-      return gridBreakdown(options, SMARTDRAPE_PRICING.light_filtering, "light_filtering");
+    case "Wood Blinds": {
+      const gridKey = getCatalogGridKey(productType, options) ?? "ultimate";
+      return gridBreakdown(
+        options,
+        WOOD_BLINDS_PRICING[gridKey as keyof typeof WOOD_BLINDS_PRICING],
+        gridKey
+      );
+    }
+    case "Smart Drapes": {
+      const gridKey = getCatalogGridKey(productType, options) ?? "light_filtering";
+      return gridBreakdown(
+        options,
+        SMARTDRAPE_PRICING[gridKey as keyof typeof SMARTDRAPE_PRICING],
+        gridKey
+      );
+    }
     case "Shutters": {
       const price = getShutterPrice(options);
       return {

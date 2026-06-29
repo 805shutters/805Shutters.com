@@ -1,10 +1,13 @@
 import {
-  ROLLER_FABRIC_COLOR_CODE_DETAIL,
-  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
-  ROLLER_FABRIC_COLOR_ID_DETAIL,
-  ROLLER_FABRIC_COLOR_NAME_DETAIL,
-  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
-} from "@mts/lib/normanRollerFabricCatalog";
+  PRODUCT_COLOR_CODE_DETAIL,
+  PRODUCT_COLOR_COLLECTION_DETAIL,
+  PRODUCT_COLOR_ID_DETAIL,
+  PRODUCT_COLOR_NAME_DETAIL,
+  PRODUCT_COLOR_PRODUCT_ID_DETAIL,
+  PRODUCT_COLOR_PROGRAM_DETAIL,
+  PRODUCT_COLOR_SURCHARGE_DETAIL,
+  PRODUCT_COLOR_TYPE_DETAIL,
+} from "@mts/lib/productColorCatalog";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 export interface QuoteDesignDetail {
@@ -41,11 +44,14 @@ const INTERNAL_OPTION_KEYS = new Set([
   "pricing_grid_height",
   "pricing_built_in_adjustment",
   "sent_price_snapshot",
-  ROLLER_FABRIC_COLOR_ID_DETAIL,
-  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
-  ROLLER_FABRIC_COLOR_CODE_DETAIL,
-  ROLLER_FABRIC_COLOR_NAME_DETAIL,
-  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
+  PRODUCT_COLOR_ID_DETAIL,
+  PRODUCT_COLOR_PRODUCT_ID_DETAIL,
+  PRODUCT_COLOR_PROGRAM_DETAIL,
+  PRODUCT_COLOR_COLLECTION_DETAIL,
+  PRODUCT_COLOR_CODE_DETAIL,
+  PRODUCT_COLOR_NAME_DETAIL,
+  PRODUCT_COLOR_TYPE_DETAIL,
+  PRODUCT_COLOR_SURCHARGE_DETAIL,
 ]);
 
 export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDetail[] {
@@ -92,8 +98,8 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 }
 
 function formatFabricColorDetail(options: Record<string, unknown>): string | null {
-  const code = stringValue(options[ROLLER_FABRIC_COLOR_CODE_DETAIL]);
-  const name = stringValue(options[ROLLER_FABRIC_COLOR_NAME_DETAIL]);
+  const code = stringValue(options[PRODUCT_COLOR_CODE_DETAIL]);
+  const name = stringValue(options[PRODUCT_COLOR_NAME_DETAIL]);
   if (code && name) return `${code} - ${name}`;
   return name || code;
 }
