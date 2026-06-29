@@ -10,6 +10,7 @@ import {
   type PublicQuote,
 } from "./public-quote";
 import { DEFAULT_ADJUSTMENTS, type QuoteAdjustments } from "@/lib/crm/quote-builder";
+import { getProductColorOptions } from "@/lib/quote/product-color-options";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 
 function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
@@ -56,6 +57,20 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
       }),
     );
     expect(d.styleName).toBe("F1515 - Ecru | Garden");
+  });
+
+  it("shows program-priced product colors as customer-safe options", () => {
+    const color = getProductColorOptions("wood_blinds").find((row) => row.colorCode === "1003")!;
+    const d = describeDesign(
+      design({
+        product_id: "wood_blinds",
+        program_id: "wood_blinds_2in_and_2_1_2in_slats",
+        details: { fabric_color_id: color.id, fabric_surcharge_id: "premium_color" },
+      }),
+    );
+    expect(d.styleName).toBe('2" & 2 1/2" Slats');
+    expect(d.options).toContain("Color: 1003 - White Matte | Premium Colors Finish");
+    expect(d.options.join(" ")).not.toContain("fabric_surcharge_id");
   });
 
   it("resolves surcharge option names", () => {

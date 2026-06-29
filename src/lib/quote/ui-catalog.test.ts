@@ -37,6 +37,29 @@ describe("buildUiCatalog", () => {
     });
   });
 
+  it("exposes searchable Norman colors for every supported product category", () => {
+    expect(ui.products.find((p) => p.id === "roman")!.fabricColors).toHaveLength(152);
+    expect(ui.products.find((p) => p.id === "honeycomb")!.fabricColors).toHaveLength(213);
+    expect(ui.products.find((p) => p.id === "vertical_honeycomb")!.fabricColors).toHaveLength(213);
+    expect(ui.products.find((p) => p.id === "smartdrape")!.fabricColors).toHaveLength(74);
+    expect(ui.products.find((p) => p.id === "perfectsheer")!.fabricColors).toHaveLength(32);
+    expect(ui.products.find((p) => p.id === "smartfold")!.fabricColors).toHaveLength(21);
+    expect(ui.products.find((p) => p.id === "synchrony_vertical")!.fabricColors).toHaveLength(42);
+    expect(ui.products.find((p) => p.id === "faux_wood")!.fabricColors).toHaveLength(16);
+    expect(ui.products.find((p) => p.id === "smartprivacy_faux")!.fabricColors).toHaveLength(16);
+    expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors).toHaveLength(26);
+    expect(ui.products.find((p) => p.id === "citylights_aluminum")!.fabricColors).toHaveLength(33);
+    expect(ui.products.find((p) => p.id === "roman")!.fabricColors.find((row) => row.colorCode === "F1064")).toMatchObject({
+      collection: "Solids",
+      programId: "roman_cordless_usa_price_group_2_pg2",
+      selectionMode: "fabric",
+    });
+    expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors.find((row) => row.colorCode === "1003")).toMatchObject({
+      colorName: "White Matte",
+      automaticDetails: { fabric_surcharge_id: "premium_color" },
+    });
+  });
+
   it("includes shutters flagged provisional with sqft programs", () => {
     const norman = ui.products.find((p) => p.id === "norman_shutters")!;
     expect(norman.provisional).toBe(true);

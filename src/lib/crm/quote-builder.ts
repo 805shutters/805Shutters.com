@@ -47,11 +47,14 @@ import { ensureBookkeepingEntry } from "@/lib/crm/quote-groups";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, shutterVariantsFor } from "@/lib/quote/product-options";
 import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 import {
-  findNormanRollerFabricColor,
-  NORMAN_ROLLER_COLOR_CODE_DETAIL,
-  NORMAN_ROLLER_COLOR_NAME_DETAIL,
-  NORMAN_ROLLER_PRODUCT_ID,
-} from "@/lib/quote/norman-roller-fabrics";
+  findProductColorOption,
+  findProductColorOptionBySelection,
+  PRODUCT_COLOR_CODE_DETAIL,
+  PRODUCT_COLOR_COLLECTION_DETAIL,
+  PRODUCT_COLOR_ID_DETAIL,
+  PRODUCT_COLOR_NAME_DETAIL,
+  PRODUCT_COLOR_TYPE_DETAIL,
+} from "@/lib/quote/product-color-options";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -115,32 +118,55 @@ function normalizeDetails(productId: string, value: unknown): Record<string, Crm
   return normalized;
 }
 
-function normalizeFabricColorDetails(
+function normalizeProductColorSelection(
   productId: string,
   fabric: string | null,
   programId: string | null,
   value: unknown,
   base: Record<string, CrmQuoteDetailValue>,
-): Record<string, CrmQuoteDetailValue> {
-  if (productId !== NORMAN_ROLLER_PRODUCT_ID) return base;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+): { fabric: string | null; programId: string | null; details: Record<string, CrmQuoteDetailValue> } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return { fabric, programId, details: base };
+  }
   const input = value as Record<string, unknown>;
-  const colorCode = optionalText(input[NORMAN_ROLLER_COLOR_CODE_DETAIL]);
-  if (!colorCode) return base;
-  if (!fabric) {
-    throw new CrmAuthError(400, "Pick a Norman roller fabric collection before selecting a fabric color.");
-  }
-  const row = findNormanRollerFabricColor(fabric, colorCode);
+  const colorId = optionalText(input[PRODUCT_COLOR_ID_DETAIL]);
+  const colorCode = optionalText(input[PRODUCT_COLOR_CODE_DETAIL]);
+  if (!colorId && !colorCode) return { fabric, programId, details: base };
+
+  const collection = optionalText(input[PRODUCT_COLOR_COLLECTION_DETAIL]) ?? fabric;
+  const colorName = optionalText(input[PRODUCT_COLOR_NAME_DETAIL]);
+  const row =
+    findProductColorOption(productId, colorId) ??
+    findProductColorOptionBySelection(productId, collection, colorCode, colorName);
   if (!row) {
-    throw new CrmAuthError(400, "That Norman roller fabric color is not available with a verified price group.");
+    throw new CrmAuthError(400, "That fabric color is not available with the selected product.");
   }
-  if (programId && programId !== row.programId) {
-    throw new CrmAuthError(400, "That Norman roller fabric color does not match the selected price program.");
+  if (!row.available) {
+    throw new CrmAuthError(400, "That fabric color needs a verified price group before it can be quoted.");
   }
+
+  let nextFabric = fabric;
+  let nextProgramId = programId;
+  if (row.selectionMode === "fabric") {
+    nextFabric = row.collection;
+    nextProgramId = null;
+  } else {
+    nextFabric = null;
+    if (row.programId) nextProgramId = row.programId;
+  }
+
   return {
-    ...base,
-    [NORMAN_ROLLER_COLOR_CODE_DETAIL]: row.colorCode,
-    [NORMAN_ROLLER_COLOR_NAME_DETAIL]: row.colorName,
+    fabric: nextFabric,
+    programId: nextProgramId,
+    details: {
+      ...base,
+      ...row.automaticDetails,
+      [PRODUCT_COLOR_ID_DETAIL]: row.id,
+      [PRODUCT_COLOR_CODE_DETAIL]: row.colorCode,
+      [PRODUCT_COLOR_NAME_DETAIL]: row.colorName,
+      [PRODUCT_COLOR_COLLECTION_DETAIL]: row.publicCollection || row.collection,
+      [PRODUCT_COLOR_TYPE_DETAIL]: row.fabricType,
+    },
   };
 }
 
@@ -441,17 +467,18 @@ export async function upsertDesign(
 
   const programId = optionalText(payload.program_id);
   const fabric = optionalText(payload.fabric);
+  const colorSelection = normalizeProductColorSelection(
+    productId,
+    fabric,
+    programId,
+    payload.details,
+    normalizeDetails(productId, payload.details),
+  );
   const designInput = {
     product_id: productId,
-    program_id: programId,
-    fabric,
-    details: normalizeFabricColorDetails(
-      productId,
-      fabric,
-      programId,
-      payload.details,
-      normalizeDetails(productId, payload.details),
-    ),
+    program_id: colorSelection.programId,
+    fabric: colorSelection.fabric,
+    details: colorSelection.details,
     surcharges: [],
     motorization: normalizeMotorization(productId, payload.motorization),
   };
@@ -600,17 +627,18 @@ export async function duplicateLineItem(
   const copyDiscount = Number(source.discount_percent) || 0;
   let selectedNewId: string | null = null;
   for (const d of source.designs ?? []) {
+    const colorSelection = normalizeProductColorSelection(
+      d.product_id,
+      d.fabric,
+      d.program_id,
+      d.details ?? {},
+      normalizeDetails(d.product_id, d.details ?? {}),
+    );
     const designInput = {
       product_id: d.product_id,
-      program_id: d.program_id,
-      fabric: d.fabric,
-      details: normalizeFabricColorDetails(
-        d.product_id,
-        d.fabric,
-        d.program_id,
-        d.details ?? {},
-        normalizeDetails(d.product_id, d.details ?? {}),
-      ),
+      program_id: colorSelection.programId,
+      fabric: colorSelection.fabric,
+      details: colorSelection.details,
       surcharges: [],
       motorization: normalizeMotorization(d.product_id, d.motorization ?? []),
     };

@@ -84,8 +84,12 @@ function motorOptionHint(productId: string, option: UiMotorizationOption): strin
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
 const FABRIC_RESULT_LIMIT = 18;
+const FABRIC_COLOR_ID_DETAIL = "fabric_color_id";
 const FABRIC_COLOR_CODE_DETAIL = "fabric_color_code";
 const FABRIC_COLOR_NAME_DETAIL = "fabric_color_name";
+const FABRIC_COLOR_COLLECTION_DETAIL = "fabric_color_collection";
+const FABRIC_COLOR_TYPE_DETAIL = "fabric_color_type";
+const FABRIC_COLOR_SURCHARGE_DETAIL = "fabric_surcharge_id";
 
 // Friendly labels for the catalog's productType keys, shown on the product-line
 // tiles. Any type missing here falls back to a title-cased version of the key.
@@ -109,14 +113,37 @@ function typeLabel(t: string): string {
   return PRODUCT_TYPE_LABELS[t] || t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function fabricColorLabel(row: Pick<UiFabricColor, "collection" | "colorCode" | "colorName">): string {
-  return `${row.colorCode} - ${row.colorName} | ${row.collection}`;
+function fabricColorLabel(row: Pick<UiFabricColor, "collection" | "fabricType" | "colorCode" | "colorName">): string {
+  const color = row.colorCode ? `${row.colorCode} - ${row.colorName}` : row.colorName;
+  const group = row.collection || row.fabricType;
+  return group ? `${color} | ${group}` : color;
 }
 
 function selectedFabricColor(product: UiProduct | undefined, design: CrmQuoteDesign): UiFabricColor | null {
+  const id = design.details?.[FABRIC_COLOR_ID_DETAIL];
+  if (typeof id === "string" && id) {
+    const byId = product?.fabricColors.find((row) => row.id === id);
+    if (byId) return byId;
+  }
   const code = design.details?.[FABRIC_COLOR_CODE_DETAIL];
   if (typeof code !== "string" || !code) return null;
-  return product?.fabricColors.find((row) => row.collection === design.fabric && row.colorCode === code) ?? null;
+  const name = design.details?.[FABRIC_COLOR_NAME_DETAIL];
+  const storedCollection = design.details?.[FABRIC_COLOR_COLLECTION_DETAIL];
+  const collection = typeof storedCollection === "string" ? storedCollection : design.fabric;
+  return product?.fabricColors.find((row) => {
+    if (row.colorCode !== code) return false;
+    if (collection && row.collection !== collection && row.publicCollection !== collection) return false;
+    if (typeof name === "string" && name && row.colorName !== name) return false;
+    return true;
+  }) ?? null;
+}
+
+function shouldShowProgramSelect(product: UiProduct | undefined): boolean {
+  if (!product || product.programs.length <= 1) return false;
+  if (product.fabricColors.length > 0) {
+    return product.fabricColors.some((row) => row.requiresProgram);
+  }
+  return product.fabrics.length === 0;
 }
 
 // Quick-add room buttons (union of the old MTS quote-builder and measure-form room presets).
@@ -928,7 +955,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                             </select>
                           </Field>
 
-                          {product && product.programs.length > 1 && product.fabrics.length === 0 ? (
+                          {product && shouldShowProgramSelect(product) ? (
                             <Field label="Program / Style">
                               <select
                                 value={design.program_id || ""}
@@ -952,20 +979,36 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                                 disabled={isSaving}
                                 onSelect={(row) =>
                                   saveDesign(li, design, {
-                                    fabric: row.collection,
-                                    program_id: null,
+                                    fabric: row.selectionMode === "fabric" ? row.collection : null,
+                                    program_id:
+                                      row.selectionMode === "program"
+                                        ? row.programId ?? design.program_id ?? null
+                                        : null,
                                     details: {
                                       ...(design.details ?? {}),
+                                      ...row.automaticDetails,
+                                      [FABRIC_COLOR_ID_DETAIL]: row.id,
                                       [FABRIC_COLOR_CODE_DETAIL]: row.colorCode,
                                       [FABRIC_COLOR_NAME_DETAIL]: row.colorName,
+                                      [FABRIC_COLOR_COLLECTION_DETAIL]: row.publicCollection || row.collection,
+                                      [FABRIC_COLOR_TYPE_DETAIL]: row.fabricType,
                                     },
                                   })
                                 }
                                 onClear={() => {
+                                  const selected = selectedFabricColor(product, design);
                                   const next = { ...(design.details ?? {}) };
+                                  delete next[FABRIC_COLOR_ID_DETAIL];
                                   delete next[FABRIC_COLOR_CODE_DETAIL];
                                   delete next[FABRIC_COLOR_NAME_DETAIL];
-                                  return saveDesign(li, design, { fabric: null, program_id: null, details: next });
+                                  delete next[FABRIC_COLOR_COLLECTION_DETAIL];
+                                  delete next[FABRIC_COLOR_TYPE_DETAIL];
+                                  delete next[FABRIC_COLOR_SURCHARGE_DETAIL];
+                                  return saveDesign(li, design, {
+                                    fabric: selected?.selectionMode === "fabric" ? null : design.fabric,
+                                    program_id: selected?.selectionMode === "fabric" ? null : design.program_id,
+                                    details: next,
+                                  });
                                 }}
                               />
                             </Field>
@@ -1145,7 +1188,8 @@ function FabricColorAutocomplete({
     return [...matches]
       .sort((a, b) => {
         if (a.available !== b.available) return a.available ? -1 : 1;
-        return `${a.collection} ${a.colorCode}`.localeCompare(`${b.collection} ${b.colorCode}`);
+        if (a.requiresProgram !== b.requiresProgram) return a.requiresProgram ? 1 : -1;
+        return `${a.collection} ${a.fabricType} ${a.colorCode}`.localeCompare(`${b.collection} ${b.fabricType} ${b.colorCode}`);
       })
       .slice(0, FABRIC_RESULT_LIMIT);
   }, [product.fabricColors, query]);
@@ -1185,7 +1229,7 @@ function FabricColorAutocomplete({
           {results.length ? (
             results.map((row) => (
               <button
-                key={`${row.collection}:${row.colorCode}`}
+                key={row.id}
                 type="button"
                 disabled={disabled || !row.available}
                 onMouseDown={(event) => event.preventDefault()}
@@ -1198,24 +1242,25 @@ function FabricColorAutocomplete({
                 style={{
                   ...fabricResultBtn,
                   ...(!row.available ? fabricResultUnavailable : {}),
-                  ...(selected?.collection === row.collection && selected?.colorCode === row.colorCode ? fabricResultSelected : {}),
+                  ...(selected?.id === row.id ? fabricResultSelected : {}),
                 }}
               >
                 {row.imageUrl ? (
                   <img src={row.imageUrl} alt="" width={36} height={36} style={fabricResultImage} loading="lazy" />
                 ) : null}
                 <span style={{ minWidth: 0 }}>
-                  <span style={fabricResultTitle}>{row.colorCode} - {row.colorName}</span>
+                  <span style={fabricResultTitle}>{row.colorCode ? `${row.colorCode} - ${row.colorName}` : row.colorName}</span>
                   <span style={fabricResultMeta}>
-                    {row.collection} / {row.fabricType || "Fabric"}
+                    {[row.publicCollection || row.collection, row.fabricType || "Finish"].filter(Boolean).join(" / ")}
                     {row.frStatus ? ` / ${row.frStatus}` : ""}
                   </span>
                   {!row.available ? <span style={fabricUnavailableText}>Price group needed before quoting</span> : null}
+                  {row.available && row.requiresProgram ? <span style={fabricUnavailableText}>Choose Program / Style to price</span> : null}
                 </span>
               </button>
             ))
           ) : (
-            <div style={fabricNoResults}>No Norman roller fabric colors found.</div>
+            <div style={fabricNoResults}>No fabric colors found.</div>
           )}
         </div>
       ) : null}

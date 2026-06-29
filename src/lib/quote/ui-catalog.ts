@@ -3,12 +3,8 @@
 // motorization) without shipping the full price grids to the browser.
 
 import { catalog } from "./catalog";
-import {
-  NORMAN_ROLLER_PRODUCT_ID,
-  normanRollerFabricColors,
-  type NormanRollerFabricColor,
-} from "./norman-roller-fabrics";
 import { productImage } from "./product-images";
+import { getProductColorOptions, type ProductColorOption } from "./product-color-options";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
 
 export type UiProgram = {
@@ -21,16 +17,25 @@ export type UiProgram = {
 export type UiFabric = { name: string; programId: string };
 
 export type UiFabricColor = Pick<
-  NormanRollerFabricColor,
+  ProductColorOption,
+  | "id"
+  | "productId"
   | "collection"
+  | "publicCollection"
   | "fabricType"
   | "colorCode"
   | "colorName"
   | "publicColorName"
   | "frStatus"
   | "imageUrl"
+  | "sourcePage"
+  | "sourcePageModified"
+  | "sourceNote"
   | "programId"
+  | "selectionMode"
+  | "requiresProgram"
   | "available"
+  | "automaticDetails"
   | "searchText"
 >;
 
@@ -175,21 +180,27 @@ export function buildUiCatalog(): UiCatalog {
           .map(([name, programId]) => ({ name, programId }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [],
-    fabricColors:
-      p.id === NORMAN_ROLLER_PRODUCT_ID
-        ? normanRollerFabricColors.map((row) => ({
-            collection: row.collection,
-            fabricType: row.fabricType,
-            colorCode: row.colorCode,
-            colorName: row.colorName,
-            publicColorName: row.publicColorName,
-            frStatus: row.frStatus,
-            imageUrl: row.imageUrl,
-            programId: row.programId,
-            available: row.available,
-            searchText: row.searchText,
-          }))
-        : [],
+    fabricColors: getProductColorOptions(p.id).map((row) => ({
+      id: row.id,
+      productId: row.productId,
+      collection: row.collection,
+      publicCollection: row.publicCollection,
+      fabricType: row.fabricType,
+      colorCode: row.colorCode,
+      colorName: row.colorName,
+      publicColorName: row.publicColorName,
+      frStatus: row.frStatus,
+      imageUrl: row.imageUrl,
+      sourcePage: row.sourcePage,
+      sourcePageModified: row.sourcePageModified,
+      sourceNote: row.sourceNote,
+      programId: row.programId,
+      selectionMode: row.selectionMode,
+      requiresProgram: row.requiresProgram,
+      available: row.available,
+      automaticDetails: row.automaticDetails,
+      searchText: row.searchText,
+    })),
     details: getDetailFieldsForProduct(p.id),
     motorizationGroups: getMotorizationGroupsForProduct(p.id),
     surcharges: p.surcharges.map((s) => ({

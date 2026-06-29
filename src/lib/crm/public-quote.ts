@@ -13,11 +13,14 @@ import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types
 import { catalog, getProduct } from "@/lib/quote/catalog";
 import { formatInches } from "@/lib/quote/measurements";
 import {
-  normanRollerFabricLabel,
-  NORMAN_ROLLER_COLOR_CODE_DETAIL,
-  NORMAN_ROLLER_COLOR_NAME_DETAIL,
-  NORMAN_ROLLER_PRODUCT_ID,
-} from "@/lib/quote/norman-roller-fabrics";
+  findProductColorOption,
+  findProductColorOptionBySelection,
+  productColorLabel,
+  PRODUCT_COLOR_CODE_DETAIL,
+  PRODUCT_COLOR_COLLECTION_DETAIL,
+  PRODUCT_COLOR_ID_DETAIL,
+  PRODUCT_COLOR_NAME_DETAIL,
+} from "@/lib/quote/product-color-options";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
@@ -216,20 +219,23 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
     styleName = product?.programs.find((p) => p.id === design.program_id)?.name ?? "";
   }
   const details = record(design.details);
-  const fabricColorCode = details[NORMAN_ROLLER_COLOR_CODE_DETAIL];
-  const fabricColorName = details[NORMAN_ROLLER_COLOR_NAME_DETAIL];
-  if (
-    design.product_id === NORMAN_ROLLER_PRODUCT_ID &&
-    design.fabric &&
-    typeof fabricColorCode === "string" &&
-    typeof fabricColorName === "string"
-  ) {
-    styleName = normanRollerFabricLabel({
-      collection: design.fabric,
-      colorCode: fabricColorCode,
-      colorName: fabricColorName,
-    });
-  }
+  const fabricColorId = details[PRODUCT_COLOR_ID_DETAIL];
+  const fabricColorCode = details[PRODUCT_COLOR_CODE_DETAIL];
+  const fabricColorName = details[PRODUCT_COLOR_NAME_DETAIL];
+  const fabricColorCollection = details[PRODUCT_COLOR_COLLECTION_DETAIL];
+  const colorRow =
+    typeof fabricColorId === "string"
+      ? findProductColorOption(design.product_id, fabricColorId)
+      : typeof fabricColorCode === "string"
+        ? findProductColorOptionBySelection(
+            design.product_id,
+            typeof fabricColorCollection === "string" ? fabricColorCollection : design.fabric,
+            fabricColorCode,
+            typeof fabricColorName === "string" ? fabricColorName : null,
+          )
+        : undefined;
+  const fabricColorOption = colorRow ? productColorLabel(colorRow) : null;
+  if (fabricColorOption && (colorRow?.selectionMode === "fabric" || !styleName)) styleName = fabricColorOption;
   if (!styleName && design.fabric) styleName = design.fabric;
   const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];
   const surchargeOptions = (design.surcharges ?? [])
@@ -246,7 +252,8 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
       return group && option ? `${group.name}: ${option.name}` : null;
     })
     .filter((n): n is string => Boolean(n));
-  const options = legacyOptions.length ? legacyOptions : [...detailOptions, ...surchargeOptions, ...motorizationOptions];
+  const colorOptions = fabricColorOption && styleName !== fabricColorOption ? [`Color: ${fabricColorOption}`] : [];
+  const options = legacyOptions.length ? legacyOptions : [...colorOptions, ...detailOptions, ...surchargeOptions, ...motorizationOptions];
   return { productName, styleName, options };
 }
 

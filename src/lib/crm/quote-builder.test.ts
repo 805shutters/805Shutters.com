@@ -219,6 +219,25 @@ describe("priceDesignFields (server-side engine integration)", () => {
     expect(fields.unit_price).toBe(629);
   });
 
+  it("derives hidden fabric-color surcharges from selected colors", () => {
+    const fields = priceDesignFields(
+      {
+        product_id: "faux_wood",
+        program_id: "faux_wood_2in_and_2_1_2in_slats_cordless",
+        fabric: null,
+        details: { fabric_surcharge_id: "printed_color" },
+        surcharges: [],
+        motorization: [],
+      },
+      { width_in: 24, height_in: 36 },
+    );
+    expect(fields.price_status).toBe("ok");
+    expect(fields.surcharges).toEqual([{ id: "printed_color" }]);
+    expect((fields.price_breakdown as { surchargeLines?: Array<{ id: string; kind: string }> }).surchargeLines).toContainEqual(
+      expect.objectContaining({ id: "printed_color", kind: "percent" }),
+    );
+  });
+
   it("prices internal wholesale for shutter designs", () => {
     const fields = priceDesignFields(
       { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },

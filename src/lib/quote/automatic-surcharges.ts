@@ -26,6 +26,8 @@ const ROOM_DARKENING_SURCHARGE_IDS: Record<string, string[]> = {
   vertical_honeycomb: ["room_darkening_sheer_fr_essentials_fabric_surcharge"],
 };
 
+const FABRIC_SURCHARGE_DETAIL_ID = "fabric_surcharge_id";
+
 const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, string>>> = {
   citylights_aluminum: {
     slat_finish: {
@@ -153,6 +155,9 @@ export function deriveAutomaticSurcharges(productId: string, details: DetailReco
   if (lightGuard && lightGuard !== "none" && (LIGHT_GUARD_SURCHARGE_IDS as readonly string[]).includes(lightGuard)) {
     add(lightGuard);
   }
+
+  const fabricSurcharge = text(source[FABRIC_SURCHARGE_DETAIL_ID]);
+  if (fabricSurcharge) add(fabricSurcharge);
 
   for (const detailId of AUTOMATIC_CHECKBOX_DETAIL_IDS) {
     if (!isSelected(source[detailId])) continue;
