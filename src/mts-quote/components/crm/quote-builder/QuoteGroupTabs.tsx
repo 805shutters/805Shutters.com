@@ -4,14 +4,13 @@ import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { getQuoteColor, QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
-import { Button } from "@mts/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@mts/components/ui/dropdown-menu";
-import { Plus, Copy, FilePlus, Trash2 } from "lucide-react";
+  buildVisibleQuoteTabs,
+  createQuoteGroupId,
+  nextQuoteLetter,
+} from "@mts/lib/quoteGroupLabels";
+import { Button } from "@mts/components/ui/button";
+import { Plus, Copy, Trash2 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
 import type { SalesQuote } from "@mts/types/quote";
@@ -35,27 +34,80 @@ export function QuoteGroupTabs() {
     enabled: !!activeQuoteId,
   });
 
-  // Fetch all quotes in the same group
-  const groupId = activeQuote?.quote_group_id;
+  // Fetch all quotes in the same group.
+  const activeGroupId = activeQuote?.quote_group_id;
   const { data: groupQuotes = [] } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.all, "group", groupId],
+    queryKey: [...queryKeys.salesQuotes.all, "group", activeGroupId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
         .select("*")
-        .eq("quote_group_id", groupId!)
+        .eq("quote_group_id", activeGroupId!)
         .order("quote_letter");
       if (error) throw error;
       return (data || []) as SalesQuote[];
     },
-    enabled: !!groupId,
+    enabled: !!activeGroupId,
   });
+
+  const visibleQuotes = buildVisibleQuoteTabs(activeQuote, groupQuotes);
+
+  const ensureActiveQuoteGroup = async () => {
+    if (!activeQuote) throw new Error("No active quote");
+    if (activeQuote.quote_group_id) return activeQuote.quote_group_id;
+
+    const newGroupId = createQuoteGroupId();
+    const { error } = await (supabase as any)
+      .from("sales_quotes")
+      .update({
+        quote_group_id: newGroupId,
+        quote_letter: activeQuote.quote_letter || "A",
+      })
+      .eq("id", activeQuote.id);
+    if (error) throw error;
+    return newGroupId;
+  };
+
+  const loadNextQuoteLetter = async (quoteGroupId: string) => {
+    const { data, error } = await (supabase as any)
+      .from("sales_quotes")
+      .select("quote_letter")
+      .eq("quote_group_id", quoteGroupId);
+    if (error) throw error;
+
+    const siblingLetters = ((data || []) as Pick<SalesQuote, "quote_letter">[]).map(
+      (quote) => quote.quote_letter
+    );
+    if (siblingLetters.length === 0 && activeQuote) {
+      siblingLetters.push(activeQuote.quote_letter);
+    }
+
+    return nextQuoteLetter(siblingLetters);
+  };
+
+  const invalidateQuoteGroup = (quote: SalesQuote) => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+    if (activeQuoteId) {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId),
+      });
+    }
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.salesQuotes.detail(quote.id),
+    });
+    if (quote.quote_group_id) {
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.salesQuotes.all, "group", quote.quote_group_id],
+      });
+    }
+  };
 
   // Add a new blank quote to the group
   const addBlankQuote = useMutation({
     mutationFn: async () => {
       if (!activeQuote) throw new Error("No active quote");
-      const nextLetter = String.fromCharCode(65 + groupQuotes.length); // A=65
+      const ensuredGroupId = await ensureActiveQuoteGroup();
+      const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
       const account =
         QUOTE_ACCOUNTS.find((a) => a.id === activeQuote.account_id) || QUOTE_ACCOUNTS[0];
 
@@ -77,9 +129,12 @@ export function QuoteGroupTabs() {
           customer_phone: activeQuote.customer_phone,
           customer_address: activeQuote.customer_address,
           appointment_date: activeQuote.appointment_date,
-          quote_group_id: groupId,
+          quote_group_id: ensuredGroupId,
           quote_letter: nextLetter,
           created_by: session?.session?.user?.id || null,
+          sales_owner: activeQuote.sales_owner,
+          sales_owner_auth_user_id: activeQuote.sales_owner_auth_user_id,
+          sales_owner_set_at: activeQuote.sales_owner_set_at,
         })
         .select()
         .single();
@@ -87,12 +142,12 @@ export function QuoteGroupTabs() {
       return data as SalesQuote;
     },
     onSuccess: (newQuote) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.all, "group", groupId],
-      });
+      invalidateQuoteGroup(newQuote);
       setActiveQuote(newQuote.id);
       toast.success(`Quote ${newQuote.quote_letter} added`);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Quote option could not be added");
     },
   });
 
@@ -100,7 +155,8 @@ export function QuoteGroupTabs() {
   const copyToGroup = useMutation({
     mutationFn: async () => {
       if (!activeQuote) throw new Error("No active quote");
-      const nextLetter = String.fromCharCode(65 + groupQuotes.length);
+      const ensuredGroupId = await ensureActiveQuoteGroup();
+      const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
       const account =
         QUOTE_ACCOUNTS.find((a) => a.id === activeQuote.account_id) || QUOTE_ACCOUNTS[0];
 
@@ -124,9 +180,12 @@ export function QuoteGroupTabs() {
           customer_address: activeQuote.customer_address,
           appointment_date: activeQuote.appointment_date,
           installer_notes: activeQuote.installer_notes,
-          quote_group_id: groupId,
+          quote_group_id: ensuredGroupId,
           quote_letter: nextLetter,
           created_by: session?.session?.user?.id || null,
+          sales_owner: activeQuote.sales_owner,
+          sales_owner_auth_user_id: activeQuote.sales_owner_auth_user_id,
+          sales_owner_set_at: activeQuote.sales_owner_set_at,
         })
         .select()
         .single();
@@ -199,14 +258,14 @@ export function QuoteGroupTabs() {
       return newQuote as SalesQuote;
     },
     onSuccess: (newQuote) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.all, "group", groupId],
-      });
+      invalidateQuoteGroup(newQuote);
       setActiveQuote(newQuote.id);
       toast.success(
         `Quote ${newQuote.quote_letter} created (copied from ${activeQuote?.quote_letter})`
       );
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Quote option could not be copied");
     },
   });
 
@@ -216,93 +275,91 @@ export function QuoteGroupTabs() {
       const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_data, deletedQuoteId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.all, "group", groupId],
-      });
-      // Switch to first remaining quote
-      const remaining = groupQuotes.filter((q) => q.id !== activeQuoteId);
-      if (remaining.length > 0) {
+      if (activeGroupId) {
+        queryClient.invalidateQueries({
+          queryKey: [...queryKeys.salesQuotes.all, "group", activeGroupId],
+        });
+      }
+      const remaining = visibleQuotes.filter((q) => q.id !== deletedQuoteId);
+      if (deletedQuoteId === activeQuoteId && remaining.length > 0) {
         setActiveQuote(remaining[0].id);
       }
       toast.success("Quote option removed");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Quote option could not be removed");
     },
   });
 
   if (!activeQuoteId || !activeQuote) return null;
 
-  // Only show if there's a group (always true with new migration)
-  const showTabs = groupQuotes.length > 0;
-
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {showTabs &&
-        groupQuotes.map((q) => {
-          const color = getQuoteColor(q.quote_letter || "A");
-          const isActive = q.id === activeQuoteId;
+      {visibleQuotes.map((q) => {
+        const quoteLetter = q.quote_letter || "A";
+        const color = getQuoteColor(quoteLetter);
+        const isActive = q.id === activeQuoteId;
+        const canDeleteQuote = visibleQuotes.length > 1 && quoteLetter !== "A";
 
-          return (
-            <div key={q.id} className="relative group">
-              <button
-                onClick={() => setActiveQuote(q.id)}
+        return (
+          <div key={q.id} className="relative group">
+            <button
+              onClick={() => setActiveQuote(q.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2",
+                isActive
+                  ? `${color.bg} text-white ${color.border} shadow-lg ring-2 ${color.ring}`
+                  : `bg-white ${color.border} ${color.text} hover:shadow-md`
+              )}
+            >
+              <span
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all border-2",
-                  isActive
-                    ? `${color.bg} text-white ${color.border} shadow-lg ring-2 ${color.ring}`
-                    : `bg-white ${color.border} ${color.text} hover:shadow-md`
+                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-black",
+                  isActive ? "bg-white/30 text-white" : `${color.light} ${color.text}`
                 )}
               >
-                <span
-                  className={cn(
-                    "w-6 h-6 rounded-full flex items-center justify-center text-xs font-black",
-                    isActive ? "bg-white/30 text-white" : `${color.light} ${color.text}`
-                  )}
-                >
-                  {q.quote_letter || "A"}
-                </span>
-                Quote {q.quote_letter || "A"}
+                {quoteLetter}
+              </span>
+              Quote {quoteLetter}
+            </button>
+            {canDeleteQuote && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteFromGroup.mutate(q.id);
+                }}
+                className="absolute -top-1.5 -right-1.5 hidden group-hover:flex w-5 h-5 items-center justify-center rounded-full bg-red-500 text-white text-xs shadow-md hover:bg-red-600"
+                title={`Remove Quote ${quoteLetter}`}
+              >
+                <Trash2 className="h-3 w-3" />
               </button>
-              {/* Delete button for non-first quotes */}
-              {groupQuotes.length > 1 && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteFromGroup.mutate(q.id);
-                  }}
-                  className="absolute -top-1.5 -right-1.5 hidden group-hover:flex w-5 h-5 items-center justify-center rounded-full bg-red-500 text-white text-xs shadow-md hover:bg-red-600"
-                  title={`Remove Quote ${q.quote_letter}`}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          );
-        })}
+            )}
+          </div>
+        );
+      })}
 
-      {/* Add new quote dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-dashed border-2 text-muted-foreground hover:text-foreground"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Quote
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onClick={() => addBlankQuote.mutate()}>
-            <FilePlus className="h-4 w-4 mr-2" />
-            New Blank Quote
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => copyToGroup.mutate()}>
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Current Quote
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => addBlankQuote.mutate()}
+        disabled={addBlankQuote.isPending || copyToGroup.isPending}
+        className="border-dashed border-2 text-muted-foreground hover:text-foreground"
+      >
+        <Plus className="h-4 w-4 mr-1" />
+        Add Quote
+      </Button>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => copyToGroup.mutate()}
+        disabled={addBlankQuote.isPending || copyToGroup.isPending}
+        className="text-muted-foreground hover:text-foreground"
+      >
+        <Copy className="h-4 w-4 mr-1" />
+        Copy Current
+      </Button>
     </div>
   );
 }
