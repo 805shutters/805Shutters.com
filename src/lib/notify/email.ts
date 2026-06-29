@@ -96,25 +96,29 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
   const itemText = details.lines?.length ? `\n\nQuote items:\n${details.lines.map((line, index) => textLine(line, index)).join("\n")}` : "";
   const text = `Hi ${name},${personalNoteText}\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}\n\nThank you,\n805 Shutters`;
-  const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
-  <div style="max-width:640px;margin:0 auto;padding:28px 18px">
+  const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
+  <tr>
+    <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
+  <div style="max-width:640px;margin:0 auto;padding:28px 18px;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
-      ${details.logoUrl ? `<div style="display:inline-block;background:#1f1f1f;padding:10px 12px;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px">805 SHUTTERS</div>`}
-      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#333333">${escapeHtml(quoteLabel)}</div>
+      ${details.logoUrl ? `<div style="display:inline-block;background:#ffffff!important;background-color:#ffffff!important;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;color:#0b0b0b">805 SHUTTERS</div>`}
+      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(quoteLabel)}</div>
       <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">Ready for review</h1>
-      <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#1f1f1f">Hi ${escapeHtml(name)}, your quote${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
+      <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hi ${escapeHtml(name)}, your quote${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
     </div>
-    ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#fbfbfa;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#1f1f1f">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
+    ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#ffffff;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#0b0b0b">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
-    <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#1f1f1f">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
+    <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#0b0b0b">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
     <div style="margin:26px 0 18px 0">
       <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve quote</a>
     </div>
-    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#555555">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
-    <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#555555">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
+    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
+    <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#0b0b0b">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
   </div>
-</div>`;
+    </td>
+  </tr>
+</table>`;
   return { subject, html, text };
 }
 
@@ -146,8 +150,8 @@ function quoteLinesTable(lines: QuoteEmailLine[]): string {
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">${index + 1}</td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">
         <strong>${escapeHtml(line.room || "Window")}</strong><br>
-        <span style="color:#333333">${escapeHtml(product)}${escapeHtml(style)}</span>
-        ${details ? `<br><span style="font-size:12px;color:#666666">${escapeHtml(details)}</span>` : ""}
+        <span style="color:#0b0b0b">${escapeHtml(product)}${escapeHtml(style)}</span>
+        ${details ? `<br><span style="font-size:12px;color:#0b0b0b">${escapeHtml(details)}</span>` : ""}
       </td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${line.quantity}</td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;text-align:right;font-size:14px;color:#0b0b0b">${price}</td>
@@ -157,10 +161,10 @@ function quoteLinesTable(lines: QuoteEmailLine[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px 0">
     <thead>
       <tr>
-        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#333333;font-weight:700">#</th>
-        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#333333;font-weight:700">Item</th>
-        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#333333;font-weight:700">Qty</th>
-        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#333333;font-weight:700">Total</th>
+        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">#</th>
+        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Item</th>
+        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Qty</th>
+        <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Total</th>
       </tr>
     </thead>
     <tbody>${rows}</tbody>
@@ -183,7 +187,7 @@ function quoteSummary(details: QuoteEmailDetails, total: number): string {
 }
 
 function summaryRow(label: string, value: number): string {
-  return `<tr><td style="padding:4px 0;font-size:14px;color:#333333">${escapeHtml(label)}</td><td align="right" style="padding:4px 0;font-size:14px;color:#0b0b0b">${money(value)}</td></tr>`;
+  return `<tr><td style="padding:4px 0;font-size:14px;color:#0b0b0b">${escapeHtml(label)}</td><td align="right" style="padding:4px 0;font-size:14px;color:#0b0b0b">${money(value)}</td></tr>`;
 }
 
 function textLine(line: QuoteEmailLine, index: number): string {

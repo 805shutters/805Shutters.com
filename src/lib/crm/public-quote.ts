@@ -842,7 +842,7 @@ export async function acceptPublicQuote(
         sourceTotalAdjustment: signedPub.sourceTotalAdjustment,
         depositDue: signedPub.depositDue,
         balanceDue: signedPub.balanceDue,
-        logoUrl: publicAssetUrl("/brand/805-shutters-logo-header-white.png"),
+        logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
         businessPhone: signedPub.business.phone,
       });
       await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
@@ -936,7 +936,7 @@ export async function sendQuoteToCustomer(
     sourceTotalAdjustment: publicQuote?.sourceTotalAdjustment,
     depositDue: publicQuote?.depositDue,
     balanceDue: publicQuote?.balanceDue,
-    logoUrl: publicAssetUrl("/brand/805-shutters-logo-header-white.png"),
+    logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
     businessPhone: publicQuote?.business.phone,
     personalNote: note,
   });
