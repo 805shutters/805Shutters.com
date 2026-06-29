@@ -782,11 +782,20 @@ export function QuoteBuilder() {
               </button>
             )}
             {/* Builder / Contract toggle */}
-            <div className="ml-1 flex overflow-hidden rounded-lg border border-[#d8d8d2]">
-              <span className="bg-[#0b0b0b] px-3 py-1.5 text-xs font-bold text-white">Builder</span>
+            <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
               <button
+                type="button"
+                aria-pressed="true"
+                className="quote-view-toggle__button quote-view-toggle__button--active"
+                onClick={() => setActiveTab("builder")}
+              >
+                Builder
+              </button>
+              <button
+                type="button"
+                aria-pressed="false"
                 onClick={() => setActiveTab("contract")}
-                className="bg-white px-3 py-1.5 text-xs font-bold text-[#1c1c1a] transition hover:bg-[#f4f4f2]"
+                className="quote-view-toggle__button"
               >
                 Contract
               </button>
