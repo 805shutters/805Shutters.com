@@ -1890,6 +1890,8 @@ export function CrmApp({
   const depositNeededCount = summary?.depositNeeded || 0;
   const balanceDueCompletedCount = summary?.balanceDueCompleted || 0;
   const missingCogsCount = summary?.missingCogs || 0;
+  const globalDrill = drill && (activeTab !== "command" || drill.placement === "summary") ? drill : null;
+  const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
 
   return (
     <div className="crm-app-shell">
@@ -1949,10 +1951,10 @@ export function CrmApp({
         ))}
       </nav>
 
-      {drill && activeTab !== "command" ? (
+      {globalDrill ? (
         <div className="crm-inline-drill-shell">
           <DrillDetailPanel
-            payload={drill}
+            payload={globalDrill}
             busy={busy}
             onClose={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
@@ -1972,7 +1974,7 @@ export function CrmApp({
             jobs={jobs}
             rows={rows}
             files={customerFiles}
-            activeDrill={drill}
+            activeDrill={commandDrill}
             busy={busy}
             onDrill={setDrill}
             onCloseDrill={() => setDrill(null)}
@@ -4032,6 +4034,14 @@ function DrillDetailCard({
   ];
   const visibleContactItems = canEditJob ? contactItems : contactItems.filter((item) => item.value);
   const liveRowStatus = row ? effectiveBookkeepingStatus(row) : null;
+  const canMarkOrdered =
+    (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
+    (canEditQuoteRow || canEditJob);
+  const markOrdered = () => {
+    if (canEditQuoteRow) return saveRow({ status: "ordered" }, "Marked ordered.");
+    if (canEditJob) return saveJob({ status: "ordered" }, "Marked ordered.");
+    return Promise.resolve(false);
+  };
   const statusEditor: DrillInlineEditor | undefined =
     canEditQuoteRow && row
       ? {
@@ -4234,6 +4244,11 @@ function DrillDetailCard({
         </div>
         <div className="crm-drill-detail-value">
           {entry.value ? <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong> : null}
+          {canMarkOrdered ? (
+            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void markOrdered()}>
+              Mark Ordered
+            </button>
+          ) : null}
           <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
             Open File
           </button>
