@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { toast } from "sonner";
@@ -28,6 +28,8 @@ import {
   PenLine,
   Plus,
   Trash2,
+  Banknote,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
@@ -135,226 +137,250 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-[520px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[720px] grid-rows-[auto,minmax(0,1fr),auto] overflow-hidden p-0 sm:max-w-[720px]">
+        <DialogHeader className="border-b border-slate-200 px-5 py-4 pr-12 sm:px-6">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Send className="h-5 w-5 text-[#0b0b0b]" />
-            Send Quote to Customer
+            Send quote
           </DialogTitle>
-          <DialogDescription>
-            Sends the customer a branded message with a quote PDF attached and a secure review link
-            for quote <span className="font-mono text-xs">#{quote.quote_number}</span>.
+          <DialogDescription className="leading-relaxed">
+            Quote <span className="font-mono text-xs">#{quote.quote_number}</span> for{" "}
+            {quote.customer_name}. Attach the quote PDF and include the secure review link.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* Channel picker */}
-          <div className="space-y-1.5">
-            <Label className="text-sm">Channel</Label>
-            <div className="grid grid-cols-3 gap-2">
-              <ChannelButton
-                active={channel === "email"}
-                onClick={() => setChannel("email")}
-                icon={Mail}
-                label="Email"
-              />
-              <ChannelButton
-                active={channel === "sms"}
-                onClick={() => setChannel("sms")}
-                icon={MessageSquare}
-                label="Text"
-              />
-              <ChannelButton
-                active={channel === "both"}
-                onClick={() => setChannel("both")}
-                icon={Zap}
-                label="Both"
-              />
-            </div>
-          </div>
-
-          {/* Email type picker */}
-          {needsEmail && (
-            <div className="space-y-1.5">
-              <Label className="text-sm">Email type</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <ChannelButton
-                  active={emailType === "quote_only"}
-                  onClick={() => setEmailType("quote_only")}
-                  icon={FileText}
-                  label="Quote Only"
-                />
-                <ChannelButton
-                  active={emailType === "sold_contract"}
-                  onClick={() => setEmailType("sold_contract")}
-                  icon={PenLine}
-                  label="Sold / Contract"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {emailType === "sold_contract"
-                  ? "Sends a thank-you email with the signed contract and quote attached."
-                  : "Sends a warm quote email with the quote attached for customer review."}
-              </p>
-              {contractEmailNeedsSignature && (
-                <p className="text-xs text-amber-600">
-                  Sold / Contract email requires a signed contract on file before sending.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Email input */}
-          {needsEmail && (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm">Customer emails</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addEmail}
-                  className="h-8"
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add email
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {emails.map((emailValue, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      id={index === 0 ? "quote-recipient-email" : undefined}
-                      type="email"
-                      value={emailValue}
-                      onChange={(e) => updateEmailAt(index, e.target.value)}
-                      placeholder="customer@example.com"
-                      autoFocus={index === 0}
+        <div className="min-h-0 overflow-y-auto px-5 py-4 sm:px-6">
+          <div className="space-y-4">
+            <DialogSection title="Delivery" description="Choose the message channel and email format.">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-900">Channel</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <ChannelButton
+                      active={channel === "email"}
+                      onClick={() => setChannel("email")}
+                      icon={Mail}
+                      label="Email"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeEmailAt(index)}
-                      disabled={emails.length === 1}
-                      title="Remove email"
-                      className="shrink-0 text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <ChannelButton
+                      active={channel === "sms"}
+                      onClick={() => setChannel("sms")}
+                      icon={MessageSquare}
+                      label="Text"
+                    />
+                    <ChannelButton
+                      active={channel === "both"}
+                      onClick={() => setChannel("both")}
+                      icon={Zap}
+                      label="Both"
+                    />
                   </div>
-                ))}
-              </div>
-              {!quote.customer_email && (
-                <p className="text-xs text-amber-600">
-                  No email on file — the first email will be saved back to the quote.
-                </p>
-              )}
-            </div>
-          )}
+                </div>
 
-          {/* Phone input */}
-          {needsPhone && (
-            <div className="space-y-1.5">
-              <Label htmlFor="send-quote-phone" className="text-sm">
-                Customer phone
-              </Label>
-              <Input
-                id="send-quote-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="(805) 555-0123"
-                autoFocus={channel === "sms"}
-              />
-              {!quote.customer_phone && (
-                <p className="text-xs text-amber-600">
-                  No phone on file — this will be saved back to the quote.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Optional note */}
-          <div className="space-y-1.5">
-            <Label htmlFor="send-quote-note" className="text-sm">
-              Optional note
-              <span className="text-muted-foreground font-normal ml-1">
-                {channel === "sms"
-                  ? "(replaces default SMS intro)"
-                  : "(adds a personal note above the default email message)"}
-              </span>
-            </Label>
-            <Textarea
-              id="send-quote-note"
-              value={customMessage}
-              onChange={(e) => setCustomMessage(e.target.value)}
-              placeholder={
-                channel === "sms"
-                  ? "Hi Jane — here's your quote"
-                  : "Hi Jane — as promised, here's the quote from our visit on Tuesday…"
-              }
-              rows={channel === "sms" ? 2 : 3}
-            />
-          </div>
-
-          {/* Business hours override for SMS */}
-          {needsPhone && (
-            <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-              <Checkbox checked={bypassHours} onCheckedChange={(v) => setBypassHours(v === true)} />
-              <span>
-                Send text anyway if outside business hours{" "}
-                <span className="text-muted-foreground">(Mon-Fri 9-6, Sat 10-6 PT)</span>
-              </span>
-            </label>
-          )}
-
-          {/* Share link preview */}
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
-            <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              Share link
-            </Label>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs text-slate-700 truncate font-mono">{shareLink}</code>
-              <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 shrink-0">
-                {linkCopied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 mr-1" /> Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5 mr-1" /> Copy
-                  </>
+                {needsEmail && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-900">Email type</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <ChannelButton
+                        active={emailType === "quote_only"}
+                        onClick={() => setEmailType("quote_only")}
+                        icon={FileText}
+                        label="Quote"
+                      />
+                      <ChannelButton
+                        active={emailType === "sold_contract"}
+                        onClick={() => setEmailType("sold_contract")}
+                        icon={PenLine}
+                        label="Contract"
+                      />
+                    </div>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {emailType === "sold_contract"
+                        ? "Sends a thank-you email with the signed contract and quote attached."
+                        : "Sends a warm quote email with the quote attached for customer review."}
+                    </p>
+                    {contractEmailNeedsSignature && (
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                        Sold / Contract email requires a signed contract on file before sending.
+                      </p>
+                    )}
+                  </div>
                 )}
-              </Button>
-              <Button variant="outline" size="sm" className="h-8 shrink-0" asChild>
-                <a
-                  href={shareLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Open in new tab"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              </Button>
+              </div>
+            </DialogSection>
+
+            <DialogSection title="Customer contact" description="Confirm who should receive this quote.">
+              <div
+                className={cn(
+                  "grid gap-4",
+                  needsEmail && needsPhone ? "lg:grid-cols-[minmax(0,1.25fr)_minmax(220px,0.75fr)]" : ""
+                )}
+              >
+                {needsEmail && (
+                  <div className="space-y-2">
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                      <Label className="text-sm font-semibold text-slate-900">Email recipients</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addEmail}
+                        className="h-8 w-auto shrink-0 px-3"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {emails.map((emailValue, index) => (
+                        <div key={index} className="flex min-w-0 items-center gap-2">
+                          <Input
+                            id={index === 0 ? "quote-recipient-email" : undefined}
+                            type="email"
+                            value={emailValue}
+                            onChange={(e) => updateEmailAt(index, e.target.value)}
+                            placeholder="customer@example.com"
+                            autoFocus={index === 0}
+                            className="min-w-0"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeEmailAt(index)}
+                            disabled={emails.length === 1}
+                            title="Remove email"
+                            aria-label="Remove email"
+                            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    {!quote.customer_email && (
+                      <p className="text-xs text-amber-600">
+                        No email on file. The first email will be saved back to the quote.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {needsPhone && (
+                  <div className="space-y-2">
+                    <Label htmlFor="send-quote-phone" className="text-sm font-semibold text-slate-900">
+                      Customer phone
+                    </Label>
+                    <Input
+                      id="send-quote-phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="(805) 555-0123"
+                      autoFocus={channel === "sms"}
+                    />
+                    {!quote.customer_phone && (
+                      <p className="text-xs text-amber-600">
+                        No phone on file. This will be saved back to the quote.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </DialogSection>
+
+            <DialogSection
+              title="Message"
+              description={
+                channel === "sms"
+                  ? "This replaces the default SMS intro."
+                  : "This appears before the default email message."
+              }
+            >
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="send-quote-note" className="text-sm font-semibold text-slate-900">
+                    Optional note
+                  </Label>
+                  <Textarea
+                    id="send-quote-note"
+                    value={customMessage}
+                    onChange={(e) => setCustomMessage(e.target.value)}
+                    placeholder={
+                      channel === "sms"
+                        ? "Hi Jane, here's your quote."
+                        : "Hi Jane, as promised, here's the quote from our visit on Tuesday."
+                    }
+                    rows={channel === "sms" ? 2 : 4}
+                    className="min-h-[96px] resize-y"
+                  />
+                </div>
+
+                {needsPhone && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700">
+                    <Checkbox
+                      checked={bypassHours}
+                      onCheckedChange={(v) => setBypassHours(v === true)}
+                      className="mt-0.5"
+                    />
+                    <span className="leading-relaxed">
+                      Send text anyway if outside business hours{" "}
+                      <span className="text-muted-foreground">(Mon-Fri 9-6, Sat 10-6 PT)</span>
+                    </span>
+                  </label>
+                )}
+              </div>
+            </DialogSection>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
+              <DialogSection title="Share link" description="Customer review page for this quote.">
+                <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
+                  <code className="min-w-0 flex-1 truncate font-mono text-xs text-slate-700">
+                    {shareLink}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={handleCopyLink} className="h-8 shrink-0">
+                    {linkCopied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="outline" size="icon" className="h-8 w-8 shrink-0" asChild>
+                    <a
+                      href={shareLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Open in new tab"
+                      aria-label="Open quote link in new tab"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </Button>
+                </div>
+              </DialogSection>
+
+              <DialogSection title="Payment options" description="Included in the customer message.">
+                <div className="grid gap-2 text-sm">
+                  <PaymentOption icon={Banknote} label="Venmo" value="@ken-hill-13" />
+                  <PaymentOption icon={Zap} label="Zelle" value="805-806-9344" />
+                  <PaymentOption icon={CreditCard} label="Card" value="Quote review page" />
+                </div>
+              </DialogSection>
             </div>
           </div>
         </div>
 
-        {/* Payment options — visible to the rep + included in the default message */}
-        <div className="rounded-lg border border-slate-200 bg-emerald-50 p-3 space-y-1">
-          <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            Payment options (included in the message)
-          </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-700">
-            <span>📱 Venmo: <strong>@ken-hill-13</strong></span>
-            <span>🏦 Zelle: <strong>805-806-9344</strong></span>
-            <span>💳 Card: <strong>on the quote page</strong></span>
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={onClose} disabled={sendQuote.isPending}>
+        <DialogFooter className="!grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2 border-t border-slate-200 bg-white px-5 py-4 sm:!flex sm:gap-2 sm:px-6">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            disabled={sendQuote.isPending}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
           <Button
@@ -365,7 +391,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
               (needsPhone && !phone.trim()) ||
               contractEmailNeedsSignature
             }
-            className="bg-[#0b0b0b] hover:bg-[#1c1c1a]"
+            className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
           >
             <Send className="h-4 w-4 mr-2" />
             {sendQuote.isPending ? "Sending…" : sendLabel}
@@ -388,6 +414,44 @@ function getDefaultEmailType(quote: SalesQuote): EmailType {
     : "quote_only";
 }
 
+function DialogSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-slate-950">{title}</h3>
+        {description && <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function PaymentOption({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+      <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+      <span className="min-w-0 flex-1 text-slate-600">{label}</span>
+      <strong className="min-w-0 truncate text-right font-semibold text-slate-950">{value}</strong>
+    </div>
+  );
+}
+
 // ---- Channel picker button ----
 
 function ChannelButton({
@@ -405,15 +469,16 @@ function ChannelButton({
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
-        "flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all",
+        "flex min-h-[42px] min-w-0 items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-semibold transition-all",
         active
-          ? "bg-[#0b0b0b] text-white border-[#0b0b0b] ring-2 ring-offset-1 ring-[#0b0b0b]/30"
-          : "bg-white border-slate-200 text-slate-700 hover:border-[#0b0b0b]"
+          ? "border-[#0b0b0b] bg-[#0b0b0b] text-white shadow-sm"
+          : "border-slate-200 bg-white text-slate-700 hover:border-[#0b0b0b] hover:bg-slate-50"
       )}
     >
-      <Icon className="h-4 w-4" />
-      {label}
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="truncate">{label}</span>
     </button>
   );
 }
