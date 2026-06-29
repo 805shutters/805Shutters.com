@@ -22,6 +22,7 @@ import {
   Percent,
   Plus,
   Ruler,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
@@ -59,7 +60,6 @@ import {
   ROLLER_SHADE_TYPES,
   ROLLER_LIFT_SYSTEMS,
   ROLLER_VALANCES,
-  ROLLER_FABRIC_CATEGORIES,
   getRollerFabricPriceGroup,
   getRomanFabricPriceGroup,
   ROMAN_MOUNT_TYPES,
@@ -111,8 +111,19 @@ import {
 import {
   getHoneycombFabricStrings,
   getHoneycombFabricGroups,
-  getRollerFabricCategories,
 } from "@mts/lib/fabricCatalog";
+import {
+  ROLLER_FABRIC_COLOR_CODE_DETAIL,
+  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+  ROLLER_FABRIC_COLOR_ID_DETAIL,
+  ROLLER_FABRIC_COLOR_NAME_DETAIL,
+  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
+  findMtsRollerFabricColorBySelection,
+  getMtsRollerFabricCollections,
+  getMtsRollerProgramLabel,
+  searchMtsRollerFabricColors,
+  type MtsRollerFabricColor,
+} from "@mts/lib/normanRollerFabricCatalog";
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
@@ -858,6 +869,43 @@ function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<stri
     ...rest
   } = options;
   return rest;
+}
+
+function withoutRollerFabricColorDetails(options: Record<string, unknown>): Record<string, unknown> {
+  const {
+    [ROLLER_FABRIC_COLOR_ID_DETAIL]: _fabricColorId,
+    [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: _fabricColorCollection,
+    [ROLLER_FABRIC_COLOR_CODE_DETAIL]: _fabricColorCode,
+    [ROLLER_FABRIC_COLOR_NAME_DETAIL]: _fabricColorName,
+    [ROLLER_FABRIC_COLOR_TYPE_DETAIL]: _fabricColorType,
+    ...rest
+  } = options;
+  return rest;
+}
+
+function stringOption(options: Record<string, unknown>, key: string): string | null {
+  const value = options[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getFabricCompletedDisplayValue(
+  design: SalesQuoteDesign | undefined,
+  value: string
+): string {
+  const options = (design?.options_json as Record<string, unknown> | undefined) || {};
+  const code = stringOption(options, ROLLER_FABRIC_COLOR_CODE_DETAIL);
+  const name = stringOption(options, ROLLER_FABRIC_COLOR_NAME_DETAIL);
+  return code && name ? `${value}: ${code} - ${name}` : value;
+}
+
+function getCompletedDisplayValue(
+  design: SalesQuoteDesign | undefined,
+  field: string
+): string | null {
+  const value = getFieldValue(design, field);
+  if (!value) return null;
+  if (field === "fabric") return getFabricCompletedDisplayValue(design, value);
+  return value;
 }
 
 function ProductTypeSwitcher({
@@ -1634,6 +1682,122 @@ function GridSelect({
               ))}
         </SelectContent>
       </Select>
+    </div>
+  );
+}
+
+function RollerFabricAutocomplete({
+  value,
+  optionsJson,
+  onSelect,
+  onClear,
+}: {
+  value: string | null;
+  optionsJson: Record<string, unknown>;
+  onSelect: (fabricColor: MtsRollerFabricColor) => void;
+  onClear: () => void;
+}) {
+  const selectedColor = findMtsRollerFabricColorBySelection(
+    stringOption(optionsJson, ROLLER_FABRIC_COLOR_COLLECTION_DETAIL) || value,
+    stringOption(optionsJson, ROLLER_FABRIC_COLOR_CODE_DETAIL),
+    stringOption(optionsJson, ROLLER_FABRIC_COLOR_NAME_DETAIL)
+  );
+  const selectedLabel = selectedColor?.label ?? value ?? "";
+  const [query, setQuery] = useState(selectedLabel);
+  const [isOpen, setIsOpen] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  useEffect(() => {
+    if (!hasDraft) setQuery(selectedLabel);
+  }, [hasDraft, selectedLabel]);
+
+  const results = useMemo(
+    () => searchMtsRollerFabricColors(query, { includeUnavailable: true, limit: 60 }),
+    [query]
+  );
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextQuery = event.target.value;
+    setQuery(nextQuery);
+    setIsOpen(true);
+    setHasDraft(true);
+
+    if (selectedLabel && nextQuery.trim() !== selectedLabel.trim()) {
+      onClear();
+    }
+  };
+
+  const handleSelect = (fabricColor: MtsRollerFabricColor) => {
+    setQuery(fabricColor.label);
+    setIsOpen(false);
+    setHasDraft(false);
+    onSelect(fabricColor);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    setIsOpen(false);
+    setHasDraft(false);
+    onClear();
+  };
+
+  return (
+    <div className="relative col-span-2 space-y-1.5 lg:col-span-2">
+      <Label className="text-xs text-gray-900">Fabric Search</Label>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={query}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
+          placeholder="Search collection, color, or code..."
+          autoComplete="off"
+          className="h-9 pl-8 pr-8 text-sm text-gray-900"
+        />
+        {(query || value) && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label="Clear fabric search"
+            title="Clear fabric search"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      {isOpen && (
+        <div className="absolute z-50 mt-1 max-h-72 w-full min-w-[22rem] overflow-auto rounded-md border border-border bg-background shadow-lg">
+          {results.length > 0 ? (
+            results.map((fabricColor) => (
+              <button
+                key={fabricColor.id}
+                type="button"
+                disabled={!fabricColor.available || !fabricColor.programId}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  if (!fabricColor.available || !fabricColor.programId) return;
+                  handleSelect(fabricColor);
+                }}
+                className={cn(
+                  "flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60",
+                  selectedColor?.id === fabricColor.id && "bg-accent"
+                )}
+              >
+                <span className="font-medium text-gray-950">{fabricColor.label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {fabricColor.fabricType} · {getMtsRollerProgramLabel(fabricColor.programId)}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No Norman roller fabric matches.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2971,7 +3135,7 @@ function CompletedPills({
   return (
     <div className="flex flex-wrap gap-2">
       {steps.map((step) => {
-        const value = getFieldValue(design, step.field);
+        const value = getCompletedDisplayValue(design, step.field);
         if (!value) return null;
         return (
           <button
@@ -3041,6 +3205,19 @@ function ShadesAndBlindsOptions({
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
 
   const handleUpdate = (field: string, value: unknown) => {
+    if (
+      productType === "Roller Shades" &&
+      field === "fabric" &&
+      (value === null || value === undefined || value === "")
+    ) {
+      const currentJson = (design?.options_json as Record<string, unknown>) || {};
+      onUpdateFields({
+        fabric: null,
+        options_json: withoutRollerFabricColorDetails(currentJson),
+      });
+      return;
+    }
+
     // When setting a real value, clear the editing flag for this field
     if (value !== null && value !== undefined && value !== "") {
       setEditingFields((prev) => {
@@ -3320,12 +3497,7 @@ function ShadesAndBlindsOptions({
             label: "Fabric",
             field: "fabric",
             type: "select",
-            options: [
-              ...ROLLER_FABRIC_CATEGORIES.roomDarkening,
-              ...ROLLER_FABRIC_CATEGORIES.sheer,
-              ...ROLLER_FABRIC_CATEGORIES.natural,
-              ...ROLLER_FABRIC_CATEGORIES.other,
-            ],
+            options: getMtsRollerFabricCollections(),
           },
         ];
 
@@ -3794,15 +3966,39 @@ function ShadesAndBlindsOptions({
     });
   };
 
+  const handleRollerFabricSelect = (fabricColor: MtsRollerFabricColor) => {
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      next.delete("fabric");
+      return next;
+    });
+    onUpdateFields({
+      fabric: fabricColor.collection,
+      options_json: {
+        ...optionsJson,
+        [ROLLER_FABRIC_COLOR_ID_DETAIL]: fabricColor.id,
+        [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: fabricColor.collection,
+        [ROLLER_FABRIC_COLOR_CODE_DETAIL]: fabricColor.colorCode,
+        [ROLLER_FABRIC_COLOR_NAME_DETAIL]: fabricColor.colorName,
+        [ROLLER_FABRIC_COLOR_TYPE_DETAIL]: fabricColor.fabricType,
+      },
+    });
+  };
+
+  const handleRollerFabricClear = () => {
+    setEditingFields((prev) => {
+      const next = new Set(prev);
+      next.add("fabric");
+      return next;
+    });
+    onUpdateFields({
+      fabric: null,
+      options_json: withoutRollerFabricColorDetails(optionsJson),
+    });
+  };
+
   // Create fabric groups for dropdowns
   const getFabricGroups = (): GridSelectGroup[] | undefined => {
-    if (productType === "Roller Shades") {
-      // Return categorized fabrics: Room Darkening, Sheer, Natural, Other
-      return getRollerFabricCategories().map((group) => ({
-        label: group.label,
-        items: group.fabrics,
-      }));
-    }
     if (productType === "Honeycomb Shades") {
       const cellSize = getFieldValue(design, "json:cell_size");
       if (cellSize) {
@@ -3885,6 +4081,18 @@ function ShadesAndBlindsOptions({
             }
 
             if (opt.type === "select") {
+              if (productType === "Roller Shades" && opt.field === "fabric") {
+                return (
+                  <RollerFabricAutocomplete
+                    key={opt.key}
+                    value={value}
+                    optionsJson={optionsJson}
+                    onSelect={handleRollerFabricSelect}
+                    onClear={handleRollerFabricClear}
+                  />
+                );
+              }
+
               // Use grouped select for fabric collections that need section labels.
               const fabricGroups = opt.field === "fabric" ? getFabricGroups() : undefined;
               return (

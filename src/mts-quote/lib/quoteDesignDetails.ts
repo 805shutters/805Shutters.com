@@ -1,3 +1,10 @@
+import {
+  ROLLER_FABRIC_COLOR_CODE_DETAIL,
+  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+  ROLLER_FABRIC_COLOR_ID_DETAIL,
+  ROLLER_FABRIC_COLOR_NAME_DETAIL,
+  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
+} from "@mts/lib/normanRollerFabricCatalog";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 export interface QuoteDesignDetail {
@@ -34,6 +41,11 @@ const INTERNAL_OPTION_KEYS = new Set([
   "pricing_grid_height",
   "pricing_built_in_adjustment",
   "sent_price_snapshot",
+  ROLLER_FABRIC_COLOR_ID_DETAIL,
+  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+  ROLLER_FABRIC_COLOR_CODE_DETAIL,
+  ROLLER_FABRIC_COLOR_NAME_DETAIL,
+  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
 ]);
 
 export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDetail[] {
@@ -49,6 +61,9 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   if (design.requires_takedown) details.push({ label: "Requires Takedown", value: "Yes" });
 
   const options = design.options_json || {};
+  const fabricColor = formatFabricColorDetail(options);
+  if (fabricColor) details.push({ label: "Fabric Color", value: fabricColor });
+
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key)) return;
 
@@ -76,6 +91,13 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
   return details;
 }
 
+function formatFabricColorDetail(options: Record<string, unknown>): string | null {
+  const code = stringValue(options[ROLLER_FABRIC_COLOR_CODE_DETAIL]);
+  const name = stringValue(options[ROLLER_FABRIC_COLOR_NAME_DETAIL]);
+  if (code && name) return `${code} - ${name}`;
+  return name || code;
+}
+
 export function formatCurrency(value: unknown): string {
   return `$${Number(value || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
@@ -85,6 +107,10 @@ function hasValue(value: unknown): boolean {
   if (typeof value === "string") return value.trim().length > 0;
   if (Array.isArray(value)) return value.length > 0;
   return true;
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function formatOptionValue(value: unknown): string {

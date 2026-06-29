@@ -1,3 +1,4 @@
+import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { ACCOUNT_IDS } from "./accounts";
 
 export const QUOTE_ACCOUNTS = [
@@ -1737,22 +1738,70 @@ const ROLLER_FABRIC_TO_GROUP = new Map<string, string>([
   ["Kendra", "group4"],
 ]);
 
-// Roller Shade fabric-to-grid routing - EXACT mapping from 818 site (all 70 fabrics verified)
+export const ROLLER_FABRIC_UNKNOWN_GRID = "FABRIC_UNKNOWN";
+
+export const ROLLER_PROGRAM_TO_PRICING_GRID: Record<string, string> = {
+  roller_cordless_fabric_price_group_1_pg1: "group1",
+  roller_cordless_fabric_price_group_2_pg2: "group2",
+  roller_cordless_fabric_price_group_3_pg3: "group3",
+  roller_cordless_solar_screen_price_group_1_pg1: "solarCordlessGroup1",
+  roller_cordless_solar_screen_price_group_2_pg2: "solarCordlessGroup2",
+  roller_cordless_solar_screen_price_group_3_pg3: "solarCordlessGroup3",
+};
+
+const ROLLER_FABRIC_ROUTE_BY_NORMALIZED_NAME = new Map<string, string>();
+
+function normalizeRollerFabricRouteKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function legacyRollerFabricCollectionName(value: string): string {
+  return value
+    .replace(/\s+\((Room Darkening|Natural|Sheer)\)$/i, "")
+    .replace(/\s+\((1%, 3%|1%, 5%|3%, 5%|3%, 5%, 10%|3%, 7%, 10%|5%|7%|12%|1%|3%)\)$/i, "")
+    .trim();
+}
+
+function addRollerFabricRoute(label: string, group: string) {
+  const normalized = normalizeRollerFabricRouteKey(label);
+  if (normalized) ROLLER_FABRIC_ROUTE_BY_NORMALIZED_NAME.set(normalized, group);
+}
+
+for (const [fabric, group] of ROLLER_FABRIC_TO_GROUP) {
+  addRollerFabricRoute(fabric, group);
+  const collection = legacyRollerFabricCollectionName(fabric);
+  if (collection !== fabric) addRollerFabricRoute(collection, group);
+}
+
+for (const row of normanRollerFabricColors) {
+  if (!row.available || !row.programId) continue;
+
+  const group = ROLLER_PROGRAM_TO_PRICING_GRID[row.programId];
+  if (!group) continue;
+
+  addRollerFabricRoute(row.collection, group);
+  addRollerFabricRoute(`${row.collection} (${row.fabricType})`, group);
+
+  if (row.fabricType.toLowerCase().includes("natural")) {
+    addRollerFabricRoute(`${row.collection} (Natural)`, group);
+  }
+}
+
+// Roller Shade fabric-to-grid routing. Canonical Norman collections override the
+// legacy 70-option labels above so new quote selections price from the verified catalog.
 export function getRollerFabricPriceGroup(fabric: string): string {
   const normalizedFabric = fabric.trim();
 
-  // O(1) lookup from verified mapping
-  const group = ROLLER_FABRIC_TO_GROUP.get(normalizedFabric);
+  const group = ROLLER_FABRIC_ROUTE_BY_NORMALIZED_NAME.get(
+    normalizeRollerFabricRouteKey(normalizedFabric)
+  );
 
   if (group) {
     return group;
   }
 
-  // Fallback: if not in the map, default to group1
-  console.warn(
-    `Roller fabric "${normalizedFabric}" not found in verified mapping, defaulting to group1`
-  );
-  return "group1";
+  console.warn(`Roller fabric "${normalizedFabric}" not found in verified mapping`);
+  return ROLLER_FABRIC_UNKNOWN_GRID;
 }
 
 function normalizeRomanOption(value: string): string {

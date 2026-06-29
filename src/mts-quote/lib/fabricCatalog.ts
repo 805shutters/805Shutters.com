@@ -1,3 +1,8 @@
+import {
+  getMtsRollerFabricCollectionGroups,
+  getMtsRollerFabricCollections,
+} from "./normanRollerFabricCatalog";
+
 // Complete fabric catalog based on 818 Shutters site data
 // Organized by product type and cell size with full color codes, names, and light control types
 
@@ -401,180 +406,19 @@ export function getHoneycombFabricGroups(
   }));
 }
 
-// Complete roller fabric catalog from 818 site (70 fabrics in 4 categories)
+// Norman Soluna roller collections, grouped from the verified color catalog.
 export interface RollerFabricCategory {
   label: string;
   fabrics: readonly string[];
 }
 
 export function getRollerFabrics(): readonly string[] {
-  return [
-    // Room Darkening (12)
-    "Amelia RD (Room Darkening)",
-    "Bermuda (Room Darkening)",
-    "Breeze RD (Room Darkening)",
-    "Callie RD (Room Darkening)",
-    "Cory (Room Darkening)",
-    "Fiji (Room Darkening)",
-    "Francis RD (Room Darkening)",
-    "Garden (Room Darkening)",
-    "Jamaica (Room Darkening)",
-    "Lola BO (Room Darkening)",
-    "Remy RD (Room Darkening)",
-    "Summerland (Room Darkening)",
-    // Sheer (4)
-    "Dazzle (Sheer)",
-    "Lakeshore (Sheer)",
-    "Scarlett (Sheer)",
-    "Sheer",
-    // Natural (13)
-    "Aruba (Natural)",
-    "Bali (Natural)",
-    "Bora Bora (Natural)",
-    "Caroline (Natural)",
-    "Catalina (Natural)",
-    "Cove (Natural)",
-    "Java (Natural)",
-    "Lake Tahoe (Natural)",
-    "Maui (Natural)",
-    "Phuket (Natural)",
-    "Riviera (Natural)",
-    "Samoa (Natural)",
-    "Sumatra (Natural)",
-    // Other (41)
-    "Amelia",
-    "Breeze",
-    "Breeze (1%, 3%)",
-    "Brook",
-    "Callie",
-    "Canvas LF",
-    "Cascade LF",
-    "Chelsea",
-    "Clarissa",
-    "Classic LF",
-    "Elements",
-    "Emery",
-    "Flow (1%, 5%)",
-    "Flow (7%)",
-    "Francis",
-    "Galaxy (3%)",
-    "Hayes",
-    "Horizon LF",
-    "Jubilee (3%)",
-    "Kendra",
-    "Lakeview (3%, 7%, 10%)",
-    "Linen LF",
-    "Lola LF",
-    "Meadows (1%, 3%)",
-    "Moon (5%)",
-    "NA300 (1%)",
-    "NA300 (3%, 5%)",
-    "NA400 (1%)",
-    "NA400 (3%, 5%, 10%)",
-    "NA820 (3%)",
-    "Remy",
-    "Serene (1%, 3%)",
-    "Serene (7%)",
-    "Shimmer",
-    "Sierra",
-    "Valerie",
-    "Verona LF",
-    "Vista LF",
-    "W120 (12%)",
-    "Windsong (1%)",
-    "Windsong (5%)",
-  ];
+  return getMtsRollerFabricCollections();
 }
 
-// Get roller fabrics organized by category for grouped dropdown
+// Get roller collections organized by Norman fabric type.
 export function getRollerFabricCategories(): RollerFabricCategory[] {
-  return [
-    {
-      label: "Room Darkening",
-      fabrics: [
-        "Amelia RD (Room Darkening)",
-        "Bermuda (Room Darkening)",
-        "Breeze RD (Room Darkening)",
-        "Callie RD (Room Darkening)",
-        "Cory (Room Darkening)",
-        "Fiji (Room Darkening)",
-        "Francis RD (Room Darkening)",
-        "Garden (Room Darkening)",
-        "Jamaica (Room Darkening)",
-        "Lola BO (Room Darkening)",
-        "Remy RD (Room Darkening)",
-        "Summerland (Room Darkening)",
-      ],
-    },
-    {
-      label: "Sheer",
-      fabrics: ["Dazzle (Sheer)", "Lakeshore (Sheer)", "Scarlett (Sheer)", "Sheer"],
-    },
-    {
-      label: "Natural",
-      fabrics: [
-        "Aruba (Natural)",
-        "Bali (Natural)",
-        "Bora Bora (Natural)",
-        "Caroline (Natural)",
-        "Catalina (Natural)",
-        "Cove (Natural)",
-        "Java (Natural)",
-        "Lake Tahoe (Natural)",
-        "Maui (Natural)",
-        "Phuket (Natural)",
-        "Riviera (Natural)",
-        "Samoa (Natural)",
-        "Sumatra (Natural)",
-      ],
-    },
-    {
-      label: "Other",
-      fabrics: [
-        "Amelia",
-        "Breeze",
-        "Breeze (1%, 3%)",
-        "Brook",
-        "Callie",
-        "Canvas LF",
-        "Cascade LF",
-        "Chelsea",
-        "Clarissa",
-        "Classic LF",
-        "Elements",
-        "Emery",
-        "Flow (1%, 5%)",
-        "Flow (7%)",
-        "Francis",
-        "Galaxy (3%)",
-        "Hayes",
-        "Horizon LF",
-        "Jubilee (3%)",
-        "Kendra",
-        "Lakeview (3%, 7%, 10%)",
-        "Linen LF",
-        "Lola LF",
-        "Meadows (1%, 3%)",
-        "Moon (5%)",
-        "NA300 (1%)",
-        "NA300 (3%, 5%)",
-        "NA400 (1%)",
-        "NA400 (3%, 5%, 10%)",
-        "NA820 (3%)",
-        "Remy",
-        "Serene (1%, 3%)",
-        "Serene (7%)",
-        "Shimmer",
-        "Sierra",
-        "Valerie",
-        "Verona LF",
-        "Vista LF",
-        "W120 (12%)",
-        "Windsong (1%)",
-        "Windsong (5%)",
-      ],
-    },
-  ];
+  return getMtsRollerFabricCollectionGroups();
 }
 
 // Complete roman fabric catalog from 818 site (15 fabrics including Ellie)

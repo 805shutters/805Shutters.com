@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { ROLLER_VALANCES } from "./quoteConstants";
+import {
+  ROLLER_FABRIC_COLOR_CODE_DETAIL,
+  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+  ROLLER_FABRIC_COLOR_NAME_DETAIL,
+} from "./normanRollerFabricCatalog";
 import { parseQuoteOptionText } from "./quoteOptionParser";
 
 describe("MTS roller shade valance options", () => {
@@ -37,5 +42,16 @@ describe("MTS roller shade valance options", () => {
     expect(parseQuoteOptionText("Roller Shades", "8 inch fabric valance").patch.valance).toBe(
       '8" Fabric Valance*'
     );
+  });
+
+  it("parses Norman roller fabric color codes into collection and color details", () => {
+    const patch = parseQuoteOptionText("Roller Shades", "inside mount motorized F1515").patch;
+
+    expect(patch.fabric).toBe("Garden");
+    expect(patch.options_json).toMatchObject({
+      [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: "Garden",
+      [ROLLER_FABRIC_COLOR_CODE_DETAIL]: "F1515",
+      [ROLLER_FABRIC_COLOR_NAME_DETAIL]: "Ecru",
+    });
   });
 });

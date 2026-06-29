@@ -14,7 +14,6 @@ import {
   PERFECTSHEER_LIFT_SYSTEMS,
   PERFECTSHEER_LIGHT_CONTROL,
   PERFECTSHEER_MOUNT_TYPES,
-  ROLLER_FABRIC_CATEGORIES,
   ROLLER_LIFT_SYSTEMS,
   ROLLER_MOUNT_TYPES,
   ROLLER_VALANCES,
@@ -40,6 +39,15 @@ import {
   getVerticalColorsForGroup,
 } from "@mts/lib/quoteConstants";
 import { getHoneycombFabricStrings } from "@mts/lib/fabricCatalog";
+import {
+  ROLLER_FABRIC_COLOR_CODE_DETAIL,
+  ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+  ROLLER_FABRIC_COLOR_ID_DETAIL,
+  ROLLER_FABRIC_COLOR_NAME_DETAIL,
+  ROLLER_FABRIC_COLOR_TYPE_DETAIL,
+  findMtsRollerFabricColorInText,
+  getMtsRollerFabricCollections,
+} from "@mts/lib/normanRollerFabricCatalog";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
 export interface QuoteOptionParseResult {
@@ -140,13 +148,24 @@ function matchRoller(text: string, patch: FieldPatch, matches: string[]) {
   });
   if (valance) setField(patch, "valance", valance, matches, "Valance");
 
-  const rollerFabrics = [
-    ...ROLLER_FABRIC_CATEGORIES.roomDarkening,
-    ...ROLLER_FABRIC_CATEGORIES.sheer,
-    ...ROLLER_FABRIC_CATEGORIES.natural,
-    ...ROLLER_FABRIC_CATEGORIES.other,
-  ];
-  const fabric = matchOption(text, rollerFabrics);
+  const fabricColor = findMtsRollerFabricColorInText(text);
+  if (fabricColor) {
+    setField(patch, "fabric", fabricColor.collection, matches, "Fabric");
+    setJson(patch, ROLLER_FABRIC_COLOR_ID_DETAIL, fabricColor.id, matches, "Fabric Color ID");
+    setJson(
+      patch,
+      ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
+      fabricColor.collection,
+      matches,
+      "Fabric Collection"
+    );
+    setJson(patch, ROLLER_FABRIC_COLOR_CODE_DETAIL, fabricColor.colorCode, matches, "Fabric Code");
+    setJson(patch, ROLLER_FABRIC_COLOR_NAME_DETAIL, fabricColor.colorName, matches, "Fabric Color");
+    setJson(patch, ROLLER_FABRIC_COLOR_TYPE_DETAIL, fabricColor.fabricType, matches, "Fabric Type");
+    return;
+  }
+
+  const fabric = matchOption(text, getMtsRollerFabricCollections());
   if (fabric) setField(patch, "fabric", fabric, matches, "Fabric");
 }
 
