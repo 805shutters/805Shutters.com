@@ -860,7 +860,7 @@ export async function sendQuoteToCustomer(
   const requestedPhone = options.phone?.trim() || phone;
   const note = options.note?.trim();
   const smsBody = note
-    ? `${note}\n\nReview & approve: ${url}`
+    ? `${BUSINESS_NAME}: ${note}\n\nReview & approve: ${url}`
     : `${BUSINESS_NAME}: ${customerName}, here is your quote — review & approve: ${url}`;
   const sms = wantSms
     ? await sendSms({ to: requestedPhone, body: smsBody })
