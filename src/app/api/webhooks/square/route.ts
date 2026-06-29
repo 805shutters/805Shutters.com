@@ -18,7 +18,9 @@ export async function POST(request: NextRequest) {
   if (!supabase) return new NextResponse("Service unavailable", { status: 503 });
 
   const raw = await request.text();
-  const signature = request.headers.get("x-square-hmac-signature");
+  const signature =
+    request.headers.get("x-square-hmacsha256-signature") ??
+    request.headers.get("x-square-hmac-signature");
   if (!verifySquareWebhookSignature(SQUARE_WEBHOOK_URL, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature)) {
     return new NextResponse("Invalid signature", { status: 401 });
   }

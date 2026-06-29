@@ -6,11 +6,12 @@
 //   SQUARE_WEBHOOK_URL     The public URL Square calls (https://.../api/webhooks/square)
 //   SQUARE_WEBHOOK_SIGNING_KEY  Webhook signature key (Square Developer Dashboard)
 //
-// The Square API host (connect.squareapis.com) is the same for sandbox + prod;
+// The Square API host (connect.squareup.com) is the same for sandbox + prod;
 // the environment is determined by the access token.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const SQUARE_VERSION = "2024-12-18";
+export const SQUARE_PAYMENT_LINKS_URL = "https://connect.squareup.com/v2/online-checkout/payment-links";
 export const SQUARE_ENV = process.env.SQUARE_ENV === "production" ? "production" : "sandbox";
 export const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN || "";
 export const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID || "";
@@ -25,7 +26,7 @@ export function dollarsToCents(dollars: number): number {
   return Math.round((Number(dollars) || 0) * 100);
 }
 
-/** Verify a Square webhook signature (x-square-hmac-signature).
+/** Verify a Square webhook signature (x-square-hmacsha256-signature).
  *  Pure + deterministic so it can be unit-tested. */
 export function verifySquareWebhookSignature(
   webhookUrl: string,
@@ -58,7 +59,7 @@ export async function createSquarePaymentLink(input: {
   buyerEmail?: string | null;
 }): Promise<SquarePaymentLink> {
   if (!isSquareConfigured()) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
-  const res = await fetch("https://connect.squareapis.com/v2/online-checkout/payment-links", {
+  const res = await fetch(SQUARE_PAYMENT_LINKS_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,

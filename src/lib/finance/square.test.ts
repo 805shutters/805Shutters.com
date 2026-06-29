@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createHmac } from "node:crypto";
 import {
   verifySquareWebhookSignature,
+  SQUARE_PAYMENT_LINKS_URL,
   dollarsToCents,
   extractSquarePaymentFacts,
   isSquarePaidPaymentEvent,
@@ -31,6 +32,12 @@ describe("verifySquareWebhookSignature", () => {
     expect(verifySquareWebhookSignature("", KEY, BODY, sign(URL, BODY))).toBe(false);
     expect(verifySquareWebhookSignature(URL, "", BODY, sign(URL, BODY))).toBe(false);
     expect(verifySquareWebhookSignature(URL, KEY, BODY, null)).toBe(false);
+  });
+});
+
+describe("Square endpoint configuration", () => {
+  it("uses Square's current Connect API host", () => {
+    expect(SQUARE_PAYMENT_LINKS_URL).toBe("https://connect.squareup.com/v2/online-checkout/payment-links");
   });
 });
 
