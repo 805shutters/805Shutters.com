@@ -293,11 +293,11 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       <div style={termsBox}>
         <strong style={{ color: "#0b0b0b" }}>Payment at Installation</strong>
         <p style={{ margin: "6px 0 0" }}>
-          The remaining balance is due at installation for all products that have been installed.
-          Payment for installed products may not be withheld because of a correction, manufacturer
-          defect, warranty claim, shipping damage, service request, or any other issue that remains
-          open. Any issue will be handled through the appropriate correction, service, or
-          manufacturer warranty process, but the balance for installed products remains due.
+          The remaining balance is due at installation for all products installed and completed.
+          Payment may not be withheld for corrections, manufacturer defects, warranty claims,
+          shipping damage, or other open issues. Any issue will be handled through the appropriate
+          correction, service, or manufacturer warranty process, but the balance for installed
+          products remains due.
         </p>
       </div>
 
