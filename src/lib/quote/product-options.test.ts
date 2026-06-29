@@ -62,4 +62,21 @@ describe("catalog-backed surcharge detail fields", () => {
     expect(getDetailFieldsForProduct("citylights_aluminum").map((field) => field.id)).toEqual(expect.arrayContaining(["shim", "side_mount_bracket"]));
     expect(getDetailFieldsForProduct("palladian_shelf").map((field) => field.id)).not.toContain("shim");
   });
+
+  it("shows the actual Soluna roller valance options in dropdown order", () => {
+    const valance = getDetailFieldsForProduct("roller").find((field) => field.id === "valance");
+    expect(valance?.label).toBe("Valance");
+    expect(valance?.options).toEqual([
+      { value: "none", label: "No Valance" },
+      { value: "square_fascia", label: "Square Fascia*" },
+      { value: "plain_curved_fascia", label: "Plain Curved Fascia*" },
+      { value: "curved_fascia_with_fabric", label: "Curved Fascia with Fabric*" },
+      { value: "fabric_valance_3_1_2", label: '3 1/2" Fabric Valance*' },
+      { value: "fabric_valance_4_1_2", label: '4 1/2" Fabric Valance*' },
+      { value: "fabric_valance_6", label: '6" Fabric Valance*' },
+      { value: "fabric_valance_8", label: '8" Fabric Valance*' },
+      { value: "modern_wood_valance_4_1_2", label: '4 1/2" Modern Wood Valance*' },
+      { value: "cassette", label: "Cassette" },
+    ]);
+  });
 });

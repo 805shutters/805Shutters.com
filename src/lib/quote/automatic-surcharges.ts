@@ -62,10 +62,20 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, strin
       coupled: "coupled_shade",
     },
     valance: {
+      square_fascia: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+      plain_curved_fascia: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+      curved_fascia_with_fabric: "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      fabric_valance_3_1_2: "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      fabric_valance_4_1_2: "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      fabric_valance_6: "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      fabric_valance_8: "8in_fabric_valance_and_cassette",
+      modern_wood_valance_4_1_2: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+      cassette: "8in_fabric_valance_and_cassette",
+      // Legacy values from the previous generic selector; retained so saved quotes
+      // continue to reprice against the same guide-backed surcharge tables.
       fascia: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
       wood_valance: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
       fabric_valance: "fabric_valance_3_1_2in_4_1_2in_and_6in",
-      cassette: "8in_fabric_valance_and_cassette",
       raceway: "raceway",
     },
   },

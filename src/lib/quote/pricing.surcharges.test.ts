@@ -6,6 +6,7 @@
 
 import { describe, it, expect } from "vitest";
 import { priceDesign, type PriceResult } from "./pricing";
+import { deriveAutomaticSurcharges } from "./automatic-surcharges";
 
 function ok(r: PriceResult) {
   if (!r.ok) throw new Error(`expected ok, got ${r.code}: ${r.error}`);
@@ -61,6 +62,35 @@ describe("width-graduated valance surcharges (H1: no longer billed $0)", () => {
     expect(line(r, "fabric_valance_3_1_2in_4_1_2in_and_6in").amount).toBe(155);
     expect(line(r, "8in_fabric_valance_and_cassette").amount).toBe(216);
     expect(line(r, "raceway").amount).toBe(67);
+  });
+
+  it("maps every selectable Soluna roller valance option to its guide-backed extra fee", () => {
+    const cases = [
+      ["none", null, null],
+      ["square_fascia", "fascia_wood_valance_3_1_2in_4_1_2in_and_6in", 133],
+      ["plain_curved_fascia", "fascia_wood_valance_3_1_2in_4_1_2in_and_6in", 133],
+      ["curved_fascia_with_fabric", "fabric_valance_3_1_2in_4_1_2in_and_6in", 155],
+      ["fabric_valance_3_1_2", "fabric_valance_3_1_2in_4_1_2in_and_6in", 155],
+      ["fabric_valance_4_1_2", "fabric_valance_3_1_2in_4_1_2in_and_6in", 155],
+      ["fabric_valance_6", "fabric_valance_3_1_2in_4_1_2in_and_6in", 155],
+      ["fabric_valance_8", "8in_fabric_valance_and_cassette", 216],
+      ["modern_wood_valance_4_1_2", "fascia_wood_valance_3_1_2in_4_1_2in_and_6in", 133],
+      ["cassette", "8in_fabric_valance_and_cassette", 216],
+    ] as const;
+
+    for (const [value, surchargeId, expectedAmount] of cases) {
+      const surcharges = deriveAutomaticSurcharges("roller", { valance: value });
+      expect(surcharges, value).toEqual(surchargeId ? [{ id: surchargeId }] : []);
+      if (!surchargeId || expectedAmount == null) continue;
+      const priced = ok(priceDesign({
+        productId: "roller",
+        fabric: "Callie",
+        widthInches: 36,
+        heightInches: 36,
+        surcharges,
+      }));
+      expect(line(priced, surchargeId).amount, value).toBe(expectedAmount);
+    }
   });
 
   it("bills SmartFold valance selections from guide page 21", () => {
