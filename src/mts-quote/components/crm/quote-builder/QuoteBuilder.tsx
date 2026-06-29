@@ -805,7 +805,7 @@ export function QuoteBuilder() {
         </div>
       </div>
 
-      {/* Quote options + product type + rooms — stacked tight to the top */}
+      {/* Quote options + product type + rooms - stacked tight to the top */}
       <QuoteGroupTabs />
       <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
       <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
