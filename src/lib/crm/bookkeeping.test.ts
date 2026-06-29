@@ -10,6 +10,7 @@ import {
 } from "@/lib/crm/bookkeeping";
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import {
+  CrmBookkeepingCredit,
   CrmBookkeepingEntry,
   CrmBookkeepingPayment,
   CrmCommissionPayment,
@@ -99,6 +100,22 @@ function payment(overrides: Partial<CrmBookkeepingPayment> = {}): CrmBookkeeping
   };
 }
 
+function credit(overrides: Partial<CrmBookkeepingCredit> = {}): CrmBookkeepingCredit {
+  return {
+    id: "credit-1",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-01T00:00:00.000Z",
+    from_quote_id: null,
+    from_bookkeeping_entry_id: null,
+    to_quote_id: null,
+    to_bookkeeping_entry_id: null,
+    amount: 0,
+    credit_date: null,
+    note: null,
+    ...overrides
+  };
+}
+
 function kenPayment(overrides: Partial<CrmKenPayment> = {}): CrmKenPayment {
   return {
     id: "ken-1",
@@ -177,12 +194,13 @@ function rowsFrom(args: {
   quotes?: CrmQuote[];
   expenses?: CrmJobExpense[];
   payments?: CrmBookkeepingPayment[];
+  credits?: CrmBookkeepingCredit[];
 }) {
   return buildBookkeepingRows({
     quotes: args.quotes ?? [],
     entries: args.entries ?? [],
     payments: args.payments ?? [],
-    credits: [],
+    credits: args.credits ?? [],
     expenses: args.expenses ?? []
   });
 }
@@ -362,6 +380,28 @@ describe("paid-in-full status", () => {
     expect(row.isPaidInFull).toBe(true);
     expect(row.status).toBe("closed");
     expect(row.balance).toBe(0);
+  });
+
+  it("applies balance adjustment credits to the visible open balance", () => {
+    const [discountedRow, increasedRow] = rowsFrom({
+      entries: [
+        entry({ id: "discounted", total_amount: 1000 }),
+        entry({ id: "increased", total_amount: 1000 })
+      ],
+      payments: [
+        payment({ id: "discounted-payment", bookkeeping_entry_id: "discounted", amount: 500 }),
+        payment({ id: "increased-payment", bookkeeping_entry_id: "increased", amount: 500 })
+      ],
+      credits: [
+        credit({ id: "discount", to_bookkeeping_entry_id: "discounted", amount: 125 }),
+        credit({ id: "correction", from_bookkeeping_entry_id: "increased", amount: 75 })
+      ]
+    });
+
+    expect(discountedRow.balance).toBe(375);
+    expect(discountedRow.creditIn).toBe(125);
+    expect(increasedRow.balance).toBe(575);
+    expect(increasedRow.creditOut).toBe(75);
   });
 });
 

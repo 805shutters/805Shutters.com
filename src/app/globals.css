@@ -5671,10 +5671,22 @@ body.qb-fullscreen .crm-app-shell {
   white-space: nowrap;
 }
 
-.crm-bookkeeping-table td span.crm-bookkeeping-balance-paid-amount {
+.crm-bookkeeping-table td .crm-bookkeeping-balance-paid-amount {
   display: inline;
   margin-top: 0;
   font-size: 14px;
+}
+
+.crm-bookkeeping-table td button.crm-bookkeeping-balance-paid-amount {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.crm-bookkeeping-table td button.crm-bookkeeping-balance-paid-amount:disabled {
+  cursor: default;
 }
 
 .crm-bookkeeping-balance-paid-button.crm-partner-paid-button,

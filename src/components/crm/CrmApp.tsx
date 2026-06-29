@@ -75,6 +75,7 @@ type BookkeepingEditableField =
   | "total"
   | "payment"
   | "paymentType"
+  | "balance"
   | "cogs"
   | "remake"
   | "installation"
@@ -460,6 +461,17 @@ function calendarEventDescriptionLabel(event: CrmCalendarEvent) {
 
 function formString(formData: FormData, key: string) {
   return String(formData.get(key) || "").trim();
+}
+
+function balanceDueTargetPatch(formData: FormData, row: CrmBookkeepingRow) {
+  const rawTarget = formString(formData, "balance_due_target");
+  if (rawTarget === "") return {};
+  const target = roundCurrency(Number(rawTarget));
+  if (!Number.isFinite(target) || Math.abs(target - roundCurrency(row.balance)) < 0.01) return {};
+  return {
+    balance_due_target: target,
+    balance_adjustment_note: formString(formData, "balance_adjustment_note")
+  };
 }
 
 function setPaymentLedgerUrl(person: CrmPaymentPerson) {
@@ -3960,6 +3972,15 @@ function DrillDetailCard({
         onSave: (value) => saveRow({ payment_type: value }, "Payment type updated.")
       }
     : undefined;
+  const balanceEditor: DrillInlineEditor | undefined = row
+    ? {
+        type: "number",
+        value: moneyEditorValue(row.balance),
+        disabled: busy,
+        ariaLabel: "Edit balance due",
+        onSave: (value) => saveRow({ balance_due_target: moneyPatch(value) }, "Balance updated.")
+      }
+    : undefined;
   const cogsEditor: DrillInlineEditor | undefined = row
     ? {
         type: "number",
@@ -4109,7 +4130,7 @@ function DrillDetailCard({
             <div className="crm-drill-fact-column-list">
               <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
               <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
-              <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} />
+              <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} editor={balanceEditor} />
               <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} />
               <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} />
               <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
@@ -4285,6 +4306,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       payment_amount: paymentAmount,
       payment_label: formString(formData, "payment_label") || "Balance payment",
       paid_at: formString(formData, "paid_at") || null,
+      ...balanceDueTargetPatch(formData, row),
       remake_amount: formString(formData, "remake_amount"),
       installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
       installation_invoice_number: formString(formData, "installation_invoice_number"),
@@ -4473,6 +4495,10 @@ function DrillDetailEditForm({
               Add Payment
               <input name="payment_amount" type="number" min="0" step="0.01" placeholder="0.00" disabled={!row} />
             </label>
+            <label>
+              Balance Due
+              <input name="balance_due_target" type="number" step="0.01" defaultValue={row?.balance ?? ""} disabled={!row} />
+            </label>
           </div>
           <div className="crm-field-row">
             <label>
@@ -4482,6 +4508,10 @@ function DrillDetailEditForm({
             <label>
               Paid Date
               <input name="paid_at" type="date" defaultValue={todayInputValue()} disabled={!row} />
+            </label>
+            <label>
+              Adjustment Note
+              <input name="balance_adjustment_note" placeholder="Discount / correction" disabled={!row} />
             </label>
           </div>
           <label>
@@ -6392,10 +6422,12 @@ function ReadOnlyBookkeepingSpreadsheet({
 function BookkeepingBalancePaidCell({
   row,
   busy,
+  onEditBalance,
   onMarkPaid
 }: {
   row: CrmBookkeepingRow;
   busy: boolean;
+  onEditBalance: () => void;
   onMarkPaid: (row: CrmBookkeepingRow) => void;
 }) {
   const paid = row.isPaidInFull;
@@ -6414,7 +6446,16 @@ function BookkeepingBalancePaidCell({
 
   return (
     <span className="crm-bookkeeping-balance-paid-cell">
-      <span className={`crm-bookkeeping-balance-paid-amount ${amountClass}`}>{toLedgerCurrency(row.balance)}</span>
+      <button
+        type="button"
+        className={`crm-bookkeeping-balance-paid-amount ${amountClass}`}
+        onClick={onEditBalance}
+        disabled={busy}
+        aria-label={`Edit balance due for ${row.customerName}`}
+        title={`Edit balance due for ${row.customerName}`}
+      >
+        {toLedgerCurrency(row.balance)}
+      </button>
       {canClick ? (
         <button
           type="button"
@@ -6734,7 +6775,19 @@ function BookkeepingSpreadsheet({
                   )}
                 </td>
                 <td>
-                  <BookkeepingBalancePaidCell row={row} busy={busy} onMarkPaid={onMarkBalancePaid} />
+                  {isEditing(row, "balance") ? (
+                    <BookkeepingInlineTextEditor
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={row.balance}
+                      busy={busy}
+                      onSave={(value) => saveCell(row, { balance_due_target: Number(value || 0) })}
+                      onCancel={closeEdit}
+                    />
+                  ) : (
+                    <BookkeepingBalancePaidCell row={row} busy={busy} onEditBalance={() => openEdit(row, "balance")} onMarkPaid={onMarkBalancePaid} />
+                  )}
                 </td>
                 <td>
                   {isEditing(row, "ken") ? (
