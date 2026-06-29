@@ -90,7 +90,7 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
       location_id: locationId,
       reference_id: input.quoteId,
       metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
-      line_items: [{ name: input.title, base_price_money: { amount: input.amountCents, currency: "USD" } }],
+      line_items: [{ name: input.title, quantity: "1", base_price_money: { amount: input.amountCents, currency: "USD" } }],
     },
   };
 }

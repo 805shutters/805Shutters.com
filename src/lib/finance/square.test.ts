@@ -84,6 +84,7 @@ describe("squarePaymentLinkRequestBody", () => {
     );
     expect(body.order.location_id).toBe("LOCATION1");
     expect(body.order.reference_id).toBe("quote-1");
+    expect(body.order.line_items[0].quantity).toBe("1");
     expect(body.order.line_items[0].base_price_money).toEqual({ amount: 54125, currency: "USD" });
     expect(body.checkout_options).toEqual({ allow_tipping: false, ask_for_shipping_address: false });
     expect(body.pre_populated_data).toEqual({ buyer_email: "customer@example.com" });
