@@ -250,8 +250,11 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       <div style={{ marginTop: 20, padding: 14, border: "1px solid #d8d8d2", borderRadius: 8, background: "#fbfbfa", fontSize: 13, lineHeight: 1.6, color: "#4d4d49" }}>
         <strong style={{ color: "#0b0b0b" }}>Payment at Installation</strong>
         <p style={{ margin: "6px 0 0" }}>
-          The remaining balance will be collected at the time of installation for all items completed to your satisfaction.
-          If any item requires correction, payment for that item will be deferred until it is fully resolved — you only pay for what's done right.
+          The remaining balance is due at installation for all products that have been installed.
+          Payment for installed products may not be withheld because of a correction, manufacturer
+          defect, warranty claim, shipping damage, service request, or any other issue that remains
+          open. Any issue will be handled through the appropriate correction, service, or
+          manufacturer warranty process, but the balance for installed products remains due.
         </p>
       </div>
 
