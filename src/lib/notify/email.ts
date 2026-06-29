@@ -99,7 +99,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
   const html = `<div style="margin:0;padding:0;background:#ffffff;color:#0b0b0b;font-family:Arial,Helvetica,sans-serif">
   <div style="max-width:640px;margin:0 auto;padding:28px 18px">
     <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
-      ${details.logoUrl ? `<img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:60%;height:auto;margin:0 0 16px 0;border:0">` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px">805 SHUTTERS</div>`}
+      ${details.logoUrl ? `<div style="display:inline-block;background:#1f1f1f;padding:10px 12px;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px">805 SHUTTERS</div>`}
       <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#333333">${escapeHtml(quoteLabel)}</div>
       <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">Ready for review</h1>
       <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#1f1f1f">Hi ${escapeHtml(name)}, your quote${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>

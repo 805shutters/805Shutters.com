@@ -19,6 +19,14 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("<script>");
     expect(html).toContain("&lt;script&gt;");
   });
+  it("renders the supplied logo on a dark backing for email contrast", () => {
+    const { html } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4250, {
+      logoUrl: "https://www.805shutters.com/brand/805-shutters-logo-header-white.png",
+    });
+
+    expect(html).toContain("805-shutters-logo-header-white.png");
+    expect(html).toContain("background:#1f1f1f");
+  });
   it("renders clean text line items without product images", () => {
     const { html, text } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4250, {
       quoteNumber: "Q-100",
