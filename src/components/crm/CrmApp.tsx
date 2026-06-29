@@ -4291,6 +4291,9 @@ function DrillDetailCard({
               />
               <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
               <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+              {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
+                <DrillFact label="Jessica Profit" value={toLedgerCurrency(row.jessicaCommission)} tone="good" />
+              ) : null}
               <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} editor={installAmountEditor} />
             </div>
           </section>
@@ -4705,6 +4708,11 @@ function DrillDetailEditForm({
           <span>
             Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
           </span>
+          {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
+            <span>
+              Jessica Profit <strong>{toLedgerCurrency(row.jessicaCommission)}</strong>
+            </span>
+          ) : null}
           <span>
             Remake <strong>{row ? toLedgerCurrency(-row.remakeTotal) : "No ledger row"}</strong>
           </span>
