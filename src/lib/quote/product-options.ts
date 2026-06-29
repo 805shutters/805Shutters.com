@@ -252,6 +252,7 @@ const structuredSurchargeIdsByProduct: Record<string, string[]> = {
     "horizontal_center_arch_with_quarter_round_side_panels",
     "sunburst_center_arch_with_quarter_round_side_panels",
     "all_other_shapes",
+    "french_door_cutout",
     "custom_color_per_order",
   ],
   onyx_shutters: [
@@ -461,7 +462,18 @@ const shutterFields: QuoteDetailField[] = [
 ];
 
 const productDetails: Record<string, QuoteDetailField[]> = {
-  norman_shutters: shutterFields,
+  norman_shutters: [
+    ...shutterFields,
+    {
+      id: "custom_work",
+      label: "Custom work",
+      type: "select",
+      options: [
+        noneOption,
+        { value: "french_door_cutout", label: "French door cutout" },
+      ],
+    },
+  ],
   onyx_shutters: [
     {
       id: "onyx_order_type",

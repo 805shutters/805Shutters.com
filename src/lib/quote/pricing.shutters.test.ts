@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { priceDesign, type PriceResult } from "./pricing";
 import { getProduct, catalog } from "./catalog";
+import { deriveAutomaticSurcharges } from "./automatic-surcharges";
 
 // Shutter pricing is PROVISIONAL (ported from legacy MTS data, pending a current
 // Norman/Onyx guide). These expectations lock the $/sqft math and the 8 sqft floor
@@ -9,6 +10,12 @@ import { getProduct, catalog } from "./catalog";
 function ok(r: PriceResult) {
   if (!r.ok) throw new Error(`expected ok, got ${r.code}: ${r.error}`);
   return r;
+}
+
+function line(r: ReturnType<typeof ok>, id: string) {
+  const surchargeLine = r.surchargeLines.find((item) => item.id === id);
+  if (!surchargeLine) throw new Error(`surcharge line ${id} not found`);
+  return surchargeLine;
 }
 
 describe("shutter $/sqft pricing", () => {
@@ -75,6 +82,76 @@ describe("shutter $/sqft pricing", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges: [{ id: "hidden_tilt_rod" }] }));
     expect(r.surchargeLines[0].amount).toBe(15); // 1.20 * 12.5 sqft
     expect(r.unitPrice).toBe(490); // 475 + 15
+  });
+
+  it("prices Norman bypass/bifold track selections from the visible detail options", () => {
+    const cases = [
+      [{ panel_config: "bypass" }, "bypass_and_bifold_track_shutters", 170],
+      [{ panel_config: "bifold" }, "bypass_and_bifold_track_shutters", 170],
+      [{ track_system: "bypass_track" }, "bypass_track", 170],
+      [{ track_system: "bifold_180" }, "bifold_180", 170],
+      [{ track_system: "floating_90_bifold" }, "floating_90_bifold", 191.25],
+      [{ track_system: "triple_track" }, "triple_track", 42.5],
+      [{ track_system: "track_only" }, "track_only", 42.5],
+      [{ track_system: "track_header_fascia" }, "track_w_header_and_fascia", 85],
+    ] as const;
+
+    for (const [details, surchargeId, expectedAmount] of cases) {
+      const surcharges = deriveAutomaticSurcharges("norman_shutters", details);
+      expect(surcharges, surchargeId).toEqual([{ id: surchargeId }]);
+      const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges }));
+      expect(line(r, surchargeId).amount, surchargeId).toBe(expectedAmount);
+    }
+  });
+
+  it("prices Norman specialty shape and French door cutout selections", () => {
+    const cases = [
+      [{ specialty_shape: "liberty_arch" }, "liberty_arch", 60],
+      [{ specialty_shape: "angle_top" }, "angle_top", 215],
+      [{ specialty_shape: "arch_top_picture" }, "arch_top_picture_window_with_horizontal_louvers", 322.5],
+      [{ specialty_shape: "quarter_sunburst" }, "quarter_sunburst_panel_with_continuous_frame", 430],
+      [{ specialty_shape: "horizontal_center_arch" }, "horizontal_center_arch_with_quarter_round_side_panels", 430],
+      [{ specialty_shape: "sunburst_center_arch" }, "sunburst_center_arch_with_quarter_round_side_panels", 645],
+      [{ specialty_shape: "all_other_shapes" }, "all_other_shapes", 215],
+      [{ custom_work: "french_door_cutout" }, "french_door_cutout", 200],
+    ] as const;
+
+    for (const [details, surchargeId, expectedAmount] of cases) {
+      const surcharges = deriveAutomaticSurcharges("norman_shutters", details);
+      expect(surcharges, surchargeId).toEqual([{ id: surchargeId }]);
+      const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges }));
+      expect(line(r, surchargeId).amount, surchargeId).toBe(expectedAmount);
+    }
+  });
+
+  it("prices Onyx bypass/bifold, specialty, French door, and custom work selections", () => {
+    const cases = [
+      [{ panel_config: "bypass" }, "close_by_pass_2_tracks", 220],
+      [{ panel_config: "bifold" }, "bi_fold", 220],
+      [{ track_type: "close_bypass" }, "close_by_pass_2_tracks", 220],
+      [{ track_type: "open_bypass" }, "open_by_pass_2_tracks", 250],
+      [{ track_type: "bifold" }, "bi_fold", 220],
+      [{ specialty_shape: "arch" }, "arch", 200],
+      [{ specialty_shape: "sunburst" }, "sunburst", 220],
+      [{ specialty_shape: "octagon" }, "octagon", 220],
+      [{ specialty_shape: "hexagon" }, "hexagon", 220],
+      [{ specialty_shape: "circle" }, "circle", 220],
+      [{ specialty_shape: "elongated_eyebrow" }, "elongated_eyebrow", 220],
+      [{ specialty_shape: "liberty_arch_panel" }, "liberty_arch_panel", 38],
+      [{ specialty_shape: "racked" }, "racked", 140],
+      [{ custom_work: "french_door_cutout" }, "french_door_cutout_l_frame_only", 110],
+      [{ custom_work: "dishout_cut" }, "dishout_cut_per_cut_1_1_4in_max", 30],
+      [{ custom_work: "scribe_small" }, "scribe_less_than_27_cubic_inches_per_piece", 7],
+      [{ custom_work: "scribe_medium" }, "scribe_greater_than_27_and_less_than_54_cubic_inches_per_piece", 10],
+      [{ custom_work: "scribe_large" }, "scribe_greater_than_54_cubic_inches_per_piece", 15],
+    ] as const;
+
+    for (const [details, surchargeId, expectedAmount] of cases) {
+      const surcharges = deriveAutomaticSurcharges("onyx_shutters", details);
+      expect(surcharges, surchargeId).toEqual([{ id: surchargeId }]);
+      const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges }));
+      expect(line(r, surchargeId).amount, surchargeId).toBe(expectedAmount);
+    }
   });
 
   it("shutter products are flagged provisional", () => {

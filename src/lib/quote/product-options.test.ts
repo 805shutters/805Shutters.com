@@ -81,6 +81,47 @@ describe("catalog-backed surcharge detail fields", () => {
     ]);
   });
 
+  it("exposes shutter track, specialty, and French door fee options as selectable details", () => {
+    const normanFields = getDetailFieldsForProduct("norman_shutters");
+    expect(normanFields.find((field) => field.id === "track_system")?.options?.map((option) => option.value)).toEqual([
+      "none",
+      "bypass_track",
+      "bifold_180",
+      "floating_90_bifold",
+      "triple_track",
+      "track_only",
+      "track_header_fascia",
+    ]);
+    expect(normanFields.find((field) => field.id === "specialty_shape")?.options?.map((option) => option.value)).toEqual(expect.arrayContaining([
+      "liberty_arch",
+      "angle_top",
+      "arch_top_picture",
+      "quarter_sunburst",
+      "horizontal_center_arch",
+      "sunburst_center_arch",
+      "all_other_shapes",
+    ]));
+    expect(normanFields.find((field) => field.id === "custom_work")?.options).toEqual([
+      { value: "none", label: "None" },
+      { value: "french_door_cutout", label: "French door cutout" },
+    ]);
+
+    const onyxFields = getDetailFieldsForProduct("onyx_shutters");
+    expect(onyxFields.find((field) => field.id === "track_type")?.options?.map((option) => option.value)).toEqual([
+      "none",
+      "close_bypass",
+      "open_bypass",
+      "bifold",
+    ]);
+    expect(onyxFields.find((field) => field.id === "custom_work")?.options?.map((option) => option.value)).toEqual(expect.arrayContaining([
+      "french_door_cutout",
+      "dishout_cut",
+      "scribe_small",
+      "scribe_medium",
+      "scribe_large",
+    ]));
+  });
+
   it("can derive every guide-priced product surcharge from a visible detail field", () => {
     const ignoredCatalogHelpers = new Set(["valance_additional_foot", "additional_valance_foot"]);
     for (const product of catalog.products) {

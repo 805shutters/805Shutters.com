@@ -209,6 +209,9 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
       sunburst_center_arch: "sunburst_center_arch_with_quarter_round_side_panels",
       all_other_shapes: "all_other_shapes",
     },
+    custom_work: {
+      french_door_cutout: "french_door_cutout",
+    },
   },
   onyx_shutters: {
     tilt_type: {

@@ -117,6 +117,7 @@ import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { calculateDiscountedPrice, removeQuoteDesignDiscount } from "@mts/lib/quoteDiscounts";
+import { getAutomaticShutterOptionSurcharges } from "@mts/lib/shutterOptionSurcharges";
 import {
   FAUX_WOOD_SURCHARGES,
   HONEYCOMB_SURCHARGES,
@@ -312,6 +313,17 @@ function appendSurcharge(items: QuoteSurcharge[], surcharge: QuoteSurcharge | nu
   items.push(surcharge);
 }
 
+function dedupeQuoteSurcharges(items: QuoteSurcharge[]): QuoteSurcharge[] {
+  const seen = new Set<string>();
+  const result: QuoteSurcharge[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    result.push(item);
+  }
+  return result;
+}
+
 function getMotorBrand(design: SalesQuoteDesign | undefined): MotorOption["brand"] | undefined {
   const motorType = design?.motor_type;
   const remoteType = design?.remote_type;
@@ -363,6 +375,12 @@ function getAutomaticOptionSurcharges(
     String(opts.hub_required || "").toLowerCase() === "true" ||
     String(opts.hub_required || "").toLowerCase() === "yes";
   const motorBrand = getMotorBrand(design);
+
+  if (productType === "Shutters") {
+    for (const surcharge of getAutomaticShutterOptionSurcharges(design, productType)) {
+      appendSurcharge(surcharges, surcharge);
+    }
+  }
 
   if (productType === "Roller Shades" && liftSystem === "Smart Release") {
     appendSurcharge(
@@ -941,7 +959,7 @@ function SurchargePicker({
   const [adding, setAdding] = useState(false);
   const automaticSurcharges = getAutomaticOptionSurcharges(productType, design);
   const savedSurcharges = getSelectedSurcharges(design);
-  const selectedSurcharges = [...automaticSurcharges, ...savedSurcharges];
+  const selectedSurcharges = dedupeQuoteSurcharges([...automaticSurcharges, ...savedSurcharges]);
   const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
   const catalog = getAvailableSurcharges(productType, design);
   const opts = (design?.options_json as Record<string, unknown> | undefined) || {};
@@ -1788,10 +1806,10 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
-    const selectedSurcharges = [
+    const selectedSurcharges = dedupeQuoteSurcharges([
       ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
       ...getSelectedSurcharges(currentDesign),
-    ];
+    ]);
     const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
     const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
     const recalculatedOptions = stripPriceFreezeMetadata(opts);
@@ -1872,10 +1890,10 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
 
-    const selectedSurcharges = [
+    const selectedSurcharges = dedupeQuoteSurcharges([
       ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
       ...getSelectedSurcharges(currentDesign),
-    ];
+    ]);
     if (!hasMotorizationSurcharge(selectedSurcharges)) return;
 
     const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
@@ -2010,10 +2028,10 @@ export function DesignCard({
     const basePrice = priceBreakdown.price;
 
     if (basePrice !== null) {
-      const selectedSurcharges = [
+      const selectedSurcharges = dedupeQuoteSurcharges([
         ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
         ...getSelectedSurcharges(currentDesign),
-      ];
+      ]);
       const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
       const sourcePrice = Math.round((basePrice + surchargeTotal) * 100) / 100;
       const discountPercent = Number(opts.discount_percent) || 0;
