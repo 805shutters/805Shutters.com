@@ -213,7 +213,6 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         <div className="no-print" style={payBox}>
           <strong>Other ways to pay</strong>
           {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit due: {money(live.depositDue)}</div> : null}
-          {live.balanceDue > 0 ? <div style={{ fontSize: 14 }}>Balance due: {money(live.balanceDue)}</div> : null}
           <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 14 }}>
