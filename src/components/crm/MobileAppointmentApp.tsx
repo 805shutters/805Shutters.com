@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   CalendarDays,
@@ -8,20 +8,21 @@ import {
   ChevronRight,
   Clock,
   Loader2,
-  LogOut,
   MapPin,
   MessageSquare,
   Navigation,
   Phone,
+  Plus,
   RefreshCw,
   User,
   X
 } from "lucide-react";
+import { bookingSlotDurationMinutes, zonedTimeToUtc } from "@/lib/booking/availability";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { productInterestOptions } from "@/lib/product-interest-options";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 
 type CalendarView = "month" | "week" | "day";
-type CalendarScope = "my" | "all";
 
 type MobileAppointment = CrmCalendarEvent & {
   window_count?: number | null;
@@ -30,7 +31,6 @@ type MobileAppointment = CrmCalendarEvent & {
 
 type MobileAppointmentsResponse = {
   appointments: MobileAppointment[];
-  scope: CalendarScope;
   owner: string | null;
   range: {
     startDate: string;
@@ -61,7 +61,9 @@ type MobileEtaResponse = {
 };
 
 const calendarViews: CalendarView[] = ["month", "week", "day"];
-const calendarScopes: CalendarScope[] = ["my", "all"];
+const ownerOptions = ["Mike", "Jessica", "Unassigned"];
+const productOptions = [...productInterestOptions, "Mixed"];
+const appointmentDurations = [60, 90, 120, 180];
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/Los_Angeles",
@@ -189,9 +191,17 @@ function eventTitle(event: MobileAppointment) {
   return event.customer_name || event.title || "Appointment";
 }
 
+function assignedPerson(event: MobileAppointment) {
+  return cleanText(event.assigned_to) || "Unassigned";
+}
+
 function cleanText(value: string | null | undefined) {
   const text = String(value || "").trim();
   return text || null;
+}
+
+function formString(formData: FormData, key: string) {
+  return String(formData.get(key) || "").trim();
 }
 
 function windowCountLabel(event: MobileAppointment) {
@@ -258,6 +268,16 @@ function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 
   return addDays(anchorDate, direction);
 }
 
+function appointmentDateTimeRange(date: string, time: string, durationMinutes: number) {
+  const start = zonedTimeToUtc(date, time);
+  const safeDuration = Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : bookingSlotDurationMinutes;
+  const end = new Date(start.getTime() + safeDuration * 60 * 1000);
+  return {
+    startAt: start.toISOString(),
+    endAt: end.toISOString()
+  };
+}
+
 function AppointmentChip({
   event,
   compact = false,
@@ -271,6 +291,7 @@ function AppointmentChip({
     <button type="button" className={compact ? "mobile-crm-chip compact" : "mobile-crm-chip"} onClick={() => onClick(event)}>
       <span>{timeFormatter.format(new Date(event.start_at))}</span>
       <strong>{eventTitle(event)}</strong>
+      <em>{assignedPerson(event)}</em>
     </button>
   );
 }
@@ -371,6 +392,7 @@ function DayView({
           <button type="button" className="mobile-crm-day-card" key={event.id} onClick={() => onSelectEvent(event)}>
             <span>{formatEventTime(event)}</span>
             <strong>{eventTitle(event)}</strong>
+            <small>{assignedPerson(event)}</small>
             <em>{cleanText(event.customer_address || event.location) || "Address not set"}</em>
           </button>
         ))
@@ -444,19 +466,118 @@ function AppointmentDetailSheet({
   );
 }
 
+function AddAppointmentSheet({
+  defaultDate,
+  busy,
+  onClose,
+  onSubmit
+}: {
+  defaultDate: string;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  return (
+    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={onClose}>
+      <section className="mobile-crm-sheet mobile-crm-add-sheet" role="dialog" aria-modal="true" aria-label="Add appointment" onClick={(eventClick) => eventClick.stopPropagation()}>
+        <div className="mobile-crm-sheet-bar">
+          <div>
+            <span>New appointment</span>
+            <h2>Add Appointment</h2>
+          </div>
+          <button type="button" aria-label="Close add appointment" onClick={onClose}>
+            <X />
+          </button>
+        </div>
+
+        <form className="mobile-crm-add-form" onSubmit={onSubmit}>
+          <label>
+            Customer
+            <input name="customer_name" required placeholder="Customer name" autoFocus />
+          </label>
+          <label>
+            Phone
+            <input name="phone" required inputMode="tel" placeholder="805-000-0000" />
+          </label>
+          <label>
+            Address
+            <input name="address" placeholder="Project address" />
+          </label>
+          <label>
+            City
+            <input name="city" placeholder="Camarillo" />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" placeholder="customer@email.com" />
+          </label>
+          <div className="mobile-crm-form-row">
+            <label>
+              Date
+              <input name="date" type="date" required defaultValue={defaultDate} />
+            </label>
+            <label>
+              Time
+              <input name="time" type="time" required defaultValue="09:00" />
+            </label>
+          </div>
+          <div className="mobile-crm-form-row">
+            <label>
+              Duration
+              <select name="duration" defaultValue={String(bookingSlotDurationMinutes)}>
+                {appointmentDurations.map((duration) => (
+                  <option value={duration} key={duration}>
+                    {duration % 60 === 0 ? `${duration / 60} hr` : `${duration} min`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Assigned
+              <select name="assigned_to" defaultValue="Unassigned">
+                {ownerOptions.map((item) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <label>
+            Product
+            <select name="product_interest" defaultValue="Shutters">
+              {productOptions.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Notes
+            <textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring..." />
+          </label>
+          <div className="mobile-crm-sheet-actions">
+            <button type="submit" className="mobile-crm-primary-action" disabled={busy}>
+              {busy ? <Loader2 className="spin" /> : <Plus />}
+              <span>{busy ? "Saving..." : "Save Appointment"}</span>
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 export function MobileAppointmentApp() {
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appointments, setAppointments] = useState<MobileAppointment[]>([]);
-  const [scope, setScope] = useState<CalendarScope>("my");
   const [view, setView] = useState<CalendarView>("week");
   const [anchorDate, setAnchorDate] = useState(() => todayLosAngelesDate());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [userLabel, setUserLabel] = useState<string | null>(null);
-  const [ownerLabel, setOwnerLabel] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<MobileAppointment | null>(null);
+  const [addingAppointment, setAddingAppointment] = useState(false);
+  const [savingAppointment, setSavingAppointment] = useState(false);
   const [etaBusy, setEtaBusy] = useState(false);
   const [etaMessage, setEtaMessage] = useState<string | null>(null);
   const activeRange = useMemo(() => rangeForView(anchorDate, view), [anchorDate, view]);
@@ -493,11 +614,10 @@ export function MobileAppointmentApp() {
       const params = new URLSearchParams({
         start: activeRange.start,
         end: activeRange.end,
-        scope
+        scope: "all"
       });
       const result = await crmFetch<MobileAppointmentsResponse>(activeSession, `/api/crm/mobile/appointments?${params}`);
       setAppointments(result.appointments);
-      setOwnerLabel(result.owner);
       setUserLabel(result.user.displayName || result.user.email);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointments could not be loaded.");
@@ -509,13 +629,74 @@ export function MobileAppointmentApp() {
   useEffect(() => {
     loadAppointments();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.access_token, scope, activeRange.start, activeRange.end]);
+  }, [session?.access_token, activeRange.start, activeRange.end]);
 
-  async function signOut() {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setSession(null);
-    setAppointments([]);
+  async function createAppointment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const customerName = formString(formData, "customer_name");
+    const phone = formString(formData, "phone");
+    const email = formString(formData, "email");
+    const city = formString(formData, "city");
+    const address = formString(formData, "address");
+    const productInterest = formString(formData, "product_interest") || "Shutters";
+    const assignedTo = formString(formData, "assigned_to") || "Unassigned";
+    const notes = formString(formData, "notes");
+    const date = formString(formData, "date");
+    const time = formString(formData, "time");
+    const durationMinutes = Number(formString(formData, "duration") || bookingSlotDurationMinutes);
+    const { startAt, endAt } = appointmentDateTimeRange(date, time, durationMinutes);
+
+    setSavingAppointment(true);
+    setMessage(null);
+
+    try {
+      const { job } = await crmFetch<{ job: { id: string } }>(session, "/api/crm/jobs", {
+        method: "POST",
+        body: JSON.stringify({
+          customer_name: customerName,
+          phone,
+          email,
+          city,
+          address,
+          product_interest: productInterest,
+          sales_owner: assignedTo,
+          priority: "normal",
+          next_action: "Prepare for appointment",
+          next_action_due: date,
+          estimated_total: 0,
+          notes
+        })
+      });
+
+      await crmFetch<{ event: MobileAppointment }>(session, "/api/crm/calendar", {
+        method: "POST",
+        body: JSON.stringify({
+          job_id: job.id,
+          title: `${customerName} consultation`,
+          event_type: "sales_consult",
+          assigned_to: assignedTo,
+          start_at: startAt,
+          end_at: endAt,
+          location: address,
+          notes
+        })
+      });
+
+      form.reset();
+      setAddingAppointment(false);
+      setAnchorDate(date);
+      await loadAppointments(session);
+      setMessage("Appointment saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Appointment could not be saved.");
+      await loadAppointments(session);
+    } finally {
+      setSavingAppointment(false);
+    }
   }
 
   async function handleTextAndNavigate(event: MobileAppointment) {
@@ -601,21 +782,14 @@ export function MobileAppointmentApp() {
         <div>
           <span>805 Shutters</span>
           <h1>Appointments</h1>
-          <p>{scope === "my" ? ownerLabel ? `${ownerLabel}'s schedule` : "My appointments" : "All appointments"}</p>
+          <p>All appointments</p>
         </div>
-        <button type="button" aria-label="Sign out" onClick={signOut}>
-          <LogOut />
+        <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
+          <Plus />
         </button>
       </header>
 
       <section className="mobile-crm-controls">
-        <div className="mobile-crm-segment" aria-label="Calendar scope">
-          {calendarScopes.map((item) => (
-            <button type="button" className={scope === item ? "active" : ""} key={item} onClick={() => setScope(item)}>
-              {item === "my" ? "My" : "All"}
-            </button>
-          ))}
-        </div>
         <div className="mobile-crm-segment" aria-label="Calendar view">
           {calendarViews.map((item) => (
             <button type="button" className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>
@@ -699,6 +873,17 @@ export function MobileAppointmentApp() {
           onClose={() => setSelectedAppointment(null)}
           onTextAndNavigate={handleTextAndNavigate}
           onNavigateOnly={(event) => openDirections(event.customer_address || event.location)}
+        />
+      ) : null}
+
+      {addingAppointment ? (
+        <AddAppointmentSheet
+          defaultDate={anchorDate}
+          busy={savingAppointment}
+          onClose={() => {
+            if (!savingAppointment) setAddingAppointment(false);
+          }}
+          onSubmit={createAppointment}
         />
       ) : null}
     </div>

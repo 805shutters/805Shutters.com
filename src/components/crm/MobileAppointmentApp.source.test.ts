@@ -4,14 +4,20 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("src/components/crm/MobileAppointmentApp.tsx", "utf8");
 
 describe("MobileAppointmentApp source contract", () => {
-  it("keeps the mobile appointment app calendar views and scope toggle", () => {
+  it("keeps the mobile appointment app calendar views without a scope toggle", () => {
     expect(source).toContain('type CalendarView = "month" | "week" | "day"');
     expect(source).toContain('const calendarViews: CalendarView[] = ["month", "week", "day"]');
-    expect(source).toContain('const calendarScopes: CalendarScope[] = ["my", "all"]');
+    expect(source).toContain('scope: "all"');
+    expect(source).not.toContain("calendarScopes");
+    expect(source).not.toContain('type CalendarScope = "my" | "all"');
   });
 
-  it("keeps the mobile Google login and appointment detail ETA actions", () => {
+  it("keeps the mobile Google login, appointment creation, and detail ETA actions", () => {
     expect(source).toContain("/api/crm/oauth/google?redirectTo=");
+    expect(source).toContain("Add Appointment");
+    expect(source).toContain("/api/crm/jobs");
+    expect(source).toContain("/api/crm/calendar");
+    expect(source).toContain("assignedPerson(event)");
     expect(source).toContain("Text & Navigate");
     expect(source).toContain("Navigate Only");
     expect(source).toContain("navigator.geolocation.getCurrentPosition");

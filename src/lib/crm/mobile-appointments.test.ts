@@ -44,10 +44,11 @@ describe("805 mobile appointment helpers", () => {
     expect(crmMobileOwnerForEmail("khill31@msn.com")).toBeNull();
   });
 
-  it("defaults invalid scopes to my appointments", () => {
+  it("defaults invalid scopes to all appointments", () => {
     expect(normalizeMobileAppointmentScope("all")).toBe("all");
-    expect(normalizeMobileAppointmentScope("anything-else")).toBe("my");
-    expect(normalizeMobileAppointmentScope(null)).toBe("my");
+    expect(normalizeMobileAppointmentScope("my")).toBe("my");
+    expect(normalizeMobileAppointmentScope("anything-else")).toBe("all");
+    expect(normalizeMobileAppointmentScope(null)).toBe("all");
   });
 
   it("validates mobile appointment ranges", () => {

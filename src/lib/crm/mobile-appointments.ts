@@ -41,7 +41,7 @@ export function crmMobileOwnerForEmail(email: string | null | undefined): string
 }
 
 export function normalizeMobileAppointmentScope(value: string | null | undefined): MobileAppointmentScope {
-  return value === "all" ? "all" : "my";
+  return value === "my" ? "my" : "all";
 }
 
 function parseIsoDate(value: string | null | undefined) {

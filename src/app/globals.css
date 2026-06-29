@@ -3036,7 +3036,8 @@ body:has(.mobile-crm-login) {
 .mobile-crm-range svg,
 .mobile-crm-sheet-bar svg,
 .mobile-crm-sheet-actions svg,
-.mobile-crm-footer svg {
+.mobile-crm-footer svg,
+.mobile-crm-add-form svg {
   width: 18px;
   height: 18px;
 }
@@ -3206,7 +3207,9 @@ body:has(.mobile-crm-login) {
 }
 
 .mobile-crm-chip span,
-.mobile-crm-day-card span {
+.mobile-crm-chip em,
+.mobile-crm-day-card span,
+.mobile-crm-day-card small {
   color: #5b5b58;
   font-size: 11px;
   font-weight: 900;
@@ -3225,6 +3228,19 @@ body:has(.mobile-crm-login) {
 
 .mobile-crm-chip.compact strong {
   font-size: 10px;
+}
+
+.mobile-crm-chip em {
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-crm-chip.compact em {
+  font-size: 9px;
 }
 
 .mobile-crm-more {
@@ -3297,6 +3313,14 @@ body:has(.mobile-crm-login) {
 .mobile-crm-day-card strong {
   font-size: 17px;
   font-weight: 900;
+}
+
+.mobile-crm-day-card small {
+  display: inline-flex;
+  width: fit-content;
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  background: rgba(255, 255, 255, 0.68);
+  padding: 4px 7px;
 }
 
 .mobile-crm-day-card em {
@@ -3435,6 +3459,53 @@ body:has(.mobile-crm-login) {
   font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+}
+
+.mobile-crm-add-sheet {
+  max-height: 92dvh;
+}
+
+.mobile-crm-add-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.mobile-crm-add-form label {
+  display: grid;
+  gap: 6px;
+  color: #5b5b58;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobile-crm-add-form input,
+.mobile-crm-add-form select,
+.mobile-crm-add-form textarea {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  background: rgba(255, 255, 255, 0.78);
+  color: #111111;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  padding: 10px 11px;
+  text-transform: none;
+}
+
+.mobile-crm-add-form textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.mobile-crm-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .mobile-crm-topbar button,
