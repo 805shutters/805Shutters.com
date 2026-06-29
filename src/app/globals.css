@@ -4192,7 +4192,7 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-job-card dl {
   display: grid;
-  grid-template-columns: repeat(4, minmax(108px, 1fr));
+  grid-template-columns: repeat(5, minmax(104px, 1fr));
   gap: 10px;
   min-width: 0;
   margin: 0;
@@ -4241,6 +4241,13 @@ body.qb-fullscreen .crm-app-shell {
   font-size: 22px;
   font-weight: 400;
   white-space: nowrap;
+}
+
+.crm-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 }
 
 .crm-status-select {

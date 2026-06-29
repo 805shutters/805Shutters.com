@@ -6,9 +6,11 @@ import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
+import { requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
 import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
-import type { CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
+import type { CrmJob, CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
 import { catalog, getProduct } from "@/lib/quote/catalog";
 import { formatInches } from "@/lib/quote/measurements";
@@ -558,23 +560,25 @@ async function syncSignedQuoteArtifacts(
  * write is hardened (throws on error) so a signed quote never silently misses
  * bookkeeping. Idempotent, so the fresh-sign path AND the alreadySigned retry
  * path both call it — a retry after a transient failure self-heals.
- * Returns the customer phone (for the confirmation text), if any.
+ * Returns the sold job/customer phone (for the confirmation text), if any.
  */
 async function syncSoldBookkeeping(
   supabase: CrmSupabaseClient,
   quote: CrmQuote,
   soldTotal: number,
-): Promise<string | null> {
+): Promise<{ customerPhone: string | null; job: CrmJob | null }> {
   let customerPhone: string | null = null;
+  let soldJob: CrmJob | null = null;
   if (quote.job_id) {
     const { data: job, error } = await supabase
       .from("crm_jobs")
       .update({ status: "sold" })
       .eq("id", quote.job_id)
-      .select("phone")
+      .select("*")
       .maybeSingle();
     if (error) throw new CrmAuthError(502, "The sold job could not be updated.");
-    customerPhone = (job as { phone?: string } | null)?.phone ?? null;
+    soldJob = (job as CrmJob | null) ?? null;
+    customerPhone = soldJob?.phone ?? null;
   }
   await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal });
   const { error: stampError } = await supabase
@@ -582,7 +586,22 @@ async function syncSoldBookkeeping(
     .update({ sold_date: new Date().toISOString().slice(0, 10), total_amount: soldTotal })
     .eq("quote_id", quote.id);
   if (stampError) throw new CrmAuthError(502, "The signed total could not be saved to bookkeeping.");
-  return customerPhone;
+  return { customerPhone, job: soldJob };
+}
+
+async function requestMeasureForSoldJessicaJob(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  job: CrmJob | null,
+  source: string
+) {
+  if (!job || !shouldRequestMeasureForSoldJessicaJob(job, quote)) return;
+
+  try {
+    await requestMeasureNeededForJob(supabase, job.id, { email: "automation:quote_signed" }, source);
+  } catch (error) {
+    console.error("measure-needed automation failed", error);
+  }
 }
 
 export async function acceptPublicQuote(
@@ -597,7 +616,7 @@ export async function acceptPublicQuote(
     if (pub) {
       // Convergence: a retry after a transient downstream failure must still bring
       // the sold job + bookkeeping entry to the correct state (idempotent ops).
-      await syncSoldBookkeeping(supabase, quote, pub.total);
+      const soldSync = await syncSoldBookkeeping(supabase, quote, pub.total);
       await syncSignedQuoteArtifacts(
         supabase,
         quote,
@@ -606,6 +625,7 @@ export async function acceptPublicQuote(
         quote.signed_at,
         quote.customer_printed_name || input.printedName || pub.customerName || "Customer",
       );
+      await requestMeasureForSoldJessicaJob(supabase, quote, soldSync.job, "quote_signed_retry");
     }
     return { ok: true, alreadySigned: true };
   }
@@ -728,7 +748,8 @@ export async function acceptPublicQuote(
   }
 
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
-  const customerPhone = await syncSoldBookkeeping(supabase, quote, soldTotal);
+  const soldSync = await syncSoldBookkeeping(supabase, quote, soldTotal);
+  const customerPhone = soldSync.customerPhone;
 
   await syncSignedQuoteArtifacts(
     supabase,
@@ -745,6 +766,13 @@ export async function acceptPublicQuote(
     action: "customer.sign",
     metadata: { token, total: soldTotal },
   });
+
+  await requestMeasureForSoldJessicaJob(
+    supabase,
+    { ...quote, signed_at: now, sold_at: now, customer_printed_name: printedName },
+    soldSync.job,
+    "quote_signed"
+  );
 
   if (input.notify !== false) {
     // Notify shop (Jessica + Mike always, plus any extra CRM_SOLD_QUOTE_SMS_NUMBERS)

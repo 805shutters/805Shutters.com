@@ -1,4 +1,5 @@
 import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
+import { isMeasureNeededJob } from "@/lib/crm/measure-needed-state";
 import {
   CrmBookkeepingRow,
   CrmBookkeepingStatus,
@@ -74,6 +75,10 @@ export function openBalanceRows(rows: CrmBookkeepingRow[]) {
   return rows.filter((row) => !isPaidInFullBookkeepingRow(row) && row.balance > 0);
 }
 
+export function measureNeededJobs(jobs: CrmJob[]) {
+  return jobs.filter(isMeasureNeededJob);
+}
+
 // Completed (work done) job stages — installed, invoiced, or closed.
 const COMPLETED_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingStatus>(["installed", "invoiced", "closed"]);
 
@@ -114,19 +119,6 @@ export function quotedPipelineQuotes(quotes: CrmQuote[], now: Date | string = ne
   return [...byGroup.values()];
 }
 
-export function orderAndInstallReviewCount(
-  installationInvoices: CrmInstallationInvoiceEmail[] = [],
-  orderCogsEmails: CrmOrderCogsEmail[] = []
-) {
-  const installReview = installationInvoices.filter(
-    (invoice) => invoice.match_status === "needs_review" || invoice.match_status === "error"
-  ).length;
-  const cogsReview = orderCogsEmails.filter(
-    (email) => email.match_status === "needs_review" || email.match_status === "error"
-  ).length;
-  return installReview + cogsReview;
-}
-
 export function buildDashboardSummaryMetrics({
   jobs,
   quotes,
@@ -150,6 +142,7 @@ export function buildDashboardSummaryMetrics({
   const openBalances = openBalanceRows(rows);
   const depositNeeded = depositNeededRows(rows);
   const balanceDueCompleted = balanceDueCompletedRows(rows);
+  const measureNeeded = measureNeededJobs(jobs);
 
   return {
     openJobs: distinctRowsByJob(openRows).length,
@@ -167,6 +160,6 @@ export function buildDashboardSummaryMetrics({
     balanceDueCompletedAmount: balanceDueCompleted.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     missingCogs: missingCogs.length,
     awaitingProduct: distinctRowsByJob(awaitingProduct).length,
-    installReview: orderAndInstallReviewCount(installationInvoiceEmails, orderCogsEmails)
+    measureNeeded: measureNeeded.length
   };
 }

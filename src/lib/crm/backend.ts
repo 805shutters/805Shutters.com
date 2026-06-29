@@ -11,6 +11,7 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
+import { getMeasureNeededMeta, shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
   buildUnpaidPartnerPaymentItemForRow,
@@ -1379,16 +1380,32 @@ export async function updateCrmJob(
     await syncSaleOwnerForJob(supabase, id, patch.sales_owner, actor);
   }
 
-  await syncCustomerFromJob(supabase, data);
+  let updatedJob = data as CrmJob;
+  const soldStatusChanged = Object.prototype.hasOwnProperty.call(patch, "status") && existing.status !== "sold" && data.status === "sold";
+  const ownerChangedToJessicaSold =
+    Object.prototype.hasOwnProperty.call(patch, "sales_owner") &&
+    data.status === "sold" &&
+    shouldRequestMeasureForSoldJessicaJob(updatedJob);
+  if ((soldStatusChanged || ownerChangedToJessicaSold) && shouldRequestMeasureForSoldJessicaJob(updatedJob) && !getMeasureNeededMeta(updatedJob.meta).status) {
+    try {
+      const { requestMeasureNeededForJob } = await import("@/lib/crm/measure-needed");
+      const result = await requestMeasureNeededForJob(supabase, id, actor, "job_update");
+      updatedJob = result.job;
+    } catch (error) {
+      console.error("measure-needed automation failed", error);
+    }
+  }
+
+  await syncCustomerFromJob(supabase, updatedJob);
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: id,
     action: "update",
     before: existing,
-    after: data
+    after: updatedJob
   });
 
-  return data as CrmJob;
+  return updatedJob;
 }
 
 // Quote statuses that mean a recorded sale exists in the bookkeeping ledger.

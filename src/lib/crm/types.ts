@@ -57,6 +57,7 @@ export type CrmJob = {
   estimated_total: number;
   deposit_paid: number;
   notes: string | null;
+  meta?: Record<string, unknown> | null;
   quote_total?: number;
 };
 
@@ -540,7 +541,7 @@ export type CrmSummary = {
   balanceDueCompletedAmount: number;
   missingCogs: number;
   awaitingProduct: number;
-  installReview: number;
+  measureNeeded: number;
 };
 
 export type CrmCommissionPayment = {

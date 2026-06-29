@@ -31,6 +31,7 @@ function job(overrides: Partial<CrmJob> = {}): CrmJob {
     estimated_total: 0,
     deposit_paid: 0,
     notes: null,
+    meta: {},
     ...overrides
   };
 }
@@ -168,7 +169,7 @@ describe("dashboard summary metrics", () => {
         "depositCollected",
         "depositNeeded",
         "depositNeededAmount",
-        "installReview",
+        "measureNeeded",
         "missingCogs",
         "needsOrder",
         "openBalance",
@@ -182,9 +183,26 @@ describe("dashboard summary metrics", () => {
     );
     expect(summary).not.toHaveProperty("readyInstall");
     expect(summary).not.toHaveProperty("readyToInstall");
+    expect(summary).not.toHaveProperty("installReview");
     expect(summary).not.toHaveProperty("customerFiles");
     expect(summary).not.toHaveProperty("jessicaOwed");
     expect(summary).not.toHaveProperty("payoffLeft");
+  });
+
+  it("counts only active measure-needed jobs", () => {
+    const summary = buildDashboardSummaryMetrics({
+      jobs: [
+        job({ id: "needs-measure", meta: { measure_needed: { status: "needed" } } }),
+        job({ id: "measured", meta: { measure_needed: { status: "measured" } } }),
+        job({ id: "unflagged", meta: {} })
+      ],
+      quotes: [],
+      rows: [],
+      installationInvoiceEmails: [],
+      orderCogsEmails: []
+    });
+
+    expect(summary.measureNeeded).toBe(1);
   });
 
   it("separates quoted pipeline from sold pipeline", () => {

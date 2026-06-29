@@ -128,11 +128,13 @@ The CRM header summary is sales and operations only:
 - Need To Order
 - Missing COGS
 - Awaiting Product
-- Install Review
+- Measure Needed
 
 The header intentionally does not show Ready Install, Customer Files, Payoff Left, Mike Owed, Jessica Owed, or Ken Due Now. Customer Files remains a normal CRM tab. Ken payoff details live in `Ken / Payoff`. Mike/Jessica payment tracking lives in `Commissions`.
 
 `Need To Order` is status-based: sold/approved rows count until they move to `ordered`, even when an order number or manufacturer reference is already present.
+
+`Measure Needed` is job metadata-driven. A Jessica-owned job is flagged automatically when it becomes sold, and the manual `Measure Needed` button can flag any sold job. Flagging the job writes `meta.measure_needed.status = "needed"` on the 805 job and, when `MTS_SUPABASE_URL` plus `MTS_SUPABASE_SERVICE_ROLE_KEY` are configured, creates or reuses a `technical_measure` job card in the MTS CRM for the 805 account. The `Measured` button changes the 805 metadata status to `"measured"` and removes the job from the bucket.
 
 ## Profit rules
 
@@ -218,7 +220,7 @@ The puller:
   metadata when available;
 - records every processed message in `crm_order_cogs_emails`;
 - leaves ambiguous names, missing totals, job-only matches, and conflicts in
-  review so they feed Missing COGS / Install Review style work.
+  review so they feed Missing COGS work.
 
 ## Importing the MTS CRM data
 
