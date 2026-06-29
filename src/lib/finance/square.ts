@@ -6,17 +6,22 @@
 //   SQUARE_WEBHOOK_URL     The public URL Square calls (https://.../api/webhooks/square)
 //   SQUARE_WEBHOOK_SIGNING_KEY  Webhook signature key (Square Developer Dashboard)
 //
-// The Square API host (connect.squareup.com) is the same for sandbox + prod;
-// the environment is determined by the access token.
+// Square uses separate API hosts for sandbox and production tokens.
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 const SQUARE_VERSION = "2024-12-18";
-export const SQUARE_PAYMENT_LINKS_URL = "https://connect.squareup.com/v2/online-checkout/payment-links";
+const SQUARE_PRODUCTION_API_BASE = "https://connect.squareup.com";
+const SQUARE_SANDBOX_API_BASE = "https://connect.squareupsandbox.com";
 export const SQUARE_ENV = process.env.SQUARE_ENV === "production" ? "production" : "sandbox";
 export const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN || "";
 export const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID || "";
 export const SQUARE_WEBHOOK_URL = process.env.SQUARE_WEBHOOK_URL || "";
 export const SQUARE_WEBHOOK_SIGNING_KEY = process.env.SQUARE_WEBHOOK_SIGNING_KEY || "";
+
+export function squarePaymentLinksUrl(env: "sandbox" | "production" = SQUARE_ENV): string {
+  const baseUrl = env === "production" ? SQUARE_PRODUCTION_API_BASE : SQUARE_SANDBOX_API_BASE;
+  return `${baseUrl}/v2/online-checkout/payment-links`;
+}
 
 export function isSquareConfigured(): boolean {
   return Boolean(SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID);
@@ -59,7 +64,7 @@ export async function createSquarePaymentLink(input: {
   buyerEmail?: string | null;
 }): Promise<SquarePaymentLink> {
   if (!isSquareConfigured()) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
-  const res = await fetch(SQUARE_PAYMENT_LINKS_URL, {
+  const res = await fetch(squarePaymentLinksUrl(), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
