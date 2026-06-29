@@ -12,19 +12,38 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 const SQUARE_VERSION = "2024-12-18";
 const SQUARE_PRODUCTION_API_BASE = "https://connect.squareup.com";
 const SQUARE_SANDBOX_API_BASE = "https://connect.squareupsandbox.com";
-export const SQUARE_ENV = process.env.SQUARE_ENV === "production" ? "production" : "sandbox";
-export const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN || "";
-export const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID || "";
-export const SQUARE_WEBHOOK_URL = process.env.SQUARE_WEBHOOK_URL || "";
-export const SQUARE_WEBHOOK_SIGNING_KEY = process.env.SQUARE_WEBHOOK_SIGNING_KEY || "";
 
-export function squarePaymentLinksUrl(env: "sandbox" | "production" = SQUARE_ENV): string {
+function squareEnvValue(key: string): string {
+  return process.env[key]?.trim() || "";
+}
+
+export function squareEnvironment(): "sandbox" | "production" {
+  return squareEnvValue("SQUARE_ENV") === "production" ? "production" : "sandbox";
+}
+
+export function squareAccessToken(): string {
+  return squareEnvValue("SQUARE_ACCESS_TOKEN");
+}
+
+export function squareLocationId(): string {
+  return squareEnvValue("SQUARE_LOCATION_ID");
+}
+
+export function squareWebhookUrl(): string {
+  return squareEnvValue("SQUARE_WEBHOOK_URL");
+}
+
+export function squareWebhookSigningKey(): string {
+  return squareEnvValue("SQUARE_WEBHOOK_SIGNING_KEY");
+}
+
+export function squarePaymentLinksUrl(env: "sandbox" | "production" = squareEnvironment()): string {
   const baseUrl = env === "production" ? SQUARE_PRODUCTION_API_BASE : SQUARE_SANDBOX_API_BASE;
   return `${baseUrl}/v2/online-checkout/payment-links`;
 }
 
 export function isSquareConfigured(): boolean {
-  return Boolean(SQUARE_ACCESS_TOKEN && SQUARE_LOCATION_ID);
+  return Boolean(squareAccessToken() && squareLocationId());
 }
 
 export function dollarsToCents(dollars: number): number {
@@ -63,11 +82,13 @@ export async function createSquarePaymentLink(input: {
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
 }): Promise<SquarePaymentLink> {
-  if (!isSquareConfigured()) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
+  const accessToken = squareAccessToken();
+  const locationId = squareLocationId();
+  if (!accessToken || !locationId) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID).");
   const res = await fetch(squarePaymentLinksUrl(), {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${accessToken}`,
       "Square-Version": SQUARE_VERSION,
       "Content-Type": "application/json",
     },
@@ -78,7 +99,7 @@ export async function createSquarePaymentLink(input: {
       prePopulatedData: input.buyerEmail ? { buyerEmail: input.buyerEmail } : undefined,
       paymentNote: `quote:${input.quoteId} type:${input.paymentType}`,
       order: {
-        locationId: SQUARE_LOCATION_ID,
+        locationId,
         referenceId: input.quoteId,
         metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
         lineItems: [{ name: input.title, basePriceMoney: { amount: input.amountCents, currency: "USD" } }],

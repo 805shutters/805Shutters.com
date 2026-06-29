@@ -4,8 +4,8 @@ import {
   verifySquareWebhookSignature,
   extractSquarePaymentFacts,
   isSquarePaidPaymentEvent,
-  SQUARE_WEBHOOK_SIGNING_KEY,
-  SQUARE_WEBHOOK_URL,
+  squareWebhookSigningKey,
+  squareWebhookUrl,
 } from "@/lib/finance/square";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   const signature =
     request.headers.get("x-square-hmacsha256-signature") ??
     request.headers.get("x-square-hmac-signature");
-  if (!verifySquareWebhookSignature(SQUARE_WEBHOOK_URL, SQUARE_WEBHOOK_SIGNING_KEY, raw, signature)) {
+  if (!verifySquareWebhookSignature(squareWebhookUrl(), squareWebhookSigningKey(), raw, signature)) {
     return new NextResponse("Invalid signature", { status: 401 });
   }
 

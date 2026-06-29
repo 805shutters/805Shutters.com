@@ -3,8 +3,10 @@ import { createHmac } from "node:crypto";
 import {
   verifySquareWebhookSignature,
   squarePaymentLinksUrl,
+  squareEnvironment,
   dollarsToCents,
   extractSquarePaymentFacts,
+  isSquareConfigured,
   isSquarePaidPaymentEvent,
 } from "./square";
 
@@ -41,6 +43,29 @@ describe("Square endpoint configuration", () => {
   });
   it("uses Square's sandbox Connect API host", () => {
     expect(squarePaymentLinksUrl("sandbox")).toBe("https://connect.squareupsandbox.com/v2/online-checkout/payment-links");
+  });
+  it("reads Square configuration dynamically at request time", () => {
+    const original = {
+      SQUARE_ENV: process.env.SQUARE_ENV,
+      SQUARE_ACCESS_TOKEN: process.env.SQUARE_ACCESS_TOKEN,
+      SQUARE_LOCATION_ID: process.env.SQUARE_LOCATION_ID,
+    };
+    try {
+      process.env.SQUARE_ENV = "production";
+      process.env.SQUARE_ACCESS_TOKEN = "token";
+      process.env.SQUARE_LOCATION_ID = "location";
+      expect(squareEnvironment()).toBe("production");
+      expect(squarePaymentLinksUrl()).toBe("https://connect.squareup.com/v2/online-checkout/payment-links");
+      expect(isSquareConfigured()).toBe(true);
+
+      delete process.env.SQUARE_ACCESS_TOKEN;
+      expect(isSquareConfigured()).toBe(false);
+    } finally {
+      for (const [key, value] of Object.entries(original)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
   });
 });
 
