@@ -6401,6 +6401,65 @@ body.qb-fullscreen .crm-app-shell {
   white-space: nowrap;
 }
 
+.crm-quote-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid #d8d8d2;
+  background: #ffffff;
+}
+
+.crm-quote-action-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border: 0;
+  border-left: 1px solid #d8d8d2;
+  background: #fbfbfa;
+  color: #0b0b0b;
+  box-shadow: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.crm-quote-action-button:first-child {
+  border-left: 0;
+}
+
+.crm-quote-action-button--primary {
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.crm-quote-action-button:hover,
+.crm-quote-action-button:focus-visible {
+  background: #eeeeeb;
+  color: #0b0b0b;
+  outline: none;
+  transform: none;
+}
+
+.crm-quote-action-button--primary:hover,
+.crm-quote-action-button--primary:focus-visible {
+  background: #222222;
+  color: #ffffff;
+}
+
+.crm-quote-action-button:disabled {
+  background: #f4f4f2;
+  color: #8f8c84;
+  cursor: not-allowed;
+}
+
 .crm-order-form {
   display: grid;
   gap: 12px;

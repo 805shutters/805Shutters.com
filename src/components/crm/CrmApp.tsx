@@ -1223,6 +1223,24 @@ export function CrmApp({
     }
   }
 
+  async function openQuoteContract(quoteId: string) {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{ url: string }>(session, `/api/crm/quotes/${quoteId}/share`, {
+        method: "POST"
+      });
+      window.open(result.url, "_blank", "noopener,noreferrer");
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Contract link could not be opened.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateQuote(event: FormEvent<HTMLFormElement>, quote: CrmQuote) {
     event.preventDefault();
     if (!session) return;
@@ -2236,7 +2254,7 @@ export function CrmApp({
             </form>
           </CollapsiblePanel>
 
-          <OrderBoard quotes={quotes} onUpdate={updateQuote} busy={busy} onOpenBuilder={setBuilderQuoteId} />
+          <OrderBoard quotes={quotes} onUpdate={updateQuote} busy={busy} onOpenBuilder={setBuilderQuoteId} onOpenContract={openQuoteContract} />
         </section>
       ) : null}
 
@@ -7028,12 +7046,14 @@ function OrderBoard({
   quotes,
   onUpdate,
   busy,
-  onOpenBuilder
+  onOpenBuilder,
+  onOpenContract
 }: {
   quotes: CrmQuote[];
   onUpdate: (event: FormEvent<HTMLFormElement>, quote: CrmQuote) => Promise<void>;
   busy: boolean;
   onOpenBuilder: (quoteId: string) => void;
+  onOpenContract: (quoteId: string) => void;
 }) {
   return (
     <section className="crm-ledger">
@@ -7053,14 +7073,25 @@ function OrderBoard({
               </div>
               <strong>{toCurrency(quote.quote_total)}</strong>
             </div>
-            <button
-              type="button"
-              className="crm-ghost-button"
-              onClick={() => onOpenBuilder(quote.id)}
-              style={{ marginBottom: 10 }}
-            >
-              Edit line items &amp; pricing
-            </button>
+            <div className="crm-quote-actions" role="group" aria-label="Quote actions">
+              <button
+                type="button"
+                className="crm-quote-action-button crm-quote-action-button--primary"
+                onClick={() => onOpenBuilder(quote.id)}
+                aria-label="Open quote builder"
+              >
+                Builder
+              </button>
+              <button
+                type="button"
+                className="crm-quote-action-button"
+                onClick={() => onOpenContract(quote.id)}
+                disabled={busy}
+                aria-label="Open quote contract"
+              >
+                Contract
+              </button>
+            </div>
             <form className="crm-order-form" onSubmit={(event) => onUpdate(event, quote)}>
               <div className="crm-field-row">
                 <label>
