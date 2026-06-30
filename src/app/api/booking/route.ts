@@ -30,6 +30,12 @@ type BookingPayload = {
   productTypes?: string[] | string;
   notes?: string;
   followUpRequested?: boolean;
+  pagePath?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
 };
 
 type BookingAutomationDetails = {
@@ -67,6 +73,15 @@ const allowedProductTypes = new Map<string, string>(
 
 function clean(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function cleanPagePath(value: unknown) {
+  const pagePath = clean(value);
+  return pagePath.startsWith("/") && !pagePath.startsWith("//") ? pagePath.slice(0, 240) : "/book-consultation/";
+}
+
+function cleanAttributionValue(value: unknown) {
+  return clean(value).slice(0, 160) || null;
 }
 
 function splitList(value: string | undefined) {
@@ -422,6 +437,14 @@ export async function POST(request: NextRequest) {
   const productTypes = normalizeProductTypes(payload.productTypes);
   const productInterest = productTypes.length ? productTypes.join(", ") : "consultation";
   const followUpRequested = payload.followUpRequested === true;
+  const pagePath = cleanPagePath(payload.pagePath);
+  const attribution = {
+    utm_source: cleanAttributionValue(payload.utm_source),
+    utm_medium: cleanAttributionValue(payload.utm_medium),
+    utm_campaign: cleanAttributionValue(payload.utm_campaign),
+    utm_content: cleanAttributionValue(payload.utm_content),
+    utm_term: cleanAttributionValue(payload.utm_term)
+  };
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return NextResponse.json({ message: "Choose an appointment date and time." }, { status: 400 });
@@ -540,13 +563,16 @@ export async function POST(request: NextRequest) {
       email: email || null,
       interest: productInterest,
       notes: bookingNotes,
-      page_path: "/",
+      page_path: pagePath,
+      ...attribution,
       meta: {
         address,
         windowCount: windowCount || null,
         ...bookingGeoMeta,
         productTypes,
         followUpRequested,
+        pagePath,
+        attribution,
         appointmentDate: date,
         appointmentTime: time,
         userAgent: request.headers.get("user-agent"),
@@ -584,6 +610,8 @@ export async function POST(request: NextRequest) {
         ...bookingGeoMeta,
         productTypes,
         followUpRequested,
+        pagePath,
+        attribution,
         bookingSource: "website"
       }
     })
@@ -599,6 +627,8 @@ export async function POST(request: NextRequest) {
     ...bookingGeoMeta,
     productTypes,
     followUpRequested,
+    pagePath,
+    attribution,
     bookingSource: "website"
   };
 
@@ -776,7 +806,9 @@ export async function POST(request: NextRequest) {
     staffSmsAlertCount,
     assignedSalespersonSms,
     googleCalendarSynced: googleCalendarSync.synced,
-    googleCalendarSync: googleCalendarSync.results
+    googleCalendarSync: googleCalendarSync.results,
+    pagePath,
+    attribution
   });
 
   return NextResponse.json({

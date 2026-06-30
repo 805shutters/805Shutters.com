@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { LeadForm } from "@/components/LeadForm";
 import { TrackedPhoneLink } from "@/components/TrackedPhoneLink";
+import { UtmPreservingLink } from "@/components/UtmPreservingLink";
 import { ogDefaults, site } from "@/lib/site-data";
 import styles from "./page.module.css";
 
@@ -162,7 +162,7 @@ export default function FreeWindowTreatmentConsultationPage() {
               your project. Prefer to pick a time directly?
             </p>
             <div className={styles.inlineActions}>
-              <Link href="/book-consultation/">Book a consultation</Link>
+              <UtmPreservingLink href="/book-consultation/">Book a consultation</UtmPreservingLink>
               <TrackedPhoneLink location="free consultation landing form copy">Call {site.phone}</TrackedPhoneLink>
             </div>
             <ul className={styles.checkList}>
@@ -192,7 +192,7 @@ export default function FreeWindowTreatmentConsultationPage() {
               <div>
                 <h3>{product.title}</h3>
                 <p>{product.body}</p>
-                <Link href={product.href}>View options</Link>
+                <UtmPreservingLink href={product.href}>View options</UtmPreservingLink>
               </div>
             </article>
           ))}

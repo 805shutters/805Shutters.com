@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { trackLeadEvent } from "@/lib/client-tracking";
+import { getCurrentAttributionParams, trackLeadEvent } from "@/lib/client-tracking";
 
 type FormState = "idle" | "submitting" | "sent" | "error";
 
@@ -25,15 +25,11 @@ export function LeadForm({
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
-    const urlParams = new URLSearchParams(window.location.search);
+    const attribution = getCurrentAttributionParams();
     const payload = {
       ...Object.fromEntries(formData.entries()),
       pagePath: window.location.pathname,
-      utm_source: urlParams.get("utm_source") || undefined,
-      utm_medium: urlParams.get("utm_medium") || undefined,
-      utm_campaign: urlParams.get("utm_campaign") || undefined,
-      utm_content: urlParams.get("utm_content") || undefined,
-      utm_term: urlParams.get("utm_term") || undefined
+      ...attribution
     };
 
     try {
@@ -54,7 +50,8 @@ export function LeadForm({
         eventId: result.id,
         interest: String(formData.get("interest") || "consultation"),
         city: String(formData.get("city") || ""),
-        pagePath: window.location.pathname
+        pagePath: window.location.pathname,
+        ...attribution
       });
       event.currentTarget.reset();
       window.setTimeout(() => {

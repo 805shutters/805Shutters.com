@@ -20,7 +20,7 @@ type LeadEventParams = {
   interest?: string;
   city?: string;
   pagePath?: string;
-};
+} & AttributionParams;
 
 type BookingEventParams = {
   eventId?: string;
@@ -29,7 +29,7 @@ type BookingEventParams = {
   windowCount?: string;
   followUpRequested?: boolean;
   pagePath?: string;
-};
+} & AttributionParams;
 
 type BookingStepParams = {
   step: "open" | "availability_request" | "date_select" | "time_select";
@@ -37,7 +37,17 @@ type BookingStepParams = {
   productTypes?: string[];
   windowCount?: string;
   pagePath?: string;
+} & AttributionParams;
+
+type AttributionParams = {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  utm_term?: string;
 };
+
+const attributionKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
 
 function googleAdsSendTo(conversionLabel?: string) {
   const adsId = getGoogleAdsId();
@@ -49,6 +59,28 @@ function googleAdsSendTo(conversionLabel?: string) {
 
 function productInterestLabel(productTypes?: string[]) {
   return productTypes?.length ? productTypes.join(", ") : "consultation";
+}
+
+function attributionEventParams(params: AttributionParams) {
+  return attributionKeys.reduce<Record<string, string | undefined>>((current, key) => {
+    current[key] = params[key];
+    return current;
+  }, {});
+}
+
+export function getCurrentAttributionParams(): AttributionParams {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  return attributionKeys.reduce<AttributionParams>((current, key) => {
+    const value = urlParams.get(key);
+    if (value) {
+      current[key] = value;
+    }
+    return current;
+  }, {});
 }
 
 export function trackLeadEvent(params: LeadEventParams = {}) {
@@ -64,7 +96,8 @@ export function trackLeadEvent(params: LeadEventParams = {}) {
     currency: params.currency || "USD",
     page_path: params.pagePath || window.location.pathname,
     city: params.city || undefined,
-    interest: params.interest || undefined
+    interest: params.interest || undefined,
+    ...attributionEventParams(params)
   };
 
   window.gtag?.("event", "generate_lead", {
@@ -131,7 +164,8 @@ export function trackBookingStep(params: BookingStepParams) {
     event_label: params.location || params.step,
     page_path: pagePath,
     product_interest: productTypes,
-    window_count: params.windowCount || undefined
+    window_count: params.windowCount || undefined,
+    ...attributionEventParams(params)
   });
 
   track("Booking Step", {
@@ -139,7 +173,8 @@ export function trackBookingStep(params: BookingStepParams) {
     location: params.location || null,
     page_path: pagePath,
     product_interest: productTypes,
-    window_count: params.windowCount || null
+    window_count: params.windowCount || null,
+    ...attributionEventParams(params)
   });
 }
 
@@ -159,7 +194,8 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
     page_path: pagePath,
     product_interest: productTypes,
     window_count: params.windowCount || undefined,
-    follow_up_requested: params.followUpRequested
+    follow_up_requested: params.followUpRequested,
+    ...attributionEventParams(params)
   };
 
   window.gtag?.("event", "generate_lead", {
@@ -188,6 +224,7 @@ export function trackBookingEvent(params: BookingEventParams = {}) {
     follow_up_requested: params.followUpRequested ?? null,
     page_path: pagePath,
     has_event_id: Boolean(eventId),
-    has_job_id: Boolean(params.jobId)
+    has_job_id: Boolean(params.jobId),
+    ...attributionEventParams(params)
   });
 }

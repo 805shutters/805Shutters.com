@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
-import { trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
+import { getCurrentAttributionParams, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import { productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
@@ -178,13 +178,21 @@ export function BookingCalendar({
     });
   }
 
+  function bookingTrackingContext() {
+    return {
+      pagePath: window.location.pathname,
+      ...getCurrentAttributionParams()
+    };
+  }
+
   function chooseDate(date: string) {
     setSelectedDate(date);
     setSelectedTime(null);
     trackBookingStep({
       step: "date_select",
       productTypes: selectedProductTypes,
-      windowCount: selectedWindowCount
+      windowCount: selectedWindowCount,
+      ...bookingTrackingContext()
     });
     scrollToStep(slotsRef);
   }
@@ -194,7 +202,8 @@ export function BookingCalendar({
     trackBookingStep({
       step: "time_select",
       productTypes: selectedProductTypes,
-      windowCount: selectedWindowCount
+      windowCount: selectedWindowCount,
+      ...bookingTrackingContext()
     });
     scrollToStep(customerInfoRef);
   }
@@ -223,7 +232,8 @@ export function BookingCalendar({
     trackBookingStep({
       step: "availability_request",
       productTypes: selectedProductTypes,
-      windowCount: selectedWindowCount
+      windowCount: selectedWindowCount,
+      ...bookingTrackingContext()
     });
     setAvailability(null);
     setSelectedDate(null);
@@ -257,6 +267,7 @@ export function BookingCalendar({
     const followUpRequested = submitter?.value === "follow-up";
 
     const formData = new FormData(event.currentTarget);
+    const trackingContext = bookingTrackingContext();
     setSubmitting(true);
     setMessage(null);
 
@@ -276,7 +287,8 @@ export function BookingCalendar({
           email: String(formData.get("email") || ""),
           productTypes: selectedProductTypes,
           notes: String(formData.get("notes") || ""),
-          followUpRequested
+          followUpRequested,
+          ...trackingContext
         })
       });
       const body = await response.json();
@@ -286,7 +298,8 @@ export function BookingCalendar({
         jobId: typeof body.jobId === "string" ? body.jobId : undefined,
         productTypes: selectedProductTypes,
         windowCount: selectedWindowCount,
-        followUpRequested
+        followUpRequested,
+        ...trackingContext
       });
       setComplete(true);
       setMessage(confirmationMessage(body));
