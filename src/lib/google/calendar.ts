@@ -38,6 +38,17 @@ export type GoogleCalendarSyncResult = {
   skipped?: string;
 };
 
+export type GoogleCalendarDeleteResult = {
+  deleted: boolean;
+  results: Array<{
+    calendar: string;
+    eventId: string;
+    deleted?: boolean;
+    error?: string;
+  }>;
+  skipped?: string;
+};
+
 type CachedToken = { token: string; expiresAt: number };
 const tokenCache = new Map<string, CachedToken>();
 
@@ -201,6 +212,37 @@ export async function deleteCalendarEvent(
   } catch {
     return false;
   }
+}
+
+export async function deleteSyncedGoogleCalendarEvents(
+  eventIds: Record<string, unknown> | null | undefined
+): Promise<GoogleCalendarDeleteResult> {
+  if (!isGoogleCalendarSyncConfigured()) {
+    return { deleted: false, results: [], skipped: "not-configured" };
+  }
+
+  const entries = Object.entries(eventIds || {})
+    .map(([calendar, eventId]) => [calendar.trim(), String(eventId || "").trim()] as const)
+    .filter(([calendar, eventId]) => calendar && eventId);
+
+  if (!entries.length) {
+    return { deleted: false, results: [], skipped: "no-google-event-ids" };
+  }
+
+  const results: GoogleCalendarDeleteResult["results"] = [];
+  for (const [calendar, eventId] of entries) {
+    try {
+      const token = await getDelegatedAccessToken(calendar);
+      const deleted = await deleteCalendarEvent(token, calendar, eventId);
+      results.push(deleted ? { calendar, eventId, deleted: true } : { calendar, eventId, error: "delete failed" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "delete failed";
+      console.warn(`[google-calendar] delete from ${calendar} failed:`, message);
+      results.push({ calendar, eventId, error: message });
+    }
+  }
+
+  return { deleted: results.some((result) => result.deleted), results };
 }
 
 /**

@@ -21,6 +21,8 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
+  deleteSyncedGoogleCalendarEvents,
+  GoogleCalendarDeleteResult,
   GoogleCalendarSyncResult,
   syncAppointmentToGoogleCalendars
 } from "@/lib/google/calendar";
@@ -1983,6 +1985,98 @@ export async function rescheduleCrmCalendarEvent(
     after: data,
     metadata: {
       jobId: existing.job_id || null
+    }
+  });
+
+  return data as CrmCalendarEvent;
+}
+
+export async function cancelCrmCalendarEvent(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const eventId = requiredText(payload.id, "Calendar event is required.");
+
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_calendar_events")
+    .select("*")
+    .eq("id", eventId)
+    .maybeSingle();
+
+  if (existingError) throw new CrmAuthError(502, "Calendar event could not be loaded.");
+  if (!existing) throw new CrmAuthError(404, "Calendar event was not found.");
+  if (!["scheduled", "rescheduled"].includes(String(existing.status || ""))) {
+    throw new CrmAuthError(409, "Only scheduled appointments can be canceled.");
+  }
+
+  const cancelMeta = metadataWithActor({ meta: existing.meta }, actor, "canceledBy");
+  const cancelReason = optionalText(payload.reason);
+  if (cancelReason) cancelMeta.canceledReason = cancelReason;
+
+  const { data, error } = await supabase
+    .from("crm_calendar_events")
+    .update({
+      status: "canceled",
+      meta: cancelMeta
+    })
+    .eq("id", eventId)
+    .select("*")
+    .single();
+
+  if (error || !data) throw new CrmAuthError(502, "Calendar event could not be canceled.");
+
+  if (existing.job_id) {
+    const { data: linkedJob, error: linkedJobError } = await supabase
+      .from("crm_jobs")
+      .select("*")
+      .eq("id", existing.job_id)
+      .maybeSingle();
+
+    if (linkedJobError) throw new CrmAuthError(502, "Appointment canceled, but the linked job could not be loaded.");
+
+    if (linkedJob) {
+      const jobUpdate: Record<string, unknown> = {
+        appointment_start: null,
+        appointment_end: null
+      };
+
+      if ((linkedJob as CrmJob).status === "scheduled") {
+        jobUpdate.status = "follow_up";
+        jobUpdate.next_action = "Follow up after canceled appointment";
+        jobUpdate.next_action_due = null;
+      }
+
+      const { data: job, error: jobError } = await supabase
+        .from("crm_jobs")
+        .update(jobUpdate)
+        .eq("id", existing.job_id)
+        .select("*")
+        .maybeSingle();
+
+      if (jobError) throw new CrmAuthError(502, "Appointment canceled, but the linked job could not be updated.");
+      if (job) await syncCustomerFromJob(supabase, job as CrmJob);
+    }
+  }
+
+  let googleCalendarDelete: GoogleCalendarDeleteResult = { deleted: false, results: [], skipped: "no-google-event-ids" };
+  try {
+    googleCalendarDelete = await deleteSyncedGoogleCalendarEvents(objectMeta(objectMeta(existing.meta).googleCalendarEventIds));
+  } catch (error) {
+    console.warn("[crm] google calendar delete error", error);
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "calendar_event",
+    entityId: data.id,
+    action: "cancel",
+    before: existing,
+    after: data,
+    metadata: {
+      jobId: existing.job_id || null,
+      googleCalendarDeleted: googleCalendarDelete.deleted,
+      googleCalendarDeleteSkipped: googleCalendarDelete.skipped || null,
+      googleCalendarDelete: googleCalendarDelete.results
     }
   });
 

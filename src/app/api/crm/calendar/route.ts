@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createCrmCalendarEvent, rescheduleCrmCalendarEvent } from "@/lib/crm/backend";
+import { cancelCrmCalendarEvent, createCrmCalendarEvent, rescheduleCrmCalendarEvent } from "@/lib/crm/backend";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 
 export const runtime = "nodejs";
@@ -20,7 +20,10 @@ export async function PATCH(request: NextRequest) {
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const payload = await request.json();
-    const event = await rescheduleCrmCalendarEvent(supabase, payload, { email, userId: user.id });
+    const event =
+      payload?.action === "cancel"
+        ? await cancelCrmCalendarEvent(supabase, payload, { email, userId: user.id })
+        : await rescheduleCrmCalendarEvent(supabase, payload, { email, userId: user.id });
 
     return NextResponse.json({ event });
   } catch (error) {

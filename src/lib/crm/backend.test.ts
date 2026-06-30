@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assertMikePaymentAdmin,
   buildDashboardData,
+  cancelCrmCalendarEvent,
   createCrmQuote,
   createPartnerPaymentBatch,
   deleteCrmCustomerFile,
@@ -983,6 +984,131 @@ describe("enrichCalendarEventsWithJobDetails", () => {
     });
   });
 });
+
+describe("cancelCrmCalendarEvent", () => {
+  it("cancels the calendar event and clears the linked scheduled job appointment", async () => {
+    const { inserts, supabase, updates } = calendarCancelRecorder({
+      event: {
+        id: "event-1",
+        created_at: "2026-06-20T00:00:00.000Z",
+        updated_at: "2026-06-20T00:00:00.000Z",
+        job_id: "job-1",
+        title: "Renee consultation",
+        event_type: "sales_consult",
+        status: "scheduled",
+        assigned_to: "Jessica",
+        start_at: "2026-06-30T21:00:00.000Z",
+        end_at: "2026-06-30T22:00:00.000Z",
+        location: "6 Via Magnolia",
+        notes: "NO SHOES IN HOME",
+        meta: { createdBy: "805shutters@gmail.com" }
+      },
+      job: {
+        id: "job-1",
+        created_at: "2026-06-20T00:00:00.000Z",
+        updated_at: "2026-06-20T00:00:00.000Z",
+        source: "crm",
+        lead_id: null,
+        status: "scheduled",
+        priority: "normal",
+        customer_name: "Renee Appell",
+        phone: "8185357772",
+        email: null,
+        address: "6 Via Magnolia",
+        city: "Thousand Oaks",
+        product_interest: "Shutters",
+        sales_owner: "Jessica",
+        next_action: "Prepare for appointment",
+        next_action_due: "2026-06-30",
+        appointment_start: "2026-06-30T21:00:00.000Z",
+        appointment_end: "2026-06-30T22:00:00.000Z",
+        estimated_total: 0,
+        deposit_paid: 0,
+        notes: "NO SHOES IN HOME"
+      }
+    });
+
+    const result = await cancelCrmCalendarEvent(supabase, { id: "event-1" }, actor);
+
+    expect(result.status).toBe("canceled");
+    expect(updates.find((update) => update.table === "crm_calendar_events")?.payload).toMatchObject({
+      status: "canceled",
+      meta: {
+        createdBy: "805shutters@gmail.com",
+        canceledBy: actor.email
+      }
+    });
+    expect(updates.find((update) => update.table === "crm_jobs")?.payload).toEqual({
+      appointment_start: null,
+      appointment_end: null,
+      status: "follow_up",
+      next_action: "Follow up after canceled appointment",
+      next_action_due: null
+    });
+    expect(inserts[0]?.payload).toMatchObject({
+      entity_type: "calendar_event",
+      entity_id: "event-1",
+      action: "cancel",
+      metadata: {
+        jobId: "job-1"
+      }
+    });
+  });
+});
+
+function calendarCancelRecorder(opts: { event: CrmCalendarEvent; job?: CrmJob | null }) {
+  const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
+  const updates: Array<{ table: string; filters: Record<string, unknown>; payload: Record<string, unknown> }> = [];
+
+  class QueryRecorder {
+    private filters: Record<string, unknown> = {};
+    private payload: Record<string, unknown> | null = null;
+
+    constructor(private table: string) {}
+
+    select(_columns?: string) {
+      return this;
+    }
+
+    eq(key: string, value: unknown) {
+      this.filters[key] = value;
+      return this;
+    }
+
+    update(payload: Record<string, unknown>) {
+      this.payload = payload;
+      updates.push({ table: this.table, filters: this.filters, payload });
+      return this;
+    }
+
+    insert(payload: Record<string, unknown>) {
+      inserts.push({ table: this.table, payload });
+      return { error: null };
+    }
+
+    async maybeSingle() {
+      if (this.table === "crm_calendar_events") return { data: opts.event, error: null };
+      if (this.table === "crm_jobs" && !this.payload) return { data: opts.job ?? null, error: null };
+      if (this.table === "crm_jobs") return { data: null, error: null };
+      return { data: null, error: null };
+    }
+
+    async single() {
+      if (this.table === "crm_calendar_events" && this.payload) {
+        return { data: { ...opts.event, ...this.payload }, error: null };
+      }
+      return { data: null, error: null };
+    }
+  }
+
+  const supabase = {
+    from(table: string) {
+      return new QueryRecorder(table);
+    }
+  } as unknown as Parameters<typeof cancelCrmCalendarEvent>[0];
+
+  return { inserts, supabase, updates };
+}
 
 function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: Record<string, unknown> | null }) {
   const deletes: Array<{ table: string; filters: Record<string, unknown> }> = [];

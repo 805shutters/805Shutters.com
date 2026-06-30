@@ -5054,6 +5054,8 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-calendar-event-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   justify-content: flex-end;
   min-width: 0;
   margin-top: 4px;
@@ -5078,6 +5080,17 @@ body.qb-fullscreen .crm-app-shell {
   background: #ffffff;
   color: #111111;
   transform: none;
+}
+
+.crm-calendar-event-actions .crm-calendar-event-action--danger {
+  background: #fff1f1;
+  color: #9f1717;
+}
+
+.crm-calendar-event-actions .crm-calendar-event-action--danger:hover,
+.crm-calendar-event-actions .crm-calendar-event-action--danger:focus-visible {
+  background: #ffffff;
+  color: #8f1111;
 }
 
 .crm-calendar-event-block p {
@@ -5440,6 +5453,20 @@ body.qb-fullscreen .crm-app-shell {
   flex-wrap: wrap;
   justify-content: end;
   gap: 10px;
+}
+
+.crm-danger-button {
+  border-color: #9f1717;
+  background: #9f1717;
+  color: #ffffff;
+}
+
+.crm-danger-button:hover,
+.crm-danger-button:focus-visible {
+  border-color: #7f1111;
+  background: #7f1111;
+  color: #ffffff;
+  transform: none;
 }
 
 .crm-checkbox {
