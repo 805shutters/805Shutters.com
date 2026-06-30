@@ -365,13 +365,45 @@ const parentPages: SitePage[] = [
       {
         heading: "Built For The Room",
         body:
-          "Every shutter project starts with the window, the light, and the way the room is used. We help compare materials, louver size, frame style, color, privacy, cleaning needs, and budget before installation."
+          "Every shutter project starts with the window, the light, and the way the room is used. We help compare materials, louver size, frame style, color, privacy, cleaning needs, and budget before installation.",
+        links: [
+          { label: "Plantation shutters", href: "/shutters/plantation/" },
+          { label: "Recent shutter projects", href: "/recent-projects/" },
+          { label: "Book a shutter consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "Where Custom Shutters Fit Best",
+        body:
+          "Plantation shutters work well when a room needs a built-in look, durable daily operation, flexible light control, and privacy without fabric. They are often a strong fit for living rooms, dining rooms, bedrooms, sliding doors, specialty shapes, and rooms where the window frame should feel finished.",
+        bullets: [
+          "Plantation shutters for living rooms, bedrooms, and dining rooms",
+          "Specialty shutters for arches and non-standard window shapes",
+          "Sliding door shutter solutions when access and privacy both matter",
+          "Wood, composite, and painted finish discussions during measuring"
+        ]
+      },
+      {
+        heading: "Plantation Shutter Project Examples",
+        body:
+          "Project pages help customers see how custom shutters look in real Ventura County rooms before scheduling a consultation. These examples connect shutter shoppers to finished-room proof instead of leaving the service page as a generic product overview.",
+        links: [
+          { label: "Plantation shutters installed in Ventura County", href: "/recent-projects/plantation-shutters-ventura-county-project/" },
+          { label: "Custom arched plantation shutters", href: "/recent-projects/arched-plantation-shutters-ventura-county/" },
+          { label: "Sliding door shutters", href: "/recent-projects/sliding-door-shutters-ventura-county/" },
+          { label: "Dark wood plantation shutters", href: "/recent-projects/dark-wood-plantation-shutters-ventura-county/" }
+        ]
       },
       {
         heading: "Local Shutter Service Areas",
         body:
           "Our team works across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby Ventura County communities.",
-        bullets: site.areas
+        bullets: site.areas,
+        links: [
+          { label: "Shutters in Camarillo", href: "/shutters/camarillo/" },
+          { label: "Shutters in Thousand Oaks", href: "/shutters/thousand-oaks/" },
+          { label: "Shutters in Ventura", href: "/shutters/ventura/" }
+        ]
       }
     ]
   },
@@ -390,12 +422,34 @@ const parentPages: SitePage[] = [
       {
         heading: "Shade Options",
         body:
-          "Choose from roller shades, honeycomb shades, woven wood shades, Roman shades, layered shades, light-filtering fabrics, room-darkening options, and motorized controls."
+          "Choose from roller shades, honeycomb shades, woven wood shades, Roman shades, layered shades, light-filtering fabrics, room-darkening options, and motorized controls.",
+        links: [
+          { label: "Large-window roller shade project", href: "/recent-projects/roller-shades-large-window-ventura-county/" },
+          { label: "Layered window shade project", href: "/recent-projects/layered-window-shades-ventura-county/" },
+          { label: "Commercial roller shades", href: "/commercial-roller-shades/" }
+        ]
+      },
+      {
+        heading: "Match The Shade To The Goal",
+        body:
+          "The right custom shade depends on the problem the room needs to solve. Roller shades keep lines clean across large glass, honeycomb shades add softness and insulation, woven shades bring texture, Roman shades add fabric detail, and motorized shades help with tall or repeated openings.",
+        bullets: [
+          "Solar and roller shades for glare, views, and large windows",
+          "Room-darkening shade fabrics for bedrooms and media rooms",
+          "Woven and Roman shades when texture and softness matter",
+          "Motorized shade options for tall glass and grouped windows"
+        ]
       },
       {
         heading: "Measured And Installed Locally",
         body:
-          "We measure each opening, review fabric and control choices, and install shades for homes and businesses throughout Ventura County."
+          "We measure each opening, review fabric and control choices, and install shades for homes and businesses throughout Ventura County.",
+        links: [
+          { label: "Shades in Camarillo", href: "/shades/camarillo-ca/" },
+          { label: "Shades in Thousand Oaks", href: "/shades/thousand-oaks-ca/" },
+          { label: "Shades in Ventura", href: "/shades/ventura-ca/" },
+          { label: "Book a shade consultation", href: "/book-consultation/" }
+        ]
       }
     ]
   },
@@ -414,12 +468,33 @@ const parentPages: SitePage[] = [
       {
         heading: "Practical Light Control",
         body:
-          "Blinds are a flexible choice for bedrooms, offices, rentals, and busy living spaces where adjustable privacy and light control are the priority."
+          "Blinds are a flexible choice for bedrooms, offices, rentals, and busy living spaces where adjustable privacy and light control are the priority.",
+        links: [
+          { label: "Ventura County blinds", href: "/blinds/ventura-county/" },
+          { label: "Window treatment comparison", href: "/window-treatments/" },
+          { label: "Book a blinds consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "Blinds For Homes, Offices, And Rentals",
+        body:
+          "Custom blinds can be a practical answer when a project needs clean installation, simple operation, and adjustable slat control. We compare wood blinds, faux wood blinds, aluminum blinds, vertical blinds, and softwood options based on the room, moisture exposure, window size, durability needs, and budget.",
+        bullets: [
+          "Wood and faux wood blinds for bedrooms, offices, and living spaces",
+          "Vertical blinds for sliding doors and wide openings",
+          "Aluminum blinds for simple, durable light control",
+          "Commercial and rental blind replacements where consistency matters"
+        ]
       },
       {
         heading: "Local Installation",
         body:
-          "Our team confirms measurements, mounting details, control options, and product fit before installation."
+          "Our team confirms measurements, mounting details, control options, and product fit before installation.",
+        links: [
+          { label: "Blinds in Camarillo", href: "/blinds/camarillo-ca/" },
+          { label: "Blinds in Oxnard", href: "/blinds/oxnard-ca/" },
+          { label: "Blinds in Simi Valley", href: "/blinds/simi-valley-ca/" }
+        ]
       }
     ]
   },
@@ -438,7 +513,23 @@ const parentPages: SitePage[] = [
       {
         heading: "Layered Window Treatment Design",
         body:
-          "Drapery can add warmth, texture, room-darkening support, privacy, and a finished look alongside shutters, shades, or blinds."
+          "Drapery can add warmth, texture, room-darkening support, privacy, and a finished look alongside shutters, shades, or blinds.",
+        links: [
+          { label: "Compare window treatments", href: "/window-treatments/" },
+          { label: "Custom shades", href: "/shades/" },
+          { label: "Book a drapery consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "When Drapery Completes The Room",
+        body:
+          "Custom drapery is often strongest when the window needs softness, a taller visual line, better room-darkening support, or a more finished design around existing shutters, shades, or blinds. The consultation can cover fabric direction, fullness, hardware, stacking space, and how the treatment should frame the room.",
+        bullets: [
+          "Layer drapery over shades for privacy and a softer finished look",
+          "Use fabric panels to add height and warmth around large openings",
+          "Plan hardware and stacking so doors and windows remain usable",
+          "Coordinate colors with shutters, blinds, shades, furniture, and flooring"
+        ]
       },
       {
         heading: "Local Planning",
@@ -462,7 +553,23 @@ const parentPages: SitePage[] = [
       {
         heading: "Shade For Outdoor Living",
         body:
-          "Exterior shades can help manage heat, glare, privacy, and sun exposure around patios, sliding doors, outdoor rooms, and large window openings."
+          "Exterior shades can help manage heat, glare, privacy, and sun exposure around patios, sliding doors, outdoor rooms, and large window openings.",
+        links: [
+          { label: "Compare interior shades", href: "/shades/" },
+          { label: "Window coverings overview", href: "/window-coverings/" },
+          { label: "Book an exterior shade consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "Plan Around Sun, Wind, And The Opening",
+        body:
+          "Outdoor shade projects need a different review than interior window treatments. We look at sun direction, heat gain, glare, privacy, mounting structure, patio use, operation preferences, and how the shade should perform across the brightest parts of the day.",
+        bullets: [
+          "Patios and outdoor rooms with afternoon sun exposure",
+          "Large openings where glare and heat make the space harder to use",
+          "Sliding doors and glass walls that need privacy without closing the room",
+          "Exterior shade planning before final product and fabric selection"
+        ]
       },
       {
         heading: "Measured For The Opening",
@@ -486,7 +593,13 @@ const parentPages: SitePage[] = [
       {
         heading: "One Consultation, Multiple Options",
         body:
-          "We help match the product to the room: shutters for structure, shades for softness and glare control, blinds for flexible adjustment, and commercial coverings for larger spaces."
+          "We help match the product to the room: shutters for structure, shades for softness and glare control, blinds for flexible adjustment, drapery for fabric and warmth, exterior shades for outdoor exposure, and commercial coverings for larger spaces.",
+        links: [
+          { label: "Custom shutters", href: "/shutters/" },
+          { label: "Custom shades", href: "/shades/" },
+          { label: "Custom blinds", href: "/blinds/" },
+          { label: "Custom drapery", href: "/drapery/" }
+        ]
       },
       {
         heading: "In-Home Or In-Office Consultation",
@@ -496,7 +609,17 @@ const parentPages: SitePage[] = [
       {
         heading: "Privacy, Light Intake, And Temperature",
         body:
-          "Quality shutters, shades, blinds, and draperies can help beautify a living space while giving better control over home privacy, light intake, glare, and temperature. We explain the benefits and tradeoffs of each option so customers can make a confident choice."
+          "Quality shutters, shades, blinds, and draperies can help beautify a living space while giving better control over home privacy, light intake, glare, and temperature. We explain the benefits and tradeoffs of each option so customers can make a confident choice.",
+        links: [
+          { label: "Recent local projects", href: "/recent-projects/" },
+          { label: "Window treatments in Camarillo", href: "/window-treatments/camarillo-ca/" },
+          { label: "Book a window treatment consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "Best Product By Room Type",
+        body:
+          "Bedrooms usually need privacy and room-darkening support, kitchens need durable materials and easy cleaning, living rooms often need flexible daylight control, and offices need glare reduction for screens. We use those room-by-room details to narrow the best window treatment before final color, material, and control decisions."
       }
     ]
   },
@@ -515,17 +638,39 @@ const parentPages: SitePage[] = [
       {
         heading: "Residential And Commercial",
         body:
-          "From plantation shutters and roller shades to vertical blinds and commercial roller shades, the recommendation is based on light, privacy, maintenance, durability, and design."
+          "From plantation shutters and roller shades to vertical blinds and commercial roller shades, the recommendation is based on light, privacy, maintenance, durability, and design.",
+        links: [
+          { label: "Residential window treatments", href: "/window-treatments/" },
+          { label: "Commercial window coverings", href: "/commercial-window-coverings/" },
+          { label: "Commercial roller shades", href: "/commercial-roller-shades/" }
+        ]
       },
       {
         heading: "Wide Range Of Window Coverings",
         body:
-          "805 Shutters provides in-home and in-office consultations on a wide range of window coverings, including shutters, shades, blinds, draperies, woven shades, roller shades, exterior shades, and commercial products. Customers can compare colors, materials, controls, and mounting details in one visit."
+          "805 Shutters provides in-home and in-office consultations on a wide range of window coverings, including shutters, shades, blinds, draperies, woven shades, roller shades, exterior shades, and commercial products. Customers can compare colors, materials, controls, and mounting details in one visit.",
+        links: [
+          { label: "Shutters", href: "/shutters/" },
+          { label: "Shades", href: "/shades/" },
+          { label: "Blinds", href: "/blinds/" },
+          { label: "Exterior shades", href: "/exterior-shades/" }
+        ]
       },
       {
         heading: "Premium Quality For Local Clients",
         body:
-          "The consultation focuses on premium quality, practical options, and the final appearance of the room. We help clients consider privacy, sun exposure, the amount of natural light, maintenance, price, and the product style that will make the window covering look like it belongs in the space."
+          "The consultation focuses on premium quality, practical options, and the final appearance of the room. We help clients consider privacy, sun exposure, the amount of natural light, maintenance, price, and the product style that will make the window covering look like it belongs in the space.",
+        links: [
+          { label: "Window coverings in Camarillo", href: "/window-coverings/camarillo-ca/" },
+          { label: "Window coverings in Thousand Oaks", href: "/window-coverings/thousand-oaks-ca/" },
+          { label: "Window coverings in Ventura", href: "/window-coverings/ventura-ca/" },
+          { label: "Book a window covering consultation", href: "/book-consultation/" }
+        ]
+      },
+      {
+        heading: "What Counts As A Window Covering",
+        body:
+          "Customers often use window coverings as a broad search term for anything installed at the window. For 805 Shutters, that can include plantation shutters, roller shades, honeycomb shades, woven shades, Roman shades, wood blinds, faux wood blinds, vertical blinds, drapery, exterior shades, and commercial shade systems."
       }
     ]
   },
