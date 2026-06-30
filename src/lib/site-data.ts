@@ -1600,12 +1600,98 @@ const recentProjectPages: SitePage[] = [
   }
 ];
 
-type CityPageOverride = Partial<Pick<SitePage, "title" | "description" | "intro" | "sections" | "faqs">>;
+type CityPageOverride = Partial<Pick<SitePage, "title" | "description" | "intro" | "gallery" | "sections" | "faqs">>;
+
+function shutterCityGallery(city: string): NonNullable<SitePage["gallery"]> {
+  return [
+    {
+      image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
+      imageAlt: `White plantation shutters installed in a ${city} dining room`
+    },
+    {
+      image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
+      imageAlt: `Custom arched plantation shutters planned for a ${city} living room`
+    },
+    {
+      image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
+      imageAlt: `Sliding door shutters for a ${city} bedroom opening`
+    }
+  ];
+}
+
+function shadeCityGallery(city: string): NonNullable<SitePage["gallery"]> {
+  return [
+    {
+      image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
+      imageAlt: `Roller shade on a large ${city} window for glare and privacy control`
+    },
+    {
+      image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
+      imageAlt: `Layered window shades for a ${city} bedroom window`
+    },
+    {
+      image: "/images/portfolio-enhanced/uploaded-bedroom-cellular-shades-card.jpg",
+      imageAlt: `Cellular shades measured for a ${city} bedroom window`
+    }
+  ];
+}
+
+function blindsCityGallery(city: string): NonNullable<SitePage["gallery"]> {
+  return [
+    {
+      image: "/images/805-portfolio-blinds-office.jpg",
+      imageAlt: `Custom blinds filtering light in a ${city} office`
+    },
+    {
+      image: "/images/product-previews/vertical-blinds-sliding-door.jpg",
+      imageAlt: `Vertical blinds for a ${city} sliding door opening`
+    },
+    {
+      image: "/images/product-previews/aluminum-blinds-window.jpg",
+      imageAlt: `Aluminum blinds for practical light control in a ${city} room`
+    }
+  ];
+}
+
+function mixedWindowTreatmentGallery(city: string): NonNullable<SitePage["gallery"]> {
+  return [
+    {
+      image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
+      imageAlt: `Plantation shutters for a ${city} dining room`
+    },
+    {
+      image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
+      imageAlt: `Roller shades for a large ${city} window`
+    },
+    {
+      image: "/images/805-portfolio-blinds-office.jpg",
+      imageAlt: `Custom blinds for a ${city} office or practical room`
+    }
+  ];
+}
+
+function windowCoveringCityGallery(city: string): NonNullable<SitePage["gallery"]> {
+  return [
+    {
+      image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
+      imageAlt: `Dark wood plantation shutters for a ${city} living room`
+    },
+    {
+      image: "/images/portfolio-enhanced/uploaded-full-height-cellular-shades-card.jpg",
+      imageAlt: `Full-height cellular shades for a ${city} window covering project`
+    },
+    {
+      image: "/images/commercial-mode/commercial-small-office-roller-shades.png",
+      imageAlt: `Commercial roller shades for a ${city} office window covering project`
+    }
+  ];
+}
 
 function priorityCityPage({
   title,
   description,
   intro,
+  gallery,
   serviceLabel,
   city,
   localContext,
@@ -1617,6 +1703,7 @@ function priorityCityPage({
   title: string;
   description: string;
   intro: string;
+  gallery?: NonNullable<SitePage["gallery"]>;
   serviceLabel: string;
   city: string;
   localContext: string;
@@ -1629,6 +1716,7 @@ function priorityCityPage({
     title,
     description,
     intro,
+    gallery,
     sections: [
       {
         heading: `${serviceLabel} for ${city} homes and businesses`,
@@ -1662,6 +1750,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom shutters and plantation shutters for Camarillo homes. Family-owned Ventura County installer with free in-home consultation. Call 805-806-9344.",
     intro:
       "805 Shutters measures and installs custom shutters for Camarillo homes, including plantation shutters, specialty shutters, sliding door shutters, and whole-home shutter projects.",
+    gallery: shutterCityGallery("Camarillo"),
     serviceLabel: "Custom shutters",
     city: "Camarillo",
     localContext:
@@ -1704,6 +1793,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom shutters and plantation shutters for Thousand Oaks homes. Local Ventura County measuring, product guidance, and free in-home consultation.",
     intro:
       "805 Shutters helps Thousand Oaks homeowners compare custom plantation shutters, specialty shutters, and whole-home shutter plans for Conejo Valley rooms and large window openings.",
+    gallery: shutterCityGallery("Thousand Oaks"),
     serviceLabel: "Custom shutters",
     city: "Thousand Oaks",
     localContext:
@@ -1746,6 +1836,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom shutters and plantation shutters for Ventura CA homes. Local measuring, product comparison, and free in-home consultation from 805 Shutters.",
     intro:
       "805 Shutters plans custom shutters for Ventura homes, from coastal bedrooms and hillside living rooms to standard windows, sliding doors, and specialty shapes.",
+    gallery: shutterCityGallery("Ventura"),
     serviceLabel: "Custom shutters",
     city: "Ventura",
     localContext:
@@ -1788,6 +1879,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom shutters and plantation shutters for Oxnard homes. Local measuring, product guidance, and free in-home consultation from 805 Shutters.",
     intro:
       "805 Shutters helps Oxnard homeowners plan custom shutters for privacy, light control, sliding doors, family rooms, bedrooms, and whole-home updates.",
+    gallery: shutterCityGallery("Oxnard"),
     serviceLabel: "Custom shutters",
     city: "Oxnard",
     localContext:
@@ -1830,6 +1922,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom window shades for Camarillo homes and businesses, including roller shades, honeycomb shades, woven shades, Roman shades, and motorized shades.",
     intro:
       "805 Shutters helps Camarillo customers choose custom shades for privacy, glare control, room-darkening, insulation, texture, and motorized convenience.",
+    gallery: shadeCityGallery("Camarillo"),
     serviceLabel: "Custom window shades",
     city: "Camarillo",
     localContext:
@@ -1872,6 +1965,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom blinds for Camarillo homes, offices, rentals, and businesses. Compare wood, faux wood, aluminum, vertical, and softwood blinds.",
     intro:
       "805 Shutters installs custom blinds in Camarillo for practical privacy, adjustable light control, durable operation, and clean installation.",
+    gallery: blindsCityGallery("Camarillo"),
     serviceLabel: "Custom blinds",
     city: "Camarillo",
     localContext:
@@ -1914,6 +2008,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Window treatments for Camarillo homes and businesses. Compare custom shutters, shades, blinds, drapery, exterior shades, and commercial coverings.",
     intro:
       "805 Shutters helps Camarillo customers compare window treatments room by room, including shutters, shades, blinds, drapery, exterior shades, and commercial coverings.",
+    gallery: mixedWindowTreatmentGallery("Camarillo"),
     serviceLabel: "Window treatments",
     city: "Camarillo",
     localContext:
@@ -1956,6 +2051,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom window coverings in Thousand Oaks for homes, offices, storefronts, medical spaces, and professional suites. Free local consultation.",
     intro:
       "805 Shutters installs custom window coverings in Thousand Oaks, including shutters, shades, blinds, drapery, exterior shades, and commercial shade systems.",
+    gallery: windowCoveringCityGallery("Thousand Oaks"),
     serviceLabel: "Window coverings",
     city: "Thousand Oaks",
     localContext:
@@ -1998,6 +2094,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       "Custom blinds across Ventura County, including wood, faux wood, aluminum, vertical, and softwood blinds. Free local consultation from 805 Shutters.",
     intro:
       "805 Shutters installs custom blinds throughout Ventura County for homes, offices, rentals, sliding doors, and practical spaces that need adjustable privacy and light control.",
+    gallery: blindsCityGallery("Ventura County"),
     serviceLabel: "Custom blinds",
     city: "Ventura County",
     localContext:
