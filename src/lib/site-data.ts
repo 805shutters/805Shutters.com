@@ -1600,6 +1600,442 @@ const recentProjectPages: SitePage[] = [
   }
 ];
 
+type CityPageOverride = Partial<Pick<SitePage, "title" | "description" | "intro" | "sections" | "faqs">>;
+
+function priorityCityPage({
+  title,
+  description,
+  intro,
+  serviceLabel,
+  city,
+  localContext,
+  productFit,
+  useCases,
+  links,
+  faqs
+}: {
+  title: string;
+  description: string;
+  intro: string;
+  serviceLabel: string;
+  city: string;
+  localContext: string;
+  productFit: string;
+  useCases: string[];
+  links: { label: string; href: string }[];
+  faqs: PageFaq[];
+}): CityPageOverride {
+  return {
+    title,
+    description,
+    intro,
+    sections: [
+      {
+        heading: `${serviceLabel} for ${city} homes and businesses`,
+        body: localContext,
+        links: links.slice(0, 4)
+      },
+      {
+        heading: "Room and opening fit",
+        body: productFit,
+        bullets: useCases
+      },
+      {
+        heading: "Local proof and next step",
+        body: `805 Shutters is a family-owned Ventura County window treatment company with more than 30 years of local measuring, product guidance, ordering, and installation experience. The ${city} consultation helps confirm product fit, measurements, colors, controls, timing, and budget before anything is ordered.`,
+        links: [
+          { label: "Recent local projects", href: "/recent-projects/" },
+          { label: "805 Shutters reviews", href: "/reviews/" },
+          { label: "Free in-home consultation", href: "/free-window-treatment-consultation/" },
+          { label: `Contact 805 Shutters about ${city}`, href: "/contact/" }
+        ]
+      }
+    ],
+    faqs
+  };
+}
+
+const priorityCityPageOverrides: Record<string, CityPageOverride> = {
+  "/shutters/camarillo/": priorityCityPage({
+    title: "Custom Shutters Camarillo | Plantation Shutters | 805 Shutters",
+    description:
+      "Custom shutters and plantation shutters for Camarillo homes. Family-owned Ventura County installer with free in-home consultation. Call 805-806-9344.",
+    intro:
+      "805 Shutters measures and installs custom shutters for Camarillo homes, including plantation shutters, specialty shutters, sliding door shutters, and whole-home shutter projects.",
+    serviceLabel: "Custom shutters",
+    city: "Camarillo",
+    localContext:
+      "Camarillo shutter projects often need durable privacy, flexible daylight, and a clean built-in look for bright family rooms, bedrooms, dining rooms, sliding doors, and homes near Mission Oaks, Las Posas, Village at the Park, Spanish Hills, and nearby Santa Rosa Valley.",
+    productFit:
+      "Plantation shutters can be a strong fit in Camarillo when the room needs structure, easy cleaning, long-term durability, and privacy without fabric. The consultation compares material, louver size, frame style, divider rails, panel swing, color, and how the shutter should work around doors, trim, handles, and furniture.",
+    useCases: [
+      "Plantation shutters for Camarillo living rooms and dining rooms",
+      "Bedroom shutters for privacy and room-darkening support",
+      "Sliding door shutters where access and durability both matter",
+      "Specialty shutter planning for arches and non-standard windows"
+    ],
+    links: [
+      { label: "Plantation shutters", href: "/shutters/plantation/" },
+      { label: "Custom shutters in Ventura County", href: "/shutters/" },
+      { label: "Plantation shutter project", href: "/recent-projects/plantation-shutters-ventura-county-project/" },
+      { label: "Arched shutter project", href: "/recent-projects/arched-plantation-shutters-ventura-county/" }
+    ],
+    faqs: [
+      {
+        question: "Who installs plantation shutters in Camarillo?",
+        answer:
+          "805 Shutters installs custom plantation shutters for Camarillo homes and nearby Ventura County communities, with local measuring, product guidance, ordering, and professional installation."
+      },
+      {
+        question: "Can shutters be planned for Camarillo sliding doors or specialty windows?",
+        answer:
+          "Yes. The consultation can review sliding doors, arches, specialty shapes, frame depth, handle clearance, panel swing, and daily access before the shutter order is placed."
+      },
+      {
+        question: "Do Camarillo shutter consultations happen in the home?",
+        answer:
+          "Yes. In-home measuring helps confirm the exact opening, trim, light exposure, privacy goals, color direction, and installation details before final pricing."
+      }
+    ]
+  }),
+  "/shutters/thousand-oaks/": priorityCityPage({
+    title: "Custom Shutters Thousand Oaks | Plantation Shutters | 805 Shutters",
+    description:
+      "Custom shutters and plantation shutters for Thousand Oaks homes. Local Ventura County measuring, product guidance, and free in-home consultation.",
+    intro:
+      "805 Shutters helps Thousand Oaks homeowners compare custom plantation shutters, specialty shutters, and whole-home shutter plans for Conejo Valley rooms and large window openings.",
+    serviceLabel: "Custom shutters",
+    city: "Thousand Oaks",
+    localContext:
+      "Thousand Oaks shutter projects often involve larger living rooms, bedroom privacy needs, repeated front-facing windows, and bright Conejo Valley sun exposure. We help match shutter material, color, frame style, and louver size to the room before ordering.",
+    productFit:
+      "Plantation shutters work well for Thousand Oaks homes when customers want a permanent window treatment with clean lines, adjustable daylight, and a built-in look. The consultation reviews privacy, glare, cleaning, ventilation, specialty shapes, and whether the project should be completed room by room or across the whole home.",
+    useCases: [
+      "Plantation shutters for living rooms, dining rooms, and bedrooms",
+      "Front-facing shutters for privacy and curb-facing consistency",
+      "Shutter plans for repeated windows and large openings",
+      "Specialty shape review for arched or non-standard windows"
+    ],
+    links: [
+      { label: "Custom shutters in Ventura County", href: "/shutters/" },
+      { label: "Plantation shutters", href: "/shutters/plantation/" },
+      { label: "Dark wood plantation shutter project", href: "/recent-projects/dark-wood-plantation-shutters-ventura-county/" },
+      { label: "Recent shutter projects", href: "/recent-projects/" }
+    ],
+    faqs: [
+      {
+        question: "Do you install plantation shutters in Thousand Oaks?",
+        answer:
+          "Yes. 805 Shutters measures and installs custom plantation shutters for Thousand Oaks homes and nearby Conejo Valley communities."
+      },
+      {
+        question: "Are shutters good for bright Thousand Oaks rooms?",
+        answer:
+          "Shutters can be a strong fit for bright rooms because the louvers make daylight and privacy adjustable while keeping the opening clean and structured."
+      },
+      {
+        question: "Can a Thousand Oaks shutter project be phased by room?",
+        answer:
+          "Yes. The consultation can compare whole-home shutter plans with phased room-by-room installation based on priorities, timing, and budget."
+      }
+    ]
+  }),
+  "/shutters/ventura/": priorityCityPage({
+    title: "Custom Shutters Ventura CA | Plantation Shutters | 805 Shutters",
+    description:
+      "Custom shutters and plantation shutters for Ventura CA homes. Local measuring, product comparison, and free in-home consultation from 805 Shutters.",
+    intro:
+      "805 Shutters plans custom shutters for Ventura homes, from coastal bedrooms and hillside living rooms to standard windows, sliding doors, and specialty shapes.",
+    serviceLabel: "Custom shutters",
+    city: "Ventura",
+    localContext:
+      "Ventura shutter projects often need privacy, glare control, and durable daily operation for coastal light, hillside views, family rooms, bedrooms, and sliding door openings. We review how the room is used before recommending material, frame, and louver choices.",
+    productFit:
+      "Plantation shutters can help Ventura rooms keep natural light adjustable while improving privacy and giving the window a finished frame. The in-home visit checks trim, sill conditions, frame depth, panel swing, color direction, and how much light or view the room should keep.",
+    useCases: [
+      "Bedroom shutters for privacy and stronger light control",
+      "Living room shutters where views and daylight both matter",
+      "Sliding door shutter planning for access and durability",
+      "Specialty shutters for arched or unusual openings"
+    ],
+    links: [
+      { label: "Custom shutters in Ventura County", href: "/shutters/" },
+      { label: "Arched plantation shutter project", href: "/recent-projects/arched-plantation-shutters-ventura-county/" },
+      { label: "Sliding door shutter project", href: "/recent-projects/sliding-door-shutters-ventura-county/" },
+      { label: "Recent local projects", href: "/recent-projects/" }
+    ],
+    faqs: [
+      {
+        question: "Who installs custom shutters in Ventura CA?",
+        answer:
+          "805 Shutters installs custom shutters and plantation shutters for Ventura homes and nearby Ventura County communities."
+      },
+      {
+        question: "Can shutters work in Ventura homes with coastal light?",
+        answer:
+          "Yes. Shutters can help manage bright light and privacy while keeping rooms clean and easy to maintain."
+      },
+      {
+        question: "What is reviewed during a Ventura shutter consultation?",
+        answer:
+          "We review window size, frame depth, trim, material, color, louver size, privacy needs, light control, clearance, and installation details."
+      }
+    ]
+  }),
+  "/shutters/oxnard/": priorityCityPage({
+    title: "Custom Shutters Oxnard | Plantation Shutters | 805 Shutters",
+    description:
+      "Custom shutters and plantation shutters for Oxnard homes. Local measuring, product guidance, and free in-home consultation from 805 Shutters.",
+    intro:
+      "805 Shutters helps Oxnard homeowners plan custom shutters for privacy, light control, sliding doors, family rooms, bedrooms, and whole-home updates.",
+    serviceLabel: "Custom shutters",
+    city: "Oxnard",
+    localContext:
+      "Oxnard shutter projects can include coastal homes, RiverPark rooms, family living spaces, bedrooms, dining rooms, and repeated windows that need consistent privacy and light control. We help choose the shutter style that fits the room and daily use.",
+    productFit:
+      "Plantation shutters give Oxnard homes a durable, structured window treatment that can handle everyday use while keeping daylight adjustable. The consultation compares shutter materials, colors, frame details, louver sizes, panel layout, and specialty opening needs.",
+    useCases: [
+      "Whole-home shutter updates for repeated windows",
+      "Bedroom shutters for privacy and room-darkening support",
+      "Sliding door shutters for access and durability",
+      "Dining and living room shutters for a finished built-in look"
+    ],
+    links: [
+      { label: "Custom shutters in Ventura County", href: "/shutters/" },
+      { label: "Plantation shutters", href: "/shutters/plantation/" },
+      { label: "Plantation shutter project", href: "/recent-projects/plantation-shutters-ventura-county-project/" },
+      { label: "Recent window treatment projects", href: "/recent-projects/" }
+    ],
+    faqs: [
+      {
+        question: "Does 805 Shutters install plantation shutters in Oxnard?",
+        answer:
+          "Yes. 805 Shutters installs custom plantation shutters for Oxnard homes and nearby Ventura County communities."
+      },
+      {
+        question: "Can Oxnard shutter projects include sliding doors?",
+        answer:
+          "Yes. Sliding door shutter options can be reviewed during the consultation, including access, panel layout, clearance, and daily operation."
+      },
+      {
+        question: "Can I compare shutter materials before ordering?",
+        answer:
+          "Yes. The consultation compares materials, color, louver size, frame style, privacy, cleaning needs, and budget before final ordering."
+      }
+    ]
+  }),
+  "/shades/camarillo-ca/": priorityCityPage({
+    title: "Window Shades Camarillo | Roller Shades and Custom Shades | 805 Shutters",
+    description:
+      "Custom window shades for Camarillo homes and businesses, including roller shades, honeycomb shades, woven shades, Roman shades, and motorized shades.",
+    intro:
+      "805 Shutters helps Camarillo customers choose custom shades for privacy, glare control, room-darkening, insulation, texture, and motorized convenience.",
+    serviceLabel: "Custom window shades",
+    city: "Camarillo",
+    localContext:
+      "Camarillo shade projects often start with bright afternoon light, patio doors, bedrooms, home offices, open living spaces, and rooms where customers want softer light without the built-in look of shutters.",
+    productFit:
+      "Roller shades keep large windows clean and simple, honeycomb shades add softness and insulation, woven shades bring texture, Roman shades add fabric detail, and motorized shades help with tall or repeated openings. We compare fabric opacity, color, view-through, mounting depth, and control side before ordering.",
+    useCases: [
+      "Roller shades for large Camarillo windows and patio doors",
+      "Room-darkening shades for bedrooms and media rooms",
+      "Honeycomb shades where softness and insulation matter",
+      "Motorized shades for tall, repeated, or hard-to-reach openings"
+    ],
+    links: [
+      { label: "Custom shades in Ventura County", href: "/shades/" },
+      { label: "Large-window roller shade project", href: "/recent-projects/roller-shades-large-window-ventura-county/" },
+      { label: "Layered window shade project", href: "/recent-projects/layered-window-shades-ventura-county/" },
+      { label: "Book a shade consultation", href: "/book-consultation/" }
+    ],
+    faqs: [
+      {
+        question: "What window shades are popular in Camarillo?",
+        answer:
+          "Camarillo customers often compare roller shades, solar shades, honeycomb shades, woven shades, Roman shades, room-darkening fabrics, and motorized shade options."
+      },
+      {
+        question: "Can shades help with glare in Camarillo homes?",
+        answer:
+          "Yes. Shade fabric, openness, color, and mounting style can be selected to reduce glare while balancing privacy, daylight, and view-through."
+      },
+      {
+        question: "Do you measure custom shades in person?",
+        answer:
+          "Yes. In-person measuring helps confirm mounting depth, control side, window size, fabric direction, privacy needs, and room-darkening goals."
+      }
+    ]
+  }),
+  "/blinds/camarillo-ca/": priorityCityPage({
+    title: "Custom Blinds Camarillo | Wood and Faux Wood Blinds | 805 Shutters",
+    description:
+      "Custom blinds for Camarillo homes, offices, rentals, and businesses. Compare wood, faux wood, aluminum, vertical, and softwood blinds.",
+    intro:
+      "805 Shutters installs custom blinds in Camarillo for practical privacy, adjustable light control, durable operation, and clean installation.",
+    serviceLabel: "Custom blinds",
+    city: "Camarillo",
+    localContext:
+      "Camarillo blind projects often include bedrooms, home offices, rentals, sliding doors, staff rooms, and practical spaces where adjustable slat control and straightforward maintenance matter more than a fabric treatment.",
+    productFit:
+      "Wood and faux wood blinds can work well for bedrooms, offices, and living spaces; vertical blinds can support sliding doors and wider openings; aluminum blinds can be a simple durable choice for practical rooms. The consultation checks window size, moisture exposure, control side, durability needs, and budget.",
+    useCases: [
+      "Wood and faux wood blinds for Camarillo bedrooms and offices",
+      "Vertical blinds for sliding doors and wide openings",
+      "Durable blind replacements for rentals or business spaces",
+      "Aluminum blinds where simple light control is the priority"
+    ],
+    links: [
+      { label: "Custom blinds in Ventura County", href: "/blinds/" },
+      { label: "Ventura County blinds", href: "/blinds/ventura-county/" },
+      { label: "Window treatments in Camarillo", href: "/window-treatments/camarillo-ca/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" }
+    ],
+    faqs: [
+      {
+        question: "What types of blinds do you install in Camarillo?",
+        answer:
+          "805 Shutters installs wood blinds, faux wood blinds, aluminum blinds, vertical blinds, and softwood blind options for Camarillo homes and businesses."
+      },
+      {
+        question: "Are blinds a good fit for rentals or offices?",
+        answer:
+          "Yes. Blinds can be a practical option for rentals, offices, staff rooms, and busy spaces that need adjustable privacy, durable operation, and a clean installed look."
+      },
+      {
+        question: "Can you replace existing blinds in Camarillo?",
+        answer:
+          "Yes. We can review existing blind replacement needs, window count, mounting details, product consistency, controls, and budget during the consultation."
+      }
+    ]
+  }),
+  "/window-treatments/camarillo-ca/": priorityCityPage({
+    title: "Window Treatments Camarillo | Shutters, Shades and Blinds | 805 Shutters",
+    description:
+      "Window treatments for Camarillo homes and businesses. Compare custom shutters, shades, blinds, drapery, exterior shades, and commercial coverings.",
+    intro:
+      "805 Shutters helps Camarillo customers compare window treatments room by room, including shutters, shades, blinds, drapery, exterior shades, and commercial coverings.",
+    serviceLabel: "Window treatments",
+    city: "Camarillo",
+    localContext:
+      "Camarillo window treatment projects often involve a mix of privacy, glare control, room-darkening, heat, patio doors, bedrooms, home offices, and whole-home design consistency. One consultation can compare several product types before final measuring.",
+    productFit:
+      "Shutters add structure and durability, shades soften light and glare, blinds offer adjustable slat control, drapery adds fabric and warmth, and exterior shades can help outdoor rooms or large openings. The recommendation depends on how each room is used.",
+    useCases: [
+      "Whole-home window treatment planning in Camarillo",
+      "Bedrooms that need privacy or room-darkening support",
+      "Living rooms and patio doors with bright light or glare",
+      "Homes and offices comparing several products in one visit"
+    ],
+    links: [
+      { label: "Camarillo shutters", href: "/shutters/camarillo/" },
+      { label: "Camarillo shades", href: "/shades/camarillo-ca/" },
+      { label: "Camarillo blinds", href: "/blinds/camarillo-ca/" },
+      { label: "Recent local projects", href: "/recent-projects/" }
+    ],
+    faqs: [
+      {
+        question: "Can I compare shutters, shades, and blinds in Camarillo?",
+        answer:
+          "Yes. A Camarillo consultation can compare shutters, shades, blinds, drapery, exterior shades, and commercial products in one visit."
+      },
+      {
+        question: "What window treatment is best for each room?",
+        answer:
+          "The best option depends on room use, privacy, glare, cleaning, style, budget, and whether the opening is a standard window, sliding door, large window, or specialty shape."
+      },
+      {
+        question: "Do you offer free Camarillo window treatment consultations?",
+        answer:
+          "Yes. 805 Shutters offers free consultations for Camarillo window treatment projects before final measuring or ordering."
+      }
+    ]
+  }),
+  "/window-coverings/thousand-oaks-ca/": priorityCityPage({
+    title: "Window Coverings Thousand Oaks | 805 Shutters",
+    description:
+      "Custom window coverings in Thousand Oaks for homes, offices, storefronts, medical spaces, and professional suites. Free local consultation.",
+    intro:
+      "805 Shutters installs custom window coverings in Thousand Oaks, including shutters, shades, blinds, drapery, exterior shades, and commercial shade systems.",
+    serviceLabel: "Window coverings",
+    city: "Thousand Oaks",
+    localContext:
+      "Thousand Oaks window covering projects can include residential rooms, professional offices, medical spaces, storefronts, and larger glass openings where glare, heat, privacy, durability, and appearance all matter.",
+    productFit:
+      "Window coverings can include plantation shutters, roller shades, honeycomb shades, woven shades, Roman shades, wood blinds, faux wood blinds, vertical blinds, drapery, exterior shades, and commercial roller shade systems. The consultation narrows the choice by room, window size, exposure, controls, and maintenance needs.",
+    useCases: [
+      "Residential shutters, shades, blinds, and drapery in Thousand Oaks",
+      "Office and professional-suite coverings for glare and privacy",
+      "Commercial roller shades for larger glass or repeated windows",
+      "Room-by-room planning for privacy, heat, and light control"
+    ],
+    links: [
+      { label: "Window coverings in Ventura County", href: "/window-coverings/" },
+      { label: "Commercial window coverings", href: "/commercial-window-coverings/" },
+      { label: "Commercial roller shades", href: "/commercial-roller-shades/" },
+      { label: "Thousand Oaks shutters", href: "/shutters/thousand-oaks/" }
+    ],
+    faqs: [
+      {
+        question: "What window coverings do you install in Thousand Oaks?",
+        answer:
+          "805 Shutters installs shutters, shades, blinds, drapery, exterior shades, commercial roller shades, and other custom window coverings for Thousand Oaks homes and businesses."
+      },
+      {
+        question: "Can window coverings help office glare in Thousand Oaks?",
+        answer:
+          "Yes. Roller shades, solar shades, blinds, and other commercial coverings can be reviewed for screen glare, heat, privacy, durability, and appearance."
+      },
+      {
+        question: "Can one visit cover residential and commercial options?",
+        answer:
+          "Yes. The consultation can compare residential and commercial window covering options based on product type, room use, window count, controls, and budget."
+      }
+    ]
+  }),
+  "/blinds/ventura-county/": priorityCityPage({
+    title: "Ventura County Blinds | Custom Wood and Faux Wood Blinds | 805 Shutters",
+    description:
+      "Custom blinds across Ventura County, including wood, faux wood, aluminum, vertical, and softwood blinds. Free local consultation from 805 Shutters.",
+    intro:
+      "805 Shutters installs custom blinds throughout Ventura County for homes, offices, rentals, sliding doors, and practical spaces that need adjustable privacy and light control.",
+    serviceLabel: "Custom blinds",
+    city: "Ventura County",
+    localContext:
+      "Ventura County blind projects range from Camarillo bedrooms and Ventura home offices to Oxnard rentals, Thousand Oaks professional suites, and practical rooms where durability, control, and budget are the priority.",
+    productFit:
+      "Custom blinds are useful when the room needs adjustable slats, privacy, easy daily operation, and straightforward maintenance. We compare wood, faux wood, aluminum, vertical, and softwood blinds by window size, moisture exposure, control side, room use, and budget.",
+    useCases: [
+      "Wood and faux wood blinds for bedrooms, offices, and living rooms",
+      "Vertical blinds for sliding doors and wide openings",
+      "Blind replacements for rentals, offices, and practical rooms",
+      "Ventura County installation support from measuring through final fit"
+    ],
+    links: [
+      { label: "Custom blinds", href: "/blinds/" },
+      { label: "Camarillo blinds", href: "/blinds/camarillo-ca/" },
+      { label: "Window treatments in Ventura County", href: "/window-treatments/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" }
+    ],
+    faqs: [
+      {
+        question: "Who installs custom blinds in Ventura County?",
+        answer:
+          "805 Shutters installs custom blinds across Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby communities."
+      },
+      {
+        question: "What blind styles can I compare?",
+        answer:
+          "You can compare wood blinds, faux wood blinds, aluminum blinds, vertical blinds, and softwood blind options based on privacy, durability, maintenance, and budget."
+      },
+      {
+        question: "Can you help replace old blinds?",
+        answer:
+          "Yes. We can review existing blind replacement needs, measurements, mounting details, control side, product consistency, and installation timing."
+      }
+    ]
+  })
+};
+
 const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, city]) => {
   const windowTreatmentPath = `/window-treatments/${caSlug}/`;
   return [
@@ -1662,7 +2098,7 @@ function cityProductPage({
   image: string;
 }): SitePage {
   const label = product.replace("-", " ");
-  return {
+  const page: SitePage = {
     path,
     title,
     description: `${h1} measured and installed by 805 Shutters, Shades & Blinds. Compare privacy, light control, colors, materials, controls, and local installation.`,
@@ -1698,6 +2134,9 @@ function cityProductPage({
     ],
     cta: "Schedule a free in-home consultation"
   };
+
+  const override = priorityCityPageOverrides[path];
+  return override ? { ...page, ...override } : page;
 }
 
 const commercialCityContext: Record<string, string> = {

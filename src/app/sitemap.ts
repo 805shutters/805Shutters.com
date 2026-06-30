@@ -6,7 +6,7 @@ import { allPages, site } from "@/lib/site-data";
 // is meaningfully updated. Using a fixed date (instead of `new Date()`) keeps
 // <lastmod> honest — a sitemap that claims every page changed "right now" on
 // every crawl trains Google to ignore the lastmod signal.
-const CONTENT_LAST_UPDATED = new Date("2026-06-24");
+const CONTENT_LAST_UPDATED = new Date("2026-06-30");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const pageEntries: MetadataRoute.Sitemap = allPages.filter((page) => !page.noIndex).map((page) => {
