@@ -216,6 +216,54 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.people.jessica).toMatchObject({ earned: 400, paid: 0, owed: 400, activeJobCount: 1 });
   });
 
+  it("tracks Mike and Jessica sold earnings before jobs become payable", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "mike-sold",
+          jobId: "job-mike-sold",
+          status: "sold",
+          salesOwner: "mike",
+          balance: 1000,
+          paidTotal: 0,
+          isPaidInFull: false,
+          payments: [],
+          mikeProfit: 600,
+          jessicaCommission: 0
+        }),
+        row({
+          id: "jessica-sold",
+          jobId: "job-jessica-sold",
+          status: "approved",
+          salesOwner: "jessica",
+          balance: 1000,
+          paidTotal: 0,
+          isPaidInFull: false,
+          payments: [],
+          mikeProfit: 400,
+          jessicaCommission: 400
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: []
+    });
+
+    expect(ledger.people.mike).toMatchObject({
+      earned: 0,
+      owed: 0,
+      activeJobCount: 0,
+      soldEarned: 1000,
+      soldJobCount: 2
+    });
+    expect(ledger.people.jessica).toMatchObject({
+      earned: 0,
+      owed: 0,
+      activeJobCount: 0,
+      soldEarned: 400,
+      soldJobCount: 1
+    });
+  });
+
   it("mirrors the displayed Mike and Jessica payout amounts instead of re-deriving a split", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [

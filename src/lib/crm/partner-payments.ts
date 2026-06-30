@@ -1,5 +1,10 @@
 import {
+  effectiveBookkeepingStatus,
+  isPaidInFullBookkeepingRow
+} from "@/lib/crm/bookkeeping";
+import {
   CrmBookkeepingRow,
+  CrmBookkeepingStatus,
   CrmCommissionPayment,
   CrmCommissionPaymentAllocation,
   CrmKenPayment,
@@ -27,6 +32,18 @@ const partnerLabels: Record<CrmPaymentPerson, string> = {
   mike: "Mike",
   jessica: "Jessica"
 };
+
+const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
+  "sold",
+  "approved",
+  "ordered",
+  "received",
+  "installed",
+  "invoiced",
+  "paid",
+  "legacy",
+  "manual"
+]);
 
 function roundCents(value: number) {
   return Math.round((Number(value) || 0) * 100) / 100;
@@ -143,6 +160,31 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
   }
 
   return items.sort(compareEarnedItems);
+}
+
+function isSoldEarningRow(row: CrmBookkeepingRow) {
+  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && SOLD_EARNING_STATUSES.has(effectiveBookkeepingStatus(row));
+}
+
+function buildSoldEarningsByPerson(rows: CrmBookkeepingRow[]) {
+  const totals: Record<CrmPaymentPerson, { earned: number; jobCount: number }> = {
+    ken: { earned: 0, jobCount: 0 },
+    mike: { earned: 0, jobCount: 0 },
+    jessica: { earned: 0, jobCount: 0 }
+  };
+
+  for (const row of rows) {
+    if (!isSoldEarningRow(row)) continue;
+
+    for (const person of ["mike", "jessica"] as const) {
+      const amount = partnerPaymentAmountForRow(person, row);
+      if (amount <= 0) continue;
+      totals[person].earned = roundCents(totals[person].earned + amount);
+      totals[person].jobCount += 1;
+    }
+  }
+
+  return totals;
 }
 
 export function buildUnpaidPartnerPaymentItemForRow(
@@ -317,6 +359,7 @@ export function buildPartnerPaymentLedger({
   commissionAllocations?: CrmCommissionPaymentAllocation[];
 }): CrmPartnerPaymentLedger {
   const earnedItems = buildPartnerPaymentEarnedItems(rows);
+  const soldEarningsByPerson = buildSoldEarningsByPerson(rows);
   const workingByPerson: Record<CrmPaymentPerson, WorkingItem[]> = {
     ken: [],
     mike: [],
@@ -447,6 +490,8 @@ export function buildPartnerPaymentLedger({
         earned,
         paid,
         owed,
+        soldEarned: soldEarningsByPerson[person].earned,
+        soldJobCount: soldEarningsByPerson[person].jobCount,
         jobCount: personItems.length,
         activeJobCount: personActive.length,
         items: personItems.sort(compareEarnedItems),

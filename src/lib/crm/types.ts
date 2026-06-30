@@ -653,6 +653,8 @@ export type CrmPartnerPaymentLedgerPerson = {
   earned: number;
   paid: number;
   owed: number;
+  soldEarned: number;
+  soldJobCount: number;
   jobCount: number;
   activeJobCount: number;
   items: CrmPartnerPaymentLedgerItem[];

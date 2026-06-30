@@ -9676,6 +9676,14 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   border-bottom: 1px solid var(--line);
 }
 
+.crm-payment-person-grid .crm-bookkeeping-summary-card {
+  min-height: 76px;
+}
+
+.crm-payment-person-grid .crm-payment-person-sold-earning {
+  color: var(--ink);
+}
+
 .crm-zelle-panel {
   display: grid;
   grid-template-columns: minmax(160px, 0.75fr) minmax(280px, 1.5fr) auto;

@@ -5834,6 +5834,10 @@ function PartnerPaymentsView({
         <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
           {paymentPeople.map((person) => {
             const personLedger = ledger?.people[person];
+            const soldEarningDetail =
+              person === "mike" || person === "jessica"
+                ? `${personLedger?.soldJobCount || 0} sold / ${toLedgerCurrency(personLedger?.soldEarned)} earning`
+                : null;
             return (
               <button
                 type="button"
@@ -5848,6 +5852,7 @@ function PartnerPaymentsView({
                 <em>
                   {personLedger?.activeJobCount || 0} active / {toLedgerCurrency(personLedger?.earned)} earned
                 </em>
+                {soldEarningDetail ? <em className="crm-payment-person-sold-earning">{soldEarningDetail}</em> : null}
               </button>
             );
           })}
