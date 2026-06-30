@@ -4986,15 +4986,15 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-calendar-event-block--post-sold {
-  background: #157f3b;
-  border-color: #0f6a31;
-  color: #ffffff;
+  background: #d7eadc;
+  border-color: #94bfa0;
+  color: #193326;
 }
 
 .crm-calendar-event-block--post-unsold {
-  background: #f4c43f;
-  border-color: #b58200;
-  color: #171717;
+  background: #f6e7b8;
+  border-color: #d8be72;
+  color: #3b321f;
 }
 
 .crm-calendar-event-block--block {
@@ -5224,15 +5224,15 @@ button.crm-calendar-month-event:focus-visible {
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--post-sold {
-  background: #157f3b;
-  border-color: #0f6a31;
-  color: #ffffff;
+  background: #d7eadc;
+  border-color: #94bfa0;
+  color: #193326;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--post-unsold {
-  background: #f4c43f;
-  border-color: #b58200;
-  color: #171717;
+  background: #f6e7b8;
+  border-color: #d8be72;
+  color: #3b321f;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--block {
