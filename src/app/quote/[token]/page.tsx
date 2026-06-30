@@ -3,11 +3,13 @@ import QRCode from "qrcode";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
 import { VENMO_HANDLE, ZELLE_DESTINATION, venmoProfileUrl } from "@/lib/finance/payment-options";
+import { privatePageMetadata } from "@/lib/private-page-metadata";
 import { QuoteSelection } from "./QuoteSelection";
 import { PrintButton } from "./PrintButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const metadata = privatePageMetadata("Quote | 805 Shutters");
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });

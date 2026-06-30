@@ -1,14 +1,8 @@
-import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import type { CrmPaymentPerson } from "@/lib/crm/types";
+import { privatePageMetadata } from "@/lib/private-page-metadata";
 
-export const metadata: Metadata = {
-  title: "805 CRM Payables",
-  robots: {
-    index: false,
-    follow: false
-  }
-};
+export const metadata = privatePageMetadata("805 CRM Payables");
 
 function normalizePerson(value: unknown): CrmPaymentPerson {
   if (value === "mike" || value === "jessica" || value === "ken") return value;

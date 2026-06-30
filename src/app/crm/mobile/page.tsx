@@ -1,13 +1,7 @@
-import { Metadata } from "next";
 import { MobileAppointmentApp } from "@/components/crm/MobileAppointmentApp";
+import { privatePageMetadata } from "@/lib/private-page-metadata";
 
-export const metadata: Metadata = {
-  title: "805 Appointments",
-  robots: {
-    index: false,
-    follow: false
-  }
-};
+export const metadata = privatePageMetadata("805 Appointments");
 
 export default function MobileAppointmentsPage() {
   return <MobileAppointmentApp />;

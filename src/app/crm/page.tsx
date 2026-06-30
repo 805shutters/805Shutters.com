@@ -1,13 +1,7 @@
-import { Metadata } from "next";
 import { CrmApp } from "@/components/crm/CrmApp";
+import { privatePageMetadata } from "@/lib/private-page-metadata";
 
-export const metadata: Metadata = {
-  title: "805 CRM",
-  robots: {
-    index: false,
-    follow: false
-  }
-};
+export const metadata = privatePageMetadata("805 CRM");
 
 export default function CrmPage() {
   return <CrmApp />;
