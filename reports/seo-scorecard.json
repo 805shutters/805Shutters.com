@@ -1,24 +1,24 @@
 {
   "current_audit": {
-    "base_url": "http://127.0.0.1:3061",
-    "generated_at": "2026-06-30T20:14:14Z",
+    "base_url": "http://127.0.0.1:3064",
+    "generated_at": "2026-06-30T21:46:45Z",
     "indexable_flagged_pages": 0,
     "indexable_issue_total": 0,
-    "indexable_pages": 105,
+    "indexable_pages": 108,
     "issue_counts": {},
-    "sitemap_urls": 105,
+    "sitemap_urls": 108,
     "summary": {
       "accessible_noindex_posts_sampled": 0,
       "indexable_pages_with_http_assets": 0,
       "indexable_pages_with_missing_alt": 0,
       "indexable_pages_with_vague_links": 0,
-      "sitemap_urls": 105,
+      "sitemap_urls": 108,
       "wp_pages": 0,
       "wp_posts": 0
     }
   },
-  "current_label": "Step 10 local Next build",
-  "generated_at": "2026-06-30T20:14:14Z",
+  "current_label": "Step 11 rebased local Next build",
+  "generated_at": "2026-06-30T21:46:45Z",
   "lighthouse": {
     "desktop": {
       "accessibility": 84,
@@ -56,8 +56,8 @@
       "status": "better"
     },
     {
-      "current": 105,
-      "delta": 19,
+      "current": 108,
+      "delta": 22,
       "metric": "indexable_pages",
       "previous": 86,
       "status": "up"
@@ -91,8 +91,8 @@
       "status": "better"
     },
     {
-      "current": 105,
-      "delta": 19,
+      "current": 108,
+      "delta": 22,
       "metric": "sitemap_urls",
       "previous": 86,
       "status": "up"

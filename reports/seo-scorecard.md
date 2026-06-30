@@ -1,7 +1,7 @@
 # 805 Shutters SEO scorecard
 
-Generated: 2026-06-30T20:14:14Z
-Current snapshot: Step 10 local Next build
+Generated: 2026-06-30T21:46:45Z
+Current snapshot: Step 11 rebased local Next build
 Verdict: Improving: crawl issue count is clean
 
 ## Crawl Trend
@@ -11,20 +11,20 @@ Verdict: Improving: crawl issue count is clean
 | h1_count | 13 | 0 | -13 | better |
 | indexable_flagged_pages | 17 | 0 | -17 | better |
 | indexable_issue_total | 33 | 0 | -33 | better |
-| indexable_pages | 86 | 105 | +19 | up |
+| indexable_pages | 86 | 108 | +22 | up |
 | indexable_pages_with_http_assets | 0 | 0 | +0 | flat |
 | indexable_pages_with_missing_alt | 10 | 0 | -10 | better |
 | indexable_pages_with_vague_links | 1 | 0 | -1 | better |
 | missing_alt | 10 | 0 | -10 | better |
-| sitemap_urls | 86 | 105 | +19 | up |
+| sitemap_urls | 86 | 108 | +22 | up |
 | thin_indexable_content | 9 | 0 | -9 | better |
 | vague_links | 1 | 0 | -1 | better |
 
 ## Current Crawl Health
 
-- Audit generated: 2026-06-30T20:14:14Z
-- Base URL: http://127.0.0.1:3061
-- Sitemap URLs: 105
+- Audit generated: 2026-06-30T21:46:45Z
+- Base URL: http://127.0.0.1:3064
+- Sitemap URLs: 108
 - Indexable flagged pages: 0
 - Indexable issue total: 0
 

@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-06-30T21:46:45Z",
+  "base_url": "http://127.0.0.1:3064",
+  "verdict": "Clean: LLM citation surface is crawlable and structured",
+  "required_path_count": 10,
+  "robots": {
+    "status": 200,
+    "flags": []
+  },
+  "llms": {
+    "status": 200,
+    "content_type": "text/plain; charset=utf-8",
+    "internal_link_count": 13,
+    "required_paths_found": 10,
+    "missing_required_paths": [],
+    "flags": []
+  },
+  "sitemap": {
+    "status": 200,
+    "required_paths_found": 10,
+    "missing_required_paths": [],
+    "flags": []
+  },
+  "pages": [
+    {
+      "path": "/best-window-treatments-ventura-county/",
+      "status": 200,
+      "title": "Best Window Treatments for Ventura County Homes | 805 Shutters",
+      "description": "Compare the best window treatments for Ventura County homes, including shutters, shades, blinds, exterior shades, and commercial window coverings.",
+      "canonical": "https://www.805shutters.com/best-window-treatments-ventura-county/",
+      "h1_count": 1,
+      "h1": "Best Window Treatments for Ventura County Homes",
+      "word_count": 467,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/plantation-shutters-vs-shades-ventura-county/",
+      "status": 200,
+      "title": "Plantation Shutters vs Shades in Ventura County | 805 Shutters",
+      "description": "Compare plantation shutters and window shades for Ventura County homes by privacy, light control, durability, style, and budget.",
+      "canonical": "https://www.805shutters.com/plantation-shutters-vs-shades-ventura-county/",
+      "h1_count": 1,
+      "h1": "Plantation Shutters vs Shades in Ventura County",
+      "word_count": 433,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/custom-blinds-shades-shutters-camarillo/",
+      "status": 200,
+      "title": "Custom Blinds, Shades, and Shutters in Camarillo | 805 Shutters",
+      "description": "Custom blinds, shades, shutters, and window coverings for Camarillo homes and businesses. Compare products with a free local consultation.",
+      "canonical": "https://www.805shutters.com/custom-blinds-shades-shutters-camarillo/",
+      "h1_count": 1,
+      "h1": "Custom Blinds, Shades, and Shutters in Camarillo",
+      "word_count": 412,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/commercial-roller-shades-ventura-county/",
+      "status": 200,
+      "title": "Commercial Roller Shades in Ventura County | 805 Shutters",
+      "description": "Who installs commercial roller shades in Ventura County? Compare shade options for offices, storefronts, schools, medical spaces, and shared workspaces.",
+      "canonical": "https://www.805shutters.com/commercial-roller-shades-ventura-county/",
+      "h1_count": 1,
+      "h1": "Who Installs Commercial Roller Shades in Ventura County?",
+      "word_count": 460,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/sliding-door-window-treatments-ventura-county/",
+      "status": 200,
+      "title": "Best Window Treatments for Sliding Doors | 805 Shutters",
+      "description": "Compare shutters, vertical blinds, roller shades, honeycomb shades, and drapery for sliding glass doors in Ventura County homes.",
+      "canonical": "https://www.805shutters.com/sliding-door-window-treatments-ventura-county/",
+      "h1_count": 1,
+      "h1": "Best Window Treatments for Sliding Doors in Ventura County",
+      "word_count": 465,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/motorized-window-shades-ventura-county/",
+      "status": 200,
+      "title": "Motorized Window Shades in Ventura County | 805 Shutters",
+      "description": "When are motorized window shades worth it? Compare motorized roller, solar, honeycomb, and room-darkening shade options for Ventura County homes and businesses.",
+      "canonical": "https://www.805shutters.com/motorized-window-shades-ventura-county/",
+      "h1_count": 1,
+      "h1": "When Are Motorized Window Shades Worth It?",
+      "word_count": 414,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/book-consultation/",
+      "status": 200,
+      "title": "Book a Free In-Home Consultation | 805 Shutters",
+      "description": "Choose a free in-home consultation time with 805 Shutters for custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings in Ventura County.",
+      "canonical": "https://www.805shutters.com/book-consultation/",
+      "h1_count": 1,
+      "h1": "Book Your Free Window Treatment Consultation",
+      "word_count": 617,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/free-window-treatment-consultation/",
+      "status": 200,
+      "title": "Free Window Treatment Consultation in Ventura County | 805 Shutters",
+      "description": "Request a free in-home consultation for custom shutters, shades, blinds, exterior shades, and commercial window coverings in Ventura County.",
+      "canonical": "https://www.805shutters.com/free-window-treatment-consultation/",
+      "h1_count": 1,
+      "h1": "Free Window Treatment Consultation",
+      "word_count": 506,
+      "jsonld_count": 2,
+      "flags": []
+    },
+    {
+      "path": "/commercial-window-coverings/",
+      "status": 200,
+      "title": "Commercial Window Coverings Ventura County | 805 Shutters",
+      "description": "Commercial window coverings in Ventura County for schools, office buildings, warehouses, storefronts, retail spaces, and property managers. Free shade audit.",
+      "canonical": "https://www.805shutters.com/commercial-window-coverings/",
+      "h1_count": 1,
+      "h1": "Commercial Window Coverings for Ventura County Businesses",
+      "word_count": 1534,
+      "jsonld_count": 2,
+      "flags": []
+    }
+  ]
+}
