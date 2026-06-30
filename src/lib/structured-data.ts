@@ -151,6 +151,69 @@ export function faqPageJsonLd(page: SitePage) {
   };
 }
 
+export function servicePageJsonLd(page: SitePage) {
+  const pageUrl = `${site.baseUrl}${page.path}`;
+  const graph: Record<string, unknown>[] = [
+    {
+      "@type": "Service",
+      "@id": `${pageUrl}#service`,
+      name: page.h1,
+      description: page.description,
+      url: pageUrl,
+      serviceType: page.eyebrow,
+      provider: {
+        "@id": `${site.baseUrl}#local-business`,
+        name: site.name,
+        telephone: site.phone,
+        url: site.baseUrl
+      },
+      areaServed: site.areas.map((area) => ({
+        "@type": "City",
+        name: area
+      }))
+    }
+  ];
+
+  if (page.faqs?.length) {
+    graph.push({
+      "@type": "FAQPage",
+      "@id": `${pageUrl}#faq`,
+      mainEntity: page.faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer
+        }
+      }))
+    });
+  }
+
+  graph.push({
+    "@type": "BreadcrumbList",
+    "@id": `${pageUrl}#breadcrumb`,
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: site.baseUrl
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: page.h1,
+        item: pageUrl
+      }
+    ]
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": graph
+  };
+}
+
 export function answerPageJsonLd(page: AnswerPage) {
   const pageUrl = `${site.baseUrl}${page.path}`;
 

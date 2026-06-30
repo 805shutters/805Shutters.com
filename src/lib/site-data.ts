@@ -14,6 +14,11 @@ export type PageSection = {
   links?: { label: string; href: string }[];
 };
 
+export type PageFaq = {
+  question: string;
+  answer: string;
+};
+
 export type SitePage = {
   path: string;
   title: string;
@@ -29,6 +34,7 @@ export type SitePage = {
     video?: string;
   }[];
   sections: PageSection[];
+  faqs?: PageFaq[];
   cta?: string;
   form?: boolean;
   noIndex?: boolean;
@@ -405,6 +411,23 @@ const parentPages: SitePage[] = [
           { label: "Shutters in Ventura", href: "/shutters/ventura/" }
         ]
       }
+    ],
+    faqs: [
+      {
+        question: "Are plantation shutters a good choice for Ventura County homes?",
+        answer:
+          "Yes. Plantation shutters are a strong fit for many Ventura County homes because they provide durable privacy, adjustable daylight, and a finished built-in look for living rooms, bedrooms, dining rooms, sliding doors, and specialty windows."
+      },
+      {
+        question: "Can shutters be made for arched windows or sliding doors?",
+        answer:
+          "Yes. Custom shutters can be planned for specialty shapes, arched windows, and many sliding door openings. The consultation checks the opening, frame depth, clearance, and daily access before an order is placed."
+      },
+      {
+        question: "What do you review before ordering custom shutters?",
+        answer:
+          "We review window measurements, frame or mount style, material, louver size, color, divider rails, panel swing, handle clearance, privacy goals, light control, and how the shutters should work in the room."
+      }
     ]
   },
   {
@@ -451,6 +474,23 @@ const parentPages: SitePage[] = [
           { label: "Book a shade consultation", href: "/book-consultation/" }
         ]
       }
+    ],
+    faqs: [
+      {
+        question: "Which custom shade is best for glare and privacy?",
+        answer:
+          "The best shade depends on the room. Roller and solar shades are strong for glare and large glass, honeycomb shades add softness and insulation, woven shades add texture, and room-darkening fabrics help bedrooms and media rooms."
+      },
+      {
+        question: "Do you offer motorized window shades?",
+        answer:
+          "Yes. Motorized shades can be discussed for tall windows, hard-to-reach openings, repeated windows, and rooms where grouped shade control would make daily use easier."
+      },
+      {
+        question: "Can I compare roller, honeycomb, Roman, and woven shades in one visit?",
+        answer:
+          "Yes. A consultation can compare shade styles, fabric opacity, color, privacy, view-through, control side, mounting depth, and room-darkening needs before a final recommendation is made."
+      }
     ]
   },
   {
@@ -496,6 +536,23 @@ const parentPages: SitePage[] = [
           { label: "Blinds in Simi Valley", href: "/blinds/simi-valley-ca/" }
         ]
       }
+    ],
+    faqs: [
+      {
+        question: "What types of custom blinds do you install?",
+        answer:
+          "805 Shutters installs custom blinds including wood blinds, faux wood blinds, aluminum blinds, vertical blinds, and softwood options for homes, offices, rentals, and commercial spaces."
+      },
+      {
+        question: "Are faux wood blinds good for busy rooms?",
+        answer:
+          "Faux wood blinds are often a practical choice for busy rooms because they provide adjustable privacy and light control with a durable finish that is easier to maintain than some natural materials."
+      },
+      {
+        question: "Can you replace blinds in rentals, offices, or commercial spaces?",
+        answer:
+          "Yes. We can review replacement blind needs for homes, rentals, offices, and commercial spaces, including product consistency, durability, mounting details, window count, and budget."
+      }
     ]
   },
   {
@@ -536,6 +593,23 @@ const parentPages: SitePage[] = [
         body:
           "The consultation covers room goals, fabric direction, privacy, light control, hardware, measurements, and how drapery fits with the rest of the home."
       }
+    ],
+    faqs: [
+      {
+        question: "Can drapery be layered with shutters, shades, or blinds?",
+        answer:
+          "Yes. Drapery can be layered with shades, shutters, or blinds when a room needs more softness, a finished designer look, extra privacy, or stronger room-darkening support."
+      },
+      {
+        question: "What is reviewed during a custom drapery consultation?",
+        answer:
+          "The consultation reviews room goals, fabric direction, fullness, hardware, measurements, stacking space, privacy, light control, and how the drapery should coordinate with nearby window treatments and furniture."
+      },
+      {
+        question: "Can custom drapery help with room darkening?",
+        answer:
+          "Yes. Depending on fabric, lining, mounting, and how the panels overlap the opening, custom drapery can help improve room darkening and privacy."
+      }
     ]
   },
   {
@@ -575,6 +649,23 @@ const parentPages: SitePage[] = [
         heading: "Measured For The Opening",
         body:
           "The consultation covers the opening, mounting conditions, exposure, fabric direction, operation preferences, and how the shade should perform throughout the day."
+      }
+    ],
+    faqs: [
+      {
+        question: "Where do exterior shades work best?",
+        answer:
+          "Exterior shades can work well around patios, outdoor rooms, sliding doors, glass walls, and large openings where sun exposure, glare, heat, or privacy make the space harder to use."
+      },
+      {
+        question: "Can exterior shades help with heat and glare?",
+        answer:
+          "Yes. Exterior shades can reduce direct sun exposure and soften glare before the light reaches the interior or outdoor living area, depending on the opening, fabric, and mounting conditions."
+      },
+      {
+        question: "What do you review before ordering outdoor shades?",
+        answer:
+          "We review the opening, mounting structure, sun direction, wind exposure, privacy goals, fabric direction, operation preference, and how the shade should perform during the brightest parts of the day."
       }
     ]
   },
@@ -620,6 +711,23 @@ const parentPages: SitePage[] = [
         heading: "Best Product By Room Type",
         body:
           "Bedrooms usually need privacy and room-darkening support, kitchens need durable materials and easy cleaning, living rooms often need flexible daylight control, and offices need glare reduction for screens. We use those room-by-room details to narrow the best window treatment before final color, material, and control decisions."
+      }
+    ],
+    faqs: [
+      {
+        question: "How do I choose between shutters, shades, blinds, and drapery?",
+        answer:
+          "The best choice depends on the room, privacy needs, light control, cleaning expectations, budget, and the finished look you want. A consultation can compare the options side by side before anything is ordered."
+      },
+      {
+        question: "Can one consultation cover several window treatment types?",
+        answer:
+          "Yes. One visit can compare shutters, shades, blinds, drapery, exterior shades, and commercial window treatments so each room gets the product that fits the actual goal."
+      },
+      {
+        question: "Do you install window treatments for both homes and businesses?",
+        answer:
+          "Yes. 805 Shutters works with homeowners and businesses across Ventura County, including residential rooms, offices, storefronts, medical spaces, schools, and shared workspaces."
       }
     ]
   },
@@ -671,6 +779,23 @@ const parentPages: SitePage[] = [
         heading: "What Counts As A Window Covering",
         body:
           "Customers often use window coverings as a broad search term for anything installed at the window. For 805 Shutters, that can include plantation shutters, roller shades, honeycomb shades, woven shades, Roman shades, wood blinds, faux wood blinds, vertical blinds, drapery, exterior shades, and commercial shade systems."
+      }
+    ],
+    faqs: [
+      {
+        question: "What is the difference between window treatments and window coverings?",
+        answer:
+          "Customers often use both terms for products installed at the window. Window coverings usually refers broadly to shutters, shades, blinds, drapery, exterior shades, and commercial shade systems."
+      },
+      {
+        question: "Do you install residential and commercial window coverings?",
+        answer:
+          "Yes. 805 Shutters installs residential window coverings for homes and commercial window coverings for offices, storefronts, schools, medical spaces, restaurants, and shared workspaces."
+      },
+      {
+        question: "Can you help plan window coverings room by room?",
+        answer:
+          "Yes. We can compare product type, privacy, light control, durability, color, control options, maintenance, and budget room by room before final measuring."
       }
     ]
   },

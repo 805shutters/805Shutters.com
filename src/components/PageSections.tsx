@@ -551,6 +551,35 @@ function SectionLinks({ links }: { links?: { label: string; href: string }[] }) 
   );
 }
 
+function PageFaqSection({
+  faqs,
+  heading = "Common questions before a free consultation"
+}: {
+  faqs?: SitePage["faqs"];
+  heading?: string;
+}) {
+  if (!faqs?.length) {
+    return null;
+  }
+
+  return (
+    <section className="page-faq-band">
+      <div className="content-wrap page-faq-head">
+        <p className="eyebrow">FAQ</p>
+        <h2>{heading}</h2>
+      </div>
+      <div className="content-wrap page-faq-grid">
+        {faqs.map((faq) => (
+          <article className="page-faq-item" key={faq.question}>
+            <h3>{faq.question}</h3>
+            <p>{faq.answer}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 type ShutterOption = {
   label: string;
   image: string;
@@ -856,6 +885,8 @@ export function PageSections({ page }: { page: SitePage }) {
         ))}
       </section>
 
+      <PageFaqSection faqs={activePage.faqs} />
+
       {activePage.form ? (
         <section className="form-band">
           <div className="content-wrap form-layout">
@@ -1010,6 +1041,8 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
           </ul>
         </div>
       </section>
+
+      <PageFaqSection faqs={page.faqs} heading="Common shutter questions" />
 
       <section className="cta-band">
         <div className="content-wrap cta-layout">

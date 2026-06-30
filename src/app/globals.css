@@ -2640,6 +2640,45 @@ button:hover {
   border-color: var(--accent);
 }
 
+.page-faq-band {
+  padding: clamp(48px, 7vw, 84px) 0;
+  background: var(--soft);
+}
+
+.page-faq-head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.page-faq-head h2 {
+  max-width: 760px;
+}
+
+.page-faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.page-faq-item {
+  padding: 26px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.page-faq-item h3 {
+  margin: 0 0 10px;
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  letter-spacing: 0;
+}
+
+.page-faq-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .form-band {
   background: var(--soft);
 }

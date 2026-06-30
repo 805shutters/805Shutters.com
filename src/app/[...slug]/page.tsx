@@ -2,7 +2,12 @@ import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
 import { allPages, commercialCityName, getPageBySlug, ogDefaults, site, slugForPath } from "@/lib/site-data";
-import { commercialSubPageJsonLd, commercialWindowCoveringsJsonLd, faqPageJsonLd } from "@/lib/structured-data";
+import {
+  commercialSubPageJsonLd,
+  commercialWindowCoveringsJsonLd,
+  faqPageJsonLd,
+  servicePageJsonLd
+} from "@/lib/structured-data";
 
 type PageProps = {
   params: Promise<{
@@ -63,7 +68,9 @@ export default async function DynamicPage({ params }: PageProps) {
         ? commercialSubPageJsonLd(page, commercialCityName(page.path))
         : page.path === "/faq/"
           ? faqPageJsonLd(page)
-          : null;
+          : page.faqs?.length
+            ? servicePageJsonLd(page)
+            : null;
 
   return (
     <>
