@@ -3817,9 +3817,8 @@ function JobTrackingView({
           style={jobTrackingNodeStyle(completeBucket, maxCount)}
           onClick={() => openBucket(completeBucket)}
         >
-          <span className="crm-job-tracking-stage">Completed Orders</span>
+          <span className="crm-job-tracking-stage">Complete</span>
           <strong>{completeBucket.items.length}</strong>
-          <em>{completeBucket.detail}</em>
           <span className="crm-job-tracking-fill" aria-hidden="true" />
           <span className="crm-job-tracking-value">{toCurrency(completeBucket.totalValue)}</span>
           <ul>
