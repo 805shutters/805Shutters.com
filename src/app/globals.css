@@ -4985,6 +4985,18 @@ body.qb-fullscreen .crm-app-shell {
   color: #ffffff;
 }
 
+.crm-calendar-event-block--post-sold {
+  background: #157f3b;
+  border-color: #0f6a31;
+  color: #ffffff;
+}
+
+.crm-calendar-event-block--post-unsold {
+  background: #f4c43f;
+  border-color: #b58200;
+  color: #171717;
+}
+
 .crm-calendar-event-block--block {
   background: #e5e4e2;
   border-color: #b8b6ae;
@@ -5053,6 +5065,11 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-calendar-event-block--block .crm-calendar-event-owner-badge {
+  background: rgba(17, 17, 17, 0.08);
+  border-color: rgba(17, 17, 17, 0.18);
+}
+
+.crm-calendar-event-block--post-unsold .crm-calendar-event-owner-badge {
   background: rgba(17, 17, 17, 0.08);
   border-color: rgba(17, 17, 17, 0.18);
 }
@@ -5204,6 +5221,18 @@ button.crm-calendar-month-event:focus-visible {
 .crm-calendar-month-event.crm-calendar-event-block--jessica {
   background: #111111;
   border-color: #0b0b0b;
+}
+
+.crm-calendar-month-event.crm-calendar-event-block--post-sold {
+  background: #157f3b;
+  border-color: #0f6a31;
+  color: #ffffff;
+}
+
+.crm-calendar-month-event.crm-calendar-event-block--post-unsold {
+  background: #f4c43f;
+  border-color: #b58200;
+  color: #171717;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--block {

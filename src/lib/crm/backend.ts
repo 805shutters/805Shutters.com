@@ -933,7 +933,8 @@ export function enrichCalendarEventsWithJobDetails(events: CrmCalendarEvent[], j
       customer_address: event.location || job.address,
       customer_city: job.city,
       product_interest: job.product_interest,
-      customer_notes: event.notes || job.notes
+      customer_notes: event.notes || job.notes,
+      job_status: job.status
     };
   });
 }

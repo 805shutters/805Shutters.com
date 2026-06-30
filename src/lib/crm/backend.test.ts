@@ -980,7 +980,8 @@ describe("enrichCalendarEventsWithJobDetails", () => {
       customer_address: "340 Green Moor Place",
       customer_city: "Thousand Oaks",
       product_interest: "Shutters",
-      customer_notes: "4 shutters"
+      customer_notes: "4 shutters",
+      job_status: "scheduled"
     });
   });
 });

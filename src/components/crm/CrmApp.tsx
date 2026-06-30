@@ -415,6 +415,19 @@ function canRescheduleCalendarEvent(event: CrmCalendarEvent) {
   return isActiveCalendarEvent(event) && event.event_type !== "block";
 }
 
+const soldCalendarJobStatuses = new Set<CrmJobStatus>(["sold", "ordered", "installed", "invoiced", "closed"]);
+
+function isPastCalendarEvent(event: CrmCalendarEvent) {
+  return new Date(event.end_at) <= new Date();
+}
+
+function calendarEventCompletionToneClassName(event: CrmCalendarEvent) {
+  if (event.event_type === "block" || event.status === "canceled" || !isPastCalendarEvent(event)) return "";
+  return soldCalendarJobStatuses.has(event.job_status || "new")
+    ? " crm-calendar-event-block--post-sold"
+    : " crm-calendar-event-block--post-unsold";
+}
+
 function calendarEventToneClassName(event: CrmCalendarEvent) {
   const owner = (event.assigned_to || "").toLowerCase();
   const ownerClass = owner.includes("mike")
@@ -423,8 +436,9 @@ function calendarEventToneClassName(event: CrmCalendarEvent) {
       ? "crm-calendar-event-block--jessica"
       : "crm-calendar-event-block--unassigned";
   const typeClass = event.event_type === "block" ? " crm-calendar-event-block--block" : "";
+  const completionClass = calendarEventCompletionToneClassName(event);
 
-  return `${ownerClass}${typeClass}`;
+  return `${ownerClass}${typeClass}${completionClass}`;
 }
 
 function calendarEventClassName(event: CrmCalendarEvent) {

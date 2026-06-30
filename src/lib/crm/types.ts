@@ -507,6 +507,7 @@ export type CrmCalendarEvent = {
   customer_city?: string | null;
   product_interest?: string | null;
   customer_notes?: string | null;
+  job_status?: CrmJobStatus | null;
 };
 
 export type CrmAvailabilitySlot = {
