@@ -7030,17 +7030,35 @@ body:has(.booking-page--focused) .assistant-widget {
   outline: none;
 }
 
+.booking-page__masthead-copy {
+  display: grid;
+  gap: clamp(10px, 1.4vw, 16px);
+  max-width: 800px;
+}
+
+.booking-page__masthead-copy .eyebrow {
+  color: #555555;
+  letter-spacing: 0.08em;
+}
+
 .booking-page__masthead h1 {
   justify-self: start;
-  max-width: none;
+  max-width: 800px;
   margin: 0;
   color: #111111;
   font-family: var(--font-display);
-  font-size: clamp(62px, 8.2vw, 124px);
+  font-size: clamp(44px, 5.8vw, 82px);
   font-weight: 400;
   letter-spacing: 0;
-  line-height: 0.9;
-  white-space: nowrap;
+  line-height: 0.94;
+}
+
+.booking-page__masthead-copy p:not(.eyebrow) {
+  max-width: 680px;
+  margin: 0;
+  color: #373733;
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.55;
 }
 
 .booking-page__masthead-logo {
@@ -7071,6 +7089,75 @@ body:has(.booking-page--focused) .assistant-widget {
   letter-spacing: 0.02em;
 }
 
+.booking-page__overview,
+.booking-page__details,
+.booking-page__service-area,
+.booking-page__faq {
+  width: min(1240px, calc(100% - 40px));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.booking-page__overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  gap: clamp(24px, 4vw, 64px);
+  align-items: start;
+  padding: clamp(24px, 3vw, 42px) clamp(24px, 3.5vw, 44px);
+  border: 1px solid #111111;
+  border-bottom: 0;
+  background: #f7f7f5;
+}
+
+.booking-page__overview h2,
+.booking-page__section-head h2,
+.booking-page__service-area h2,
+.booking-page__faq h2 {
+  margin: 0;
+  color: #111111;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.4vw, 52px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.booking-page__overview p,
+.booking-page__section-head p:not(.eyebrow),
+.booking-page__service-area p,
+.booking-page__detail-grid p,
+.booking-page__faq-grid p {
+  color: #373733;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.booking-page__overview .eyebrow,
+.booking-page__section-head .eyebrow,
+.booking-page__service-area .eyebrow,
+.booking-page__faq .eyebrow {
+  color: #555555;
+  letter-spacing: 0.08em;
+}
+
+.booking-page__proof-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-page__proof-list li {
+  border: 1px solid #111111;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .booking-panel.booking-panel--page {
   width: min(1240px, calc(100% - 40px));
   max-height: none;
@@ -7081,6 +7168,123 @@ body:has(.booking-page--focused) .assistant-widget {
   overflow: visible;
   background: #ffffff;
   box-shadow: none;
+}
+
+.booking-page__details {
+  display: grid;
+  gap: clamp(20px, 2.5vw, 32px);
+  margin-top: clamp(34px, 5vw, 64px);
+}
+
+.booking-page__section-head {
+  display: grid;
+  gap: 10px;
+  max-width: 880px;
+}
+
+.booking-page__section-head p {
+  margin: 0;
+}
+
+.booking-page__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid #111111;
+  background: #ffffff;
+}
+
+.booking-page__detail-grid article {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 220px;
+  padding: clamp(20px, 2.5vw, 32px);
+}
+
+.booking-page__detail-grid article + article {
+  border-left: 1px solid #111111;
+}
+
+.booking-page__detail-grid h3,
+.booking-page__faq-grid h3 {
+  margin: 0;
+  color: #111111;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.2vw, 34px);
+  font-weight: 400;
+  line-height: 1.05;
+}
+
+.booking-page__detail-grid p,
+.booking-page__faq-grid p {
+  margin: 0;
+}
+
+.booking-page__service-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.78fr);
+  gap: clamp(24px, 4vw, 58px);
+  margin-top: clamp(32px, 5vw, 58px);
+  padding: clamp(24px, 3vw, 42px) clamp(24px, 3.5vw, 44px);
+  border: 1px solid #111111;
+  background: #f7f7f5;
+}
+
+.booking-page__service-area > div {
+  display: grid;
+  gap: 10px;
+}
+
+.booking-page__service-area p {
+  margin: 0;
+}
+
+.booking-page__service-area ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-page__service-area li {
+  border: 1px solid #d8d8d2;
+  padding: 10px 12px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.booking-page__faq {
+  display: grid;
+  gap: clamp(20px, 2.5vw, 32px);
+  margin-top: clamp(32px, 5vw, 58px);
+}
+
+.booking-page__faq-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #111111;
+  background: #ffffff;
+}
+
+.booking-page__faq-grid article {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 190px;
+  padding: clamp(20px, 2.5vw, 32px);
+}
+
+.booking-page__faq-grid article:nth-child(2n) {
+  border-left: 1px solid #111111;
+}
+
+.booking-page__faq-grid article:nth-child(n + 3) {
+  border-top: 1px solid #111111;
 }
 
 .booking-panel--page .booking-panel__head {
@@ -8577,12 +8781,21 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .booking-page__masthead h1 {
-    font-size: clamp(36px, 10.6vw, 48px);
-    line-height: 0.95;
+    font-size: clamp(32px, 9vw, 44px);
+    line-height: 0.98;
+  }
+
+  .booking-page__masthead-copy {
+    gap: 8px;
+  }
+
+  .booking-page__masthead-copy p:not(.eyebrow) {
+    font-size: 14px;
+    line-height: 1.45;
   }
 
   .booking-page__masthead-logo {
-    width: clamp(117px, 33vw, 159px);
+    width: clamp(92px, 27vw, 128px);
   }
 
   .booking-page__intro {
@@ -8595,8 +8808,68 @@ body:has(.booking-page--focused) .assistant-widget {
     line-height: 1;
   }
 
+  .booking-page__overview,
+  .booking-page__details,
+  .booking-page__service-area,
+  .booking-page__faq {
+    width: min(100% - 16px, 620px);
+  }
+
+  .booking-page__overview,
+  .booking-page__service-area {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 20px 18px;
+  }
+
+  .booking-page__overview h2,
+  .booking-page__section-head h2,
+  .booking-page__service-area h2,
+  .booking-page__faq h2 {
+    font-size: 30px;
+    line-height: 1.04;
+  }
+
+  .booking-page__overview p,
+  .booking-page__section-head p:not(.eyebrow),
+  .booking-page__service-area p,
+  .booking-page__detail-grid p,
+  .booking-page__faq-grid p {
+    font-size: 15px;
+  }
+
+  .booking-page__proof-list li,
+  .booking-page__service-area li {
+    font-size: 12px;
+  }
+
   .booking-panel--page {
     width: min(100% - 16px, 620px);
+  }
+
+  .booking-page__detail-grid,
+  .booking-page__faq-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-page__detail-grid article,
+  .booking-page__faq-grid article {
+    min-height: 0;
+    padding: 20px 18px;
+  }
+
+  .booking-page__detail-grid article + article,
+  .booking-page__faq-grid article:nth-child(2n) {
+    border-left: 0;
+  }
+
+  .booking-page__detail-grid article + article,
+  .booking-page__faq-grid article:nth-child(n + 2) {
+    border-top: 1px solid #111111;
+  }
+
+  .booking-page__service-area ul {
+    grid-template-columns: 1fr;
   }
 
   .booking-panel {

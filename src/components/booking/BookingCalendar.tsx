@@ -340,7 +340,7 @@ export function BookingCalendar({
         <>
           <div className="booking-project-panel">
             <div>
-              <h3>Do you know which type of product your interested in? (optional)</h3>
+              <h3>Do you know which type of product you're interested in? (optional)</h3>
             </div>
 
             <fieldset className="booking-product-options" aria-label="Product interest">

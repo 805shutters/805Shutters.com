@@ -1,32 +1,32 @@
 # 805 Shutters SEO scorecard
 
-Generated: 2026-06-30T19:11:17Z
-Current snapshot: Current local Next build
-Verdict: Improving: more crawl metrics improved than regressed
+Generated: 2026-06-30T20:14:14Z
+Current snapshot: Step 10 local Next build
+Verdict: Improving: crawl issue count is clean
 
 ## Crawl Trend
 
 | Metric | Previous | Current | Delta | Status |
 | --- | --- | --- | --- | --- |
 | h1_count | 13 | 0 | -13 | better |
-| indexable_flagged_pages | 17 | 1 | -16 | better |
-| indexable_issue_total | 33 | 1 | -32 | better |
+| indexable_flagged_pages | 17 | 0 | -17 | better |
+| indexable_issue_total | 33 | 0 | -33 | better |
 | indexable_pages | 86 | 105 | +19 | up |
 | indexable_pages_with_http_assets | 0 | 0 | +0 | flat |
 | indexable_pages_with_missing_alt | 10 | 0 | -10 | better |
 | indexable_pages_with_vague_links | 1 | 0 | -1 | better |
 | missing_alt | 10 | 0 | -10 | better |
 | sitemap_urls | 86 | 105 | +19 | up |
-| thin_indexable_content | 9 | 1 | -8 | better |
+| thin_indexable_content | 9 | 0 | -9 | better |
 | vague_links | 1 | 0 | -1 | better |
 
 ## Current Crawl Health
 
-- Audit generated: 2026-06-30T19:10:40Z
-- Base URL: http://127.0.0.1:3059
+- Audit generated: 2026-06-30T20:14:14Z
+- Base URL: http://127.0.0.1:3061
 - Sitemap URLs: 105
-- Indexable flagged pages: 1
-- Indexable issue total: 1
+- Indexable flagged pages: 0
+- Indexable issue total: 0
 
 ## Priority Money Pages
 
@@ -34,7 +34,7 @@ Verdict: Improving: more crawl metrics improved than regressed
 | --- | --- | --- | --- | --- |
 | / | 200 | 1027 | 1 | clean |
 | /free-window-treatment-consultation/ | 200 | 487 | 1 | clean |
-| /book-consultation/ | 200 | 143 | 1 | thin_indexable_content |
+| /book-consultation/ | 200 | 601 | 1 | clean |
 | /shutters/ | 200 | 1169 | 1 | clean |
 | /shades/ | 200 | 742 | 1 | clean |
 | /blinds/ | 200 | 724 | 1 | clean |

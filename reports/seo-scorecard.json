@@ -1,13 +1,11 @@
 {
   "current_audit": {
-    "base_url": "http://127.0.0.1:3059",
-    "generated_at": "2026-06-30T19:10:40Z",
-    "indexable_flagged_pages": 1,
-    "indexable_issue_total": 1,
+    "base_url": "http://127.0.0.1:3061",
+    "generated_at": "2026-06-30T20:14:14Z",
+    "indexable_flagged_pages": 0,
+    "indexable_issue_total": 0,
     "indexable_pages": 105,
-    "issue_counts": {
-      "thin_indexable_content": 1
-    },
+    "issue_counts": {},
     "sitemap_urls": 105,
     "summary": {
       "accessible_noindex_posts_sampled": 0,
@@ -19,8 +17,8 @@
       "wp_posts": 0
     }
   },
-  "current_label": "Current local Next build",
-  "generated_at": "2026-06-30T19:11:17Z",
+  "current_label": "Step 10 local Next build",
+  "generated_at": "2026-06-30T20:14:14Z",
   "lighthouse": {
     "desktop": {
       "accessibility": 84,
@@ -44,15 +42,15 @@
       "status": "better"
     },
     {
-      "current": 1,
-      "delta": -16,
+      "current": 0,
+      "delta": -17,
       "metric": "indexable_flagged_pages",
       "previous": 17,
       "status": "better"
     },
     {
-      "current": 1,
-      "delta": -32,
+      "current": 0,
+      "delta": -33,
       "metric": "indexable_issue_total",
       "previous": 33,
       "status": "better"
@@ -100,8 +98,8 @@
       "status": "up"
     },
     {
-      "current": 1,
-      "delta": -8,
+      "current": 0,
+      "delta": -9,
       "metric": "thin_indexable_content",
       "previous": 9,
       "status": "better"
@@ -163,13 +161,11 @@
       "word_count": 487
     },
     {
-      "flags": [
-        "thin_indexable_content"
-      ],
+      "flags": [],
       "h1_count": 1,
       "path": "/book-consultation/",
       "status": 200,
-      "word_count": 143
+      "word_count": 601
     },
     {
       "flags": [],
@@ -291,5 +287,5 @@
       "word_count": 535
     }
   ],
-  "verdict": "Improving: more crawl metrics improved than regressed"
+  "verdict": "Improving: crawl issue count is clean"
 }
