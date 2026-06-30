@@ -18,6 +18,7 @@
     "audit:site": "python3 scripts/audit_site.py --base-url https://www.805shutters.com --output reports/site-audit.json --markdown reports/site-audit.md --post-sample 20 --workers 8",
     "audit:seo-scorecard": "python3 scripts/seo_scorecard.py --audit reports/site-audit.json --parity reports/seo-parity-audit.json --lighthouse-mobile reports/lighthouse-home-mobile.json --lighthouse-desktop reports/lighthouse-home-desktop.json --output reports/seo-scorecard.md --json reports/seo-scorecard.json",
     "audit:llm-search": "python3 scripts/audit_llm_search.py --base-url https://www.805shutters.com --output reports/llm-search-readiness.md --json reports/llm-search-readiness.json",
+    "indexnow:submit": "python3 scripts/submit_indexnow.py --base-url https://www.805shutters.com",
     "migration:inventory": "python3 scripts/generate_migration_inventory.py"
   },
   "dependencies": {
