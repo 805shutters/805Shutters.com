@@ -404,7 +404,7 @@ describe("buildDashboardData", () => {
       installationInvoiceEmails: [],
       kenPayments: [],
       openingBalance: 0,
-      payoffTarget: 450000
+      payoffTarget: 500000
     });
 
     expect(data.summary.openJobs).toBe(3);
@@ -604,7 +604,7 @@ describe("partner payment write rules", () => {
     await expect(
       updateCrmSettings(
         {} as never,
-        { payoff_target: 450000, ken_opening_balance: 0 },
+        { payoff_target: 500000, ken_opening_balance: 0 },
         { email: "khill31@msn.com" }
       )
     ).rejects.toBeInstanceOf(CrmAuthError);

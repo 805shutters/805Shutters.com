@@ -74,12 +74,12 @@ create table if not exists public.crm_settings (
 );
 
 insert into public.crm_settings (key, value) values
-  ('payoff_target', 450000),
+  ('payoff_target', 500000),
   ('ken_opening_balance', 0)
 on conflict (key) do nothing;
 
 insert into public.crm_settings (key, value)
-values ('payoff_target', 450000)
+values ('payoff_target', 500000)
 on conflict (key) do update
 set value = excluded.value,
     updated_at = now();

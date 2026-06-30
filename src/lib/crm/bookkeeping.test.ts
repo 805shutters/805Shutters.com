@@ -890,9 +890,9 @@ describe("buildKenPayoffSummary", () => {
     });
     expect(summary.recordedPayments).toBe(75000);
     expect(summary.kenPaid).toBe(175000);
-    expect(summary.payoffTarget).toBe(450000);
-    expect(summary.payoffRemaining).toBe(275000);
-    expect(summary.payoffPct).toBe(38.9);
+    expect(summary.payoffTarget).toBe(500000);
+    expect(summary.payoffRemaining).toBe(325000);
+    expect(summary.payoffPct).toBe(35);
     expect(summary.isPaidOff).toBe(false);
   });
 
@@ -913,21 +913,22 @@ describe("buildKenPayoffSummary", () => {
     expect(summary.payoffPct).toBe(100);
   });
 
-  it("uses the fixed buyout target even when a stale settings target is present", () => {
+  it("uses the fixed buyout target and subtracts Ken's corrected payment", () => {
     const summary = buildKenPayoffSummary({
       rows: [],
-      payments: [kenPayment({ amount: 19231.58 })],
-      payoffTarget: 500000
+      payments: [kenPayment({ amount: 3778 })],
+      payoffTarget: 450000
     });
-    expect(summary.payoffTarget).toBe(450000);
-    expect(summary.payoffRemaining).toBe(430768.42);
-    expect(summary.payoffPct).toBe(4.3);
+    expect(summary.payoffTarget).toBe(500000);
+    expect(summary.kenPaid).toBe(3778);
+    expect(summary.payoffRemaining).toBe(496222);
+    expect(summary.payoffPct).toBe(0.8);
   });
 
   it("defaults the target to the business payoff constant", () => {
     const summary = buildKenPayoffSummary({ rows: [], payments: [] });
     expect(summary.payoffTarget).toBe(BUSINESS_PAYOFF_TARGET);
-    expect(BUSINESS_PAYOFF_TARGET).toBe(450000);
+    expect(BUSINESS_PAYOFF_TARGET).toBe(500000);
   });
 });
 
