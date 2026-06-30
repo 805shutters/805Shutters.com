@@ -17,6 +17,7 @@ from urllib.request import Request, urlopen
 
 DEFAULT_REQUIRED_PATHS = [
     "/llms.txt",
+    "/window-treatment-comparison-guide/",
     "/best-window-treatments-ventura-county/",
     "/plantation-shutters-vs-shades-ventura-county/",
     "/custom-blinds-shades-shutters-camarillo/",

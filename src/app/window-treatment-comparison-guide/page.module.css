@@ -1,0 +1,262 @@
+.page {
+  background: #fbfbfa;
+  color: #0b0b0b;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.62fr);
+  gap: clamp(24px, 4vw, 54px);
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(34px, 5vw, 64px) 0 clamp(44px, 6vw, 78px);
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 13px;
+  color: #7d7a72;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.hero h1,
+.sectionHeader h2,
+.localBand h2 {
+  margin: 0;
+  color: #0b0b0b;
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.hero h1 {
+  max-width: 840px;
+  font-size: clamp(42px, 5vw, 68px);
+}
+
+.heroCopy p:not(.eyebrow) {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: #3a3a36;
+  font-size: clamp(17px, 1.5vw, 20px);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.heroMedia {
+  margin: 0;
+  border: 1px solid #d8d8d2;
+  background: #ffffff;
+}
+
+.heroMedia img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.heroMedia figcaption {
+  padding: 14px 16px 16px;
+  color: #5b5b58;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.matrixSection,
+.questionBand,
+.localBand {
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+}
+
+.matrixSection {
+  padding-bottom: clamp(44px, 7vw, 84px);
+}
+
+.sectionHeader {
+  max-width: 760px;
+  margin-bottom: clamp(20px, 4vw, 36px);
+}
+
+.sectionHeader h2,
+.localBand h2 {
+  font-size: clamp(34px, 5vw, 64px);
+}
+
+.matrix {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  border-top: 1px solid #d8d8d2;
+  border-left: 1px solid #d8d8d2;
+  background: #ffffff;
+}
+
+.matrixHeader {
+  border-right: 1px solid #d8d8d2;
+  border-bottom: 1px solid #d8d8d2;
+  background: #f0efeb;
+  padding: 12px 14px;
+  color: #4d4d48;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.matrixRow {
+  display: contents;
+}
+
+.matrixRow > div,
+.matrixRow > p {
+  border-right: 1px solid #d8d8d2;
+  border-bottom: 1px solid #d8d8d2;
+  margin: 0;
+  padding: 18px 16px;
+}
+
+.matrixRow h3 {
+  margin: 0 0 10px;
+  color: #0b0b0b;
+  font-size: 1.06rem;
+  line-height: 1.22;
+}
+
+.matrixRow a {
+  color: #0b0b0b;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.matrixRow p {
+  color: #4d4d48;
+  font-size: 0.96rem;
+  line-height: 1.55;
+}
+
+.questionBand {
+  padding: clamp(48px, 7vw, 88px) 0;
+  border-top: 1px solid #d8d8d2;
+  border-bottom: 1px solid #d8d8d2;
+}
+
+.questionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.questionCard {
+  border: 1px solid #d8d8d2;
+  background: #ffffff;
+  padding: clamp(20px, 3vw, 28px);
+}
+
+.questionCard h3 {
+  margin: 0 0 12px;
+  color: #0b0b0b;
+  font-size: 1.05rem;
+  line-height: 1.24;
+}
+
+.questionCard p,
+.localFacts p {
+  margin: 0;
+  color: #4d4d48;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.localBand {
+  display: grid;
+  grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+  gap: clamp(24px, 5vw, 64px);
+  padding: clamp(48px, 7vw, 88px) 0;
+}
+
+.localFacts {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 940px) {
+  .hero,
+  .localBand {
+    grid-template-columns: 1fr;
+  }
+
+  .heroMedia img {
+    aspect-ratio: 16 / 9;
+  }
+
+  .matrix,
+  .matrixRow {
+    display: block;
+  }
+
+  .matrixHeader {
+    display: none;
+  }
+
+  .matrixRow {
+    border-bottom: 1px solid #d8d8d2;
+  }
+
+  .matrixRow > div,
+  .matrixRow > p {
+    border-bottom: 0;
+  }
+
+  .matrixRow > p {
+    padding-top: 0;
+  }
+
+  .questionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .hero,
+  .matrixSection,
+  .questionBand,
+  .localBand {
+    width: min(100% - 28px, 620px);
+  }
+
+  .hero {
+    padding-top: 42px;
+    padding-bottom: 84px;
+  }
+
+  .matrixSection {
+    padding-top: 96px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 12vw, 58px);
+  }
+
+  .actions,
+  .questionGrid {
+    display: grid;
+  }
+
+  .questionGrid {
+    grid-template-columns: 1fr;
+  }
+}

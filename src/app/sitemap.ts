@@ -7,6 +7,7 @@ import { allPages, site } from "@/lib/site-data";
 // <lastmod> honest — a sitemap that claims every page changed "right now" on
 // every crawl trains Google to ignore the lastmod signal.
 const CONTENT_LAST_UPDATED = new Date("2026-06-30");
+const COMPARISON_GUIDE_PATH = "/window-treatment-comparison-guide/";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const pageEntries: MetadataRoute.Sitemap = allPages.filter((page) => !page.noIndex).map((page) => {
@@ -28,6 +29,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9
   };
 
+  const comparisonGuideEntry: MetadataRoute.Sitemap[number] = {
+    url: `${site.baseUrl}${COMPARISON_GUIDE_PATH}`,
+    lastModified: CONTENT_LAST_UPDATED,
+    changeFrequency: "monthly",
+    priority: 0.86
+  };
+
   const answerEntries: MetadataRoute.Sitemap = answerPages.map((page) => ({
     url: `${site.baseUrl}${page.path}`,
     lastModified: new Date(page.updated),
@@ -35,5 +43,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.82
   }));
 
-  return [...pageEntries, ...answerEntries, bookingEntry];
+  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry];
 }
