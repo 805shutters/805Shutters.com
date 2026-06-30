@@ -1,0 +1,41 @@
+{
+  "by_family": {},
+  "by_label": {},
+  "by_path": {},
+  "by_priority_path": {
+    "/best-window-treatments-ventura-county/": 0,
+    "/book-consultation/": 0,
+    "/commercial-roller-shades-ventura-county/": 0,
+    "/commercial-window-coverings/": 0,
+    "/custom-blinds-shades-shutters-camarillo/": 0,
+    "/free-window-treatment-consultation/": 0,
+    "/llms.txt": 0,
+    "/motorized-window-shades-ventura-county/": 0,
+    "/plantation-shutters-vs-shades-ventura-county/": 0,
+    "/sliding-door-window-treatments-ventura-county/": 0,
+    "/window-treatment-comparison-guide/": 0
+  },
+  "crawler_event_count": 0,
+  "event_count": 0,
+  "generated_at": "2026-06-30T23:25:56Z",
+  "missing_priority_hits": [
+    "/llms.txt",
+    "/window-treatment-comparison-guide/",
+    "/best-window-treatments-ventura-county/",
+    "/plantation-shutters-vs-shades-ventura-county/",
+    "/custom-blinds-shades-shutters-camarillo/",
+    "/commercial-roller-shades-ventura-county/",
+    "/sliding-door-window-treatments-ventura-county/",
+    "/motorized-window-shades-ventura-county/",
+    "/book-consultation/",
+    "/free-window-treatment-consultation/",
+    "/commercial-window-coverings/"
+  ],
+  "recent_events": [],
+  "referrer_event_count": 0,
+  "referrers": {},
+  "source_count": 0,
+  "sources": [],
+  "status_counts": {},
+  "verdict": "No source logs found"
+}
