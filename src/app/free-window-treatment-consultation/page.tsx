@@ -104,17 +104,109 @@ const faqs = [
   }
 ];
 
-const faqJsonLd = {
+const consultationJsonLd = {
   "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: faqs.map((item) => ({
-    "@type": "Question",
-    name: item.question,
-    acceptedAnswer: {
-      "@type": "Answer",
-      text: item.answer
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": `${site.baseUrl}/free-window-treatment-consultation/#webpage`,
+      url: `${site.baseUrl}/free-window-treatment-consultation/`,
+      name: metadata.title,
+      description: metadata.description,
+      isPartOf: {
+        "@type": "WebSite",
+        "@id": `${site.baseUrl}#website`,
+        name: site.name,
+        url: site.baseUrl
+      },
+      mainEntity: {
+        "@id": `${site.baseUrl}/free-window-treatment-consultation/#service`
+      },
+      potentialAction: {
+        "@type": "CommunicateAction",
+        name: "Request a free window treatment consultation",
+        target: `${site.baseUrl}/free-window-treatment-consultation/#consultation-form`
+      }
+    },
+    {
+      "@type": "Service",
+      "@id": `${site.baseUrl}/free-window-treatment-consultation/#service`,
+      name: "Free in-home window treatment consultation",
+      description:
+        "Free Ventura County consultation to compare custom shutters, shades, blinds, exterior shades, drapery, and commercial window coverings.",
+      serviceType: [
+        "Window treatment consultation",
+        "Custom shutters",
+        "Window shades",
+        "Custom blinds",
+        "Commercial window coverings"
+      ],
+      provider: {
+        "@id": `${site.baseUrl}#local-business`
+      },
+      areaServed: site.areas.map((area) => ({
+        "@type": "City",
+        name: area
+      })),
+      offers: {
+        "@type": "Offer",
+        name: "Free in-home consultation",
+        price: "0",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        url: `${site.baseUrl}/free-window-treatment-consultation/`
+      }
+    },
+    {
+      "@type": "OfferCatalog",
+      "@id": `${site.baseUrl}/free-window-treatment-consultation/#consultation-options`,
+      name: "Window treatment consultation product categories",
+      itemListElement: productPaths.map((product) => ({
+        "@type": "Offer",
+        name: product.title,
+        url: `${site.baseUrl}${product.href}`,
+        itemOffered: {
+          "@type": ["Product", "Service"],
+          name: product.title,
+          description: product.body,
+          category: "Window treatment",
+          provider: {
+            "@id": `${site.baseUrl}#local-business`
+          }
+        }
+      }))
+    },
+    {
+      "@type": "FAQPage",
+      "@id": `${site.baseUrl}/free-window-treatment-consultation/#faq`,
+      mainEntity: faqs.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer
+        }
+      }))
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${site.baseUrl}/free-window-treatment-consultation/#breadcrumb`,
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Home",
+          item: site.baseUrl
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Free Window Treatment Consultation",
+          item: `${site.baseUrl}/free-window-treatment-consultation/`
+        }
+      ]
     }
-  }))
+  ]
 };
 
 export default function FreeWindowTreatmentConsultationPage() {
@@ -123,7 +215,7 @@ export default function FreeWindowTreatmentConsultationPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(faqJsonLd)
+          __html: JSON.stringify(consultationJsonLd)
         }}
       />
 
