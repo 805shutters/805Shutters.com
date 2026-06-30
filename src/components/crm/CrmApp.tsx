@@ -3319,14 +3319,14 @@ type JobTrackingBucket = JobTrackingStage & {
 
 const JOB_TRACKING_STAGES: JobTrackingStage[] = [
   { id: "scheduled", label: "Scheduled", detail: "Booked consultations", color: "#256f78", angle: -90 },
-  { id: "need_follow_up", label: "Need Follow Up (not sold)", detail: "Open leads and unsold quotes", color: "#8a6f28", angle: -50 },
-  { id: "sold_need_deposit", label: "Sold / Need Deposit", detail: "Signed and waiting on deposit", color: "#ad4f2f", angle: -10 },
-  { id: "need_measure", label: "Need Measure", detail: "Deposit in, measure pending", color: "#6f4fa1", angle: 30 },
-  { id: "need_to_order", label: "Need to Order", detail: "Ready for vendor order", color: "#2e7d45", angle: 70 },
-  { id: "ordered", label: "Ordered", detail: "Order email or ordered status", color: "#1f5f9a", angle: 110 },
-  { id: "shipped", label: "Shipped", detail: "Shipping/received signal", color: "#008178", angle: 150 },
-  { id: "balance_needed", label: "Balance Needed", detail: "Installed or invoiced with balance", color: "#9a3d57", angle: 190 },
-  { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: 230 }
+  { id: "need_follow_up", label: "Need Follow Up (not sold)", detail: "Open leads and unsold quotes", color: "#8a6f28", angle: -130 },
+  { id: "sold_need_deposit", label: "Sold/Need deposit(customer signed email)", detail: "Signed and waiting on deposit", color: "#ad4f2f", angle: -170 },
+  { id: "need_measure", label: "Need Measure (after deposit)", detail: "Deposit in, measure pending", color: "#6f4fa1", angle: -210 },
+  { id: "need_to_order", label: "Need to order", detail: "Ready for vendor order", color: "#2e7d45", angle: -250 },
+  { id: "ordered", label: "Ordered", detail: "Order email or ordered status", color: "#1f5f9a", angle: -290 },
+  { id: "shipped", label: "Shipped", detail: "Shipping/received signal", color: "#008178", angle: -330 },
+  { id: "balance_needed", label: "Balance Needed", detail: "Installed or invoiced with balance", color: "#9a3d57", angle: -370 },
+  { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: -410 }
 ];
 
 const JOB_TRACKING_WHEEL_BACKGROUND = `conic-gradient(${JOB_TRACKING_STAGES.map((stage, index) => {
@@ -3775,7 +3775,6 @@ function JobTrackingView({
             >
               <span className="crm-job-tracking-stage">{bucket.label}</span>
               <strong>{bucket.items.length}</strong>
-              <em>{bucket.detail}</em>
               <span className="crm-job-tracking-fill" aria-hidden="true" />
               <span className="crm-job-tracking-value">{toCurrency(bucket.totalValue)}</span>
               <ul>
