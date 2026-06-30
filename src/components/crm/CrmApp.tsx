@@ -711,6 +711,7 @@ export function CrmApp({
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [calendarManagementMode, setCalendarManagementMode] = useState<CalendarManagementMode>("appointments");
   const [selectedCalendarSlot, setSelectedCalendarSlot] = useState<CalendarSlotSelection | null>(null);
+  const [viewingCalendarEvent, setViewingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [cancelingCalendarEvent, setCancelingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
@@ -1462,6 +1463,7 @@ export function CrmApp({
         })
       });
       setCancelingCalendarEvent(null);
+      setViewingCalendarEvent(null);
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Appointment could not be canceled.");
@@ -2403,9 +2405,8 @@ export function CrmApp({
                 onDateChange={setCalendarDate}
                 onViewChange={setCalendarView}
                 onSelectSlot={setSelectedCalendarSlot}
-                onRescheduleRequest={setReschedulingCalendarEvent}
                 onRescheduleEvent={rescheduleCalendarEvent}
-                onCancelRequest={setCancelingCalendarEvent}
+                onOpenEvent={setViewingCalendarEvent}
               />
               {selectedCalendarSlot ? (
                 <CalendarAppointmentModal
@@ -2421,6 +2422,20 @@ export function CrmApp({
                   event={reschedulingCalendarEvent}
                   onClose={() => setReschedulingCalendarEvent(null)}
                   onSubmit={rescheduleCalendarEventFromForm}
+                />
+              ) : null}
+              {viewingCalendarEvent ? (
+                <CalendarAppointmentDetailModal
+                  event={viewingCalendarEvent}
+                  onClose={() => setViewingCalendarEvent(null)}
+                  onReschedule={(event) => {
+                    setViewingCalendarEvent(null);
+                    setReschedulingCalendarEvent(event);
+                  }}
+                  onCancel={(event) => {
+                    setViewingCalendarEvent(null);
+                    setCancelingCalendarEvent(event);
+                  }}
                 />
               ) : null}
               {cancelingCalendarEvent ? (
@@ -8793,9 +8808,8 @@ function CalendarPlanner({
   onDateChange,
   onViewChange,
   onSelectSlot,
-  onRescheduleRequest,
   onRescheduleEvent,
-  onCancelRequest
+  onOpenEvent
 }: {
   session: Session;
   events: CrmCalendarEvent[];
@@ -8804,9 +8818,8 @@ function CalendarPlanner({
   onDateChange: (date: string) => void;
   onViewChange: (view: CalendarView) => void;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
-  onRescheduleRequest: (event: CrmCalendarEvent) => void;
   onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
-  onCancelRequest: (event: CrmCalendarEvent) => void;
+  onOpenEvent: (event: CrmCalendarEvent) => void;
 }) {
   const today = losAngelesDateString();
   const weekStart = startOfCalendarWeek(anchorDate);
@@ -8932,7 +8945,14 @@ function CalendarPlanner({
       {availabilityError && view !== "month" ? <p className="crm-calendar-open-times-error">{availabilityError}</p> : null}
 
       {view === "month" ? (
-        <CalendarMonthGrid days={monthDays} events={visibleEvents} monthStart={monthStart} today={today} onOpenDay={openDay} />
+        <CalendarMonthGrid
+          days={monthDays}
+          events={visibleEvents}
+          monthStart={monthStart}
+          today={today}
+          onOpenDay={openDay}
+          onOpenEvent={onOpenEvent}
+        />
       ) : (
         <CalendarTimelineGrid
           days={timelineDays}
@@ -8940,9 +8960,8 @@ function CalendarPlanner({
           availabilitySlots={availabilitySlots}
           availabilityLoading={availabilityLoading}
           onSelectSlot={onSelectSlot}
-          onRescheduleRequest={onRescheduleRequest}
           onRescheduleEvent={onRescheduleEvent}
-          onCancelRequest={onCancelRequest}
+          onOpenEvent={onOpenEvent}
           view={view}
         />
       )}
@@ -8956,9 +8975,8 @@ function CalendarTimelineGrid({
   availabilitySlots,
   availabilityLoading,
   onSelectSlot,
-  onRescheduleRequest,
   onRescheduleEvent,
-  onCancelRequest,
+  onOpenEvent,
   view
 }: {
   days: string[];
@@ -8966,9 +8984,8 @@ function CalendarTimelineGrid({
   availabilitySlots: AvailabilitySlotRow[];
   availabilityLoading: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
-  onRescheduleRequest: (event: CrmCalendarEvent) => void;
   onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
-  onCancelRequest: (event: CrmCalendarEvent) => void;
+  onOpenEvent: (event: CrmCalendarEvent) => void;
   view: "day" | "week";
 }) {
   const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
@@ -9106,20 +9123,32 @@ function CalendarTimelineGrid({
           if (!placement) return null;
           const detailLines = calendarEventDescriptionLines(event);
           const descriptionLabel = calendarEventDescriptionLabel(event);
-          const canReschedule = canRescheduleCalendarEvent(event);
+          const canManage = canRescheduleCalendarEvent(event);
           const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
 
           return (
             <article
               aria-label={descriptionLabel}
-              className={calendarEventClassName(event)}
-              draggable={canReschedule}
+              className={`${calendarEventClassName(event)}${canManage ? " crm-calendar-event-block--interactive" : ""}`}
+              draggable={canManage}
               key={event.id}
+              onClick={canManage ? () => onOpenEvent(event) : undefined}
               onDragStart={(dragEvent) => handleEventDragStart(dragEvent, event)}
+              onKeyDown={
+                canManage
+                  ? (keyEvent) => {
+                      if (keyEvent.key !== "Enter" && keyEvent.key !== " ") return;
+                      keyEvent.preventDefault();
+                      onOpenEvent(event);
+                    }
+                  : undefined
+              }
+              role={canManage ? "button" : undefined}
               style={{
                 gridColumn: placement.column,
                 gridRow: `${placement.rowStart} / ${placement.rowEnd}`
               }}
+              tabIndex={canManage ? 0 : undefined}
               title={descriptionLabel}
             >
               <div className="crm-calendar-event-time">
@@ -9138,31 +9167,6 @@ function CalendarTimelineGrid({
                   <p key={line}>{line}</p>
                 ))}
               </div>
-              {canReschedule ? (
-                <div className="crm-calendar-event-actions">
-                  <button
-                    type="button"
-                    draggable={false}
-                    onClick={(clickEvent) => {
-                      clickEvent.stopPropagation();
-                      onRescheduleRequest(event);
-                    }}
-                  >
-                    Reschedule
-                  </button>
-                  <button
-                    type="button"
-                    className="crm-calendar-event-action--danger"
-                    draggable={false}
-                    onClick={(clickEvent) => {
-                      clickEvent.stopPropagation();
-                      onCancelRequest(event);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : null}
             </article>
           );
         })}
@@ -9176,13 +9180,15 @@ function CalendarMonthGrid({
   events,
   monthStart,
   today,
-  onOpenDay
+  onOpenDay,
+  onOpenEvent
 }: {
   days: string[];
   events: CrmCalendarEvent[];
   monthStart: string;
   today: string;
   onOpenDay: (day: string) => void;
+  onOpenEvent: (event: CrmCalendarEvent) => void;
 }) {
   const weekdays = calendarWeekDays(startOfCalendarWeek(monthStart));
 
@@ -9211,12 +9217,25 @@ function CalendarMonthGrid({
                 <em>{dayEvents.length || "0"} appt</em>
               </button>
               <div className="crm-calendar-month-events">
-                {eventPreview.map((event) => (
-                  <div className={`crm-calendar-month-event ${calendarEventToneClassName(event)}`} key={event.id}>
-                    <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
-                    <span>{calendarEventCustomerLabel(event)}</span>
-                  </div>
-                ))}
+                {eventPreview.map((event) => {
+                  const className = `crm-calendar-month-event ${calendarEventToneClassName(event)}`;
+                  const preview = (
+                    <>
+                      <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
+                      <span>{calendarEventCustomerLabel(event)}</span>
+                    </>
+                  );
+
+                  return canRescheduleCalendarEvent(event) ? (
+                    <button type="button" className={className} key={event.id} onClick={() => onOpenEvent(event)}>
+                      {preview}
+                    </button>
+                  ) : (
+                    <div className={className} key={event.id}>
+                      {preview}
+                    </div>
+                  );
+                })}
                 {dayEvents.length > eventPreview.length ? (
                   <button type="button" className="crm-calendar-month-more" onClick={() => onOpenDay(day)}>
                     +{dayEvents.length - eventPreview.length} more
@@ -9588,6 +9607,60 @@ function CalendarRescheduleModal({
             </button>
           </div>
         </form>
+      </section>
+    </div>
+  );
+}
+
+function CalendarAppointmentDetailModal({
+  event,
+  onClose,
+  onReschedule,
+  onCancel
+}: {
+  event: CrmCalendarEvent;
+  onClose: () => void;
+  onReschedule: (event: CrmCalendarEvent) => void;
+  onCancel: (event: CrmCalendarEvent) => void;
+}) {
+  const date = calendarEventDateValue(event);
+  const detailLines = calendarEventDescriptionLines(event);
+  const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
+
+  return (
+    <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-appointment-detail-title">
+      <button type="button" className="crm-slot-modal__backdrop" aria-label="Close appointment details" onClick={onClose} />
+      <section className="crm-slot-form-panel">
+        <div className="crm-slot-form-head">
+          <div>
+            <p className="eyebrow">Appointment</p>
+            <h2 id="crm-appointment-detail-title">{calendarEventCustomerLabel(event)}</h2>
+          </div>
+          <button type="button" className="crm-slot-close" aria-label="Close appointment details" onClick={onClose}>
+            ×
+          </button>
+        </div>
+        <p className="crm-slot-time-summary">
+          {formatCalendarLongDay(date)} - {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
+          {calendarTimeFormatter.format(new Date(event.end_at))}
+        </p>
+        <div className="crm-appointment-detail-lines">
+          {assignmentLabel ? <p>Scheduled for: {assignmentLabel}</p> : null}
+          {detailLines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+        <div className="crm-slot-actions">
+          <button type="button" className="crm-ghost-button" onClick={onClose}>
+            Close
+          </button>
+          <button type="button" onClick={() => onReschedule(event)}>
+            Reschedule
+          </button>
+          <button type="button" className="crm-danger-button" onClick={() => onCancel(event)}>
+            Cancel Appointment
+          </button>
+        </div>
       </section>
     </div>
   );

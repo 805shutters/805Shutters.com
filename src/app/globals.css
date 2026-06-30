@@ -4966,6 +4966,17 @@ body.qb-fullscreen .crm-app-shell {
   cursor: grabbing;
 }
 
+.crm-calendar-event-block--interactive[draggable="true"] {
+  cursor: pointer;
+}
+
+.crm-calendar-event-block--interactive:hover,
+.crm-calendar-event-block--interactive:focus-visible {
+  border-color: rgba(255, 255, 255, 0.72);
+  outline: 2px solid rgba(255, 255, 255, 0.28);
+  outline-offset: -3px;
+}
+
 .crm-calendar-event-block--mike,
 .crm-calendar-event-block--jessica,
 .crm-calendar-event-block--unassigned {
@@ -5050,47 +5061,6 @@ body.qb-fullscreen .crm-app-shell {
   display: grid;
   gap: 2px;
   min-width: 0;
-}
-
-.crm-calendar-event-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-  min-width: 0;
-  margin-top: 4px;
-}
-
-.crm-calendar-event-actions button {
-  min-height: 25px;
-  padding: 4px 7px;
-  border: 1px solid currentColor;
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: none;
-  color: #111111;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.crm-calendar-event-actions button:hover,
-.crm-calendar-event-actions button:focus-visible {
-  background: #ffffff;
-  color: #111111;
-  transform: none;
-}
-
-.crm-calendar-event-actions .crm-calendar-event-action--danger {
-  background: #fff1f1;
-  color: #9f1717;
-}
-
-.crm-calendar-event-actions .crm-calendar-event-action--danger:hover,
-.crm-calendar-event-actions .crm-calendar-event-action--danger:focus-visible {
-  background: #ffffff;
-  color: #8f1111;
 }
 
 .crm-calendar-event-block p {
@@ -5215,6 +5185,19 @@ body.qb-fullscreen .crm-app-shell {
   display: flex;
   align-items: center;
   gap: 5px;
+  font: inherit;
+  text-align: left;
+}
+
+button.crm-calendar-month-event {
+  cursor: pointer;
+}
+
+button.crm-calendar-month-event:hover,
+button.crm-calendar-month-event:focus-visible {
+  border-color: rgba(255, 255, 255, 0.7);
+  outline: 2px solid rgba(17, 17, 17, 0.18);
+  outline-offset: -2px;
 }
 
 .crm-calendar-month-event.crm-calendar-event-block--mike,
@@ -5446,6 +5429,24 @@ body.qb-fullscreen .crm-app-shell {
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.crm-appointment-detail-lines {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  background: #f7f7f5;
+  border: 1px solid var(--line);
+}
+
+.crm-appointment-detail-lines p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 .crm-slot-actions {
