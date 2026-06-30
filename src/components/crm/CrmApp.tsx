@@ -3329,9 +3329,18 @@ const JOB_TRACKING_STAGES: JobTrackingStage[] = [
   { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: -410 }
 ];
 
-const JOB_TRACKING_WHEEL_BACKGROUND = `conic-gradient(${JOB_TRACKING_STAGES.map((stage, index) => {
-  const start = (index / JOB_TRACKING_STAGES.length) * 360;
-  const end = ((index + 1) / JOB_TRACKING_STAGES.length) * 360;
+const JOB_TRACKING_COMPLETE_STAGE: JobTrackingStage = JOB_TRACKING_STAGES.find((stage) => stage.id === "complete") || {
+  id: "complete",
+  label: "Complete",
+  detail: "Paid or closed",
+  color: "#2b2b28",
+  angle: -410
+};
+const JOB_TRACKING_ORBIT_STAGES = JOB_TRACKING_STAGES.filter((stage) => stage.id !== "complete");
+
+const JOB_TRACKING_WHEEL_BACKGROUND = `conic-gradient(${JOB_TRACKING_ORBIT_STAGES.map((stage, index) => {
+  const start = (index / JOB_TRACKING_ORBIT_STAGES.length) * 360;
+  const end = ((index + 1) / JOB_TRACKING_ORBIT_STAGES.length) * 360;
   return `${stage.color} ${start}deg ${end}deg`;
 }).join(", ")})`;
 const JOB_TRACKING_WHEEL_STYLE = { background: JOB_TRACKING_WHEEL_BACKGROUND } as CSSProperties;
@@ -3698,9 +3707,20 @@ function JobTrackingView({
     () => buildJobTrackingBuckets({ jobs, quotes, rows, files, orderCogsEmails, installationInvoiceEmails }),
     [jobs, quotes, rows, files, orderCogsEmails, installationInvoiceEmails]
   );
+  const orbitBuckets = buckets.filter((bucket) => bucket.id !== "complete");
+  const completeBucket =
+    buckets.find((bucket) => bucket.id === "complete") || {
+      ...JOB_TRACKING_COMPLETE_STAGE,
+      items: [],
+      totalValue: 0,
+      emailCount: 0
+    };
   const totalJobs = buckets.reduce((sum, bucket) => sum + bucket.items.length, 0);
-  const activeJobs = buckets.filter((bucket) => bucket.id !== "complete").reduce((sum, bucket) => sum + bucket.items.length, 0);
+  const activeJobs = orbitBuckets.reduce((sum, bucket) => sum + bucket.items.length, 0);
   const maxCount = Math.max(1, ...buckets.map((bucket) => bucket.items.length));
+  const orbitMaxCount = Math.max(1, ...orbitBuckets.map((bucket) => bucket.items.length));
+  const shownCompleteItems = completeBucket.items.slice(0, completeBucket.items.length > 7 ? 6 : 7);
+  const hiddenCompleteCount = Math.max(completeBucket.items.length - shownCompleteItems.length, 0);
   const inboxStats = useMemo(
     () => ({
       order: orderCogsEmails.filter(isAppliedOrderEmail).length,
@@ -3754,40 +3774,63 @@ function JobTrackingView({
         </span>
       </div>
 
-      <div className="crm-job-tracking-orbit" aria-label="Job tracking circular workflow">
-        <div className="crm-job-tracking-core" style={JOB_TRACKING_WHEEL_STYLE}>
-          <div>
-            <span>Active</span>
-            <strong>{activeJobs}</strong>
-            <em>{totalJobs} total</em>
+      <div className="crm-job-tracking-workspace">
+        <div className="crm-job-tracking-orbit" aria-label="Job tracking circular workflow">
+          <div className="crm-job-tracking-core" style={JOB_TRACKING_WHEEL_STYLE}>
+            <div>
+              <span>Active</span>
+              <strong>{activeJobs}</strong>
+              <em>{totalJobs} total</em>
+            </div>
           </div>
+          {orbitBuckets.map((bucket) => {
+            const shownItems = bucket.items.slice(0, bucket.items.length > 4 ? 3 : 4);
+            const hiddenCount = Math.max(bucket.items.length - shownItems.length, 0);
+            return (
+              <button
+                type="button"
+                className={`crm-job-tracking-node ${bucket.items.length ? "" : "empty"}`}
+                style={jobTrackingNodeStyle(bucket, orbitMaxCount)}
+                onClick={() => openBucket(bucket)}
+                key={bucket.id}
+              >
+                <span className="crm-job-tracking-stage">{bucket.label}</span>
+                <strong>{bucket.items.length}</strong>
+                <span className="crm-job-tracking-fill" aria-hidden="true" />
+                <span className="crm-job-tracking-value">{toCurrency(bucket.totalValue)}</span>
+                <ul>
+                  {shownItems.map((item) => (
+                    <li key={item.id}>{item.customerName}</li>
+                  ))}
+                  {hiddenCount ? <li>+{hiddenCount} more</li> : null}
+                  {!bucket.items.length ? <li>No jobs</li> : null}
+                </ul>
+                {bucket.emailCount ? <small>{bucket.emailCount} inbox-backed</small> : null}
+              </button>
+            );
+          })}
         </div>
-        {buckets.map((bucket) => {
-          const shownItems = bucket.items.slice(0, bucket.items.length > 4 ? 3 : 4);
-          const hiddenCount = Math.max(bucket.items.length - shownItems.length, 0);
-          return (
-            <button
-              type="button"
-              className={`crm-job-tracking-node ${bucket.items.length ? "" : "empty"}`}
-              style={jobTrackingNodeStyle(bucket, maxCount)}
-              onClick={() => openBucket(bucket)}
-              key={bucket.id}
-            >
-              <span className="crm-job-tracking-stage">{bucket.label}</span>
-              <strong>{bucket.items.length}</strong>
-              <span className="crm-job-tracking-fill" aria-hidden="true" />
-              <span className="crm-job-tracking-value">{toCurrency(bucket.totalValue)}</span>
-              <ul>
-                {shownItems.map((item) => (
-                  <li key={item.id}>{item.customerName}</li>
-                ))}
-                {hiddenCount ? <li>+{hiddenCount} more</li> : null}
-                {!bucket.items.length ? <li>No jobs</li> : null}
-              </ul>
-              {bucket.emailCount ? <small>{bucket.emailCount} inbox-backed</small> : null}
-            </button>
-          );
-        })}
+
+        <button
+          type="button"
+          className={`crm-job-tracking-complete ${completeBucket.items.length ? "" : "empty"}`}
+          style={jobTrackingNodeStyle(completeBucket, maxCount)}
+          onClick={() => openBucket(completeBucket)}
+        >
+          <span className="crm-job-tracking-stage">Completed Orders</span>
+          <strong>{completeBucket.items.length}</strong>
+          <em>{completeBucket.detail}</em>
+          <span className="crm-job-tracking-fill" aria-hidden="true" />
+          <span className="crm-job-tracking-value">{toCurrency(completeBucket.totalValue)}</span>
+          <ul>
+            {shownCompleteItems.map((item) => (
+              <li key={item.id}>{item.customerName}</li>
+            ))}
+            {hiddenCompleteCount ? <li>+{hiddenCompleteCount} more</li> : null}
+            {!completeBucket.items.length ? <li>No completed orders</li> : null}
+          </ul>
+          {completeBucket.emailCount ? <small>{completeBucket.emailCount} inbox-backed</small> : null}
+        </button>
       </div>
     </section>
   );
@@ -5658,6 +5701,10 @@ function customerFileDeletePayload(file: CrmCustomerFile) {
   };
 }
 
+function customerFileDetailLine(parts: Array<string | number | null | undefined | false>) {
+  return parts.filter(Boolean).join(" / ");
+}
+
 function CustomerFilesView({
   files,
   activeStatus,
@@ -5743,135 +5790,380 @@ function CustomerFilesView({
           </button>
         ))}
       </div>
-      <div className="crm-customer-stack">
+      <div className="crm-customer-table-wrap" role="region" aria-label="Customer file rows" tabIndex={0}>
+        <table className="crm-customer-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Contact</th>
+              <th>Address</th>
+              <th>Status</th>
+              <th>Dates</th>
+              <th>Products</th>
+              <th>Product Details</th>
+              <th>Money</th>
+              <th>Payments + Credits</th>
+              <th>Jobs</th>
+              <th>Quotes</th>
+              <th>Bookkeeping</th>
+              <th>Contracts + Documents</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
         {visibleFiles.map((file) => {
           const sortedBookkeepingRows = [...file.bookkeepingRows].sort((a, b) => {
             const dateDelta = dateSortValue(b.soldDate) - dateSortValue(a.soldDate);
             return dateDelta || (a.quoteNumber || a.source).localeCompare(b.quoteNumber || b.source);
           });
+          const sortedJobs = [...file.jobs].sort((a, b) => {
+            const dateDelta = dateSortValue(b.appointment_start || b.created_at) - dateSortValue(a.appointment_start || a.created_at);
+            return dateDelta || a.customer_name.localeCompare(b.customer_name);
+          });
+          const sortedQuotes = [...file.quotes].sort((a, b) => {
+            const dateDelta =
+              dateSortValue(b.sold_at || b.approved_at || b.ordered_at || b.received_at || b.installed_at || b.created_at) -
+              dateSortValue(a.sold_at || a.approved_at || a.ordered_at || a.received_at || a.installed_at || a.created_at);
+            return dateDelta || (a.quote_number || a.id).localeCompare(b.quote_number || b.id);
+          });
+          const payments = sortedBookkeepingRows.flatMap((row) =>
+            row.payments.map((payment) => ({
+              row,
+              payment
+            }))
+          );
+          const creditsIn = sortedBookkeepingRows.flatMap((row) =>
+            row.creditsIn.map((credit) => ({
+              row,
+              credit
+            }))
+          );
+          const creditsOut = sortedBookkeepingRows.flatMap((row) =>
+            row.creditsOut.map((credit) => ({
+              row,
+              credit
+            }))
+          );
+          const totals = sortedBookkeepingRows.reduce(
+            (sum, row) => ({
+              total: sum.total + row.total,
+              depositDue: sum.depositDue + row.depositDue,
+              depositPaid: sum.depositPaid + row.depositPaid,
+              paid: sum.paid + row.paidTotal,
+              balance: sum.balance + Math.max(row.balance, 0),
+              cogs: sum.cogs + row.cogs,
+              expenses: sum.expenses + row.expensesTotal,
+              remake: sum.remake + row.remakeTotal,
+              installation: sum.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)
+            }),
+            { total: 0, depositDue: 0, depositPaid: 0, paid: 0, balance: 0, cogs: 0, expenses: 0, remake: 0, installation: 0 }
+          );
+          const statusTokens = Array.from(customerFileStatusTokens(file));
 
           return (
-            <article
-              className={`crm-customer-card ${highlighted === normalizeCustomerName(file.customerName) ? "crm-focus" : ""}`}
+            <tr
+              className={highlighted === normalizeCustomerName(file.customerName) ? "crm-focus" : ""}
               id={customerCardDomId(file.customerName)}
               key={file.id}
             >
-              <div className="crm-customer-primary">
-                <header className="crm-customer-card-head">
-                  <div>
+              <td className="crm-customer-name-cell">
+                <div className="crm-customer-table-primary">
+                  <div className="crm-customer-table-title">
                     <h3>{file.customerName}</h3>
-                    <p>{[file.phone, file.email, file.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
-                  </div>
-                  <div className="crm-customer-card-actions">
                     <strong>{toCurrency(file.lifetimeValue)}</strong>
-                    {onDelete ? (
-                      <button
-                        type="button"
-                        className="crm-ghost-button crm-delete-button crm-customer-delete-button"
-                        disabled={busy}
-                        onClick={() => onDelete(file)}
-                      >
-                        Delete
-                      </button>
-                    ) : null}
                   </div>
-                </header>
-
-                {file.address ? <p className="crm-customer-address">{file.address}</p> : null}
-
-                {file.notes.length ? (
-                  <div className="crm-customer-notes">
-                    <h4>Notes</h4>
-                    <p>{file.notes.slice(0, 3).join(" / ")}</p>
-                  </div>
-                ) : null}
-              </div>
-
-              <dl className="crm-customer-facts">
-                <div>
-                  <dt>Sold Date</dt>
-                  <dd>{formatShortDate(file.latestSoldDate)}</dd>
+                  <p>{customerFileDetailLine([file.city, file.latestStatus || "Open"])}</p>
+                  {onDelete ? (
+                    <button
+                      type="button"
+                      className="crm-ghost-button crm-delete-button crm-customer-delete-button"
+                      disabled={busy}
+                      onClick={() => onDelete(file)}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
                 </div>
-                <div>
-                  <dt>Open Balance</dt>
-                  <dd className={file.openBalance > 0 ? "warn" : ""}>{toCurrency(file.openBalance)}</dd>
-                </div>
-                <div>
-                  <dt>Latest Status</dt>
-                  <dd>{file.latestStatus || "Open"}</dd>
-                </div>
-                <div>
-                  <dt>Contracts</dt>
-                  <dd>{file.contracts.length}</dd>
-                </div>
-              </dl>
-
-              <div className="crm-customer-row-details">
-                <div className="crm-customer-section">
-                  <h4>Products</h4>
-                  <div className="crm-customer-list">
-                    {file.products.map((product) => (
-                      <div key={product.id}>
-                        <strong>
-                          {product.room ? `${product.room} / ` : ""}
-                          {product.product_type}
-                        </strong>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  <li>
+                    <strong>Phone</strong>
+                    <span>{file.phone || "Pending"}</span>
+                  </li>
+                  <li>
+                    <strong>Email</strong>
+                    <span>{file.email || "Pending"}</span>
+                  </li>
+                  <li>
+                    <strong>City</strong>
+                    <span>{file.city || "Pending"}</span>
+                  </li>
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  <li>
+                    <strong>Project Address</strong>
+                    <span>{file.address || "Pending"}</span>
+                  </li>
+                  {sortedJobs.map((job) => (
+                    <li key={`job-address-${job.id}`}>
+                      <strong>{job.product_interest || "Job"}</strong>
+                      <span>{customerFileDetailLine([job.address, job.city]) || "No job address"}</span>
+                    </li>
+                  ))}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  <li>
+                    <strong>Latest</strong>
+                    <span>{file.latestStatus || "Open"}</span>
+                  </li>
+                  <li>
+                    <strong>Lifecycle</strong>
+                    <span>{statusTokens.length ? statusTokens.map(titleCase).join(", ") : "Need to Schedule"}</span>
+                  </li>
+                  <li>
+                    <strong>Contracts</strong>
+                    <span>{file.contracts.length}</span>
+                  </li>
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  <li>
+                    <strong>Sold Date</strong>
+                    <span>{formatShortDate(file.latestSoldDate)}</span>
+                  </li>
+                  {sortedJobs.map((job) => (
+                    <li key={`job-date-${job.id}`}>
+                      <strong>{titleCase(job.status)}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          job.appointment_start ? `Appt ${formatShortDate(job.appointment_start)}` : null,
+                          job.next_action_due ? `Due ${formatShortDate(job.next_action_due)}` : null,
+                          `Created ${formatShortDate(job.created_at)}`
+                        ])}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  {file.products.map((product) => (
+                    <li key={`product-main-${product.id}`}>
+                      <strong>{customerFileDetailLine([product.room, product.product_type]) || "Product"}</strong>
+                      <span>
+                        {product.quantity} item{product.quantity === 1 ? "" : "s"}
+                        {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                  {!file.products.length ? <li className="crm-customer-empty-cell">No product details imported yet.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {file.products.map((product) => (
+                    <li key={`product-detail-${product.id}`}>
+                      <strong>{product.product_type}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          product.description,
+                          product.fabric ? `Fabric: ${product.fabric}` : null,
+                          product.material ? `Material: ${product.material}` : null,
+                          product.color ? `Color: ${product.color}` : null,
+                          product.control_type ? `Control: ${product.control_type}` : null,
+                          product.mount_type ? `Mount: ${product.mount_type}` : null,
+                          product.width && product.height ? `${product.width} x ${product.height}` : null,
+                          product.supplier ? `Supplier: ${product.supplier}` : null,
+                          product.status ? `Status: ${product.status}` : null
+                        ]) || "Product details pending"}
+                      </span>
+                    </li>
+                  ))}
+                  {!file.products.length ? <li className="crm-customer-empty-cell">No product details imported yet.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list">
+                  <li>
+                    <strong>Lifetime</strong>
+                    <span>{toCurrency(file.lifetimeValue)}</span>
+                  </li>
+                  <li>
+                    <strong>Open Balance</strong>
+                    <span className={file.openBalance > 0 ? "warn" : ""}>{toCurrency(file.openBalance)}</span>
+                  </li>
+                  <li>
+                    <strong>Ledger Total</strong>
+                    <span>{toCurrency(totals.total)}</span>
+                  </li>
+                  <li>
+                    <strong>Paid</strong>
+                    <span>{toCurrency(totals.paid)}</span>
+                  </li>
+                  <li>
+                    <strong>Deposit</strong>
+                    <span>{toCurrency(totals.depositPaid)} paid / {toCurrency(totals.depositDue)} due</span>
+                  </li>
+                  <li>
+                    <strong>COGS + Expenses</strong>
+                    <span>{toCurrency(totals.cogs)} COGS / {toCurrency(totals.expenses)} expenses</span>
+                  </li>
+                  <li>
+                    <strong>Install + Remake</strong>
+                    <span>{toCurrency(totals.installation)} install / {toCurrency(totals.remake)} remake</span>
+                  </li>
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {payments.map(({ row, payment }) => (
+                    <li key={`payment-${row.id}-${payment.id}`}>
+                      <strong>{payment.payment_label}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          toLedgerCurrency(payment.amount),
+                          formatPaymentType(payment.payment_type),
+                          formatShortDate(payment.paid_at),
+                          row.quoteNumber || row.source.replace("_", " ")
+                        ])}
+                      </span>
+                    </li>
+                  ))}
+                  {creditsIn.map(({ row, credit }) => (
+                    <li key={`credit-in-${row.id}-${credit.id}`}>
+                      <strong>Credit In</strong>
+                      <span>{customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}</span>
+                    </li>
+                  ))}
+                  {creditsOut.map(({ row, credit }) => (
+                    <li key={`credit-out-${row.id}-${credit.id}`}>
+                      <strong>Credit Out</strong>
+                      <span>{customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}</span>
+                    </li>
+                  ))}
+                  {!payments.length && !creditsIn.length && !creditsOut.length ? (
+                    <li className="crm-customer-empty-cell">No payment or credit records attached.</li>
+                  ) : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {sortedJobs.map((job) => (
+                    <li key={`job-${job.id}`}>
+                      <strong>{customerFileDetailLine([titleCase(job.status), job.sales_owner])}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          job.product_interest,
+                          job.next_action ? `Next: ${job.next_action}` : null,
+                          job.next_action_due ? `Due ${formatShortDate(job.next_action_due)}` : null,
+                          job.appointment_start ? `Appt ${formatShortDate(job.appointment_start)}` : null,
+                          job.estimated_total ? `Est ${toCurrency(job.estimated_total)}` : null,
+                          job.deposit_paid ? `Deposit ${toCurrency(job.deposit_paid)}` : null,
+                          job.priority ? `Priority ${job.priority}` : null,
+                          job.notes
+                        ]) || "No job details"}
+                      </span>
+                    </li>
+                  ))}
+                  {!sortedJobs.length ? <li className="crm-customer-empty-cell">No job attached.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {sortedQuotes.map((quote) => (
+                    <li key={`quote-${quote.id}`}>
+                      <strong>{customerFileDetailLine([quote.quote_number || "Quote", quote.live_status || quote.status, quote.quote_label])}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          `Total ${toCurrency(quote.quote_total)}`,
+                          `Deposit ${toCurrency(quote.deposit_required)}`,
+                          `Balance ${toCurrency(quote.balance_due)}`,
+                          quote.sent_at ? `Sent ${formatShortDate(quote.sent_at)}` : null,
+                          quote.sold_at ? `Sold ${formatShortDate(quote.sold_at)}` : null,
+                          quote.ordered_at ? `Ordered ${formatShortDate(quote.ordered_at)}` : null,
+                          quote.installed_at ? `Installed ${formatShortDate(quote.installed_at)}` : null,
+                          quote.manufacturer_name,
+                          quote.manufacturer_order_ref,
+                          quote.notes
+                        ])}
+                      </span>
+                    </li>
+                  ))}
+                  {!sortedQuotes.length ? <li className="crm-customer-empty-cell">No quote attached.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {sortedBookkeepingRows.map((row) => (
+                    <li key={`bookkeeping-${row.source}-${row.id}`}>
+                      <strong>{customerFileDetailLine([row.quoteNumber || row.source.replace("_", " "), bookkeepingStatusLabel(row)])}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          formatShortDate(row.soldDate),
+                          `Total ${toCurrency(row.total)}`,
+                          `Paid ${toCurrency(row.paidTotal)}`,
+                          `Balance ${toCurrency(row.balance)}`,
+                          `COGS ${toCurrency(row.cogs)}`,
+                          row.remakeTotal ? `Remake ${toCurrency(row.remakeTotal)}` : null,
+                          row.installationInvoiceAmount ? `Install ${toCurrency(row.installationInvoiceAmount)}` : null,
+                          row.salesOwner ? `Owner ${row.salesOwner}` : null,
+                          row.manufacturerName,
+                          row.manufacturerOrderRef,
+                          row.paymentType ? formatPaymentType(row.paymentType) : null,
+                          row.notes
+                        ])}
+                      </span>
+                    </li>
+                  ))}
+                  {!sortedBookkeepingRows.length ? <li className="crm-customer-empty-cell">No bookkeeping row attached.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {file.contracts.map((contract) => {
+                    const url = contractUrl(contract);
+                    return (
+                      <li key={`contract-${contract.id}`}>
+                        <strong>{contract.title}</strong>
                         <span>
-                          {[product.description, product.fabric, product.material, product.control_type, product.mount_type]
-                            .filter(Boolean)
-                            .join(" / ") || "Product details pending"}
+                          {customerFileDetailLine([
+                            contract.status || "Document",
+                            contract.signed_at ? `Signed ${formatShortDate(contract.signed_at)}` : null,
+                            contract.total_amount ? toCurrency(contract.total_amount) : null
+                          ])}
                         </span>
-                        <em>
-                          {product.quantity} item{product.quantity === 1 ? "" : "s"}
-                          {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
-                        </em>
-                      </div>
-                    ))}
-                    {!file.products.length ? <p>No product details imported yet.</p> : null}
-                  </div>
-                </div>
-
-                <div className="crm-customer-section">
-                  <h4>Contracts + Documents</h4>
-                  <div className="crm-document-list">
-                    {file.contracts.map((contract) => {
-                      const url = contractUrl(contract);
-                      return url ? (
-                        <a href={url} target="_blank" rel="noreferrer" key={contract.id}>
-                          {contract.title}
-                          <span>{contract.status || "Document"}</span>
-                          <em>View contract</em>
-                        </a>
-                      ) : (
-                        <div key={contract.id}>
-                          {contract.title}
-                          <span>{contract.status || "No link"}</span>
-                        </div>
-                      );
-                    })}
-                    {!file.contracts.length ? <p>No contract or document link attached.</p> : null}
-                  </div>
-                </div>
-
-                <div className="crm-customer-section">
-                  <h4>Jobs + Bookkeeping</h4>
-                  <div className="crm-customer-list compact">
-                    {sortedBookkeepingRows.slice(0, 4).map((row) => (
-                      <div key={`${row.source}-${row.id}`}>
-                        <strong>{row.quoteNumber || row.source.replace("_", " ")}</strong>
-                        <span>{formatShortDate(row.soldDate)} / {row.manufacturerName || bookkeepingStatusLabel(row)}</span>
-                        <em>
-                          {toCurrency(row.total)} / balance {toCurrency(row.balance)}
-                        </em>
-                      </div>
-                    ))}
-                    {!file.bookkeepingRows.length ? <p>No bookkeeping row attached.</p> : null}
-                  </div>
-                </div>
-              </div>
-            </article>
+                        {url ? (
+                          <a href={url} target="_blank" rel="noreferrer">
+                            View document
+                          </a>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                  {!file.contracts.length ? <li className="crm-customer-empty-cell">No contract or document link attached.</li> : null}
+                </ul>
+              </td>
+              <td>
+                <ul className="crm-customer-cell-list wide">
+                  {file.notes.map((note, index) => (
+                    <li key={`note-${file.id}-${index}`}>
+                      <span>{note}</span>
+                    </li>
+                  ))}
+                  {!file.notes.length ? <li className="crm-customer-empty-cell">No notes attached.</li> : null}
+                </ul>
+              </td>
+            </tr>
           );
         })}
+          </tbody>
+        </table>
       </div>
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
       {files.length && !visibleFiles.length ? (
