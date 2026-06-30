@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
+import { trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import { productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
@@ -180,11 +181,21 @@ export function BookingCalendar({
   function chooseDate(date: string) {
     setSelectedDate(date);
     setSelectedTime(null);
+    trackBookingStep({
+      step: "date_select",
+      productTypes: selectedProductTypes,
+      windowCount: selectedWindowCount
+    });
     scrollToStep(slotsRef);
   }
 
   function chooseTime(time: string) {
     setSelectedTime(time);
+    trackBookingStep({
+      step: "time_select",
+      productTypes: selectedProductTypes,
+      windowCount: selectedWindowCount
+    });
     scrollToStep(customerInfoRef);
   }
 
@@ -209,6 +220,11 @@ export function BookingCalendar({
 
   function showAvailability() {
     if (!projectDetailsReady) return;
+    trackBookingStep({
+      step: "availability_request",
+      productTypes: selectedProductTypes,
+      windowCount: selectedWindowCount
+    });
     setAvailability(null);
     setSelectedDate(null);
     setSelectedTime(null);
@@ -265,6 +281,13 @@ export function BookingCalendar({
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.message || "Appointment could not be booked.");
+      trackBookingEvent({
+        eventId: typeof body.leadId === "string" ? body.leadId : undefined,
+        jobId: typeof body.jobId === "string" ? body.jobId : undefined,
+        productTypes: selectedProductTypes,
+        windowCount: selectedWindowCount,
+        followUpRequested
+      });
       setComplete(true);
       setMessage(confirmationMessage(body));
     } catch (error) {

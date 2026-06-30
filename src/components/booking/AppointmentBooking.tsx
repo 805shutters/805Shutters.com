@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackBookingStep } from "@/lib/client-tracking";
 import { BookingCalendar } from "./BookingCalendar";
 
 export function AppointmentBooking({
@@ -16,9 +17,14 @@ export function AppointmentBooking({
     setOpen(false);
   }
 
+  function openBooking() {
+    trackBookingStep({ step: "open", location: label });
+    setOpen(true);
+  }
+
   return (
     <>
-      <button type="button" className={className} onClick={() => setOpen(true)}>
+      <button type="button" className={className} onClick={openBooking}>
         {label}
       </button>
       {open ? (
