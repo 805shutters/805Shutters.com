@@ -10527,6 +10527,232 @@ html.mobile-menu-open {
 }
 
 /* ---- CRM Command Center dashboard ---- */
+.crm-job-tracking {
+  display: grid;
+  gap: 18px;
+  width: min(1500px, 100%);
+  margin: 22px auto 0;
+}
+
+.crm-job-tracking-head {
+  margin-bottom: 0;
+}
+
+.crm-job-tracking-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.crm-job-tracking-inbox {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.crm-job-tracking-inbox span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.crm-job-tracking-inbox span.warn {
+  border-color: #ad4f2f;
+  color: #7a2d19;
+}
+
+.crm-job-tracking-inbox strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.crm-job-tracking-orbit {
+  position: relative;
+  min-height: 760px;
+  overflow: visible;
+  background:
+    linear-gradient(90deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(17, 17, 17, 0.04) 1px, transparent 1px),
+    var(--white);
+  background-size: 44px 44px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.crm-job-tracking-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 260px;
+  aspect-ratio: 1;
+  padding: 22px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 22px 60px rgba(17, 17, 17, 0.16);
+}
+
+.crm-job-tracking-core::after {
+  position: absolute;
+  inset: 30px;
+  content: "";
+  background: var(--white);
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: 50%;
+}
+
+.crm-job-tracking-core > div {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  color: var(--ink);
+  text-align: center;
+}
+
+.crm-job-tracking-core span,
+.crm-job-tracking-core em {
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.crm-job-tracking-core strong {
+  font-family: var(--font-display);
+  font-size: 62px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.crm-job-tracking-node {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  gap: 7px;
+  width: 205px;
+  min-height: 196px;
+  padding: 13px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  border-top: 5px solid var(--tracking-color);
+  border-radius: 0;
+  color: var(--ink);
+  text-align: left;
+  transform:
+    rotate(var(--tracking-angle))
+    translate(305px)
+    rotate(var(--tracking-counter-angle))
+    translate(-50%, -50%);
+  box-shadow: 0 12px 30px rgba(17, 17, 17, 0.12);
+}
+
+.crm-job-tracking-node:hover {
+  transform:
+    rotate(var(--tracking-angle))
+    translate(305px)
+    rotate(var(--tracking-counter-angle))
+    translate(-50%, calc(-50% - 4px));
+  border-color: rgba(17, 17, 17, 0.28);
+}
+
+.crm-job-tracking-node.empty {
+  opacity: 0.72;
+}
+
+.crm-job-tracking-stage {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.crm-job-tracking-node strong {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 0.95;
+}
+
+.crm-job-tracking-node em,
+.crm-job-tracking-value,
+.crm-job-tracking-node small {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.crm-job-tracking-fill {
+  display: block;
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  background: #ececea;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+}
+
+.crm-job-tracking-fill::before {
+  display: block;
+  width: var(--tracking-fill);
+  height: 100%;
+  content: "";
+  background: var(--tracking-color);
+}
+
+.crm-job-tracking-node ul {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crm-job-tracking-node li {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crm-job-tracking-node small {
+  width: fit-content;
+  padding: 4px 6px;
+  background: #f4f4f2;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
 .crm-dashboard {
   width: min(1500px, 100%);
   margin: 22px auto 0;
@@ -11404,10 +11630,44 @@ html.mobile-menu-open {
 }
 
 @media (max-width: 1024px) {
+  .crm-job-tracking,
   .crm-dashboard,
   .crm-stat-band,
   .crm-dashboard-grid {
     width: 100%;
+  }
+
+  .crm-job-tracking-inbox {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crm-job-tracking-orbit {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    min-height: 0;
+    padding: 14px;
+  }
+
+  .crm-job-tracking-core,
+  .crm-job-tracking-node,
+  .crm-job-tracking-node:hover {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+  }
+
+  .crm-job-tracking-core {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: min(260px, 100%);
+    margin: 8px 0 14px;
+  }
+
+  .crm-job-tracking-node {
+    width: 100%;
+    min-height: 184px;
   }
 
   .crm-dashboard-grid {
@@ -11430,6 +11690,21 @@ html.mobile-menu-open {
 }
 
 @media (max-width: 620px) {
+  .crm-job-tracking-head,
+  .crm-job-tracking-actions {
+    display: grid;
+    justify-content: stretch;
+  }
+
+  .crm-job-tracking-inbox,
+  .crm-job-tracking-orbit {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-job-tracking-inbox span {
+    min-height: 48px;
+  }
+
   .crm-stat-band {
     grid-template-columns: 1fr;
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
@@ -59,7 +60,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "quotes" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "tracking" | "quotes" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2014,12 +2015,11 @@ export function CrmApp({
       <nav className="crm-tabs" aria-label="CRM sections">
         {[
           ["command", "Command Center"],
+          ["tracking", "Job Tracking"],
           ["quotes", "Quotes"],
           ["customers", "Customer Files"],
-          ["jobs", "Jobs"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
-          ["orders", "Orders"],
           ["calendar", "Calendar"],
           ["availability", "Open Times"]
         ].map(([tab, label]) => (
@@ -2050,6 +2050,21 @@ export function CrmApp({
 
       {activeTab === "quotes" && session ? (
         <QuotesWorkspace session={session} jobs={jobs} quotes={quotes} onChanged={refresh} />
+      ) : null}
+
+      {activeTab === "tracking" ? (
+        <JobTrackingView
+          jobs={jobs}
+          quotes={quotes}
+          rows={rows}
+          files={customerFiles}
+          orderCogsEmails={orderCogsEmails}
+          installationInvoiceEmails={installationInvoiceEmails}
+          busy={busy}
+          onPullOrderEmails={pullOrderCogs}
+          onPullInstallInvoices={pullInstallationInvoices}
+          onDrill={setDrill}
+        />
       ) : null}
 
       {activeTab === "command" ? (
@@ -2598,7 +2613,7 @@ function uniqueOpenSoldRows(rows: CrmBookkeepingRow[]) {
   return distinctRowsByJob(openSoldRows(rows));
 }
 
-type DrillPlacement = "summary" | "numbers" | "product" | "closing" | "response";
+type DrillPlacement = "summary" | "numbers" | "product" | "closing" | "response" | "tracking";
 type DrillDocument = {
   id: string;
   title: string;
@@ -3264,6 +3279,519 @@ function rebuildDrillPayload(
   });
 
   return { ...payload, entries: updatedEntries };
+}
+
+type JobTrackingStageId =
+  | "scheduled"
+  | "need_follow_up"
+  | "sold_need_deposit"
+  | "need_measure"
+  | "need_to_order"
+  | "ordered"
+  | "shipped"
+  | "balance_needed"
+  | "complete";
+
+type JobTrackingStage = {
+  id: JobTrackingStageId;
+  label: string;
+  detail: string;
+  color: string;
+  angle: number;
+};
+
+type JobTrackingItem = {
+  id: string;
+  stageId: JobTrackingStageId;
+  customerName: string;
+  meta: string;
+  value: number;
+  sortTime: number;
+  emailSignals: string[];
+  entry: DrillEntry;
+};
+
+type JobTrackingBucket = JobTrackingStage & {
+  items: JobTrackingItem[];
+  totalValue: number;
+  emailCount: number;
+};
+
+const JOB_TRACKING_STAGES: JobTrackingStage[] = [
+  { id: "scheduled", label: "Scheduled", detail: "Booked consultations", color: "#256f78", angle: -90 },
+  { id: "need_follow_up", label: "Need Follow Up (not sold)", detail: "Open leads and unsold quotes", color: "#8a6f28", angle: -50 },
+  { id: "sold_need_deposit", label: "Sold / Need Deposit", detail: "Signed and waiting on deposit", color: "#ad4f2f", angle: -10 },
+  { id: "need_measure", label: "Need Measure", detail: "Deposit in, measure pending", color: "#6f4fa1", angle: 30 },
+  { id: "need_to_order", label: "Need to Order", detail: "Ready for vendor order", color: "#2e7d45", angle: 70 },
+  { id: "ordered", label: "Ordered", detail: "Order email or ordered status", color: "#1f5f9a", angle: 110 },
+  { id: "shipped", label: "Shipped", detail: "Shipping/received signal", color: "#008178", angle: 150 },
+  { id: "balance_needed", label: "Balance Needed", detail: "Installed or invoiced with balance", color: "#9a3d57", angle: 190 },
+  { id: "complete", label: "Complete", detail: "Paid or closed", color: "#2b2b28", angle: 230 }
+];
+
+const JOB_TRACKING_WHEEL_BACKGROUND = `conic-gradient(${JOB_TRACKING_STAGES.map((stage, index) => {
+  const start = (index / JOB_TRACKING_STAGES.length) * 360;
+  const end = ((index + 1) / JOB_TRACKING_STAGES.length) * 360;
+  return `${stage.color} ${start}deg ${end}deg`;
+}).join(", ")})`;
+const JOB_TRACKING_WHEEL_STYLE = { background: JOB_TRACKING_WHEEL_BACKGROUND } as CSSProperties;
+
+function emptyJobTrackingBuckets() {
+  return new Map<JobTrackingStageId, JobTrackingBucket>(
+    JOB_TRACKING_STAGES.map((stage) => [
+      stage.id,
+      {
+        ...stage,
+        items: [],
+        totalValue: 0,
+        emailCount: 0
+      }
+    ])
+  );
+}
+
+function latestQuoteByJob(quotes: CrmQuote[]) {
+  const map = new Map<string, CrmQuote>();
+  for (const quote of quotes) {
+    const existing = map.get(quote.job_id);
+    if (!existing || dateSortValue(quote.updated_at || quote.created_at) > dateSortValue(existing.updated_at || existing.created_at)) {
+      map.set(quote.job_id, quote);
+    }
+  }
+  return map;
+}
+
+function isAppliedOrderEmail(email: CrmOrderCogsEmail) {
+  return email.match_status === "matched" || Boolean(email.applied_at);
+}
+
+function isAppliedInstallEmail(email: CrmInstallationInvoiceEmail) {
+  return email.match_status === "matched" || Boolean(email.applied_at);
+}
+
+function emailLooksLikeShipping(email: CrmOrderCogsEmail) {
+  const text = [email.subject, email.snippet, email.match_reason, email.extracted_order_number]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return /\b(ship|shipped|shipment|shipping|tracking|carrier|delivered|delivery|in transit|eta)\b/.test(text);
+}
+
+function matchedOrderEmailsForTarget(
+  orderCogsEmails: CrmOrderCogsEmail[],
+  row?: CrmBookkeepingRow,
+  job?: CrmJob,
+  quote?: CrmQuote
+) {
+  return orderCogsEmails.filter((email) => {
+    if (row?.id && email.matched_bookkeeping_entry_id === row.id) return true;
+    if (row?.jobId && email.matched_job_id === row.jobId) return true;
+    if (row?.quoteId && email.matched_quote_id === row.quoteId) return true;
+    if (job?.id && email.matched_job_id === job.id) return true;
+    if (quote?.id && email.matched_quote_id === quote.id) return true;
+    return false;
+  });
+}
+
+function matchedInstallEmailsForTarget(
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[],
+  row?: CrmBookkeepingRow,
+  job?: CrmJob,
+  quote?: CrmQuote
+) {
+  return installationInvoiceEmails.filter((email) => {
+    if (row?.id && email.matched_bookkeeping_entry_id === row.id) return true;
+    if (row?.jobId && email.matched_job_id === row.jobId) return true;
+    if (row?.quoteId && email.matched_quote_id === row.quoteId) return true;
+    if (job?.id && email.matched_job_id === job.id) return true;
+    if (quote?.id && email.matched_quote_id === quote.id) return true;
+    return false;
+  });
+}
+
+function trackingDepositShortfall(row: CrmBookkeepingRow) {
+  return Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0);
+}
+
+function quoteStatusForTracking(quote?: CrmQuote) {
+  return quote?.live_status || quote?.status || null;
+}
+
+function isCompleteTrackingRow(row: CrmBookkeepingRow, status: string) {
+  return row.isPaidInFull || status === "paid" || status === "closed" || (row.balance <= 0 && ["installed", "invoiced"].includes(status));
+}
+
+function isBalanceNeededTrackingRow(row: CrmBookkeepingRow, status: string, hasInstallEmail: boolean) {
+  return row.balance > 0 && (["installed", "invoiced", "paid", "closed"].includes(status) || hasInstallEmail);
+}
+
+function classifyTrackingRow(
+  row: CrmBookkeepingRow,
+  job: CrmJob | undefined,
+  quote: CrmQuote | undefined,
+  orderEmails: CrmOrderCogsEmail[],
+  installEmails: CrmInstallationInvoiceEmail[]
+): JobTrackingStageId | null {
+  const status = effectiveBookkeepingStatus(row);
+  if (status === "lost" || status === "archived") return null;
+
+  const appliedOrderEmails = orderEmails.filter(isAppliedOrderEmail);
+  const hasOrderEmail = appliedOrderEmails.length > 0;
+  const hasShippingSignal = appliedOrderEmails.some(emailLooksLikeShipping);
+  const hasInstallEmail = installEmails.some(isAppliedInstallEmail);
+  const quoteStatus = quoteStatusForTracking(quote);
+
+  if (isCompleteTrackingRow(row, status)) return "complete";
+  if (isBalanceNeededTrackingRow(row, status, hasInstallEmail)) return "balance_needed";
+  if (status === "received" || quoteStatus === "received" || hasShippingSignal) return "shipped";
+  if (status === "ordered" || quoteStatus === "ordered" || hasOrderEmail) return "ordered";
+
+  const depositNeeded = trackingDepositShortfall(row) > 0;
+  if ((status === "sold" || status === "approved") && depositNeeded) return "sold_need_deposit";
+  if (job && isMeasureNeededJob(job) && !depositNeeded) return "need_measure";
+  if (status === "sold" || status === "approved" || status === "legacy" || status === "manual") return "need_to_order";
+  if (status === "draft" || status === "sent") return "need_follow_up";
+  return null;
+}
+
+function classifyTrackingJob(job: CrmJob, quote: CrmQuote | undefined, orderEmails: CrmOrderCogsEmail[]): JobTrackingStageId | null {
+  if (job.status === "lost") return null;
+
+  const appliedOrderEmails = orderEmails.filter(isAppliedOrderEmail);
+  const hasOrderEmail = appliedOrderEmails.length > 0;
+  const hasShippingSignal = appliedOrderEmails.some(emailLooksLikeShipping);
+  const quoteStatus = quoteStatusForTracking(quote);
+  const jobOpenBalance = Math.max((Number(job.estimated_total) || 0) - (Number(job.deposit_paid) || 0), 0);
+
+  if (job.status === "closed" || (["installed", "invoiced"].includes(job.status) && jobOpenBalance <= 0)) return "complete";
+  if (["installed", "invoiced"].includes(job.status) && jobOpenBalance > 0) return "balance_needed";
+  if (quoteStatus === "received" || hasShippingSignal) return "shipped";
+  if (job.status === "ordered" || quoteStatus === "ordered" || hasOrderEmail) return "ordered";
+
+  if (job.status === "sold") {
+    if ((Number(job.deposit_paid) || 0) <= 0) return "sold_need_deposit";
+    if (isMeasureNeededJob(job)) return "need_measure";
+    return "need_to_order";
+  }
+
+  if (job.status === "scheduled" || job.appointment_start) return "scheduled";
+  if (job.status === "new" || job.status === "follow_up" || job.status === "quoted" || quoteStatus === "draft" || quoteStatus === "sent") {
+    return "need_follow_up";
+  }
+
+  return null;
+}
+
+function trackingEmailSignals(orderEmails: CrmOrderCogsEmail[], installEmails: CrmInstallationInvoiceEmail[]) {
+  const signals: string[] = [];
+  const appliedOrders = orderEmails.filter(isAppliedOrderEmail);
+  const shipping = appliedOrders.filter(emailLooksLikeShipping);
+  const reviewOrders = orderEmails.filter((email) => email.match_status === "needs_review" || email.match_status === "error");
+  const appliedInstall = installEmails.filter(isAppliedInstallEmail);
+  const reviewInstall = installEmails.filter((email) => email.match_status === "needs_review" || email.match_status === "error");
+
+  if (shipping.length) signals.push(`${shipping.length} shipping`);
+  if (appliedOrders.length) signals.push(`${appliedOrders.length} order`);
+  if (appliedInstall.length) signals.push(`${appliedInstall.length} install`);
+  if (reviewOrders.length + reviewInstall.length) signals.push(`${reviewOrders.length + reviewInstall.length} review`);
+  return signals;
+}
+
+function trackingRowSortTime(row: CrmBookkeepingRow, job?: CrmJob, quote?: CrmQuote) {
+  return Math.max(
+    dateSortValue(quote?.installed_at),
+    dateSortValue(quote?.received_at),
+    dateSortValue(quote?.ordered_at),
+    dateSortValue(row.soldDate),
+    dateSortValue(job?.appointment_start),
+    dateSortValue(job?.created_at)
+  );
+}
+
+function trackingItemMeta(statusLabelText: string, parts: Array<string | null | undefined>) {
+  return [statusLabelText, ...parts].filter(Boolean).join(" / ");
+}
+
+function addTrackingItem(bucketMap: Map<JobTrackingStageId, JobTrackingBucket>, item: JobTrackingItem) {
+  const bucket = bucketMap.get(item.stageId);
+  if (!bucket) return;
+  bucket.items.push(item);
+  bucket.totalValue += item.value;
+  if (item.emailSignals.length) bucket.emailCount += 1;
+}
+
+function buildJobTrackingBuckets({
+  jobs,
+  quotes,
+  rows,
+  files,
+  orderCogsEmails,
+  installationInvoiceEmails
+}: {
+  jobs: CrmJob[];
+  quotes: CrmQuote[];
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+  orderCogsEmails: CrmOrderCogsEmail[];
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[];
+}) {
+  const bucketMap = emptyJobTrackingBuckets();
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const quotesById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const quoteByJobId = latestQuoteByJob(quotes);
+  const includedJobIds = new Set<string>();
+  const includedQuoteIds = new Set<string>();
+
+  for (const row of rows) {
+    const job = row.jobId ? jobsById.get(row.jobId) : undefined;
+    const quote = row.quoteId ? quotesById.get(row.quoteId) || undefined : undefined;
+    const orderEmails = matchedOrderEmailsForTarget(orderCogsEmails, row, job, quote);
+    const installEmails = matchedInstallEmailsForTarget(installationInvoiceEmails, row, job, quote);
+    const stageId = classifyTrackingRow(row, job, quote, orderEmails, installEmails);
+    if (!stageId) continue;
+
+    if (row.jobId) includedJobIds.add(row.jobId);
+    if (row.quoteId) includedQuoteIds.add(row.quoteId);
+
+    const entry =
+      rowsToEntries([row], (item) => item.total, { jobs, files })[0] || {
+        id: row.id,
+        name: row.customerName,
+        customerName: row.customerName,
+        meta: titleCase(effectiveBookkeepingStatus(row)),
+        value: toCurrency(row.total),
+        row,
+        job,
+        file: customerFileForName(files, row.customerName)
+      };
+    const emailSignals = trackingEmailSignals(orderEmails, installEmails);
+    addTrackingItem(bucketMap, {
+      id: `row-${row.id}`,
+      stageId,
+      customerName: row.customerName,
+      meta: trackingItemMeta(titleCase(effectiveBookkeepingStatus(row)), [
+        row.manufacturerName,
+        row.manufacturerOrderRef,
+        formatShortDate(row.soldDate)
+      ]),
+      value: Number(row.total) || 0,
+      sortTime: trackingRowSortTime(row, job, quote),
+      emailSignals,
+      entry: {
+        ...entry,
+        meta: [entry.meta, emailSignals.join(" / ")].filter(Boolean).join(" / ")
+      }
+    });
+  }
+
+  for (const job of jobs) {
+    if (includedJobIds.has(job.id)) continue;
+    const quote = quoteByJobId.get(job.id);
+    const orderEmails = matchedOrderEmailsForTarget(orderCogsEmails, undefined, job, quote);
+    const stageId = classifyTrackingJob(job, quote, orderEmails);
+    if (!stageId) continue;
+
+    includedJobIds.add(job.id);
+    if (quote?.id) includedQuoteIds.add(quote.id);
+
+    const entry =
+      jobsToEntries([job], rows, { files })[0] || {
+        id: job.id,
+        name: job.customer_name,
+        customerName: job.customer_name,
+        meta: titleCase(job.status),
+        value: toCurrency(jobValue(job)),
+        jobId: job.id,
+        job,
+        file: customerFileForName(files, job.customer_name)
+      };
+    const emailSignals = trackingEmailSignals(orderEmails, []);
+    addTrackingItem(bucketMap, {
+      id: `job-${job.id}`,
+      stageId,
+      customerName: job.customer_name,
+      meta: trackingItemMeta(titleCase(job.status), [job.product_interest, job.city, formatShortDate(job.appointment_start)]),
+      value: jobValue(job),
+      sortTime: Math.max(dateSortValue(job.appointment_start), dateSortValue(job.created_at)),
+      emailSignals,
+      entry: {
+        ...entry,
+        meta: [entry.meta, emailSignals.join(" / ")].filter(Boolean).join(" / ")
+      }
+    });
+  }
+
+  for (const quote of quotes) {
+    if (includedQuoteIds.has(quote.id) || (quote.job_id && includedJobIds.has(quote.job_id))) continue;
+    const status = quoteStatusForTracking(quote);
+    if (status !== "draft" && status !== "sent") continue;
+    const entry =
+      quotesToEntries([quote], jobs, rows, files)[0] || {
+        id: quote.id,
+        name: quote.customer_name || quote.quote_number || "Linked quote",
+        customerName: quote.customer_name || "Linked customer",
+        meta: titleCase(status),
+        value: toCurrency(quote.quote_total)
+      };
+    addTrackingItem(bucketMap, {
+      id: `quote-${quote.id}`,
+      stageId: "need_follow_up",
+      customerName: quote.customer_name || entry?.customerName || "Linked customer",
+      meta: trackingItemMeta(titleCase(status), [quote.quote_number, formatShortDate(quote.sent_at || quote.created_at)]),
+      value: Number(quote.quote_total) || 0,
+      sortTime: dateSortValue(quote.sent_at || quote.created_at),
+      emailSignals: [],
+      entry
+    });
+  }
+
+  return JOB_TRACKING_STAGES.map((stage) => {
+    const bucket = bucketMap.get(stage.id);
+    const items = [...(bucket?.items || [])].sort((a, b) => b.sortTime - a.sortTime || b.value - a.value);
+    return {
+      ...stage,
+      items,
+      totalValue: bucket?.totalValue || 0,
+      emailCount: bucket?.emailCount || 0
+    };
+  });
+}
+
+function jobTrackingBucketEntries(bucket: JobTrackingBucket) {
+  return bucket.items.map((item) => item.entry).filter(Boolean);
+}
+
+function jobTrackingNodeStyle(bucket: JobTrackingBucket, maxCount: number) {
+  const pct = maxCount ? Math.max(8, Math.round((bucket.items.length / maxCount) * 100)) : 8;
+  return {
+    "--tracking-angle": `${bucket.angle}deg`,
+    "--tracking-counter-angle": `${-bucket.angle}deg`,
+    "--tracking-color": bucket.color,
+    "--tracking-fill": `${pct}%`
+  } as CSSProperties;
+}
+
+function JobTrackingView({
+  jobs,
+  quotes,
+  rows,
+  files,
+  orderCogsEmails,
+  installationInvoiceEmails,
+  busy,
+  onPullOrderEmails,
+  onPullInstallInvoices,
+  onDrill
+}: {
+  jobs: CrmJob[];
+  quotes: CrmQuote[];
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+  orderCogsEmails: CrmOrderCogsEmail[];
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[];
+  busy: boolean;
+  onPullOrderEmails: () => void;
+  onPullInstallInvoices: () => void;
+  onDrill: (payload: DrillPayload) => void;
+}) {
+  const buckets = useMemo(
+    () => buildJobTrackingBuckets({ jobs, quotes, rows, files, orderCogsEmails, installationInvoiceEmails }),
+    [jobs, quotes, rows, files, orderCogsEmails, installationInvoiceEmails]
+  );
+  const totalJobs = buckets.reduce((sum, bucket) => sum + bucket.items.length, 0);
+  const activeJobs = buckets.filter((bucket) => bucket.id !== "complete").reduce((sum, bucket) => sum + bucket.items.length, 0);
+  const maxCount = Math.max(1, ...buckets.map((bucket) => bucket.items.length));
+  const inboxStats = useMemo(
+    () => ({
+      order: orderCogsEmails.filter(isAppliedOrderEmail).length,
+      shipping: orderCogsEmails.filter((email) => isAppliedOrderEmail(email) && emailLooksLikeShipping(email)).length,
+      install: installationInvoiceEmails.filter(isAppliedInstallEmail).length,
+      review:
+        orderCogsEmails.filter((email) => email.match_status === "needs_review" || email.match_status === "error").length +
+        installationInvoiceEmails.filter((email) => email.match_status === "needs_review" || email.match_status === "error").length
+    }),
+    [orderCogsEmails, installationInvoiceEmails]
+  );
+
+  function openBucket(bucket: JobTrackingBucket) {
+    onDrill({
+      title: bucket.label,
+      subtitle: `${bucket.items.length} ${bucket.items.length === 1 ? "job" : "jobs"} / ${bucket.detail}`,
+      placement: "tracking",
+      entries: jobTrackingBucketEntries(bucket)
+    });
+  }
+
+  return (
+    <section className="crm-job-tracking">
+      <div className="crm-section-head crm-job-tracking-head">
+        <div>
+          <p className="eyebrow">Job Tracking</p>
+          <h2>Workflow By Status</h2>
+        </div>
+        <div className="crm-job-tracking-actions">
+          <button type="button" className="crm-ghost-button" onClick={onPullOrderEmails} disabled={busy}>
+            Pull Order Emails
+          </button>
+          <button type="button" className="crm-ghost-button" onClick={onPullInstallInvoices} disabled={busy}>
+            Pull Install Emails
+          </button>
+        </div>
+      </div>
+
+      <div className="crm-job-tracking-inbox" aria-label="Inbox signals included in job tracking">
+        <span>
+          <strong>{inboxStats.order}</strong> order emails
+        </span>
+        <span>
+          <strong>{inboxStats.shipping}</strong> shipping signals
+        </span>
+        <span>
+          <strong>{inboxStats.install}</strong> install emails
+        </span>
+        <span className={inboxStats.review ? "warn" : ""}>
+          <strong>{inboxStats.review}</strong> review
+        </span>
+      </div>
+
+      <div className="crm-job-tracking-orbit" aria-label="Job tracking circular workflow">
+        <div className="crm-job-tracking-core" style={JOB_TRACKING_WHEEL_STYLE}>
+          <div>
+            <span>Active</span>
+            <strong>{activeJobs}</strong>
+            <em>{totalJobs} total</em>
+          </div>
+        </div>
+        {buckets.map((bucket) => {
+          const shownItems = bucket.items.slice(0, bucket.items.length > 4 ? 3 : 4);
+          const hiddenCount = Math.max(bucket.items.length - shownItems.length, 0);
+          return (
+            <button
+              type="button"
+              className={`crm-job-tracking-node ${bucket.items.length ? "" : "empty"}`}
+              style={jobTrackingNodeStyle(bucket, maxCount)}
+              onClick={() => openBucket(bucket)}
+              key={bucket.id}
+            >
+              <span className="crm-job-tracking-stage">{bucket.label}</span>
+              <strong>{bucket.items.length}</strong>
+              <em>{bucket.detail}</em>
+              <span className="crm-job-tracking-fill" aria-hidden="true" />
+              <span className="crm-job-tracking-value">{toCurrency(bucket.totalValue)}</span>
+              <ul>
+                {shownItems.map((item) => (
+                  <li key={item.id}>{item.customerName}</li>
+                ))}
+                {hiddenCount ? <li>+{hiddenCount} more</li> : null}
+                {!bucket.items.length ? <li>No jobs</li> : null}
+              </ul>
+              {bucket.emailCount ? <small>{bucket.emailCount} inbox-backed</small> : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function CommandDashboard({
