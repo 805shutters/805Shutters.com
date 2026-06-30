@@ -17,7 +17,7 @@ import {
   updateCrmSettings
 } from "./backend";
 import { CrmAuthError } from "./auth";
-import { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCalendarEvent, CrmJob, CrmQuote } from "./types";
+import { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCalendarEvent, CrmCustomerContract, CrmJob, CrmQuote } from "./types";
 
 type FakeExpense = {
   id: string;
@@ -982,6 +982,65 @@ describe("enrichCalendarEventsWithJobDetails", () => {
       product_interest: "Shutters",
       customer_notes: "4 shutters",
       job_status: "scheduled"
+    });
+  });
+
+  it("adds quote sent and signed contract milestones to calendar events", () => {
+    const events = [
+      {
+        id: "event-quote",
+        created_at: "2026-06-20T00:00:00.000Z",
+        updated_at: "2026-06-20T00:00:00.000Z",
+        job_id: "job-quote",
+        title: "Quote follow-up",
+        event_type: "sales_consult",
+        status: "scheduled",
+        assigned_to: "Jessica",
+        start_at: "2026-06-24T23:00:00.000Z",
+        end_at: "2026-06-25T00:00:00.000Z",
+        location: null,
+        notes: null
+      } satisfies CrmCalendarEvent
+    ];
+    const jobs = [job({ id: "job-quote", status: "quoted" })];
+    const quotes = [
+      quote({
+        id: "quote-sent",
+        job_id: "job-quote",
+        status: "sent",
+        sent_at: "2026-06-25T18:00:00.000Z"
+      }),
+      quote({
+        id: "quote-signed",
+        job_id: "job-quote",
+        status: "sold",
+        sent_at: "2026-06-26T18:00:00.000Z",
+        signed_at: "2026-06-27T18:00:00.000Z"
+      })
+    ];
+    const contracts = [
+      {
+        id: "contract-1",
+        created_at: "2026-06-27T18:00:00.000Z",
+        updated_at: "2026-06-28T18:00:00.000Z",
+        customer_id: null,
+        job_id: null,
+        quote_id: "quote-signed",
+        bookkeeping_entry_id: null,
+        title: "Contract Q-1",
+        contract_url: null,
+        share_token: null,
+        status: "sold",
+        signed_at: "2026-06-28T18:00:00.000Z",
+        total_amount: 1000,
+        meta: {}
+      } satisfies CrmCustomerContract
+    ];
+
+    expect(enrichCalendarEventsWithJobDetails(events, jobs, quotes, contracts)[0]).toMatchObject({
+      quote_sent_at: "2026-06-26T18:00:00.000Z",
+      quote_signed_at: "2026-06-27T18:00:00.000Z",
+      customer_contract_signed_at: "2026-06-28T18:00:00.000Z"
     });
   });
 });

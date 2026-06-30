@@ -508,6 +508,9 @@ export type CrmCalendarEvent = {
   product_interest?: string | null;
   customer_notes?: string | null;
   job_status?: CrmJobStatus | null;
+  quote_sent_at?: string | null;
+  quote_signed_at?: string | null;
+  customer_contract_signed_at?: string | null;
 };
 
 export type CrmAvailabilitySlot = {

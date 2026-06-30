@@ -918,12 +918,70 @@ async function syncCustomerFromBookkeepingEntry(
   });
 }
 
-export function enrichCalendarEventsWithJobDetails(events: CrmCalendarEvent[], jobs: CrmJob[]): CrmCalendarEvent[] {
+function latestCalendarTimestamp(values: Array<string | null | undefined>) {
+  let latestValue: string | null = null;
+  let latestMs = Number.NEGATIVE_INFINITY;
+
+  for (const value of values) {
+    if (!value) continue;
+    const ms = Date.parse(value);
+    if (!Number.isFinite(ms) || ms <= latestMs) continue;
+    latestMs = ms;
+    latestValue = value;
+  }
+
+  return latestValue;
+}
+
+export function enrichCalendarEventsWithJobDetails(
+  events: CrmCalendarEvent[],
+  jobs: CrmJob[],
+  quotes: CrmQuote[] = [],
+  contracts: CrmCustomerContract[] = []
+): CrmCalendarEvent[] {
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const quotesByJobId = new Map<string, CrmQuote[]>();
+  const contractsByJobId = new Map<string, CrmCustomerContract[]>();
+  const contractsByQuoteId = new Map<string, CrmCustomerContract[]>();
+
+  for (const quote of quotes) {
+    const existing = quotesByJobId.get(quote.job_id) || [];
+    existing.push(quote);
+    quotesByJobId.set(quote.job_id, existing);
+  }
+
+  for (const contract of contracts) {
+    if (contract.job_id) {
+      const existing = contractsByJobId.get(contract.job_id) || [];
+      existing.push(contract);
+      contractsByJobId.set(contract.job_id, existing);
+    }
+
+    if (contract.quote_id) {
+      const existing = contractsByQuoteId.get(contract.quote_id) || [];
+      existing.push(contract);
+      contractsByQuoteId.set(contract.quote_id, existing);
+    }
+  }
 
   return events.map((event) => {
     const job = event.job_id ? jobsById.get(event.job_id) : null;
     if (!job) return event;
+    const relatedQuotes = quotesByJobId.get(job.id) || [];
+    const relatedQuoteIds = new Set(relatedQuotes.map((quote) => quote.id));
+    const relatedContractsById = new Map<string, CrmCustomerContract>();
+
+    for (const contract of contractsByJobId.get(job.id) || []) {
+      relatedContractsById.set(contract.id, contract);
+    }
+
+    for (const quoteId of relatedQuoteIds) {
+      for (const contract of contractsByQuoteId.get(quoteId) || []) {
+        relatedContractsById.set(contract.id, contract);
+      }
+    }
+
+    const relatedContracts = [...relatedContractsById.values()];
 
     return {
       ...event,
@@ -934,7 +992,10 @@ export function enrichCalendarEventsWithJobDetails(events: CrmCalendarEvent[], j
       customer_city: job.city,
       product_interest: job.product_interest,
       customer_notes: event.notes || job.notes,
-      job_status: job.status
+      job_status: job.status,
+      quote_sent_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.sent_at)),
+      quote_signed_at: latestCalendarTimestamp(relatedQuotes.map((quote) => quote.signed_at)),
+      customer_contract_signed_at: latestCalendarTimestamp(relatedContracts.map((contract) => contract.signed_at))
     };
   });
 }
@@ -1017,7 +1078,7 @@ export function buildDashboardData({
     ...job,
     quote_total: quotesByJob.get(job.id) || toMoney(job.estimated_total)
   }));
-  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes);
+  const calendarEvents = enrichCalendarEventsWithJobDetails(events, jobsWithQuotes, liveQuotes, contracts);
 
   return {
     jobs: jobsWithQuotes,

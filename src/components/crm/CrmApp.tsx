@@ -415,17 +415,23 @@ function canRescheduleCalendarEvent(event: CrmCalendarEvent) {
   return isActiveCalendarEvent(event) && event.event_type !== "block";
 }
 
-const soldCalendarJobStatuses = new Set<CrmJobStatus>(["sold", "ordered", "installed", "invoiced", "closed"]);
-
 function isPastCalendarEvent(event: CrmCalendarEvent) {
   return new Date(event.end_at) <= new Date();
 }
 
+function hasSignedCalendarContract(event: CrmCalendarEvent) {
+  return Boolean(event.customer_contract_signed_at || event.quote_signed_at);
+}
+
+function hasSentCalendarQuote(event: CrmCalendarEvent) {
+  return Boolean(event.quote_sent_at);
+}
+
 function calendarEventCompletionToneClassName(event: CrmCalendarEvent) {
   if (event.event_type === "block" || event.status === "canceled" || !isPastCalendarEvent(event)) return "";
-  return soldCalendarJobStatuses.has(event.job_status || "new")
-    ? " crm-calendar-event-block--post-sold"
-    : " crm-calendar-event-block--post-unsold";
+  if (hasSignedCalendarContract(event)) return " crm-calendar-event-block--post-sold";
+  if (hasSentCalendarQuote(event)) return " crm-calendar-event-block--post-unsold";
+  return "";
 }
 
 function calendarEventToneClassName(event: CrmCalendarEvent) {
