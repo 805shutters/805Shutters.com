@@ -3912,11 +3912,26 @@ body.qb-fullscreen .crm-app-shell {
   line-height: 1.45;
 }
 
+.crm-customer-card-actions {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
 .crm-customer-card-head strong {
   font-family: var(--font-display);
   font-size: 31px;
   font-weight: 400;
   white-space: nowrap;
+}
+
+.crm-customer-delete-button {
+  min-height: 30px;
+  margin-left: 0;
+  padding: 6px 9px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .crm-customer-facts {

@@ -176,6 +176,7 @@ export type CrmCustomer = {
   lifetime_value: number;
   open_balance: number;
   notes: string | null;
+  meta?: Record<string, unknown> | null;
 };
 
 export type CrmCustomerProduct = {

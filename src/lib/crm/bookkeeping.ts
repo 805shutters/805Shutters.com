@@ -50,7 +50,7 @@ const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
 ]);
 
 function hasLedgerDeleteTombstone(meta: Record<string, unknown> | null | undefined) {
-  return Boolean(meta && typeof meta === "object" && !Array.isArray(meta) && meta.bookkeeping_deleted_at);
+  return Boolean(meta && typeof meta === "object" && !Array.isArray(meta) && (meta.bookkeeping_deleted_at || meta.deleted_at));
 }
 
 export function buildBookkeepingRows({

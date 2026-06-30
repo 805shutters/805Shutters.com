@@ -4,6 +4,7 @@ import {
   buildDashboardData,
   createCrmQuote,
   createPartnerPaymentBatch,
+  deleteCrmCustomerFile,
   deleteCrmLedgerRow,
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
@@ -1036,6 +1037,151 @@ function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: 
 }
 
 const actor = { email: "boss@805shutters.com", userId: "user-1" };
+
+function customerDeleteRecorder() {
+  const tables: Record<string, Array<Record<string, unknown>>> = {
+    crm_customers: [{ id: "customer-1", meta: { existingCustomer: true } }],
+    crm_jobs: [{ id: "job-1", meta: { existingJob: true } }],
+    crm_quotes: [{ id: "quote-1", job_id: "job-1", meta: { existingQuote: true } }],
+    crm_quote_bookkeeping_entries: [
+      { id: "entry-1", job_id: "job-1", quote_id: "quote-1", meta: { existingEntry: true } }
+    ],
+    crm_customer_products: [
+      { id: "product-1", customer_id: "customer-1", job_id: null, quote_id: null, bookkeeping_entry_id: null, meta: {} }
+    ],
+    crm_customer_contracts: [
+      { id: "contract-1", customer_id: "customer-1", job_id: null, quote_id: null, bookkeeping_entry_id: null, meta: {} }
+    ],
+    crm_activity_events: []
+  };
+
+  class QueryRecorder {
+    private operation: "select" | "update" | "insert" = "select";
+    private filters: Record<string, unknown> = {};
+    private inFilter: { column: string; values: unknown[] } | null = null;
+    private payload: Record<string, unknown> | null = null;
+    private selectedColumns = "*";
+
+    constructor(private table: string) {}
+
+    select(columns = "*") {
+      this.selectedColumns = columns;
+      return this;
+    }
+
+    in(column: string, values: unknown[]) {
+      this.inFilter = { column, values };
+      return this;
+    }
+
+    eq(key: string, value: unknown) {
+      this.filters[key] = value;
+      return this;
+    }
+
+    update(payload: Record<string, unknown>) {
+      this.operation = "update";
+      this.payload = payload;
+      return this;
+    }
+
+    insert(payload: Record<string, unknown>) {
+      this.operation = "insert";
+      this.payload = payload;
+      return this;
+    }
+
+    then<TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: { data?: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    ) {
+      return Promise.resolve(this.execute()).then(onfulfilled, onrejected);
+    }
+
+    private matches(record: Record<string, unknown>) {
+      const eqMatches = Object.entries(this.filters).every(([column, value]) => record[column] === value);
+      const inMatches = !this.inFilter || this.inFilter.values.includes(record[this.inFilter.column]);
+      return eqMatches && inMatches;
+    }
+
+    private execute() {
+      const records = tables[this.table] || [];
+      if (this.operation === "insert") {
+        records.push({ ...(this.payload || {}) });
+        return { data: null, error: null };
+      }
+
+      if (this.operation === "update") {
+        for (const record of records) {
+          if (this.matches(record)) Object.assign(record, this.payload);
+        }
+        return { data: null, error: null };
+      }
+
+      const data = records.filter((record) => this.matches(record)).map((record) => {
+        if (this.selectedColumns === "id") return { id: record.id };
+        return record;
+      });
+      return { data, error: null };
+    }
+  }
+
+  const supabase = {
+    from(table: string) {
+      return new QueryRecorder(table);
+    }
+  } as unknown as Parameters<typeof deleteCrmCustomerFile>[0];
+
+  return { supabase, tables };
+}
+
+describe("deleteCrmCustomerFile", () => {
+  it("tombstones the customer file and linked CRM records without physical deletes", async () => {
+    const { supabase, tables } = customerDeleteRecorder();
+
+    const result = await deleteCrmCustomerFile(
+      supabase,
+      "customer-1",
+      {
+        customerId: "customer-1",
+        customerName: "Kelly Krasner",
+        jobIds: ["job-1"]
+      },
+      actor
+    );
+
+    expect(result).toMatchObject({ deleted: true, count: 6 });
+    expect(tables.crm_customers[0].meta).toMatchObject({
+      existingCustomer: true,
+      deleted_by: actor.email,
+      delete_source: "customer_file_delete"
+    });
+    expect(tables.crm_jobs[0].meta).toMatchObject({
+      existingJob: true,
+      deleted_by: actor.email,
+      delete_source: "customer_file_delete"
+    });
+    expect(tables.crm_quotes[0].meta).toMatchObject({
+      existingQuote: true,
+      deleted_by: actor.email,
+      bookkeeping_deleted_by: actor.email,
+      bookkeeping_delete_source: "customer_file_delete"
+    });
+    expect(tables.crm_quote_bookkeeping_entries[0].meta).toMatchObject({
+      existingEntry: true,
+      deleted_by: actor.email,
+      bookkeeping_deleted_by: actor.email,
+      bookkeeping_delete_source: "customer_file_delete"
+    });
+    expect(tables.crm_customer_products[0].meta).toMatchObject({ deleted_by: actor.email });
+    expect(tables.crm_customer_contracts[0].meta).toMatchObject({ deleted_by: actor.email });
+    expect(tables.crm_activity_events[0]).toMatchObject({
+      actor_email: actor.email,
+      entity_type: "customer",
+      action: "delete"
+    });
+  });
+});
 
 describe("deleteCrmLedgerRow", () => {
   it("tombstones ONLY the bookkeeping entry, even when it is linked to a job and quote", async () => {

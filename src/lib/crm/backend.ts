@@ -527,6 +527,29 @@ function objectMeta(value: unknown) {
   return typeof value === "object" && value && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+function hasDeleteTombstone(value: unknown) {
+  return Boolean(objectMeta(value).deleted_at);
+}
+
+function uniqueTextValues(values: Array<unknown>) {
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function payloadStringArray(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  return Array.isArray(value) ? uniqueTextValues(value) : [];
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 async function fetchCrmJob(supabase: CrmSupabaseClient, jobId: string): Promise<CrmJob> {
   const { data, error } = await supabase.from("crm_jobs").select("*").eq("id", jobId).maybeSingle();
   if (error || !data) throw new CrmAuthError(404, "CRM job was not found.");
@@ -1250,13 +1273,21 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   // lookups all read from this array. The row stays in the table so a delete
   // is recoverable and never destroys a linked quote or sale.
   const jobs = ((jobsResult.data || []) as CrmJob[]).filter(
-    (job) => !objectMeta((job as { meta?: unknown }).meta).deleted_at
+    (job) => !hasDeleteTombstone((job as { meta?: unknown }).meta)
   );
-  const quotes = (quotesResult.data || []) as CrmQuote[];
+  const quotes = ((quotesResult.data || []) as CrmQuote[]).filter(
+    (quote) => !hasDeleteTombstone(quote.meta)
+  );
   const events = (eventsResult.data || []) as CrmCalendarEvent[];
-  const customers = (customersResult.data || []) as CrmCustomer[];
-  const products = (productsResult.data || []) as CrmCustomerProduct[];
-  const contracts = (contractsResult.data || []) as CrmCustomerContract[];
+  const customers = ((customersResult.data || []) as CrmCustomer[]).filter(
+    (customer) => !hasDeleteTombstone(customer.meta)
+  );
+  const products = ((productsResult.data || []) as CrmCustomerProduct[]).filter(
+    (product) => !hasDeleteTombstone(product.meta)
+  );
+  const contracts = ((contractsResult.data || []) as CrmCustomerContract[]).filter(
+    (contract) => !hasDeleteTombstone(contract.meta)
+  );
   const entries = (entriesResult.data || []) as CrmBookkeepingEntry[];
   const payments = (paymentsResult.data || []) as CrmBookkeepingPayment[];
   const credits = (creditsResult.data || []) as CrmBookkeepingCredit[];
@@ -1457,6 +1488,252 @@ export async function deleteCrmJob(supabase: CrmSupabaseClient, id: string, acto
   });
 
   return { id };
+}
+
+async function selectIdsByColumn(
+  supabase: CrmSupabaseClient,
+  table: string,
+  column: string,
+  values: string[],
+  errorMessage: string
+) {
+  if (!values.length) return [];
+  const { data, error } = await supabase.from(table).select("id").in(column, values);
+  if (error) throw new CrmAuthError(502, errorMessage);
+  return uniqueTextValues(((data || []) as Array<{ id?: unknown }>).map((row) => row.id));
+}
+
+async function tombstoneRowsByIds(
+  supabase: CrmSupabaseClient,
+  table: string,
+  ids: string[],
+  metaPatch: Record<string, unknown>,
+  errorMessage: string
+) {
+  const uniqueIds = uniqueTextValues(ids);
+  if (!uniqueIds.length) return [];
+
+  const { data, error } = await supabase.from(table).select("id,meta").in("id", uniqueIds);
+  if (error) throw new CrmAuthError(502, errorMessage);
+
+  const rows = ((data || []) as Array<{ id: string; meta?: unknown }>).filter((row) => row.id);
+  for (const row of rows) {
+    const after = {
+      ...objectMeta(row.meta),
+      ...metaPatch
+    };
+    const { error: updateError } = await supabase.from(table).update({ meta: after }).eq("id", row.id);
+    if (updateError) throw new CrmAuthError(502, errorMessage);
+  }
+
+  return rows;
+}
+
+async function selectRowsByIds(
+  supabase: CrmSupabaseClient,
+  table: string,
+  ids: string[],
+  errorMessage: string
+) {
+  const uniqueIds = uniqueTextValues(ids);
+  if (!uniqueIds.length) return [];
+
+  const { data, error } = await supabase.from(table).select("id,meta").in("id", uniqueIds);
+  if (error) throw new CrmAuthError(502, errorMessage);
+  return ((data || []) as Array<{ id: string; meta?: unknown }>).filter((row) => row.id);
+}
+
+export async function deleteCrmCustomerFile(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const customerName = optionalText(payload.customerName);
+  const customerIds = uniqueTextValues([
+    optionalText(payload.customerId),
+    ...(isUuid(id) ? [id] : []),
+    ...payloadStringArray(payload, "customerIds")
+  ]);
+  const jobIds = uniqueTextValues([
+    ...payloadStringArray(payload, "jobIds"),
+    ...payloadStringArray(payload, "rowJobIds")
+  ]);
+  let quoteIds = uniqueTextValues([
+    ...payloadStringArray(payload, "quoteIds"),
+    ...payloadStringArray(payload, "rowQuoteIds")
+  ]);
+  let bookkeepingEntryIds = uniqueTextValues(payloadStringArray(payload, "bookkeepingEntryIds"));
+  let productIds = uniqueTextValues(payloadStringArray(payload, "productIds"));
+  let contractIds = uniqueTextValues(payloadStringArray(payload, "contractIds"));
+
+  if (!customerIds.length && !jobIds.length && !quoteIds.length && !bookkeepingEntryIds.length && !customerName) {
+    throw new CrmAuthError(400, "Customer file details are required before deleting.");
+  }
+
+  const customerRows = customerIds.length
+    ? await selectRowsByIds(
+        supabase,
+        "crm_customers",
+        customerIds,
+        "Customer file could not be checked before deleting."
+      )
+    : [];
+  const existingCustomerIds = uniqueTextValues(customerRows.map((row) => row.id));
+
+  const quoteIdsFromJobs = await selectIdsByColumn(
+    supabase,
+    "crm_quotes",
+    "job_id",
+    jobIds,
+    "Customer quotes could not be checked before deleting."
+  );
+  quoteIds = uniqueTextValues([...quoteIds, ...quoteIdsFromJobs]);
+
+  const entriesFromJobs = await selectIdsByColumn(
+    supabase,
+    "crm_quote_bookkeeping_entries",
+    "job_id",
+    jobIds,
+    "Customer bookkeeping rows could not be checked before deleting."
+  );
+  const entriesFromQuotes = await selectIdsByColumn(
+    supabase,
+    "crm_quote_bookkeeping_entries",
+    "quote_id",
+    quoteIds,
+    "Customer bookkeeping rows could not be checked before deleting."
+  );
+  bookkeepingEntryIds = uniqueTextValues([...bookkeepingEntryIds, ...entriesFromJobs, ...entriesFromQuotes]);
+
+  const productIdSources = await Promise.all([
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_products",
+      "customer_id",
+      existingCustomerIds,
+      "Customer products could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_products",
+      "job_id",
+      jobIds,
+      "Customer products could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_products",
+      "quote_id",
+      quoteIds,
+      "Customer products could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_products",
+      "bookkeeping_entry_id",
+      bookkeepingEntryIds,
+      "Customer products could not be checked before deleting."
+    )
+  ]);
+  productIds = uniqueTextValues([...productIds, ...productIdSources.flat()]);
+
+  const contractIdSources = await Promise.all([
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_contracts",
+      "customer_id",
+      existingCustomerIds,
+      "Customer contracts could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_contracts",
+      "job_id",
+      jobIds,
+      "Customer contracts could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_contracts",
+      "quote_id",
+      quoteIds,
+      "Customer contracts could not be checked before deleting."
+    ),
+    selectIdsByColumn(
+      supabase,
+      "crm_customer_contracts",
+      "bookkeeping_entry_id",
+      bookkeepingEntryIds,
+      "Customer contracts could not be checked before deleting."
+    )
+  ]);
+  contractIds = uniqueTextValues([...contractIds, ...contractIdSources.flat()]);
+
+  const deletedAt = new Date().toISOString();
+  const deleteMeta = {
+    deleted_at: deletedAt,
+    deleted_by: actor.email,
+    deleted_by_user_id: actor.userId || null,
+    delete_source: "customer_file_delete"
+  };
+  const ledgerDeleteMeta = {
+    ...deleteMeta,
+    bookkeeping_deleted_at: deletedAt,
+    bookkeeping_deleted_by: actor.email,
+    bookkeeping_deleted_by_user_id: actor.userId || null,
+    bookkeeping_delete_source: "customer_file_delete"
+  };
+
+  const [updatedJobs, updatedQuotes, updatedEntries, updatedProducts, updatedContracts, updatedCustomers] =
+    await Promise.all([
+      tombstoneRowsByIds(supabase, "crm_jobs", jobIds, deleteMeta, "Customer jobs could not be deleted."),
+      tombstoneRowsByIds(supabase, "crm_quotes", quoteIds, ledgerDeleteMeta, "Customer quotes could not be deleted."),
+      tombstoneRowsByIds(
+        supabase,
+        "crm_quote_bookkeeping_entries",
+        bookkeepingEntryIds,
+        ledgerDeleteMeta,
+        "Customer bookkeeping rows could not be deleted."
+      ),
+      tombstoneRowsByIds(supabase, "crm_customer_products", productIds, deleteMeta, "Customer products could not be deleted."),
+      tombstoneRowsByIds(supabase, "crm_customer_contracts", contractIds, deleteMeta, "Customer contracts could not be deleted."),
+      tombstoneRowsByIds(supabase, "crm_customers", existingCustomerIds, deleteMeta, "Customer file could not be deleted.")
+    ]);
+
+  const deletedCount =
+    updatedJobs.length +
+    updatedQuotes.length +
+    updatedEntries.length +
+    updatedProducts.length +
+    updatedContracts.length +
+    updatedCustomers.length;
+
+  if (!deletedCount) {
+    throw new CrmAuthError(404, "Customer file was not found.");
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "customer",
+    entityId: existingCustomerIds[0] || id,
+    action: "delete",
+    after: {
+      id,
+      customerName,
+      deletedAt,
+      counts: {
+        customers: updatedCustomers.length,
+        jobs: updatedJobs.length,
+        quotes: updatedQuotes.length,
+        bookkeepingEntries: updatedEntries.length,
+        products: updatedProducts.length,
+        contracts: updatedContracts.length
+      }
+    },
+    metadata: { source: "customer_file_delete", customerName: customerName || null }
+  });
+
+  return { id, deleted: true, count: deletedCount };
 }
 
 async function syncSaleOwnerForJob(

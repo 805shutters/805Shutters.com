@@ -1764,6 +1764,35 @@ export function CrmApp({
     }
   }
 
+  async function deleteCustomerFile(file: CrmCustomerFile) {
+    if (!session) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(
+        `Delete the customer file for "${file.customerName}"?\n\nThis hides the customer, related jobs, quotes, and bookkeeping rows from the CRM. The records are kept in history.`
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch(session, `/api/crm/customers/${encodeURIComponent(file.customer?.id || file.id)}`, {
+        method: "DELETE",
+        body: JSON.stringify(customerFileDeletePayload(file))
+      });
+      await refresh();
+      setMessage(`Deleted the customer file for "${file.customerName}".`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Customer file could not be deleted.");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateJob(event: FormEvent<HTMLFormElement>, job: CrmJob) {
     event.preventDefault();
     if (!session) return;
@@ -2050,6 +2079,8 @@ export function CrmApp({
           files={customerFiles}
           focusCustomer={focusCustomer}
           onFocusHandled={() => setFocusCustomer(null)}
+          onDelete={deleteCustomerFile}
+          busy={busy}
         />
       ) : null}
 
@@ -2178,6 +2209,8 @@ export function CrmApp({
               activeStatus={activeJobStatus}
               focusCustomer={focusCustomer}
               onFocusHandled={() => setFocusCustomer(null)}
+              onDelete={deleteCustomerFile}
+              busy={busy}
             />
           </div>
         </section>
@@ -5079,16 +5112,39 @@ function jobMatchesSearch(job: CrmJob, query: string) {
   });
 }
 
+function uniqueCustomerFileIds(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+}
+
+function customerFileDeletePayload(file: CrmCustomerFile) {
+  const rowQuoteIds = file.bookkeepingRows.map((row) => row.quoteId || (row.source === "crm_quote" ? row.id : null));
+  return {
+    customerName: file.customerName,
+    customerId: file.customer?.id || null,
+    jobIds: uniqueCustomerFileIds([...file.jobs.map((job) => job.id), ...file.bookkeepingRows.map((row) => row.jobId)]),
+    quoteIds: uniqueCustomerFileIds([...file.quotes.map((quote) => quote.id), ...rowQuoteIds]),
+    bookkeepingEntryIds: uniqueCustomerFileIds(
+      file.bookkeepingRows.map((row) => (row.source === "crm_quote" ? null : row.id))
+    ),
+    productIds: uniqueCustomerFileIds(file.products.map((product) => product.id)),
+    contractIds: uniqueCustomerFileIds(file.contracts.map((contract) => contract.id))
+  };
+}
+
 function CustomerFilesView({
   files,
   activeStatus,
   focusCustomer,
-  onFocusHandled
+  onFocusHandled,
+  onDelete,
+  busy = false
 }: {
   files: CrmCustomerFile[];
   activeStatus?: JobStatusFilter;
   focusCustomer?: string | null;
   onFocusHandled?: () => void;
+  onDelete?: (file: CrmCustomerFile) => void;
+  busy?: boolean;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
@@ -5179,7 +5235,19 @@ function CustomerFilesView({
                     <h3>{file.customerName}</h3>
                     <p>{[file.phone, file.email, file.city].filter(Boolean).join(" / ") || "Contact details pending"}</p>
                   </div>
-                  <strong>{toCurrency(file.lifetimeValue)}</strong>
+                  <div className="crm-customer-card-actions">
+                    <strong>{toCurrency(file.lifetimeValue)}</strong>
+                    {onDelete ? (
+                      <button
+                        type="button"
+                        className="crm-ghost-button crm-delete-button crm-customer-delete-button"
+                        disabled={busy}
+                        onClick={() => onDelete(file)}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
                 </header>
 
                 {file.address ? <p className="crm-customer-address">{file.address}</p> : null}

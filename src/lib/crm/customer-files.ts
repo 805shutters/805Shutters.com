@@ -24,11 +24,16 @@ export function buildCustomerFiles({
   quotes: CrmQuote[];
   bookkeepingRows: CrmBookkeepingRow[];
 }): CrmCustomerFile[] {
-  const jobById = new Map(jobs.map((job) => [job.id, job]));
-  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const activeCustomers = customers.filter((customer) => !hasDeleteTombstone(customer.meta));
+  const activeJobs = jobs.filter((job) => !hasDeleteTombstone(job.meta));
+  const activeQuotes = quotes.filter((quote) => !hasDeleteTombstone(quote.meta));
+  const activeProducts = products.filter((product) => !hasDeleteTombstone(product.meta));
+  const activeContracts = contracts.filter((contract) => !hasDeleteTombstone(contract.meta));
+  const jobById = new Map(activeJobs.map((job) => [job.id, job]));
+  const quoteById = new Map(activeQuotes.map((quote) => [quote.id, quote]));
   const fileMap = new Map<string, CrmCustomerFile>();
 
-  for (const customer of customers) {
+  for (const customer of activeCustomers) {
     fileMap.set(customerKey(customer.normalized_name || customer.display_name), {
       id: customer.id,
       customer,
@@ -91,7 +96,7 @@ export function buildCustomerFiles({
     }
   }
 
-  for (const job of jobs) {
+  for (const job of activeJobs) {
     const key = customerKey(job.customer_name);
     const file = ensureFile(fileMap, key, job.customer_name);
     pushUnique(file.jobs, job.id, job);
@@ -106,7 +111,7 @@ export function buildCustomerFiles({
     if (job.notes) file.notes.push(job.notes);
   }
 
-  for (const quote of quotes) {
+  for (const quote of activeQuotes) {
     const job = jobById.get(quote.job_id);
     const key = customerKey(quote.customer_name || job?.customer_name || "");
     const file = ensureFile(fileMap, key, quote.customer_name || job?.customer_name || "Linked customer");
@@ -117,17 +122,17 @@ export function buildCustomerFiles({
     if (quote.notes) file.notes.push(quote.notes);
   }
 
-  for (const product of products) {
+  for (const product of activeProducts) {
     const key = product.customer_id
-      ? customerKey(customers.find((customer) => customer.id === product.customer_id)?.normalized_name || "")
+      ? customerKey(activeCustomers.find((customer) => customer.id === product.customer_id)?.normalized_name || "")
       : relatedFileKey(product, jobById, quoteById);
     const file = key ? ensureFile(fileMap, key, fallbackRelatedName(product, jobById, quoteById)) : null;
     if (file) pushUnique(file.products, product.id, product);
   }
 
-  for (const contract of contracts) {
+  for (const contract of activeContracts) {
     const key = contract.customer_id
-      ? customerKey(customers.find((customer) => customer.id === contract.customer_id)?.normalized_name || "")
+      ? customerKey(activeCustomers.find((customer) => customer.id === contract.customer_id)?.normalized_name || "")
       : relatedFileKey(contract, jobById, quoteById);
     const file = key ? ensureFile(fileMap, key, fallbackRelatedName(contract, jobById, quoteById)) : null;
     if (file) pushUnique(file.contracts, contract.id, contract);
@@ -174,6 +179,10 @@ export function buildCustomerFiles({
     const bt = b.latestSoldDate ? Date.parse(b.latestSoldDate) : 0;
     return bt - at || a.customerName.localeCompare(b.customerName);
   });
+}
+
+function hasDeleteTombstone(meta: Record<string, unknown> | null | undefined) {
+  return Boolean(meta && typeof meta === "object" && !Array.isArray(meta) && meta.deleted_at);
 }
 
 function latestLiveStatus(file: CrmCustomerFile) {
