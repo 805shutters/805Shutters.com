@@ -200,6 +200,12 @@ const canonicalHostRedirect = {
   permanent: true
 };
 
+const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map((source) => ({
+  source,
+  destination: "/contact/",
+  permanent: true
+}));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
@@ -223,7 +229,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [canonicalHostRedirect, ...legacyRedirects];
+    return [canonicalHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
   }
 };
 

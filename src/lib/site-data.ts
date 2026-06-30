@@ -38,7 +38,7 @@ export const site = {
   name: "805 Shutters",
   shortName: "805 Shutters",
   phone: "805-806-9344",
-  phoneHref: "tel:8058069344",
+  phoneHref: "tel:+18058069344",
   email: "805@805shutters.com",
   emailHref: "mailto:805@805shutters.com",
   social: {
