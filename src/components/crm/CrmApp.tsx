@@ -705,15 +705,17 @@ function CollapsiblePanel({
 export function CrmApp({
   initialTab = "command",
   initialPaymentPerson = "ken",
+  loginRedirectPath: loginRedirectPathOverride,
   mode = "full"
 }: {
   initialTab?: CrmTab;
   initialPaymentPerson?: CrmPaymentPerson;
+  loginRedirectPath?: string;
   mode?: CrmAppMode;
 } = {}) {
   const supabase = getSupabaseBrowserClient();
   const isKenMode = mode === "ken";
-  const loginRedirectPath = isKenMode ? "/crm/ken" : "/crm/";
+  const loginRedirectPath = loginRedirectPathOverride || (isKenMode ? "/crm/ken" : "/crm/");
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);

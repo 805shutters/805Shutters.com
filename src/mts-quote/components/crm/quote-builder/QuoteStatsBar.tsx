@@ -92,32 +92,36 @@ export function QuoteStatsBar({
   return (
     <div className="space-y-4">
       {/* Meta filters (Today / Upcoming) */}
-      <div className="flex gap-3 flex-wrap">
-        {metaTiles.map((item) => (
-          <FilterTile
-            key={item.key}
-            item={item}
-            active={activeFilter === item.key}
-            onClick={() => onFilterChange(activeFilter === item.key ? "all" : item.key)}
-            isBw={isBw}
-            variant="meta"
-          />
-        ))}
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,304px)_1px_minmax(0,1fr)] xl:items-stretch">
+        <div className="grid grid-cols-2 gap-3">
+          {metaTiles.map((item) => (
+            <FilterTile
+              key={item.key}
+              item={item}
+              active={activeFilter === item.key}
+              onClick={() => onFilterChange(activeFilter === item.key ? "all" : item.key)}
+              isBw={isBw}
+              variant="meta"
+            />
+          ))}
+        </div>
 
-        <div className="w-px bg-black/10 mx-1 self-stretch" aria-hidden />
+        <div className="hidden w-px bg-black/10 xl:block" aria-hidden />
 
         {/* Lifecycle file cabinet */}
-        {lifecycleTiles.map((item) => (
-          <FilterTile
-            key={item.key}
-            item={item}
-            active={activeFilter === item.key}
-            onClick={() => onFilterChange(activeFilter === item.key ? "all" : item.key)}
-            isBw={isBw}
-            variant="lifecycle"
-            status={item.key as QuoteStatus}
-          />
-        ))}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7">
+          {lifecycleTiles.map((item) => (
+            <FilterTile
+              key={item.key}
+              item={item}
+              active={activeFilter === item.key}
+              onClick={() => onFilterChange(activeFilter === item.key ? "all" : item.key)}
+              isBw={isBw}
+              variant="lifecycle"
+              status={item.key as QuoteStatus}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -165,7 +169,7 @@ function FilterTile({
     <button
       onClick={onClick}
       className={cn(
-        "flex flex-col items-center px-5 py-3 rounded-xl min-w-[96px] shadow-sm transition-all cursor-pointer text-black",
+        "flex min-h-[78px] w-full min-w-0 cursor-pointer flex-col items-center justify-center rounded-xl px-3 py-3 text-black shadow-sm transition-all",
         active ? activeClasses : inactiveClasses
       )}
     >

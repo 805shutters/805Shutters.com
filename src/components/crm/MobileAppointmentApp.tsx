@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  FileText,
   Loader2,
   MapPin,
   MessageSquare,
@@ -784,9 +785,14 @@ export function MobileAppointmentApp() {
           <h1>Appointments</h1>
           <p>All appointments</p>
         </div>
-        <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
-          <Plus />
-        </button>
+        <div className="mobile-crm-topbar-actions">
+          <a href="/crm/mobile/quotes" aria-label="Open quotes" title="Quotes">
+            <FileText />
+          </a>
+          <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
+            <Plus />
+          </button>
+        </div>
       </header>
 
       <section className="mobile-crm-controls">

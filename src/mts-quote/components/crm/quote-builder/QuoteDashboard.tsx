@@ -455,16 +455,16 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Quote Builder</h1>
           <p className="text-muted-foreground">Create and manage window treatment quotes</p>
         </div>
         <Button
           onClick={() => setShowNewQuoteDialog(true)}
-          className="bg-sky-500 hover:bg-sky-600 text-white shadow-lg shadow-sky-500/25"
+          className="w-full bg-sky-500 text-white shadow-lg shadow-sky-500/25 hover:bg-sky-600 sm:w-auto"
         >
           <Plus className="h-4 w-4 mr-2" />
           New Quote
@@ -472,7 +472,7 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
       </div>
 
       {/* Account Switcher */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {visibleAccounts.map((account) => (
           <button
             key={account.id}
@@ -481,7 +481,7 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
               setActiveFilter("all");
             }}
             className={cn(
-              "px-5 py-2.5 rounded-lg text-sm font-semibold transition-all min-w-[160px]",
+              "min-w-[min(160px,100%)] flex-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all sm:flex-none",
               activeAccountId === account.id
                 ? account.prefix === "805"
                   ? "bg-black text-white border-2 border-black shadow-lg shadow-black/15"

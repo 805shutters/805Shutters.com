@@ -66,8 +66,8 @@ export function QuoteOrderStatusPanel({
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className="border-b bg-gradient-to-br from-slate-950 via-slate-900 to-[#343330] p-5 text-white">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-sky-200">
               Order Queue
             </p>
@@ -78,7 +78,7 @@ export function QuoteOrderStatusPanel({
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid w-full grid-cols-3 gap-2 text-center xl:w-auto">
             <Metric label="Ready" value={counts.readyToOrder} tone="emerald" />
             <Metric label="Ordered" value={counts.ordered} tone="amber" />
             <Metric label="Received" value={counts.received} tone="cyan" />
@@ -106,7 +106,7 @@ export function QuoteOrderStatusPanel({
             const rollerBlocked = rollerReadiness?.applies && !rollerReadiness.ready;
 
             return (
-              <div key={quote.id} className="grid gap-4 p-4 lg:grid-cols-[1.4fr_1fr_auto]">
+              <div key={quote.id} className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(280px,1fr)_auto]">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-slate-500">
@@ -145,7 +145,7 @@ export function QuoteOrderStatusPanel({
                   <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Norman order ref
                   </label>
-                  <div className="flex gap-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                     <Input
                       value={orderRef}
                       onChange={(event) =>
@@ -171,7 +171,7 @@ export function QuoteOrderStatusPanel({
                   <RollerReadinessStatus readiness={rollerReadiness} />
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
                   <Button variant="outline" size="sm" onClick={() => onOpenQuote(quote)}>
                     <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
                     Quote

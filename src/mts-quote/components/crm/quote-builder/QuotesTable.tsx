@@ -58,7 +58,7 @@ export function QuotesTable({
           {quotes.length} quote{quotes.length === 1 ? "" : "s"}
         </span>
       </div>
-      <Table>
+      <Table className="min-w-[760px]">
         <TableHeader>
           <TableRow>
             <TableHead>Quote #</TableHead>
