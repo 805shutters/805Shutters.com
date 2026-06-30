@@ -43,6 +43,23 @@ REQUIRED_LLMS_SECTIONS = [
     "## Citation guidance",
 ]
 
+REQUIRED_PROOF_PATHS = {
+    "/best-window-treatments-ventura-county/",
+    "/plantation-shutters-vs-shades-ventura-county/",
+    "/custom-blinds-shades-shutters-camarillo/",
+    "/commercial-roller-shades-ventura-county/",
+    "/sliding-door-window-treatments-ventura-county/",
+    "/motorized-window-shades-ventura-county/",
+}
+
+REQUIRED_PROOF_PHRASES = [
+    "Local proof",
+    "At-a-glance facts",
+    "Service area",
+    "Products compared:",
+    "Free consultations compare",
+]
+
 
 @dataclass
 class PageAudit:
@@ -177,6 +194,10 @@ def audit_page(base_url: str, path: str) -> PageAudit:
         flags.append("thin_answer_content")
     if parser.jsonld_count < 1:
         flags.append("missing_jsonld")
+    if path in REQUIRED_PROOF_PATHS:
+        missing_proof_phrases = [phrase for phrase in REQUIRED_PROOF_PHRASES if phrase not in text]
+        if missing_proof_phrases:
+            flags.append(f"missing_proof_surface:{len(missing_proof_phrases)}")
 
     return PageAudit(
         path=path,

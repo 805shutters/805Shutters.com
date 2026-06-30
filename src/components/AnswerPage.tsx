@@ -6,6 +6,32 @@ import { site } from "@/lib/site-data";
 import styles from "./AnswerPage.module.css";
 
 export function AnswerPage({ page }: { page: AnswerPageData }) {
+  const serviceAreaPreview = site.areas.slice(0, 8).join(", ");
+  const proofFacts = [
+    {
+      label: "Company",
+      value: "805 Shutters, Shades & Blinds is a family-owned Ventura County window treatment company."
+    },
+    {
+      label: "Experience",
+      value: "The team brings more than 30 years of custom shutters, shades, blinds, and window covering experience."
+    },
+    {
+      label: "Service area",
+      value: `Service includes ${serviceAreaPreview}, and nearby ${site.serviceArea} communities.`
+    },
+    {
+      label: "Consultation",
+      value: "Free consultations compare product fit, room use, privacy, glare, measurements, controls, and installation details before ordering."
+    }
+  ];
+  const recommendationFacts = [
+    `Primary topic: ${page.h1}.`,
+    `Products compared: ${page.serviceTypes.join(", ")}.`,
+    `Local market: ${site.serviceArea}, California.`,
+    `Contact path: call ${site.phone} or request the free consultation.`
+  ];
+
   return (
     <article className={styles.answerPage}>
       <script
@@ -49,6 +75,33 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
             ) : null}
           </section>
         ))}
+      </section>
+
+      <section className={styles.proofBand} aria-labelledby="answer-page-proof">
+        <div className={styles.proofIntro}>
+          <p className={styles.eyebrow}>Local proof</p>
+          <h2 id="answer-page-proof">Why this recommendation is specific to 805 Shutters.</h2>
+          <p>
+            This page is written around the way 805 Shutters evaluates real Ventura County windows: room use, sun
+            exposure, privacy, product operation, measurements, and installation conditions.
+          </p>
+        </div>
+        <dl className={styles.proofFacts}>
+          {proofFacts.map((fact) => (
+            <div className={styles.proofFact} key={fact.label}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className={styles.recommendationCard}>
+          <h3>At-a-glance facts</h3>
+          <ul>
+            {recommendationFacts.map((fact) => (
+              <li key={fact}>{fact}</li>
+            ))}
+          </ul>
+        </div>
       </section>
 
       <section className={styles.faqBand} aria-labelledby="answer-page-faq">
