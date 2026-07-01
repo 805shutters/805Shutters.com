@@ -23,9 +23,21 @@ describe("/ai-search-feed.json", () => {
         expect.objectContaining({
           href: "/ai-search-feed.json",
           contentType: "application/json"
+        }),
+        expect.objectContaining({
+          href: "/answers.json",
+          contentType: "application/json"
         })
       ])
     );
+    expect(payload.answerCitationFeed).toEqual(
+      expect.objectContaining({
+        url: "https://www.805shutters.com/answers.json",
+        answerCount: expect.any(Number),
+        sourcePageCount: expect.any(Number)
+      })
+    );
+    expect(payload.answerCitationFeed.answerCount).toBeGreaterThanOrEqual(24);
     expect(payload.citationTargets.some((target: { href: string }) => target.href === "/window-treatment-comparison-guide/")).toBe(
       true
     );

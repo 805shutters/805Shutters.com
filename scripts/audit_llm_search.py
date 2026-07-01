@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 DEFAULT_REQUIRED_PATHS = [
     "/llms.txt",
     "/ai-search-feed.json",
+    "/answers.json",
     "/window-treatment-comparison-guide/",
     "/best-window-treatments-ventura-county/",
     "/plantation-shutters-vs-shades-ventura-county/",
@@ -50,10 +51,20 @@ REQUIRED_FEED_KEYS = [
     "schemaVersion",
     "entity",
     "machineReadableFeeds",
+    "answerCitationFeed",
     "citationTargets",
     "answerPages",
     "servicePages",
     "citationGuidance",
+]
+
+REQUIRED_ANSWER_FEED_KEYS = [
+    "schemaVersion",
+    "publisher",
+    "citationGuidance",
+    "answerCount",
+    "sourcePages",
+    "answers",
 ]
 
 REQUIRED_PROOF_PATHS = {
@@ -209,10 +220,18 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         flags.append("missing_llms_feed_link")
     if "/ai-search-feed.json" not in machine_feed_urls:
         flags.append("missing_self_feed_link")
+    if "/answers.json" not in machine_feed_urls:
+        flags.append("missing_answers_feed_link")
 
     citation_target_count = len(payload.get("citationTargets", [])) if isinstance(payload.get("citationTargets"), list) else 0
     answer_page_count = len(payload.get("answerPages", [])) if isinstance(payload.get("answerPages"), list) else 0
     service_page_count = len(payload.get("servicePages", [])) if isinstance(payload.get("servicePages"), list) else 0
+    answer_citation_feed = payload.get("answerCitationFeed", {})
+    answer_citation_count = (
+        int(answer_citation_feed.get("answerCount", 0))
+        if isinstance(answer_citation_feed, dict) and isinstance(answer_citation_feed.get("answerCount", 0), int)
+        else 0
+    )
 
     if citation_target_count < 8:
         flags.append("thin_citation_targets")
@@ -220,6 +239,8 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         flags.append("thin_answer_pages")
     if service_page_count < 5:
         flags.append("thin_service_pages")
+    if answer_citation_count < 24:
+        flags.append("thin_answer_citations")
 
     return {
         "status": status,
@@ -228,6 +249,68 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         "citation_target_count": citation_target_count,
         "answer_page_count": answer_page_count,
         "service_page_count": service_page_count,
+        "answer_citation_count": answer_citation_count,
+    }
+
+
+def audit_answer_feed(base_url: str) -> dict[str, object]:
+    status, content_type, body = fetch(f"{base_url}/answers.json")
+    flags: list[str] = []
+
+    if status != 200:
+        flags.append(f"status_{status}")
+    if "application/json" not in content_type:
+        flags.append("unexpected_content_type")
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return {
+            "status": status,
+            "content_type": content_type,
+            "flags": [*flags, "invalid_json"],
+            "answer_count": 0,
+            "source_page_count": 0,
+            "citation_path_count": 0,
+        }
+
+    missing_keys = [key for key in REQUIRED_ANSWER_FEED_KEYS if key not in payload]
+    if missing_keys:
+        flags.append(f"missing_keys:{len(missing_keys)}")
+
+    answers = payload.get("answers", [])
+    source_pages = payload.get("sourcePages", [])
+    answer_count = len(answers) if isinstance(answers, list) else 0
+    source_page_count = len(source_pages) if isinstance(source_pages, list) else 0
+    declared_answer_count = payload.get("answerCount")
+
+    if declared_answer_count != answer_count:
+        flags.append("answer_count_mismatch")
+    if answer_count < 24:
+        flags.append("thin_answers")
+    if source_page_count < 6:
+        flags.append("thin_source_pages")
+
+    citation_paths = {
+        item.get("citationPath")
+        for item in answers
+        if isinstance(item, dict) and isinstance(item.get("citationPath"), str)
+    }
+    private_citation_paths = [
+        path for path in citation_paths if path.startswith(("/api/", "/crm/", "/quote/"))
+    ]
+    if private_citation_paths:
+        flags.append(f"private_citation_paths:{len(private_citation_paths)}")
+    if len(citation_paths) < 6:
+        flags.append("thin_citation_paths")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "flags": flags,
+        "answer_count": answer_count,
+        "source_page_count": source_page_count,
+        "citation_path_count": len(citation_paths),
     }
 
 
@@ -306,6 +389,7 @@ def build_report(payload: dict) -> str:
                 ["robots.txt", payload["robots"]["status"], ", ".join(payload["robots"]["flags"]) or "clean"],
                 ["llms.txt", payload["llms"]["status"], ", ".join(payload["llms"]["flags"]) or "clean"],
                 ["ai-search-feed.json", payload["ai_feed"]["status"], ", ".join(payload["ai_feed"]["flags"]) or "clean"],
+                ["answers.json", payload["answer_feed"]["status"], ", ".join(payload["answer_feed"]["flags"]) or "clean"],
                 ["sitemap.xml", payload["sitemap"]["status"], ", ".join(payload["sitemap"]["flags"]) or "clean"],
             ],
         ),
@@ -332,6 +416,9 @@ def build_report(payload: dict) -> str:
         f"- AI feed citation targets: {payload['ai_feed']['citation_target_count']}",
         f"- AI feed answer pages: {payload['ai_feed']['answer_page_count']}",
         f"- AI feed service pages: {payload['ai_feed']['service_page_count']}",
+        f"- AI feed answer citations: {payload['ai_feed']['answer_citation_count']}",
+        f"- Answer feed answers: {payload['answer_feed']['answer_count']}",
+        f"- Answer feed citation paths: {payload['answer_feed']['citation_path_count']}",
         f"- Required paths found in llms.txt: {payload['llms']['required_paths_found']}/{payload['required_path_count']}",
         f"- Required paths found in sitemap.xml: {payload['sitemap']['required_paths_found']}/{payload['required_path_count']}",
     ]
@@ -353,6 +440,7 @@ def main() -> int:
     robots_status, _robots_type, robots_body = fetch(f"{base_url}/robots.txt")
     llms_status, llms_type, llms_body = fetch(f"{base_url}/llms.txt")
     ai_feed = audit_ai_feed(base_url)
+    answer_feed = audit_answer_feed(base_url)
     sitemap_status, _sitemap_type, sitemap_body = fetch(f"{base_url}/sitemap.xml")
 
     robots_flags = [f"missing_{bot}" for bot in REQUIRED_BOTS if bot not in robots_body]
@@ -367,7 +455,7 @@ def main() -> int:
     sitemap_path_set = sitemap_paths(sitemap_body)
     sitemap_flags = []
 
-    non_html_required_paths = {"/llms.txt", "/ai-search-feed.json"}
+    non_html_required_paths = {"/llms.txt", "/ai-search-feed.json", "/answers.json"}
     missing_llms_paths = sorted(path for path in required_paths if path != "/llms.txt" and path not in llms_paths)
     missing_sitemap_paths = sorted(path for path in required_paths if path not in non_html_required_paths and path not in sitemap_path_set)
     if missing_llms_paths:
@@ -377,7 +465,7 @@ def main() -> int:
 
     pages = [audit_page(base_url, path) for path in required_paths if path not in non_html_required_paths]
     page_issue_count = sum(len(page.flags) for page in pages)
-    access_issue_count = len(robots_flags) + len(llms_flags) + len(ai_feed["flags"]) + len(sitemap_flags)
+    access_issue_count = len(robots_flags) + len(llms_flags) + len(ai_feed["flags"]) + len(answer_feed["flags"]) + len(sitemap_flags)
     verdict = "Clean: LLM citation surface is crawlable and structured" if not page_issue_count and not access_issue_count else "Needs attention"
 
     payload = {
@@ -398,6 +486,7 @@ def main() -> int:
             "flags": llms_flags,
         },
         "ai_feed": ai_feed,
+        "answer_feed": answer_feed,
         "sitemap": {
             "status": sitemap_status,
             "required_paths_found": len(required_paths) - len(missing_sitemap_paths),

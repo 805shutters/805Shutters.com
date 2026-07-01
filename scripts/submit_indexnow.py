@@ -21,6 +21,7 @@ DEFAULT_BASE_URL = "https://www.805shutters.com"
 DEFAULT_URL_PATHS = [
     "/llms.txt",
     "/ai-search-feed.json",
+    "/answers.json",
     "/window-treatment-comparison-guide/",
     "/best-window-treatments-ventura-county/",
     "/plantation-shutters-vs-shades-ventura-county/",

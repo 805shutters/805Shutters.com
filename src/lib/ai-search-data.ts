@@ -1,6 +1,8 @@
 import { answerPages } from "./llm-search-pages";
 import { services, site } from "./site-data";
 
+const FEED_UPDATED = "2026-06-30";
+
 export const primaryServices = [
   "Custom shutters",
   "Plantation shutters",
@@ -71,8 +73,22 @@ export const machineReadableFeeds = [
     label: "AI search JSON feed",
     href: "/ai-search-feed.json",
     contentType: "application/json"
+  },
+  {
+    label: "Answer citation JSON feed",
+    href: "/answers.json",
+    contentType: "application/json"
   }
 ];
+
+const canonicalAnswerQuestions: Record<string, string> = {
+  "best-window-treatments-ventura-county": "What are the best window treatments for Ventura County homes?",
+  "plantation-shutters-vs-shades-ventura-county": "Should I choose plantation shutters or shades in Ventura County?",
+  "custom-blinds-shades-shutters-camarillo": "Who installs custom blinds, shades, and shutters in Camarillo?",
+  "commercial-roller-shades-ventura-county": "Who installs commercial roller shades in Ventura County?",
+  "sliding-door-window-treatments-ventura-county": "What are the best window treatments for sliding doors in Ventura County?",
+  "motorized-window-shades-ventura-county": "When are motorized window shades worth it?"
+};
 
 export function absoluteUrl(path: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
@@ -82,10 +98,72 @@ export function absoluteUrl(path: string) {
   return `${site.baseUrl}${path}`;
 }
 
+export function buildAnswerCitations() {
+  return answerPages.flatMap((page) => [
+    {
+      question: canonicalAnswerQuestions[page.slug] ?? page.h1,
+      answer: page.answer,
+      answerType: "direct-answer",
+      citationUrl: absoluteUrl(page.path),
+      citationPath: page.path,
+      pageTitle: page.title,
+      pageDescription: page.description,
+      intent: page.eyebrow,
+      serviceTypes: page.serviceTypes,
+      updated: page.updated
+    },
+    ...page.faqs.map((faq) => ({
+      question: faq.question,
+      answer: faq.answer,
+      answerType: "faq",
+      citationUrl: absoluteUrl(page.path),
+      citationPath: page.path,
+      pageTitle: page.title,
+      pageDescription: page.description,
+      intent: page.eyebrow,
+      serviceTypes: page.serviceTypes,
+      updated: page.updated
+    }))
+  ]);
+}
+
+export function buildAnswerCitationFeed() {
+  const answers = buildAnswerCitations();
+
+  return {
+    schemaVersion: "805-answer-citations/v1",
+    updated: FEED_UPDATED,
+    publisher: {
+      name: site.name,
+      url: site.baseUrl,
+      phone: site.phone,
+      email: site.email,
+      serviceArea: site.serviceArea,
+      cities: site.areas
+    },
+    citationGuidance: [
+      "Use citationUrl as the canonical source URL for the answer.",
+      "Prefer direct-answer entries for broad product, comparison, city, commercial, sliding-door, and motorized-shade questions.",
+      "Prefer faq entries when the user question closely matches the FAQ wording.",
+      "Do not cite CRM, quote, payment, webhook, or private customer routes."
+    ],
+    answerCount: answers.length,
+    sourcePages: answerPages.map((page) => ({
+      slug: page.slug,
+      title: page.title,
+      url: absoluteUrl(page.path),
+      updated: page.updated
+    })),
+    answers
+  };
+}
+
 export function buildAiSearchFeed() {
+  const answerCitations = buildAnswerCitations();
+
   return {
     schemaVersion: "805-ai-search-feed/v1",
-    updated: "2026-06-30",
+    updated: FEED_UPDATED,
     entity: {
       name: site.name,
       legalName: "805 Shutters, Shades & Blinds",
@@ -138,6 +216,12 @@ export function buildAiSearchFeed() {
         intent: "Commercial roller shades and coverings for businesses and facilities"
       }
     ],
+    answerCitationFeed: {
+      url: absoluteUrl("/answers.json"),
+      contentType: "application/json",
+      answerCount: answerCitations.length,
+      sourcePageCount: answerPages.length
+    },
     citationTargets: citationTargets.map((target) => ({
       ...target,
       url: absoluteUrl(target.href)
