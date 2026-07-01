@@ -1182,7 +1182,7 @@ function OptionSlot({
   const isYesNo = option.type === "yes-no";
   const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
   const isDirectSelect = option.type === "select";
-  const showConfirmedCard = selected && !renderSelectedDirect;
+  const showConfirmedCard = selected && !renderSelectedDirect && !isOpen;
 
   return (
     <div
@@ -1267,6 +1267,66 @@ function OptionSlotRows({
           {optionalOptions.map((option) => renderSlot(option, "optional"))}
         </div>
       )}
+    </div>
+  );
+}
+
+type ConfirmedOptionItem = {
+  option: GridOption;
+  value: string;
+};
+
+function getConfirmedOptionItems(
+  design: SalesQuoteDesign | undefined,
+  options: readonly GridOption[]
+): ConfirmedOptionItem[] {
+  return options
+    .map((option) => ({ option, value: getOptionSlotValue(design, option.field) }))
+    .filter((item): item is ConfirmedOptionItem => hasOptionValue(item.value));
+}
+
+function getEditableOptionRows(
+  rows: { mandatory: GridOption[]; optional: GridOption[] },
+  design: SalesQuoteDesign | undefined,
+  editingField: string | null
+): { mandatory: GridOption[]; optional: GridOption[] } {
+  const shouldShowOption = (option: GridOption) =>
+    option.field === editingField || !hasOptionValue(getOptionSlotValue(design, option.field));
+
+  return {
+    mandatory: rows.mandatory.filter(shouldShowOption),
+    optional: rows.optional.filter(shouldShowOption),
+  };
+}
+
+function ConfirmedOptionStrip({
+  items,
+  editingField,
+  onEdit,
+}: {
+  items: ConfirmedOptionItem[];
+  editingField: string | null;
+  onEdit: (field: string) => void;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="quote-confirmed-options-strip" aria-label="Selected line item options">
+      {items.map(({ option, value }) => (
+        <button
+          key={option.key}
+          type="button"
+          className={cn(
+            "quote-confirmed-option-chip",
+            editingField === option.field && "quote-confirmed-option-chip--editing"
+          )}
+          onClick={() => onEdit(option.field)}
+          title={`${option.label}: ${value}`}
+        >
+          <span className="quote-confirmed-option-chip__label">{option.label}</span>
+          <span className="quote-confirmed-option-chip__value">{value}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -3094,6 +3154,11 @@ function ShutterDesignOptions({
     ...definingOptions.map((option) => option.field),
     ...getShutterMandatoryFields(gridOptions),
   ]);
+  const confirmedOptions = getConfirmedOptionItems(workingDesign, [
+    ...optionRows.mandatory,
+    ...optionRows.optional,
+  ]);
+  const editableOptionRows = getEditableOptionRows(optionRows, workingDesign, openOptionField);
 
   const renderOptionControl = (opt: GridOption) => {
     const value = getFieldValue(workingDesign, opt.field);
@@ -3163,10 +3228,16 @@ function ShutterDesignOptions({
 
   return (
     <div className="space-y-3">
-      {slotOptions.length > 0 && (
+      <ConfirmedOptionStrip
+        items={confirmedOptions}
+        editingField={openOptionField}
+        onEdit={(field) => setOpenOptionField(field)}
+      />
+
+      {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
         <OptionSlotRows
-          mandatoryOptions={optionRows.mandatory}
-          optionalOptions={optionRows.optional}
+          mandatoryOptions={editableOptionRows.mandatory}
+          optionalOptions={editableOptionRows.optional}
           renderSlot={renderOptionSlot}
         />
       )}
@@ -4289,6 +4360,11 @@ function ShadesAndBlindsOptions({
     gridOptions,
     getShadeMandatoryFields(productType, gridOptions)
   );
+  const confirmedOptions = getConfirmedOptionItems(design, [
+    ...optionRows.mandatory,
+    ...optionRows.optional,
+  ]);
+  const editableOptionRows = getEditableOptionRows(optionRows, design, openOptionField);
   const hasAnySelectedOption = gridOptions.some((option) =>
     hasOptionValue(getFieldValue(design, option.field))
   );
@@ -4400,10 +4476,16 @@ function ShadesAndBlindsOptions({
 
   return (
     <div className="space-y-3">
-      {gridOptions.length > 0 && (
+      <ConfirmedOptionStrip
+        items={confirmedOptions}
+        editingField={openOptionField}
+        onEdit={(field) => setOpenOptionField(field)}
+      />
+
+      {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
         <OptionSlotRows
-          mandatoryOptions={optionRows.mandatory}
-          optionalOptions={optionRows.optional}
+          mandatoryOptions={editableOptionRows.mandatory}
+          optionalOptions={editableOptionRows.optional}
           renderSlot={renderOptionSlot}
         />
       )}
