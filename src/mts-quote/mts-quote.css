@@ -301,7 +301,7 @@
 
 .mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
 .mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar {
-  max-height: 320px;
+  max-height: 460px;
   padding-top: 10px;
   padding-bottom: 10px;
   border-bottom-color: #d8d8d2;

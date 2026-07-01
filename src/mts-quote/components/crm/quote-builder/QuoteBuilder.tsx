@@ -1151,6 +1151,29 @@ export function QuoteBuilder() {
             <div className="quote-command-tabs mt-3 border-t border-[#d8d8d2] pt-3">
               <QuoteGroupTabs />
             </div>
+            {quote && (
+              <div className="quote-command-note mt-3 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label
+                    htmlFor="quote-builder-note"
+                    className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                  >
+                    Quote Note
+                  </label>
+                  {updateQuote.isPending && (
+                    <span className="text-xs font-semibold text-amber-700">Saving...</span>
+                  )}
+                </div>
+                <Textarea
+                  id="quote-builder-note"
+                  value={quoteNoteDraft}
+                  onChange={(event) => setQuoteNoteDraft(event.target.value)}
+                  onBlur={saveQuoteBuilderNote}
+                  placeholder="Add quote-level notes..."
+                  className="min-h-16 max-h-28 resize-y border-slate-200 bg-white text-sm"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -1250,30 +1273,6 @@ export function QuoteBuilder() {
         >
           {isSavingQuote ? "Saving quote..." : "Quote saved"}
         </div>
-
-        {quote && (
-          <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <label
-              htmlFor="quote-builder-note"
-              className="text-xs font-black uppercase tracking-[0.18em] text-slate-600"
-            >
-              Quote Note
-            </label>
-            {updateQuote.isPending && (
-              <span className="text-xs font-semibold text-amber-700">Saving...</span>
-            )}
-          </div>
-          <Textarea
-            id="quote-builder-note"
-            value={quoteNoteDraft}
-            onChange={(event) => setQuoteNoteDraft(event.target.value)}
-            onBlur={saveQuoteBuilderNote}
-            placeholder="Add quote-level notes..."
-            className="min-h-20 resize-y border-slate-200 bg-white text-sm"
-          />
-          </div>
-        )}
 
       {/* Rooms relocated to the top control zone (above) */}
 
