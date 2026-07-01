@@ -3,10 +3,11 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import {
   verifySquareWebhookSignature,
   extractSquarePaymentFacts,
+  fetchSquareOrderFacts,
+  getSquareWebhookConfig,
   isSquarePaidPaymentEvent,
-  squareWebhookSigningKey,
-  squareWebhookUrl,
 } from "@/lib/finance/square";
+import { reconcileSquareQuotePayment } from "@/lib/crm/square-payments";
 
 export const runtime = "nodejs";
 
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
   const signature =
     request.headers.get("x-square-hmacsha256-signature") ??
     request.headers.get("x-square-hmac-signature");
-  if (!verifySquareWebhookSignature(squareWebhookUrl(), squareWebhookSigningKey(), raw, signature)) {
+  const { webhookUrl, signingKey } = getSquareWebhookConfig();
+  if (!verifySquareWebhookSignature(webhookUrl, signingKey, raw, signature)) {
     return new NextResponse("Invalid signature", { status: 401 });
   }
 
@@ -34,40 +36,40 @@ export async function POST(request: NextRequest) {
 
   const root = payload as { events?: unknown[] } | null;
   const events = Array.isArray(root?.events) ? (root!.events as unknown[]) : Array.isArray(payload) ? (payload as unknown[]) : [payload];
+  const results: Array<Awaited<ReturnType<typeof reconcileSquareQuotePayment>>> = [];
+  const errors: string[] = [];
 
   for (const event of events) {
     if (!isSquarePaidPaymentEvent(event)) continue;
-    const facts = extractSquarePaymentFacts(event);
-    if (!facts || !facts.quoteId || facts.amountCents <= 0) continue;
+    let facts = extractSquarePaymentFacts(event);
+    if (!facts || facts.amountCents <= 0) continue;
 
-    // Idempotency: skip if this Square payment is already recorded.
-    const { data: dup } = await supabase
-      .from("crm_quote_bookkeeping_payments")
-      .select("id")
-      .eq("quote_id", facts.quoteId)
-      .contains("meta", { square_payment_id: facts.squarePaymentId })
-      .maybeSingle();
-    if (dup) continue;
+    try {
+      if (!facts.quoteId && facts.orderId) {
+        const orderFacts = await fetchSquareOrderFacts(facts.orderId);
+        facts = {
+          ...facts,
+          quoteId: orderFacts.quoteId,
+          paymentType: facts.paymentType || orderFacts.paymentType,
+        };
+      }
 
-    const { data: quote } = await supabase.from("crm_quotes").select("job_id").eq("id", facts.quoteId).maybeSingle();
-    const jobId = (quote as { job_id?: string | null } | null)?.job_id ?? null;
-    const label = facts.paymentType === "balance" ? "Balance payment" : "Deposit";
-
-    const { error } = await supabase.from("crm_quote_bookkeeping_payments").insert({
-      quote_id: facts.quoteId,
-      job_id: jobId,
-      payment_label: label,
-      payment_type: "credit_card",
-      amount: facts.amountCents / 100,
-      paid_at: new Date().toISOString().slice(0, 10),
-      source: "square",
-      meta: { square_payment_id: facts.squarePaymentId, payment_type: facts.paymentType, createdBy: "square-webhook" },
-    });
-    if (error) {
-      // Never fail the webhook over one row; Square would retry. Log + continue.
-      console.error("square webhook insert failed", { quoteId: facts.quoteId, error: error.message });
+      const result = await reconcileSquareQuotePayment(supabase, facts);
+      results.push(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown Square webhook processing error.";
+      errors.push(message);
+      console.error("square webhook processing failed", {
+        squarePaymentId: facts.squarePaymentId,
+        orderId: facts.orderId,
+        error: message,
+      });
     }
   }
 
-  return NextResponse.json({ received: true });
+  if (errors.length) {
+    return NextResponse.json({ received: false, results, errors }, { status: 500 });
+  }
+
+  return NextResponse.json({ received: true, results });
 }

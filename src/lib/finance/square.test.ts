@@ -1,12 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { createHmac } from "node:crypto";
 import {
+  createSquarePaymentLink,
+  fetchSquareOrderFacts,
   verifySquareWebhookSignature,
   squarePaymentLinksUrl,
   squarePaymentLinkRequestBody,
+  squareOrdersUrl,
   squareEnvironment,
   dollarsToCents,
   extractSquarePaymentFacts,
+  getSquareWebhookConfig,
   isSquareConfigured,
   isSquarePaidPaymentEvent,
 } from "./square";
@@ -20,6 +24,11 @@ const BODY = JSON.stringify({
 function sign(webhookUrl: string, body: string): string {
   return createHmac("sha256", KEY).update(`${webhookUrl}${body}`).digest("base64");
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
 
 describe("verifySquareWebhookSignature", () => {
   it("accepts a correctly signed body", () => {
@@ -41,9 +50,17 @@ describe("verifySquareWebhookSignature", () => {
 describe("Square endpoint configuration", () => {
   it("uses Square's production Connect API host", () => {
     expect(squarePaymentLinksUrl("production")).toBe("https://connect.squareup.com/v2/online-checkout/payment-links");
+    expect(squareOrdersUrl("production")).toBe("https://connect.squareup.com/v2/orders");
   });
   it("uses Square's sandbox Connect API host", () => {
     expect(squarePaymentLinksUrl("sandbox")).toBe("https://connect.squareupsandbox.com/v2/online-checkout/payment-links");
+    expect(squareOrdersUrl("sandbox")).toBe("https://connect.squareupsandbox.com/v2/orders");
+  });
+  it("reads webhook config at runtime", () => {
+    vi.stubEnv("SQUARE_WEBHOOK_URL", URL);
+    vi.stubEnv("SQUARE_WEBHOOK_SIGNING_KEY", KEY);
+
+    expect(getSquareWebhookConfig()).toEqual({ webhookUrl: URL, signingKey: KEY });
   });
   it("reads Square configuration dynamically at request time", () => {
     const original = {
@@ -93,6 +110,41 @@ describe("squarePaymentLinkRequestBody", () => {
   });
 });
 
+describe("createSquarePaymentLink", () => {
+  it("sends Square REST snake_case fields and CRM metadata", async () => {
+    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
+    vi.stubEnv("SQUARE_LOCATION_ID", "loc");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ payment_link: { id: "plink", url: "https://square.link/u/test" } }),
+    } as Response);
+
+    const link = await createSquarePaymentLink({
+      amountCents: 52547,
+      title: "Deposit - 805 Shutters",
+      quoteId: "quote-1",
+      paymentType: "deposit",
+      buyerEmail: "customer@example.com",
+    });
+
+    expect(link).toEqual({ id: "plink", url: "https://square.link/u/test" });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body).toMatchObject({
+      checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
+      pre_populated_data: { buyer_email: "customer@example.com" },
+      order: {
+        location_id: "loc",
+        reference_id: "quote-1",
+        metadata: { quote_id: "quote-1", payment_type: "deposit" },
+      },
+    });
+    expect(body.order.line_items[0]).toMatchObject({
+      quantity: "1",
+      base_price_money: { amount: 52547, currency: "USD" },
+    });
+  });
+});
+
 describe("dollarsToCents", () => {
   it("rounds to whole cents", () => {
     expect(dollarsToCents(541.25)).toBe(54125);
@@ -105,18 +157,64 @@ describe("extractSquarePaymentFacts", () => {
   it("pulls id, amount, quote id + type from a payment event", () => {
     const facts = extractSquarePaymentFacts({
       type: "payment.updated",
-      data: { object: { payment: { id: "pay1", total_money: { amount: 50000 }, metadata: { quote_id: "Q123", payment_type: "deposit" } } } },
+      created_at: "2026-07-01T17:38:00Z",
+      data: {
+        object: {
+          payment: {
+            id: "pay1",
+            total_money: { amount: 50000 },
+            order_id: "order1",
+            metadata: { quote_id: "Q123", payment_type: "deposit" }
+          }
+        }
+      },
     });
-    expect(facts).toEqual({ squarePaymentId: "pay1", amountCents: 50000, quoteId: "Q123", paymentType: "deposit" });
+    expect(facts).toEqual({
+      squarePaymentId: "pay1",
+      amountCents: 50000,
+      quoteId: "Q123",
+      paymentType: "deposit",
+      orderId: "order1",
+      paidAt: "2026-07-01T17:38:00Z"
+    });
+  });
+  it("pulls quote metadata from an embedded order object", () => {
+    const facts = extractSquarePaymentFacts({
+      type: "payment.updated",
+      data: {
+        object: {
+          order: { id: "order1", reference_id: "Q123", metadata: { payment_type: "balance" } }
+        }
+      },
+    });
+    expect(facts).toMatchObject({ quoteId: "Q123", paymentType: "balance", orderId: "order1" });
   });
   it("returns null when there is no payment object", () => {
     expect(extractSquarePaymentFacts({ type: "ping" })).toBeNull();
   });
 });
 
+describe("fetchSquareOrderFacts", () => {
+  it("looks up quote metadata from the Square order", async () => {
+    vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ order: { reference_id: "quote-1", metadata: { payment_type: "deposit" } } }),
+    } as Response);
+
+    await expect(fetchSquareOrderFacts("order-1")).resolves.toEqual({
+      quoteId: "quote-1",
+      paymentType: "deposit",
+    });
+  });
+});
+
 describe("isSquarePaidPaymentEvent", () => {
   it("accepts a completed payment", () => {
     expect(isSquarePaidPaymentEvent({ type: "payment.updated", data: { object: { payment: { status: "COMPLETED" } } } })).toBe(true);
+  });
+  it("ignores an approved authorization until it completes", () => {
+    expect(isSquarePaidPaymentEvent({ type: "payment.updated", data: { object: { payment: { status: "APPROVED" } } } })).toBe(false);
   });
   it("ignores non-payment events", () => {
     expect(isSquarePaidPaymentEvent({ type: "refund.created", data: {} })).toBe(false);

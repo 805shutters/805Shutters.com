@@ -42,6 +42,18 @@ export function squarePaymentLinksUrl(env: "sandbox" | "production" = squareEnvi
   return `${baseUrl}/v2/online-checkout/payment-links`;
 }
 
+export function squareOrdersUrl(env: "sandbox" | "production" = squareEnvironment()): string {
+  const baseUrl = env === "production" ? SQUARE_PRODUCTION_API_BASE : SQUARE_SANDBOX_API_BASE;
+  return `${baseUrl}/v2/orders`;
+}
+
+export function getSquareWebhookConfig() {
+  return {
+    webhookUrl: squareWebhookUrl(),
+    signingKey: squareWebhookSigningKey(),
+  };
+}
+
 export function isSquareConfigured(): boolean {
   return Boolean(squareAccessToken() && squareLocationId());
 }
@@ -129,12 +141,27 @@ export type SquarePaymentFacts = {
   amountCents: number;
   quoteId: string | null;
   paymentType: string | null;
+  orderId: string | null;
+  paidAt: string | null;
 };
 
 export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | null {
-  const e = event as { type?: string; data?: { object?: Record<string, unknown> | null } };
+  const e = event as {
+    type?: string;
+    created_at?: string;
+    createdAt?: string;
+    data?: { object?: Record<string, unknown> | null };
+  };
   const obj = e?.data?.object;
   if (!obj || typeof obj !== "object") return null;
+  const order = obj.order as
+    | {
+        id?: string;
+        reference_id?: string;
+        referenceId?: string;
+        metadata?: Record<string, string> | null;
+      }
+    | undefined;
   const payment = (obj.payment ?? obj.order ?? obj) as {
     id?: string;
     uid?: string;
@@ -143,28 +170,71 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     total_money___amount?: number;
     amount_money?: { amount?: number };
     order_id?: string;
+    orderId?: string;
     reference_id?: string;
     referenceId?: string;
+    created_at?: string;
+    createdAt?: string;
     metadata?: Record<string, string> | null;
   };
   const id = payment.id || payment.uid;
   if (!id) return null;
   const amountCents =
     Number(payment.total_money?.amount ?? payment.amount_money?.amount ?? 0) || 0;
-  const meta = payment.metadata ?? {};
-  const quoteId = meta.quote_id || payment.reference_id || payment.referenceId || null;
+  const meta = payment.metadata ?? order?.metadata ?? {};
+  const quoteId =
+    meta.quote_id ||
+    payment.reference_id ||
+    payment.referenceId ||
+    order?.reference_id ||
+    order?.referenceId ||
+    null;
   const paymentType = meta.payment_type ?? null;
-  return { squarePaymentId: id, amountCents, quoteId, paymentType };
+  const orderId = payment.order_id || payment.orderId || order?.id || null;
+  const paidAt = payment.created_at || payment.createdAt || e.created_at || e.createdAt || null;
+  return { squarePaymentId: id, amountCents, quoteId, paymentType, orderId, paidAt };
+}
+
+export async function fetchSquareOrderFacts(
+  orderId: string,
+): Promise<Pick<SquarePaymentFacts, "quoteId" | "paymentType">> {
+  const accessToken = squareAccessToken();
+  if (!accessToken) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN).");
+
+  const res = await fetch(`${squareOrdersUrl()}/${encodeURIComponent(orderId)}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Square-Version": SQUARE_VERSION,
+      Accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`Square order lookup failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
+
+  const data = (await res.json()) as {
+    order?: {
+      reference_id?: string | null;
+      referenceId?: string | null;
+      metadata?: Record<string, string> | null;
+    } | null;
+  };
+  const order = data.order;
+  const meta = order?.metadata ?? {};
+  return {
+    quoteId: meta.quote_id || order?.reference_id || order?.referenceId || null,
+    paymentType: meta.payment_type || null,
+  };
 }
 
 /** Is this a Square event we should record a payment for? */
 export function isSquarePaidPaymentEvent(event: unknown): boolean {
   const e = event as { type?: string; data?: { object?: Record<string, unknown> | null } };
   if (!e?.type) return false;
-  // Record on completed/approved payment events (ignore declines/refunds/pending).
-  if (!/payment\.(updated|created|approved|completed)/i.test(e.type)) return false;
+  // Record only completed payment events (ignore authorizations, declines, refunds, pending states).
+  if (!/payment\.(updated|created|completed)/i.test(e.type)) return false;
   const payment = (e.data?.object?.payment ?? e.data?.object) as { status?: string; card_details?: { status?: string } } | undefined;
   const status = String(payment?.status || payment?.card_details?.status || "").toUpperCase();
-  // Square paid states: APPROVED, COMPLETED, CAPTURED. Skip PENDING/FAILED/CANCELED.
-  return status === "" || ["APPROVED", "COMPLETED", "CAPTURED", "PAID"].includes(status);
+  return ["COMPLETED", "CAPTURED", "PAID"].includes(status);
 }
