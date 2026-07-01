@@ -96,9 +96,9 @@ structured design `details` and internal-only `wholesale_unit_price`.
 
 Set in env (already scaffolded in `.env.example`):
 `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and either `TWILIO_MESSAGING_SERVICE_SID` or
-`TWILIO_FROM_PHONE`. Shop notifications go to `CRM_SOLD_QUOTE_SMS_NUMBERS` (comma-separated);
-the customer SMS goes to the linked job's phone. **Without keys, sends no-op** (the sign flow
-still works).
+`TWILIO_FROM_PHONE`. Signed-sale shop notifications always go to `805-298-5555`,
+`805-630-0848`, and `805-914-4917`. The customer SMS goes to the linked job's phone.
+**Without keys, sends no-op** (the sign flow still works).
 
 ## Running the integration test (the live pass)
 

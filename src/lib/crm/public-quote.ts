@@ -33,6 +33,7 @@ type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 
 const BUSINESS_NAME = "805 Shutters";
+export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
 
 export type PublicQuoteLine = {
   id: string;
@@ -500,9 +501,20 @@ export async function computeSelectionTotal(
   return computeSelectionMoney(lines, pub.adjustments);
 }
 
-export function buildSignedShopSms(customerName: string, total: number): string {
-  const amount = total.toLocaleString("en-US", { style: "currency", currency: "USD" });
-  return `${BUSINESS_NAME}: ${customerName} signed their quote (${amount}). Time to order.`;
+function money(value: number): string {
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+export function soldQuoteShopSmsRecipients(): string[] {
+  return [...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS];
+}
+
+export function buildSignedShopSms(customerName: string, total: number, depositAmount: number): string {
+  return [
+    `Customer Name: ${customerName}`,
+    `Total Sale Amount: ${money(total)}`,
+    `Deposit Amount: ${money(depositAmount)}`,
+  ].join("\n");
 }
 export function buildSignedCustomerSms(customerName: string): string {
   return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Reply with any questions.`;
@@ -810,20 +822,10 @@ export async function acceptPublicQuote(
   );
 
   if (input.notify !== false) {
-    // Notify shop (Jessica + Mike always, plus any extra CRM_SOLD_QUOTE_SMS_NUMBERS)
-    // + customer. Best-effort; never blocks signing.
-    const shopNumbers = [
-      process.env.JESSICA_805_SALES_SMS_NUMBER,
-      process.env.MIKE_805_SALES_SMS_NUMBER,
-      ...(process.env.CRM_SOLD_QUOTE_SMS_NUMBERS || "").split(",").map((s) => s.trim()),
-    ]
-      .map((s) => (s || "").trim())
-      .filter(Boolean);
-    const notified = new Set<string>();
-    for (const num of shopNumbers) {
-      if (notified.has(num)) continue;
-      notified.add(num);
-      await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal) });
+    // Notify the required sold-quote recipients, then customer.
+    // Best-effort; never blocks signing.
+    for (const num of soldQuoteShopSmsRecipients()) {
+      await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal, signedPub.depositDue) });
     }
     if (customerPhone) {
       await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });

@@ -5,6 +5,8 @@ import {
   buildQuoteShareSms,
   buildSignedShopSms,
   buildSignedCustomerSms,
+  REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS,
+  soldQuoteShopSmsRecipients,
   formatDimensions,
   projectLine,
   computeSelectionMoney,
@@ -125,10 +127,18 @@ describe("signed SMS copy", () => {
     expect(msg).not.toContain("Review & approve");
   });
 
-  it("shop message has the customer name and total", () => {
-    const msg = buildSignedShopSms("Jane Smith", 4250);
-    expect(msg).toContain("Jane Smith");
-    expect(msg).toContain("$4,250");
+  it("shop message has the requested sale fields", () => {
+    const msg = buildSignedShopSms("Jane Smith", 4250, 2125);
+    expect(msg).toBe(
+      [
+        "Customer Name: Jane Smith",
+        "Total Sale Amount: $4,250.00",
+        "Deposit Amount: $2,125.00",
+      ].join("\n")
+    );
+  });
+  it("shop sale SMS always includes the required recipients", () => {
+    expect(soldQuoteShopSmsRecipients()).toEqual([...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS]);
   });
   it("customer message thanks them by name", () => {
     expect(buildSignedCustomerSms("Jane")).toContain("Jane");

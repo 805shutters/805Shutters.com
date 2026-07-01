@@ -1,4 +1,4 @@
-export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-630-0848", "805-298-5555"] as const;
+export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
 
 interface SoldQuoteSmsInput {
   account_id?: string | null;
@@ -44,8 +44,8 @@ export function build805SoldQuoteSmsMessage(
   const customerName = quote.customer_name?.trim() || "Unknown customer";
   const lines = [
     `Customer Name: ${customerName}`,
-    `Total Sale: ${money(Number(quote.total_amount) || 0)}`,
-    `Deposit Made: ${money(soldDepositAmount(quote))}`,
+    `Total Sale Amount: ${money(Number(quote.total_amount) || 0)}`,
+    `Deposit Amount: ${money(soldDepositAmount(quote))}`,
   ];
   if (contractUrl) lines.push(`Contract PDF: ${contractUrl}`);
   return lines.join("\n");
