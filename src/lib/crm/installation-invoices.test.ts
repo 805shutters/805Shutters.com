@@ -3,7 +3,9 @@ import {
   DEFAULT_INSTALLATION_INVOICE_MAILBOX,
   InstallationInvoiceCandidate,
   buildInstallationInvoiceGmailQuery,
+  buildCompletedServiceReportWorkflowPatches,
   buildInstallationInvoiceWorkflowPatches,
+  extractCompletedServiceReportDetails,
   extractInstallationInvoiceDetails,
   hasInstallationInvoiceGmailAuth,
   matchInstallationInvoiceToCandidate,
@@ -60,6 +62,7 @@ describe("installation invoice mailbox", () => {
     expect(DEFAULT_INSTALLATION_INVOICE_MAILBOX).toBe("805shutters@gmail.com");
     expect(query).toContain("to:805shutters@gmail.com");
     expect(query).toContain('"MTS Installations"');
+    expect(query).toContain('"Service Report"');
   });
 
   it("treats the old installation invoice inbox as stale config", () => {
@@ -148,6 +151,36 @@ describe("installation invoice extraction", () => {
     expect(extracted.customerName).toBe("Ken Hill");
     expect(extracted.invoiceAmount).toBe(90);
     expect(extracted.invoiceNumber).toBe("311657887");
+  });
+
+  it("extracts completed service reports as completion signals, not installer invoices", () => {
+    const report = extractCompletedServiceReportDetails({
+      subject: "MTS Installations & Repairs Service Report - COMPLETE",
+      attachmentText:
+        "MTS INSTALLATIONS & REPAIRS\n" +
+        "Service Report\n" +
+        "COMPLETE\n" +
+        "Job # 4623-5900\n" +
+        "Work reported complete\n" +
+        "CUSTOMER\n" +
+        "Clarissa Palomaria\n" +
+        "ADDRESS\n" +
+        "7182 Camino Las Ramblas camarillo CA\n" +
+        "PHONE\n" +
+        "7143290858\n" +
+        "REPORT DATE\n" +
+        "Wednesday, July 1, 2026\n" +
+        "CUSTOMER SIGN-OFF\n" +
+        "Recorded on July 1, 2026\n" +
+        "Payment method: Check | COD collected/due: $1,507.50 | Original COD: $1,507.50"
+    });
+
+    expect(report.isCompletedServiceReport).toBe(true);
+    expect(report.customerName).toBe("Clarissa Palomaria");
+    expect(report.jobNumber).toBe("4623-5900");
+    expect(report.codAmount).toBe(1507.5);
+    expect(report.paymentMethod).toBe("Check");
+    expect(report.confidence).toBeGreaterThan(0.9);
   });
 });
 
@@ -266,6 +299,45 @@ describe("installation invoice workflow updates", () => {
     expect(patches.jobPatch).toMatchObject({
       meta: {
         installationInvoicePreviousJobStatus: "closed"
+      }
+    });
+  });
+
+  it("marks completed service reports installed and ready for balance collection", () => {
+    const serviceReport = extractCompletedServiceReportDetails({
+      subject: "Service Report COMPLETE",
+      body:
+        "Service Report\nCOMPLETE\nJob # 4623-5900\nWork reported complete\nCUSTOMER\nClarissa Palomaria\n" +
+        "CUSTOMER SIGN-OFF\nRecorded on July 1, 2026\nPayment method: Check | COD collected/due: $1,507.50"
+    });
+    const patches = buildCompletedServiceReportWorkflowPatches({
+      currentQuote: { status: "received", installed_at: null, meta: { existing: true } },
+      currentJob: { status: "ordered", meta: { owner: "Jessica" } },
+      serviceReport,
+      messageId: "gmail-service-1",
+      threadId: "thread-service-1",
+      actorEmail: "installation-email-cron",
+      now: "2026-07-01T21:00:00.000Z"
+    });
+
+    expect(patches.quotePatch).toMatchObject({
+      status: "installed",
+      installed_at: "2026-07-01T21:00:00.000Z",
+      meta: {
+        existing: true,
+        completedServiceReportMessageId: "gmail-service-1",
+        completedServiceReportJobNumber: "4623-5900",
+        completedServiceReportCodAmount: 1507.5,
+        completedServiceReportPreviousQuoteStatus: "received"
+      }
+    });
+    expect(patches.jobPatch).toMatchObject({
+      status: "installed",
+      next_action: "Collect payment",
+      meta: {
+        owner: "Jessica",
+        completedServiceReportAppliedBy: "installation-email-cron",
+        completedServiceReportPreviousJobStatus: "ordered"
       }
     });
   });

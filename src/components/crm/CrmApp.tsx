@@ -852,6 +852,7 @@ export function CrmApp({
     try {
       const result = await crmFetch<{
         matched: number;
+        serviceReports?: number;
         needsReview: number;
         unmatched: number;
         skipped: number;
@@ -862,10 +863,10 @@ export function CrmApp({
       });
       await refresh();
       setMessage(
-        `Installation invoice pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors.`
+        `Install email pull: ${result.matched} matched, ${result.serviceReports || 0} completed reports, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors.`
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Installation invoices could not be pulled.");
+      setMessage(error instanceof Error ? error.message : "Install emails could not be pulled.");
     } finally {
       setBusy(false);
     }
@@ -6458,14 +6459,14 @@ function InstallationInvoiceInbox({
     <section className="crm-ledger crm-installation-inbox">
       <div className="crm-section-head">
         <div>
-          <p className="eyebrow">Install invoices</p>
+          <p className="eyebrow">Install emails</p>
           <h2>805 Gmail Reconciliation</h2>
         </div>
         <button type="button" onClick={onPull} disabled={busy}>
-          Pull Invoices
+          Pull Install Emails
         </button>
       </div>
-      <div className="crm-bookkeeping-counts" aria-label="Installation invoice pull counts">
+      <div className="crm-bookkeeping-counts" aria-label="Installation email pull counts">
         <span>Matched: {counts.matched}</span>
         <span>Review: {counts.needs_review}</span>
         <span>Unmatched: {counts.unmatched}</span>
@@ -6475,7 +6476,7 @@ function InstallationInvoiceInbox({
         <table className="crm-bookkeeping-table">
           <thead>
             <tr>
-              <th>Invoice</th>
+              <th>Email</th>
               <th>Customer</th>
               <th>Amount</th>
               <th>Status</th>
@@ -6488,10 +6489,10 @@ function InstallationInvoiceInbox({
                 <td>
                   {invoice.email_url ? (
                     <a href={invoice.email_url} target="_blank" rel="noreferrer">
-                      {invoice.extracted_invoice_number || invoice.subject || "Gmail invoice"}
+                      {invoice.extracted_invoice_number || invoice.subject || "Gmail install email"}
                     </a>
                   ) : (
-                    invoice.extracted_invoice_number || invoice.subject || "Gmail invoice"
+                    invoice.extracted_invoice_number || invoice.subject || "Gmail install email"
                   )}
                   <span>{formatShortDate(invoice.sent_at || invoice.processed_at)}</span>
                 </td>
@@ -6507,7 +6508,7 @@ function InstallationInvoiceInbox({
             ))}
           </tbody>
         </table>
-        {!recent.length ? <p className="crm-empty">No installation invoice emails processed yet.</p> : null}
+        {!recent.length ? <p className="crm-empty">No install emails processed yet.</p> : null}
       </div>
     </section>
   );

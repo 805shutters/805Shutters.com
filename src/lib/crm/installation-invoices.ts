@@ -20,6 +20,8 @@ const AUTO_APPLY_MIN_NAME_CONFIDENCE = 0.78;
 const AUTO_APPLY_MIN_AMOUNT_CONFIDENCE = 0.7;
 const INSTALLATION_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "invoiced";
 const PAYMENT_COLLECTION_JOB_STATUS: CrmJobStatus = "invoiced";
+const SERVICE_REPORT_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "installed";
+const SERVICE_REPORT_COMPLETE_JOB_STATUS: CrmJobStatus = "installed";
 const PAYMENT_COLLECTION_NEXT_ACTION = "Collect payment";
 
 type GmailHeader = {
@@ -82,6 +84,17 @@ export type ExtractedInstallationInvoice = {
   text: string;
 };
 
+export type ExtractedCompletedServiceReport = {
+  isCompletedServiceReport: boolean;
+  customerName: string | null;
+  jobNumber: string | null;
+  codAmount: number | null;
+  paymentMethod: string | null;
+  reportDate: string | null;
+  confidence: number;
+  text: string;
+};
+
 export type InstallationInvoiceMatch = {
   candidate: InstallationInvoiceCandidate | null;
   status: CrmInstallationInvoiceEmailStatus;
@@ -103,6 +116,7 @@ export type ProcessInstallationInvoiceResult = {
   scanned: number;
   processed: number;
   matched: number;
+  serviceReports: number;
   needsReview: number;
   unmatched: number;
   skipped: number;
@@ -138,7 +152,7 @@ type WorkflowPatch = {
 };
 
 export function buildInstallationInvoiceGmailQuery(mailbox: string) {
-  return `to:${mailbox} newer_than:30d ("MTS Installations" OR invoice OR "amount due" OR "balance due" OR "invoice total")`;
+  return `to:${mailbox} newer_than:30d ("MTS Installations" OR "Service Report" OR "work reported complete" OR "COD collected" OR invoice OR "amount due" OR "balance due" OR "invoice total")`;
 }
 
 export function normalizeInstallationInvoiceMailbox(value?: string | null) {
@@ -633,6 +647,98 @@ export function extractInstallationInvoiceDetails(input: {
   };
 }
 
+function serviceReportSourceText(input: {
+  subject?: string | null;
+  body?: string | null;
+  attachmentText?: string | null;
+  attachmentNames?: string[];
+}) {
+  return `${input.subject || ""}\n${input.body || ""}\n${input.attachmentText || ""}\n${(input.attachmentNames || []).join("\n")}`.replace(/\r/g, "\n");
+}
+
+function trimServiceReportValue(value: string | null) {
+  if (!value) return null;
+  const nextLabelPattern =
+    /\s+(?=ADDRESS\b|PHONE\b|ACCOUNT\b|JOB\s+NUMBER\b|INSTALLER\b|REPORT\s+DATE\b|CUSTOMER\s+SIGN-OFF\b|PAYMENT\s+METHOD\b|COD\b|ORIGINAL\s+COD\b)/i;
+  return cleanText(value.split(nextLabelPattern)[0]);
+}
+
+function serviceReportLineValue(text: string, label: string, options: { exclude?: RegExp } = {}) {
+  const labelPattern = new RegExp(`^${label}\\b\\s*:?\\s*(.*)$`, "i");
+  const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (options.exclude?.test(line)) continue;
+
+    if (new RegExp(`^${label}$`, "i").test(line)) {
+      return trimServiceReportValue(lines[index + 1] || null);
+    }
+
+    const inline = line.match(labelPattern);
+    if (inline) {
+      const value = trimServiceReportValue(inline[1] || null);
+      if (value) return value;
+    }
+  }
+
+  return null;
+}
+
+function extractServiceReportJobNumber(text: string) {
+  const explicit = text.match(/\bjob\s*#\s*([0-9][0-9-]{3,})\b/i);
+  if (explicit?.[1]) return cleanText(explicit[1]);
+
+  const labeled = serviceReportLineValue(text, "JOB\\s+NUMBER");
+  const match = labeled?.match(/\b([0-9][0-9-]{3,})\b/);
+  return cleanText(match?.[1]);
+}
+
+function extractServiceReportCodAmount(text: string) {
+  const match = text.match(
+    /\bCOD\s+(?:collected\/due|collected|due)\s*:\s*(\$?\s*(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]{2})?)/i
+  );
+  return parseMoney(match?.[1]);
+}
+
+function extractServiceReportPaymentMethod(text: string) {
+  const match = text.match(/\bpayment\s+method\s*:\s*([^|\n]+)/i);
+  return cleanText(match?.[1]);
+}
+
+export function extractCompletedServiceReportDetails(input: {
+  subject?: string | null;
+  body?: string | null;
+  attachmentText?: string | null;
+  attachmentNames?: string[];
+}): ExtractedCompletedServiceReport {
+  const text = serviceReportSourceText(input);
+  const reportSignal = /\bservice\s+report\b/i.test(text) || /\bwork\s+reported\s+complete\b/i.test(text);
+  const completeSignal =
+    /\bwork\s+reported\s+complete\b/i.test(text) ||
+    (/\bcomplete\b/i.test(text) && /\bcustomer\s+sign-?off\b/i.test(text));
+  const isCompletedServiceReport = reportSignal && completeSignal;
+  const customerName =
+    serviceReportLineValue(text, "CUSTOMER", { exclude: /^CUSTOMER\s+SIGN-OFF\b/i }) ||
+    extractNamedCustomer(text);
+  const jobNumber = extractServiceReportJobNumber(text);
+  const codAmount = extractServiceReportCodAmount(text);
+  const confidence = isCompletedServiceReport
+    ? Math.min(1, 0.65 + (customerName ? 0.2 : 0) + (jobNumber ? 0.1 : 0) + (codAmount ? 0.05 : 0))
+    : 0;
+
+  return {
+    isCompletedServiceReport,
+    customerName,
+    jobNumber,
+    codAmount,
+    paymentMethod: extractServiceReportPaymentMethod(text),
+    reportDate: serviceReportLineValue(text, "REPORT\\s+DATE"),
+    confidence,
+    text
+  };
+}
+
 function scoreNameMatch(text: string, candidateName: string, extractedCustomerName?: string | null) {
   const candidate = normalizeCustomerName(candidateName);
   if (!candidate) return 0;
@@ -931,6 +1037,61 @@ export function buildInstallationInvoiceWorkflowPatches(input: {
   };
 }
 
+export function buildCompletedServiceReportWorkflowPatches(input: {
+  currentQuote?: { status?: string | null; installed_at?: string | null; meta?: unknown } | null;
+  currentJob?: { status?: string | null; meta?: unknown } | null;
+  serviceReport: ExtractedCompletedServiceReport;
+  messageId: string;
+  threadId?: string | null;
+  actorEmail?: string;
+  now: string;
+}): WorkflowPatch {
+  const workflowMeta = {
+    completedServiceReportSource: "gmail",
+    completedServiceReportMessageId: input.messageId,
+    completedServiceReportThreadId: input.threadId || null,
+    completedServiceReportJobNumber: input.serviceReport.jobNumber,
+    completedServiceReportCodAmount: input.serviceReport.codAmount,
+    completedServiceReportPaymentMethod: input.serviceReport.paymentMethod,
+    completedServiceReportAppliedBy: input.actorEmail || "installation-email-puller",
+    completedServiceReportAppliedAt: input.now
+  };
+  const quoteStatus = String(input.currentQuote?.status || "");
+  const quoteAlreadyComplete = ["installed", "invoiced", "paid", "archived", "lost"].includes(quoteStatus);
+  const jobStatus = String(input.currentJob?.status || "");
+  const jobAlreadyComplete = ["installed", "invoiced", "closed", "lost"].includes(jobStatus);
+  const jobIsTerminal = jobStatus === "closed" || jobStatus === "lost";
+
+  return {
+    quotePatch: input.currentQuote
+      ? {
+          status: quoteAlreadyComplete ? quoteStatus : SERVICE_REPORT_COMPLETE_QUOTE_STATUS,
+          installed_at: input.currentQuote.installed_at || input.now,
+          meta: {
+            ...metadataRecord(input.currentQuote.meta),
+            ...workflowMeta,
+            completedServiceReportPreviousQuoteStatus: quoteStatus || null
+          }
+        }
+      : null,
+    jobPatch: input.currentJob
+      ? {
+          ...(jobIsTerminal
+            ? {}
+            : {
+                status: jobAlreadyComplete ? jobStatus : SERVICE_REPORT_COMPLETE_JOB_STATUS,
+                next_action: PAYMENT_COLLECTION_NEXT_ACTION
+              }),
+          meta: {
+            ...metadataRecord(input.currentJob.meta),
+            ...workflowMeta,
+            completedServiceReportPreviousJobStatus: jobStatus || null
+          }
+        }
+      : null
+  };
+}
+
 function autoApplyDecision(
   match: InstallationInvoiceMatch,
   extraction: ExtractedInstallationInvoice
@@ -973,6 +1134,32 @@ function autoApplyDecision(
   }
 
   return { status: "matched", reason: match.reason, canApply: true };
+}
+
+function autoApplyCompletedServiceReportDecision(
+  match: InstallationInvoiceMatch,
+  serviceReport: ExtractedCompletedServiceReport
+): { status: CrmInstallationInvoiceEmailStatus; reason: string; canApply: boolean } {
+  if (!serviceReport.isCompletedServiceReport) {
+    return { status: "skipped", reason: "Email is not a completed service report.", canApply: false };
+  }
+  if (!match.candidate) return { status: match.status, reason: match.reason, canApply: false };
+  if (match.status !== "matched") return { status: "needs_review", reason: match.reason, canApply: false };
+  if (!match.candidate.jobId && !match.candidate.quoteId) {
+    return {
+      status: "needs_review",
+      reason: "Completed service report matched a bookkeeping row without a linked job or quote; review before applying.",
+      canApply: false
+    };
+  }
+
+  return {
+    status: "matched",
+    reason: serviceReport.jobNumber
+      ? `Completed service report ${serviceReport.jobNumber} matched ${match.candidate.customerName}; moved job to Balance Needed.`
+      : `Completed service report matched ${match.candidate.customerName}; moved job to Balance Needed.`,
+    canApply: true
+  };
 }
 
 async function advanceInstallationInvoiceWorkflow(
@@ -1029,6 +1216,66 @@ async function advanceInstallationInvoiceWorkflow(
     const { error } = await supabase.from("crm_jobs").update(jobPatch).eq("id", candidate.jobId);
     if (error) {
       throw new CrmAuthError(502, "Installation invoice matched, but the job could not be moved to payment collection.");
+    }
+  }
+}
+
+async function advanceCompletedServiceReportWorkflow(
+  supabase: CrmSupabaseClient,
+  candidate: InstallationInvoiceCandidate,
+  serviceReport: ExtractedCompletedServiceReport,
+  message: GmailMessage,
+  actorEmail: string | undefined,
+  now: string
+) {
+  let currentQuote: { status?: string | null; installed_at?: string | null; meta?: unknown } | null = null;
+  let currentJob: { status?: string | null; meta?: unknown } | null = null;
+
+  if (candidate.quoteId) {
+    const { data, error } = await supabase
+      .from("crm_quotes")
+      .select("status,installed_at,meta")
+      .eq("id", candidate.quoteId)
+      .maybeSingle();
+    if (error) {
+      throw new CrmAuthError(502, "Completed service report matched, but the quote status could not be loaded.");
+    }
+    currentQuote = data;
+  }
+
+  if (candidate.jobId) {
+    const { data, error } = await supabase
+      .from("crm_jobs")
+      .select("status,meta")
+      .eq("id", candidate.jobId)
+      .maybeSingle();
+    if (error) {
+      throw new CrmAuthError(502, "Completed service report matched, but the job status could not be loaded.");
+    }
+    currentJob = data;
+  }
+
+  const { quotePatch, jobPatch } = buildCompletedServiceReportWorkflowPatches({
+    currentQuote,
+    currentJob,
+    serviceReport,
+    messageId: message.id,
+    threadId: message.threadId || null,
+    actorEmail,
+    now
+  });
+
+  if (quotePatch && candidate.quoteId) {
+    const { error } = await supabase.from("crm_quotes").update(quotePatch).eq("id", candidate.quoteId);
+    if (error) {
+      throw new CrmAuthError(502, "Completed service report matched, but the quote could not be marked installed.");
+    }
+  }
+
+  if (jobPatch && candidate.jobId) {
+    const { error } = await supabase.from("crm_jobs").update(jobPatch).eq("id", candidate.jobId);
+    if (error) {
+      throw new CrmAuthError(502, "Completed service report matched, but the job could not be moved to Balance Needed.");
     }
   }
 }
@@ -1094,6 +1341,20 @@ async function applyInstallationInvoice(
   throw new CrmAuthError(400, "Installation invoice matched a job that has no ledger target.");
 }
 
+async function applyCompletedServiceReport(
+  supabase: CrmSupabaseClient,
+  candidate: InstallationInvoiceCandidate,
+  serviceReport: ExtractedCompletedServiceReport,
+  message: GmailMessage,
+  actorEmail: string | undefined
+) {
+  if (!candidate.jobId && !candidate.quoteId) {
+    throw new CrmAuthError(400, "Completed service report matched a row that has no job or quote target.");
+  }
+  const now = new Date().toISOString();
+  await advanceCompletedServiceReportWorkflow(supabase, candidate, serviceReport, message, actorEmail, now);
+}
+
 type InstallationInvoiceRecordInput = Omit<CrmInstallationInvoiceEmail, "id" | "created_at" | "updated_at">;
 
 function fallbackInvoiceRecord(input: InstallationInvoiceRecordInput, auditError: string | null) {
@@ -1148,6 +1409,7 @@ export async function processInstallationInvoiceInbox(
     scanned: messageIds.length,
     processed: 0,
     matched: 0,
+    serviceReports: 0,
     needsReview: 0,
     unmatched: 0,
     skipped: 0,
@@ -1188,33 +1450,68 @@ export async function processInstallationInvoiceInbox(
       const to = getHeader(headers, "To");
       const names = attachmentNames(message);
       const pdfExtraction = await extractPdfAttachmentText({ accessToken, messageId, message });
-      const extraction = extractInstallationInvoiceDetails({
+      const serviceReport = extractCompletedServiceReportDetails({
         subject,
         body,
         attachmentText: pdfExtraction.text,
         attachmentNames: names
       });
-      let match = matchInstallationInvoiceToCandidate({
-        text: extraction.text,
-        extractedCustomerName: extraction.customerName,
-        candidates
-      });
-      if (match.status === "unmatched" && extraction.customerName) {
-        const targetedCandidates = await loadTargetedInvoiceCandidates(supabase, extraction.customerName);
-        if (targetedCandidates.length) {
-          match = matchInstallationInvoiceToCandidate({
-            text: extraction.text,
-            extractedCustomerName: extraction.customerName,
-            candidates: targetedCandidates
-          });
+      const isCompletedServiceReport = serviceReport.isCompletedServiceReport;
+      let extraction: ExtractedInstallationInvoice | null = null;
+      let match: InstallationInvoiceMatch;
+      let decision: { status: CrmInstallationInvoiceEmailStatus; reason: string; canApply: boolean };
+
+      if (isCompletedServiceReport) {
+        match = matchInstallationInvoiceToCandidate({
+          text: serviceReport.text,
+          extractedCustomerName: serviceReport.customerName,
+          candidates
+        });
+        if (match.status === "unmatched" && serviceReport.customerName) {
+          const targetedCandidates = await loadTargetedInvoiceCandidates(supabase, serviceReport.customerName);
+          if (targetedCandidates.length) {
+            match = matchInstallationInvoiceToCandidate({
+              text: serviceReport.text,
+              extractedCustomerName: serviceReport.customerName,
+              candidates: targetedCandidates
+            });
+          }
         }
+        decision = autoApplyCompletedServiceReportDecision(match, serviceReport);
+      } else {
+        extraction = extractInstallationInvoiceDetails({
+          subject,
+          body,
+          attachmentText: pdfExtraction.text,
+          attachmentNames: names
+        });
+        match = matchInstallationInvoiceToCandidate({
+          text: extraction.text,
+          extractedCustomerName: extraction.customerName,
+          candidates
+        });
+        if (match.status === "unmatched" && extraction.customerName) {
+          const targetedCandidates = await loadTargetedInvoiceCandidates(supabase, extraction.customerName);
+          if (targetedCandidates.length) {
+            match = matchInstallationInvoiceToCandidate({
+              text: extraction.text,
+              extractedCustomerName: extraction.customerName,
+              candidates: targetedCandidates
+            });
+          }
+        }
+        decision = autoApplyDecision(match, extraction);
       }
-      const decision = autoApplyDecision(match, extraction);
+
       const candidate = match.candidate;
       let appliedAt: string | null = null;
 
       if (decision.canApply && candidate) {
-        await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
+        if (isCompletedServiceReport) {
+          await applyCompletedServiceReport(supabase, candidate, serviceReport, message, options.actorEmail);
+        } else if (extraction) {
+          await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
+        }
         appliedAt = new Date().toISOString();
       }
 
@@ -1230,10 +1527,12 @@ export async function processInstallationInvoiceInbox(
         snippet: message.snippet || null,
         attachment_names: names,
         email_url: gmailUrl(message),
-        extracted_customer_name: extraction.customerName || candidate?.customerName || null,
-        extracted_invoice_amount: extraction.invoiceAmount,
-        extracted_invoice_number: extraction.invoiceNumber,
-        extraction_confidence: extraction.confidence,
+        extracted_customer_name: isCompletedServiceReport
+          ? serviceReport.customerName || candidate?.customerName || null
+          : extraction?.customerName || candidate?.customerName || null,
+        extracted_invoice_amount: isCompletedServiceReport ? null : extraction?.invoiceAmount || null,
+        extracted_invoice_number: isCompletedServiceReport ? serviceReport.jobNumber : extraction?.invoiceNumber || null,
+        extraction_confidence: isCompletedServiceReport ? serviceReport.confidence : extraction?.confidence || 0,
         matched_job_id: candidate?.jobId || null,
         matched_quote_id: candidate?.quoteId || null,
         matched_bookkeeping_entry_id: candidate?.entryId || null,
@@ -1244,18 +1543,24 @@ export async function processInstallationInvoiceInbox(
         applied_at: appliedAt,
         error_message: null,
         raw: {
-          amountConfidence: extraction.amountConfidence,
+          emailKind: isCompletedServiceReport ? "completed_service_report" : "installation_invoice",
+          amountConfidence: extraction?.amountConfidence || null,
+          serviceReportCodAmount: isCompletedServiceReport ? serviceReport.codAmount : null,
+          serviceReportPaymentMethod: isCompletedServiceReport ? serviceReport.paymentMethod : null,
+          serviceReportDate: isCompletedServiceReport ? serviceReport.reportDate : null,
           candidateSource: candidate?.source || null,
           pdfAttachmentCount: pdfAttachmentParts(message).length,
           pdfExtractionErrors: pdfExtraction.errors,
-          bodyPreview: extraction.text.slice(0, 1000)
+          bodyPreview: (isCompletedServiceReport ? serviceReport.text : extraction?.text || "").slice(0, 1000)
         }
       }, result.auditTableAvailable, result.auditError);
 
       result.invoices.push(invoice);
       result.processed += 1;
-      if (invoice.match_status === "matched") result.matched += 1;
-      else if (invoice.match_status === "needs_review") result.needsReview += 1;
+      if (invoice.match_status === "matched") {
+        result.matched += 1;
+        if (isCompletedServiceReport) result.serviceReports += 1;
+      } else if (invoice.match_status === "needs_review") result.needsReview += 1;
       else if (invoice.match_status === "unmatched") result.unmatched += 1;
       else if (invoice.match_status === "skipped") result.skipped += 1;
       else if (invoice.match_status === "error") result.errors += 1;

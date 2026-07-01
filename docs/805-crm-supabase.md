@@ -30,7 +30,7 @@ GOOGLE_CALENDAR_CLIENT_ID=<google-oauth-client-id>
 GOOGLE_CALENDAR_CLIENT_SECRET=<google-oauth-client-secret>
 GOOGLE_CALENDAR_REFRESH_TOKEN=<805-calendar-refresh-token>
 INSTALLATION_INVOICE_MAILBOX=805shutters@gmail.com
-INSTALLATION_INVOICE_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d ("MTS Installations" OR invoice OR "amount due" OR "balance due" OR "invoice total")'
+INSTALLATION_INVOICE_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d ("MTS Installations" OR "Service Report" OR "work reported complete" OR "COD collected" OR invoice OR "amount due" OR "balance due" OR "invoice total")'
 INSTALLATION_INVOICE_GMAIL_MAX_RESULTS=50
 INSTALLATION_INVOICE_CRON_SECRET=<optional-cron-secret>
 ORDER_COGS_MAILBOX=805shutters@gmail.com
@@ -169,21 +169,24 @@ for Mike earned/paid/running balance and Jessica earned/paid/running balance,
 then individual payment history rows with recipient, paid date, period month,
 amount, note, and created-by metadata.
 
-## Installation invoice email puller
+## Installation email puller
 
-MTS installation invoices should be sent to `805shutters@gmail.com`. The CRM can
+MTS installation invoices and completed service reports should be sent to `805shutters@gmail.com`. The CRM can
 pull that mailbox from the Bookkeeping tab or through the Vercel cron route at
 `/api/cron/installation-invoices`.
 
 The puller:
 
-- searches the configured Gmail query for invoice-style messages;
+- searches the configured Gmail query for install invoices and completed service reports;
 - downloads PDF attachments from the Gmail message and extracts their text;
 - extracts the customer full name from invoice text such as
   `Customer Name: ...`, and extracts the final invoice amount from the email
   body or invoice text;
 - matches the customer name against sold bookkeeping rows and active sold
   quotes;
+- treats `Service Report` + `COMPLETE` emails as completion signals: the linked
+  quote/job is marked `installed`, `next_action` becomes `Collect payment`, and
+  the row moves into the Balance Due bucket when an unpaid balance remains;
 - writes the invoice amount into `installation_invoice_amount`, stores the
   Gmail URL, marks the install invoice as matched, and lets the existing profit
   rules recompute commissions;
