@@ -1308,11 +1308,11 @@ function getEditableOptionRows(
 function ConfirmedOptionStrip({
   items,
   editingField,
-  onEdit,
+  onReset,
 }: {
   items: ConfirmedOptionItem[];
   editingField: string | null;
-  onEdit: (field: string) => void;
+  onReset: (field: string) => void;
 }) {
   const visibleItems = editingField
     ? items.filter(({ option }) => option.field !== editingField)
@@ -1327,7 +1327,7 @@ function ConfirmedOptionStrip({
           key={option.key}
           type="button"
           className="quote-confirmed-option-chip"
-          onClick={() => onEdit(option.field)}
+          onClick={() => onReset(option.field)}
           title={`${option.label}: ${value}`}
         >
           <span className="quote-confirmed-option-chip__label">{option.label}</span>
@@ -3233,12 +3233,17 @@ function ShutterDesignOptions({
     </OptionSlot>
   );
 
+  const handleConfirmedOptionReset = (field: string) => {
+    handleUpdate(field, null);
+    setOpenOptionField(field);
+  };
+
   return (
     <div className="space-y-3">
       <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
-        onEdit={(field) => setOpenOptionField(field)}
+        onReset={handleConfirmedOptionReset}
       />
 
       {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
@@ -4488,15 +4493,18 @@ function ShadesAndBlindsOptions({
     </OptionSlot>
   );
 
+  const handleConfirmedOptionReset = (field: string) => {
+    if (ROLLER_MORE_OPTION_FIELDS.has(field)) setShowMoreOptions(true);
+    handleUpdate(field, null);
+    setOpenOptionField(field);
+  };
+
   return (
     <div className="space-y-3">
       <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
-        onEdit={(field) => {
-          if (ROLLER_MORE_OPTION_FIELDS.has(field)) setShowMoreOptions(true);
-          setOpenOptionField(field);
-        }}
+        onReset={handleConfirmedOptionReset}
       />
 
       {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
