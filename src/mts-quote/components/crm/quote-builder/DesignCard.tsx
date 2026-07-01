@@ -1179,13 +1179,15 @@ function OptionSlot({
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
   const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
+  const isDirectSelect = option.type === "select";
 
   return (
     <div
       className={cn(
         "quote-option-slot",
         selected && "quote-option-slot--selected",
-        isOpen && "quote-option-slot--open",
+        isOpen && !isDirectSelect && "quote-option-slot--open",
+        isDirectSelect && "quote-option-slot--select",
         isInlineChoice && "quote-option-slot--inline-choice",
         requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
       )}
@@ -1196,6 +1198,13 @@ function OptionSlot({
             <span className="quote-option-slot__label">{option.label}</span>
           </div>
           <div className="quote-option-slot__inline-control">{children}</div>
+        </>
+      ) : isDirectSelect ? (
+        <>
+          <div className="quote-option-slot__static">
+            <span className="quote-option-slot__label">{option.label}</span>
+          </div>
+          <div className="quote-option-slot__direct-control">{children}</div>
         </>
       ) : (
         <>

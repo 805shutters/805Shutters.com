@@ -670,6 +670,33 @@
   color: inherit;
 }
 
+.mts-quote-scope .quote-option-slot--select {
+  padding: 7px 10px;
+}
+
+.mts-quote-scope .quote-option-slot--select .quote-option-slot__static {
+  min-height: 0;
+  padding: 0;
+}
+
+.mts-quote-scope .quote-option-slot--inline-choice {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot--inline-choice.quote-option-slot--selected {
+  border-color: transparent;
+  background: transparent;
+  color: #1c1c1a;
+  box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot--inline-choice .quote-option-slot__static {
+  min-height: 0;
+  padding: 0 0 5px;
+}
+
 .mts-quote-scope .quote-option-slot__label {
   min-width: 0;
   color: inherit;
@@ -727,14 +754,51 @@
   margin-top: -2px;
 }
 
+.mts-quote-scope .quote-option-slot--inline-choice .quote-option-slot__inline-control {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.mts-quote-scope .quote-option-slot__direct-control {
+  margin-top: 5px;
+}
+
 .mts-quote-scope .quote-option-slot__control .quote-style-option-field,
-.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-field {
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-field,
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-option-field {
   width: 100%;
 }
 
 .mts-quote-scope .quote-option-slot__control .quote-style-select,
-.mts-quote-scope .quote-option-slot__control .quote-style-input {
+.mts-quote-scope .quote-option-slot__control .quote-style-input,
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-select {
   width: 100%;
+}
+
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-select {
+  min-height: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-select[data-placeholder] {
+  color: #5f5c55;
+}
+
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select,
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select[data-placeholder] {
+  color: #ffffff;
 }
 
 .mts-quote-scope .quote-more-options-button {
@@ -809,6 +873,58 @@
 }
 
 .mts-quote-scope .quote-style-yes-no-button.bg-primary:hover {
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-field > .flex {
+  gap: 6px;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-group {
+  display: flex;
+  width: 100%;
+  gap: 6px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-button,
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-button {
+  min-width: 42px;
+  min-height: 24px;
+  height: 24px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: #f0efeb;
+  color: #24231f;
+  font-size: 11px;
+  font-weight: 850;
+  box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-button + .quote-style-yes-no-button {
+  border-left: 0;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-button.bg-primary,
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-button.bg-primary {
+  background: #0b0b0b;
+  color: #ffffff;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-button:hover,
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-button:hover {
+  background: #e5e2db;
+  color: #0b0b0b;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-button.bg-primary:hover,
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-yes-no-button.bg-primary:hover {
   background: #0b0b0b;
   color: #ffffff;
 }
