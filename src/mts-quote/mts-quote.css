@@ -546,11 +546,11 @@
   align-items: center;
   justify-content: center;
   padding: 0 7px;
-  border: 1px solid var(--stacked-product-border, #4b5563);
+  border: 1px solid var(--stacked-product-border, #4a4842);
   border-radius: 7px;
-  background: var(--stacked-product-bg, #4b5563);
+  background: var(--stacked-product-bg, #4a4842);
   color: var(--stacked-product-text, #ffffff);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 3px 7px rgb(15 23 42 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 3px 7px rgb(28 28 26 / 0.12);
   font-size: 9px;
   font-weight: 900;
   letter-spacing: 0;
@@ -566,53 +566,57 @@
 }
 
 .mts-quote-scope .quote-stacked-product--shutters {
-  --stacked-product-bg: #30343b;
-  --stacked-product-border: #1f2328;
+  --stacked-product-bg: #2f2f2b;
+  --stacked-product-border: #1f1f1c;
 }
 
 .mts-quote-scope .quote-stacked-product--roller-shades {
-  --stacked-product-bg: #226f75;
-  --stacked-product-border: #15585d;
+  --stacked-product-bg: #4a4842;
+  --stacked-product-border: #34322e;
 }
 
 .mts-quote-scope .quote-stacked-product--roman-shades {
-  --stacked-product-bg: #8b4e6b;
-  --stacked-product-border: #713b55;
+  --stacked-product-bg: #6f6a61;
+  --stacked-product-border: #55514a;
 }
 
 .mts-quote-scope .quote-stacked-product--honeycomb-shades {
-  --stacked-product-bg: #9a6b18;
-  --stacked-product-border: #765111;
+  --stacked-product-bg: #8a8378;
+  --stacked-product-border: #6f695f;
 }
 
 .mts-quote-scope .quote-stacked-product--sheer-shades {
-  --stacked-product-bg: #4f6d9a;
-  --stacked-product-border: #3d5579;
+  --stacked-product-bg: #9a968d;
+  --stacked-product-border: #7d7971;
+  --stacked-product-text: #1f1f1c;
 }
 
 .mts-quote-scope .quote-stacked-product--faux-wood-blinds {
-  --stacked-product-bg: #6c7044;
-  --stacked-product-border: #525533;
+  --stacked-product-bg: #d8d1c2;
+  --stacked-product-border: #b9b09f;
+  --stacked-product-text: #1f1f1c;
 }
 
 .mts-quote-scope .quote-stacked-product--wood-blinds {
-  --stacked-product-bg: #7a4e2f;
-  --stacked-product-border: #5f3b23;
+  --stacked-product-bg: #b8afa1;
+  --stacked-product-border: #948b7e;
+  --stacked-product-text: #1f1f1c;
 }
 
 .mts-quote-scope .quote-stacked-product--vertical-blinds {
-  --stacked-product-bg: #5b5f8e;
-  --stacked-product-border: #454973;
+  --stacked-product-bg: #c7c3ba;
+  --stacked-product-border: #aaa59b;
+  --stacked-product-text: #1f1f1c;
 }
 
 .mts-quote-scope .quote-stacked-product--smart-drapes {
-  --stacked-product-bg: #6f3f75;
-  --stacked-product-border: #57305c;
+  --stacked-product-bg: #5d5b55;
+  --stacked-product-border: #44423d;
 }
 
 .mts-quote-scope .quote-stacked-product--default {
-  --stacked-product-bg: #4b5563;
-  --stacked-product-border: #374151;
+  --stacked-product-bg: #4a4842;
+  --stacked-product-border: #34322e;
 }
 
 @media (max-width: 720px) {
