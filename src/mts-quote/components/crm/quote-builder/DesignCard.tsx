@@ -2041,6 +2041,7 @@ export function DesignCard({
   const userSelectedVariantRef = useRef(false);
   const lineItemIdRef = useRef(lineItem.id);
   const [editingRetail, setEditingRetail] = useState(false);
+  const [showLineNote, setShowLineNote] = useState(false);
   const [retailInput, setRetailInput] = useState("");
   const currentDesign = designs.find((d) => d.variant === activeVariant);
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
@@ -2475,6 +2476,10 @@ export function DesignCard({
               <h3 className="text-3xl font-black tracking-[-0.02em] text-slate-950">
                 {lineItem.room_name}
               </h3>
+              <ProductTypeSwitcher
+                productType={lineItem.product_type}
+                onChangeProductType={onChangeProductType}
+              />
               {hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
@@ -2656,7 +2661,6 @@ export function DesignCard({
             onUpdate={updateField}
             onUpdateFields={updateFields}
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
-            onChangeProductType={onChangeProductType}
           />
         ) : (
           <ShadesAndBlindsOptions
@@ -2666,7 +2670,6 @@ export function DesignCard({
             onUpdate={updateField}
             onUpdateFields={updateFields}
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
-            onChangeProductType={onChangeProductType}
           />
         )}
 
@@ -2681,6 +2684,15 @@ export function DesignCard({
             <CopyCheck className="h-3 w-3 mr-1" />
             Some
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowLineNote((value) => !value)}
+            className="text-xs"
+          >
+            <FileText className="h-3 w-3 mr-1" />
+            Add Note
+          </Button>
           <SurchargePicker
             productType={lineItem.product_type}
             design={currentDesign}
@@ -2691,6 +2703,15 @@ export function DesignCard({
             Stack
           </Button>
         </div>
+        {showLineNote && (
+          <DeferredTextInput
+            value={currentDesign?.notes || ""}
+            onCommit={(value) => updateField("notes", value)}
+            placeholder="Add a note for the contract..."
+            className="h-8 text-sm"
+            autoFocus
+          />
+        )}
       </CardContent>
     </Card>
   );
@@ -2705,7 +2726,6 @@ function ShutterDesignOptions({
   onUpdate,
   onUpdateFields,
   onRecalculatePrice,
-  onChangeProductType,
 }: {
   design: SalesQuoteDesign | undefined;
   activeVariant: string;
@@ -2713,9 +2733,7 @@ function ShutterDesignOptions({
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
-  onChangeProductType?: (productType: string) => void;
 }) {
-  const [showNote, setShowNote] = useState(false);
   const [showMoreOptions, setShowMoreOptions] = useState<string | null>(null);
   const [confirmedOptions, setConfirmedOptions] = useState<
     Map<string, { label: string; value: string }>
@@ -2897,9 +2915,6 @@ function ShutterDesignOptions({
     <div className="space-y-3">
       {/* Pills row */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Product type badge */}
-        <ProductTypeSwitcher productType={productType} onChangeProductType={onChangeProductType} />
-
         {/* Completed defining steps as pills */}
         {completedPills.map((pill) => (
           <button
@@ -2925,26 +2940,7 @@ function ShutterDesignOptions({
             </button>
           ))}
 
-        {/* Add Note button */}
-        <button
-          onClick={() => setShowNote(!showNote)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          Add Note
-        </button>
       </div>
-
-      {/* Note input (expandable) */}
-      {showNote && (
-        <DeferredTextInput
-          value={workingDesign.notes || ""}
-          onCommit={(value) => onUpdate("notes", value)}
-          placeholder="Add a note for the contract..."
-          className="h-8 text-sm"
-          autoFocus
-        />
-      )}
 
       {/* Separator line - only show if there are options to display */}
       {(nextDefiningStep || (standardComplete && !allOptionsConfirmed) || useOldSteps) && (
@@ -3383,7 +3379,6 @@ function ShadesAndBlindsOptions({
   onUpdate,
   onUpdateFields,
   onRecalculatePrice,
-  onChangeProductType,
 }: {
   design: SalesQuoteDesign | undefined;
   productType: string;
@@ -3391,9 +3386,7 @@ function ShadesAndBlindsOptions({
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
-  onChangeProductType?: (productType: string) => void;
 }) {
-  const [showNote, setShowNote] = useState(false);
   const [confirmedOptions, setConfirmedOptions] = useState<
     Map<string, { label: string; value: string }>
   >(new Map());
@@ -4301,9 +4294,6 @@ function ShadesAndBlindsOptions({
     <div className="space-y-3">
       {/* Pills row */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Product type badge */}
-        <ProductTypeSwitcher productType={productType} onChangeProductType={onChangeProductType} />
-
         {/* Confirmed options as badges */}
         {Array.from(confirmedOptions.entries()).map(([key, { label, value }]) => (
           <button
@@ -4316,26 +4306,7 @@ function ShadesAndBlindsOptions({
           </button>
         ))}
 
-        {/* Add Note button */}
-        <button
-          onClick={() => setShowNote(!showNote)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
-        >
-          <FileText className="h-3.5 w-3.5" />
-          Add Note
-        </button>
       </div>
-
-      {/* Note input (expandable) */}
-      {showNote && (
-        <DeferredTextInput
-          value={design?.notes || ""}
-          onCommit={(value) => onUpdate("notes", value)}
-          placeholder="Add a note for the contract..."
-          className="h-8 text-sm"
-          autoFocus
-        />
-      )}
 
       {/* Separator line - only show if there are options to display */}
       {!allOptionsConfirmed && <div className="border-t border-primary/20" />}
