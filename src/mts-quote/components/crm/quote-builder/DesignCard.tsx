@@ -1654,15 +1654,17 @@ function GridButtonGroup({
 }) {
   if (!options) return null;
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-gray-900">{label}</Label>
-      <div className="flex flex-wrap gap-1.5">
+    <div className="quote-style-option-field space-y-1">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        {label}
+      </Label>
+      <div className="flex flex-wrap gap-1">
         {options.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
             className={cn(
-              "px-3 py-1.5 rounded-md border text-xs font-medium transition-all",
+              "quote-style-option-button rounded-md border text-[11px] font-semibold transition-all",
               value === opt
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background border-border hover:bg-accent text-gray-900"
@@ -1690,10 +1692,12 @@ function GridSelect({
   grouped?: GridSelectGroup[];
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-gray-900">{label}</Label>
+    <div className="quote-style-option-field space-y-1">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        {label}
+      </Label>
       <Select value={value || ""} onValueChange={onChange}>
-        <SelectTrigger className="h-9 text-sm text-gray-900">
+        <SelectTrigger className="quote-style-select h-6 min-h-0 px-2 py-0 text-[11px] text-gray-900">
           <SelectValue placeholder="Select..." />
         </SelectTrigger>
         <SelectContent>
@@ -1777,8 +1781,10 @@ function RollerFabricAutocomplete({
   };
 
   return (
-    <div className="relative col-span-2 space-y-1.5 lg:col-span-2">
-      <Label className="text-xs text-gray-900">Fabric Search</Label>
+    <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        Fabric Search
+      </Label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -1788,7 +1794,7 @@ function RollerFabricAutocomplete({
           onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
           placeholder="Search collection, color, or code..."
           autoComplete="off"
-          className="h-9 pl-8 pr-8 text-sm text-gray-900"
+          className="quote-style-input h-6 min-h-0 pl-7 pr-7 text-[11px] text-gray-900"
         />
         {(query || value) && (
           <button
@@ -1904,8 +1910,10 @@ function ProductColorAutocomplete({
   const noResultsLabel = label === "Color Search" ? "No Norman color matches." : "No Norman fabric matches.";
 
   return (
-    <div className="relative col-span-2 space-y-1.5 lg:col-span-2">
-      <Label className="text-xs text-gray-900">{label}</Label>
+    <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        {label}
+      </Label>
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -1915,7 +1923,7 @@ function ProductColorAutocomplete({
           onBlur={() => window.setTimeout(() => setIsOpen(false), 120)}
           placeholder="Search collection, color, or code..."
           autoComplete="off"
-          className="h-9 pl-8 pr-8 text-sm text-gray-900"
+          className="quote-style-input h-6 min-h-0 pl-7 pr-7 text-[11px] text-gray-900"
         />
         {(query || value) && (
           <button
@@ -1981,15 +1989,17 @@ function GridYesNo({
 }) {
   const items = noFirst ? ["No", "Yes"] : ["Yes", "No"];
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-gray-900">{label}</Label>
-      <div className="flex gap-1.5">
+    <div className="quote-style-option-field space-y-1">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        {label}
+      </Label>
+      <div className="flex gap-1">
         {items.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
             className={cn(
-              "px-3 py-1.5 rounded-md border text-xs font-medium transition-all",
+              "quote-style-option-button rounded-md border text-[11px] font-semibold transition-all",
               value === opt
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background border-border hover:bg-accent text-gray-900"
@@ -2949,14 +2959,14 @@ function ShutterDesignOptions({
 
       {/* Step-by-step wizard for incomplete defining steps */}
       {nextDefiningStep && nextDefiningStep.options && (
-        <div className="space-y-3">
-          <p className="text-lg text-gray-700 font-medium italic">{nextDefiningStep.label}</p>
-          <div className="inline-flex gap-3 p-2 rounded-xl border-2 border-border bg-accent/30 flex-row flex-wrap">
+        <div className="space-y-2">
+          <p className="text-sm text-gray-700 font-semibold">{nextDefiningStep.label}</p>
+          <div className="inline-flex gap-1.5 p-1 rounded-md border border-border bg-accent/30 flex-row flex-wrap">
             {nextDefiningStep.options.map((opt) => (
               <button
                 key={opt}
                 onClick={() => handleDefiningStepSelect(nextDefiningStep!, opt)}
-                className="px-6 py-2.5 rounded-lg border-2 border-border bg-background text-base font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
+                className="quote-style-option-button rounded-md border border-border bg-background text-[11px] font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
               >
                 {opt}
               </button>
@@ -2970,7 +2980,7 @@ function ShutterDesignOptions({
 
       {/* Grid layout for Standard Shutter detail options */}
       {standardComplete && !allOptionsConfirmed && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+        <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
           {gridOptions.map((opt) => {
             // Skip options that are already confirmed
             if (confirmedOptions.has(opt.field)) {
@@ -3034,7 +3044,7 @@ function ShutterDesignOptions({
           </div>
 
           {showMoreOptions === "Yes" && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+            <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
               <GridYesNo
                 label="Divider Rail"
                 value={getFieldValue(workingDesign, "json:divider_rail")}
@@ -3050,12 +3060,14 @@ function ShutterDesignOptions({
                   />
                   {(design?.options_json as Record<string, string>)?.divider_rail_location ===
                     "Custom" && (
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Divider Rail Height</Label>
+                    <div className="quote-style-option-field space-y-1">
+                      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+                        Divider Rail Height
+                      </Label>
                       <div className="flex items-center gap-1.5">
                         <DeferredTextInput
                           placeholder="Enter height"
-                          className="h-9 w-28 text-sm"
+                          className="quote-style-input h-6 min-h-0 w-24 text-[11px]"
                           value={
                             (design?.options_json as Record<string, string>)?.divider_rail_height ||
                             ""
@@ -3353,14 +3365,14 @@ function StepWizard({
 }) {
   if (!step.options) return null;
   return (
-    <div className="space-y-3">
-      <p className="text-lg text-gray-700 font-medium italic">{step.label}</p>
-      <div className="inline-flex gap-3 p-2 rounded-xl border-2 border-border bg-accent/30 flex-row flex-wrap">
+    <div className="space-y-2">
+      <p className="text-sm text-gray-700 font-semibold">{step.label}</p>
+      <div className="inline-flex gap-1.5 p-1 rounded-md border border-border bg-accent/30 flex-row flex-wrap">
         {step.options.map((opt) => (
           <button
             key={opt}
             onClick={() => onSelect(opt)}
-            className="px-6 py-2.5 rounded-lg border-2 border-border bg-background text-base font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
+            className="quote-style-option-button rounded-md border border-border bg-background text-[11px] font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
           >
             {opt}
           </button>
@@ -4313,7 +4325,7 @@ function ShadesAndBlindsOptions({
 
       {/* Grid layout for unconfirmed options */}
       {!allOptionsConfirmed && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-4">
+        <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
           {gridOptions.map((opt) => {
             // Skip options that are already confirmed
             if (confirmedOptions.has(opt.field)) {
