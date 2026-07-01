@@ -954,23 +954,25 @@ export function QuoteBuilder() {
     ({ item }) => !stackedLineItemIdSet.has(item.id)
   );
   const lineItemNumbers = new Map(lineItems.map((item, index) => [item.id, index + 1]));
-  const productTypeCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    lineItems.forEach((item) => {
+  const productTypeLineNumbers = useMemo(() => {
+    const numbers = new Map<string, number[]>();
+    lineItems.forEach((item, index) => {
       const productType = item.product_type.trim();
       if (!productType) return;
-      counts.set(productType, (counts.get(productType) ?? 0) + 1);
+      const existing = numbers.get(productType) ?? [];
+      numbers.set(productType, [...existing, index + 1]);
     });
-    return counts;
+    return numbers;
   }, [lineItems]);
-  const roomCounts = useMemo(() => {
-    const counts = new Map<string, number>();
-    lineItems.forEach((item) => {
+  const roomLineNumbers = useMemo(() => {
+    const numbers = new Map<string, number[]>();
+    lineItems.forEach((item, index) => {
       const roomName = item.room_name.trim();
       if (!roomName) return;
-      counts.set(roomName, (counts.get(roomName) ?? 0) + 1);
+      const existing = numbers.get(roomName) ?? [];
+      numbers.set(roomName, [...existing, index + 1]);
     });
-    return counts;
+    return numbers;
   }, [lineItems]);
   const designsByLineItemId = new Map<string, SalesQuoteDesign[]>();
   designs.forEach((design) => {
@@ -1225,12 +1227,12 @@ export function QuoteBuilder() {
           <ProductTypeButtons
             selected={selectedProductType}
             onSelect={(type) => selectProduct(type)}
-            counts={productTypeCounts}
+            lineNumbers={productTypeLineNumbers}
           />
           <RoomPresetButtons
             onSelect={handleRoomSelect}
             disabled={!selectedProductType || addLineItem.isPending}
-            counts={roomCounts}
+            lineNumbers={roomLineNumbers}
           />
         </div>
 
@@ -1319,6 +1321,7 @@ export function QuoteBuilder() {
                 <DesignCard
                   key={`${item.id}-${instanceIndex}`}
                   lineItem={item}
+                  lineNumber={lineItemNumbers.get(item.id) ?? 0}
                   instanceIndex={instanceIndex}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}

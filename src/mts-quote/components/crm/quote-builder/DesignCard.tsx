@@ -167,6 +167,7 @@ import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 
 interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
+  lineNumber: number;
   instanceIndex: number;
   designs: SalesQuoteDesign[];
   onUpdateDesign: (
@@ -2024,6 +2025,7 @@ function getPreferredSavedVariant(designs: SalesQuoteDesign[], variants: string[
 
 export function DesignCard({
   lineItem,
+  lineNumber,
   instanceIndex,
   designs,
   onUpdateDesign,
@@ -2486,6 +2488,11 @@ export function DesignCard({
               />
             )}
             <div className="flex items-baseline gap-3">
+              {lineNumber > 0 && (
+                <span className="quote-line-card-number" title={`Line ${lineNumber}`}>
+                  #{lineNumber}
+                </span>
+              )}
               <h3 className="text-3xl font-black tracking-[-0.02em] text-slate-950">
                 {lineItem.room_name}
               </h3>

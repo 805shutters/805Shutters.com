@@ -4,15 +4,19 @@ import { cn } from "@mts/lib/utils";
 interface ProductTypeButtonsProps {
   selected: string | null;
   onSelect: (type: string | null) => void;
-  counts?: ReadonlyMap<string, number>;
+  lineNumbers?: ReadonlyMap<string, readonly number[]>;
 }
 
-export function ProductTypeButtons({ selected, onSelect, counts }: ProductTypeButtonsProps) {
+function formatLineNumbers(lineNumbers: readonly number[]) {
+  return lineNumbers.join(", ");
+}
+
+export function ProductTypeButtons({ selected, onSelect, lineNumbers }: ProductTypeButtonsProps) {
   return (
     <div className="quote-add-card rounded-[1.5rem] border border-white/80 bg-white/70 p-3 shadow-[0_18px_45px_rgba(15,35,70,0.08)] backdrop-blur">
       <div className="quote-add-button-row flex flex-wrap gap-2">
         {PRODUCT_TYPES.map((type) => {
-          const count = counts?.get(type) ?? 0;
+          const numbers = lineNumbers?.get(type) ?? [];
           const isSelected = selected === type;
 
           return (
@@ -28,9 +32,12 @@ export function ProductTypeButtons({ selected, onSelect, counts }: ProductTypeBu
               )}
             >
               <span>{type}</span>
-              {count > 0 && (
-                <span className={cn("quote-count-badge", isSelected && "quote-count-badge--active")}>
-                  {count}
+              {numbers.length > 0 && (
+                <span
+                  className={cn("quote-count-badge", isSelected && "quote-count-badge--active")}
+                  title={`Line ${formatLineNumbers(numbers)}`}
+                >
+                  {formatLineNumbers(numbers)}
                 </span>
               )}
             </button>
