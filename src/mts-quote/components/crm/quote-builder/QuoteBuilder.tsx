@@ -112,6 +112,18 @@ const STACK_OPTION_LABELS: Record<string, string> = {
   stack_option: "Stack",
 };
 
+const STACKED_PRODUCT_TYPE_CLASSES: Record<string, string> = {
+  Shutters: "quote-stacked-product--shutters",
+  "Roller Shades": "quote-stacked-product--roller-shades",
+  "Roman Shades": "quote-stacked-product--roman-shades",
+  "Honeycomb Shades": "quote-stacked-product--honeycomb-shades",
+  "Sheer Shades": "quote-stacked-product--sheer-shades",
+  "Faux Wood Blinds": "quote-stacked-product--faux-wood-blinds",
+  "Wood Blinds": "quote-stacked-product--wood-blinds",
+  "Vertical Blinds": "quote-stacked-product--vertical-blinds",
+  "Smart Drapes": "quote-stacked-product--smart-drapes",
+};
+
 function getStackedLineItemIds(source: unknown) {
   const ids = parseQuoteMeta(source)[STACKED_LINE_ITEM_META_KEY];
   if (!Array.isArray(ids)) return [];
@@ -158,6 +170,10 @@ function formatStackValue(value: unknown): string | null {
     return entries.length ? entries.join(", ") : null;
   }
   return String(value);
+}
+
+function getStackedProductTypeClass(productType: string) {
+  return STACKED_PRODUCT_TYPE_CLASSES[productType] ?? "quote-stacked-product--default";
 }
 
 function buildStackedDesignSummary(designs: SalesQuoteDesign[]) {
@@ -217,9 +233,11 @@ function StackedLineItemRow({
       </span>
       <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
       <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
-      <span className="truncate text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-        {item.product_type}
-        {item.quantity > 1 ? ` x${item.quantity}` : ""}
+      <span className={cn("quote-stacked-product-badge", getStackedProductTypeClass(item.product_type))}>
+        <span className="quote-stacked-product-badge__label">
+          {item.product_type}
+          {item.quantity > 1 ? ` x${item.quantity}` : ""}
+        </span>
       </span>
       <span className="min-w-0 overflow-hidden whitespace-nowrap text-[10px] text-slate-600">
         {details}
