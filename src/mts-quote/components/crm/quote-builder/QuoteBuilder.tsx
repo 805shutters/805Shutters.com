@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -934,6 +934,24 @@ export function QuoteBuilder() {
     ({ item }) => !stackedLineItemIdSet.has(item.id)
   );
   const lineItemNumbers = new Map(lineItems.map((item, index) => [item.id, index + 1]));
+  const productTypeCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    lineItems.forEach((item) => {
+      const productType = item.product_type.trim();
+      if (!productType) return;
+      counts.set(productType, (counts.get(productType) ?? 0) + 1);
+    });
+    return counts;
+  }, [lineItems]);
+  const roomCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    lineItems.forEach((item) => {
+      const roomName = item.room_name.trim();
+      if (!roomName) return;
+      counts.set(roomName, (counts.get(roomName) ?? 0) + 1);
+    });
+    return counts;
+  }, [lineItems]);
   const designsByLineItemId = new Map<string, SalesQuoteDesign[]>();
   designs.forEach((design) => {
     const lineDesigns = designsByLineItemId.get(design.line_item_id) ?? [];
@@ -1110,8 +1128,16 @@ export function QuoteBuilder() {
         </div>
 
         <div className="quote-add-controls" aria-label="Add quote line item">
-          <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
-          <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
+          <ProductTypeButtons
+            selected={selectedProductType}
+            onSelect={(type) => selectProduct(type)}
+            counts={productTypeCounts}
+          />
+          <RoomPresetButtons
+            onSelect={handleRoomSelect}
+            disabled={!selectedProductType || addLineItem.isPending}
+            counts={roomCounts}
+          />
         </div>
 
         {stackedLineItems.length > 0 && (

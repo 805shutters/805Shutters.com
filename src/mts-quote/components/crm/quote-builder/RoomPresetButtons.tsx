@@ -7,11 +7,17 @@ import { Plus } from "lucide-react";
 interface RoomPresetButtonsProps {
   onSelect: (room: string) => void;
   disabled?: boolean;
+  counts?: ReadonlyMap<string, number>;
 }
 
-export function RoomPresetButtons({ onSelect, disabled = false }: RoomPresetButtonsProps) {
+const ROOM_PRESET_SET = new Set<string>(ROOM_PRESETS);
+
+export function RoomPresetButtons({ onSelect, disabled = false, counts }: RoomPresetButtonsProps) {
   const [showCustom, setShowCustom] = useState(false);
   const [customName, setCustomName] = useState("");
+  const customRoomsWithCounts = Array.from(counts?.entries() ?? [])
+    .filter(([room, count]) => count > 0 && !ROOM_PRESET_SET.has(room))
+    .sort(([roomA], [roomB]) => roomA.localeCompare(roomB));
 
   const handleCustomSubmit = () => {
     if (!disabled && customName.trim()) {
@@ -27,14 +33,31 @@ export function RoomPresetButtons({ onSelect, disabled = false }: RoomPresetButt
         Rooms
       </div>
       <div className="quote-add-button-row flex flex-wrap gap-2">
-        {ROOM_PRESETS.map((room) => (
+        {ROOM_PRESETS.map((room) => {
+          const count = counts?.get(room) ?? 0;
+
+          return (
+            <button
+              key={room}
+              disabled={disabled}
+              onClick={() => onSelect(room)}
+              className="quote-room-option rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-sm font-bold text-[#1c1c1a] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1c1c1a] hover:bg-[#1c1c1a] hover:text-white hover:shadow-[0_14px_28px_rgba(15,35,70,0.16)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-slate-300 disabled:hover:bg-white/95 disabled:hover:text-[#1c1c1a] disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)]"
+            >
+              <span>{room}</span>
+              {count > 0 && <span className="quote-count-badge">{count}</span>}
+            </button>
+          );
+        })}
+
+        {customRoomsWithCounts.map(([room, count]) => (
           <button
             key={room}
             disabled={disabled}
             onClick={() => onSelect(room)}
             className="quote-room-option rounded-full border border-slate-300 bg-white/95 px-4 py-2 text-sm font-bold text-[#1c1c1a] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1c1c1a] hover:bg-[#1c1c1a] hover:text-white hover:shadow-[0_14px_28px_rgba(15,35,70,0.16)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 disabled:hover:border-slate-300 disabled:hover:bg-white/95 disabled:hover:text-[#1c1c1a] disabled:hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_8px_18px_rgba(15,35,70,0.06)]"
           >
-            {room}
+            <span>{room}</span>
+            <span className="quote-count-badge">{count}</span>
           </button>
         ))}
 

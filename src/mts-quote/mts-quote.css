@@ -292,11 +292,43 @@
 
 .mts-quote-scope .quote-product-option,
 .mts-quote-scope .quote-room-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 34px;
   padding: 7px 12px;
   font-size: 13px;
   line-height: 1.1;
   white-space: nowrap;
+}
+
+.mts-quote-scope .quote-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #1c1c1a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+}
+
+.mts-quote-scope .quote-count-badge--active,
+.mts-quote-scope .quote-room-option:hover .quote-count-badge {
+  background: #fff;
+  color: #1c1c1a;
+}
+
+.mts-quote-scope .quote-room-option:disabled .quote-count-badge {
+  background: #1c1c1a;
+  color: #fff;
 }
 
 .mts-quote-scope .quote-product-option {
@@ -334,6 +366,13 @@
     min-height: 32px;
     padding: 6px 10px;
     font-size: 12px;
+  }
+
+  .mts-quote-scope .quote-count-badge {
+    min-width: 17px;
+    height: 17px;
+    padding: 0 5px;
+    font-size: 10px;
   }
 }
 
