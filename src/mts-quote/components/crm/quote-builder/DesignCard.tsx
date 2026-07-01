@@ -69,6 +69,10 @@ import {
   ROLLER_SHADE_TYPES,
   ROLLER_LIFT_SYSTEMS,
   ROLLER_VALANCES,
+  ROLLER_HEM_BARS,
+  ROLLER_ROLL_TYPES,
+  ROLLER_CORD_LOOP_RELEASES,
+  ROLLER_PREMIUM_HARDWARE_COLORS,
   getRollerFabricPriceGroup,
   getRomanFabricPriceGroup,
   ROMAN_MOUNT_TYPES,
@@ -273,6 +277,13 @@ const INSTALL_MORE_OPTIONS: GridOptionYesNo[] = [
 ];
 
 const BOOLEAN_FIELDS = new Set(["hard_surface_install", "ladder_over_15ft", "requires_takedown"]);
+const ROLLER_MOTOR_TYPE_OPTIONS = [
+  ...new Set(
+    MOTORIZATION_OPTIONS.filter((option) => /motor|autowand/i.test(option.name)).map(
+      (option) => option.name
+    )
+  ),
+] as readonly string[];
 
 interface QuoteSurcharge {
   id: string;
@@ -432,6 +443,7 @@ function getAutomaticOptionSurcharges(
   const lightControl = String(opts.light_control || "");
   const cellSize = String(opts.cell_size || "");
   const controlType = String(opts.control_type || "");
+  const cordLoopRelease = String(opts.cord_loop_release || "");
   const hubRequired =
     opts.hub_required === true ||
     String(opts.hub_required || "").toLowerCase() === "true" ||
@@ -444,7 +456,10 @@ function getAutomaticOptionSurcharges(
     }
   }
 
-  if (productType === "Roller Shades" && liftSystem === "Smart Release") {
+  if (
+    productType === "Roller Shades" &&
+    (liftSystem === "Smart Release" || cordLoopRelease === "Smart Release")
+  ) {
     appendSurcharge(
       surcharges,
       toAutomaticSurcharge(
@@ -1087,9 +1102,14 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
   const allFields = options.map((option) => option.field);
   switch (productType) {
     case "Roller Shades":
-      return ["mount_type", "shade_type", "lift_system", "valance", "fabric"].filter((field) =>
-        allFields.includes(field)
-      );
+      return [
+        "mount_type",
+        "shade_type",
+        "fabric",
+        "lift_system",
+        "valance",
+        "json:hem_bar",
+      ].filter((field) => allFields.includes(field));
     case "Roman Shades":
       return [
         "mount_type",
@@ -1158,6 +1178,7 @@ function OptionSlot({
 }) {
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
+  const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
 
   return (
     <div
@@ -1165,14 +1186,14 @@ function OptionSlot({
         "quote-option-slot",
         selected && "quote-option-slot--selected",
         isOpen && "quote-option-slot--open",
+        isInlineChoice && "quote-option-slot--inline-choice",
         requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
       )}
     >
-      {isYesNo ? (
+      {isInlineChoice ? (
         <>
           <div className="quote-option-slot__static">
             <span className="quote-option-slot__label">{option.label}</span>
-            {selected && <span className="quote-option-slot__value">{value}</span>}
           </div>
           <div className="quote-option-slot__inline-control">{children}</div>
         </>
@@ -3519,6 +3540,31 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Roller Shades" && field === "lift_system") {
+      const nextJson = { ...currentJson };
+      if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
+      if (value !== "Motorized") nextJson.hub_required = null;
+
+      onUpdateFields({
+        lift_system: typeof value === "string" ? value : null,
+        motor_type: value === "Motorized" ? design?.motor_type || null : null,
+        remote_type: null,
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roller Shades" && field === "json:premium_hardware") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          premium_hardware: value,
+          ...(value === "Yes" ? {} : { premium_hardware_color: null }),
+        },
+      });
+      return;
+    }
+
     if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
       let nextJson = withoutProductColorDetails(currentJson);
       const jsonKey = getJsonFieldKey(field);
@@ -3587,6 +3633,7 @@ function ShadesAndBlindsOptions({
     switch (productType) {
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
+        const premiumHardware = getFieldValue(design, "json:premium_hardware");
         const options: GridOption[] = [
           {
             key: "mount",
@@ -3603,6 +3650,13 @@ function ShadesAndBlindsOptions({
             options: ROLLER_SHADE_TYPES,
           },
           {
+            key: "fabric",
+            label: "Fabric",
+            field: "fabric",
+            type: "select",
+            options: getMtsRollerFabricCollections(),
+          },
+          {
             key: "lift",
             label: "Lift System",
             field: "lift_system",
@@ -3617,41 +3671,62 @@ function ShadesAndBlindsOptions({
             options: ROLLER_VALANCES,
           },
           {
-            key: "fabric",
-            label: "Fabric",
-            field: "fabric",
-            type: "select",
-            options: getMtsRollerFabricCollections(),
+            key: "hem_bar",
+            label: "Hem Bar",
+            field: "json:hem_bar",
+            type: "buttons",
+            options: ROLLER_HEM_BARS,
+          },
+          {
+            key: "light_guard_rails",
+            label: "Light Guard Rails",
+            field: "json:light_guard_rails",
+            type: "yes-no",
+            noFirst: true,
+          },
+          {
+            key: "roll_type",
+            label: "Roll Type",
+            field: "json:roll_type",
+            type: "buttons",
+            options: ROLLER_ROLL_TYPES,
+          },
+          {
+            key: "premium_hardware",
+            label: "Premium Hardware",
+            field: "json:premium_hardware",
+            type: "yes-no",
+            noFirst: true,
           },
         ];
 
-        // Show motorization options if Motorized is selected
+        if (premiumHardware === "Yes") {
+          options.push({
+            key: "premium_hardware_color",
+            label: "Premium Color",
+            field: "json:premium_hardware_color",
+            type: "select",
+            options: ROLLER_PREMIUM_HARDWARE_COLORS,
+          });
+        }
+
+        if (liftSystem === "Continuous Cord Loop") {
+          options.push({
+            key: "cord_loop_release",
+            label: "Cord Loop Release",
+            field: "json:cord_loop_release",
+            type: "buttons",
+            options: ROLLER_CORD_LOOP_RELEASES,
+          });
+        }
+
         if (liftSystem === "Motorized") {
           options.push({
             key: "motor_type",
             label: "Motor Type",
             field: "motor_type",
             type: "select",
-            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
-          });
-          options.push({
-            key: "hub_required",
-            label: "Hub Required",
-            field: "json:hub_required",
-            type: "yes-no",
-            noFirst: true,
-          });
-          options.push({
-            key: "remote_type",
-            label: "Remote Type",
-            field: "remote_type",
-            type: "select",
-            options: [
-              "15-Channel Remote",
-              "5-Channel Wall Switch",
-              "SmartDial Remote",
-              "Basic Remote",
-            ] as readonly string[],
+            options: ROLLER_MOTOR_TYPE_OPTIONS,
           });
         }
 

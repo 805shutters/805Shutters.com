@@ -113,12 +113,18 @@ const STACK_OPTION_LABELS: Record<string, string> = {
   fabric_color_name: "Color",
   fabric_color_type: "Fabric type",
   fabric_group: "Fabric group",
+  cord_loop_release: "Cord loop",
+  hem_bar: "Hem bar",
+  light_guard_rails: "Light guard",
+  premium_hardware: "Premium hardware",
+  premium_hardware_color: "Premium color",
   product_color_code: "Color code",
   product_color_collection: "Collection",
   product_color_name: "Color",
   product_color_type: "Color type",
   product_line: "Line",
   roman_fabric_category: "Fabric category",
+  roll_type: "Roll",
   stack_option: "Stack",
 };
 

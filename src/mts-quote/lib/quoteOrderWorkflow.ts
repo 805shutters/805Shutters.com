@@ -231,9 +231,11 @@ function collectRollerShadeLineMissingFields(
   if (!design.lift_system) missingFields.push(`${room}: lift system`);
   if (!design.valance) missingFields.push(`${room}: valance`);
   if (!design.fabric) missingFields.push(`${room}: fabric`);
+  if (!(design.options_json as Record<string, unknown> | undefined)?.hem_bar) {
+    missingFields.push(`${room}: hem bar`);
+  }
 
   if (/motor/i.test(design.lift_system || "")) {
     if (!design.motor_type) missingFields.push(`${room}: motor type`);
-    if (!design.remote_type) missingFields.push(`${room}: remote type`);
   }
 }
