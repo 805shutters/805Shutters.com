@@ -1031,6 +1031,22 @@ function getCompletedDisplayValue(
   return value;
 }
 
+const LINE_PRODUCT_TYPE_CLASSES: Record<string, string> = {
+  Shutters: "quote-stacked-product--shutters",
+  "Roller Shades": "quote-stacked-product--roller-shades",
+  "Roman Shades": "quote-stacked-product--roman-shades",
+  "Honeycomb Shades": "quote-stacked-product--honeycomb-shades",
+  "Sheer Shades": "quote-stacked-product--sheer-shades",
+  "Faux Wood Blinds": "quote-stacked-product--faux-wood-blinds",
+  "Wood Blinds": "quote-stacked-product--wood-blinds",
+  "Vertical Blinds": "quote-stacked-product--vertical-blinds",
+  "Smart Drapes": "quote-stacked-product--smart-drapes",
+};
+
+function getLineProductTypeClass(productType: string) {
+  return LINE_PRODUCT_TYPE_CLASSES[productType] ?? "quote-stacked-product--default";
+}
+
 function ProductTypeSwitcher({
   productType,
   onChangeProductType,
@@ -1042,7 +1058,12 @@ function ProductTypeSwitcher({
 
   if (!onChangeProductType) {
     return (
-      <span className="quote-line-product-type-badge quote-line-product-type-badge--static">
+      <span
+        className={cn(
+          "quote-line-product-type-badge quote-line-product-type-badge--static",
+          getLineProductTypeClass(productType)
+        )}
+      >
         {productType}
       </span>
     );
@@ -1053,7 +1074,7 @@ function ProductTypeSwitcher({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="quote-line-product-type-badge"
+        className={cn("quote-line-product-type-badge", getLineProductTypeClass(productType))}
         title="Change product type for this line item"
       >
         {productType}
@@ -1071,7 +1092,7 @@ function ProductTypeSwitcher({
             onChangeProductType(type);
             setIsEditing(false);
           }}
-          className="quote-line-product-type-choice"
+          className={cn("quote-line-product-type-choice", getLineProductTypeClass(type))}
         >
           {type}
         </button>
