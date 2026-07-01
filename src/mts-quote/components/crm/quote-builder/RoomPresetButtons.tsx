@@ -29,9 +29,6 @@ export function RoomPresetButtons({ onSelect, disabled = false, counts }: RoomPr
 
   return (
     <div className="quote-add-card rounded-[1.5rem] border border-white/80 bg-white/60 p-3 shadow-[0_18px_45px_rgba(15,35,70,0.07)] backdrop-blur">
-      <div className="quote-add-label mb-2 px-1 text-[0.7rem] font-black uppercase tracking-[0.22em] text-slate-500">
-        Rooms
-      </div>
       <div className="quote-add-button-row flex flex-wrap gap-2">
         {ROOM_PRESETS.map((room) => {
           const count = counts?.get(room) ?? 0;
