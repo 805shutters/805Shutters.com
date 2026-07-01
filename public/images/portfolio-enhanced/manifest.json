@@ -108,6 +108,42 @@
     "natural": "/images/portfolio-enhanced/plantation-shutters-dining-room-natural.jpg"
   },
   {
+    "base": "bay-window-plantation-shutters-front",
+    "source": "2026-07-01-bay-window-plantation-shutters-front.jpg",
+    "category": "Shutters",
+    "title": "Bay Window Plantation Shutters",
+    "alt": "White plantation shutters installed across a Ventura County bay window",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bay-window-plantation-shutters-front-wide.jpg",
+    "card": "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg",
+    "natural": "/images/portfolio-enhanced/bay-window-plantation-shutters-front-natural.jpg"
+  },
+  {
+    "base": "bay-window-plantation-shutters-angle",
+    "source": "2026-07-01-bay-window-plantation-shutters-angle.jpg",
+    "category": "Shutters",
+    "title": "Angled Bay Window Plantation Shutters",
+    "alt": "White plantation shutters installed on an angled Ventura County bay window",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-wide.jpg",
+    "card": "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-card.jpg",
+    "natural": "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-natural.jpg"
+  },
+  {
+    "base": "two-story-shutter-installation-detail",
+    "source": "2026-07-01-two-story-shutter-installation-detail.jpg",
+    "category": "Shutters",
+    "title": "Tall Window Shutter Detail",
+    "alt": "Custom plantation shutter detail on tall angled Ventura County windows",
+    "position": "attention",
+    "grade": "detail",
+    "wide": "/images/portfolio-enhanced/two-story-shutter-installation-detail-wide.jpg",
+    "card": "/images/portfolio-enhanced/two-story-shutter-installation-detail-card.jpg",
+    "natural": "/images/portfolio-enhanced/two-story-shutter-installation-detail-natural.jpg"
+  },
+  {
     "base": "uploaded-arched-shutter-detail",
     "source": "uploaded-portfolio-0631.jpg",
     "category": "Shutters",

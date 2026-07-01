@@ -108,6 +108,18 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
     video: "/videos/motorized-roller-shades-living-room-view.m4v"
   },
   {
+    image: "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg",
+    imageAlt: "White plantation shutters installed across a Ventura County bay window"
+  },
+  {
+    image: "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-card.jpg",
+    imageAlt: "White plantation shutters installed on an angled Ventura County bay window"
+  },
+  {
+    image: "/images/portfolio-enhanced/two-story-shutter-installation-detail-card.jpg",
+    imageAlt: "Custom plantation shutter detail on tall angled Ventura County windows"
+  },
+  {
     image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
     imageAlt: "Custom shutters installed on a Ventura County bedroom sliding door"
   },

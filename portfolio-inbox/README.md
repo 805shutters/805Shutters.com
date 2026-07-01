@@ -2,6 +2,8 @@
 
 Use this folder as the staging area for new portfolio photos sent in the Codex chat.
 
+Keep raw or unreviewed photos here instead of under `public/`, because files in `public/` can be served directly by the website.
+
 Workflow:
 
 1. Save incoming originals here first.

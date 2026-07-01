@@ -89,6 +89,33 @@ const photos = [
     grade: "editorial"
   },
   {
+    base: "bay-window-plantation-shutters-front",
+    source: "2026-07-01-bay-window-plantation-shutters-front.jpg",
+    category: "Shutters",
+    title: "Bay Window Plantation Shutters",
+    alt: "White plantation shutters installed across a Ventura County bay window",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "bay-window-plantation-shutters-angle",
+    source: "2026-07-01-bay-window-plantation-shutters-angle.jpg",
+    category: "Shutters",
+    title: "Angled Bay Window Plantation Shutters",
+    alt: "White plantation shutters installed on an angled Ventura County bay window",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "two-story-shutter-installation-detail",
+    source: "2026-07-01-two-story-shutter-installation-detail.jpg",
+    category: "Shutters",
+    title: "Tall Window Shutter Detail",
+    alt: "Custom plantation shutter detail on tall angled Ventura County windows",
+    position: "attention",
+    grade: "detail"
+  },
+  {
     base: "uploaded-arched-shutter-detail",
     source: "uploaded-portfolio-0631.jpg",
     category: "Shutters",
