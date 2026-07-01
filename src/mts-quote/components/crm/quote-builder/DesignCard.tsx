@@ -1197,16 +1197,16 @@ function SurchargePicker({
         variant="outline"
         size="sm"
         onClick={() => setAdding((value) => !value)}
-        className="h-8 border-dashed text-xs"
+        className="quote-line-action-button quote-line-action-button--dashed"
         disabled={available.length === 0}
       >
-        <Plus className="h-3.5 w-3.5 mr-1" />
+        <Plus className="h-3.5 w-3.5" />
         Add Surcharge
       </Button>
 
       {adding && available.length > 0 && (
         <Select onValueChange={addSurcharge}>
-          <SelectTrigger className="h-8 w-[260px] bg-white text-xs">
+          <SelectTrigger className="quote-line-surcharge-select">
             <SelectValue placeholder="Select surcharge or add-on..." />
           </SelectTrigger>
           <SelectContent className="max-h-80">
@@ -2666,23 +2666,33 @@ export function DesignCard({
         )}
 
         {/* Copy actions */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
-          <span className="text-xs text-muted-foreground">Copy this design to:</span>
-          <Button variant="outline" size="sm" onClick={onCopyAll} className="text-xs">
-            <Copy className="h-3 w-3 mr-1" />
+        <div className="quote-line-action-row">
+          <span className="quote-line-action-label">Copy this design to:</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopyAll}
+            className="quote-line-action-button"
+          >
+            <Copy className="h-3.5 w-3.5" />
             All lines
           </Button>
-          <Button variant="outline" size="sm" onClick={onCopySome} className="text-xs">
-            <CopyCheck className="h-3 w-3 mr-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopySome}
+            className="quote-line-action-button"
+          >
+            <CopyCheck className="h-3.5 w-3.5" />
             Some
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowLineNote((value) => !value)}
-            className="text-xs"
+            className="quote-line-action-button"
           >
-            <FileText className="h-3 w-3 mr-1" />
+            <FileText className="h-3.5 w-3.5" />
             Add Note
           </Button>
           <SurchargePicker
@@ -2690,8 +2700,13 @@ export function DesignCard({
             design={currentDesign}
             onUpdate={updateField}
           />
-          <Button variant="outline" size="sm" onClick={onStack} className="ml-auto text-xs">
-            <Archive className="h-3 w-3 mr-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onStack}
+            className="quote-line-action-button quote-line-action-button--stack"
+          >
+            <Archive className="h-3.5 w-3.5" />
             Stack
           </Button>
         </div>
