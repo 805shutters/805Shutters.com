@@ -276,6 +276,46 @@
   outline-offset: -2px;
 }
 
+.mts-quote-scope .quote-command-toggle {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  z-index: 4;
+  display: none;
+  height: 28px;
+  width: 54px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8d8d2;
+  border-top: 0;
+  border-radius: 0 0 999px 999px;
+  background: rgb(255 255 255 / 0.96);
+  color: #0b0b0b;
+  box-shadow: 0 10px 22px rgb(15 35 70 / 0.16);
+  transform: translateX(-50%);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.mts-quote-scope .quote-command-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.mts-quote-scope .quote-command-toggle:hover,
+.mts-quote-scope .quote-command-toggle:focus-visible {
+  border-color: #0b0b0b;
+  background: #0b0b0b;
+  color: #ffffff;
+  outline: none;
+}
+
+.mts-quote-scope .quote-command-toggle--open svg {
+  transform: rotate(180deg);
+}
+
 .mts-quote-scope .quote-builder-command-bar {
   position: relative;
   z-index: 1;
@@ -300,7 +340,8 @@
 }
 
 .mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
-.mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar {
+.mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar,
+.mts-quote-scope .quote-command-menu--open .quote-builder-command-bar {
   max-height: 540px;
   padding-top: 10px;
   padding-bottom: 10px;
@@ -320,8 +361,21 @@
 }
 
 .mts-quote-scope .quote-command-menu:hover .quote-command-reveal-zone,
-.mts-quote-scope .quote-command-menu:focus-within .quote-command-reveal-zone {
+.mts-quote-scope .quote-command-menu:focus-within .quote-command-reveal-zone,
+.mts-quote-scope .quote-command-menu--open .quote-command-reveal-zone {
   pointer-events: none;
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 1366px) {
+  .mts-quote-scope .quote-command-toggle {
+    display: inline-flex;
+  }
+
+  .mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
+  .mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar,
+  .mts-quote-scope .quote-command-menu--open .quote-builder-command-bar {
+    padding-top: 34px;
+  }
 }
 
 .mts-quote-scope .quote-command-tabs {

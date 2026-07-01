@@ -12,7 +12,17 @@ import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Textarea } from "@mts/components/ui/textarea";
-import { Archive, RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent, X } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  RotateCcw,
+  Pencil,
+  CopyCheck,
+  Send,
+  DollarSign,
+  Percent,
+  X,
+} from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { CollectPaymentDialog } from "./CollectPaymentDialog";
@@ -293,6 +303,7 @@ export function QuoteBuilder() {
   const [copyAllTargetsBySource, setCopyAllTargetsBySource] = useState<Record<string, string[]>>({});
   const [stackedLineItemIds, setStackedLineItemIds] = useState<string[]>([]);
   const [quoteNoteDraft, setQuoteNoteDraft] = useState("");
+  const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
 
   const syncQuoteTotal = async (options: { allowZero?: boolean } = {}) => {
     if (!activeQuoteId) return;
@@ -984,15 +995,36 @@ export function QuoteBuilder() {
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
-        <div className="quote-command-menu">
+        <div className={cn("quote-command-menu", isCommandMenuOpen && "quote-command-menu--open")}>
+          <button
+            type="button"
+            className={cn("quote-command-toggle", isCommandMenuOpen && "quote-command-toggle--open")}
+            aria-controls="quote-builder-command-bar"
+            aria-expanded={isCommandMenuOpen}
+            aria-label={isCommandMenuOpen ? "Hide quote actions menu" : "Show quote actions menu"}
+            title={isCommandMenuOpen ? "Hide quote actions" : "Show quote actions"}
+            onClick={() => setIsCommandMenuOpen((open) => !open)}
+          >
+            <ChevronDown className="h-4 w-4" aria-hidden />
+          </button>
           <div
             className="quote-command-reveal-zone"
             aria-label="Show quote actions menu"
             role="button"
             tabIndex={0}
+            onClick={() => setIsCommandMenuOpen(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setIsCommandMenuOpen(true);
+              }
+            }}
           />
           {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
-          <div className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+          <div
+            id="quote-builder-command-bar"
+            className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
