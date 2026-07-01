@@ -1993,13 +1993,13 @@ function GridYesNo({
       <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
         {label}
       </Label>
-      <div className="flex gap-1">
+      <div className="quote-style-yes-no-group">
         {items.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
             className={cn(
-              "quote-style-option-button rounded-md border text-[11px] font-semibold transition-all",
+              "quote-style-option-button quote-style-yes-no-button rounded-md border text-[11px] font-semibold transition-all",
               value === opt
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background border-border hover:bg-accent text-gray-900"
