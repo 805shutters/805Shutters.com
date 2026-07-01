@@ -108,7 +108,7 @@ export function getMtsProductColorProductIds(
 export function supportsMtsProductColorSearch(
   productType: string | null | undefined,
   field: string | null | undefined,
-  optionsJson: Record<string, unknown> = {},
+  _optionsJson: Record<string, unknown> = {},
 ): boolean {
   if (field === "fabric") {
     return ["Roman Shades", "Honeycomb Shades", "Sheer Shades", "Smart Drapes"].includes(productType ?? "");
@@ -122,7 +122,7 @@ export function supportsMtsProductColorSearch(
     return productType === "Vertical Blinds";
   }
 
-  return getMtsProductColorProductIds(productType, optionsJson).length > 0 && Boolean(field);
+  return false;
 }
 
 export function getMtsProductColorRows(

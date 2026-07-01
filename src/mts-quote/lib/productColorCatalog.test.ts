@@ -4,6 +4,7 @@ import {
   getMtsGridKeyForCatalogProgram,
   getMtsProductColorRows,
   searchMtsProductColors,
+  supportsMtsProductColorSearch,
 } from "./productColorCatalog";
 import { getProductPriceBreakdown } from "./pricingEngine";
 
@@ -62,6 +63,17 @@ describe("MTS Norman product color catalog adapter", () => {
       productId: "wood_blinds",
       colorCode: "ND001",
     });
+  });
+
+  it("only enables the autocomplete for actual fabric or color fields", () => {
+    expect(supportsMtsProductColorSearch("Roman Shades", "fabric")).toBe(true);
+    expect(supportsMtsProductColorSearch("Roman Shades", "valance")).toBe(false);
+    expect(supportsMtsProductColorSearch("Roman Shades", "json:roman_fabric_category")).toBe(false);
+    expect(supportsMtsProductColorSearch("Roller Shades", "fabric")).toBe(false);
+    expect(supportsMtsProductColorSearch("Faux Wood Blinds", "json:color")).toBe(true);
+    expect(supportsMtsProductColorSearch("Faux Wood Blinds", "json:product_line")).toBe(false);
+    expect(supportsMtsProductColorSearch("Vertical Blinds", "json:vertical_color")).toBe(true);
+    expect(supportsMtsProductColorSearch("Vertical Blinds", "json:fabric_group")).toBe(false);
   });
 });
 
