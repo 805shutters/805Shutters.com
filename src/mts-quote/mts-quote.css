@@ -411,14 +411,22 @@
   box-shadow: 0 6px 14px rgb(0 0 0 / 0.18);
 }
 
-.mts-quote-scope .quote-room-option:disabled {
+.mts-quote-scope .quote-room-option:disabled,
+.mts-quote-scope .quote-room-option[disabled] {
   border-color: rgb(255 255 255 / 0.16);
   background: rgb(255 255 255 / 0.06);
   color: #ffffff;
   opacity: 1;
 }
 
-.mts-quote-scope .quote-room-option:disabled:hover {
+.mts-quote-scope .quote-room-option:disabled *,
+.mts-quote-scope .quote-room-option[disabled] * {
+  color: inherit;
+  opacity: 1;
+}
+
+.mts-quote-scope .quote-room-option:disabled:hover,
+.mts-quote-scope .quote-room-option[disabled]:hover {
   border-color: rgb(255 255 255 / 0.16);
   background: rgb(255 255 255 / 0.06);
   color: #ffffff;
