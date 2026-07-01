@@ -2461,7 +2461,7 @@ export function DesignCard({
         isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50"
       )}
     >
-      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] pb-4">
+      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {isCopyTarget && (
@@ -2471,14 +2471,14 @@ export function DesignCard({
                 onCheckedChange={onToggleCopyTarget}
               />
             )}
-            <div className="flex items-baseline gap-4">
-              <h3 className="text-4xl font-black tracking-[-0.04em] text-slate-950">
+            <div className="flex items-baseline gap-3">
+              <h3 className="text-3xl font-black tracking-[-0.02em] text-slate-950">
                 {lineItem.room_name}
               </h3>
               {hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
-                  className="font-mono text-4xl font-extrabold text-foreground hover:text-primary transition-colors cursor-pointer"
+                  className="font-mono text-3xl font-extrabold text-foreground hover:text-primary transition-colors cursor-pointer"
                   title="Click to update measurements"
                 >
                   &ndash; {formatDimensions(lineItem)}
@@ -2500,7 +2500,7 @@ export function DesignCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-2.5 py-1.5 shadow-sm">
             {/* Sqft + editable $/sqft for shutters */}
             {isShutters && sqft !== null && currentRetailPerSqft !== null && (
               <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
@@ -2556,12 +2556,12 @@ export function DesignCard({
               </div>
             )}
             <div className="flex items-center gap-1.5 text-right">
-              <Lock className="h-4 w-4 text-muted-foreground" />
+              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
               <div>
-                <span className="text-xl font-bold">
+                <span className="text-lg font-bold">
                   {formatMoney(currentDesign?.unit_price || 0)}
                 </span>
-                <div className="text-xs text-muted-foreground">excl. tax</div>
+                <div className="text-[11px] text-muted-foreground">excl. tax</div>
               </div>
             </div>
             {onApplyDiscount && discountPercents.length > 0 && (
@@ -2579,7 +2579,7 @@ export function DesignCard({
                 <SelectTrigger
                   aria-label={`Discount for ${lineItem.room_name}`}
                   className={cn(
-                    "h-8 w-[130px] rounded-full border text-xs font-bold",
+                    "h-7 w-[122px] rounded-full border text-xs font-bold",
                     hasDiscount
                       ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                       : "border-slate-200 bg-white text-slate-600"
@@ -2599,8 +2599,14 @@ export function DesignCard({
               </Select>
             )}
             {onCopyItem && (
-              <Button variant="ghost" size="icon" onClick={onCopyItem} title="Copy line item">
-                <Copy className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onCopyItem}
+                title="Copy line item"
+                className="h-8 w-8"
+              >
+                <Copy className="h-3.5 w-3.5" />
               </Button>
             )}
             {onDelete && (
@@ -2609,9 +2615,9 @@ export function DesignCard({
                 size="icon"
                 onClick={onDelete}
                 title="Delete line item"
-                className="text-destructive hover:text-destructive"
+                className="h-8 w-8 text-destructive hover:text-destructive"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
