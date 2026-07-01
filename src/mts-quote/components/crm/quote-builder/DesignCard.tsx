@@ -237,6 +237,30 @@ type GridSelectGroup = { label: string; items: readonly string[] };
 
 // --- Helpers ---
 
+const INSTALL_MORE_OPTIONS: GridOptionYesNo[] = [
+  {
+    key: "hard_surface",
+    label: "Hard Surface Install",
+    field: "hard_surface_install",
+    type: "yes-no",
+    noFirst: true,
+  },
+  {
+    key: "ladder",
+    label: "Requires Ladder Over 15ft",
+    field: "ladder_over_15ft",
+    type: "yes-no",
+    noFirst: true,
+  },
+  {
+    key: "takedown",
+    label: "Requires Takedown",
+    field: "requires_takedown",
+    type: "yes-no",
+    noFirst: true,
+  },
+];
+
 const BOOLEAN_FIELDS = new Set(["hard_surface_install", "ladder_over_15ft", "requires_takedown"]);
 
 interface QuoteSurcharge {
@@ -1542,27 +1566,6 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
         type: "buttons",
         options: ONYX_ASTRAGAL_OPTIONS,
       },
-      {
-        key: "hard_surface",
-        label: "Hard Surface Install",
-        field: "hard_surface_install",
-        type: "yes-no",
-        noFirst: true,
-      },
-      {
-        key: "ladder",
-        label: "Requires Ladder Over 15ft",
-        field: "ladder_over_15ft",
-        type: "yes-no",
-        noFirst: true,
-      },
-      {
-        key: "takedown",
-        label: "Requires Takedown",
-        field: "requires_takedown",
-        type: "yes-no",
-        noFirst: true,
-      },
     ];
   }
 
@@ -1614,27 +1617,6 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
       label: "Split Tilt",
       field: "json:split_tilt",
       type: "yes-no",
-    },
-    {
-      key: "hard_surface",
-      label: "Hard Surface Install",
-      field: "hard_surface_install",
-      type: "yes-no",
-      noFirst: true,
-    },
-    {
-      key: "ladder",
-      label: "Requires Ladder Over 15ft",
-      field: "ladder_over_15ft",
-      type: "yes-no",
-      noFirst: true,
-    },
-    {
-      key: "takedown",
-      label: "Requires Takedown",
-      field: "requires_takedown",
-      type: "yes-no",
-      noFirst: true,
     },
   ];
 }
@@ -2744,7 +2726,7 @@ function ShutterDesignOptions({
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
 }) {
-  const [showMoreOptions, setShowMoreOptions] = useState<string | null>(null);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [confirmedOptions, setConfirmedOptions] = useState<
     Map<string, { label: string; value: string }>
   >(new Map());
@@ -3035,16 +3017,32 @@ function ShutterDesignOptions({
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowMoreOptions(showMoreOptions === "Yes" ? null : "Yes")}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-sm hover:bg-accent transition-all cursor-pointer"
+              type="button"
+              aria-expanded={showMoreOptions}
+              onClick={() => setShowMoreOptions((value) => !value)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-sm transition-all cursor-pointer",
+                showMoreOptions
+                  ? "border-primary/50 bg-accent text-gray-900"
+                  : "border-muted-foreground/40 text-muted-foreground hover:bg-accent"
+              )}
             >
               <Lightbulb className="h-3.5 w-3.5" />
-              {showMoreOptions === "Yes" ? "Hide" : "Show"} More Options
+              More Options
             </button>
           </div>
 
-          {showMoreOptions === "Yes" && (
+          {showMoreOptions && (
             <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
+              {INSTALL_MORE_OPTIONS.map((opt) => (
+                <GridYesNo
+                  key={opt.key}
+                  label={opt.label}
+                  value={getFieldValue(workingDesign, opt.field)}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                  noFirst={opt.noFirst}
+                />
+              ))}
               <GridYesNo
                 label="Divider Rail"
                 value={getFieldValue(workingDesign, "json:divider_rail")}
@@ -3403,6 +3401,7 @@ function ShadesAndBlindsOptions({
     Map<string, { label: string; value: string }>
   >(new Map());
   const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const handleUpdate = (field: string, value: unknown) => {
     const currentJson = (design?.options_json as Record<string, unknown>) || {};
@@ -3492,9 +3491,6 @@ function ShadesAndBlindsOptions({
           "motor_type",
           "hub_required",
           "remote_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Roman Shades":
         return [
@@ -3506,9 +3502,6 @@ function ShadesAndBlindsOptions({
           "motor_type",
           "hub_required",
           "remote_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Honeycomb Shades":
         return [
@@ -3521,9 +3514,6 @@ function ShadesAndBlindsOptions({
           "motor_type",
           "json:hub_required",
           "remote_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Sheer Shades":
         return [
@@ -3534,9 +3524,6 @@ function ShadesAndBlindsOptions({
           "motor_type",
           "json:hub_required",
           "remote_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Faux Wood Blinds":
         return [
@@ -3544,18 +3531,12 @@ function ShadesAndBlindsOptions({
           "json:slat_size",
           "json:product_line",
           "json:color",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Wood Blinds":
         return [
           "mount_type",
           "json:slat_size",
           "json:color",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Vertical Blinds":
         return [
@@ -3564,9 +3545,6 @@ function ShadesAndBlindsOptions({
           "json:vertical_color",
           "json:stack_option",
           "json:control_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       case "Smart Drapes":
         return [
@@ -3579,12 +3557,9 @@ function ShadesAndBlindsOptions({
           "motor_type",
           "json:hub_required",
           "remote_type",
-          "hard_surface_install",
-          "ladder_over_15ft",
-          "requires_takedown",
         ];
       default:
-        return ["hard_surface_install", "ladder_over_15ft", "requires_takedown"];
+        return [];
     }
   };
 
@@ -3658,30 +3633,6 @@ function ShadesAndBlindsOptions({
   };
 
   const getGridOptions = (): GridOption[] => {
-    const commonOptions: GridOption[] = [
-      {
-        key: "hard_surface",
-        label: "Hard Surface Install",
-        field: "hard_surface_install",
-        type: "yes-no",
-        noFirst: true,
-      },
-      {
-        key: "ladder",
-        label: "Requires Ladder Over 15ft",
-        field: "ladder_over_15ft",
-        type: "yes-no",
-        noFirst: true,
-      },
-      {
-        key: "takedown",
-        label: "Requires Takedown",
-        field: "requires_takedown",
-        type: "yes-no",
-        noFirst: true,
-      },
-    ];
-
     switch (productType) {
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
@@ -3753,7 +3704,6 @@ function ShadesAndBlindsOptions({
           });
         }
 
-        options.push(...commonOptions);
         return options;
       }
 
@@ -3827,7 +3777,6 @@ function ShadesAndBlindsOptions({
           });
         }
 
-        options.push(...commonOptions);
         return options;
       }
 
@@ -3909,7 +3858,6 @@ function ShadesAndBlindsOptions({
           });
         }
 
-        options.push(...commonOptions);
         return options;
       }
 
@@ -3976,7 +3924,6 @@ function ShadesAndBlindsOptions({
           });
         }
 
-        options.push(...commonOptions);
         return options;
       }
 
@@ -4010,7 +3957,6 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: [] as readonly string[],
           },
-          ...commonOptions,
         ];
       }
 
@@ -4037,7 +3983,6 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: [] as readonly string[],
           },
-          ...commonOptions,
         ];
 
       case "Vertical Blinds": {
@@ -4077,7 +4022,6 @@ function ShadesAndBlindsOptions({
             type: "buttons",
             options: VERTICAL_CONTROL_TYPES,
           },
-          ...commonOptions,
         ];
       }
 
@@ -4153,12 +4097,11 @@ function ShadesAndBlindsOptions({
           });
         }
 
-        options.push(...commonOptions);
         return options;
       }
 
       default:
-        return commonOptions;
+        return [];
     }
   };
 
@@ -4401,6 +4344,41 @@ function ShadesAndBlindsOptions({
 
             return null;
           })}
+        </div>
+      )}
+
+      {allOptionsConfirmed && gridOptions.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              aria-expanded={showMoreOptions}
+              onClick={() => setShowMoreOptions((value) => !value)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-sm transition-all cursor-pointer",
+                showMoreOptions
+                  ? "border-primary/50 bg-accent text-gray-900"
+                  : "border-muted-foreground/40 text-muted-foreground hover:bg-accent"
+              )}
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+              More Options
+            </button>
+          </div>
+
+          {showMoreOptions && (
+            <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
+              {INSTALL_MORE_OPTIONS.map((opt) => (
+                <GridYesNo
+                  key={opt.key}
+                  label={opt.label}
+                  value={getFieldValue(design, opt.field)}
+                  onChange={(v) => handleUpdate(opt.field, v)}
+                  noFirst={opt.noFirst}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
