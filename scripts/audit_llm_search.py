@@ -19,6 +19,7 @@ DEFAULT_REQUIRED_PATHS = [
     "/llms.txt",
     "/ai-search-feed.json",
     "/answers.json",
+    "/ai-site-index.json",
     "/window-treatment-comparison-guide/",
     "/best-window-treatments-ventura-county/",
     "/plantation-shutters-vs-shades-ventura-county/",
@@ -52,6 +53,7 @@ REQUIRED_FEED_KEYS = [
     "entity",
     "machineReadableFeeds",
     "answerCitationFeed",
+    "siteIndexFeed",
     "citationTargets",
     "answerPages",
     "servicePages",
@@ -66,6 +68,24 @@ REQUIRED_ANSWER_FEED_KEYS = [
     "sourcePages",
     "answers",
 ]
+
+REQUIRED_SITE_INDEX_KEYS = [
+    "schemaVersion",
+    "publisher",
+    "pageCount",
+    "pageTypes",
+    "machineReadableFeeds",
+    "indexingGuidance",
+    "pages",
+]
+
+REQUIRED_SITE_INDEX_PATHS = {
+    "/",
+    "/book-consultation/",
+    "/window-treatment-comparison-guide/",
+    "/commercial-window-coverings/",
+    "/best-window-treatments-ventura-county/",
+}
 
 REQUIRED_PROOF_PATHS = {
     "/best-window-treatments-ventura-county/",
@@ -208,6 +228,8 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
             "citation_target_count": 0,
             "answer_page_count": 0,
             "service_page_count": 0,
+            "answer_citation_count": 0,
+            "site_index_page_count": 0,
         }
 
     missing_keys = [key for key in REQUIRED_FEED_KEYS if key not in payload]
@@ -222,6 +244,8 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         flags.append("missing_self_feed_link")
     if "/answers.json" not in machine_feed_urls:
         flags.append("missing_answers_feed_link")
+    if "/ai-site-index.json" not in machine_feed_urls:
+        flags.append("missing_site_index_feed_link")
 
     citation_target_count = len(payload.get("citationTargets", [])) if isinstance(payload.get("citationTargets"), list) else 0
     answer_page_count = len(payload.get("answerPages", [])) if isinstance(payload.get("answerPages"), list) else 0
@@ -230,6 +254,12 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
     answer_citation_count = (
         int(answer_citation_feed.get("answerCount", 0))
         if isinstance(answer_citation_feed, dict) and isinstance(answer_citation_feed.get("answerCount", 0), int)
+        else 0
+    )
+    site_index_feed = payload.get("siteIndexFeed", {})
+    site_index_page_count = (
+        int(site_index_feed.get("pageCount", 0))
+        if isinstance(site_index_feed, dict) and isinstance(site_index_feed.get("pageCount", 0), int)
         else 0
     )
 
@@ -241,6 +271,8 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         flags.append("thin_service_pages")
     if answer_citation_count < 24:
         flags.append("thin_answer_citations")
+    if site_index_page_count < 100:
+        flags.append("thin_site_index")
 
     return {
         "status": status,
@@ -250,6 +282,7 @@ def audit_ai_feed(base_url: str) -> dict[str, object]:
         "answer_page_count": answer_page_count,
         "service_page_count": service_page_count,
         "answer_citation_count": answer_citation_count,
+        "site_index_page_count": site_index_page_count,
     }
 
 
@@ -311,6 +344,65 @@ def audit_answer_feed(base_url: str) -> dict[str, object]:
         "answer_count": answer_count,
         "source_page_count": source_page_count,
         "citation_path_count": len(citation_paths),
+    }
+
+
+def audit_site_index_feed(base_url: str) -> dict[str, object]:
+    status, content_type, body = fetch(f"{base_url}/ai-site-index.json")
+    flags: list[str] = []
+
+    if status != 200:
+        flags.append(f"status_{status}")
+    if "application/json" not in content_type:
+        flags.append("unexpected_content_type")
+
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return {
+            "status": status,
+            "content_type": content_type,
+            "flags": [*flags, "invalid_json"],
+            "page_count": 0,
+            "page_type_count": 0,
+        }
+
+    missing_keys = [key for key in REQUIRED_SITE_INDEX_KEYS if key not in payload]
+    if missing_keys:
+        flags.append(f"missing_keys:{len(missing_keys)}")
+
+    pages = payload.get("pages", [])
+    page_count = len(pages) if isinstance(pages, list) else 0
+    declared_page_count = payload.get("pageCount")
+    page_types = payload.get("pageTypes", {})
+    page_type_count = len(page_types) if isinstance(page_types, dict) else 0
+
+    if declared_page_count != page_count:
+        flags.append("page_count_mismatch")
+    if page_count < 100:
+        flags.append("thin_page_inventory")
+    if page_type_count < 6:
+        flags.append("thin_page_types")
+
+    page_paths = {
+        item.get("path")
+        for item in pages
+        if isinstance(item, dict) and isinstance(item.get("path"), str)
+    }
+    private_page_paths = [path for path in page_paths if path.startswith(("/api/", "/crm/", "/quote/"))]
+    if private_page_paths:
+        flags.append(f"private_page_paths:{len(private_page_paths)}")
+
+    missing_required_paths = sorted(path for path in REQUIRED_SITE_INDEX_PATHS if path not in page_paths)
+    if missing_required_paths:
+        flags.append(f"missing_required_site_paths:{len(missing_required_paths)}")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "flags": flags,
+        "page_count": page_count,
+        "page_type_count": page_type_count,
     }
 
 
@@ -390,6 +482,7 @@ def build_report(payload: dict) -> str:
                 ["llms.txt", payload["llms"]["status"], ", ".join(payload["llms"]["flags"]) or "clean"],
                 ["ai-search-feed.json", payload["ai_feed"]["status"], ", ".join(payload["ai_feed"]["flags"]) or "clean"],
                 ["answers.json", payload["answer_feed"]["status"], ", ".join(payload["answer_feed"]["flags"]) or "clean"],
+                ["ai-site-index.json", payload["site_index"]["status"], ", ".join(payload["site_index"]["flags"]) or "clean"],
                 ["sitemap.xml", payload["sitemap"]["status"], ", ".join(payload["sitemap"]["flags"]) or "clean"],
             ],
         ),
@@ -417,8 +510,11 @@ def build_report(payload: dict) -> str:
         f"- AI feed answer pages: {payload['ai_feed']['answer_page_count']}",
         f"- AI feed service pages: {payload['ai_feed']['service_page_count']}",
         f"- AI feed answer citations: {payload['ai_feed']['answer_citation_count']}",
+        f"- AI feed site index pages: {payload['ai_feed']['site_index_page_count']}",
         f"- Answer feed answers: {payload['answer_feed']['answer_count']}",
         f"- Answer feed citation paths: {payload['answer_feed']['citation_path_count']}",
+        f"- Site index pages: {payload['site_index']['page_count']}",
+        f"- Site index page types: {payload['site_index']['page_type_count']}",
         f"- Required paths found in llms.txt: {payload['llms']['required_paths_found']}/{payload['required_path_count']}",
         f"- Required paths found in sitemap.xml: {payload['sitemap']['required_paths_found']}/{payload['required_path_count']}",
     ]
@@ -441,6 +537,7 @@ def main() -> int:
     llms_status, llms_type, llms_body = fetch(f"{base_url}/llms.txt")
     ai_feed = audit_ai_feed(base_url)
     answer_feed = audit_answer_feed(base_url)
+    site_index = audit_site_index_feed(base_url)
     sitemap_status, _sitemap_type, sitemap_body = fetch(f"{base_url}/sitemap.xml")
 
     robots_flags = [f"missing_{bot}" for bot in REQUIRED_BOTS if bot not in robots_body]
@@ -455,7 +552,7 @@ def main() -> int:
     sitemap_path_set = sitemap_paths(sitemap_body)
     sitemap_flags = []
 
-    non_html_required_paths = {"/llms.txt", "/ai-search-feed.json", "/answers.json"}
+    non_html_required_paths = {"/llms.txt", "/ai-search-feed.json", "/answers.json", "/ai-site-index.json"}
     missing_llms_paths = sorted(path for path in required_paths if path != "/llms.txt" and path not in llms_paths)
     missing_sitemap_paths = sorted(path for path in required_paths if path not in non_html_required_paths and path not in sitemap_path_set)
     if missing_llms_paths:
@@ -465,7 +562,14 @@ def main() -> int:
 
     pages = [audit_page(base_url, path) for path in required_paths if path not in non_html_required_paths]
     page_issue_count = sum(len(page.flags) for page in pages)
-    access_issue_count = len(robots_flags) + len(llms_flags) + len(ai_feed["flags"]) + len(answer_feed["flags"]) + len(sitemap_flags)
+    access_issue_count = (
+        len(robots_flags)
+        + len(llms_flags)
+        + len(ai_feed["flags"])
+        + len(answer_feed["flags"])
+        + len(site_index["flags"])
+        + len(sitemap_flags)
+    )
     verdict = "Clean: LLM citation surface is crawlable and structured" if not page_issue_count and not access_issue_count else "Needs attention"
 
     payload = {
@@ -487,6 +591,7 @@ def main() -> int:
         },
         "ai_feed": ai_feed,
         "answer_feed": answer_feed,
+        "site_index": site_index,
         "sitemap": {
             "status": sitemap_status,
             "required_paths_found": len(required_paths) - len(missing_sitemap_paths),

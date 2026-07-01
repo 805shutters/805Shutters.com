@@ -1,5 +1,5 @@
 import { answerPages } from "./llm-search-pages";
-import { services, site } from "./site-data";
+import { allPages, services, site } from "./site-data";
 
 const FEED_UPDATED = "2026-06-30";
 
@@ -77,6 +77,11 @@ export const machineReadableFeeds = [
   {
     label: "Answer citation JSON feed",
     href: "/answers.json",
+    contentType: "application/json"
+  },
+  {
+    label: "AI site index JSON feed",
+    href: "/ai-site-index.json",
     contentType: "application/json"
   }
 ];
@@ -158,8 +163,144 @@ export function buildAnswerCitationFeed() {
   };
 }
 
+function pageTypeForPath(path: string) {
+  if (path === "/") {
+    return "home";
+  }
+  if (path === "/book-consultation/" || path === "/free-window-treatment-consultation/") {
+    return "conversion";
+  }
+  if (path === "/window-treatment-comparison-guide/" || path.includes("-vs-") || path.includes("best-window-treatments")) {
+    return "comparison-answer";
+  }
+  if (path.includes("commercial")) {
+    return "commercial";
+  }
+  if (path.startsWith("/recent-projects/")) {
+    return "project-proof";
+  }
+  if (path.startsWith("/window-coverings/")) {
+    return "city-service";
+  }
+  if (["/shutters/", "/shades/", "/blinds/", "/drapery/", "/exterior-shades/"].some((prefix) => path.startsWith(prefix))) {
+    return "product-service";
+  }
+  return "supporting-page";
+}
+
+function isPrivateCitationPath(path: string) {
+  return path.startsWith("/api/") || path.startsWith("/crm/") || path.startsWith("/quote/");
+}
+
+export function buildAiSiteIndexPages() {
+  const sitePageRecords = allPages
+    .filter((page) => !page.noIndex && !isPrivateCitationPath(page.path))
+    .map((page) => ({
+      source: "site-data",
+      pageType: pageTypeForPath(page.path),
+      path: page.path,
+      url: absoluteUrl(page.path),
+      title: page.title,
+      h1: page.h1,
+      description: page.description,
+      intent: page.eyebrow,
+      image: absoluteUrl(page.image),
+      sectionCount: page.sections.length,
+      faqCount: page.faqs?.length ?? 0
+    }));
+
+  const answerPageRecords = answerPages.map((page) => ({
+    source: "answer-page",
+    pageType: pageTypeForPath(page.path),
+    path: page.path,
+    url: absoluteUrl(page.path),
+    title: page.title,
+    h1: page.h1,
+    description: page.description,
+    intent: page.eyebrow,
+    image: absoluteUrl(page.image),
+    sectionCount: page.sections.length,
+    faqCount: page.faqs.length,
+    updated: page.updated,
+    serviceTypes: page.serviceTypes
+  }));
+
+  const standalonePageRecords = [
+    {
+      source: "standalone-route",
+      pageType: "conversion",
+      path: "/book-consultation/",
+      url: absoluteUrl("/book-consultation/"),
+      title: "Book a Free In-Home Consultation | 805 Shutters",
+      h1: "Book Your Free Window Treatment Consultation",
+      description:
+        "Choose a free in-home consultation time with 805 Shutters for custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings in Ventura County.",
+      intent: "Direct appointment booking",
+      image: absoluteUrl("/images/805-hero-window-treatments.png"),
+      sectionCount: 5,
+      faqCount: 4
+    },
+    {
+      source: "standalone-route",
+      pageType: "comparison-answer",
+      path: "/window-treatment-comparison-guide/",
+      url: absoluteUrl("/window-treatment-comparison-guide/"),
+      title: "Window Treatment Comparison Guide | 805 Shutters",
+      h1: "Window Treatment Comparison Guide",
+      description:
+        "Compare shutters, shades, blinds, exterior shades, commercial roller shades, and motorized options for Ventura County homes and businesses.",
+      intent: "Broad product comparison",
+      image: absoluteUrl("/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg"),
+      sectionCount: 4,
+      faqCount: 4
+    }
+  ];
+
+  return Array.from(
+    new Map(
+      [...sitePageRecords, ...answerPageRecords, ...standalonePageRecords]
+        .filter((page) => !isPrivateCitationPath(page.path))
+        .map((page) => [page.path, page])
+    ).values()
+  ).sort((a, b) => a.path.localeCompare(b.path));
+}
+
+export function buildAiSiteIndexFeed() {
+  const pages = buildAiSiteIndexPages();
+  const pageTypes = pages.reduce<Record<string, number>>((counts, page) => {
+    counts[page.pageType] = (counts[page.pageType] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    schemaVersion: "805-ai-site-index/v1",
+    updated: FEED_UPDATED,
+    publisher: {
+      name: site.name,
+      url: site.baseUrl,
+      phone: site.phone,
+      serviceArea: site.serviceArea,
+      cities: site.areas
+    },
+    pageCount: pages.length,
+    pageTypes,
+    machineReadableFeeds: machineReadableFeeds.map((feed) => ({
+      ...feed,
+      url: absoluteUrl(feed.href)
+    })),
+    indexingGuidance: [
+      "Use url as the canonical public page URL.",
+      "Use pageType to route product, city, commercial, answer, conversion, and proof queries to the best public page.",
+      "Use /answers.json for short answer snippets and /ai-search-feed.json for the compact entity brief.",
+      "Do not index or cite CRM, quote, payment, webhook, or private customer routes."
+    ],
+    pages
+  };
+}
+
 export function buildAiSearchFeed() {
   const answerCitations = buildAnswerCitations();
+  const siteIndexPages = buildAiSiteIndexPages();
 
   return {
     schemaVersion: "805-ai-search-feed/v1",
@@ -221,6 +362,11 @@ export function buildAiSearchFeed() {
       contentType: "application/json",
       answerCount: answerCitations.length,
       sourcePageCount: answerPages.length
+    },
+    siteIndexFeed: {
+      url: absoluteUrl("/ai-site-index.json"),
+      contentType: "application/json",
+      pageCount: siteIndexPages.length
     },
     citationTargets: citationTargets.map((target) => ({
       ...target,

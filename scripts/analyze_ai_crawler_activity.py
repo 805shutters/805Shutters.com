@@ -44,6 +44,7 @@ PRIORITY_PATHS = [
     "/llms.txt",
     "/ai-search-feed.json",
     "/answers.json",
+    "/ai-site-index.json",
     "/window-treatment-comparison-guide/",
     "/best-window-treatments-ventura-county/",
     "/plantation-shutters-vs-shades-ventura-county/",

@@ -27,6 +27,10 @@ describe("/ai-search-feed.json", () => {
         expect.objectContaining({
           href: "/answers.json",
           contentType: "application/json"
+        }),
+        expect.objectContaining({
+          href: "/ai-site-index.json",
+          contentType: "application/json"
         })
       ])
     );
@@ -38,6 +42,13 @@ describe("/ai-search-feed.json", () => {
       })
     );
     expect(payload.answerCitationFeed.answerCount).toBeGreaterThanOrEqual(24);
+    expect(payload.siteIndexFeed).toEqual(
+      expect.objectContaining({
+        url: "https://www.805shutters.com/ai-site-index.json",
+        pageCount: expect.any(Number)
+      })
+    );
+    expect(payload.siteIndexFeed.pageCount).toBeGreaterThanOrEqual(100);
     expect(payload.citationTargets.some((target: { href: string }) => target.href === "/window-treatment-comparison-guide/")).toBe(
       true
     );
