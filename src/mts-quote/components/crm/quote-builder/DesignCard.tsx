@@ -2477,9 +2477,9 @@ export function DesignCard({
         isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50"
       )}
     >
-      <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <CardHeader className="quote-line-card-header border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] px-4 py-3">
+        <div className="quote-line-card-header-row">
+          <div className="quote-line-card-title-wrap">
             {isCopyTarget && (
               <Checkbox
                 aria-label={`Copy design to ${lineItem.room_name}`}
@@ -2487,15 +2487,13 @@ export function DesignCard({
                 onCheckedChange={onToggleCopyTarget}
               />
             )}
-            <div className="flex items-baseline gap-3">
+            <div className="quote-line-card-title-cluster">
               {lineNumber > 0 && (
                 <span className="quote-line-card-number" title={`Line ${lineNumber}`}>
                   #{lineNumber}
                 </span>
               )}
-              <h3 className="text-3xl font-black tracking-[-0.02em] text-slate-950">
-                {lineItem.room_name}
-              </h3>
+              <h3 className="quote-line-card-room">{lineItem.room_name}</h3>
               <ProductTypeSwitcher
                 productType={lineItem.product_type}
                 onChangeProductType={onChangeProductType}
@@ -2503,15 +2501,18 @@ export function DesignCard({
               {hasMeasurements ? (
                 <button
                   onClick={onOpenMeasurement}
-                  className="font-mono text-3xl font-extrabold text-foreground hover:text-primary transition-colors cursor-pointer"
+                  className="quote-line-card-size"
                   title="Click to update measurements"
                 >
-                  &ndash; {formatDimensions(lineItem)}
+                  <span className="quote-line-card-size-divider" aria-hidden="true">
+                    -
+                  </span>
+                  <span className="quote-line-card-size-value">{formatDimensions(lineItem)}</span>
                 </button>
               ) : (
                 <button
                   onClick={onOpenMeasurement}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-dashed border-muted-foreground/40 text-muted-foreground text-xs font-medium hover:bg-accent transition-all cursor-pointer"
+                  className="quote-line-card-add-size"
                   title="Add measurements"
                 >
                   <Ruler className="h-3 w-3" />
@@ -2519,7 +2520,7 @@ export function DesignCard({
                 </button>
               )}
               {lineItem.quantity > 1 && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-accent text-xs">
+                <span className="quote-line-card-quantity">
                   x{lineItem.quantity} (#{instanceIndex + 1})
                 </span>
               )}
