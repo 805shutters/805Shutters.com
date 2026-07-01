@@ -409,14 +409,14 @@
 .mts-quote-scope .quote-room-option:disabled {
   border-color: rgb(255 255 255 / 0.16);
   background: rgb(255 255 255 / 0.06);
-  color: rgb(255 255 255 / 0.54);
+  color: #ffffff;
   opacity: 1;
 }
 
 .mts-quote-scope .quote-room-option:disabled:hover {
   border-color: rgb(255 255 255 / 0.16);
   background: rgb(255 255 255 / 0.06);
-  color: rgb(255 255 255 / 0.54);
+  color: #ffffff;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 3px 8px rgb(0 0 0 / 0.16);
 }
 
