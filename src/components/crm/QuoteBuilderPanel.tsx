@@ -53,6 +53,15 @@ function selectedDesign(lineItem: CrmQuoteLineItem): CrmQuoteDesign | null {
   return lineItem.designs.find((design) => design.id === lineItem.selected_design_id) ?? null;
 }
 
+function copyProductId(lineItem: CrmQuoteLineItem): string | null {
+  return selectedDesign(lineItem)?.product_id ?? lineItem.designs[0]?.product_id ?? null;
+}
+
+function canReceiveCopiedSpec(source: CrmQuoteLineItem, target: CrmQuoteLineItem): boolean {
+  const sourceProductId = copyProductId(source);
+  return Boolean(sourceProductId && sourceProductId === copyProductId(target));
+}
+
 function designOnceTotal(design: CrmQuoteDesign | null): number {
   if (!design || design.price_status !== "ok") return 0;
   const breakdown = design.price_breakdown as { onceTotal?: unknown } | null;
@@ -434,13 +443,17 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const duplicateWindow = (id: string) =>
     mutate(`/api/crm/quote-line-items/${id}/duplicate`, { method: "POST" });
 
-  // Copy this window's selected spec + size + discount to every other window
-  // (the MTS "Copy All" flow). Confirms first since it overwrites the targets.
+  // Copy this window's selected spec + discount to matching product windows.
+  // Sizes and room labels stay with each target.
   const copySpecToAll = async (sourceId: string) => {
     if (!quote) return;
-    const others = quote.lineItems.filter((li) => li.id !== sourceId);
+    const source = quote.lineItems.find((li) => li.id === sourceId);
+    if (!source) return;
+    const others = quote.lineItems.filter(
+      (li) => li.id !== sourceId && canReceiveCopiedSpec(source, li)
+    );
     if (others.length === 0) return;
-    const ok = window.confirm(`Copy this window's spec, size, and discount to all ${others.length} other window(s)? This overwrites them.`);
+    const ok = window.confirm(`Copy this window's spec and discount to all ${others.length} matching window(s)? Sizes stay unchanged.`);
     if (!ok) return;
     await mutate(`/api/crm/quote-line-items/${sourceId}/copy-spec`, {
       method: "POST",
@@ -450,6 +463,14 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
 
   // Copy Some: pick a source, then check a subset of other windows to receive it.
   const startCopySome = (sourceId: string) => {
+    if (!quote) return;
+    const source = quote.lineItems.find((li) => li.id === sourceId);
+    if (!source) return;
+    const hasMatchingTarget = quote.lineItems.some(
+      (li) => li.id !== sourceId && canReceiveCopiedSpec(source, li)
+    );
+    if (!hasMatchingTarget) return;
+
     setDiscountMode("all");
     setSelectedForDiscount(new Set());
     setCopySourceId(sourceId);
@@ -570,6 +591,8 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   };
 
   const isSaving = busy || pendingQuickAdds > 0;
+  const copySourceLineItem =
+    quote && copySourceId ? quote.lineItems.find((li) => li.id === copySourceId) ?? null : null;
 
   const inner = (
       <div style={embedded ? embeddedPanelStyle : panelStyle}>
@@ -740,12 +763,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             ) : null}
 
             {copySourceId ? (() => {
-              const source = quote.lineItems.find((li) => li.id === copySourceId);
               return (
                 <div style={copyBar}>
                   <div>
-                    <strong>Copying “{source?.room || "this window"}”</strong>
-                    <div style={{ fontSize: 12, opacity: 0.7 }}>Check the windows below to update with this spec, size &amp; discount.</div>
+                    <strong>Copying “{copySourceLineItem?.room || "this window"}”</strong>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>Check matching product windows below to update with this spec and discount. Sizes stay unchanged.</div>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <button
@@ -782,7 +804,10 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                       />
                     </Field>
                   ) : null}
-                  {copySourceId && li.id !== copySourceId ? (
+                  {copySourceId &&
+                  li.id !== copySourceId &&
+                  copySourceLineItem &&
+                  canReceiveCopiedSpec(copySourceLineItem, li) ? (
                     <Field label="Copy here" width={80}>
                       <input
                         type="checkbox"

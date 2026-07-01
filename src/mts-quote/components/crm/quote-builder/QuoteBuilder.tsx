@@ -24,7 +24,12 @@ import {
   getQuoteColor,
 } from "@mts/lib/quoteConstants";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
-import { buildCopiedDesignRows, buildCopiedLineItemPatch } from "@mts/lib/quoteDesignCopy";
+import {
+  buildCopiedDesignRows,
+  buildCopiedLineItemPatch,
+  getMatchingCopyTargetIds,
+  lineItemsHaveMatchingProductType,
+} from "@mts/lib/quoteDesignCopy";
 import {
   applyQuoteDesignDiscount,
   QUOTE_DISCOUNT_PERCENTS,
@@ -408,10 +413,11 @@ export function QuoteBuilder() {
       const sourceDesigns = designs.filter((d) => d.line_item_id === sourceItemId);
       if (sourceDesigns.length === 0) throw new Error("No saved design specs found to copy.");
 
-      const targets =
-        mode === "all"
-          ? lineItems.filter((i) => i.id !== sourceItemId).map((i) => i.id)
-          : targetIds.filter((targetId) => targetId !== sourceItemId);
+      const targets = getMatchingCopyTargetIds(
+        sourceItem,
+        lineItems,
+        mode === "all" ? undefined : targetIds
+      );
 
       if (targets.length === 0) throw new Error("No matching line items selected to copy to.");
 
@@ -440,9 +446,9 @@ export function QuoteBuilder() {
         if (staleVariantError) throw staleVariantError;
       }
 
-      return targets.length;
+      return targets;
     },
-    onSuccess: async (targetCount, variables) => {
+    onSuccess: async (copiedTargetIds, variables) => {
       await syncQuoteTotal();
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
@@ -458,9 +464,10 @@ export function QuoteBuilder() {
         setCopiedCopyTargets([]);
       } else {
         setCopiedCopyTargets((current) =>
-          Array.from(new Set([...current, ...(variables.targetIds ?? [])]))
+          Array.from(new Set([...current, ...copiedTargetIds]))
         );
       }
+      const targetCount = copiedTargetIds.length;
       toast.success(
         `Design specs copied to ${targetCount} line item${targetCount === 1 ? "" : "s"}`
       );
@@ -575,6 +582,15 @@ export function QuoteBuilder() {
   };
 
   const handleCopyAll = (sourceId: string) => {
+    const sourceItem = lineItems.find((item) => item.id === sourceId);
+    if (!sourceItem) return;
+
+    const matchingTargetCount = getMatchingCopyTargetIds(sourceItem, lineItems).length;
+    if (matchingTargetCount === 0) {
+      toast.error(`No other ${sourceItem.product_type} line items to copy to.`);
+      return;
+    }
+
     setCopySource(sourceId);
     setCopyMode("all");
     setCopiedCopyTargets([]);
@@ -582,15 +598,32 @@ export function QuoteBuilder() {
   };
 
   const handleCopySome = (sourceId: string) => {
+    const sourceItem = lineItems.find((item) => item.id === sourceId);
+    if (!sourceItem) return;
+
+    const matchingTargetCount = getMatchingCopyTargetIds(sourceItem, lineItems).length;
+    if (matchingTargetCount === 0) {
+      toast.error(`No other ${sourceItem.product_type} line items to copy to.`);
+      return;
+    }
+
     setCopySource(sourceId);
     setCopyMode("some");
     setCopiedCopyTargets([]);
-    toast.info("Click each target checkbox to copy this design to that line.");
+    toast.info(`Click each matching ${sourceItem.product_type} checkbox to copy this design.`);
   };
 
   const handleCopySomeTarget = (targetId: string) => {
     if (!copySourceItemId) return;
     if (targetId === copySourceItemId) return;
+
+    const sourceItem = lineItems.find((item) => item.id === copySourceItemId);
+    const targetItem = lineItems.find((item) => item.id === targetId);
+    if (!sourceItem || !targetItem || !lineItemsHaveMatchingProductType(sourceItem, targetItem)) {
+      toast.error("Copy Some only applies to matching product line items.");
+      return;
+    }
+
     copyDesigns.mutate({
       sourceItemId: copySourceItemId,
       mode: "some",
@@ -659,6 +692,9 @@ export function QuoteBuilder() {
   }
 
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
+  const copySourceItem = copySourceItemId
+    ? lineItems.find((item) => item.id === copySourceItemId) ?? null
+    : null;
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
@@ -939,31 +975,39 @@ export function QuoteBuilder() {
           </div>
         ) : (
           <div className="space-y-4">
-            {expandedItems.map(({ item, instanceIndex }) => (
-              <DesignCard
-                key={`${item.id}-${instanceIndex}`}
-                lineItem={item}
-                instanceIndex={instanceIndex}
-                designs={designs.filter((d) => d.line_item_id === item.id)}
-                onUpdateDesign={(design) => upsertDesign.mutate(design)}
-                onCopyAll={() => handleCopyAll(item.id)}
-                onCopySome={() => handleCopySome(item.id)}
-                copyMode={copyMode}
-                isCopyTarget={copyMode === "some" && copySourceItemId !== item.id}
-                isSelectedTarget={copiedCopyTargets.includes(item.id)}
-                onToggleCopyTarget={() => handleCopySomeTarget(item.id)}
-                isDiscountTarget={discountMode === "selected"}
-                isDiscountSelected={selectedDiscountLineIds.includes(item.id)}
-                onToggleDiscountTarget={() => toggleDiscountTarget(item.id)}
-                isPriceLocked={isActiveQuotePriceLocked}
-                onOpenMeasurement={() => handleOpenMeasurement(item.id)}
-                onDelete={() => deleteLineItem.mutate(item.id)}
-                onCopyItem={() => copyLineItem.mutate(item.id)}
-                onChangeProductType={(productType) =>
-                  changeLineItemProductType.mutate({ id: item.id, productType })
-                }
-              />
-            ))}
+            {expandedItems.map(({ item, instanceIndex }) => {
+              const isMatchingCopyTarget =
+                copyMode === "some" &&
+                copySourceItem !== null &&
+                copySourceItem.id !== item.id &&
+                lineItemsHaveMatchingProductType(copySourceItem, item);
+
+              return (
+                <DesignCard
+                  key={`${item.id}-${instanceIndex}`}
+                  lineItem={item}
+                  instanceIndex={instanceIndex}
+                  designs={designs.filter((d) => d.line_item_id === item.id)}
+                  onUpdateDesign={(design) => upsertDesign.mutate(design)}
+                  onCopyAll={() => handleCopyAll(item.id)}
+                  onCopySome={() => handleCopySome(item.id)}
+                  copyMode={copyMode}
+                  isCopyTarget={isMatchingCopyTarget}
+                  isSelectedTarget={copiedCopyTargets.includes(item.id)}
+                  onToggleCopyTarget={() => handleCopySomeTarget(item.id)}
+                  isDiscountTarget={discountMode === "selected"}
+                  isDiscountSelected={selectedDiscountLineIds.includes(item.id)}
+                  onToggleDiscountTarget={() => toggleDiscountTarget(item.id)}
+                  isPriceLocked={isActiveQuotePriceLocked}
+                  onOpenMeasurement={() => handleOpenMeasurement(item.id)}
+                  onDelete={() => deleteLineItem.mutate(item.id)}
+                  onCopyItem={() => copyLineItem.mutate(item.id)}
+                  onChangeProductType={(productType) =>
+                    changeLineItemProductType.mutate({ id: item.id, productType })
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </div>

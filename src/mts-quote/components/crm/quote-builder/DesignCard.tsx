@@ -2526,7 +2526,11 @@ export function DesignCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {isCopyTarget && (
-              <Checkbox checked={isSelectedTarget} onCheckedChange={onToggleCopyTarget} />
+              <Checkbox
+                aria-label={`Copy design to ${lineItem.room_name}`}
+                checked={isSelectedTarget}
+                onCheckedChange={onToggleCopyTarget}
+              />
             )}
             {isDiscountTarget && (
               <Checkbox

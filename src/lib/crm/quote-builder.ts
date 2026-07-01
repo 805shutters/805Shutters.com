@@ -295,6 +295,10 @@ async function fetchLineItem(supabase: CrmSupabaseClient, id: string): Promise<C
   return { ...li, designs: li.designs ?? [] };
 }
 
+function copyProductId(lineItem: CrmQuoteLineItem): string | null {
+  return selectedDesign(lineItem)?.product_id ?? lineItem.designs[0]?.product_id ?? null;
+}
+
 export async function createLineItem(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -665,9 +669,10 @@ export async function duplicateLineItem(
 
 /**
  * Copy one window's selected-design spec (product/program/fabric/details/
- * motorization) PLUS its dimensions and per-line discount to a set
- * of target windows — the MTS "Copy All / Copy Some" flow. Targets must belong
- * to the same quote; each is re-priced, then the quote total is recalculated.
+ * motorization) plus its per-line discount to matching product windows — the
+ * MTS "Copy All / Copy Some" flow. Target sizes stay unchanged; each copied
+ * target is re-priced against its own dimensions before the quote total is
+ * recalculated.
  */
 export async function copySpecToLineItems(
   supabase: CrmSupabaseClient,
@@ -681,21 +686,25 @@ export async function copySpecToLineItems(
     throw new CrmAuthError(400, "Pick a product/spec on this window before copying it.");
   }
   const targets = Array.from(new Set(targetIds)).filter((id) => id && id !== sourceId);
+  let copiedCount = 0;
   for (const targetId of targets) {
     const target = await fetchLineItem(supabase, targetId);
     if (target.quote_id !== source.quote_id) {
       throw new CrmAuthError(400, "Every target window must belong to the same quote.");
     }
-    // 1. Dimensions + per-line discount (reprices all the target's designs).
+    if (copyProductId(target) !== sourceDesign.product_id) {
+      continue;
+    }
+    // 1. Per-line discount only. Dimensions stay with the target window.
     await updateLineItem(supabase, targetId, {
-      width_in: source.width_in,
-      height_in: source.height_in,
       discount_percent: source.discount_percent ?? 0,
     }, actor);
     // 2. Spec into the target's selected design (create one if it has none),
-    //    re-priced against the now-updated dimensions.
+    //    re-priced against the target's existing dimensions.
     const targetDesignId = target.selected_design_id ?? target.designs[0]?.id ?? null;
-    const targetLabel = targetDesignId ? target.designs.find((d) => d.id === targetDesignId)?.label ?? "A" : "A";
+    const targetLabel = targetDesignId
+      ? target.designs.find((d) => d.id === targetDesignId)?.label ?? "A"
+      : "A";
     await upsertDesign(supabase, {
       ...(targetDesignId ? { id: targetDesignId } : {}),
       line_item_id: targetId,
@@ -706,12 +715,16 @@ export async function copySpecToLineItems(
       details: sourceDesign.details ?? {},
       motorization: sourceDesign.motorization ?? [],
     }, actor);
+    copiedCount += 1;
+  }
+  if (copiedCount === 0) {
+    throw new CrmAuthError(400, "No matching product windows were selected to copy to.");
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: source.quote_id,
     action: "line_item.copy_spec",
-    metadata: { sourceId, targetCount: targets.length },
+    metadata: { sourceId, targetCount: copiedCount },
   });
   return recalcQuoteTotals(supabase, source.quote_id);
 }

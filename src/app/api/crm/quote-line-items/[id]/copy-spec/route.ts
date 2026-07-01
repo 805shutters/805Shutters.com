@@ -4,8 +4,9 @@ import { copySpecToLineItems } from "@/lib/crm/quote-builder";
 
 export const runtime = "nodejs";
 
-// POST: copy one window's selected-design spec + dimensions + per-line discount
-// to other windows in the same quote (Copy All / Copy Some). Body: { targetIds: string[] }.
+// POST: copy one window's selected-design spec + per-line discount to matching
+// product windows in the same quote. Target dimensions stay unchanged.
+// Body: { targetIds: string[] }.
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
     const { supabase, email, user } = await requireCrmUser(request);

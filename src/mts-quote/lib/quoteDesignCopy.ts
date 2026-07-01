@@ -8,6 +8,37 @@ export const COPY_EXCLUDED_LINE_ITEM_FIELDS = [
   "height_fraction",
 ] as const;
 
+function normalizeProductType(productType: string | null | undefined) {
+  return (productType ?? "").trim().toLowerCase();
+}
+
+export function lineItemsHaveMatchingProductType(
+  sourceItem: Pick<SalesQuoteLineItem, "product_type">,
+  targetItem: Pick<SalesQuoteLineItem, "product_type">
+) {
+  const sourceProductType = normalizeProductType(sourceItem.product_type);
+  return (
+    sourceProductType.length > 0 &&
+    sourceProductType === normalizeProductType(targetItem.product_type)
+  );
+}
+
+export function getMatchingCopyTargetIds(
+  sourceItem: Pick<SalesQuoteLineItem, "id" | "product_type">,
+  lineItems: Pick<SalesQuoteLineItem, "id" | "product_type">[],
+  targetIds?: string[]
+) {
+  const allowedTargets = targetIds ? new Set(targetIds) : null;
+
+  return lineItems
+    .filter((item) => {
+      if (item.id === sourceItem.id) return false;
+      if (allowedTargets && !allowedTargets.has(item.id)) return false;
+      return lineItemsHaveMatchingProductType(sourceItem, item);
+    })
+    .map((item) => item.id);
+}
+
 export function buildCopiedLineItemPatch(sourceItem: SalesQuoteLineItem) {
   return {
     product_type: sourceItem.product_type,
