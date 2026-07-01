@@ -12,7 +12,7 @@ import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Textarea } from "@mts/components/ui/textarea";
-import { RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent, X } from "lucide-react";
+import { Archive, RotateCcw, Pencil, CopyCheck, Send, DollarSign, Percent, X } from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { CollectPaymentDialog } from "./CollectPaymentDialog";
@@ -37,12 +37,199 @@ import {
 } from "@mts/lib/quoteDiscounts";
 import {
   buildQuoteInstallerNotesMeta,
+  calculateLineItemDesignTotal,
   calculateQuoteDesignSubtotal,
   getQuoteBuilderNote,
+  parseQuoteMeta,
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
-import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+import {
+  formatDimensions,
+  formatDimensionsOrNull,
+  type SalesQuote,
+  type SalesQuoteLineItem,
+  type SalesQuoteDesign,
+} from "@mts/types/quote";
+
+const STACKED_LINE_ITEM_META_KEY = "__stackedLineItemIds";
+
+const STACK_DESIGN_FIELDS: {
+  key: keyof SalesQuoteDesign;
+  label: string;
+  booleanLabel?: string;
+}[] = [
+  { key: "supplier", label: "Supplier" },
+  { key: "material", label: "Material" },
+  { key: "louver_size", label: "Louver" },
+  { key: "tilt_type", label: "Tilt" },
+  { key: "hinge_color", label: "Hinge" },
+  { key: "panel_config", label: "Panels" },
+  { key: "mount_type", label: "Mount" },
+  { key: "shade_type", label: "Shade" },
+  { key: "lift_system", label: "Lift" },
+  { key: "valance", label: "Valance" },
+  { key: "fabric", label: "Fabric" },
+  { key: "motor_type", label: "Motor" },
+  { key: "remote_type", label: "Remote" },
+  { key: "hard_surface_install", label: "Hard install", booleanLabel: "Hard install" },
+  { key: "ladder_over_15ft", label: "Ladder >15ft", booleanLabel: "Ladder >15ft" },
+  { key: "requires_takedown", label: "Takedown", booleanLabel: "Takedown" },
+  { key: "notes", label: "Notes" },
+];
+
+const STACK_OPTION_EXCLUDED_KEYS = new Set([
+  "base_price",
+  "surcharge_total",
+  "pricing_method",
+  "pricing_grid_key",
+  "pricing_grid_width",
+  "pricing_grid_height",
+  "pricing_grid_price",
+  "pricing_built_in_adjustment",
+  "discount_source_price",
+  "discount_amount",
+  "manual_price_override",
+]);
+
+const STACK_OPTION_LABELS: Record<string, string> = {
+  catalog_program_id: "Program",
+  cell_size: "Cell",
+  color: "Color",
+  control_side: "Control",
+  discount_percent: "Discount",
+  fabric_color_code: "Color code",
+  fabric_color_collection: "Collection",
+  fabric_color_name: "Color",
+  fabric_color_type: "Fabric type",
+  fabric_group: "Fabric group",
+  product_color_code: "Color code",
+  product_color_collection: "Collection",
+  product_color_name: "Color",
+  product_color_type: "Color type",
+  product_line: "Line",
+  roman_fabric_category: "Fabric category",
+  stack_option: "Stack",
+};
+
+function getStackedLineItemIds(source: unknown) {
+  const ids = parseQuoteMeta(source)[STACKED_LINE_ITEM_META_KEY];
+  if (!Array.isArray(ids)) return [];
+
+  return ids.filter((id): id is string => typeof id === "string" && id.trim().length > 0);
+}
+
+function sortLineItemIdsByQuoteOrder(ids: string[], lineItems: Pick<SalesQuoteLineItem, "id">[]) {
+  const order = new Map(lineItems.map((item, index) => [item.id, index]));
+
+  return Array.from(new Set(ids))
+    .filter((id) => order.has(id))
+    .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
+}
+
+function formatStackMoney(value: number) {
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function formatStackKey(key: string) {
+  return (
+    STACK_OPTION_LABELS[key] ??
+    key
+      .replace(/^json:/, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
+function formatStackValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === "" || value === false) return null;
+  if (value === true) return "Yes";
+  if (Array.isArray(value)) {
+    const values = value.map(formatStackValue).filter((entry): entry is string => Boolean(entry));
+    return values.length ? values.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, entryValue]) => {
+        const formatted = formatStackValue(entryValue);
+        return formatted ? `${formatStackKey(key)} ${formatted}` : null;
+      })
+      .filter((entry): entry is string => Boolean(entry));
+    return entries.length ? entries.join(", ") : null;
+  }
+  return String(value);
+}
+
+function buildStackedDesignSummary(designs: SalesQuoteDesign[]) {
+  if (designs.length === 0) return "No saved design details";
+
+  return designs
+    .map((design) => {
+      const detailParts: string[] = [];
+
+      STACK_DESIGN_FIELDS.forEach(({ key, label, booleanLabel }) => {
+        const formatted = formatStackValue(design[key]);
+        if (!formatted) return;
+        detailParts.push(formatted === "Yes" && booleanLabel ? booleanLabel : `${label} ${formatted}`);
+      });
+
+      Object.entries((design.options_json as Record<string, unknown> | undefined) ?? {}).forEach(
+        ([key, value]) => {
+          if (STACK_OPTION_EXCLUDED_KEYS.has(key)) return;
+          const formatted = formatStackValue(value);
+          if (!formatted) return;
+          detailParts.push(`${formatStackKey(key)} ${key === "discount_percent" ? `${formatted}%` : formatted}`);
+        }
+      );
+
+      const summary = detailParts.length ? detailParts.join(" | ") : "No option details";
+      return designs.length > 1 ? `${design.variant}: ${summary}` : summary;
+    })
+    .join("  /  ");
+}
+
+function StackedLineItemRow({
+  item,
+  lineNumber,
+  designs,
+  onUnstack,
+}: {
+  item: SalesQuoteLineItem;
+  lineNumber: number;
+  designs: SalesQuoteDesign[];
+  onUnstack: () => void;
+}) {
+  const details = buildStackedDesignSummary(designs);
+  const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
+  const total = calculateLineItemDesignTotal(item, designs);
+  const title = `Click to unstack line ${lineNumber}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
+
+  return (
+    <button
+      type="button"
+      onClick={onUnstack}
+      title={title}
+      aria-label={`Unstack line ${lineNumber}, ${item.room_name}`}
+      className="grid min-h-9 w-full grid-cols-[3rem_minmax(7rem,0.8fr)_7.5rem_8rem_minmax(0,2.7fr)_6.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-left text-[10px] leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
+    >
+      <span className="inline-flex h-6 items-center justify-center rounded-md bg-slate-950 font-mono text-[11px] font-black text-white">
+        #{lineNumber}
+      </span>
+      <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
+      <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
+      <span className="truncate text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+        {item.product_type}
+        {item.quantity > 1 ? ` x${item.quantity}` : ""}
+      </span>
+      <span className="min-w-0 overflow-hidden whitespace-nowrap text-[10px] text-slate-600">
+        {details}
+      </span>
+      <span className="justify-self-end font-mono text-xs font-black text-slate-950">
+        {formatStackMoney(total)}
+      </span>
+    </button>
+  );
+}
 
 export function QuoteBuilder() {
   const {
@@ -85,8 +272,10 @@ export function QuoteBuilder() {
   const [showSendDialog, setShowSendDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState<"deposit" | "balance" | null>(null);
   const [copiedCopyTargets, setCopiedCopyTargets] = useState<string[]>([]);
+  const [copyAllTargetsBySource, setCopyAllTargetsBySource] = useState<Record<string, string[]>>({});
   const [discountMode, setDiscountMode] = useState<"all" | "selected">("all");
   const [selectedDiscountLineIds, setSelectedDiscountLineIds] = useState<string[]>([]);
+  const [stackedLineItemIds, setStackedLineItemIds] = useState<string[]>([]);
   const [quoteNoteDraft, setQuoteNoteDraft] = useState("");
 
   const syncQuoteTotal = async (options: { allowZero?: boolean } = {}) => {
@@ -136,7 +325,10 @@ export function QuoteBuilder() {
   });
 
   useEffect(() => {
-    if (quote) setQuoteNoteDraft(getQuoteBuilderNote(quote));
+    if (!quote) return;
+
+    setQuoteNoteDraft(getQuoteBuilderNote(quote));
+    setStackedLineItemIds(getStackedLineItemIds(quote));
   }, [quote]);
 
   // Fetch line items
@@ -197,9 +389,35 @@ export function QuoteBuilder() {
     updateQuote.mutate({
       installer_notes: buildQuoteInstallerNotesMeta(quote, {
         __quoteBuilderNote: quoteNoteDraft,
+        [STACKED_LINE_ITEM_META_KEY]: stackedLineItemIds,
       }),
     });
   };
+
+  const saveStackedLineItemIds = (nextIds: string[]) => {
+    if (!quote) return;
+
+    const orderedIds = sortLineItemIdsByQuoteOrder(nextIds, lineItems);
+    setStackedLineItemIds(orderedIds);
+    updateQuote.mutate({
+      installer_notes: buildQuoteInstallerNotesMeta(quote, {
+        __quoteBuilderNote: quoteNoteDraft,
+        [STACKED_LINE_ITEM_META_KEY]: orderedIds,
+      }),
+    });
+  };
+
+  useEffect(() => {
+    if (!quote || stackedLineItemIds.length === 0) return;
+
+    const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
+    const changed =
+      orderedIds.length !== stackedLineItemIds.length ||
+      orderedIds.some((id, index) => id !== stackedLineItemIds[index]);
+
+    if (changed) saveStackedLineItemIds(orderedIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems]);
 
   // Add line item (no measurements required initially)
   const addLineItem = useMutation({
@@ -462,6 +680,17 @@ export function QuoteBuilder() {
       if (variables.mode === "all") {
         clearCopyTargets();
         setCopiedCopyTargets([]);
+        setCopyAllTargetsBySource((current) => ({
+          ...current,
+          [variables.sourceItemId]: copiedTargetIds,
+        }));
+        if (stackedLineItemIds.includes(variables.sourceItemId)) {
+          saveStackedLineItemIds([
+            ...stackedLineItemIds,
+            variables.sourceItemId,
+            ...copiedTargetIds,
+          ]);
+        }
       } else {
         setCopiedCopyTargets((current) =>
           Array.from(new Set([...current, ...copiedTargetIds]))
@@ -631,6 +860,23 @@ export function QuoteBuilder() {
     });
   };
 
+  const handleStackLineItem = (lineItemId: string) => {
+    const copiedTargetIds = copyAllTargetsBySource[lineItemId] ?? [];
+    const lineItem = lineItems.find((item) => item.id === lineItemId);
+    const nextIds = [...stackedLineItemIds, lineItemId, ...copiedTargetIds];
+
+    saveStackedLineItemIds(nextIds);
+    toast.success(
+      copiedTargetIds.length > 0
+        ? `Stacked ${copiedTargetIds.length + 1} copied ${lineItem?.product_type ?? "line"} items.`
+        : "Line item stacked."
+    );
+  };
+
+  const handleUnstackLineItem = (lineItemId: string) => {
+    saveStackedLineItemIds(stackedLineItemIds.filter((id) => id !== lineItemId));
+  };
+
   const toggleDiscountTarget = (lineItemId: string) => {
     setSelectedDiscountLineIds((current) =>
       current.includes(lineItemId)
@@ -681,6 +927,18 @@ export function QuoteBuilder() {
     for (let i = 0; i < item.quantity; i++) {
       expandedItems.push({ item, instanceIndex: i });
     }
+  });
+  const stackedLineItemIdSet = new Set(stackedLineItemIds);
+  const stackedLineItems = lineItems.filter((item) => stackedLineItemIdSet.has(item.id));
+  const editableExpandedItems = expandedItems.filter(
+    ({ item }) => !stackedLineItemIdSet.has(item.id)
+  );
+  const lineItemNumbers = new Map(lineItems.map((item, index) => [item.id, index + 1]));
+  const designsByLineItemId = new Map<string, SalesQuoteDesign[]>();
+  designs.forEach((design) => {
+    const lineDesigns = designsByLineItemId.get(design.line_item_id) ?? [];
+    lineDesigns.push(design);
+    designsByLineItemId.set(design.line_item_id, lineDesigns);
   });
 
   if (!activeQuoteId) {
@@ -855,6 +1113,29 @@ export function QuoteBuilder() {
           <ProductTypeButtons selected={selectedProductType} onSelect={(type) => selectProduct(type)} />
           <RoomPresetButtons onSelect={handleRoomSelect} disabled={!selectedProductType || addLineItem.isPending} />
         </div>
+
+        {stackedLineItems.length > 0 && (
+          <div
+            className="border-b border-[#d8d8d2] bg-white/95 px-4 py-2"
+            aria-label="Stacked completed line items"
+          >
+            <div className="mb-1 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+              <Archive className="h-3.5 w-3.5" />
+              Stacked Lines
+            </div>
+            <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+              {stackedLineItems.map((item) => (
+                <StackedLineItemRow
+                  key={item.id}
+                  item={item}
+                  lineNumber={lineItemNumbers.get(item.id) ?? 0}
+                  designs={designsByLineItemId.get(item.id) ?? []}
+                  onUnstack={() => handleUnstackLineItem(item.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="quote-builder-scroll-flow space-y-3">
@@ -969,13 +1250,17 @@ export function QuoteBuilder() {
         )}
 
       {/* Line Items with Design Cards */}
-        {expandedItems.length === 0 ? (
+        {lineItems.length === 0 ? (
           <div className="bg-card border rounded-xl p-6 text-center text-muted-foreground text-sm">
             Select a product type and room to add line items.
           </div>
+        ) : editableExpandedItems.length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-white/80 p-4 text-center text-sm font-medium text-slate-600">
+            All line items are stacked. Click any stacked line above to edit it.
+          </div>
         ) : (
           <div className="space-y-4">
-            {expandedItems.map(({ item, instanceIndex }) => {
+            {editableExpandedItems.map(({ item, instanceIndex }) => {
               const isMatchingCopyTarget =
                 copyMode === "some" &&
                 copySourceItem !== null &&
@@ -991,6 +1276,7 @@ export function QuoteBuilder() {
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}
+                  onStack={() => handleStackLineItem(item.id)}
                   copyMode={copyMode}
                   isCopyTarget={isMatchingCopyTarget}
                   isSelectedTarget={copiedCopyTargets.includes(item.id)}

@@ -13,6 +13,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@mts/components/ui/tabs";
 import { Checkbox } from "@mts/components/ui/checkbox";
 import {
+  Archive,
   Copy,
   CopyCheck,
   Calculator,
@@ -171,6 +172,7 @@ interface DesignCardProps {
   ) => void;
   onCopyAll: () => void;
   onCopySome: () => void;
+  onStack: () => void;
   copyMode: "none" | "all" | "some";
   isCopyTarget: boolean;
   isSelectedTarget: boolean;
@@ -2076,6 +2078,7 @@ export function DesignCard({
   onUpdateDesign,
   onCopyAll,
   onCopySome,
+  onStack,
   copyMode: _copyMode,
   isCopyTarget,
   isSelectedTarget,
@@ -2720,6 +2723,10 @@ export function DesignCard({
           <Button variant="outline" size="sm" onClick={onCopySome} className="text-xs">
             <CopyCheck className="h-3 w-3 mr-1" />
             Some
+          </Button>
+          <Button variant="outline" size="sm" onClick={onStack} className="ml-auto text-xs">
+            <Archive className="h-3 w-3 mr-1" />
+            Stack
           </Button>
         </div>
       </CardContent>
