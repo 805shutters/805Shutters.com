@@ -12,9 +12,11 @@ import { SiteHeader } from "./SiteHeader";
  *  just the bare <main> content, so the page is 100% quoting UI. */
 export function ConditionalChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isCrmRoute = pathname === "/crm" || Boolean(pathname?.startsWith("/crm/"));
+  const showAssistantWidget = pathname === "/";
 
   // Dedicated CRM app routes — no site header, footer, or chat widget.
-  if (pathname?.startsWith("/crm/quote/") || pathname?.startsWith("/crm/mobile")) {
+  if (isCrmRoute) {
     return <main>{children}</main>;
   }
 
@@ -25,7 +27,7 @@ export function ConditionalChrome({ children }: { children: ReactNode }) {
         <main>{children}</main>
         <SiteFooter />
       </CommercialModeProvider>
-      <MessagingAssistantWidget />
+      {showAssistantWidget ? <MessagingAssistantWidget /> : null}
     </>
   );
 }
