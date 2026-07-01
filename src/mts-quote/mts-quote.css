@@ -255,9 +255,73 @@
   backdrop-filter: blur(14px);
 }
 
+.mts-quote-scope .quote-command-menu {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 6;
+}
+
+.mts-quote-scope .quote-command-reveal-zone {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 16px;
+  cursor: ns-resize;
+}
+
+.mts-quote-scope .quote-command-reveal-zone:focus-visible {
+  outline: 2px solid #1c1c1a;
+  outline-offset: -2px;
+}
+
 .mts-quote-scope .quote-builder-command-bar {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  max-height: 0;
+  overflow: hidden;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-18px);
+  visibility: hidden;
+  box-shadow: 0 18px 34px rgb(15 35 70 / 0.16);
+  transition:
+    max-height 180ms ease,
+    padding-top 180ms ease,
+    padding-bottom 180ms ease,
+    opacity 160ms ease,
+    transform 180ms ease,
+    border-color 180ms ease,
+    visibility 0s linear 180ms;
+}
+
+.mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
+.mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar {
+  max-height: 220px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border-bottom-color: #d8d8d2;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+  visibility: visible;
+  transition:
+    max-height 180ms ease,
+    padding-top 180ms ease,
+    padding-bottom 180ms ease,
+    opacity 160ms ease,
+    transform 180ms ease,
+    border-color 180ms ease,
+    visibility 0s;
+}
+
+.mts-quote-scope .quote-command-menu:hover .quote-command-reveal-zone,
+.mts-quote-scope .quote-command-menu:focus-within .quote-command-reveal-zone {
+  pointer-events: none;
 }
 
 .mts-quote-scope .quote-add-controls {

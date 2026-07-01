@@ -977,152 +977,160 @@ export function QuoteBuilder() {
       {/* Quote group tabs relocated below the command bar */}
 
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
-        {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
-        <div className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-white/85">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
-                {quoteLetterColor && (
-                  <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
-                  >
-                    {quote?.quote_letter}
-                  </span>
-                )}
-                <span className="leading-none">
-                  Quote Builder
-                  <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
-                    Window treatment studio
-                  </span>
-                </span>
-              </h1>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => freshStart.mutate()}
-                className="rounded-xl border-slate-200 bg-white shadow-sm"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Fresh Start
-              </Button>
-              {quote && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowSendDialog(true)}
-                  className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                  title="Email or text the quote link to the customer"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Quote
-                </Button>
-              )}
-              {quote && (quote.status === "sold" || quote.status === "ordered") && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowPaymentDialog("deposit")}
-                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                  title="Record a deposit payment"
-                >
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Deposit
-                </Button>
-              )}
-              {quote && quote.status === "received" && (
-                <Button
-                  size="sm"
-                  onClick={() => setShowPaymentDialog("balance")}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  title="Record COD at install — auto-flips to Complete"
-                >
-                  <DollarSign className="h-4 w-4 mr-1" />
-                  Collect COD
-                </Button>
-              )}
-              {quote && (
-                <QuoteStatusPill status={quote.status} quoteId={quote.id} showAdvance size="md" />
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {editingName ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    defaultValue={quote?.customer_name || ""}
-                    placeholder="Customer Name"
-                    className="w-48"
-                    autoFocus
-                    onBlur={(e) => {
-                      updateQuote.mutate({ customer_name: e.target.value });
-                      setEditingName(false);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        updateQuote.mutate({
-                          customer_name: (e.target as HTMLInputElement).value,
-                        });
-                        setEditingName(false);
-                      }
-                    }}
-                  />
-                  <AddressAutocomplete
-                    inputAs={Input}
-                    defaultValue={quote?.customer_address || ""}
-                    placeholder="City / Address"
-                    className="w-48"
-                    onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
-                    onResolved={(address) =>
-                      updateQuote.mutate({ customer_address: address.fullAddress })
-                    }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        updateQuote.mutate({
-                          customer_address: (e.target as HTMLInputElement).value,
-                        });
-                      }
-                    }}
-                  />
-                </div>
-              ) : (
-                <button
-                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
-                  onClick={() => setEditingName(true)}
-                >
-                  {quote?.customer_name || "Add Customer"}{" "}
-                  {quote?.customer_address && (
-                    <span className="text-muted-foreground text-sm">· {quote.customer_address}</span>
+        <div className="quote-command-menu">
+          <div
+            className="quote-command-reveal-zone"
+            aria-label="Show quote actions menu"
+            role="button"
+            tabIndex={0}
+          />
+          {/* Slim full-screen command bar (replaces the CRM chrome + tall header card) */}
+          <div className="quote-builder-command-bar border-b border-[#d8d8d2] bg-white/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-white/85">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <h1 className="flex items-center gap-2.5 text-lg font-black tracking-[-0.02em] text-[#0b0b0b]">
+                  {quoteLetterColor && (
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl ${quoteLetterColor.bg} text-sm font-black text-white`}
+                    >
+                      {quote?.quote_letter}
+                    </span>
                   )}
-                  <Pencil className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-              {/* Builder / Contract toggle */}
-              <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
-                <button
-                  type="button"
-                  aria-pressed="true"
-                  className="quote-view-toggle__button quote-view-toggle__button--active"
-                  onClick={() => setActiveTab("builder")}
+                  <span className="leading-none">
+                    Quote Builder
+                    <span className="mt-0.5 block text-[10px] font-black uppercase tracking-[0.22em] text-[#8d8a82]">
+                      Window treatment studio
+                    </span>
+                  </span>
+                </h1>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => freshStart.mutate()}
+                  className="rounded-xl border-slate-200 bg-white shadow-sm"
                 >
-                  Builder
-                </button>
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Fresh Start
+                </Button>
+                {quote && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowSendDialog(true)}
+                    className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
+                    title="Email or text the quote link to the customer"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Quote
+                  </Button>
+                )}
+                {quote && (quote.status === "sold" || quote.status === "ordered") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowPaymentDialog("deposit")}
+                    className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                    title="Record a deposit payment"
+                  >
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Deposit
+                  </Button>
+                )}
+                {quote && quote.status === "received" && (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowPaymentDialog("balance")}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    title="Record COD at install — auto-flips to Complete"
+                  >
+                    <DollarSign className="h-4 w-4 mr-1" />
+                    Collect COD
+                  </Button>
+                )}
+                {quote && (
+                  <QuoteStatusPill status={quote.status} quoteId={quote.id} showAdvance size="md" />
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {editingName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      defaultValue={quote?.customer_name || ""}
+                      placeholder="Customer Name"
+                      className="w-48"
+                      autoFocus
+                      onBlur={(e) => {
+                        updateQuote.mutate({ customer_name: e.target.value });
+                        setEditingName(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_name: (e.target as HTMLInputElement).value,
+                          });
+                          setEditingName(false);
+                        }
+                      }}
+                    />
+                    <AddressAutocomplete
+                      inputAs={Input}
+                      defaultValue={quote?.customer_address || ""}
+                      placeholder="City / Address"
+                      className="w-48"
+                      onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
+                      onResolved={(address) =>
+                        updateQuote.mutate({ customer_address: address.fullAddress })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_address: (e.target as HTMLInputElement).value,
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
+                    onClick={() => setEditingName(true)}
+                  >
+                    {quote?.customer_name || "Add Customer"}{" "}
+                    {quote?.customer_address && (
+                      <span className="text-muted-foreground text-sm">· {quote.customer_address}</span>
+                    )}
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )}
+                {/* Builder / Contract toggle */}
+                <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
+                  <button
+                    type="button"
+                    aria-pressed="true"
+                    className="quote-view-toggle__button quote-view-toggle__button--active"
+                    onClick={() => setActiveTab("builder")}
+                  >
+                    Builder
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed="false"
+                    onClick={() => setActiveTab("contract")}
+                    className="quote-view-toggle__button"
+                  >
+                    Contract
+                  </button>
+                </div>
+                <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
+                {/* X - exit full-screen back to the Quotes dashboard */}
                 <button
-                  type="button"
-                  aria-pressed="false"
-                  onClick={() => setActiveTab("contract")}
-                  className="quote-view-toggle__button"
+                  onClick={() => setActiveTab("dashboard")}
+                  aria-label="Close builder - back to dashboard"
+                  title="Close - back to dashboard"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
                 >
-                  Contract
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="h-7 w-px bg-[#d8d8d2]" aria-hidden />
-              {/* X - exit full-screen back to the Quotes dashboard */}
-              <button
-                onClick={() => setActiveTab("dashboard")}
-                aria-label="Close builder - back to dashboard"
-                title="Close - back to dashboard"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#d8d8d2] bg-white text-[#0b0b0b] transition hover:border-[#0b0b0b] hover:bg-[#0b0b0b] hover:text-white"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
           </div>
         </div>
