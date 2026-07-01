@@ -1167,76 +1167,73 @@ function SurchargePicker({
   };
 
   return (
-    <div className="rounded-lg border border-dashed border-muted-foreground/30 bg-muted/20 p-3 space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground">Surcharges:</span>
-        {selectedSurcharges.map((item) => {
-          const isAutomatic = automaticIds.has(item.id);
-          return (
-            <span
-              key={item.id}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-white text-xs"
-              title={item.category}
-            >
-              <span className="font-medium">{item.name}</span>
-              <span className="text-muted-foreground">{formatSurchargePrice(item)}</span>
-              {item.type === "fixed" && !isAutomatic && (
-                <Input
-                  type="number"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10))}
-                  className="h-6 w-14 px-1 text-xs"
-                  aria-label={`${item.name} quantity`}
-                />
-              )}
-              {!isAutomatic && (
-                <button
-                  type="button"
-                  onClick={() => removeSurcharge(item.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                  title="Remove surcharge"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </span>
-          );
-        })}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setAdding((value) => !value)}
-          className="h-8 border-dashed text-xs"
-          disabled={available.length === 0}
-        >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Add Surcharge
-        </Button>
-        {selectedSurcharges.length > 0 && (
-          <span className="text-xs text-muted-foreground">
-            Base: ${basePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} + Add-ons: $
-            {surchargeTotal.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-          </span>
-        )}
-      </div>
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setAdding((value) => !value)}
+        className="h-8 border-dashed text-xs"
+        disabled={available.length === 0}
+      >
+        <Plus className="h-3.5 w-3.5 mr-1" />
+        Add Surcharge
+      </Button>
 
       {adding && available.length > 0 && (
-        <div className="max-w-xl">
-          <Select onValueChange={addSurcharge}>
-            <SelectTrigger className="h-9 bg-white">
-              <SelectValue placeholder="Select surcharge or add-on..." />
-            </SelectTrigger>
-            <SelectContent className="max-h-80">
-              {available.map((item) => (
-                <SelectItem key={item.id} value={item.id}>
-                  {item.name} · {formatSurchargePrice(item)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <Select onValueChange={addSurcharge}>
+          <SelectTrigger className="h-8 w-[260px] bg-white text-xs">
+            <SelectValue placeholder="Select surcharge or add-on..." />
+          </SelectTrigger>
+          <SelectContent className="max-h-80">
+            {available.map((item) => (
+              <SelectItem key={item.id} value={item.id}>
+                {item.name} · {formatSurchargePrice(item)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {selectedSurcharges.map((item) => {
+        const isAutomatic = automaticIds.has(item.id);
+        return (
+          <span
+            key={item.id}
+            className="inline-flex items-center gap-1.5 rounded-full border bg-white px-2.5 py-1 text-xs"
+            title={item.category}
+          >
+            <span className="font-medium">{item.name}</span>
+            <span className="text-muted-foreground">{formatSurchargePrice(item)}</span>
+            {item.type === "fixed" && !isAutomatic && (
+              <Input
+                type="number"
+                min={1}
+                value={item.quantity}
+                onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10))}
+                className="h-6 w-14 px-1 text-xs"
+                aria-label={`${item.name} quantity`}
+              />
+            )}
+            {!isAutomatic && (
+              <button
+                type="button"
+                onClick={() => removeSurcharge(item.id)}
+                className="text-muted-foreground hover:text-destructive"
+                title="Remove surcharge"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        );
+      })}
+
+      {selectedSurcharges.length > 0 && (
+        <span className="text-xs text-muted-foreground">
+          Base: ${basePrice.toLocaleString("en-US", { maximumFractionDigits: 2 })} + Add-ons: $
+          {surchargeTotal.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+        </span>
       )}
     </div>
   );
@@ -2668,7 +2665,7 @@ export function DesignCard({
         )}
 
         {/* Copy actions */}
-        <div className="flex items-center gap-3 pt-2 border-t">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
           <span className="text-xs text-muted-foreground">Copy this design to:</span>
           <Button variant="outline" size="sm" onClick={onCopyAll} className="text-xs">
             <Copy className="h-3 w-3 mr-1" />
@@ -2678,6 +2675,11 @@ export function DesignCard({
             <CopyCheck className="h-3 w-3 mr-1" />
             Some
           </Button>
+          <SurchargePicker
+            productType={lineItem.product_type}
+            design={currentDesign}
+            onUpdate={updateField}
+          />
           <Button variant="outline" size="sm" onClick={onStack} className="ml-auto text-xs">
             <Archive className="h-3 w-3 mr-1" />
             Stack
@@ -2937,8 +2939,6 @@ function ShutterDesignOptions({
           autoFocus
         />
       )}
-
-      <SurchargePicker productType={productType} design={workingDesign} onUpdate={onUpdate} />
 
       {/* Separator line - only show if there are options to display */}
       {(nextDefiningStep || (standardComplete && !allOptionsConfirmed) || useOldSteps) && (
@@ -4330,8 +4330,6 @@ function ShadesAndBlindsOptions({
           autoFocus
         />
       )}
-
-      <SurchargePicker productType={productType} design={design} onUpdate={onUpdate} />
 
       {/* Separator line - only show if there are options to display */}
       {!allOptionsConfirmed && <div className="border-t border-primary/20" />}
