@@ -301,7 +301,7 @@
 
 .mts-quote-scope .quote-command-menu:hover .quote-builder-command-bar,
 .mts-quote-scope .quote-command-menu:focus-within .quote-builder-command-bar {
-  max-height: 220px;
+  max-height: 320px;
   padding-top: 10px;
   padding-bottom: 10px;
   border-bottom-color: #d8d8d2;
@@ -322,6 +322,11 @@
 .mts-quote-scope .quote-command-menu:hover .quote-command-reveal-zone,
 .mts-quote-scope .quote-command-menu:focus-within .quote-command-reveal-zone {
   pointer-events: none;
+}
+
+.mts-quote-scope .quote-command-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .mts-quote-scope .quote-add-controls {

@@ -992,8 +992,6 @@ export function QuoteBuilder() {
 
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
-      {/* Quote group tabs relocated below the command bar */}
-
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
         <div className="quote-command-menu">
           <div
@@ -1150,6 +1148,9 @@ export function QuoteBuilder() {
                 </button>
               </div>
             </div>
+            <div className="quote-command-tabs mt-3 border-t border-[#d8d8d2] pt-3">
+              <QuoteGroupTabs />
+            </div>
           </div>
         </div>
 
@@ -1191,8 +1192,6 @@ export function QuoteBuilder() {
       </div>
 
       <div className="quote-builder-scroll-flow space-y-3">
-        <QuoteGroupTabs />
-
         {/* Discount Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
