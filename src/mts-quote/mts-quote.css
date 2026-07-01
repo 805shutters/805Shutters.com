@@ -68,6 +68,7 @@
   --status-emerald: 150 8% 42%;
   --success: 150 8% 38%; /* brushed-steel green */
   --success-foreground: 0 0% 100%;
+  --font-body: "Helvetica Neue", Arial, sans-serif;
   --font-sans:
     "Helvetica Neue", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, Arial, sans-serif;
@@ -928,29 +929,29 @@
   min-width: 0;
   flex: 1 1 auto;
   align-items: center;
-  gap: 12px;
+  gap: 11px;
+  font-family: var(--font-body, var(--font-sans));
 }
 
 .mts-quote-scope .quote-line-card-number {
   display: inline-flex;
-  height: 40px;
-  min-width: 46px;
+  height: 42px;
+  min-width: 48px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 0 11px;
-  border-radius: 12px;
+  padding: 0 12px;
+  border-radius: 13px;
   background: #0b0b0b;
   color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.16),
     0 8px 18px rgb(15 35 70 / 0.12);
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
-  font-size: 15px;
-  font-weight: 900;
-  line-height: 1;
+  font-family: var(--font-body, var(--font-sans));
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 1.15;
   white-space: nowrap;
 }
 
@@ -958,10 +959,11 @@
   min-width: 0;
   margin: 0;
   color: #080808;
-  font-size: 32px;
-  font-weight: 900;
+  font-family: var(--font-body, var(--font-sans));
+  font-size: 30px;
+  font-weight: 800;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -972,19 +974,18 @@
   min-height: 40px;
   flex: 0 0 auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 0 2px;
   border: 0;
   background: transparent;
   color: #0b0b0b;
   cursor: pointer;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
-  font-size: 32px;
-  font-weight: 900;
+  font-family: var(--font-body, var(--font-sans));
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.18;
   transition: color 160ms ease;
   white-space: nowrap;
 }
@@ -996,9 +997,9 @@
 .mts-quote-scope .quote-line-card-size-divider {
   color: #5b5850;
   font-family: inherit;
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.14;
 }
 
 .mts-quote-scope .quote-line-card-add-size {
@@ -1049,7 +1050,7 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  padding: 0 22px;
+  padding: 0 21px;
   border: 1px solid var(--stacked-product-border, #34322e);
   border-radius: 999px;
   background: var(--stacked-product-bg, #4a4842);
@@ -1057,10 +1058,11 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.16),
     0 8px 18px rgb(15 35 70 / 0.12);
-  font-size: 17px;
-  font-weight: 900;
+  font-family: var(--font-body, var(--font-sans));
+  font-size: 16px;
+  font-weight: 800;
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.12;
   text-align: center;
   transition:
     background 160ms ease,
@@ -1092,13 +1094,15 @@
 
   .mts-quote-scope .quote-line-card-room,
   .mts-quote-scope .quote-line-card-size {
-    font-size: 26px;
+    font-size: 24px;
+    line-height: 1.2;
   }
 
   .mts-quote-scope .quote-line-product-type-badge {
     min-height: 36px;
     padding: 0 18px;
-    font-size: 15px;
+    font-size: 14px;
+    line-height: 1.14;
   }
 }
 
@@ -1279,17 +1283,20 @@
   .mts-quote-scope .quote-line-card-room,
   .mts-quote-scope .quote-line-card-size {
     min-height: 32px;
-    font-size: 22px;
+    font-size: 20px;
+    line-height: 1.18;
   }
 
   .mts-quote-scope .quote-line-card-size-divider {
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.18;
   }
 
   .mts-quote-scope .quote-line-product-type-badge {
     min-height: 32px;
     padding: 0 14px;
-    font-size: 13px;
+    font-size: 12px;
+    line-height: 1.14;
   }
 }
 
