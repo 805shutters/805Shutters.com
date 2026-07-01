@@ -1,4 +1,12 @@
-import { useState, useEffect, useMemo, useRef, useCallback, type ChangeEvent } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import { Card, CardContent, CardHeader } from "@mts/components/ui/card";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
@@ -14,6 +22,7 @@ import { Tabs, TabsList, TabsTrigger } from "@mts/components/ui/tabs";
 import { Checkbox } from "@mts/components/ui/checkbox";
 import {
   Archive,
+  ChevronDown,
   Copy,
   CopyCheck,
   Calculator,
@@ -235,6 +244,7 @@ interface GridOptionYesNo {
 
 type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo;
 type GridSelectGroup = { label: string; items: readonly string[] };
+type OptionSlotRequirement = "mandatory" | "optional";
 
 // --- Helpers ---
 
@@ -1032,6 +1042,185 @@ function getCompletedDisplayValue(
   return value;
 }
 
+function hasOptionValue(value: string | null): value is string {
+  return value !== null && value !== undefined && value !== "";
+}
+
+function getOptionSlotValue(
+  design: SalesQuoteDesign | undefined,
+  field: string
+): string | null {
+  return getCompletedDisplayValue(design, field);
+}
+
+function partitionOptionSlots(
+  options: GridOption[],
+  mandatoryFields: readonly string[]
+): { mandatory: GridOption[]; optional: GridOption[] } {
+  const mandatory = new Set(mandatoryFields);
+  return {
+    mandatory: options.filter((option) => mandatory.has(option.field)),
+    optional: options.filter((option) => !mandatory.has(option.field)),
+  };
+}
+
+const OPTIONAL_MOTOR_FIELDS = new Set(["motor_type", "json:hub_required", "remote_type"]);
+const OPTIONAL_SHUTTER_DETAIL_FIELDS = new Set([
+  "json:split_tilt",
+  "json:extension_rod",
+  "json:t_post",
+  "json:astragal",
+]);
+
+function getShutterMandatoryFields(options: GridOption[]): string[] {
+  return options
+    .map((option) => option.field)
+    .filter(
+      (field) =>
+        !OPTIONAL_MOTOR_FIELDS.has(field) &&
+        !OPTIONAL_SHUTTER_DETAIL_FIELDS.has(field) &&
+        !field.includes("divider_rail")
+    );
+}
+
+function getShadeMandatoryFields(productType: string, options: GridOption[]): string[] {
+  const allFields = options.map((option) => option.field);
+  switch (productType) {
+    case "Roller Shades":
+      return ["mount_type", "shade_type", "lift_system", "valance", "fabric"].filter((field) =>
+        allFields.includes(field)
+      );
+    case "Roman Shades":
+      return [
+        "mount_type",
+        "lift_system",
+        "valance",
+        "json:roman_fabric_category",
+        "fabric",
+      ].filter((field) => allFields.includes(field));
+    case "Honeycomb Shades":
+      return [
+        "mount_type",
+        "json:cell_size",
+        "shade_type",
+        "lift_system",
+        "json:light_control",
+        "fabric",
+      ].filter((field) => allFields.includes(field));
+    case "Sheer Shades":
+      return ["mount_type", "json:light_control", "lift_system", "fabric"].filter((field) =>
+        allFields.includes(field)
+      );
+    case "Faux Wood Blinds":
+      return ["mount_type", "json:slat_size", "json:product_line", "json:color"].filter((field) =>
+        allFields.includes(field)
+      );
+    case "Wood Blinds":
+      return ["mount_type", "json:slat_size", "json:color"].filter((field) =>
+        allFields.includes(field)
+      );
+    case "Vertical Blinds":
+      return [
+        "mount_type",
+        "json:fabric_group",
+        "json:vertical_color",
+        "json:stack_option",
+        "json:control_type",
+      ].filter((field) => allFields.includes(field));
+    case "Smart Drapes":
+      return [
+        "mount_type",
+        "shade_type",
+        "fabric",
+        "json:stack_option",
+        "json:control_type",
+        "json:control_side",
+      ].filter((field) => allFields.includes(field));
+    default:
+      return allFields.filter((field) => !OPTIONAL_MOTOR_FIELDS.has(field));
+  }
+}
+
+function OptionSlot({
+  option,
+  value,
+  requirement,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  option: GridOption;
+  value: string | null;
+  requirement: OptionSlotRequirement;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const selected = hasOptionValue(value);
+  const isYesNo = option.type === "yes-no";
+
+  return (
+    <div
+      className={cn(
+        "quote-option-slot",
+        selected && "quote-option-slot--selected",
+        isOpen && "quote-option-slot--open",
+        requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
+      )}
+    >
+      {isYesNo ? (
+        <>
+          <div className="quote-option-slot__static">
+            <span className="quote-option-slot__label">{option.label}</span>
+            {selected && <span className="quote-option-slot__value">{value}</span>}
+          </div>
+          <div className="quote-option-slot__inline-control">{children}</div>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="quote-option-slot__trigger"
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            title={selected ? `${option.label}: ${value}` : option.label}
+          >
+            <span className="quote-option-slot__label">{option.label}</span>
+            <span className="quote-option-slot__value">{selected ? value : option.label}</span>
+            <ChevronDown className="quote-option-slot__icon" aria-hidden="true" />
+          </button>
+          {isOpen && <div className="quote-option-slot__control">{children}</div>}
+        </>
+      )}
+    </div>
+  );
+}
+
+function OptionSlotRows({
+  mandatoryOptions,
+  optionalOptions,
+  renderSlot,
+}: {
+  mandatoryOptions: GridOption[];
+  optionalOptions: GridOption[];
+  renderSlot: (option: GridOption, requirement: OptionSlotRequirement) => ReactNode;
+}) {
+  return (
+    <div className="quote-option-slots">
+      {mandatoryOptions.length > 0 && (
+        <div className="quote-option-slot-row quote-option-slot-row--mandatory">
+          {mandatoryOptions.map((option) => renderSlot(option, "mandatory"))}
+        </div>
+      )}
+      {optionalOptions.length > 0 && (
+        <div className="quote-option-slot-row quote-option-slot-row--optional">
+          {optionalOptions.map((option) => renderSlot(option, "optional"))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const LINE_PRODUCT_TYPE_CLASSES: Record<string, string> = {
   Shutters: "quote-stacked-product--shutters",
   "Roller Shades": "quote-stacked-product--roller-shades",
@@ -1650,18 +1839,22 @@ function GridButtonGroup({
   options,
   value,
   onChange,
+  hideLabel = false,
 }: {
   label: string;
   options: readonly string[];
   value: string | null;
   onChange: (v: string) => void;
+  hideLabel?: boolean;
 }) {
   if (!options) return null;
   return (
     <div className="quote-style-option-field space-y-1">
-      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
-        {label}
-      </Label>
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          {label}
+        </Label>
+      )}
       <div className="flex flex-wrap gap-1">
         {options.map((opt) => (
           <button
@@ -1688,18 +1881,22 @@ function GridSelect({
   value,
   onChange,
   grouped,
+  hideLabel = false,
 }: {
   label: string;
   options: readonly string[];
   value: string | null;
   onChange: (v: string) => void;
   grouped?: GridSelectGroup[];
+  hideLabel?: boolean;
 }) {
   return (
     <div className="quote-style-option-field space-y-1">
-      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
-        {label}
-      </Label>
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          {label}
+        </Label>
+      )}
       <Select value={value || ""} onValueChange={onChange}>
         <SelectTrigger className="quote-style-select h-6 min-h-0 px-2 py-0 text-[11px] text-gray-900">
           <SelectValue placeholder="Select..." />
@@ -1734,11 +1931,13 @@ function RollerFabricAutocomplete({
   optionsJson,
   onSelect,
   onClear,
+  hideLabel = false,
 }: {
   value: string | null;
   optionsJson: Record<string, unknown>;
   onSelect: (fabricColor: MtsRollerFabricColor) => void;
   onClear: () => void;
+  hideLabel?: boolean;
 }) {
   const selectedColor = findMtsRollerFabricColorBySelection(
     stringOption(optionsJson, ROLLER_FABRIC_COLOR_COLLECTION_DETAIL) || value,
@@ -1786,9 +1985,11 @@ function RollerFabricAutocomplete({
 
   return (
     <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
-      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
-        Fabric Search
-      </Label>
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          Fabric Search
+        </Label>
+      )}
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -1854,6 +2055,7 @@ function ProductColorAutocomplete({
   optionsJson,
   onSelect,
   onClear,
+  hideLabel = false,
 }: {
   productType: string;
   field: string;
@@ -1861,6 +2063,7 @@ function ProductColorAutocomplete({
   optionsJson: Record<string, unknown>;
   onSelect: (fabricColor: ProductColorOption) => void;
   onClear: () => void;
+  hideLabel?: boolean;
 }) {
   const selectedColor =
     findMtsProductColorById(productType, optionsJson, stringOption(optionsJson, PRODUCT_COLOR_ID_DETAIL)) ||
@@ -1915,9 +2118,11 @@ function ProductColorAutocomplete({
 
   return (
     <div className="quote-style-option-field relative col-span-2 space-y-1 lg:col-span-2">
-      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
-        {label}
-      </Label>
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          {label}
+        </Label>
+      )}
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -1985,18 +2190,22 @@ function GridYesNo({
   value,
   onChange,
   noFirst,
+  hideLabel = false,
 }: {
   label: string;
   value: string | null;
   onChange: (v: string) => void;
   noFirst?: boolean;
+  hideLabel?: boolean;
 }) {
   const items = noFirst ? ["No", "Yes"] : ["Yes", "No"];
   return (
     <div className="quote-style-option-field space-y-1">
-      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
-        {label}
-      </Label>
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          {label}
+        </Label>
+      )}
       <div className="quote-style-yes-no-group">
         {items.map((opt) => (
           <button
@@ -2771,10 +2980,7 @@ function ShutterDesignOptions({
   onRecalculatePrice?: () => void;
 }) {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [confirmedOptions, setConfirmedOptions] = useState<
-    Map<string, { label: string; value: string }>
-  >(new Map());
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const draftDesign = useMemo(() => buildDraftShutterDesign(activeVariant), [activeVariant]);
   const workingDesign = design ?? draftDesign;
   const autoRoutePatchKeyRef = useRef<string | null>(null);
@@ -2797,14 +3003,6 @@ function ShutterDesignOptions({
   }, [activeVariant, design, onUpdate]);
 
   const handleUpdate = (field: string, value: unknown) => {
-    // When setting a real value, clear the editing flag for this field
-    if (value !== null && value !== undefined && value !== "") {
-      setEditingFields((prev) => {
-        const next = new Set(prev);
-        next.delete(field);
-        return next;
-      });
-    }
     const patch = getAutoShutterRoutePatch(activeVariant);
     if (patch && needsShutterRoutePatch(design, patch)) {
       applyShutterRoutePatch(patch, design, onUpdate);
@@ -2825,6 +3023,13 @@ function ShutterDesignOptions({
   const standardComplete = isStandardShutterComplete(workingDesign);
   const useOldSteps = isTrackedOrSpecialty(workingDesign);
   const optionsJson = (workingDesign.options_json as Record<string, unknown>) || {};
+  const definingOptions: GridOption[] = definingSteps.map((step) => ({
+    key: `define-${step.key}`,
+    label: step.label,
+    field: step.field,
+    type: "buttons",
+    options: step.options,
+  }));
 
   const handleManualPriceChange = (price: number) => {
     onUpdateFields({
@@ -2833,243 +3038,97 @@ function ShutterDesignOptions({
     });
   };
 
-  // Build pills from completed defining steps
-  const completedPills: { label: string; value: string; stepIndex: number }[] = [];
-  let nextDefiningStep: DefiningStep | null = null;
+  const gridOptions = standardComplete && !useOldSteps ? getStandardShutterGridOptions(workingDesign) : [];
+  const slotOptions = standardComplete && !useOldSteps ? [...definingOptions, ...gridOptions] : definingOptions;
+  const optionRows = partitionOptionSlots(slotOptions, [
+    ...definingOptions.map((option) => option.field),
+    ...getShutterMandatoryFields(gridOptions),
+  ]);
 
-  for (let i = 0; i < definingSteps.length; i++) {
-    const value = getFieldValue(workingDesign, definingSteps[i].field);
-    if (value) {
-      completedPills.push({ label: definingSteps[i].label, value, stepIndex: i });
-    } else {
-      nextDefiningStep = definingSteps[i];
-      break;
-    }
-  }
+  const renderOptionControl = (opt: GridOption) => {
+    const value = getFieldValue(workingDesign, opt.field);
 
-  // Grid options for when standard shutter is fully defined
-  const gridOptions = standardComplete ? getStandardShutterGridOptions(workingDesign) : [];
-
-  // Define option order for standard shutters
-  const optionOrder = gridOptions.map((option) => option.field);
-
-  // Sync confirmedOptions with design values (only for standard shutters)
-  useEffect(() => {
-    if (!standardComplete) {
-      setConfirmedOptions(new Map());
-      return;
-    }
-
-    const newConfirmedOptions = new Map<string, { label: string; value: string }>();
-
-    for (const key of optionOrder) {
-      // Skip fields currently being edited
-      if (editingFields.has(key)) break;
-      const value = getFieldValue(workingDesign, key);
-      if (value !== null && value !== undefined && value !== "") {
-        const option = gridOptions.find((opt) => opt.field === key);
-        if (option) {
-          newConfirmedOptions.set(key, { label: option.label, value });
-        }
-      } else {
-        // Stop at first missing value to maintain order
-        break;
-      }
+    if (opt.type === "buttons") {
+      return (
+        <GridButtonGroup
+          label={opt.label}
+          options={opt.options}
+          value={value}
+          hideLabel
+          onChange={(v) => {
+            if (definingOptions.some((option) => option.field === opt.field)) {
+              const step = definingSteps.find((candidate) => candidate.field === opt.field);
+              if (step) handleDefiningStepSelect(step, v);
+            } else {
+              handleUpdate(opt.field, v);
+            }
+            setOpenOptionField(null);
+          }}
+        />
+      );
     }
 
-    setConfirmedOptions(newConfirmedOptions);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workingDesign, standardComplete, editingFields]);
+    if (opt.type === "select") {
+      return (
+        <GridSelect
+          label={opt.label}
+          options={opt.options}
+          value={value}
+          hideLabel
+          onChange={(v) => {
+            handleUpdate(opt.field, v);
+            setOpenOptionField(null);
+          }}
+        />
+      );
+    }
 
-  // Clear a defining step and all steps after it
-  const handleClearDefiningStep = (stepIndex: number) => {
-    const steps = getDefiningSteps(workingDesign);
-    const stepsToReset = steps.slice(stepIndex);
-    for (const step of stepsToReset) {
-      if (step.field === "json:wood_route") {
-        onUpdate("supplier", null);
-        onUpdate("material", null);
-        const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
-        onUpdate("options_json", {
-          ...currentJson,
-          wood_route: null,
-          material_type: null,
-          composite_subtype: null,
-        });
-        continue;
-      }
-      if (step.field.startsWith("json:")) {
-        const jsonKey = step.field.slice(5);
-        const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
-        onUpdate("options_json", { ...currentJson, [jsonKey]: null });
-      } else {
-        onUpdate(step.field, null);
-      }
-    }
-    // Also clear all grid options when defining steps change
-    for (const field of optionOrder) {
-      handleUpdate(field, null);
-    }
-    const currentJson = (workingDesign.options_json as Record<string, unknown>) || {};
-    onUpdate("options_json", {
-      ...currentJson,
-      divider_rail: null,
-      divider_rail_location: null,
-      divider_rail_height: null,
-    });
+    return (
+      <GridYesNo
+        label={opt.label}
+        value={value}
+        hideLabel
+        noFirst={opt.noFirst}
+        onChange={(v) => handleUpdate(opt.field, v)}
+      />
+    );
   };
 
-  // Handle clicking a badge to re-edit
-  const handleEditOption = (fieldKey: string) => {
-    // Find the index of the clicked option
-    const clickedIndex = optionOrder.indexOf(fieldKey);
-    if (clickedIndex === -1) return;
-
-    // Immediately remove from confirmedOptions so grid re-appears
-    const fieldsToReset = optionOrder.slice(clickedIndex);
-    setConfirmedOptions((prev) => {
-      const next = new Map(prev);
-      for (const field of fieldsToReset) {
-        next.delete(field);
-      }
-      return next;
-    });
-
-    // Mark these fields as editing so useEffect doesn't re-confirm them
-    setEditingFields(new Set(fieldsToReset));
-
-    // Clear values in database
-    for (const field of fieldsToReset) {
-      handleUpdate(field, null);
-    }
-  };
-
-  // Check if all options are confirmed
-  const allOptionsConfirmed = optionOrder.every((key) => confirmedOptions.has(key));
+  const renderOptionSlot = (opt: GridOption, requirement: OptionSlotRequirement) => (
+    <OptionSlot
+      key={opt.key}
+      option={opt}
+      value={getOptionSlotValue(workingDesign, opt.field)}
+      requirement={requirement}
+      isOpen={openOptionField === opt.field}
+      onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
+    >
+      {renderOptionControl(opt)}
+    </OptionSlot>
+  );
 
   return (
     <div className="space-y-3">
-      {/* Pills row */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Completed defining steps as pills */}
-        {completedPills.map((pill) => (
-          <button
-            key={pill.stepIndex}
-            onClick={() => handleClearDefiningStep(pill.stepIndex)}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
-            title="Click to change"
-          >
-            {pill.label}: {pill.value}
-          </button>
-        ))}
-
-        {/* Confirmed grid options as badges (for standard shutters) */}
-        {standardComplete &&
-          Array.from(confirmedOptions.entries()).map(([key, { label, value }]) => (
-            <button
-              key={key}
-              onClick={() => handleEditOption(key)}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
-              title="Click to change"
-            >
-              {label}: {value}
-            </button>
-          ))}
-
-      </div>
-
-      {/* Separator line - only show if there are options to display */}
-      {(nextDefiningStep || (standardComplete && !allOptionsConfirmed) || useOldSteps) && (
-        <div className="border-t border-primary/20" />
-      )}
-
-      {/* Step-by-step wizard for incomplete defining steps */}
-      {nextDefiningStep && nextDefiningStep.options && (
-        <div className="space-y-2">
-          <p className="text-sm text-gray-700 font-semibold">{nextDefiningStep.label}</p>
-          <div className="inline-flex gap-1.5 p-1 rounded-md border border-border bg-accent/30 flex-row flex-wrap">
-            {nextDefiningStep.options.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => handleDefiningStepSelect(nextDefiningStep!, opt)}
-                className="quote-style-option-button rounded-md border border-border bg-background text-[11px] font-semibold text-gray-900 hover:bg-accent hover:border-primary/50 transition-all"
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
+      {slotOptions.length > 0 && (
+        <OptionSlotRows
+          mandatoryOptions={optionRows.mandatory}
+          optionalOptions={optionRows.optional}
+          renderSlot={renderOptionSlot}
+        />
       )}
 
       {/* For Tracked/Specialty shutters, use the old step-by-step flow */}
       {useOldSteps && <LegacyShutterSteps design={workingDesign} onUpdate={onUpdate} />}
 
-      {/* Grid layout for Standard Shutter detail options */}
-      {standardComplete && !allOptionsConfirmed && (
-        <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
-          {gridOptions.map((opt) => {
-            // Skip options that are already confirmed
-            if (confirmedOptions.has(opt.field)) {
-              return null;
-            }
-
-            const value = getFieldValue(workingDesign, opt.field);
-
-            if (opt.type === "buttons") {
-              return (
-                <GridButtonGroup
-                  key={opt.key}
-                  label={opt.label}
-                  options={opt.options}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                />
-              );
-            }
-
-            if (opt.type === "select") {
-              return (
-                <GridSelect
-                  key={opt.key}
-                  label={opt.label}
-                  options={opt.options}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                />
-              );
-            }
-
-            if (opt.type === "yes-no") {
-              return (
-                <GridYesNo
-                  key={opt.key}
-                  label={opt.label}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                  noFirst={opt.noFirst}
-                />
-              );
-            }
-
-            return null;
-          })}
-        </div>
-      )}
-
       {/* Show More section (divider rail, etc.) */}
-      {standardComplete && allOptionsConfirmed && (
+      {standardComplete && !useOldSteps && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
               aria-expanded={showMoreOptions}
               onClick={() => setShowMoreOptions((value) => !value)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-sm transition-all cursor-pointer",
-                showMoreOptions
-                  ? "border-primary/50 bg-accent text-gray-900"
-                  : "border-muted-foreground/40 text-muted-foreground hover:bg-accent"
-              )}
+              className="quote-more-options-button"
             >
               <Lightbulb className="h-3.5 w-3.5" />
               More Options
@@ -3441,10 +3500,7 @@ function ShadesAndBlindsOptions({
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
 }) {
-  const [confirmedOptions, setConfirmedOptions] = useState<
-    Map<string, { label: string; value: string }>
-  >(new Map());
-  const [editingFields, setEditingFields] = useState<Set<string>>(new Set());
+  const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   const handleUpdate = (field: string, value: unknown) => {
@@ -3478,12 +3534,7 @@ function ShadesAndBlindsOptions({
 
     const dependentProductColorField = getDependentProductColorField(productType, field);
     if (dependentProductColorField) {
-      setEditingFields((prev) => {
-        const next = new Set(prev);
-        if (!emptyValue) next.delete(field);
-        next.add(dependentProductColorField);
-        return next;
-      });
+      if (!emptyValue) setOpenOptionField(dependentProductColorField);
 
       let nextJson = withJsonField(withoutProductColorDetails(currentJson), field, value);
       const dependentJsonKey = getJsonFieldKey(dependentProductColorField);
@@ -3499,14 +3550,6 @@ function ShadesAndBlindsOptions({
       return;
     }
 
-    // When setting a real value, clear the editing flag for this field
-    if (value !== null && value !== undefined && value !== "") {
-      setEditingFields((prev) => {
-        const next = new Set(prev);
-        next.delete(field);
-        return next;
-      });
-    }
     setFieldValue(field, value, design, onUpdate);
 
     if (
@@ -3521,93 +3564,6 @@ function ShadesAndBlindsOptions({
       }
     }
   };
-
-  // Define option order for each product type
-  const getOptionOrder = (): string[] => {
-    switch (productType) {
-      case "Roller Shades":
-        return [
-          "mount_type",
-          "shade_type",
-          "lift_system",
-          "valance",
-          "fabric",
-          "motor_type",
-          "hub_required",
-          "remote_type",
-        ];
-      case "Roman Shades":
-        return [
-          "mount_type",
-          "lift_system",
-          "valance",
-          "json:roman_fabric_category",
-          "fabric",
-          "motor_type",
-          "hub_required",
-          "remote_type",
-        ];
-      case "Honeycomb Shades":
-        return [
-          "mount_type",
-          "json:cell_size",
-          "shade_type",
-          "lift_system",
-          "json:light_control",
-          "fabric",
-          "motor_type",
-          "json:hub_required",
-          "remote_type",
-        ];
-      case "Sheer Shades":
-        return [
-          "mount_type",
-          "json:light_control",
-          "lift_system",
-          "fabric",
-          "motor_type",
-          "json:hub_required",
-          "remote_type",
-        ];
-      case "Faux Wood Blinds":
-        return [
-          "mount_type",
-          "json:slat_size",
-          "json:product_line",
-          "json:color",
-        ];
-      case "Wood Blinds":
-        return [
-          "mount_type",
-          "json:slat_size",
-          "json:color",
-        ];
-      case "Vertical Blinds":
-        return [
-          "mount_type",
-          "json:fabric_group",
-          "json:vertical_color",
-          "json:stack_option",
-          "json:control_type",
-        ];
-      case "Smart Drapes":
-        return [
-          "mount_type",
-          "shade_type",
-          "fabric",
-          "json:stack_option",
-          "json:control_type",
-          "json:control_side",
-          "motor_type",
-          "json:hub_required",
-          "remote_type",
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const optionOrder = getOptionOrder();
 
   useEffect(() => {
     if (productType !== "Roman Shades" || !design?.fabric) return;
@@ -3626,55 +3582,6 @@ function ShadesAndBlindsOptions({
       onUpdate("options_json", { ...currentJson, roman_fabric_category: category });
     }
   }, [productType, design?.fabric, design?.options_json, onUpdate]);
-
-  // Sync confirmedOptions with design values
-  useEffect(() => {
-    const newConfirmedOptions = new Map<string, { label: string; value: string }>();
-    const gridOptions = getGridOptions();
-
-    for (const key of optionOrder) {
-      // Skip fields currently being edited
-      if (editingFields.has(key)) break;
-      const value = getFieldValue(design, key);
-      if (value !== null && value !== undefined && value !== "") {
-        const option = gridOptions.find((opt) => opt.field === key);
-        if (option) {
-          newConfirmedOptions.set(key, { label: option.label, value });
-        }
-      } else {
-        // Stop at first missing value to maintain order
-        break;
-      }
-    }
-
-    setConfirmedOptions(newConfirmedOptions);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [design, productType, editingFields]);
-
-  // Handle clicking a badge to re-edit
-  const handleEditOption = (fieldKey: string) => {
-    // Find the index of the clicked option
-    const clickedIndex = optionOrder.indexOf(fieldKey);
-    if (clickedIndex === -1) return;
-
-    // Immediately remove from confirmedOptions so grid re-appears
-    const fieldsToReset = optionOrder.slice(clickedIndex);
-    setConfirmedOptions((prev) => {
-      const next = new Map(prev);
-      for (const field of fieldsToReset) {
-        next.delete(field);
-      }
-      return next;
-    });
-
-    // Mark these fields as editing so useEffect doesn't re-confirm them
-    setEditingFields(new Set(fieldsToReset));
-
-    // Clear values in database
-    for (const field of fieldsToReset) {
-      handleUpdate(field, null);
-    }
-  };
 
   const getGridOptions = (): GridOption[] => {
     switch (productType) {
@@ -4160,11 +4067,7 @@ function ShadesAndBlindsOptions({
   };
 
   const handleRollerFabricSelect = (fabricColor: MtsRollerFabricColor) => {
-    setEditingFields((prev) => {
-      const next = new Set(prev);
-      next.delete("fabric");
-      return next;
-    });
+    setOpenOptionField(null);
     onUpdateFields({
       fabric: fabricColor.collection,
       options_json: {
@@ -4181,11 +4084,7 @@ function ShadesAndBlindsOptions({
   };
 
   const handleRollerFabricClear = () => {
-    setEditingFields((prev) => {
-      const next = new Set(prev);
-      next.add("fabric");
-      return next;
-    });
+    setOpenOptionField("fabric");
     onUpdateFields({
       fabric: null,
       options_json: withoutProductColorDetails(optionsJson),
@@ -4193,11 +4092,7 @@ function ShadesAndBlindsOptions({
   };
 
   const handleProductColorSelect = (field: string, fabricColor: ProductColorOption) => {
-    setEditingFields((prev) => {
-      const next = new Set(prev);
-      next.delete(field);
-      return next;
-    });
+    setOpenOptionField(null);
 
     const selectedValue = getMtsProductColorValue(fabricColor);
     let nextJson: Record<string, unknown> = {
@@ -4257,11 +4152,7 @@ function ShadesAndBlindsOptions({
   };
 
   const handleProductColorClear = (field: string) => {
-    setEditingFields((prev) => {
-      const next = new Set(prev);
-      next.add(field);
-      return next;
-    });
+    setOpenOptionField(field);
 
     let nextJson = withoutProductColorDetails(optionsJson);
     const jsonKey = getJsonFieldKey(field);
@@ -4286,124 +4177,117 @@ function ShadesAndBlindsOptions({
     return undefined;
   };
 
-  // Check if all options are confirmed
-  const allOptionsConfirmed = optionOrder.every((key) => confirmedOptions.has(key));
+  const optionRows = partitionOptionSlots(
+    gridOptions,
+    getShadeMandatoryFields(productType, gridOptions)
+  );
+  const hasAnySelectedOption = gridOptions.some((option) =>
+    hasOptionValue(getFieldValue(design, option.field))
+  );
+
+  const renderOptionControl = (opt: GridOption) => {
+    const value = getFieldValue(design, opt.field);
+
+    if (opt.type === "buttons") {
+      return (
+        <GridButtonGroup
+          label={opt.label}
+          options={opt.options}
+          value={value}
+          hideLabel
+          onChange={(v) => {
+            handleUpdate(opt.field, v);
+            setOpenOptionField(null);
+          }}
+        />
+      );
+    }
+
+    if (opt.type === "select") {
+      if (supportsMtsProductColorSearch(productType, opt.field, optionsJson)) {
+        return (
+          <ProductColorAutocomplete
+            productType={productType}
+            field={opt.field}
+            value={value}
+            optionsJson={optionsJson}
+            hideLabel
+            onSelect={(fabricColor) => handleProductColorSelect(opt.field, fabricColor)}
+            onClear={() => handleProductColorClear(opt.field)}
+          />
+        );
+      }
+
+      if (productType === "Roller Shades" && opt.field === "fabric") {
+        return (
+          <RollerFabricAutocomplete
+            value={value}
+            optionsJson={optionsJson}
+            hideLabel
+            onSelect={handleRollerFabricSelect}
+            onClear={handleRollerFabricClear}
+          />
+        );
+      }
+
+      const fabricGroups = opt.field === "fabric" ? getFabricGroups() : undefined;
+      return (
+        <GridSelect
+          label={opt.label}
+          options={opt.options}
+          value={value}
+          grouped={fabricGroups}
+          hideLabel
+          onChange={(v) => {
+            handleUpdate(opt.field, v);
+            setOpenOptionField(null);
+          }}
+        />
+      );
+    }
+
+    return (
+      <GridYesNo
+        label={opt.label}
+        value={value}
+        noFirst={opt.noFirst}
+        hideLabel
+        onChange={(v) => handleUpdate(opt.field, v)}
+      />
+    );
+  };
+
+  const renderOptionSlot = (opt: GridOption, requirement: OptionSlotRequirement) => (
+    <OptionSlot
+      key={opt.key}
+      option={opt}
+      value={getOptionSlotValue(design, opt.field)}
+      requirement={requirement}
+      isOpen={openOptionField === opt.field}
+      onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
+    >
+      {renderOptionControl(opt)}
+    </OptionSlot>
+  );
 
   return (
     <div className="space-y-3">
-      {/* Pills row */}
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Confirmed options as badges */}
-        {Array.from(confirmedOptions.entries()).map(([key, { label, value }]) => (
-          <button
-            key={key}
-            onClick={() => handleEditOption(key)}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-gray-900 border border-gray-300 text-xs font-medium cursor-pointer hover:bg-gray-50 transition-all"
-            title="Click to change"
-          >
-            {label}: {value}
-          </button>
-        ))}
-
-      </div>
-
-      {/* Separator line - only show if there are options to display */}
-      {!allOptionsConfirmed && <div className="border-t border-primary/20" />}
-
-      {/* Grid layout for unconfirmed options */}
-      {!allOptionsConfirmed && (
-        <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
-          {gridOptions.map((opt) => {
-            // Skip options that are already confirmed
-            if (confirmedOptions.has(opt.field)) {
-              return null;
-            }
-
-            const value = getFieldValue(design, opt.field);
-
-            if (opt.type === "buttons") {
-              return (
-                <GridButtonGroup
-                  key={opt.key}
-                  label={opt.label}
-                  options={opt.options}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                />
-              );
-            }
-
-            if (opt.type === "select") {
-              if (supportsMtsProductColorSearch(productType, opt.field, optionsJson)) {
-                return (
-                  <ProductColorAutocomplete
-                    key={opt.key}
-                    productType={productType}
-                    field={opt.field}
-                    value={value}
-                    optionsJson={optionsJson}
-                    onSelect={(fabricColor) => handleProductColorSelect(opt.field, fabricColor)}
-                    onClear={() => handleProductColorClear(opt.field)}
-                  />
-                );
-              }
-
-              if (productType === "Roller Shades" && opt.field === "fabric") {
-                return (
-                  <RollerFabricAutocomplete
-                    key={opt.key}
-                    value={value}
-                    optionsJson={optionsJson}
-                    onSelect={handleRollerFabricSelect}
-                    onClear={handleRollerFabricClear}
-                  />
-                );
-              }
-
-              // Use grouped select for fabric collections that need section labels.
-              const fabricGroups = opt.field === "fabric" ? getFabricGroups() : undefined;
-              return (
-                <GridSelect
-                  key={opt.key}
-                  label={opt.label}
-                  options={opt.options}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                  grouped={fabricGroups}
-                />
-              );
-            }
-
-            if (opt.type === "yes-no") {
-              return (
-                <GridYesNo
-                  key={opt.key}
-                  label={opt.label}
-                  value={value}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                  noFirst={opt.noFirst}
-                />
-              );
-            }
-
-            return null;
-          })}
-        </div>
+      {gridOptions.length > 0 && (
+        <OptionSlotRows
+          mandatoryOptions={optionRows.mandatory}
+          optionalOptions={optionRows.optional}
+          renderSlot={renderOptionSlot}
+        />
       )}
 
-      {allOptionsConfirmed && gridOptions.length > 0 && (
+      {gridOptions.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
               aria-expanded={showMoreOptions}
               onClick={() => setShowMoreOptions((value) => !value)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-dashed text-sm transition-all cursor-pointer",
-                showMoreOptions
-                  ? "border-primary/50 bg-accent text-gray-900"
-                  : "border-muted-foreground/40 text-muted-foreground hover:bg-accent"
-              )}
+              className="quote-more-options-button"
             >
               <Lightbulb className="h-3.5 w-3.5" />
               More Options
@@ -4427,7 +4311,7 @@ function ShadesAndBlindsOptions({
       )}
 
       {/* Price input - always show when at least one option is confirmed */}
-      {confirmedOptions.size > 0 && (
+      {hasAnySelectedOption && (
         <div className="pt-2 border-t">
           <div className="flex items-center gap-2">
             <Label className="text-xs text-muted-foreground">Price:</Label>

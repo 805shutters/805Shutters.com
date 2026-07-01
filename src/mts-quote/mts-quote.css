@@ -592,6 +592,182 @@
   padding-bottom: 0;
 }
 
+.mts-quote-scope .quote-option-slots {
+  display: grid;
+  gap: 7px;
+}
+
+.mts-quote-scope .quote-option-slot-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: 7px;
+  align-items: start;
+}
+
+.mts-quote-scope .quote-option-slot-row--optional {
+  padding-top: 1px;
+}
+
+.mts-quote-scope .quote-option-slot {
+  min-width: 0;
+  border: 1px solid #d8d8d2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1c1c1a;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    0 3px 8px rgb(15 35 70 / 0.05);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease;
+}
+
+.mts-quote-scope .quote-option-slot--selected {
+  border-color: #24231f;
+  background: linear-gradient(180deg, #3a3833 0%, #1f1e1b 100%);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 8px 16px rgb(15 35 70 / 0.12);
+}
+
+.mts-quote-scope .quote-option-slot--open {
+  border-color: #0b0b0b;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 9px 18px rgb(15 35 70 / 0.12);
+}
+
+.mts-quote-scope .quote-option-slot--selected.quote-option-slot--open {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 10px 20px rgb(15 35 70 / 0.16);
+}
+
+.mts-quote-scope .quote-option-slot__trigger,
+.mts-quote-scope .quote-option-slot__static {
+  display: flex;
+  width: 100%;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.mts-quote-scope .quote-option-slot__trigger {
+  cursor: pointer;
+}
+
+.mts-quote-scope .quote-option-slot__trigger:hover {
+  color: inherit;
+}
+
+.mts-quote-scope .quote-option-slot__label {
+  min-width: 0;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  opacity: 0.72;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.mts-quote-scope .quote-option-slot:not(.quote-option-slot--selected) .quote-option-slot__trigger .quote-option-slot__label {
+  display: none;
+}
+
+.mts-quote-scope .quote-option-slot__value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.mts-quote-scope .quote-option-slot__icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  opacity: 0.72;
+  transition: transform 160ms ease;
+}
+
+.mts-quote-scope .quote-option-slot--open .quote-option-slot__icon {
+  transform: rotate(180deg);
+}
+
+.mts-quote-scope .quote-option-slot__control,
+.mts-quote-scope .quote-option-slot__inline-control {
+  margin: 0 6px 6px;
+  padding: 6px;
+  border: 1px solid #d8d8d2;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1c1c1a;
+}
+
+.mts-quote-scope .quote-option-slot__inline-control {
+  margin-top: -2px;
+}
+
+.mts-quote-scope .quote-option-slot__control .quote-style-option-field,
+.mts-quote-scope .quote-option-slot__inline-control .quote-style-option-field {
+  width: 100%;
+}
+
+.mts-quote-scope .quote-option-slot__control .quote-style-select,
+.mts-quote-scope .quote-option-slot__control .quote-style-input {
+  width: 100%;
+}
+
+.mts-quote-scope .quote-more-options-button {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px dashed #a9a69e;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #5f5c55;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.mts-quote-scope .quote-more-options-button:hover {
+  border-color: #0b0b0b;
+  background: #f2f1ec;
+  color: #0b0b0b;
+}
+
+.mts-quote-scope .quote-more-options-button[aria-expanded="true"] {
+  border-color: #0b0b0b;
+  background: #1f1e1b;
+  color: #ffffff;
+}
+
 .mts-quote-scope .quote-style-yes-no-group {
   display: inline-flex;
   width: fit-content;
