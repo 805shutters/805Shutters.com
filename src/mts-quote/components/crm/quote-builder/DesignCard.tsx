@@ -1167,6 +1167,7 @@ function OptionSlot({
   requirement,
   isOpen,
   onToggle,
+  renderSelectedDirect = false,
   children,
 }: {
   option: GridOption;
@@ -1174,25 +1175,44 @@ function OptionSlot({
   requirement: OptionSlotRequirement;
   isOpen: boolean;
   onToggle: () => void;
+  renderSelectedDirect?: boolean;
   children: ReactNode;
 }) {
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
   const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
   const isDirectSelect = option.type === "select";
+  const showConfirmedCard = selected && !renderSelectedDirect;
 
   return (
     <div
       className={cn(
         "quote-option-slot",
         selected && "quote-option-slot--selected",
-        isOpen && !isDirectSelect && "quote-option-slot--open",
-        isDirectSelect && "quote-option-slot--select",
-        isInlineChoice && "quote-option-slot--inline-choice",
+        isOpen && (!isDirectSelect || showConfirmedCard) && "quote-option-slot--open",
+        isDirectSelect && !showConfirmedCard && "quote-option-slot--select",
+        isInlineChoice && !showConfirmedCard && "quote-option-slot--inline-choice",
         requirement === "mandatory" ? "quote-option-slot--mandatory" : "quote-option-slot--optional"
       )}
     >
-      {isInlineChoice ? (
+      {showConfirmedCard ? (
+        <>
+          <button
+            type="button"
+            className="quote-option-slot__confirmed"
+            onClick={onToggle}
+            aria-expanded={isOpen}
+            title={`${option.label}: ${value}`}
+          >
+            <span className="quote-option-slot__label">{option.label}</span>
+            <span className="quote-option-slot__confirmed-value">
+              <span>{value}</span>
+              <ChevronDown className="quote-option-slot__icon" aria-hidden="true" />
+            </span>
+          </button>
+          {isOpen && <div className="quote-option-slot__control">{children}</div>}
+        </>
+      ) : isInlineChoice ? (
         <>
           <div className="quote-option-slot__static">
             <span className="quote-option-slot__label">{option.label}</span>
@@ -3119,7 +3139,10 @@ function ShutterDesignOptions({
         value={value}
         hideLabel
         noFirst={opt.noFirst}
-        onChange={(v) => handleUpdate(opt.field, v)}
+        onChange={(v) => {
+          handleUpdate(opt.field, v);
+          setOpenOptionField(null);
+        }}
       />
     );
   };
@@ -3132,6 +3155,7 @@ function ShutterDesignOptions({
       requirement={requirement}
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
+      renderSelectedDirect={opt.type === "select"}
     >
       {renderOptionControl(opt)}
     </OptionSlot>
@@ -4296,8 +4320,14 @@ function ShadesAndBlindsOptions({
             value={value}
             optionsJson={optionsJson}
             hideLabel
-            onSelect={(fabricColor) => handleProductColorSelect(opt.field, fabricColor)}
-            onClear={() => handleProductColorClear(opt.field)}
+            onSelect={(fabricColor) => {
+              handleProductColorSelect(opt.field, fabricColor);
+              setOpenOptionField(null);
+            }}
+            onClear={() => {
+              handleProductColorClear(opt.field);
+              setOpenOptionField(null);
+            }}
           />
         );
       }
@@ -4308,8 +4338,14 @@ function ShadesAndBlindsOptions({
             value={value}
             optionsJson={optionsJson}
             hideLabel
-            onSelect={handleRollerFabricSelect}
-            onClear={handleRollerFabricClear}
+            onSelect={(fabricColor) => {
+              handleRollerFabricSelect(fabricColor);
+              setOpenOptionField(null);
+            }}
+            onClear={() => {
+              handleRollerFabricClear();
+              setOpenOptionField(null);
+            }}
           />
         );
       }
@@ -4336,7 +4372,10 @@ function ShadesAndBlindsOptions({
         value={value}
         noFirst={opt.noFirst}
         hideLabel
-        onChange={(v) => handleUpdate(opt.field, v)}
+        onChange={(v) => {
+          handleUpdate(opt.field, v);
+          setOpenOptionField(null);
+        }}
       />
     );
   };
@@ -4349,6 +4388,11 @@ function ShadesAndBlindsOptions({
       requirement={requirement}
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
+      renderSelectedDirect={
+        opt.type === "select" &&
+        !supportsMtsProductColorSearch(productType, opt.field, optionsJson) &&
+        !(productType === "Roller Shades" && opt.field === "fabric")
+      }
     >
       {renderOptionControl(opt)}
     </OptionSlot>

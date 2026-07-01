@@ -674,6 +674,11 @@
   padding: 7px 10px;
 }
 
+.mts-quote-scope .quote-option-slot--selected.quote-option-slot--select {
+  min-height: 74px;
+  padding: 12px 14px;
+}
+
 .mts-quote-scope .quote-option-slot--select .quote-option-slot__static {
   min-height: 0;
   padding: 0;
@@ -697,6 +702,22 @@
   padding: 0 0 5px;
 }
 
+.mts-quote-scope .quote-option-slot__confirmed {
+  display: flex;
+  width: 100%;
+  min-height: 74px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
 .mts-quote-scope .quote-option-slot__label {
   min-width: 0;
   color: inherit;
@@ -711,8 +732,38 @@
   white-space: nowrap;
 }
 
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__label {
+  color: #d3d0c8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.035em;
+  opacity: 0.86;
+}
+
 .mts-quote-scope .quote-option-slot:not(.quote-option-slot--selected) .quote-option-slot__trigger .quote-option-slot__label {
   display: none;
+}
+
+.mts-quote-scope .quote-option-slot__confirmed-value {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.mts-quote-scope .quote-option-slot__confirmed-value span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mts-quote-scope .quote-option-slot__value {
@@ -767,6 +818,10 @@
   margin-top: 5px;
 }
 
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control {
+  margin-top: 9px;
+}
+
 .mts-quote-scope .quote-option-slot__control .quote-style-option-field,
 .mts-quote-scope .quote-option-slot__inline-control .quote-style-option-field,
 .mts-quote-scope .quote-option-slot__direct-control .quote-style-option-field {
@@ -790,6 +845,22 @@
   font-size: 13px;
   font-weight: 900;
   box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select {
+  min-height: 28px;
+  height: 28px;
+  justify-content: center;
+  gap: 5px;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select svg {
+  color: #d3d0c8;
+  opacity: 0.86;
 }
 
 .mts-quote-scope .quote-option-slot__direct-control .quote-style-select[data-placeholder] {
