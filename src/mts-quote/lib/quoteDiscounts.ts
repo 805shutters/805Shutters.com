@@ -1,6 +1,6 @@
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
-export const QUOTE_DISCOUNT_PERCENTS = [10, 20] as const;
+export const QUOTE_DISCOUNT_PERCENTS = [5, 10, 15, 20] as const;
 export type QuoteDiscountPercent = (typeof QUOTE_DISCOUNT_PERCENTS)[number];
 
 function roundCurrency(value: number): number {
@@ -63,10 +63,6 @@ export function applyQuoteDesignDiscount(
 } {
   const options = design.options_json || {};
   const sourcePrice = getQuoteDesignDiscountSourcePrice(design);
-
-  if (Number(options.discount_percent) === discountPercent) {
-    return removeQuoteDesignDiscount(design);
-  }
 
   const { discountAmount, unitPrice } = calculateDiscountedPrice(sourcePrice, discountPercent);
 

@@ -20,7 +20,6 @@ import {
   FileText,
   Lightbulb,
   Lock,
-  Percent,
   Plus,
   Ruler,
   Search,
@@ -140,7 +139,11 @@ import {
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
-import { calculateDiscountedPrice, removeQuoteDesignDiscount } from "@mts/lib/quoteDiscounts";
+import {
+  calculateDiscountedPrice,
+  removeQuoteDesignDiscount,
+  type QuoteDiscountPercent,
+} from "@mts/lib/quoteDiscounts";
 import { getAutomaticShutterOptionSurcharges } from "@mts/lib/shutterOptionSurcharges";
 import {
   FAUX_WOOD_SURCHARGES,
@@ -177,9 +180,9 @@ interface DesignCardProps {
   isCopyTarget: boolean;
   isSelectedTarget: boolean;
   onToggleCopyTarget: () => void;
-  isDiscountTarget?: boolean;
-  isDiscountSelected?: boolean;
-  onToggleDiscountTarget?: () => void;
+  discountPercents?: readonly QuoteDiscountPercent[];
+  onApplyDiscount?: (percent: QuoteDiscountPercent) => void;
+  isDiscountPending?: boolean;
   isPriceLocked?: boolean;
   onOpenMeasurement?: () => void;
   onDelete?: () => void;
@@ -2083,9 +2086,9 @@ export function DesignCard({
   isCopyTarget,
   isSelectedTarget,
   onToggleCopyTarget,
-  isDiscountTarget = false,
-  isDiscountSelected = false,
-  onToggleDiscountTarget,
+  discountPercents = [],
+  onApplyDiscount,
+  isDiscountPending = false,
   isPriceLocked = false,
   onOpenMeasurement,
   onDelete,
@@ -2520,9 +2523,7 @@ export function DesignCard({
       className={cn(
         "overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white text-foreground shadow-[0_24px_70px_rgba(15,35,70,0.10)] transition-all",
         isCopyTarget && "ring-2 ring-blue-300/30",
-        isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50",
-        isDiscountTarget && "ring-2 ring-emerald-300/40",
-        isDiscountSelected && "ring-2 ring-emerald-500 bg-emerald-50"
+        isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50"
       )}
     >
       <CardHeader className="border-b border-slate-200/70 bg-gradient-to-br from-white via-slate-50 to-[#f3f3f0] pb-4">
@@ -2533,13 +2534,6 @@ export function DesignCard({
                 aria-label={`Copy design to ${lineItem.room_name}`}
                 checked={isSelectedTarget}
                 onCheckedChange={onToggleCopyTarget}
-              />
-            )}
-            {isDiscountTarget && (
-              <Checkbox
-                aria-label={`Select ${lineItem.room_name} for discount`}
-                checked={isDiscountSelected}
-                onCheckedChange={onToggleDiscountTarget}
               />
             )}
             <div className="flex items-baseline gap-4">
@@ -2635,17 +2629,39 @@ export function DesignCard({
                 <div className="text-xs text-muted-foreground">excl. tax</div>
               </div>
             </div>
-            {hasDiscount && (
-              <button
-                type="button"
-                onClick={handleRemoveDiscount}
-                aria-label={`Remove ${discountPercent}% discount from ${lineItem.room_name}`}
-                title="Remove this line item discount"
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100"
+            {onApplyDiscount && discountPercents.length > 0 && (
+              <Select
+                value={hasDiscount ? String(discountPercent) : "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    handleRemoveDiscount();
+                    return;
+                  }
+                  onApplyDiscount(Number(value) as QuoteDiscountPercent);
+                }}
+                disabled={isDiscountPending || !currentDesign}
               >
-                <Percent className="h-3.5 w-3.5" />
-                {discountPercent}% off
-              </button>
+                <SelectTrigger
+                  aria-label={`Discount for ${lineItem.room_name}`}
+                  className={cn(
+                    "h-8 w-[130px] rounded-full border text-xs font-bold",
+                    hasDiscount
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                      : "border-slate-200 bg-white text-slate-600"
+                  )}
+                  title={currentDesign ? "Apply a line item discount" : "Save line item details first"}
+                >
+                  <SelectValue placeholder="Discount" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No discount</SelectItem>
+                  {discountPercents.map((percent) => (
+                    <SelectItem key={percent} value={String(percent)}>
+                      {percent}% off
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             {onCopyItem && (
               <Button variant="ghost" size="icon" onClick={onCopyItem} title="Copy line item">

@@ -291,8 +291,6 @@ export function QuoteBuilder() {
   const [showPaymentDialog, setShowPaymentDialog] = useState<"deposit" | "balance" | null>(null);
   const [copiedCopyTargets, setCopiedCopyTargets] = useState<string[]>([]);
   const [copyAllTargetsBySource, setCopyAllTargetsBySource] = useState<Record<string, string[]>>({});
-  const [discountMode, setDiscountMode] = useState<"all" | "selected">("all");
-  const [selectedDiscountLineIds, setSelectedDiscountLineIds] = useState<string[]>([]);
   const [stackedLineItemIds, setStackedLineItemIds] = useState<string[]>([]);
   const [quoteNoteDraft, setQuoteNoteDraft] = useState("");
 
@@ -751,7 +749,6 @@ export function QuoteBuilder() {
       return {
         count: targetDesigns.length,
         rows: discountedRows,
-        removedCount: discountedRows.filter((row) => !row.options_json.discount_percent).length,
       };
     },
     onMutate: async ({ percent, lineItemIds: targetLineItemIds }) => {
@@ -783,9 +780,8 @@ export function QuoteBuilder() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
-      const action = result.removedCount === result.count ? "removed from" : "applied to";
       toast.success(
-        `${variables.percent}% discount ${action} ${result.count} design${
+        `${variables.percent}% discount applied to ${result.count} design${
           result.count === 1 ? "" : "s"
         }`
       );
@@ -895,24 +891,19 @@ export function QuoteBuilder() {
     saveStackedLineItemIds(stackedLineItemIds.filter((id) => id !== lineItemId));
   };
 
-  const toggleDiscountTarget = (lineItemId: string) => {
-    setSelectedDiscountLineIds((current) =>
-      current.includes(lineItemId)
-        ? current.filter((id) => id !== lineItemId)
-        : [...current, lineItemId]
-    );
-  };
-
-  const handleApplyDiscount = (percent: QuoteDiscountPercent) => {
-    const targetLineItemIds =
-      discountMode === "all" ? lineItems.map((item) => item.id) : selectedDiscountLineIds;
+  const handleApplyProjectDiscount = (percent: QuoteDiscountPercent) => {
+    const targetLineItemIds = lineItems.map((item) => item.id);
 
     if (targetLineItemIds.length === 0) {
-      toast.error("Select at least one line item for the discount.");
+      toast.error("Add at least one line item before applying a project discount.");
       return;
     }
 
     applyDiscount.mutate({ percent, lineItemIds: targetLineItemIds });
+  };
+
+  const handleApplyLineItemDiscount = (lineItemId: string, percent: QuoteDiscountPercent) => {
+    applyDiscount.mutate({ percent, lineItemIds: [lineItemId] });
   };
 
   const isSavingQuote =
@@ -1151,6 +1142,27 @@ export function QuoteBuilder() {
             <div className="quote-command-tabs mt-3 border-t border-[#d8d8d2] pt-3">
               <QuoteGroupTabs />
             </div>
+            <div className="quote-command-project-discounts mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#d8d8d2] pt-3">
+              <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800">
+                <Percent className="h-4 w-4" />
+                Project Discount
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {QUOTE_DISCOUNT_PERCENTS.map((percent) => (
+                  <Button
+                    key={percent}
+                    type="button"
+                    size="sm"
+                    onClick={() => handleApplyProjectDiscount(percent)}
+                    disabled={applyDiscount.isPending}
+                    className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                    title={`Apply ${percent}% discount to the entire order`}
+                  >
+                    {percent}% off
+                  </Button>
+                ))}
+              </div>
+            </div>
             {quote && (
               <div className="quote-command-note mt-3 rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-3">
@@ -1215,52 +1227,6 @@ export function QuoteBuilder() {
       </div>
 
       <div className="quote-builder-scroll-flow space-y-3">
-        {/* Discount Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-white/90 p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-emerald-800">
-            <Percent className="h-4 w-4" />
-            Discount
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant={discountMode === "all" ? "default" : "outline"}
-            onClick={() => setDiscountMode("all")}
-            className="rounded-xl"
-          >
-            All lines
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={discountMode === "selected" ? "default" : "outline"}
-            onClick={() => setDiscountMode("selected")}
-            className="rounded-xl"
-          >
-            Select lines
-          </Button>
-          {discountMode === "selected" && (
-            <span className="text-sm font-medium text-muted-foreground">
-              {selectedDiscountLineIds.length} selected
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {QUOTE_DISCOUNT_PERCENTS.map((percent) => (
-            <Button
-              key={percent}
-              type="button"
-              onClick={() => handleApplyDiscount(percent)}
-              disabled={applyDiscount.isPending}
-              className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {percent}% off
-            </Button>
-          ))}
-        </div>
-        </div>
-
         <div
           className={cn(
             "inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.16em]",
@@ -1331,9 +1297,9 @@ export function QuoteBuilder() {
                   isCopyTarget={isMatchingCopyTarget}
                   isSelectedTarget={copiedCopyTargets.includes(item.id)}
                   onToggleCopyTarget={() => handleCopySomeTarget(item.id)}
-                  isDiscountTarget={discountMode === "selected"}
-                  isDiscountSelected={selectedDiscountLineIds.includes(item.id)}
-                  onToggleDiscountTarget={() => toggleDiscountTarget(item.id)}
+                  discountPercents={QUOTE_DISCOUNT_PERCENTS}
+                  onApplyDiscount={(percent) => handleApplyLineItemDiscount(item.id, percent)}
+                  isDiscountPending={applyDiscount.isPending}
                   isPriceLocked={isActiveQuotePriceLocked}
                   onOpenMeasurement={() => handleOpenMeasurement(item.id)}
                   onDelete={() => deleteLineItem.mutate(item.id)}
