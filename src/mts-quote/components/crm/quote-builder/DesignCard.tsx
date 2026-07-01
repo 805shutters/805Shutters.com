@@ -1086,6 +1086,12 @@ const OPTIONAL_SHUTTER_DETAIL_FIELDS = new Set([
   "json:t_post",
   "json:astragal",
 ]);
+const ROLLER_MORE_OPTION_FIELDS = new Set([
+  "json:light_guard_rails",
+  "json:roll_type",
+  "json:premium_hardware",
+  "json:premium_hardware_color",
+]);
 
 function getShutterMandatoryFields(options: GridOption[]): string[] {
   return options
@@ -1308,18 +1314,19 @@ function ConfirmedOptionStrip({
   editingField: string | null;
   onEdit: (field: string) => void;
 }) {
-  if (items.length === 0) return null;
+  const visibleItems = editingField
+    ? items.filter(({ option }) => option.field !== editingField)
+    : items;
+
+  if (visibleItems.length === 0) return null;
 
   return (
     <div className="quote-confirmed-options-strip" aria-label="Selected line item options">
-      {items.map(({ option, value }) => (
+      {visibleItems.map(({ option, value }) => (
         <button
           key={option.key}
           type="button"
-          className={cn(
-            "quote-confirmed-option-chip",
-            editingField === option.field && "quote-confirmed-option-chip--editing"
-          )}
+          className="quote-confirmed-option-chip"
           onClick={() => onEdit(option.field)}
           title={`${option.label}: ${value}`}
         >
@@ -4356,14 +4363,21 @@ function ShadesAndBlindsOptions({
     return undefined;
   };
 
+  const mainGridOptions =
+    productType === "Roller Shades"
+      ? gridOptions.filter((option) => !ROLLER_MORE_OPTION_FIELDS.has(option.field))
+      : gridOptions;
+  const moreGridOptions =
+    productType === "Roller Shades"
+      ? gridOptions.filter((option) => ROLLER_MORE_OPTION_FIELDS.has(option.field))
+      : [];
   const optionRows = partitionOptionSlots(
-    gridOptions,
+    mainGridOptions,
     getShadeMandatoryFields(productType, gridOptions)
   );
-  const confirmedOptions = getConfirmedOptionItems(design, [
-    ...optionRows.mandatory,
-    ...optionRows.optional,
-  ]);
+  const moreOptionRows = partitionOptionSlots(moreGridOptions, []);
+  const moreEditableOptionRows = getEditableOptionRows(moreOptionRows, design, openOptionField);
+  const confirmedOptions = getConfirmedOptionItems(design, gridOptions);
   const editableOptionRows = getEditableOptionRows(optionRows, design, openOptionField);
   const hasAnySelectedOption = gridOptions.some((option) =>
     hasOptionValue(getFieldValue(design, option.field))
@@ -4479,7 +4493,10 @@ function ShadesAndBlindsOptions({
       <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
-        onEdit={(field) => setOpenOptionField(field)}
+        onEdit={(field) => {
+          if (ROLLER_MORE_OPTION_FIELDS.has(field)) setShowMoreOptions(true);
+          setOpenOptionField(field);
+        }}
       />
 
       {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
@@ -4505,16 +4522,27 @@ function ShadesAndBlindsOptions({
           </div>
 
           {showMoreOptions && (
-            <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
-              {INSTALL_MORE_OPTIONS.map((opt) => (
-                <GridYesNo
-                  key={opt.key}
-                  label={opt.label}
-                  value={getFieldValue(design, opt.field)}
-                  onChange={(v) => handleUpdate(opt.field, v)}
-                  noFirst={opt.noFirst}
-                />
-              ))}
+            <div className="space-y-2">
+              {moreGridOptions.length > 0 &&
+                (moreEditableOptionRows.mandatory.length > 0 ||
+                  moreEditableOptionRows.optional.length > 0) && (
+                  <OptionSlotRows
+                    mandatoryOptions={moreEditableOptionRows.mandatory}
+                    optionalOptions={moreEditableOptionRows.optional}
+                    renderSlot={renderOptionSlot}
+                  />
+                )}
+              <div className="quote-style-option-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-2">
+                {INSTALL_MORE_OPTIONS.map((opt) => (
+                  <GridYesNo
+                    key={opt.key}
+                    label={opt.label}
+                    value={getFieldValue(design, opt.field)}
+                    onChange={(v) => handleUpdate(opt.field, v)}
+                    noFirst={opt.noFirst}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>

@@ -382,9 +382,9 @@ describe("buildDashboardData", () => {
     const data = buildDashboardData({
       jobs: [
         job({ id: "quoted-lead", status: "quoted", customer_name: "Quoted Lead" }),
-        job({ id: "sold-open", status: "sold", customer_name: "Sold Open" }),
-        job({ id: "paid-status", status: "closed", customer_name: "Paid Status" }),
-        job({ id: "paid-balance", status: "sold", customer_name: "Paid Balance" }),
+        job({ id: "sold-open", status: "sold", customer_name: "Sold Open", estimated_total: 1000 }),
+        job({ id: "paid-status", status: "closed", customer_name: "Paid Status", estimated_total: 1000 }),
+        job({ id: "paid-balance", status: "sold", customer_name: "Paid Balance", estimated_total: 1000 }),
         job({ id: "duplicate-open", status: "ordered", customer_name: "Duplicate Open" })
       ],
       quotes: [
@@ -420,6 +420,10 @@ describe("buildDashboardData", () => {
     expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.latestStatus).toBe("closed");
     expect(data.customerFiles.find((file) => file.customerName === "Paid Status")?.latestStatus).toBe("invoiced");
     expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.latestStatus).toBe("sold");
+    expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.lifetimeValue).toBe(1000);
+    expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.openBalance).toBe(1000);
+    expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.lifetimeValue).toBe(1000);
+    expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.openBalance).toBe(0);
   });
 });
 

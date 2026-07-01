@@ -105,8 +105,11 @@ export function buildCustomerFiles({
     file.address ||= job.address;
     file.city ||= job.city;
     file.latestStatus ||= job.status;
-    file.openBalance += Math.max(0, Number(job.estimated_total || 0) - Number(job.deposit_paid || 0));
-    file.lifetimeValue += Number(job.estimated_total) || 0;
+    const hasLedgerRowForJob = file.bookkeepingRows.some((row) => row.jobId === job.id);
+    if (!hasLedgerRowForJob) {
+      file.openBalance += Math.max(0, Number(job.estimated_total || 0) - Number(job.deposit_paid || 0));
+      file.lifetimeValue += Number(job.estimated_total) || 0;
+    }
     file.latestSoldDate = newestDate(file.latestSoldDate, job.appointment_start || job.created_at);
     if (job.notes) file.notes.push(job.notes);
   }
