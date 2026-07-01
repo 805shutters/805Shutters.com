@@ -675,11 +675,16 @@
 }
 
 .mts-quote-scope .quote-option-slot--selected.quote-option-slot--select {
-  min-height: 74px;
-  padding: 12px 14px;
+  display: grid;
+  min-height: 24px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  padding: 3px 8px;
 }
 
 .mts-quote-scope .quote-option-slot--select .quote-option-slot__static {
+  width: auto;
   min-height: 0;
   padding: 0;
 }
@@ -705,12 +710,11 @@
 .mts-quote-scope .quote-option-slot__confirmed {
   display: flex;
   width: 100%;
-  min-height: 74px;
-  flex-direction: column;
-  align-items: stretch;
+  min-height: 24px;
+  align-items: center;
   justify-content: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 3px 8px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -734,9 +738,9 @@
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__label {
   color: #d3d0c8;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 900;
-  letter-spacing: 0.035em;
+  letter-spacing: 0.04em;
   opacity: 0.86;
 }
 
@@ -749,14 +753,14 @@
   min-width: 0;
   flex: 1 1 auto;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 5px;
   color: #ffffff;
-  font-size: 17px;
+  font-size: 12px;
   font-weight: 850;
   letter-spacing: 0;
-  line-height: 1.15;
-  text-align: center;
+  line-height: 1;
+  text-align: left;
 }
 
 .mts-quote-scope .quote-option-slot__confirmed-value span {
@@ -819,7 +823,8 @@
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control {
-  margin-top: 9px;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .mts-quote-scope .quote-option-slot__control .quote-style-option-field,
@@ -848,14 +853,14 @@
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select {
-  min-height: 28px;
-  height: 28px;
-  justify-content: center;
+  min-height: 18px;
+  height: 18px;
+  justify-content: flex-start;
   gap: 5px;
   color: #ffffff;
-  font-size: 17px;
-  line-height: 1.15;
-  text-align: center;
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select svg {
@@ -1015,12 +1020,12 @@
 
 .mts-quote-scope .quote-confirmed-option-chip {
   display: inline-grid;
-  min-height: 32px;
+  min-height: 22px;
   max-width: 280px;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
-  padding: 5px 9px;
+  gap: 6px;
+  padding: 2px 7px;
   border: 1px solid #2f2d28;
   border-radius: 8px;
   background: linear-gradient(180deg, #3a3833 0%, #1f1e1b 100%);
@@ -1047,7 +1052,7 @@
 
 .mts-quote-scope .quote-confirmed-option-chip__label {
   color: #d3d0c8;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 900;
   letter-spacing: 0.045em;
   line-height: 1;
@@ -1059,7 +1064,7 @@
   min-width: 0;
   overflow: hidden;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 850;
   letter-spacing: 0;
   line-height: 1.05;
