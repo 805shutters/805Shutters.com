@@ -600,9 +600,10 @@
 
 .mts-quote-scope .quote-option-slot-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
-  gap: 7px;
+  grid-template-columns: repeat(auto-fill, minmax(142px, 220px));
+  gap: 6px;
   align-items: start;
+  justify-content: start;
 }
 
 .mts-quote-scope .quote-option-slot-row--optional {
@@ -651,11 +652,11 @@
 .mts-quote-scope .quote-option-slot__static {
   display: flex;
   width: 100%;
-  min-height: 38px;
+  min-height: 24px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -671,7 +672,7 @@
 }
 
 .mts-quote-scope .quote-option-slot--select {
-  padding: 7px 10px;
+  padding: 4px 8px;
 }
 
 .mts-quote-scope .quote-option-slot--selected.quote-option-slot--select {
@@ -725,7 +726,7 @@
 .mts-quote-scope .quote-option-slot__label {
   min-width: 0;
   color: inherit;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 850;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -819,7 +820,7 @@
 }
 
 .mts-quote-scope .quote-option-slot__direct-control {
-  margin-top: 5px;
+  margin-top: 2px;
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control {
@@ -840,14 +841,14 @@
 }
 
 .mts-quote-scope .quote-option-slot__direct-control .quote-style-select {
-  min-height: 24px;
-  height: 24px;
+  min-height: 20px;
+  height: 20px;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
   box-shadow: none;
 }
