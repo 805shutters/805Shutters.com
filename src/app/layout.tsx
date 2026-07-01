@@ -9,6 +9,7 @@ import { RouteTracking } from "@/components/RouteTracking";
 import { TrackingScripts } from "@/components/TrackingScripts";
 import { VisitorTelegramTracking } from "@/components/VisitorTelegramTracking";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
+import { absoluteUrl, machineReadableFeeds } from "@/lib/ai-search-data";
 import { site } from "@/lib/site-data";
 import { localBusinessJsonLd } from "@/lib/structured-data";
 
@@ -76,6 +77,18 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${bodoniModa.variable} ${theanoDidot.variable} ${archivo.variable}`}>
+      <head>
+        {machineReadableFeeds.map((feed) => (
+          <link
+            key={feed.href}
+            rel="alternate"
+            type={feed.contentType}
+            title={feed.label}
+            href={absoluteUrl(feed.href)}
+          />
+        ))}
+        <meta name="ai-search-feeds" content={machineReadableFeeds.map((feed) => absoluteUrl(feed.href)).join(",")} />
+      </head>
       <body>
         <TrackingScripts />
         <RouteTracking />

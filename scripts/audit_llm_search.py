@@ -69,6 +69,13 @@ REQUIRED_ANSWER_FEED_KEYS = [
     "answers",
 ]
 
+REQUIRED_MACHINE_FEED_PATHS = {
+    "/llms.txt",
+    "/ai-search-feed.json",
+    "/answers.json",
+    "/ai-site-index.json",
+}
+
 REQUIRED_SITE_INDEX_KEYS = [
     "schemaVersion",
     "publisher",
@@ -169,6 +176,27 @@ class HtmlAuditParser(HTMLParser):
             self.text_parts.append(text)
 
 
+class FeedDiscoveryParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.alternate_paths: set[str] = set()
+        self.meta_feed_paths: set[str] = set()
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr_map = {key.lower(): value or "" for key, value in attrs}
+        tag = tag.lower()
+        if tag == "link":
+            rel_values = {value.lower() for value in attr_map.get("rel", "").split()}
+            href = attr_map.get("href", "")
+            if "alternate" in rel_values and href:
+                self.alternate_paths.add(urlparse(href).path or "/")
+        if tag == "meta" and attr_map.get("name", "").lower() == "ai-search-feeds":
+            for raw_url in attr_map.get("content", "").split(","):
+                feed_path = urlparse(raw_url.strip()).path
+                if feed_path:
+                    self.meta_feed_paths.add(feed_path)
+
+
 def fetch(url: str) -> tuple[int, str, str]:
     request = Request(
         url,
@@ -207,6 +235,36 @@ def internal_markdown_paths(markdown: str, allowed_hosts: set[str]) -> set[str]:
 
 def sitemap_paths(xml: str) -> set[str]:
     return {urlparse(loc).path or "/" for loc in re.findall(r"<loc>(.*?)</loc>", xml)}
+
+
+def audit_html_feed_discovery(base_url: str) -> dict[str, object]:
+    status, content_type, body = fetch(f"{base_url}/")
+    flags: list[str] = []
+
+    if status != 200:
+        flags.append(f"status_{status}")
+    if "text/html" not in content_type:
+        flags.append("unexpected_content_type")
+
+    parser = FeedDiscoveryParser()
+    parser.feed(body)
+
+    missing_alternates = sorted(REQUIRED_MACHINE_FEED_PATHS - parser.alternate_paths)
+    missing_meta_feeds = sorted(REQUIRED_MACHINE_FEED_PATHS - parser.meta_feed_paths)
+    if missing_alternates:
+        flags.append(f"missing_alternate_feed_links:{len(missing_alternates)}")
+    if missing_meta_feeds:
+        flags.append(f"missing_meta_feed_links:{len(missing_meta_feeds)}")
+
+    return {
+        "status": status,
+        "content_type": content_type,
+        "flags": flags,
+        "alternate_feed_count": len(parser.alternate_paths & REQUIRED_MACHINE_FEED_PATHS),
+        "meta_feed_count": len(parser.meta_feed_paths & REQUIRED_MACHINE_FEED_PATHS),
+        "missing_alternate_feeds": missing_alternates,
+        "missing_meta_feeds": missing_meta_feeds,
+    }
 
 
 def audit_ai_feed(base_url: str) -> dict[str, object]:
@@ -479,6 +537,7 @@ def build_report(payload: dict) -> str:
             ["Check", "Status", "Details"],
             [
                 ["robots.txt", payload["robots"]["status"], ", ".join(payload["robots"]["flags"]) or "clean"],
+                ["HTML feed discovery", payload["feed_discovery"]["status"], ", ".join(payload["feed_discovery"]["flags"]) or "clean"],
                 ["llms.txt", payload["llms"]["status"], ", ".join(payload["llms"]["flags"]) or "clean"],
                 ["ai-search-feed.json", payload["ai_feed"]["status"], ", ".join(payload["ai_feed"]["flags"]) or "clean"],
                 ["answers.json", payload["answer_feed"]["status"], ", ".join(payload["answer_feed"]["flags"]) or "clean"],
@@ -506,6 +565,8 @@ def build_report(payload: dict) -> str:
         "## LLM Citation Surface",
         "",
         f"- Internal links in llms.txt: {payload['llms']['internal_link_count']}",
+        f"- HTML alternate feed links: {payload['feed_discovery']['alternate_feed_count']}",
+        f"- HTML meta feed links: {payload['feed_discovery']['meta_feed_count']}",
         f"- AI feed citation targets: {payload['ai_feed']['citation_target_count']}",
         f"- AI feed answer pages: {payload['ai_feed']['answer_page_count']}",
         f"- AI feed service pages: {payload['ai_feed']['service_page_count']}",
@@ -534,6 +595,7 @@ def main() -> int:
     generated_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     robots_status, _robots_type, robots_body = fetch(f"{base_url}/robots.txt")
+    feed_discovery = audit_html_feed_discovery(base_url)
     llms_status, llms_type, llms_body = fetch(f"{base_url}/llms.txt")
     ai_feed = audit_ai_feed(base_url)
     answer_feed = audit_answer_feed(base_url)
@@ -552,7 +614,7 @@ def main() -> int:
     sitemap_path_set = sitemap_paths(sitemap_body)
     sitemap_flags = []
 
-    non_html_required_paths = {"/llms.txt", "/ai-search-feed.json", "/answers.json", "/ai-site-index.json"}
+    non_html_required_paths = REQUIRED_MACHINE_FEED_PATHS
     missing_llms_paths = sorted(path for path in required_paths if path != "/llms.txt" and path not in llms_paths)
     missing_sitemap_paths = sorted(path for path in required_paths if path not in non_html_required_paths and path not in sitemap_path_set)
     if missing_llms_paths:
@@ -564,6 +626,7 @@ def main() -> int:
     page_issue_count = sum(len(page.flags) for page in pages)
     access_issue_count = (
         len(robots_flags)
+        + len(feed_discovery["flags"])
         + len(llms_flags)
         + len(ai_feed["flags"])
         + len(answer_feed["flags"])
@@ -581,6 +644,7 @@ def main() -> int:
             "status": robots_status,
             "flags": robots_flags,
         },
+        "feed_discovery": feed_discovery,
         "llms": {
             "status": llms_status,
             "content_type": llms_type,
