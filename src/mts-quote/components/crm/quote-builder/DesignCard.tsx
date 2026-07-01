@@ -1221,7 +1221,7 @@ function SurchargePicker({
         className="quote-line-action-button quote-line-action-button--dashed"
         disabled={available.length === 0}
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-3 w-3" />
         Add Surcharge
       </Button>
 
@@ -2695,7 +2695,7 @@ export function DesignCard({
             onClick={onCopyAll}
             className="quote-line-action-button"
           >
-            <Copy className="h-3.5 w-3.5" />
+            <Copy className="h-3 w-3" />
             All lines
           </Button>
           <Button
@@ -2704,7 +2704,7 @@ export function DesignCard({
             onClick={onCopySome}
             className="quote-line-action-button"
           >
-            <CopyCheck className="h-3.5 w-3.5" />
+            <CopyCheck className="h-3 w-3" />
             Some
           </Button>
           <Button
@@ -2713,7 +2713,7 @@ export function DesignCard({
             onClick={() => setShowLineNote((value) => !value)}
             className="quote-line-action-button"
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText className="h-3 w-3" />
             Add Note
           </Button>
           <SurchargePicker
@@ -2727,7 +2727,7 @@ export function DesignCard({
             onClick={onStack}
             className="quote-line-action-button quote-line-action-button--stack"
           >
-            <Archive className="h-3.5 w-3.5" />
+            <Archive className="h-3 w-3" />
             Stack
           </Button>
         </div>
