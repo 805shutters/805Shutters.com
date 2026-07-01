@@ -1018,7 +1018,7 @@ function ProductTypeSwitcher({
 
   if (!onChangeProductType) {
     return (
-      <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium cursor-default">
+      <span className="quote-line-product-type-badge quote-line-product-type-badge--static">
         {productType}
       </span>
     );
@@ -1029,7 +1029,7 @@ function ProductTypeSwitcher({
       <button
         type="button"
         onClick={() => setIsEditing(true)}
-        className="inline-flex items-center px-3 py-1 rounded-full bg-blue-600 text-white text-xs font-medium cursor-pointer hover:bg-blue-700 transition-colors"
+        className="quote-line-product-type-badge"
         title="Change product type for this line item"
       >
         {productType}
@@ -1038,7 +1038,7 @@ function ProductTypeSwitcher({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Select line item product type">
+    <div className="quote-line-product-type-menu flex flex-wrap items-center gap-2" aria-label="Select line item product type">
       {PRODUCT_TYPES.filter((type) => type !== productType).map((type) => (
         <button
           key={type}
@@ -1047,7 +1047,7 @@ function ProductTypeSwitcher({
             onChangeProductType(type);
             setIsEditing(false);
           }}
-          className="inline-flex items-center px-3 py-1 rounded-full border border-slate-200 bg-white text-slate-900 text-xs font-medium hover:border-blue-400 hover:bg-blue-50 transition-colors"
+          className="quote-line-product-type-choice"
         >
           {type}
         </button>
@@ -1055,7 +1055,7 @@ function ProductTypeSwitcher({
       <button
         type="button"
         onClick={() => setIsEditing(false)}
-        className="inline-flex items-center px-2 py-1 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
+        className="quote-line-product-type-cancel"
         aria-label="Cancel product type change"
       >
         <X className="h-3.5 w-3.5" />
