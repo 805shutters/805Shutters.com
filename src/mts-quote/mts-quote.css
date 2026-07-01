@@ -354,7 +354,7 @@
 .mts-quote-scope .quote-add-card:nth-child(2) {
   border-top: 0;
   border-radius: 0 0 14px 14px;
-  background: linear-gradient(180deg, #3d3b37 0%, #1f1e1c 100%);
+  background: #ffffff;
 }
 
 .mts-quote-scope .quote-add-button-row {
@@ -398,10 +398,10 @@
 }
 
 .mts-quote-scope .quote-room-option {
-  border-color: rgb(255 255 255 / 0.22);
-  background: rgb(255 255 255 / 0.08);
+  border-color: rgb(255 255 255 / 0.18);
+  background: linear-gradient(180deg, #3d3b37 0%, #1f1e1c 100%);
   color: #ffffff;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 3px 8px rgb(0 0 0 / 0.16);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 8px rgb(0 0 0 / 0.16);
 }
 
 .mts-quote-scope .quote-room-option:hover {
@@ -413,8 +413,8 @@
 
 .mts-quote-scope .quote-room-option:disabled,
 .mts-quote-scope .quote-room-option[disabled] {
-  border-color: rgb(255 255 255 / 0.16);
-  background: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.18);
+  background: linear-gradient(180deg, #3d3b37 0%, #1f1e1c 100%);
   color: #ffffff;
   opacity: 1;
 }
@@ -427,10 +427,10 @@
 
 .mts-quote-scope .quote-room-option:disabled:hover,
 .mts-quote-scope .quote-room-option[disabled]:hover {
-  border-color: rgb(255 255 255 / 0.16);
-  background: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.18);
+  background: linear-gradient(180deg, #3d3b37 0%, #1f1e1c 100%);
   color: #ffffff;
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 3px 8px rgb(0 0 0 / 0.16);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 3px 8px rgb(0 0 0 / 0.16);
 }
 
 .mts-quote-scope .quote-count-badge {

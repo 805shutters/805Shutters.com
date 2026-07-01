@@ -164,7 +164,6 @@ import {
   type Surcharge,
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
-import { parseQuoteOptionText } from "@mts/lib/quoteOptionParser";
 
 interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
@@ -1237,67 +1236,6 @@ function SurchargePicker({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SmartOptionInput({
-  productType,
-  design,
-  onUpdateFields,
-}: {
-  productType: string;
-  design: SalesQuoteDesign | undefined;
-  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
-}) {
-  const [draft, setDraft] = useState("");
-  const [matches, setMatches] = useState<string[]>([]);
-
-  const apply = () => {
-    const result = parseQuoteOptionText(productType, draft);
-    setMatches(result.matches);
-    if (result.matches.length === 0) return;
-
-    const { options_json: parsedOptions, ...directFields } = result.patch;
-    const currentOptions = (design?.options_json as Record<string, unknown>) || {};
-    onUpdateFields({
-      ...directFields,
-      options_json: {
-        ...currentOptions,
-        ...(parsedOptions || {}),
-      },
-    });
-  };
-
-  return (
-    <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Lightbulb className="h-4 w-4 text-blue-700" />
-        <Input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") apply();
-          }}
-          placeholder="Type options, e.g. 3/4 Primrose cordless"
-          className="h-9 min-w-72 flex-1 bg-white text-sm"
-        />
-        <Button type="button" size="sm" onClick={apply} disabled={!draft.trim()}>
-          Apply options
-        </Button>
-      </div>
-      {matches.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {matches.map((match) => (
-            <span
-              key={match}
-              className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-800"
-            >
-              {match}
-            </span>
-          ))}
         </div>
       )}
     </div>
@@ -3000,11 +2938,6 @@ function ShutterDesignOptions({
         />
       )}
 
-      <SmartOptionInput
-        productType={productType}
-        design={workingDesign}
-        onUpdateFields={onUpdateFields}
-      />
       <SurchargePicker productType={productType} design={workingDesign} onUpdate={onUpdate} />
 
       {/* Separator line - only show if there are options to display */}
@@ -4398,7 +4331,6 @@ function ShadesAndBlindsOptions({
         />
       )}
 
-      <SmartOptionInput productType={productType} design={design} onUpdateFields={onUpdateFields} />
       <SurchargePicker productType={productType} design={design} onUpdate={onUpdate} />
 
       {/* Separator line - only show if there are options to display */}
