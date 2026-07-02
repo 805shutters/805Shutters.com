@@ -219,9 +219,16 @@ export function getMtsGridKeyForCatalogProgram(
     if (programId.includes("fabric_price_group_1")) return "group1";
     if (programId.includes("fabric_price_group_2")) return "group2";
     if (programId.includes("fabric_price_group_3")) return "group3";
-    if (programId.includes("solar_price_group_1")) return "solarCordlessGroup1";
-    if (programId.includes("solar_price_group_2")) return "solarCordlessGroup2";
-    if (programId.includes("solar_price_group_3")) return "solarCordlessGroup3";
+    // Catalog ids use "solar_screen_price_group_N"; accept both spellings.
+    if (programId.includes("solar_screen_price_group_1") || programId.includes("solar_price_group_1")) {
+      return "solarCordlessGroup1";
+    }
+    if (programId.includes("solar_screen_price_group_2") || programId.includes("solar_price_group_2")) {
+      return "solarCordlessGroup2";
+    }
+    if (programId.includes("solar_screen_price_group_3") || programId.includes("solar_price_group_3")) {
+      return "solarCordlessGroup3";
+    }
     return PRODUCT_COLOR_UNKNOWN_GRID;
   }
 

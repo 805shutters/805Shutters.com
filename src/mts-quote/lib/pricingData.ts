@@ -382,6 +382,7 @@ export const ROLLER_PRICING: Record<string, PriceGrid> = {
     ],
   },
   solarCordlessGroup1: {
+    // July 2026 retail guide — Soluna cordless solar screen
     name: "Cordless Solar Screen - Group 1",
     fabrics: [
       "Cordless Serene 7%",
@@ -392,34 +393,6 @@ export const ROLLER_PRICING: Record<string, PriceGrid> = {
       "Cordless NA400 10%",
       "Cordless NA300 3%",
       "Cordless NA300 5%",
-    ],
-    maxWidth: 120,
-    maxHeight: 144,
-    heights: [36, 48, 60, 72, 84, 96, 108, 120, 132, 144],
-    widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120],
-    prices: [
-      [281, 312, 335, 363, 392, 417, 446, 473, 506, 558, 590, 635, 669, 732, 798],
-      [312, 343, 373, 406, 440, 480, 517, 556, 593, 653, 692, 745, 781, 865, 934],
-      [338, 373, 410, 455, 500, 544, 587, 632, 680, 747, 791, 853, 891, 970, 1047],
-      [365, 407, 456, 509, 560, 614, 663, 716, 767, 837, 878, 940, 983, 1072, 1159],
-      [394, 448, 503, 562, 622, 678, 739, 794, 842, 912, 976, 1026, 1073, 1170, 1273],
-      [423, 486, 553, 617, 680, 747, 804, 859, 910, 987, 1058, 1112, 1165, 1274, 1384],
-      [455, 528, 601, 672, 743, 804, 864, 917, 980, 1059, 1138, 1200, 1256, 1375, 1496],
-      [488, 569, 648, 723, 797, 859, 922, 985, 1048, 1134, 1219, 1286, 1348, 1478, 1608],
-      [525, 608, 693, 775, 843, 912, 980, 1048, 1118, 1209, 1301, 1371, 1438, 1580, 1720],
-      [557, 649, 741, 819, 893, 963, 1038, 1112, 1186, 1281, 1380, 1455, 1530, 1681, 1833],
-    ],
-  },
-  solarCordlessGroup2: {
-    name: "Cordless Solar Screen - Group 2",
-    fabrics: [
-      "Cordless Serene 1%",
-      "Cordless Serene 3%",
-      "Cordless Flow 1%",
-      "Cordless Flow 5%",
-      "Cordless Windsong 1%",
-      "Cordless W120 12%",
-      "Cordless Moon 5%",
     ],
     maxWidth: 120,
     maxHeight: 144,
@@ -438,16 +411,17 @@ export const ROLLER_PRICING: Record<string, PriceGrid> = {
       [434, 498, 561, 609, 659, 703, 777, 823, 872, 940, 1010, 1061, 1111, 1206, 1309],
     ],
   },
-  solarCordlessGroup3: {
-    name: "Cordless Solar Screen - Group 3",
+  solarCordlessGroup2: {
+    // July 2026 retail guide — Soluna cordless solar screen
+    name: "Cordless Solar Screen - Group 2",
     fabrics: [
-      "Lakeview 3%",
-      "Lakeview 7%",
-      "Lakeview 10%",
-      "Meadows 1%",
-      "Meadows 3%",
-      "Jubilee 3%",
-      "Galaxy 3%",
+      "Cordless Serene 1%",
+      "Cordless Serene 3%",
+      "Cordless Flow 1%",
+      "Cordless Flow 5%",
+      "Cordless Windsong 1%",
+      "Cordless W120 12%",
+      "Cordless Moon 5%",
     ],
     maxWidth: 120,
     maxHeight: 144,
@@ -464,6 +438,35 @@ export const ROLLER_PRICING: Record<string, PriceGrid> = {
       [428, 490, 551, 611, 667, 711, 791, 837, 887, 957, 1023, 1073, 1123, 1220, 1317],
       [454, 523, 591, 650, 701, 749, 835, 887, 936, 1014, 1086, 1139, 1190, 1297, 1400],
       [483, 554, 626, 684, 737, 789, 877, 935, 990, 1067, 1146, 1204, 1258, 1373, 1488],
+    ],
+  },
+  solarCordlessGroup3: {
+    // July 2026 retail guide — Soluna cordless solar screen
+    name: "Cordless Solar Screen - Group 3",
+    fabrics: [
+      "Lakeview 3%",
+      "Lakeview 7%",
+      "Lakeview 10%",
+      "Meadows 1%",
+      "Meadows 3%",
+      "Jubilee 3%",
+      "Galaxy 3%",
+    ],
+    maxWidth: 120,
+    maxHeight: 144,
+    heights: [36, 48, 60, 72, 84, 96, 108, 120, 132, 144],
+    widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120],
+    prices: [
+      [290, 322, 346, 374, 404, 430, 460, 488, 522, 575, 608, 655, 690, 754, 822],
+      [322, 354, 385, 419, 454, 495, 533, 573, 611, 673, 713, 768, 805, 891, 963],
+      [349, 385, 423, 469, 515, 561, 605, 651, 701, 770, 815, 879, 918, 1000, 1079],
+      [376, 420, 470, 525, 577, 633, 683, 738, 791, 863, 905, 969, 1013, 1105, 1194],
+      [406, 462, 519, 579, 641, 699, 762, 818, 868, 940, 1006, 1057, 1106, 1206, 1312],
+      [436, 501, 570, 636, 701, 770, 829, 885, 938, 1017, 1090, 1146, 1200, 1313, 1426],
+      [469, 544, 620, 693, 766, 829, 890, 945, 1010, 1091, 1173, 1236, 1294, 1417, 1541],
+      [503, 587, 668, 745, 821, 885, 950, 1015, 1080, 1169, 1256, 1325, 1389, 1523, 1657],
+      [541, 627, 714, 799, 869, 940, 1010, 1080, 1152, 1246, 1341, 1413, 1482, 1628, 1772],
+      [574, 669, 764, 844, 920, 992, 1070, 1146, 1222, 1320, 1422, 1499, 1576, 1732, 1888],
     ],
   },
   lightFiltering: {
@@ -993,14 +996,69 @@ export const HONEYCOMB_SURCHARGES: Surcharge[] = [
   { name: "TDBU (Top Down Bottom Up)", type: "fixed", value: 86 },
 ];
 
+// Norman 2026 Retail Guide effective July 1, 2026 — Soluna Roller Shades
+// surcharge page.
 export const ROLLER_SURCHARGES: Surcharge[] = [
-  { name: "LightGuard 360", type: "fixed", value: 364 },
-  { name: "Premium Wood Light Guard", type: "fixed", value: 113 },
-  { name: "Shim", type: "fixed", value: 6 },
-  { name: "Basic Light Guard", type: "fixed", value: 43 },
-  { name: "Keystone", type: "fixed", value: 70 },
-  { name: "Magnetic Hold Down", type: "fixed", value: 27 },
+  { name: "Dual Shade", type: "fixed", value: 73 },
+  { name: "SmartRelease", type: "fixed", value: 89 },
+  { name: "Coupled Shade", type: "fixed", value: 117 },
+  { name: "Basic Light Guard", type: "fixed", value: 45 },
+  { name: "Premium Wood Light Guard", type: "fixed", value: 117 },
+  { name: "LightGuard 360", type: "fixed", value: 375 },
+  { name: "T-Post for LightGuard 360", type: "fixed", value: 150 },
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Additional Fiberglass Pole", type: "fixed", value: 28 },
+  { name: "Magnetic Hold Down", type: "fixed", value: 28 },
+  { name: "Pole Attachment Only", type: "fixed", value: 40 },
+  { name: "Keystone", type: "fixed", value: 73 },
+  { name: "Cordless Operating Pole / Premium Hardware", type: "fixed", value: 89 },
+  { name: "Premium Hem Bar", type: "fixed", value: 16 },
 ];
+
+// Fascia and valance surcharge ladders for Soluna Roller Shades (July 2026
+// guide). Price by ordered width using the first ladder width >= the order;
+// fabric & wood valances add $28 per additional foot beyond 144".
+const ROLLER_VALANCE_LADDER_WIDTHS = [
+  24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120, 132, 144,
+] as const;
+
+export const ROLLER_VALANCE_SURCHARGE_LADDERS = {
+  // Fascia (square/curved) and wood valances — raceway included.
+  fasciaWood: [117, 122, 133, 139, 150, 161, 171, 188, 204, 216, 232, 249, 265, 293, 326, 349, 375],
+  // 3 1/2", 4 1/2" and 6" fabric valances — raceway included.
+  fabricValance: [133, 139, 155, 161, 171, 183, 199, 216, 232, 249, 271, 288, 304, 342, 375, 403, 431],
+  // 8" fabric valance & cassette — magnetic hold downs included.
+  fabricValance8Cassette: [188, 199, 216, 227, 244, 260, 282, 304, 331, 354, 382, 408, 431, 486, 530, 552, 612],
+} as const;
+
+export type RollerValanceLadder = keyof typeof ROLLER_VALANCE_SURCHARGE_LADDERS;
+
+export function getRollerValanceLadder(
+  valance: string | null | undefined
+): RollerValanceLadder | null {
+  if (!valance || /^no valance/i.test(valance)) return null;
+  const value = valance.toLowerCase();
+  if (value.includes('8"') || value.includes("cassette")) return "fabricValance8Cassette";
+  if (value.includes("fabric valance")) return "fabricValance";
+  // Square/curved fascias and wood valances share the fascia ladder.
+  if (value.includes("fascia") || value.includes("wood valance")) return "fasciaWood";
+  return null;
+}
+
+export function getRollerValanceSurchargePrice(
+  valance: string | null | undefined,
+  width: number
+): number | null {
+  const ladder = getRollerValanceLadder(valance);
+  if (!ladder || !width || width <= 0) return null;
+  const prices = ROLLER_VALANCE_SURCHARGE_LADDERS[ladder];
+  for (let i = 0; i < ROLLER_VALANCE_LADDER_WIDTHS.length; i++) {
+    if (width <= ROLLER_VALANCE_LADDER_WIDTHS[i]) return prices[i];
+  }
+  // Beyond 144": last ladder price + $28 per additional foot.
+  const extraFeet = Math.ceil((width - 144) / 12);
+  return prices[prices.length - 1] + 28 * extraFeet;
+}
 
 // Norman 2026 Retail Guide effective July 1, 2026 — Centerpiece Roman Shades
 // surcharge page. Percentages apply to the shade's grid price.
@@ -1064,15 +1122,15 @@ export const ROLLER_MOTORIZATION: Record<string, RollerMotorizationSystem> = {
     components: [
       { name: "Power Distribution Panel", price: 1133 },
       { name: "5-Channel Wall Switch", price: 163 },
-      { name: "Motor Battery", price: 662 },
+      { name: "Motor Battery", price: 682 },
       { name: "External Battery Pack", price: 230 },
       { name: "15-Channel Remote", price: 140 },
       { name: "Charging Kit", price: 103 },
       { name: "Solar Panel", price: 242 },
-      { name: "DC Connection Harness", price: 18 },
+      { name: "DC Connection Harness", price: 19 },
       { name: "Repeater", price: 272 },
       { name: "Hub", price: 483 },
-      { name: "Low Voltage DC Motor", price: 790 },
+      { name: "Low Voltage DC Motor", price: 814 },
     ],
   },
   normanSmart: {

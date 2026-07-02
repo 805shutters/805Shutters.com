@@ -189,6 +189,8 @@ import {
   ROLLER_SURCHARGES,
   ROMAN_SURCHARGES,
   getRomanFabricValancePrice,
+  getRollerValanceLadder,
+  getRollerValanceSurchargePrice,
   SHUTTER_FIXED_SURCHARGES,
   SHUTTER_PERCENTAGE_SURCHARGES,
   SMARTDRAPE_SURCHARGES,
@@ -480,19 +482,62 @@ function getAutomaticOptionSurcharges(
     }
   }
 
-  if (
-    productType === "Roller Shades" &&
-    (liftSystem === "Smart Release" || cordLoopRelease === "Smart Release")
-  ) {
-    appendSurcharge(
-      surcharges,
-      toAutomaticSurcharge(
-        productType,
-        findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
-        "Lift System",
-        "Smart Release"
-      )
-    );
+  if (productType === "Roller Shades") {
+    // Automatic surcharges per the Norman 2026 Retail Guide (July 1, 2026),
+    // Soluna Roller Shades page.
+    if (liftSystem === "Smart Release" || cordLoopRelease === "Smart Release") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROLLER_SURCHARGES, "SmartRelease"),
+          "Lift System",
+          "Smart Release"
+        )
+      );
+    }
+    if (design.shade_type === "Dual Rollers") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROLLER_SURCHARGES, "Dual Shade"),
+          "Shade Type"
+        )
+      );
+    }
+    if (design.shade_type === "Common Valance") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROLLER_SURCHARGES, "Coupled Shade"),
+          "Shade Type"
+        )
+      );
+    }
+    const valancePrice = getRollerValanceSurchargePrice(design.valance, width ?? 0);
+    if (valancePrice !== null) {
+      appendSurcharge(surcharges, {
+        id: slugifySurcharge(`${productType}-automatic-valance-${getRollerValanceLadder(design.valance)}`),
+        name: `Valance / Fascia (${design.valance})`,
+        type: "fixed",
+        value: valancePrice,
+        quantity: 1,
+        category: "Automatic Option Surcharges",
+        portalLabel: design.valance ?? "Valance",
+      });
+    }
+    if (String(opts.premium_hardware || "") === "Yes") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROLLER_SURCHARGES, "Cordless Operating Pole / Premium Hardware"),
+          "Premium Hardware"
+        )
+      );
+    }
   }
 
   if (productType === "Honeycomb Shades" && liftSystem === "Smart Release") {
@@ -621,15 +666,15 @@ function getAutomaticOptionSurcharges(
   const hasWoodValance =
     selectedValance.includes("premium wood") || selectedValance.includes("modern wood");
 
-  if ((productType === "Roller Shades" || productType === "Roman Shades") && hasWoodValance) {
+  // Legacy Roman valance values only — current roller wood valances price via
+  // the fascia/valance ladder above, and current roman valances via the
+  // Fabric Valance ladder.
+  if (productType === "Roman Shades" && hasWoodValance) {
     appendSurcharge(
       surcharges,
       toAutomaticSurcharge(
         productType,
-        findSurcharge(
-          productType === "Roller Shades" ? ROLLER_SURCHARGES : ROMAN_SURCHARGES,
-          "Premium Wood Light Guard"
-        ),
+        findSurcharge(ROMAN_SURCHARGES, "Premium Wood Light Guard"),
         "Valance"
       )
     );
