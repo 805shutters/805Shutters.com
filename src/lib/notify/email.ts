@@ -83,6 +83,16 @@ export type QuoteEmailDetails = {
   personalNote?: string | null;
 };
 
+export type PaymentLinkEmailDetails = {
+  quoteNumber?: string | null;
+  depositDue?: number;
+  balanceDue?: number;
+  total?: number;
+  logoUrl?: string;
+  businessPhone?: string;
+  personalNote?: string | null;
+};
+
 export function buildQuoteEmail(customerName: string, url: string, total: number, details: QuoteEmailDetails = {}): {
   subject: string;
   html: string;
@@ -114,6 +124,70 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
       <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve quote</a>
     </div>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
+    <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#0b0b0b">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
+  </div>
+    </td>
+  </tr>
+</table>`;
+  return { subject, html, text };
+}
+
+export function buildPaymentLinkEmail(customerName: string, url: string, details: PaymentLinkEmailDetails = {}): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const name = customerName && customerName !== "Valued customer" ? customerName : "there";
+  const hasDepositDue = Number(details.depositDue) > 0;
+  const amountDue = hasDepositDue
+    ? Number(details.depositDue)
+    : Number(details.balanceDue) > 0
+      ? Number(details.balanceDue)
+      : Number(details.total) > 0
+        ? Number(details.total)
+        : 0;
+  const amountLabel = amountDue > 0 ? money(amountDue) : "";
+  const dueLabel = hasDepositDue ? "Deposit due" : "Amount due";
+  const headline = hasDepositDue ? "Deposit payment link" : "Payment link";
+  const intro = hasDepositDue
+    ? "Here is a payment link to pay the deposit for your new window coverings from 805 Shutters."
+    : "Here is a payment link for your new window coverings from 805 Shutters.";
+  const squareLabel = hasDepositDue ? "Pay deposit by Square card" : "Pay by Square card";
+  const quoteLabel = details.quoteNumber ? `Quote ${details.quoteNumber}` : "805 Shutters";
+  const personalNote = details.personalNote?.trim();
+  const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
+  const dueText = amountLabel ? `\n\n${dueLabel}: ${amountLabel}` : "";
+  const subject = `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link${amountLabel ? ` - ${amountLabel}` : ""}`;
+  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Venmo: @${VENMO_HANDLE}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Venmo or Zelle.\n\nThank you,\n805 Shutters`;
+  const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
+  <tr>
+    <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
+  <div style="max-width:640px;margin:0 auto;padding:28px 18px;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
+    <div style="border-bottom:2px solid #0b0b0b;padding-bottom:18px;margin-bottom:22px">
+      ${details.logoUrl ? `<div style="display:inline-block;background:#ffffff!important;background-color:#ffffff!important;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;color:#0b0b0b">805 SHUTTERS</div>`}
+      <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(quoteLabel)}</div>
+      <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">${escapeHtml(headline)}</h1>
+      <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hello ${escapeHtml(name)},</p>
+      <p style="margin:8px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">${escapeHtml(intro)}</p>
+    </div>
+    ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#ffffff;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#0b0b0b">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
+    ${amountLabel ? `<div style="border:2px solid #0b0b0b;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(dueLabel)}</div><div style="font-size:28px;line-height:1.2;font-weight:700;color:#0b0b0b">${amountLabel}</div></div>` : ""}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 22px 0">
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Square card payment</strong><br><a href="${escapeAttr(url)}" style="color:#0b0b0b;font-weight:700">${escapeHtml(squareLabel)}</a><br><span style="color:#0b0b0b">Pay by credit or debit card through Square.</span></td>
+      </tr>
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Venmo</strong><br><span style="color:#0b0b0b">@${escapeHtml(VENMO_HANDLE)}</span></td>
+      </tr>
+      <tr>
+        <td style="padding:12px 0;border-bottom:1px solid #d8d8d2;font-size:14px;color:#0b0b0b"><strong>Zelle</strong><br><span style="color:#0b0b0b">${escapeHtml(ZELLE_DESTINATION)}</span></td>
+      </tr>
+    </table>
+    <div style="margin:26px 0 18px 0">
+      <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">${escapeHtml(squareLabel)}</a>
+    </div>
+    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
+    <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Please reference your name when paying by Venmo or Zelle.</p>
     <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#0b0b0b">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
   </div>
     </td>

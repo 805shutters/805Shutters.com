@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildSignedContractSnapshot,
   describeDesign,
+  buildQuotePaymentLinkSms,
   buildQuoteShareSms,
   buildSignedShopSms,
   buildSignedShopSmsForRecipient,
@@ -128,6 +129,18 @@ describe("signed SMS copy", () => {
       "Thank you for the opportunity to cover your windows with 805 Shutters! Please see the attached quote:\n\nQuote: https://www.805shutters.com/quote/test-token"
     );
     expect(msg).not.toContain("Review & approve");
+  });
+
+  it("payment link message names card, Venmo, Zelle, amount due, and link", () => {
+    const msg = buildQuotePaymentLinkSms("https://www.805shutters.com/quote/test-token#payment", {
+      depositDue: 2125,
+    });
+    expect(msg).toContain("deposit payment link");
+    expect(msg).toContain("$2,125.00");
+    expect(msg).toContain("Square card");
+    expect(msg).toContain("Venmo @");
+    expect(msg).toContain("Zelle");
+    expect(msg).toContain("#payment");
   });
 
   it("shop message has the requested sale fields", () => {

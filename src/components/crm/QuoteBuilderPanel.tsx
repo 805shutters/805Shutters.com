@@ -520,6 +520,28 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     }
   }, [session, quoteId, onChanged, sendChannel]);
 
+  const sendPaymentLink = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    setSendMsg(null);
+    try {
+      const res = await api<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }>(
+        session,
+        `/api/crm/quotes/${quoteId}/payment-link`,
+        { method: "POST", body: JSON.stringify({ channels: { email: sendChannel !== "sms", sms: sendChannel !== "email" } }) },
+      );
+      const parts: string[] = [];
+      if (sendChannel !== "email") parts.push(res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`);
+      if (sendChannel !== "sms") parts.push(res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`);
+      setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Payment link ready.`);
+      setShareUrl(res.url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Payment link send failed.");
+    } finally {
+      setBusy(false);
+    }
+  }, [session, quoteId, sendChannel]);
+
   const addVersion = useCallback(async () => {
     setBusy(true);
     setError(null);
@@ -628,6 +650,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}
             >
               Send to customer
+            </button>
+            <button type="button" onClick={sendPaymentLink} disabled={isSaving} style={closeBtn}>
+              Send payment link
             </button>
             <button type="button" onClick={openContract} style={closeBtn}>
               Open contract
@@ -1144,6 +1169,9 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   </div>
                   <button type="button" onClick={sendToCustomer} disabled={isSaving} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
                     Send
+                  </button>
+                  <button type="button" onClick={sendPaymentLink} disabled={isSaving} style={closeBtn}>
+                    Payment link
                   </button>
                   <button type="button" onClick={openContract} style={closeBtn}>
                     Contract

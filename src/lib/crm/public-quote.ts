@@ -26,8 +26,9 @@ import {
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
-import { sendEmail, buildQuoteEmail, buildSignedQuoteShopEmail } from "@/lib/notify/email";
+import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
+import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -1042,6 +1043,89 @@ export async function sendQuoteToCustomer(
   });
 
   return { url, sms, email: emailRes, status };
+}
+
+export function buildQuotePaymentLinkSms(
+  url: string,
+  details: { depositDue?: number; balanceDue?: number; total?: number } = {},
+): string {
+  const hasDepositDue = Number(details.depositDue) > 0;
+  const amountDue = hasDepositDue
+    ? Number(details.depositDue)
+    : Number(details.balanceDue) > 0
+      ? Number(details.balanceDue)
+      : Number(details.total) > 0
+        ? Number(details.total)
+        : 0;
+  const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}.`;
+}
+
+export async function sendQuotePaymentLinkToCustomer(
+  supabase: CrmSupabaseClient,
+  quoteId: string,
+  actor: CrmActor,
+  options: { email?: boolean; sms?: boolean; emailRecipients?: string[]; phone?: string | null; note?: string | null } = {},
+): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
+  const wantSms = options.sms !== false;
+  const wantEmail = options.email !== false;
+  const { token, url: quoteUrl } = await ensureShareToken(supabase, quoteId, actor);
+  const paymentUrl = `${quoteUrl}#payment`;
+
+  const { data: quote } = await supabase
+    .from("crm_quotes")
+    .select("id, status, quote_total, job_id")
+    .eq("id", quoteId)
+    .maybeSingle();
+  if (!quote) throw new CrmAuthError(404, "Quote was not found.");
+
+  let phone: string | null = null;
+  let email: string | null = null;
+  let name = "there";
+  if (quote.job_id) {
+    const { data: job } = await supabase
+      .from("crm_jobs")
+      .select("phone, email, customer_name")
+      .eq("id", quote.job_id)
+      .maybeSingle();
+    phone = (job as { phone?: string } | null)?.phone ?? null;
+    email = (job as { email?: string | null } | null)?.email ?? null;
+    name = (job as { customer_name?: string } | null)?.customer_name || name;
+  }
+
+  const publicQuote = await loadPublicQuoteByToken(supabase, token);
+  const total = publicQuote?.total ?? (Number(quote.quote_total) || 0);
+  const customerName = publicQuote?.customerName && publicQuote.customerName !== "Valued customer" ? publicQuote.customerName : name;
+  const requestedPhone = options.phone?.trim() || phone;
+  const note = options.note?.trim();
+  const paymentDetails = {
+    quoteNumber: publicQuote?.quoteNumber,
+    depositDue: publicQuote?.depositDue,
+    balanceDue: publicQuote?.balanceDue,
+    total,
+    logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
+    businessPhone: publicQuote?.business.phone,
+    personalNote: note,
+  };
+
+  const sms = wantSms
+    ? await sendSms({ to: requestedPhone, body: buildQuotePaymentLinkSms(paymentUrl, paymentDetails) })
+    : { sent: false, skipped: "text message not selected" };
+  const mail = buildPaymentLinkEmail(customerName, paymentUrl, paymentDetails);
+  const requestedEmails = uniqueEmails(options.emailRecipients);
+  const emailRecipients = requestedEmails.length ? requestedEmails : email ? [email] : [];
+  const emailRes = wantEmail
+    ? await sendEmailToMany(emailRecipients, mail)
+    : { sent: false, skipped: "email not selected" };
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: quoteId,
+    action: "payment_link.send",
+    metadata: { url: paymentUrl, sms: sms.sent, email: emailRes.sent },
+  });
+
+  return { url: paymentUrl, sms, email: emailRes, status: String(quote.status) };
 }
 
 function uniqueEmails(values: unknown): string[] {

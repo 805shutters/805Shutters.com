@@ -210,8 +210,8 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       </div>
 
       {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
-        <div className="no-print" style={payBox}>
-          <strong>Other ways to pay</strong>
+        <div id="payment" className="no-print" style={payBox}>
+          <strong>Ways to pay</strong>
           {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit due: {money(live.depositDue)}</div> : null}
           <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
             <div>

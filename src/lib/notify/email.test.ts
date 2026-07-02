@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildQuoteEmail, buildSignedQuoteShopEmail, isResendConfigured, sendEmail } from "./email";
+import { buildPaymentLinkEmail, buildQuoteEmail, buildSignedQuoteShopEmail, isResendConfigured, sendEmail } from "./email";
 
 describe("buildQuoteEmail", () => {
   it("includes the amount, link, and customer name", () => {
@@ -69,6 +69,28 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("MTS");
     expect(html).not.toContain("source");
     expect(html).not.toContain("internal");
+  });
+});
+
+describe("buildPaymentLinkEmail", () => {
+  it("includes Square, Venmo, Zelle, amount due, and the payment anchor link", () => {
+    const { subject, html, text } = buildPaymentLinkEmail("Jane Smith", "https://x/quote/abc#payment", {
+      depositDue: 2125,
+      quoteNumber: "Q-100",
+    });
+
+    expect(subject).toContain("$2,125");
+    expect(subject).toContain("deposit payment link");
+    expect(html).toContain("https://x/quote/abc#payment");
+    expect(html).toContain("Here is a payment link to pay the deposit");
+    expect(html).toContain("new window coverings");
+    expect(html).toContain("Square");
+    expect(html).toContain("Venmo");
+    expect(html).toContain("Zelle");
+    expect(text).toContain("Hello Jane Smith");
+    expect(text).toContain("Square card payment: https://x/quote/abc#payment");
+    expect(text).toContain("Venmo: @");
+    expect(text).toContain("Zelle");
   });
 });
 
