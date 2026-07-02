@@ -747,17 +747,14 @@ function PriceExplanation({
   rawSqft: number | null;
   sqft: number | null;
 }) {
-  if (!design) return null;
-
-  const options = (design.options_json as Record<string, unknown> | undefined) || {};
+  const options = (design?.options_json as Record<string, unknown> | undefined) || {};
   const isManual = options.manual_price_override === true;
   const hasStoredPricing =
     options.base_price !== undefined ||
     options.pricing_grid_width !== undefined ||
     options.surcharge_total !== undefined ||
     options.discount_percent !== undefined;
-
-  if (!hasStoredPricing && !isManual && !design.unit_price) return null;
+  const hasPrice = Boolean(design && (hasStoredPricing || isManual || design.unit_price));
 
   const gridWidth = Number(options.pricing_grid_width);
   const gridHeight = Number(options.pricing_grid_height);
@@ -772,6 +769,11 @@ function PriceExplanation({
         <div>
           <span className="font-semibold">Product:</span> {productType}
         </div>
+        {!hasPrice && (
+          <div>
+            <span className="font-semibold">Status:</span> waiting for saved selections and measurements
+          </div>
+        )}
         {isManual && (
           <div>
             <span className="font-semibold">Mode:</span> manual customer price
@@ -821,7 +823,7 @@ function PriceExplanation({
           </div>
         )}
         <div>
-          <span className="font-semibold">Final:</span> {formatMoney(design.unit_price)}
+          <span className="font-semibold">Final:</span> {formatMoney(design?.unit_price || 0)}
         </div>
       </div>
     </details>
@@ -3019,6 +3021,13 @@ export function DesignCard({
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
           />
         )}
+
+        <PriceExplanation
+          design={currentDesign}
+          productType={lineItem.product_type}
+          rawSqft={rawSqft}
+          sqft={sqft}
+        />
 
         {/* Copy actions */}
         <div className="quote-line-action-row">
