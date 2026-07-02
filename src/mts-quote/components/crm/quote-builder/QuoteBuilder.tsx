@@ -1348,6 +1348,9 @@ export function QuoteBuilder() {
                   onChangeProductType={(productType) =>
                     changeLineItemProductType.mutate({ id: item.id, productType })
                   }
+                  onUpdateRoomName={(roomName) =>
+                    updateLineItem.mutate({ id: item.id, room_name: roomName })
+                  }
                 />
               );
             })}

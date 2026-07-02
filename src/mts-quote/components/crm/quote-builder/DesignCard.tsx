@@ -5,6 +5,7 @@ import {
   useRef,
   useCallback,
   type ChangeEvent,
+  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import { Card, CardContent, CardHeader } from "@mts/components/ui/card";
@@ -220,6 +221,7 @@ interface DesignCardProps {
   onDelete?: () => void;
   onCopyItem?: () => void;
   onChangeProductType?: (productType: string) => void;
+  onUpdateRoomName?: (roomName: string) => void;
 }
 
 // --- Types ---
@@ -2436,6 +2438,7 @@ export function DesignCard({
   onDelete,
   onCopyItem,
   onChangeProductType,
+  onUpdateRoomName,
 }: DesignCardProps) {
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
@@ -2448,6 +2451,8 @@ export function DesignCard({
   const userSelectedVariantRef = useRef(false);
   const lineItemIdRef = useRef(lineItem.id);
   const [editingRetail, setEditingRetail] = useState(false);
+  const [isEditingRoomName, setIsEditingRoomName] = useState(false);
+  const [roomNameDraft, setRoomNameDraft] = useState(lineItem.room_name);
   const [showLineNote, setShowLineNote] = useState(false);
   const [retailInput, setRetailInput] = useState("");
   const currentDesign = designs.find((d) => d.variant === activeVariant);
@@ -2473,9 +2478,54 @@ export function DesignCard({
     }
   }, [activeVariant, currentDesign, designs, lineItem.id, variants]);
 
+  useEffect(() => {
+    if (!isEditingRoomName) {
+      setRoomNameDraft(lineItem.room_name);
+    }
+  }, [isEditingRoomName, lineItem.room_name]);
+
   const handleVariantChange = (variant: string) => {
     userSelectedVariantRef.current = true;
     setActiveVariant(variant);
+  };
+
+  const startRoomNameEdit = () => {
+    if (!onUpdateRoomName) return;
+    setRoomNameDraft(lineItem.room_name);
+    setIsEditingRoomName(true);
+  };
+
+  const cancelRoomNameEdit = () => {
+    setRoomNameDraft(lineItem.room_name);
+    setIsEditingRoomName(false);
+  };
+
+  const commitRoomNameEdit = () => {
+    const nextRoomName = roomNameDraft.trim().replace(/\s+/g, " ");
+
+    if (!nextRoomName) {
+      cancelRoomNameEdit();
+      return;
+    }
+
+    if (nextRoomName !== lineItem.room_name) {
+      onUpdateRoomName?.(nextRoomName);
+    }
+
+    setRoomNameDraft(nextRoomName);
+    setIsEditingRoomName(false);
+  };
+
+  const handleRoomNameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitRoomNameEdit();
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelRoomNameEdit();
+    }
   };
 
   // Compute sqft and current retail $/sqft for shutters
@@ -2885,7 +2935,26 @@ export function DesignCard({
                   #{lineNumber}
                 </span>
               )}
-              <h3 className="quote-line-card-room">{lineItem.room_name}</h3>
+              {isEditingRoomName ? (
+                <input
+                  aria-label="Edit room name"
+                  autoFocus
+                  className="quote-line-card-room quote-line-card-room-input"
+                  value={roomNameDraft}
+                  onBlur={commitRoomNameEdit}
+                  onChange={(event) => setRoomNameDraft(event.target.value)}
+                  onKeyDown={handleRoomNameKeyDown}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="quote-line-card-room quote-line-card-room-button"
+                  title="Edit room name"
+                  onClick={startRoomNameEdit}
+                >
+                  {lineItem.room_name}
+                </button>
+              )}
               <ProductTypeSwitcher
                 productType={lineItem.product_type}
                 onChangeProductType={onChangeProductType}

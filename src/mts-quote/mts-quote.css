@@ -1230,6 +1230,7 @@
 
 .mts-quote-scope .quote-line-card-room {
   min-width: 0;
+  max-width: min(34vw, 420px);
   margin: 0;
   color: #080808;
   font-family: var(--font-body, var(--font-sans));
@@ -1240,6 +1241,37 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.mts-quote-scope .quote-line-card-room-button {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: text;
+  text-align: left;
+}
+
+.mts-quote-scope .quote-line-card-room-button:hover {
+  color: #56534b;
+}
+
+.mts-quote-scope .quote-line-card-room-input {
+  width: min(34vw, 420px);
+  height: 43px;
+  padding: 0 10px;
+  border: 1px solid #d8d6cf;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.08);
+  outline: none;
+}
+
+.mts-quote-scope .quote-line-card-room-input:focus {
+  border-color: #77736a;
+  box-shadow:
+    0 0 0 3px rgb(119 115 106 / 0.14),
+    inset 0 1px 2px rgb(15 23 42 / 0.08);
 }
 
 .mts-quote-scope .quote-line-card-size {
