@@ -1349,6 +1349,63 @@
   white-space: nowrap;
 }
 
+.mts-quote-scope .quote-line-card-summary {
+  display: flex;
+  min-width: 560px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid #e2e0d9;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 7px 18px rgb(15 35 70 / 0.07);
+}
+
+.mts-quote-scope .quote-line-price-readout {
+  min-width: 118px;
+}
+
+.mts-quote-scope .quote-line-quantity-control {
+  display: inline-flex;
+  min-height: 34px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px 0 10px;
+  border: 1px solid #d8d6cf;
+  border-radius: 999px;
+  background: #f9f8f5;
+  color: #4a4740;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.mts-quote-scope .quote-line-quantity-control input {
+  width: 46px;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid #c9c6bd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111111;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  outline: none;
+}
+
+.mts-quote-scope .quote-line-quantity-control input:focus {
+  border-color: #77736a;
+  box-shadow: 0 0 0 3px rgb(119 115 106 / 0.14);
+}
+
 .mts-quote-scope .quote-line-discount-trigger {
   width: 96px;
   min-height: 22px;
@@ -1412,6 +1469,13 @@
   .mts-quote-scope .quote-line-card-title-cluster {
     flex-wrap: wrap;
     row-gap: 8px;
+  }
+
+  .mts-quote-scope .quote-line-card-summary {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .mts-quote-scope .quote-line-card-room,
@@ -1607,6 +1671,15 @@
     min-height: 32px;
     font-size: 20px;
     line-height: 1.18;
+  }
+
+  .mts-quote-scope .quote-line-card-summary {
+    gap: 7px;
+    padding: 7px;
+  }
+
+  .mts-quote-scope .quote-line-price-readout {
+    min-width: 100px;
   }
 
   .mts-quote-scope .quote-line-card-size-divider {

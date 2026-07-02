@@ -142,7 +142,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
           </tr>
         </thead>
         <tbody>
-          {quote.lines.map((line) => {
+          {quote.lines.map((line, index) => {
             const isChecked = selected.has(line.id);
             const dimmed = mode === "some" && !isChecked;
             return (
@@ -153,7 +153,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
                   </td>
                 ) : null}
                 <td style={td}>
-                  <strong>{line.room}</strong>
+                  <strong>#{index + 1} {line.room}</strong>
                   <div style={{ fontSize: 13, opacity: 0.7 }}>{line.dimensions}</div>
                   {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
                 </td>

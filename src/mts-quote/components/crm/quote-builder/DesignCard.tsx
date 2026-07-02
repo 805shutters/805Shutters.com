@@ -201,7 +201,7 @@ import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
   lineNumber: number;
-  instanceIndex: number;
+  lineNumberLabel?: string;
   designs: SalesQuoteDesign[];
   onUpdateDesign: (
     design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
@@ -222,6 +222,7 @@ interface DesignCardProps {
   onCopyItem?: () => void;
   onChangeProductType?: (productType: string) => void;
   onUpdateRoomName?: (roomName: string) => void;
+  onUpdateQuantity?: (quantity: number) => void;
 }
 
 // --- Types ---
@@ -790,6 +791,11 @@ function formatMoney(value: unknown): string {
     minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function normalizeLineItemQuantity(value: unknown): number {
+  const parsed = Math.floor(Number(value));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
 function PriceExplanation({
@@ -2420,7 +2426,7 @@ function getPreferredSavedVariant(designs: SalesQuoteDesign[], variants: string[
 export function DesignCard({
   lineItem,
   lineNumber,
-  instanceIndex,
+  lineNumberLabel,
   designs,
   onUpdateDesign,
   onCopyAll,
@@ -2439,6 +2445,7 @@ export function DesignCard({
   onCopyItem,
   onChangeProductType,
   onUpdateRoomName,
+  onUpdateQuantity,
 }: DesignCardProps) {
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
@@ -2453,9 +2460,14 @@ export function DesignCard({
   const [editingRetail, setEditingRetail] = useState(false);
   const [isEditingRoomName, setIsEditingRoomName] = useState(false);
   const [roomNameDraft, setRoomNameDraft] = useState(lineItem.room_name);
+  const quantity = normalizeLineItemQuantity(lineItem.quantity);
+  const [quantityDraft, setQuantityDraft] = useState(String(quantity));
   const [showLineNote, setShowLineNote] = useState(false);
   const [retailInput, setRetailInput] = useState("");
   const currentDesign = designs.find((d) => d.variant === activeVariant);
+  const displayedUnitPrice = Number(currentDesign?.unit_price || 0);
+  const displayedLineTotal = Math.round(displayedUnitPrice * quantity * 100) / 100;
+  const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
   const discountPercent = Number(currentOptions.discount_percent) || 0;
   const hasDiscount = Boolean(currentDesign && discountPercent > 0);
@@ -2483,6 +2495,10 @@ export function DesignCard({
       setRoomNameDraft(lineItem.room_name);
     }
   }, [isEditingRoomName, lineItem.room_name]);
+
+  useEffect(() => {
+    setQuantityDraft(String(quantity));
+  }, [quantity]);
 
   const handleVariantChange = (variant: string) => {
     userSelectedVariantRef.current = true;
@@ -2525,6 +2541,28 @@ export function DesignCard({
     if (event.key === "Escape") {
       event.preventDefault();
       cancelRoomNameEdit();
+    }
+  };
+
+  const commitQuantityEdit = () => {
+    const nextQuantity = normalizeLineItemQuantity(quantityDraft);
+    setQuantityDraft(String(nextQuantity));
+
+    if (nextQuantity !== quantity) {
+      onUpdateQuantity?.(nextQuantity);
+    }
+  };
+
+  const handleQuantityKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      commitQuantityEdit();
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setQuantityDraft(String(quantity));
+      event.currentTarget.blur();
     }
   };
 
@@ -2930,9 +2968,12 @@ export function DesignCard({
               />
             )}
             <div className="quote-line-card-title-cluster">
-              {lineNumber > 0 && (
-                <span className="quote-line-card-number" title={`Line ${lineNumber}`}>
-                  #{lineNumber}
+              {displayedLineNumber && (
+                <span
+                  className="quote-line-card-number"
+                  title={quantity > 1 ? `Lines ${displayedLineNumber}` : `Line ${displayedLineNumber}`}
+                >
+                  {displayedLineNumber}
                 </span>
               )}
               {isEditingRoomName ? (
@@ -2980,14 +3021,9 @@ export function DesignCard({
                   Add Size
                 </button>
               )}
-              {lineItem.quantity > 1 && (
-                <span className="quote-line-card-quantity">
-                  x{lineItem.quantity} (#{instanceIndex + 1})
-                </span>
-              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-2.5 py-1.5 shadow-sm">
+          <div className="quote-line-card-summary">
             {/* Sqft + editable $/sqft for shutters */}
             {isShutters && sqft !== null && currentRetailPerSqft !== null && (
               <div className="flex flex-col items-end mr-2 text-xs text-muted-foreground leading-tight">
@@ -3044,13 +3080,31 @@ export function DesignCard({
             )}
             <div className="flex items-center gap-1.5 text-right">
               <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-              <div>
+              <div className="quote-line-price-readout">
                 <span className="text-lg font-bold">
-                  {formatMoney(currentDesign?.unit_price || 0)}
+                  {formatMoney(displayedLineTotal)}
                 </span>
-                <div className="text-[11px] text-muted-foreground">excl. tax</div>
+                <div className="text-[11px] text-muted-foreground">
+                  {quantity > 1 ? `${formatMoney(displayedUnitPrice)} ea · ` : ""}
+                  excl. tax
+                </div>
               </div>
             </div>
+            <label className="quote-line-quantity-control" title="Line item quantity">
+              <span>Qty</span>
+              <input
+                aria-label={`Quantity for ${lineItem.room_name}`}
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={quantityDraft}
+                onBlur={commitQuantityEdit}
+                onChange={(event) => setQuantityDraft(event.target.value)}
+                onKeyDown={handleQuantityKeyDown}
+                disabled={!onUpdateQuantity}
+              />
+            </label>
             {onApplyDiscount && discountPercents.length > 0 && (
               <Select
                 value={hasDiscount ? String(discountPercent) : "none"}

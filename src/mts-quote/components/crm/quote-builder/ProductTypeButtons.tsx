@@ -8,7 +8,22 @@ interface ProductTypeButtonsProps {
 }
 
 function formatLineNumbers(lineNumbers: readonly number[]) {
-  return lineNumbers.join(", ");
+  const sorted = Array.from(new Set(lineNumbers)).sort((a, b) => a - b);
+  const ranges: string[] = [];
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const start = sorted[index];
+    let end = start;
+
+    while (index + 1 < sorted.length && sorted[index + 1] === end + 1) {
+      index += 1;
+      end = sorted[index];
+    }
+
+    ranges.push(start === end ? String(start) : `${start}-${end}`);
+  }
+
+  return ranges.join(", ");
 }
 
 export function ProductTypeButtons({ selected, onSelect, lineNumbers }: ProductTypeButtonsProps) {

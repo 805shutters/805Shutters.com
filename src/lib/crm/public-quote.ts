@@ -37,6 +37,7 @@ export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = ["805-298-5555", "805-630-0848
 
 export type PublicQuoteLine = {
   id: string;
+  lineItemId: string;
   room: string;
   dimensions: string;
   productName: string;
@@ -137,7 +138,7 @@ export function buildSignedContractSnapshot(
     business: pub.business,
     quote: { id: pub.id, quoteNumber: pub.quoteNumber },
     lines: pub.lines.map((line) => ({
-      lineItemId: line.id,
+      lineItemId: line.lineItemId,
       room: line.room,
       dimensions: line.dimensions,
       productName: line.productName,
@@ -314,6 +315,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     const priceReady = designOptions.length > 0 && designOptions.every((option) => option.priceReady);
     return {
       id: li.id,
+      lineItemId: li.id,
       room: li.room || "Window",
       dimensions: dimensions(li),
       productName: li.notes || first?.productName || "-",
@@ -333,6 +335,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
   if (!design) {
     return {
       id: li.id,
+      lineItemId: li.id,
       room: li.room || "Window",
       dimensions: dimensions(li),
       productName: "-",
@@ -353,6 +356,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
   const lineTotal = priceReady ? lineItemSubtotal(li) : 0;
   return {
     id: li.id,
+    lineItemId: li.id,
     room: li.room || "Window",
     dimensions: dimensions(li),
     productName,
@@ -368,6 +372,29 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     discountPercent,
     priceReady,
   };
+}
+
+function splitLineTotal(lineTotal: number, quantity: number, index: number): number {
+  const totalCents = Math.round((Number(lineTotal) || 0) * 100);
+  const baseCents = Math.floor(totalCents / quantity);
+  const remainder = totalCents - baseCents * quantity;
+  return round2((baseCents + (index < remainder ? 1 : 0)) / 100);
+}
+
+export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] {
+  const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
+  if (quantity === 1) return [line];
+
+  return Array.from({ length: quantity }, (_, index) => ({
+    ...line,
+    id: `${line.id}#${index + 1}`,
+    quantity: 1,
+    lineTotal: line.priceReady ? splitLineTotal(line.lineTotal, quantity, index) : 0,
+    designOptions: line.designOptions.map((option) => ({
+      ...option,
+      lineTotal: option.priceReady ? splitLineTotal(option.lineTotal, quantity, index) : 0,
+    })),
+  }));
 }
 
 async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise<CrmQuote | null> {
@@ -391,7 +418,9 @@ export async function loadPublicQuoteByToken(
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
   const legacyMts = isLegacyMtsQuote(quote);
-  const lines = lineItems.map((lineItem) => projectLine(lineItem, legacyMts));
+  const lines = lineItems.flatMap((lineItem) =>
+    expandPublicQuoteLine(projectLine(lineItem, legacyMts))
+  );
   const hasOnyxShutters =
     quoteHasOnyxManufacturer(quote) ||
     lineItems.some((lineItem) => lineItemHasOnyxShutters(lineItem, legacyMts));

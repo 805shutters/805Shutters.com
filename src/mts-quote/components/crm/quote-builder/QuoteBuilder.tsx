@@ -155,6 +155,50 @@ function sortLineItemIdsByQuoteOrder(ids: string[], lineItems: Pick<SalesQuoteLi
     .sort((a, b) => (order.get(a) ?? 0) - (order.get(b) ?? 0));
 }
 
+function normalizeLineItemQuantity(value: unknown): number {
+  const parsed = Math.floor(Number(value));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+type LineNumberRange = {
+  start: number;
+  end: number;
+  label: string;
+  numbers: number[];
+};
+
+function buildLineNumberRanges(lineItems: Pick<SalesQuoteLineItem, "id" | "quantity">[]) {
+  let nextNumber = 1;
+  const ranges = new Map<string, LineNumberRange>();
+
+  lineItems.forEach((item) => {
+    const quantity = normalizeLineItemQuantity(item.quantity);
+    const start = nextNumber;
+    const end = nextNumber + quantity - 1;
+    const numbers = Array.from({ length: quantity }, (_, index) => start + index);
+
+    ranges.set(item.id, {
+      start,
+      end,
+      label: start === end ? `#${start}` : `#${start}-${end}`,
+      numbers,
+    });
+    nextNumber = end + 1;
+  });
+
+  return ranges;
+}
+
+function appendLineNumbers(
+  numbers: Map<string, number[]>,
+  key: string,
+  range: LineNumberRange | undefined
+) {
+  if (!range) return;
+  const existing = numbers.get(key) ?? [];
+  numbers.set(key, [...existing, ...range.numbers]);
+}
+
 function formatStackMoney(value: number) {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
@@ -222,30 +266,30 @@ function buildStackedDesignSummary(designs: SalesQuoteDesign[]) {
 
 function StackedLineItemRow({
   item,
-  lineNumber,
+  lineNumberLabel,
   designs,
   onUnstack,
 }: {
   item: SalesQuoteLineItem;
-  lineNumber: number;
+  lineNumberLabel: string;
   designs: SalesQuoteDesign[];
   onUnstack: () => void;
 }) {
   const details = buildStackedDesignSummary(designs);
   const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
   const total = calculateLineItemDesignTotal(item, designs);
-  const title = `Click to unstack line ${lineNumber}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
+  const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
 
   return (
     <button
       type="button"
       onClick={onUnstack}
       title={title}
-      aria-label={`Unstack line ${lineNumber}, ${item.room_name}`}
+      aria-label={`Unstack line ${lineNumberLabel}, ${item.room_name}`}
       className="grid min-h-9 w-full grid-cols-[3rem_minmax(7rem,0.8fr)_7.5rem_8rem_minmax(0,2.7fr)_6.5rem] items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-left text-[10px] leading-none text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
     >
       <span className="inline-flex h-6 items-center justify-center rounded-md bg-slate-950 font-mono text-[11px] font-black text-white">
-        #{lineNumber}
+        {lineNumberLabel}
       </span>
       <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
       <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
@@ -470,6 +514,7 @@ export function QuoteBuilder() {
         width_fraction: item.width_fraction ?? "0",
         height_whole: item.height_whole ?? 0,
         height_fraction: item.height_fraction ?? "0",
+        quantity: 1,
         sort_order: lineItems.length,
       });
       if (error) throw error;
@@ -947,39 +992,28 @@ export function QuoteBuilder() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isSavingQuote]);
 
-  // Expand quantity items into individual design entries
-  const expandedItems: { item: SalesQuoteLineItem; instanceIndex: number }[] = [];
-  lineItems.forEach((item) => {
-    for (let i = 0; i < item.quantity; i++) {
-      expandedItems.push({ item, instanceIndex: i });
-    }
-  });
   const stackedLineItemIdSet = new Set(stackedLineItemIds);
   const stackedLineItems = lineItems.filter((item) => stackedLineItemIdSet.has(item.id));
-  const editableExpandedItems = expandedItems.filter(
-    ({ item }) => !stackedLineItemIdSet.has(item.id)
-  );
-  const lineItemNumbers = new Map(lineItems.map((item, index) => [item.id, index + 1]));
+  const editableLineItems = lineItems.filter((item) => !stackedLineItemIdSet.has(item.id));
+  const lineNumberRanges = useMemo(() => buildLineNumberRanges(lineItems), [lineItems]);
   const productTypeLineNumbers = useMemo(() => {
     const numbers = new Map<string, number[]>();
-    lineItems.forEach((item, index) => {
+    lineItems.forEach((item) => {
       const productType = item.product_type.trim();
       if (!productType) return;
-      const existing = numbers.get(productType) ?? [];
-      numbers.set(productType, [...existing, index + 1]);
+      appendLineNumbers(numbers, productType, lineNumberRanges.get(item.id));
     });
     return numbers;
-  }, [lineItems]);
+  }, [lineItems, lineNumberRanges]);
   const roomLineNumbers = useMemo(() => {
     const numbers = new Map<string, number[]>();
-    lineItems.forEach((item, index) => {
+    lineItems.forEach((item) => {
       const roomName = item.room_name.trim();
       if (!roomName) return;
-      const existing = numbers.get(roomName) ?? [];
-      numbers.set(roomName, [...existing, index + 1]);
+      appendLineNumbers(numbers, roomName, lineNumberRanges.get(item.id));
     });
     return numbers;
-  }, [lineItems]);
+  }, [lineItems, lineNumberRanges]);
   const designsByLineItemId = new Map<string, SalesQuoteDesign[]>();
   designs.forEach((design) => {
     const lineDesigns = designsByLineItemId.get(design.line_item_id) ?? [];
@@ -1256,7 +1290,7 @@ export function QuoteBuilder() {
                 <StackedLineItemRow
                   key={item.id}
                   item={item}
-                  lineNumber={lineItemNumbers.get(item.id) ?? 0}
+                  lineNumberLabel={lineNumberRanges.get(item.id)?.label ?? "#0"}
                   designs={designsByLineItemId.get(item.id) ?? []}
                   onUnstack={() => handleUnstackLineItem(item.id)}
                 />
@@ -1310,25 +1344,26 @@ export function QuoteBuilder() {
           <div className="bg-card border rounded-xl p-6 text-center text-muted-foreground text-sm">
             Select a product type and room to add line items.
           </div>
-        ) : editableExpandedItems.length === 0 ? (
+        ) : editableLineItems.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white/80 p-4 text-center text-sm font-medium text-slate-600">
             All line items are stacked. Click any stacked line above to edit it.
           </div>
         ) : (
           <div className="space-y-4">
-            {editableExpandedItems.map(({ item, instanceIndex }) => {
+            {editableLineItems.map((item) => {
               const isMatchingCopyTarget =
                 copyMode === "some" &&
                 copySourceItem !== null &&
                 copySourceItem.id !== item.id &&
                 lineItemsHaveMatchingProductType(copySourceItem, item);
+              const lineRange = lineNumberRanges.get(item.id);
 
               return (
                 <DesignCard
-                  key={`${item.id}-${instanceIndex}`}
+                  key={item.id}
                   lineItem={item}
-                  lineNumber={lineItemNumbers.get(item.id) ?? 0}
-                  instanceIndex={instanceIndex}
+                  lineNumber={lineRange?.start ?? 0}
+                  lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
                   onCopyAll={() => handleCopyAll(item.id)}
@@ -1350,6 +1385,9 @@ export function QuoteBuilder() {
                   }
                   onUpdateRoomName={(roomName) =>
                     updateLineItem.mutate({ id: item.id, room_name: roomName })
+                  }
+                  onUpdateQuantity={(quantity) =>
+                    updateLineItem.mutate({ id: item.id, quantity })
                   }
                 />
               );

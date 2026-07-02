@@ -8,6 +8,7 @@ import {
   REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS,
   soldQuoteShopSmsRecipients,
   formatDimensions,
+  expandPublicQuoteLine,
   projectLine,
   computeSelectionMoney,
   type PublicQuote,
@@ -195,6 +196,18 @@ describe("projectLine (per-line discount on the contract)", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 100 });
     expect(projectLine(lineItem({ discount_percent: 15, designs: [d] }), true).discountPercent).toBe(0);
   });
+
+  it("expands quantity into separate customer contract rows", () => {
+    const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
+    const line = projectLine(lineItem({ id: "line-1", quantity: 3, designs: [d], selected_design_id: d.id }), false);
+    const rows = expandPublicQuoteLine(line);
+
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => row.id)).toEqual(["line-1#1", "line-1#2", "line-1#3"]);
+    expect(rows.map((row) => row.lineItemId)).toEqual(["line-1", "line-1", "line-1"]);
+    expect(rows.map((row) => row.quantity)).toEqual([1, 1, 1]);
+    expect(rows.reduce((sum, row) => sum + row.lineTotal, 0)).toBe(636);
+  });
 });
 
 describe("computeSelectionMoney (Purchase some)", () => {
@@ -245,7 +258,7 @@ describe("buildSignedContractSnapshot", () => {
         internalMargin: 225,
       },
     });
-    const line = projectLine(lineItem({ id: "line-1", quantity: 2, designs: [d], selected_design_id: d.id }), false);
+    const lines = expandPublicQuoteLine(projectLine(lineItem({ id: "line-1", quantity: 2, designs: [d], selected_design_id: d.id }), false));
     const pub: PublicQuote = {
       token: "share-token",
       id: "quote-1",
@@ -254,8 +267,8 @@ describe("buildSignedContractSnapshot", () => {
       status: "sold",
       signed: true,
       signedAt: "2026-06-27T12:00:00.000Z",
-      lines: [line],
-      subtotal: line.lineTotal,
+      lines,
+      subtotal: lines.reduce((sum, line) => sum + line.lineTotal, 0),
       fees: [{ name: "Install", amount: 100 }],
       discount: 0,
       tax: 0,
@@ -279,13 +292,14 @@ describe("buildSignedContractSnapshot", () => {
       totals: { total: 887.5, depositDue: 443.75, balanceDue: 443.75 },
       hasOnyxShutters: true,
     });
+    expect(snapshot.lines).toHaveLength(2);
     expect(snapshot.lines[0]).toMatchObject({
       lineItemId: "line-1",
       room: "Living Room",
       productName: "Onyx Shutters",
-      quantity: 2,
+      quantity: 1,
       unitPrice: 393.75,
-      lineTotal: 787.5,
+      lineTotal: 393.75,
     });
     const serialized = JSON.stringify(snapshot).toLowerCase();
     expect(serialized).not.toContain("wholesale");
