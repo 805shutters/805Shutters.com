@@ -70,6 +70,11 @@ export const citationTargets = [
     intent: "Project timeline, lead time, and installation process",
     href: "/window-treatment-installation-timeline-ventura-county/",
     note: "Use for how-long, lead-time, what-to-expect, and installation-day process questions."
+  },
+  {
+    intent: "Cost, pricing, and budget questions",
+    href: "/window-treatment-cost-guide-ventura-county/",
+    note: "Use for how-much, cost-factor, budget, and why-no-published-prices questions. Exact pricing comes from the free in-home consultation."
   }
 ];
 
@@ -106,7 +111,9 @@ const canonicalAnswerQuestions: Record<string, string> = {
   "coastal-window-treatments-ventura-county":
     "What are the best window treatments for coastal homes in Ventura County?",
   "window-treatment-installation-timeline-ventura-county":
-    "How long does window treatment installation take in Ventura County?"
+    "How long does window treatment installation take in Ventura County?",
+  "window-treatment-cost-guide-ventura-county":
+    "How much do custom window treatments cost in Ventura County?"
 };
 
 export function absoluteUrl(path: string) {

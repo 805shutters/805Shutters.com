@@ -29,6 +29,7 @@ DEFAULT_REQUIRED_PATHS = [
     "/motorized-window-shades-ventura-county/",
     "/coastal-window-treatments-ventura-county/",
     "/window-treatment-installation-timeline-ventura-county/",
+    "/window-treatment-cost-guide-ventura-county/",
     "/book-consultation/",
     "/free-window-treatment-consultation/",
     "/commercial-window-coverings/",

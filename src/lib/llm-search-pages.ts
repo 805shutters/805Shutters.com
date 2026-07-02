@@ -97,7 +97,8 @@ export const answerPages: AnswerPage[] = [
       { label: "Custom shades", href: "/shades/" },
       { label: "Custom blinds", href: "/blinds/" },
       { label: "Coastal window treatments", href: "/coastal-window-treatments-ventura-county/" },
-      { label: "Installation timeline", href: "/window-treatment-installation-timeline-ventura-county/" }
+      { label: "Installation timeline", href: "/window-treatment-installation-timeline-ventura-county/" },
+      { label: "Cost guide", href: "/window-treatment-cost-guide-ventura-county/" }
     ]
   },
   {
@@ -551,6 +552,92 @@ export const answerPages: AnswerPage[] = [
       { label: "Free consultation request", href: "/free-window-treatment-consultation/" },
       { label: "Window treatment comparison guide", href: "/window-treatment-comparison-guide/" },
       { label: "Custom shutters", href: "/shutters/" }
+    ]
+  },
+  {
+    slug: "window-treatment-cost-guide-ventura-county",
+    path: "/window-treatment-cost-guide-ventura-county/",
+    title: "How Much Do Custom Window Treatments Cost? | 805 Shutters",
+    description:
+      "What drives the cost of custom shutters, shades, and blinds in Ventura County: product type, materials, window size, and options. How to get an exact price free.",
+    h1: "How Much Do Custom Window Treatments Cost in Ventura County?",
+    eyebrow: "Cost guide",
+    answer:
+      "The cost of custom window treatments depends on the product type, the material and finish, the size and number of windows, and options like motorization or specialty shapes. As a general rule, blinds are the most budget-friendly product, shades span a wide range depending on fabric and lift system, and plantation shutters are the largest upfront investment but last the longest and add the most permanent value. Because every product is made to order for measured windows, exact pricing comes from a free in-home consultation — 805 Shutters is a competitively priced local company, and the quote includes measuring, the product, and professional installation.",
+    image: "/images/portfolio-enhanced/two-story-shutter-installation-detail-card.jpg",
+    imageAlt: "Custom plantation shutters installed on tall Ventura County windows",
+    updated: "2026-07-02",
+    serviceTypes: [
+      "Custom shutters",
+      "Window shades",
+      "Custom blinds",
+      "Drapery",
+      "Exterior shades",
+      "Commercial window coverings"
+    ],
+    sections: [
+      {
+        heading: "What Actually Drives The Price",
+        body:
+          "Two homes asking for the same product can get very different quotes, because the price is built from the windows themselves. The main factors are the product type, the material, the total number of windows, and how large or unusual each opening is.",
+        bullets: [
+          "Product type: blinds, shades, drapery, shutters, and exterior shades each price differently",
+          "Material and finish: faux wood and composite generally cost less than natural wood; specialty fabrics and custom paint matches cost more",
+          "Window size and count: larger glass and more openings raise the total",
+          "Specialty shapes: arches, angles, skylights, and extra-wide sliders take more material and labor",
+          "Motorization: powered lift systems add cost per window but matter most on tall or hard-to-reach glass"
+        ]
+      },
+      {
+        heading: "Relative Cost By Product",
+        body:
+          "Without quoting a specific home, the products rank fairly consistently. Blinds are usually the most budget-friendly way to cover a window well. Shades cover the widest range: a simple roller shade is economical, while designer fabrics, room-darkening systems, and motorized banks of shades sit at the higher end. Drapery depends heavily on fabric and length. Plantation shutters are typically the largest upfront investment, and they also last the longest, look built-in, and are the product most often called out as adding resale value. Exterior shades price by size, motor, and wind rating."
+      },
+      {
+        heading: "Why Custom Window Treatment Prices Are Not Listed Online",
+        body:
+          "Custom shutters, shades, and blinds are manufactured to the exact measurements of each window, so there is no shelf price that would be honest for every home. Published 'starting at' prices usually describe the smallest possible window in the most basic material, without measuring or installation. A written quote from an in-home visit is the real number: it reflects your actual windows, the material you chose, and professional installation, with no surprise added at the end."
+      },
+      {
+        heading: "How To Get An Exact Price — And Manage The Budget",
+        body:
+          "The free in-home consultation is how the exact price gets set: windows are measured, materials compared with real samples, and the quote is written on the spot with no obligation. If the total needs to fit a budget, there are honest ways to do it without giving up quality.",
+        bullets: [
+          "Mix products by room: shutters in the visible living areas, economical shades or blinds in bedrooms and utility rooms",
+          "Phase the project: do the front-facing windows first and the rest later",
+          "Choose faux wood or composite where the look is nearly identical to natural wood",
+          "Motorize only the windows that are genuinely hard to reach"
+        ]
+      }
+    ],
+    faqs: [
+      {
+        question: "Why don't window treatment companies list prices online?",
+        answer:
+          "Because every custom shutter, shade, and blind is made to the measured size of each window, a published price list would be wrong for most homes. The accurate number is a written quote from an in-home measuring visit, which 805 Shutters provides free with no obligation."
+      },
+      {
+        question: "Which window treatment is the most budget-friendly?",
+        answer:
+          "Blinds are usually the most economical way to cover a window well, followed by simple roller and honeycomb shades. Faux wood blinds in particular deliver a clean look at a practical price."
+      },
+      {
+        question: "Are plantation shutters worth the higher cost?",
+        answer:
+          "For many Ventura County homes, yes. Shutters are the most durable product, they look built-in, they are easy to clean, and they are the window treatment most often credited with adding resale value. They cost more upfront and tend to be the last window treatment the home needs."
+      },
+      {
+        question: "Does the quote include installation?",
+        answer:
+          "Yes. The written quote from the free consultation covers the measured product and professional installation, so the number you approve is the number you pay."
+      }
+    ],
+    relatedLinks: [
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" },
+      { label: "Window treatment comparison guide", href: "/window-treatment-comparison-guide/" },
+      { label: "Best window treatments", href: "/best-window-treatments-ventura-county/" },
+      { label: "Installation timeline", href: "/window-treatment-installation-timeline-ventura-county/" }
     ]
   }
 ];
