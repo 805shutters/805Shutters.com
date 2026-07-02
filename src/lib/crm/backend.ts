@@ -1042,15 +1042,17 @@ export function buildDashboardData({
   payoffTarget: number;
   now?: Date | string;
 }): CrmDashboardData {
+  const contractProjectedQuotes = projectSignedContractsOntoQuotes(quotes, contracts);
+  const contractProjectedJobs = projectSignedContractsOntoJobs(jobs, contractProjectedQuotes, contracts);
   const quotesByJob = new Map<string, number>();
-  for (const quote of quotes) {
+  for (const quote of contractProjectedQuotes) {
     quotesByJob.set(quote.job_id, Math.max(quotesByJob.get(quote.job_id) || 0, toMoney(quote.quote_total)));
   }
 
-  const baseBookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
-  const liveJobs = projectLiveJobStatuses(jobs, baseBookkeepingRows);
+  const baseBookkeepingRows = buildBookkeepingRows({ quotes: contractProjectedQuotes, entries, payments, credits, expenses });
+  const liveJobs = projectLiveJobStatuses(contractProjectedJobs, baseBookkeepingRows);
   const statusBookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs);
-  const liveQuotes = projectLiveQuoteStatuses(quotes, statusBookkeepingRows);
+  const liveQuotes = projectLiveQuoteStatuses(contractProjectedQuotes, statusBookkeepingRows);
   const bookkeepingRows = projectBookkeepingRowContacts(statusBookkeepingRows, liveJobs, liveQuotes, customers);
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
@@ -1115,6 +1117,105 @@ export function buildDashboardData({
       now
     })
   };
+}
+
+function hasSignedContractSignal(value: { signed_at?: string | null; customer_signature?: string | null }) {
+  return Boolean(value.signed_at || value.customer_signature);
+}
+
+function isUnsignedQuoteStatus(status: CrmQuoteStatus | CrmBookkeepingStatus | null | undefined) {
+  return !status || status === "draft" || status === "sent";
+}
+
+function latestSignedAt(current: string | null | undefined, next: string | null | undefined) {
+  if (!next) return current || null;
+  if (!current) return next;
+  return Date.parse(next) > Date.parse(current) ? next : current;
+}
+
+function projectSignedContractsOntoQuotes(quotes: CrmQuote[], contracts: CrmCustomerContract[]) {
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const quoteByShareToken = new Map(
+    quotes
+      .filter((quote) => quote.share_token)
+      .map((quote) => [quote.share_token as string, quote])
+  );
+  const quotesByJobId = new Map<string, CrmQuote[]>();
+  const signedAtByQuoteId = new Map<string, string>();
+
+  for (const quote of quotes) {
+    const existing = quotesByJobId.get(quote.job_id) || [];
+    existing.push(quote);
+    quotesByJobId.set(quote.job_id, existing);
+    if (hasSignedContractSignal(quote)) signedAtByQuoteId.set(quote.id, quote.signed_at || quote.sold_at || quote.created_at);
+  }
+
+  for (const contract of contracts) {
+    if (!contract.signed_at) continue;
+
+    const quote =
+      (contract.quote_id ? quoteById.get(contract.quote_id) : null) ||
+      (contract.share_token ? quoteByShareToken.get(contract.share_token) : null) ||
+      (contract.job_id && (quotesByJobId.get(contract.job_id) || []).length === 1
+        ? (quotesByJobId.get(contract.job_id) || [])[0]
+        : null);
+    if (!quote) continue;
+
+    signedAtByQuoteId.set(quote.id, latestSignedAt(signedAtByQuoteId.get(quote.id), contract.signed_at) || contract.signed_at);
+  }
+
+  return quotes.map((quote) => {
+    const signedAt = signedAtByQuoteId.get(quote.id);
+    if (!signedAt) return quote;
+
+    const nextStatus = isUnsignedQuoteStatus(quote.status) ? "sold" : quote.status;
+    const nextLiveStatus = isUnsignedQuoteStatus(quote.live_status) ? "sold" : quote.live_status;
+    if (
+      nextStatus === quote.status &&
+      nextLiveStatus === quote.live_status &&
+      quote.signed_at &&
+      quote.sold_at
+    ) {
+      return quote;
+    }
+
+    return {
+      ...quote,
+      status: nextStatus,
+      live_status: nextLiveStatus,
+      signed_at: quote.signed_at || signedAt,
+      sold_at: quote.sold_at || signedAt
+    };
+  });
+}
+
+function projectSignedContractsOntoJobs(jobs: CrmJob[], quotes: CrmQuote[], contracts: CrmCustomerContract[]) {
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const quoteByShareToken = new Map(
+    quotes
+      .filter((quote) => quote.share_token)
+      .map((quote) => [quote.share_token as string, quote])
+  );
+  const soldJobIds = new Set<string>();
+
+  for (const quote of quotes) {
+    if (hasSignedContractSignal(quote)) soldJobIds.add(quote.job_id);
+  }
+
+  for (const contract of contracts) {
+    if (!contract.signed_at) continue;
+    const quote =
+      (contract.quote_id ? quoteById.get(contract.quote_id) : null) ||
+      (contract.share_token ? quoteByShareToken.get(contract.share_token) : null);
+    const jobId = contract.job_id || quote?.job_id || null;
+    if (jobId) soldJobIds.add(jobId);
+  }
+
+  return jobs.map((job) => {
+    if (!soldJobIds.has(job.id)) return job;
+    const status = advanceJobStatus(job.status, "sold");
+    return status === job.status ? job : { ...job, status };
+  });
 }
 
 function projectLiveQuoteStatuses(quotes: CrmQuote[], rows: CrmBookkeepingRow[]) {

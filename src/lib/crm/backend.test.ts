@@ -476,6 +476,79 @@ describe("buildDashboardData", () => {
     expect(data.bookkeepingRows.find((row) => row.id === "entry-legacy")?.customerPhone).toBe("805-555-4343");
     expect(data.customerFiles.find((file) => file.customerName === "Legacy Customer")?.phone).toBe("805-555-4343");
   });
+
+  it("counts signed customer contracts as sold even when the quote status is stale", () => {
+    const signedAt = "2026-07-02T22:37:35.000Z";
+    const data = buildDashboardData({
+      jobs: [
+        job({
+          id: "signed-contract-job",
+          status: "scheduled",
+          customer_name: "Signed Contract Customer",
+          estimated_total: 3000
+        })
+      ],
+      quotes: [
+        quote({
+          id: "signed-contract-quote",
+          job_id: "signed-contract-job",
+          status: "sent",
+          sold_at: null,
+          quote_total: 3000,
+          customer_name: "Signed Contract Customer",
+          share_token: "signed-contract-token"
+        })
+      ],
+      events: [],
+      customers: [],
+      products: [],
+      contracts: [
+        {
+          id: "signed-contract",
+          created_at: signedAt,
+          updated_at: signedAt,
+          customer_id: null,
+          job_id: "signed-contract-job",
+          quote_id: "signed-contract-quote",
+          bookkeeping_entry_id: null,
+          title: "Contract 805-2000",
+          contract_url: "/quote/signed-contract-token",
+          share_token: "signed-contract-token",
+          status: "sold",
+          signed_at: signedAt,
+          total_amount: 3000,
+          meta: {}
+        }
+      ],
+      entries: [],
+      payments: [],
+      credits: [],
+      expenses: [],
+      installationInvoiceEmails: [],
+      kenPayments: [],
+      openingBalance: 0,
+      payoffTarget: 500000
+    });
+
+    expect(data.summary.soldJobs).toBe(1);
+    expect(data.summary.openJobs).toBe(1);
+    expect(data.jobs.find((item) => item.id === "signed-contract-job")?.status).toBe("sold");
+    expect(data.quotes.find((item) => item.id === "signed-contract-quote")).toMatchObject({
+      status: "sold",
+      live_status: "sold",
+      signed_at: signedAt,
+      sold_at: signedAt
+    });
+    expect(data.bookkeepingRows.find((item) => item.id === "signed-contract-quote")).toMatchObject({
+      status: "sold",
+      soldDate: signedAt,
+      total: 3000
+    });
+    expect(data.customerFiles.find((file) => file.customerName === "Signed Contract Customer")).toMatchObject({
+      latestStatus: "sold",
+      latestSoldDate: signedAt
+    });
+  });
 });
 
 describe("quote bookkeeping notes", () => {

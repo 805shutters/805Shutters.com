@@ -140,7 +140,10 @@ export function buildCustomerFiles({
       ? customerKey(activeCustomers.find((customer) => customer.id === contract.customer_id)?.normalized_name || "")
       : relatedFileKey(contract, jobById, quoteById);
     const file = key ? ensureFile(fileMap, key, fallbackRelatedName(contract, jobById, quoteById)) : null;
-    if (file) pushUnique(file.contracts, contract.id, contract);
+    if (file) {
+      pushUnique(file.contracts, contract.id, contract);
+      file.latestSoldDate = newestDate(file.latestSoldDate, contract.signed_at);
+    }
   }
 
   for (const file of fileMap.values()) {
@@ -194,15 +197,31 @@ function latestLiveStatus(file: CrmCustomerFile) {
   const latestRow = newestByDate(file.bookkeepingRows, (row) => row.soldDate);
   if (latestRow) return effectiveBookkeepingStatus(latestRow);
 
-  const latestQuote = newestByDate(file.quotes, (quote) =>
-    quote.sold_at || quote.approved_at || quote.ordered_at || quote.received_at || quote.installed_at || quote.created_at
+  const latestSignedContract = newestByDate(
+    file.contracts.filter((contract) => contract.signed_at),
+    (contract) => contract.signed_at
   );
-  if (latestQuote) return latestQuote.live_status || latestQuote.status;
+
+  const latestQuote = newestByDate(file.quotes, (quote) =>
+    quote.signed_at || quote.sold_at || quote.approved_at || quote.ordered_at || quote.received_at || quote.installed_at || quote.created_at
+  );
+  if (latestQuote) {
+    const quoteStatus = latestQuote.live_status || latestQuote.status;
+    if (latestSignedContract && (quoteStatus === "draft" || quoteStatus === "sent")) return signedContractStatus(latestSignedContract);
+    return quoteStatus;
+  }
+
+  if (latestSignedContract) return signedContractStatus(latestSignedContract);
 
   const latestJob = newestByDate(file.jobs, (job) => job.appointment_start || job.created_at);
   if (latestJob) return latestJob.status;
 
   return file.latestStatus;
+}
+
+function signedContractStatus(contract: CrmCustomerContract) {
+  if (!contract.status || contract.status === "draft" || contract.status === "sent") return "sold";
+  return contract.status;
 }
 
 function newestByDate<T>(items: T[], getDate: (item: T) => string | null | undefined) {

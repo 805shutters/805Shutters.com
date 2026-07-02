@@ -317,6 +317,31 @@ describe("bookkeeping ledger tombstones", () => {
   });
 });
 
+describe("signed quote sale projection", () => {
+  it("creates a sold ledger row when a quote has a signature but stale sent status", () => {
+    const signedAt = "2026-07-02T22:15:00.000Z";
+    const rows = rowsFrom({
+      quotes: [
+        quote({
+          id: "signed-stale-sent",
+          status: "sent",
+          quote_total: 2500,
+          signed_at: signedAt
+        })
+      ]
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "signed-stale-sent",
+      status: "sold",
+      soldDate: signedAt,
+      total: 2500
+    });
+    expect(effectiveBookkeepingStatus(rows[0])).toBe("sold");
+  });
+});
+
 describe("paid-in-full status", () => {
   it("keeps open-balance rows financially active even if the live lifecycle says closed", () => {
     const [row] = rowsFrom({

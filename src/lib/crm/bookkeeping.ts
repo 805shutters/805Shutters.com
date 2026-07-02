@@ -45,6 +45,17 @@ const ACTIVE_QUOTE_STATUSES = new Set<CrmQuoteStatus>([
   "paid"
 ]);
 
+const UNSOLD_QUOTE_STATUSES = new Set<CrmQuoteStatus>(["draft", "sent"]);
+
+function quoteHasSignedContract(quote: CrmQuote) {
+  return Boolean(quote.signed_at || quote.customer_signature);
+}
+
+function quoteStatusForBookkeeping(quote: CrmQuote): CrmQuoteStatus {
+  if (UNSOLD_QUOTE_STATUSES.has(quote.status) && quoteHasSignedContract(quote)) return "sold";
+  return quote.status;
+}
+
 function hasLedgerDeleteTombstone(meta: Record<string, unknown> | null | undefined) {
   return Boolean(meta && typeof meta === "object" && !Array.isArray(meta) && (meta.bookkeeping_deleted_at || meta.deleted_at));
 }
@@ -120,7 +131,7 @@ export function buildBookkeepingRows({
   );
 
   const quoteRows = quotes
-    .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quote.status))
+    .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quoteStatusForBookkeeping(quote)))
     .filter((quote) => !hasLedgerDeleteTombstone(quote.meta))
     .filter((quote) => !linkedQuoteIds.has(quote.id))
     .map((quote) => {
@@ -572,14 +583,15 @@ function buildQuoteRow(
   const { otherExpenses, expensesTotal, remakeTotal } = splitRemakeExpenses(expenses);
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
-  const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
+  const soldDate = quote.signed_at || quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
+  const status = quoteStatusForBookkeeping(quote);
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
   const kenCut = computeKenCut({ total, override: entry?.ken_cut_override });
   const installation = getInstallationFields(entry);
   const missingInstallerInvoice = isMissingInstallerInvoice({
     source: "crm_quote",
     matchStatus: entry?.installation_match_status || null,
-    quoteStatus: quote.status,
+    quoteStatus: status,
     isPaidInFull
   });
   const profit = calculateBookkeepingProfit({
@@ -636,7 +648,7 @@ function buildQuoteRow(
     manufacturerOrderUrl: entry?.manufacturer_order_url || quote.manufacturer_order_url,
     manufacturerDocumentUrl: entry?.manufacturer_document_url || quote.manufacturer_document_url,
     notes: cleanBookkeepingNote(entry?.notes, quote.notes),
-    status: bookkeepingStatusForBalance(quote.status, total, balance),
+    status: bookkeepingStatusForBalance(status, total, balance),
     payments,
     creditsIn,
     creditsOut,
