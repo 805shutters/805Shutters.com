@@ -26,7 +26,7 @@ import {
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
-import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail } from "@/lib/notify/email";
+import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 
@@ -1016,7 +1016,7 @@ export async function sendQuoteToCustomer(
   const emailRecipients = requestedEmails.length ? requestedEmails : email ? [email] : [];
   const emailRes = wantEmail
     ? await sendEmailToMany(emailRecipients, mail)
-    : { sent: false, skipped: "email not selected" };
+    : { sent: false, skipped: "email not selected", results: [] };
 
   let status = String(quote.status);
   if (status === "draft") {
@@ -1066,7 +1066,7 @@ export async function sendQuotePaymentLinkToCustomer(
   quoteId: string,
   actor: CrmActor,
   options: { email?: boolean; sms?: boolean; emailRecipients?: string[]; phone?: string | null; note?: string | null } = {},
-): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
+): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: BulkEmailResult; status: string }> {
   const wantSms = options.sms !== false;
   const wantEmail = options.email !== false;
   const { token, url: quoteUrl } = await ensureShareToken(supabase, quoteId, actor);
@@ -1116,13 +1116,25 @@ export async function sendQuotePaymentLinkToCustomer(
   const emailRecipients = requestedEmails.length ? requestedEmails : email ? [email] : [];
   const emailRes = wantEmail
     ? await sendEmailToMany(emailRecipients, mail)
-    : { sent: false, skipped: "email not selected" };
+    : { sent: false, skipped: "email not selected", results: [] };
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: quoteId,
     action: "payment_link.send",
-    metadata: { url: paymentUrl, sms: sms.sent, email: emailRes.sent },
+    metadata: {
+      url: paymentUrl,
+      sms: sms.sent,
+      email: emailRes.sent,
+      email_recipients: emailRecipients,
+      email_results: emailRes.results.map((result) => ({
+        to: result.to,
+        sent: result.sent,
+        id: result.id || null,
+        skipped: result.skipped || null,
+        error: result.error || null,
+      })),
+    },
   });
 
   return { url: paymentUrl, sms, email: emailRes, status: String(quote.status) };
@@ -1142,20 +1154,28 @@ function uniqueEmails(values: unknown): string[] {
   return emails;
 }
 
+type BulkEmailResult = {
+  sent: boolean;
+  skipped?: string;
+  error?: string;
+  results: Array<EmailResult & { to: string }>;
+};
+
 async function sendEmailToMany(
   recipients: string[],
   mail: { subject: string; html: string; text: string },
-): Promise<{ sent: boolean; skipped?: string; error?: string }> {
-  if (!recipients.length) return { sent: false, skipped: "no recipient email" };
+): Promise<BulkEmailResult> {
+  if (!recipients.length) return { sent: false, skipped: "no recipient email", results: [] };
   const results = await Promise.all(
-    recipients.map((to) => sendEmail({ to, subject: mail.subject, html: mail.html, text: mail.text })),
+    recipients.map(async (to) => ({ to, ...(await sendEmail({ to, subject: mail.subject, html: mail.html, text: mail.text })) })),
   );
   const sentCount = results.filter((result) => result.sent).length;
-  if (sentCount > 0) return { sent: true };
+  if (sentCount > 0) return { sent: true, results };
   const firstFailure = results.find((result) => result.error || result.skipped);
   return {
     sent: false,
     skipped: firstFailure?.skipped,
     error: firstFailure?.error,
+    results,
   };
 }

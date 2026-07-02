@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
+import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
+import { sendQuotePaymentLinkToCustomer } from "@/lib/crm/public-quote";
 import {
   sendSalesQuotePaymentLinkToCustomer,
   type SendSalesQuoteOptions,
@@ -12,7 +13,19 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as SendSalesQuoteOptions;
-    const result = await sendSalesQuotePaymentLinkToCustomer(supabase, id, { email, userId: user.id }, body);
+    let result;
+    try {
+      result = await sendSalesQuotePaymentLinkToCustomer(supabase, id, { email, userId: user.id }, body);
+    } catch (error) {
+      if (!(error instanceof CrmAuthError) || error.status !== 404) throw error;
+      result = await sendQuotePaymentLinkToCustomer(supabase, id, { email, userId: user.id }, {
+        email: body.channels?.email,
+        sms: body.channels?.sms,
+        emailRecipients: body.emails,
+        phone: body.phone,
+        note: body.note,
+      });
+    }
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);

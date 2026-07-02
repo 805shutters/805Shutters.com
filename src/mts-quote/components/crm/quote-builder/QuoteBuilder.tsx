@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
+import { SendPaymentLinkDialog } from "./SendPaymentLinkDialog";
 import { QuoteStatusPill } from "./QuoteStatusPill";
 import { CollectPaymentDialog } from "./CollectPaymentDialog";
 import { FloatingQuoteTotalBadge } from "./FloatingQuoteTotalBadge";
@@ -166,14 +167,6 @@ type LineNumberRange = {
   end: number;
   label: string;
   numbers: number[];
-};
-
-type PaymentLinkSendResponse = {
-  url?: string;
-  email?: { sent?: boolean; skipped?: string; error?: string };
-  sms?: { sent?: boolean; skipped?: string; error?: string };
-  message?: string;
-  error?: string;
 };
 
 function buildLineNumberRanges(lineItems: Pick<SalesQuoteLineItem, "id" | "quantity">[]) {
@@ -357,6 +350,7 @@ export function QuoteBuilder() {
   const [editingName, setEditingName] = useState(false);
   const [measuringItemId, setMeasuringItemId] = useState<string | null>(null);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showPaymentLinkDialog, setShowPaymentLinkDialog] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState<"deposit" | "balance" | null>(null);
   const [copiedCopyTargets, setCopiedCopyTargets] = useState<string[]>([]);
   const [copyAllTargetsBySource, setCopyAllTargetsBySource] = useState<Record<string, string[]>>({});
@@ -652,55 +646,6 @@ export function QuoteBuilder() {
       });
       selectProduct(null);
       toast.success("All line items cleared");
-    },
-  });
-
-  const sendPaymentLink = useMutation<PaymentLinkSendResponse, Error>({
-    mutationFn: async () => {
-      if (!quote) throw new Error("Quote is required.");
-
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("CRM session is required.");
-
-      const customerEmail = quote.customer_email?.trim();
-      const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/payment-link`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          channels: { email: true, sms: false },
-          emails: customerEmail ? [customerEmail] : [],
-        }),
-      });
-
-      const data = (await response.json().catch(() => ({}))) as PaymentLinkSendResponse;
-      if (!response.ok) throw new Error(data.message || data.error || "Failed to send payment link");
-      return data;
-    },
-    onSuccess: async (data) => {
-      if (data.email?.sent) {
-        toast.success("Payment link emailed to customer");
-        return;
-      }
-
-      let copied = false;
-      if (data.url) {
-        try {
-          await navigator.clipboard.writeText(data.url);
-          copied = true;
-        } catch {
-          /* best-effort copy fallback */
-        }
-      }
-
-      const reason = data.email?.error || data.email?.skipped || "email was not sent";
-      toast.warning(`Payment link created${copied ? " and copied" : ""}, but ${reason}.`);
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to send payment link");
     },
   });
 
@@ -1166,13 +1111,12 @@ export function QuoteBuilder() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => sendPaymentLink.mutate()}
-                    disabled={sendPaymentLink.isPending}
+                    onClick={() => setShowPaymentLinkDialog(true)}
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
                     title="Email the deposit payment link to the customer"
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
-                    {sendPaymentLink.isPending ? "Sending..." : "Send Payment Link"}
+                    Send Payment Link
                   </Button>
                 )}
                 {quote && (quote.status === "sold" || quote.status === "ordered") && (
@@ -1496,6 +1440,14 @@ export function QuoteBuilder() {
         <SendQuoteDialog
           open={showSendDialog}
           onClose={() => setShowSendDialog(false)}
+          quote={quote}
+        />
+      )}
+
+      {quote && (
+        <SendPaymentLinkDialog
+          open={showPaymentLinkDialog}
+          onClose={() => setShowPaymentLinkDialog(false)}
           quote={quote}
         />
       )}
