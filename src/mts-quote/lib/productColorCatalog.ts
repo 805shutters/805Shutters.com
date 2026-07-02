@@ -284,7 +284,9 @@ export function getMtsGridKeyForCatalogProgram(
   }
 
   if (productType === "Smart Drapes") {
-    return programId.startsWith("smartdrape_") ? "light_filtering" : PRODUCT_COLOR_UNKNOWN_GRID;
+    if (!programId.startsWith("smartdrape_")) return PRODUCT_COLOR_UNKNOWN_GRID;
+    // Lakeshore Stripe has its own (cheaper) July 2026 guide grid.
+    return programId.includes("lakeshore") ? "lakeshore_stripe" : "light_filtering";
   }
 
   return PRODUCT_COLOR_UNKNOWN_GRID;

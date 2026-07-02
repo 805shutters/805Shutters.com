@@ -9,6 +9,9 @@ export interface PriceGrid {
   heights: number[];
   widths: number[];
   prices: number[][]; // prices[heightIndex][widthIndex]
+  // Guide "for every additional foot add" column (per height row), where the
+  // guide provides one (e.g. SmartDrape widths beyond the grid).
+  additionalFootPerHeight?: number[];
 }
 
 // ========== HONEYCOMB SHADES PRICING ==========
@@ -650,6 +653,9 @@ export const PERFECTSHEER_PRICING: Record<string, PriceGrid> = {
 };
 
 // ========== VERTICAL BLINDS PRICING ==========
+// Synchrony Vertical Blinds — Norman 2026 Retail Guide effective July 1,
+// 2026; grids verified against src/lib/quote/catalog/norman-2026.catalog.json
+// (synchrony_vertical pg1-pg4).
 export const VERTICAL_PRICING: Record<string, PriceGrid> = {
   group1: {
     name: "Price Group 1 (Classic)",
@@ -659,12 +665,12 @@ export const VERTICAL_PRICING: Record<string, PriceGrid> = {
     heights: [48, 60, 72, 84, 96, 108],
     widths: [24, 36, 48, 60, 72, 84, 92, 100],
     prices: [
-      [210, 260, 316, 360, 413, 452, 514, 583],
-      [224, 275, 338, 381, 434, 474, 539, 612],
-      [235, 291, 363, 407, 462, 506, 575, 652],
-      [251, 308, 387, 437, 500, 545, 613, 704],
-      [261, 320, 409, 464, 535, 581, 662, 752],
-      [278, 337, 428, 491, 568, 618, 703, 800],
+      [204, 251, 303, 346, 398, 434, 492, 559],
+      [217, 261, 321, 366, 417, 460, 519, 590],
+      [224, 279, 341, 386, 440, 477, 546, 623],
+      [240, 294, 361, 404, 463, 501, 572, 651],
+      [247, 304, 376, 428, 486, 534, 601, 682],
+      [255, 319, 396, 446, 511, 557, 632, 714],
     ],
   },
   group2: {
@@ -675,12 +681,12 @@ export const VERTICAL_PRICING: Record<string, PriceGrid> = {
     heights: [48, 60, 72, 84, 96, 108],
     widths: [24, 36, 48, 60, 72, 84, 92, 100],
     prices: [
-      [236, 292, 354, 404, 463, 506, 576, 654],
-      [252, 309, 379, 427, 486, 533, 605, 687],
-      [263, 325, 400, 451, 513, 563, 639, 724],
-      [279, 340, 420, 473, 542, 591, 665, 764],
-      [289, 356, 440, 496, 567, 617, 702, 799],
-      [298, 374, 458, 523, 596, 648, 737, 836],
+      [244, 301, 365, 417, 477, 522, 594, 674],
+      [260, 319, 391, 440, 501, 549, 624, 708],
+      [271, 335, 412, 465, 529, 580, 659, 746],
+      [288, 351, 433, 488, 559, 609, 685, 787],
+      [298, 367, 454, 511, 585, 636, 724, 823],
+      [307, 386, 472, 539, 614, 668, 760, 862],
     ],
   },
   group3: {
@@ -691,12 +697,12 @@ export const VERTICAL_PRICING: Record<string, PriceGrid> = {
     heights: [48, 60, 72, 84, 96, 108],
     widths: [24, 36, 48, 60, 72, 84, 92, 100],
     prices: [
-      [264, 336, 408, 448, 516, 564, 641, 725],
-      [279, 343, 422, 473, 543, 594, 676, 766],
-      [290, 364, 440, 501, 568, 624, 713, 804],
-      [308, 377, 467, 527, 599, 655, 743, 848],
-      [318, 392, 492, 556, 635, 687, 784, 886],
-      [335, 415, 513, 583, 661, 722, 820, 936],
+      [272, 347, 421, 462, 532, 581, 661, 747],
+      [288, 354, 435, 488, 560, 612, 697, 789],
+      [299, 375, 454, 517, 586, 643, 735, 829],
+      [318, 389, 482, 543, 617, 675, 766, 874],
+      [328, 404, 507, 573, 655, 708, 808, 913],
+      [346, 428, 529, 601, 681, 744, 845, 965],
     ],
   },
   group4: {
@@ -707,12 +713,12 @@ export const VERTICAL_PRICING: Record<string, PriceGrid> = {
     heights: [48, 60, 72, 84, 96, 108],
     widths: [24, 36, 48, 60, 72, 84, 92, 100],
     prices: [
-      [293, 372, 452, 496, 571, 624, 710, 804],
-      [310, 381, 469, 526, 603, 660, 751, 852],
-      [322, 404, 489, 557, 631, 693, 792, 894],
-      [342, 419, 518, 585, 665, 727, 825, 943],
-      [353, 436, 546, 618, 705, 763, 870, 986],
-      [372, 461, 569, 647, 734, 801, 910, 1040],
+      [319, 394, 480, 549, 633, 692, 781, 888],
+      [338, 423, 514, 580, 664, 730, 829, 938],
+      [359, 441, 543, 614, 696, 764, 866, 988],
+      [374, 463, 573, 649, 736, 800, 911, 1037],
+      [394, 486, 598, 679, 776, 842, 958, 1089],
+      [406, 510, 629, 710, 811, 888, 1001, 1141],
     ],
   },
 };
@@ -735,19 +741,21 @@ export const FAUX_WOOD_PRICING: Record<string, PriceGrid> = {
     maxHeight: 96,
     heights: [30, 36, 42, 48, 54, 60, 66, 73, 78, 84, 90, 96],
     widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72],
+    // Norman 2026 Retail Guide effective July 1, 2026 — verified against
+    // src/lib/quote/catalog/norman-2026.catalog.json (smartprivacy_faux).
     prices: [
-      [130, 141, 151, 170, 180, 195, 211, 247, 264, 282],
-      [135, 148, 158, 179, 193, 206, 231, 264, 280, 311],
-      [147, 158, 173, 190, 205, 226, 249, 281, 304, 332],
-      [156, 170, 180, 202, 220, 241, 266, 300, 326, 356],
-      [170, 188, 197, 222, 242, 266, 290, 332, 356, 387],
-      [180, 194, 210, 238, 258, 279, 309, 354, 377, 411],
-      [190, 204, 222, 250, 270, 298, 327, 375, 401, 446],
-      [201, 219, 236, 269, 290, 318, 350, 401, 432, 468],
-      [206, 228, 249, 275, 302, 332, 365, 422, 453, 498],
-      [219, 238, 261, 295, 318, 350, 389, 442, 479, 530],
-      [228, 249, 270, 309, 332, 365, 403, 462, 498, 549],
-      [236, 262, 282, 319, 350, 389, 430, 486, 526, 578],
+      [134, 146, 156, 176, 186, 201, 218, 255, 272, 291],
+      [140, 153, 163, 185, 199, 213, 238, 272, 289, 321],
+      [152, 163, 179, 196, 212, 233, 257, 290, 314, 342],
+      [161, 176, 186, 209, 227, 249, 274, 309, 336, 367],
+      [176, 194, 203, 229, 250, 274, 299, 342, 367, 399],
+      [186, 200, 217, 246, 266, 288, 319, 365, 389, 424],
+      [196, 211, 229, 258, 279, 307, 337, 387, 414, 460],
+      [208, 226, 244, 278, 299, 328, 361, 414, 445, 483],
+      [213, 235, 257, 284, 312, 342, 376, 435, 467, 513],
+      [226, 246, 269, 304, 328, 361, 401, 456, 494, 546],
+      [235, 257, 279, 319, 342, 376, 416, 476, 513, 566],
+      [244, 270, 291, 329, 361, 401, 443, 501, 542, 596],
     ],
   },
   ultimate: {
@@ -768,22 +776,41 @@ export const FAUX_WOOD_PRICING: Record<string, PriceGrid> = {
     maxHeight: 96,
     heights: [30, 36, 42, 48, 54, 60, 66, 73, 78, 84, 90, 96],
     widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 96],
+    // Norman 2026 Retail Guide effective July 1, 2026 — verified against
+    // src/lib/quote/catalog/norman-2026.catalog.json (faux_wood). Guide NA
+    // cells are stored as 0.
     prices: [
-      [164, 179, 194, 216, 231, 248, 271, 316, 336, 362, 388, 408, 440],
-      [174, 188, 203, 229, 246, 265, 295, 336, 360, 396, 408, 440, 479],
-      [187, 203, 221, 244, 264, 289, 319, 361, 391, 425, 448, 483, 519],
-      [200, 216, 232, 259, 280, 309, 339, 385, 418, 457, 479, 512, 554],
-      [216, 241, 251, 287, 311, 339, 372, 425, 457, 494, 527, 560, 601],
-      [231, 247, 269, 304, 330, 357, 395, 453, 485, 528, 557, 601, 653],
-      [244, 262, 284, 321, 346, 382, 419, 482, 515, 573, 596, 640, 694],
-      [257, 279, 302, 344, 371, 407, 448, 515, 554, 601, 640, 690, 746],
-      [265, 293, 319, 354, 388, 425, 467, 542, 580, 639, 675, 720, 788],
-      [279, 304, 332, 376, 407, 448, 497, 567, 613, 680, 708, 748, 829],
-      [293, 319, 346, 395, 426, 467, 517, 591, 640, 703, 738, 781, 0],
-      [302, 335, 362, 408, 448, 497, 552, 622, 674, 741, 767, 0, 0],
+      [169, 185, 200, 223, 238, 256, 280, 326, 347, 373, 400, 421, 454],
+      [180, 194, 210, 236, 254, 273, 304, 347, 371, 408, 421, 454, 494],
+      [193, 210, 228, 252, 272, 298, 329, 372, 403, 438, 462, 498, 535],
+      [206, 223, 239, 267, 289, 319, 350, 397, 431, 471, 494, 528, 571],
+      [223, 249, 259, 296, 321, 350, 384, 438, 471, 509, 543, 577, 620],
+      [238, 255, 278, 314, 340, 368, 407, 467, 500, 544, 574, 620, 673],
+      [252, 270, 293, 331, 357, 394, 432, 497, 531, 591, 614, 660, 715],
+      [265, 288, 312, 355, 383, 420, 462, 531, 571, 620, 660, 711, 769],
+      [273, 302, 329, 365, 400, 438, 482, 559, 598, 659, 696, 742, 812],
+      [288, 314, 342, 388, 420, 462, 512, 585, 632, 701, 730, 771, 854],
+      [302, 329, 357, 407, 439, 482, 533, 609, 660, 725, 761, 805, 0],
+      [312, 346, 373, 421, 462, 512, 569, 641, 695, 764, 791, 0, 0],
     ],
   },
 };
+
+// Valance surcharge ladders for faux wood blinds (July 2026 guide). Priced by
+// ordered width using the first ladder width >= the order; $18 per additional
+// foot beyond the ladder. NOTE: not yet wired to an automatic surcharge in
+// the builder — data recorded here for the July 2026 sync.
+export const FAUX_WOOD_VALANCE_SURCHARGE = {
+  widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 96],
+  prices: [28, 28, 34, 40, 51, 56, 61, 73, 78, 84, 94, 100, 106],
+  additionalFootRate: 18,
+} as const;
+
+export const SMARTPRIVACY_FAUX_VALANCE_SURCHARGE = {
+  widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72],
+  prices: [28, 28, 34, 40, 51, 56, 61, 73, 78, 84],
+  additionalFootRate: 18,
+} as const;
 
 // ========== WOOD BLINDS PRICING ==========
 export const WOOD_BLINDS_PRICING: Record<string, PriceGrid> = {
@@ -804,24 +831,40 @@ export const WOOD_BLINDS_PRICING: Record<string, PriceGrid> = {
     maxHeight: 96,
     heights: [30, 36, 42, 48, 54, 60, 66, 73, 78, 84, 90, 96],
     widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    // Norman 2026 Retail Guide effective July 1, 2026 — verified against
+    // src/lib/quote/catalog/norman-2026.catalog.json (wood_blinds).
     prices: [
-      [288, 308, 329, 353, 382, 412, 458, 510, 546, 591, 635, 688, 726, 772],
-      [317, 333, 350, 377, 416, 447, 486, 557, 594, 644, 693, 752, 792, 850],
-      [334, 358, 377, 408, 450, 486, 540, 608, 658, 713, 765, 838, 886, 953],
-      [365, 377, 405, 437, 485, 520, 580, 660, 710, 770, 831, 910, 965, 1032],
-      [378, 411, 450, 490, 540, 586, 646, 737, 791, 862, 928, 1022, 1078, 1156],
-      [407, 450, 479, 519, 580, 622, 693, 789, 849, 928, 1004, 1100, 1156, 1251],
-      [434, 478, 507, 551, 614, 670, 744, 844, 909, 990, 1078, 1187, 1251, 1366],
-      [465, 506, 543, 586, 662, 717, 798, 911, 992, 1082, 1182, 1290, 1370, 1486],
-      [472, 526, 564, 616, 688, 746, 858, 978, 1052, 1133, 1224, 1391, 1470, 1606],
-      [506, 544, 602, 653, 729, 796, 915, 1028, 1113, 1187, 1302, 1461, 1571, 1648],
-      [532, 567, 630, 683, 765, 836, 957, 1073, 1152, 1268, 1337, 1532, 1618, 1722],
-      [544, 598, 664, 724, 809, 886, 1004, 1122, 1229, 1329, 1372, 1553, 1653, 1746],
+      [297, 318, 339, 364, 394, 425, 472, 526, 563, 609, 655, 709, 748, 796],
+      [327, 343, 361, 389, 429, 461, 501, 574, 612, 664, 714, 775, 816, 876],
+      [345, 369, 389, 421, 464, 501, 557, 627, 678, 735, 788, 864, 913, 982],
+      [376, 389, 418, 451, 500, 536, 598, 680, 732, 794, 856, 938, 994, 1063],
+      [390, 424, 464, 505, 557, 604, 666, 760, 815, 888, 956, 1053, 1111, 1191],
+      [420, 464, 494, 535, 598, 641, 714, 813, 875, 956, 1035, 1133, 1191, 1289],
+      [448, 493, 523, 568, 633, 691, 767, 870, 937, 1020, 1111, 1223, 1289, 1407],
+      [479, 522, 560, 604, 682, 739, 822, 939, 1022, 1115, 1218, 1329, 1412, 1531],
+      [487, 542, 581, 635, 709, 769, 884, 1008, 1084, 1167, 1261, 1433, 1515, 1655],
+      [522, 561, 621, 673, 751, 820, 943, 1059, 1147, 1223, 1342, 1505, 1619, 1698],
+      [548, 585, 649, 704, 788, 862, 986, 1106, 1187, 1307, 1378, 1578, 1667, 1774],
+      [561, 616, 684, 746, 834, 913, 1035, 1156, 1266, 1369, 1414, 1600, 1703, 1799],
     ],
   },
 };
 
+// Valance surcharge ladders for Ultimate Normandy wood blinds (July 2026
+// guide). Priced by ordered width using the first ladder width >= the order;
+// $25 per additional foot beyond the ladder. NOTE: not yet wired to an
+// automatic surcharge in the builder — data recorded here for the July 2026
+// sync.
+export const WOOD_BLINDS_VALANCE_SURCHARGES = {
+  widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+  designerCrown: [50, 56, 62, 75, 87, 93, 106, 118, 130, 143, 155, 161, 174, 186],
+  contempo: [62, 68, 81, 87, 99, 118, 124, 143, 155, 167, 180, 198, 211, 223],
+  additionalFootRate: 25,
+} as const;
+
 // ========== SMARTDRAPE PRICING ==========
+// Norman 2026 Retail Guide effective July 1, 2026 — verified against
+// src/lib/quote/catalog/norman-2026.catalog.json (smartdrape).
 export const SMARTDRAPE_PRICING: Record<string, PriceGrid> = {
   light_filtering: {
     name: "Light Filtering",
@@ -832,40 +875,194 @@ export const SMARTDRAPE_PRICING: Record<string, PriceGrid> = {
     widths: [36, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120, 132, 148, 160, 172, 184],
     prices: [
       [
-        735, 866, 923, 983, 1074, 1136, 1199, 1267, 1359, 1440, 1557, 1767, 1991, 2237, 2506, 2751,
-        2998,
+        758, 892, 951, 1013, 1107, 1171, 1235, 1306, 1400, 1484, 1604, 1821, 2051, 2305, 2582,
+        2834, 3088,
       ],
       [
-        817, 968, 1050, 1122, 1232, 1302, 1373, 1455, 1562, 1655, 1788, 2010, 2246, 2500, 2801,
-        3054, 3308,
+        842, 998, 1082, 1156, 1269, 1342, 1415, 1499, 1609, 1705, 1842, 2071, 2314, 2575, 2886,
+        3146, 3408,
       ],
       [
-        923, 1112, 1202, 1302, 1416, 1509, 1595, 1693, 1813, 1925, 2210, 2461, 2734, 3020, 3383,
-        3668, 3954,
+        951, 1146, 1239, 1342, 1459, 1555, 1643, 1744, 1868, 1983, 2277, 2535, 2817, 3111, 3485,
+        3779, 4073,
       ],
       [
-        996, 1243, 1341, 1447, 1576, 1679, 1781, 1882, 2017, 2138, 2312, 2573, 2855, 3154, 3533,
-        3832, 4131,
+        1026, 1281, 1382, 1491, 1624, 1730, 1835, 1939, 2078, 2203, 2382, 2651, 2941, 3249, 3639,
+        3947, 4255,
       ],
       [
-        1082, 1307, 1416, 1530, 1664, 1776, 1885, 1992, 2138, 2268, 2511, 2781, 3076, 3384, 3790,
-        4100, 4409,
+        1115, 1347, 1459, 1576, 1714, 1830, 1942, 2052, 2203, 2337, 2587, 2865, 3169, 3486, 3904,
+        4223, 4542,
       ],
       [
-        1225, 1412, 1543, 1669, 1812, 1937, 2062, 2178, 2340, 2484, 2842, 3131, 3442, 3775, 4228,
-        4562, 4895,
+        1262, 1455, 1590, 1720, 1867, 1996, 2124, 2244, 2411, 2559, 2928, 3225, 3546, 3889, 4355,
+        4699, 5042,
       ],
       [
-        1271, 1508, 1645, 1778, 1926, 2060, 2197, 2316, 2488, 2637, 2879, 3171, 3484, 3820, 4280,
-        4619, 4958,
+        1310, 1554, 1695, 1832, 1984, 2122, 2263, 2386, 2563, 2717, 2966, 3267, 3589, 3935, 4409,
+        4758, 5107,
       ],
       [
-        1341, 1635, 1781, 1921, 2083, 2225, 2378, 2500, 2688, 2843, 2979, 3278, 3602, 3951, 4427,
-        4778, 5131,
+        1382, 1685, 1835, 1979, 2146, 2292, 2450, 2575, 2769, 2929, 3069, 3377, 3711, 4070, 4560,
+        4922, 5285,
       ],
+    ],
+    additionalFootPerHeight: [255, 263, 296, 309, 320, 345, 350, 369],
+  },
+  lakeshore_stripe: {
+    name: "Lakeshore Stripe",
+    fabrics: ["Lakeshore Stripe"],
+    maxWidth: 184,
+    maxHeight: 144,
+    heights: [48, 60, 72, 84, 100, 120, 132, 144],
+    widths: [36, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120, 132, 148, 160, 172, 184],
+    prices: [
+      [
+        643, 760, 809, 862, 941, 997, 1051, 1111, 1191, 1262, 1364, 1549, 1744, 1961, 2195, 2411,
+        2626,
+      ],
+      [
+        716, 849, 920, 984, 1081, 1140, 1204, 1276, 1367, 1451, 1567, 1760, 1968, 2191, 2453,
+        2675, 2897,
+      ],
+      [
+        809, 974, 1054, 1140, 1242, 1322, 1397, 1484, 1588, 1688, 1936, 2156, 2395, 2646, 2963,
+        3214, 3463,
+      ],
+      [
+        873, 1089, 1176, 1268, 1381, 1471, 1559, 1648, 1768, 1873, 2025, 2254, 2500, 2762, 3094,
+        3356, 3617,
+      ],
+      [
+        949, 1146, 1242, 1341, 1458, 1555, 1651, 1745, 1873, 1986, 2200, 2436, 2694, 2964, 3319,
+        3590, 3861,
+      ],
+      [
+        1074, 1236, 1353, 1462, 1587, 1697, 1806, 1909, 2050, 2176, 2491, 2743, 3014, 3306, 3703,
+        3995, 4287,
+      ],
+      [
+        1138, 1351, 1474, 1592, 1726, 1845, 1968, 2074, 2229, 2361, 2580, 2840, 3120, 3422, 3834,
+        4137, 4442,
+      ],
+      [
+        1201, 1464, 1595, 1721, 1866, 1994, 2131, 2240, 2408, 2548, 2668, 2937, 3225, 3539, 3965,
+        4280, 4594,
+      ],
+    ],
+    additionalFootPerHeight: [217, 224, 252, 264, 273, 293, 304, 321],
+  },
+};
+
+// ========== SMARTFOLD SHADES PRICING ==========
+// Norman 2026 Retail Guide effective July 1, 2026 — SmartFold Shades;
+// verified against src/lib/quote/catalog/norman-2026.catalog.json
+// (smartfold). NOTE: SmartFold is not yet wired to a builder product type
+// (no case in getProductPriceBreakdown) — data recorded here for the July
+// 2026 sync.
+export const SMARTFOLD_PRICING: Record<string, PriceGrid> = {
+  shades: {
+    name: "SmartFold Shades",
+    fabrics: [],
+    maxWidth: 96,
+    maxHeight: 96,
+    heights: [36, 48, 60, 72, 84, 96],
+    widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    prices: [
+      [416, 456, 493, 535, 572, 612, 655, 698, 745, 822, 872, 918, 972],
+      [456, 503, 551, 599, 650, 705, 761, 817, 876, 966, 1020, 1080, 1136],
+      [495, 551, 606, 671, 737, 802, 869, 936, 1007, 1104, 1172, 1240, 1293],
+      [538, 600, 673, 747, 829, 906, 979, 1056, 1132, 1239, 1301, 1365, 1424],
+      [578, 658, 742, 834, 914, 1000, 1092, 1174, 1243, 1349, 1417, 1489, 1558],
+      [624, 715, 813, 910, 1007, 1104, 1187, 1269, 1345, 1460, 1535, 1613, 1693],
     ],
   },
 };
+
+// SmartFold valance surcharge ladders (July 2026 guide). Priced by ordered
+// width using the first ladder width >= the order; $28 per additional foot
+// beyond the ladder. NOTE: not yet wired to a builder product type.
+export const SMARTFOLD_VALANCE_SURCHARGES = {
+  widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+  // Fascia / wood valance.
+  fasciaWood: [117, 122, 133, 139, 150, 161, 171, 188, 204, 216, 232, 249, 265],
+  // 3 1/2", 4 1/2" & 6" fabric valance.
+  fabricValance: [133, 139, 155, 161, 171, 183, 199, 216, 232, 249, 271, 288, 304],
+  // 8" fabric valance.
+  fabricValance8: [188, 199, 216, 227, 244, 260, 282, 304, 331, 354, 382, 408, 431],
+  additionalFootRate: 28,
+} as const;
+
+// SmartFold surcharge page (July 2026 guide). NOTE: not yet wired to a
+// builder product type.
+export const SMARTFOLD_SURCHARGES: Surcharge[] = [
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Additional Fiberglass Pole", type: "fixed", value: 28 },
+  { name: "Basic Light Guard", type: "fixed", value: 45 },
+  { name: "Magnetic Hold Down", type: "fixed", value: 28 },
+  { name: "Pole Attachment Only", type: "fixed", value: 40 },
+  { name: "Keystone", type: "fixed", value: 73 },
+  { name: "Cordless Operating Pole", type: "fixed", value: 89 },
+  { name: "Premium Hem Bar", type: "fixed", value: 16 },
+  { name: "Valance - Additional Foot", type: "fixed", value: 28 },
+];
+
+// ========== CITYLIGHTS ALUMINUM BLINDS PRICING ==========
+// Norman 2026 Retail Guide effective July 1, 2026 — CityLights cordless
+// aluminum blinds, 1" slats; verified against
+// src/lib/quote/catalog/norman-2026.catalog.json (citylights_aluminum).
+// Guide NA cells are stored as 0. NOTE: CityLights is not yet wired to a
+// builder product type — data recorded here for the July 2026 sync.
+export const CITYLIGHTS_PRICING: Record<string, PriceGrid> = {
+  one_inch_slats: {
+    name: 'CityLights Cordless Aluminum 1" Slats',
+    fabrics: [],
+    maxWidth: 96,
+    maxHeight: 96,
+    heights: [42, 48, 54, 61, 66, 73, 78, 84, 90, 96],
+    widths: [24, 28, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    prices: [
+      [261, 270, 279, 284, 298, 309, 319, 337, 389, 408, 411, 435, 485, 514],
+      [269, 273, 283, 292, 305, 319, 325, 345, 397, 418, 422, 444, 496, 535],
+      [271, 278, 291, 296, 313, 325, 334, 356, 405, 424, 432, 453, 509, 548],
+      [274, 281, 293, 303, 321, 333, 340, 365, 418, 438, 444, 468, 525, 566],
+      [278, 287, 299, 307, 324, 339, 349, 371, 422, 446, 452, 474, 529, 586],
+      [281, 291, 303, 317, 333, 346, 356, 382, 424, 449, 455, 477, 537, 600],
+      [334, 350, 368, 376, 402, 423, 435, 469, 483, 518, 547, 577, 606, 617],
+      [338, 353, 371, 384, 407, 430, 441, 476, 501, 529, 560, 591, 618, 642],
+      [350, 367, 384, 396, 423, 443, 462, 495, 527, 548, 580, 617, 642, 0],
+      [353, 373, 389, 404, 431, 453, 467, 506, 538, 562, 594, 628, 0, 0],
+    ],
+  },
+};
+
+// CityLights surcharge page (July 2026 guide). NOTE: not yet wired to a
+// builder product type.
+export const CITYLIGHTS_SURCHARGES: Surcharge[] = [
+  { name: 'Micro (1/2") Slats', type: "percentage", value: 10 },
+  { name: "Metallic Slats, Matte Finishes, Perforated Slats", type: "percentage", value: 10 },
+  { name: "Privacy", type: "percentage", value: 10 },
+  { name: '2" Slats (SmartPrivacy Included), Textured Slats', type: "percentage", value: 20 },
+  { name: 'Side Mount Bracket (2" slats only)', type: "fixed", value: 25 },
+  { name: "Shim", type: "fixed", value: 7 },
+];
+
+// ========== PALLADIAN WINDOW SHELF PRICING ==========
+// Norman 2026 Retail Guide effective July 1, 2026 — Palladian Window Shelf,
+// priced by width only; verified against
+// src/lib/quote/catalog/norman-2026.catalog.json (palladian_shelf). NOTE:
+// not yet wired to a builder product type — data recorded here for the July
+// 2026 sync.
+export const PALLADIAN_SHELF_PRICING = {
+  withProduct: {
+    widths: [24, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    prices: [122, 161, 180, 211, 242, 270, 301, 328, 361, 389, 420, 450, 479],
+  },
+  withoutProduct: {
+    widths: [24, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    prices: [302, 401, 450, 526, 603, 673, 750, 820, 901, 971, 1048, 1121, 1195],
+  },
+} as const;
 
 // ========== NORMAN SHUTTERS PRICING ==========
 export interface ShutterProgram {
@@ -1161,8 +1358,12 @@ export function getRomanFabricValancePrice(width: number): number {
   return prices[prices.length - 1];
 }
 
+// Synchrony Vertical Blinds surcharges. The Norman 2026 Retail Guide
+// effective July 1, 2026 only prices Shim ($7); the remaining entries are
+// legacy MTS items with no guide counterpart, retained because the builder
+// references them (e.g. the automatic "Wand Control" surcharge).
 export const VERTICAL_SURCHARGES: Surcharge[] = [
-  { name: "Shim", type: "fixed", value: 6 },
+  { name: "Shim", type: "fixed", value: 7 },
   { name: "Side Mount Bracket", type: "fixed", value: 22 },
   { name: "Keystone", type: "fixed", value: 70 },
   { name: "Wand Control", type: "fixed", value: 43 },
@@ -1242,40 +1443,77 @@ export const ROLLER_MOTORIZATION: Record<string, RollerMotorizationSystem> = {
   },
 };
 
+// Norman 2026 Retail Guide effective July 1, 2026 — PerfectSheer surcharge
+// page. Entry names predating the July sync are kept where they already
+// existed so saved quotes' name lookups keep working.
 export const PERFECTSHEER_SURCHARGES: Surcharge[] = [
-  { name: "Shim", type: "fixed", value: 6 },
-  { name: "Magnetic Hold Down", type: "fixed", value: 27 },
-  { name: "Keystone", type: "fixed", value: 70 },
-  { name: "Basic Light Guard", type: "fixed", value: 43 },
-  { name: "Premium Wood Light Guard", type: "fixed", value: 113 },
-  { name: "Room Darkening Fabric", type: "fixed", value: 20 },
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Magnetic Hold Down", type: "fixed", value: 28 },
+  { name: "Keystone", type: "fixed", value: 73 },
+  { name: "Basic Light Guard", type: "fixed", value: 45 },
+  { name: "Premium Wood Light Guard", type: "fixed", value: 117 },
+  // Guide: 20% of the base shade price (was a fixed $20 before the sync).
+  { name: "Room Darkening Fabric", type: "percentage", value: 20 },
+  { name: "Valance - Additional Foot", type: "fixed", value: 28 },
 ];
 
+// Valance surcharge ladders for PerfectSheer (July 2026 guide). Priced by
+// ordered width using the first ladder width >= the order; $28 per additional
+// foot beyond the ladder. NOTE: not yet wired to an automatic surcharge in
+// the builder — data recorded here for the July 2026 sync.
+export const PERFECTSHEER_VALANCE_SURCHARGES = {
+  widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 98, 104, 110],
+  // 3 1/2" & 4 1/2" wood valance.
+  wood: [117, 122, 133, 139, 150, 161, 171, 188, 204, 216, 232, 249, 277, 282, 304],
+  // 3 1/2" & 4 1/2" fabric valance.
+  fabric: [133, 139, 155, 161, 171, 183, 199, 216, 232, 249, 271, 288, 315, 326, 349],
+  additionalFootRate: 28,
+} as const;
+
+// Norman 2026 Retail Guide effective July 1, 2026 — faux wood surcharge page
+// (Ultimate; SmartPrivacy shares Shim / Side Mount Bracket / Printed Colors).
 export const FAUX_WOOD_SURCHARGES: Surcharge[] = [
-  { name: "Shim", type: "fixed", value: 6 },
-  { name: "Side Mount Bracket", type: "fixed", value: 22 },
-  { name: "Printed Colors", type: "fixed", value: 20 },
-  { name: "Cut-Out", type: "fixed", value: 86 },
-  { name: "Keystone", type: "fixed", value: 70 },
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Side Mount Bracket", type: "fixed", value: 23 },
+  // Guide: 20% of the blind price (was a fixed $20 before the sync).
+  { name: "Printed Colors", type: "percentage", value: 20 },
+  { name: "Cut-Out", type: "fixed", value: 89 },
+  { name: "Keystone", type: "fixed", value: 73 },
 ];
 
+// Norman 2026 Retail Guide effective July 1, 2026 — Ultimate Normandy wood
+// blinds surcharge page.
 export const WOOD_BLIND_SURCHARGES: Surcharge[] = [
-  { name: "Shim", type: "fixed", value: 6 },
-  { name: "Keystone", type: "fixed", value: 78 },
-  { name: "Designer Color", type: "fixed", value: 10 },
-  { name: "Cut-out", type: "fixed", value: 96 },
-  { name: "Premium Color", type: "fixed", value: 50 },
-  { name: "Side Mount Bracket", type: "fixed", value: 24 },
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Keystone", type: "fixed", value: 81 },
+  // Guide: designer 10% / premium 50% of the blind price (were fixed $
+  // amounts before the sync).
+  { name: "Designer Color", type: "percentage", value: 10 },
+  { name: "Cut-out", type: "fixed", value: 99 },
+  { name: "Premium Color", type: "percentage", value: 50 },
+  { name: "Side Mount Bracket", type: "fixed", value: 25 },
 ];
 
+// Norman 2026 Retail Guide effective July 1, 2026 — SmartDrape surcharge
+// page. Additional vane packs are priced by vane length (the pre-sync flat
+// $20 "Additional Vanes (6)" entry did not exist in the guide).
 export const SMARTDRAPE_SURCHARGES: Surcharge[] = [
-  { name: "Alternating Colors", type: "fixed", value: 10 },
-  { name: "Additional Vanes (6)", type: "fixed", value: 20 },
-  { name: "Aluminum Shim", type: "fixed", value: 27 },
-  { name: "Long L Bracket", type: "fixed", value: 59 },
-  { name: "Keystone", type: "fixed", value: 70 },
-  { name: "Additional Wand", type: "fixed", value: 86 },
-  { name: "Room Darkening", type: "fixed", value: 20 },
+  // Guide: 10% of the shade base price (was a fixed $10 before the sync).
+  { name: "Alternating Colors", type: "percentage", value: 10 },
+  { name: "Aluminum Shim", type: "fixed", value: 28 },
+  { name: "Long L Bracket", type: "fixed", value: 61 },
+  { name: "Keystone", type: "fixed", value: 73 },
+  { name: "Additional Wand", type: "fixed", value: 89 },
+  // Guide: 20% of the shade base price (was a fixed $20 before the sync).
+  { name: "Room Darkening", type: "percentage", value: 20 },
+  { name: "Additional Vanes (Pack of 6) - Length 48", type: "fixed", value: 230 },
+  { name: "Additional Vanes (Pack of 6) - Length 60", type: "fixed", value: 270 },
+  { name: "Additional Vanes (Pack of 6) - Length 72", type: "fixed", value: 310 },
+  { name: "Additional Vanes (Pack of 6) - Length 84", type: "fixed", value: 350 },
+  { name: "Additional Vanes (Pack of 6) - Length 100", type: "fixed", value: 390 },
+  { name: "Additional Vanes (Pack of 6) - Length 120", type: "fixed", value: 460 },
+  { name: "Additional Vanes (Pack of 6) - Length 132", type: "fixed", value: 500 },
+  { name: "Additional Vanes (Pack of 6) - Length 144", type: "fixed", value: 540 },
 ];
 
 // ========== MOTORIZATION OPTIONS ==========
