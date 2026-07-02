@@ -351,6 +351,13 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     return res.url;
   }, [session, quoteId]);
 
+  const ensurePaymentLink = useCallback(async () => {
+    const baseUrl = shareUrl ? shareUrl.split("#")[0] : await ensureCustomerLink();
+    const paymentUrl = `${baseUrl}#payment`;
+    setShareUrl(paymentUrl);
+    return paymentUrl;
+  }, [shareUrl, ensureCustomerLink]);
+
   const shareLink = useCallback(async () => {
     setError(null);
     try {
@@ -520,7 +527,24 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
     }
   }, [session, quoteId, onChanged, sendChannel]);
 
-  const sendPaymentLink = useCallback(async () => {
+  const copyPaymentLink = useCallback(async () => {
+    setError(null);
+    setSendMsg(null);
+    try {
+      const url = await ensurePaymentLink();
+      try {
+        await navigator.clipboard.writeText(url);
+        setSendMsg("Payment link copied.");
+      } catch {
+        setSendMsg("Payment link ready.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not create the payment link.");
+    }
+  }, [ensurePaymentLink]);
+
+  const sendPaymentLink = useCallback(async (channelOverride?: "both" | "email" | "sms") => {
+    const channel = channelOverride ?? sendChannel;
     setBusy(true);
     setError(null);
     setSendMsg(null);
@@ -528,11 +552,11 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       const res = await api<{ url: string; sms: { sent: boolean; skipped?: string }; email: { sent: boolean; skipped?: string }; status: string }>(
         session,
         `/api/crm/quotes/${quoteId}/payment-link`,
-        { method: "POST", body: JSON.stringify({ channels: { email: sendChannel !== "sms", sms: sendChannel !== "email" } }) },
+        { method: "POST", body: JSON.stringify({ channels: { email: channel !== "sms", sms: channel !== "email" } }) },
       );
       const parts: string[] = [];
-      if (sendChannel !== "email") parts.push(res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`);
-      if (sendChannel !== "sms") parts.push(res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`);
+      if (channel !== "email") parts.push(res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`);
+      if (channel !== "sms") parts.push(res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`);
       setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Payment link ready.`);
       setShareUrl(res.url);
     } catch (e) {
@@ -651,8 +675,14 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
             >
               Send to customer
             </button>
-            <button type="button" onClick={sendPaymentLink} disabled={isSaving} style={closeBtn}>
-              Send payment link
+            <button type="button" onClick={() => sendPaymentLink("email")} disabled={isSaving} style={closeBtn}>
+              Email payment link
+            </button>
+            <button type="button" onClick={() => sendPaymentLink("sms")} disabled={isSaving} style={closeBtn}>
+              Text payment link
+            </button>
+            <button type="button" onClick={copyPaymentLink} disabled={isSaving} style={closeBtn}>
+              Copy pay link
             </button>
             <button type="button" onClick={openContract} style={closeBtn}>
               Open contract
@@ -1170,8 +1200,14 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                   <button type="button" onClick={sendToCustomer} disabled={isSaving} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
                     Send
                   </button>
-                  <button type="button" onClick={sendPaymentLink} disabled={isSaving} style={closeBtn}>
-                    Payment link
+                  <button type="button" onClick={() => sendPaymentLink("email")} disabled={isSaving} style={closeBtn}>
+                    Email pay link
+                  </button>
+                  <button type="button" onClick={() => sendPaymentLink("sms")} disabled={isSaving} style={closeBtn}>
+                    Text pay link
+                  </button>
+                  <button type="button" onClick={copyPaymentLink} disabled={isSaving} style={closeBtn}>
+                    Copy pay link
                   </button>
                   <button type="button" onClick={openContract} style={closeBtn}>
                     Contract
