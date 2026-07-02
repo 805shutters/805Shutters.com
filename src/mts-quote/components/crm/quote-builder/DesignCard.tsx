@@ -2931,7 +2931,7 @@ export function DesignCard({
                 <SelectTrigger
                   aria-label={`Discount for ${lineItem.room_name}`}
                   className={cn(
-                    "h-7 w-[122px] rounded-full border text-xs font-bold",
+                    "quote-line-discount-trigger border font-bold",
                     hasDiscount
                       ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                       : "border-slate-200 bg-white text-slate-600"
