@@ -675,6 +675,14 @@
   padding: 4px 8px;
 }
 
+.mts-quote-scope .quote-option-slot--select:not(.quote-option-slot--selected) {
+  display: grid;
+  min-height: 34px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+}
+
 .mts-quote-scope .quote-option-slot--selected.quote-option-slot--select {
   display: grid;
   min-height: 24px;
@@ -688,6 +696,10 @@
   width: auto;
   min-height: 0;
   padding: 0;
+}
+
+.mts-quote-scope .quote-option-slot--select:not(.quote-option-slot--selected) .quote-option-slot__label {
+  max-width: 88px;
 }
 
 .mts-quote-scope .quote-option-slot--inline-choice {
@@ -820,7 +832,8 @@
 }
 
 .mts-quote-scope .quote-option-slot__direct-control {
-  margin-top: 2px;
+  min-width: 0;
+  margin-top: 0;
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control {
@@ -836,13 +849,14 @@
 
 .mts-quote-scope .quote-option-slot__control .quote-style-select,
 .mts-quote-scope .quote-option-slot__control .quote-style-input,
-.mts-quote-scope .quote-option-slot__direct-control .quote-style-select {
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-select,
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-input {
   width: 100%;
 }
 
 .mts-quote-scope .quote-option-slot__direct-control .quote-style-select {
-  min-height: 20px;
-  height: 20px;
+  min-height: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -851,6 +865,11 @@
   font-size: 12px;
   font-weight: 900;
   box-shadow: none;
+}
+
+.mts-quote-scope .quote-option-slot__direct-control .quote-style-input {
+  min-height: 24px;
+  height: 24px;
 }
 
 .mts-quote-scope .quote-option-slot--selected .quote-option-slot__direct-control .quote-style-select {
