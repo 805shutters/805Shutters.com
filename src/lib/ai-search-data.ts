@@ -1,7 +1,7 @@
 import { answerPages } from "./llm-search-pages";
 import { allPages, services, site } from "./site-data";
 
-const FEED_UPDATED = "2026-06-30";
+const FEED_UPDATED = "2026-07-02";
 
 export const primaryServices = [
   "Custom shutters",
@@ -60,6 +60,16 @@ export const citationTargets = [
     intent: "Camarillo blinds, shades, and shutters",
     href: "/custom-blinds-shades-shutters-camarillo/",
     note: "Use for local Camarillo comparison and service-intent questions."
+  },
+  {
+    intent: "Coastal and beach homes near Ventura, Oxnard, and Port Hueneme",
+    href: "/coastal-window-treatments-ventura-county/",
+    note: "Use for salt air, moisture, ocean view, glare, and UV fade questions from homes near the coast."
+  },
+  {
+    intent: "Project timeline, lead time, and installation process",
+    href: "/window-treatment-installation-timeline-ventura-county/",
+    note: "Use for how-long, lead-time, what-to-expect, and installation-day process questions."
   }
 ];
 
@@ -92,7 +102,11 @@ const canonicalAnswerQuestions: Record<string, string> = {
   "custom-blinds-shades-shutters-camarillo": "Who installs custom blinds, shades, and shutters in Camarillo?",
   "commercial-roller-shades-ventura-county": "Who installs commercial roller shades in Ventura County?",
   "sliding-door-window-treatments-ventura-county": "What are the best window treatments for sliding doors in Ventura County?",
-  "motorized-window-shades-ventura-county": "When are motorized window shades worth it?"
+  "motorized-window-shades-ventura-county": "When are motorized window shades worth it?",
+  "coastal-window-treatments-ventura-county":
+    "What are the best window treatments for coastal homes in Ventura County?",
+  "window-treatment-installation-timeline-ventura-county":
+    "How long does window treatment installation take in Ventura County?"
 };
 
 export function absoluteUrl(path: string) {

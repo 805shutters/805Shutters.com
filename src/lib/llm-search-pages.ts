@@ -95,7 +95,9 @@ export const answerPages: AnswerPage[] = [
       { label: "Free consultation", href: "/free-window-treatment-consultation/" },
       { label: "Custom shutters", href: "/shutters/" },
       { label: "Custom shades", href: "/shades/" },
-      { label: "Custom blinds", href: "/blinds/" }
+      { label: "Custom blinds", href: "/blinds/" },
+      { label: "Coastal window treatments", href: "/coastal-window-treatments-ventura-county/" },
+      { label: "Installation timeline", href: "/window-treatment-installation-timeline-ventura-county/" }
     ]
   },
   {
@@ -404,6 +406,151 @@ export const answerPages: AnswerPage[] = [
       { label: "Commercial roller shades", href: "/commercial-roller-shades/" },
       { label: "Best window treatments", href: "/best-window-treatments-ventura-county/" },
       { label: "Book consultation", href: "/book-consultation/" }
+    ]
+  },
+  {
+    slug: "coastal-window-treatments-ventura-county",
+    path: "/coastal-window-treatments-ventura-county/",
+    title: "Best Window Treatments for Coastal Homes in Ventura County | 805 Shutters",
+    description:
+      "Compare window treatments for coastal homes in Ventura, Oxnard, and Port Hueneme. Which shutters, shades, and blinds hold up to salt air, moisture, and strong sun.",
+    h1: "Best Window Treatments for Coastal Ventura County Homes",
+    eyebrow: "Coastal product guide",
+    answer:
+      "Coastal homes in Ventura, Oxnard, and Port Hueneme need window treatments that resist salt air, moisture, and strong afternoon sun. Composite and faux wood shutters or blinds are usually better than natural wood near the beach because they resist warping and swelling. Solar shades cut glare and UV fading while keeping the ocean view, and exterior shades protect patios from sea breeze and heat. Natural wood remains a good fit a few miles inland.",
+    image: "/images/editorial-scroll/coastal-living-roller-shades.jpg",
+    imageAlt: "Roller shades filtering bright coastal light in a Ventura County living room",
+    updated: "2026-07-02",
+    serviceTypes: [
+      "Custom shutters",
+      "Window shades",
+      "Custom blinds",
+      "Exterior shades"
+    ],
+    sections: [
+      {
+        heading: "What Salt Air And Moisture Do To Window Treatments",
+        body:
+          "Homes near the water in Ventura, Oxnard Shores, Hollywood Beach, Silver Strand, and Port Hueneme deal with salt in the air, morning marine layer moisture, and hardware corrosion over time. Natural wood can swell, warp, or crack faster in that environment, and cheap metal components can pit or stick. Material choice matters more at the coast than anywhere else in the county."
+      },
+      {
+        heading: "Products That Hold Up At The Coast",
+        body:
+          "Composite and faux wood shutters give the plantation shutter look with much better moisture resistance. Faux wood blinds handle bathrooms and kitchens near the water. Roller and solar shade fabrics resist humidity, and quality hardware avoids the corrosion problems that stop older blinds from operating smoothly.",
+        bullets: [
+          "Composite or faux wood shutters instead of natural wood at the beach",
+          "Solar shades that cut glare and UV fading while keeping the view",
+          "Faux wood blinds for coastal bathrooms and kitchens",
+          "Exterior shades rated for wind on patios and balconies",
+          "Room-darkening shades for bedrooms with bright morning light"
+        ]
+      },
+      {
+        heading: "Protecting Views And Furniture",
+        body:
+          "Most coastal buyers want to keep the view while stopping glare and fade. Solar shades are measured by openness factor: a lower openness blocks more glare, a higher openness keeps the view sharper. UV exposure through large west-facing glass also fades floors and furniture, which is why many coastal living rooms pair a solar shade for daytime with drapery or a second shade for evening privacy."
+      },
+      {
+        heading: "Where Natural Wood Still Makes Sense",
+        body:
+          "A few miles inland — Camarillo, Thousand Oaks, Westlake Village, Moorpark, Simi Valley — the marine influence drops off and natural wood shutters and blinds perform well. The free consultation looks at the home's actual exposure before recommending material, rather than applying one rule to the whole county."
+      }
+    ],
+    faqs: [
+      {
+        question: "Do plantation shutters work in beach homes?",
+        answer:
+          "Yes, but composite or faux wood shutters are usually the better choice within a mile or two of the water because they resist the swelling and warping that salt air and moisture cause in natural wood."
+      },
+      {
+        question: "What window treatment protects furniture from fading near the coast?",
+        answer:
+          "Solar shades block most UV while keeping the view, which makes them the usual first choice for large west-facing coastal windows. Room-darkening shades or layered drapery add further protection where full coverage matters."
+      },
+      {
+        question: "Can I keep my ocean view and still cut glare?",
+        answer:
+          "Yes. Solar shades come in different openness levels, so you can choose how much view to keep versus how much glare to block. A consultation can compare openness samples against your actual window and light."
+      }
+    ],
+    relatedLinks: [
+      { label: "Best window treatments", href: "/best-window-treatments-ventura-county/" },
+      { label: "Custom shutters", href: "/shutters/" },
+      { label: "Window treatments in Ventura", href: "/window-treatments/ventura-ca/" },
+      { label: "Window treatments in Oxnard", href: "/window-treatments/oxnard-ca/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" }
+    ]
+  },
+  {
+    slug: "window-treatment-installation-timeline-ventura-county",
+    path: "/window-treatment-installation-timeline-ventura-county/",
+    title: "How Long Does Window Treatment Installation Take? | 805 Shutters",
+    description:
+      "How long custom shutters, shades, and blinds take in Ventura County from free consultation through manufacturing to installation day, and what affects the timeline.",
+    h1: "How Long Does Window Treatment Installation Take in Ventura County?",
+    eyebrow: "Process and timeline",
+    answer:
+      "Most custom window treatment projects in Ventura County take a few weeks from consultation to installed product. The free in-home consultation and measuring visit takes about an hour. Custom shutters, shades, and blinds are then manufactured to the exact window measurements, which typically takes several weeks depending on the product and material. Installation day itself is usually quick: most homes are completed in a few hours, and larger whole-home projects within a day.",
+    image: "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg",
+    imageAlt: "Finished plantation shutter installation on a Ventura County bay window",
+    updated: "2026-07-02",
+    serviceTypes: [
+      "Custom shutters",
+      "Window shades",
+      "Custom blinds",
+      "Drapery",
+      "Commercial window coverings"
+    ],
+    sections: [
+      {
+        heading: "Step 1: Free In-Home Consultation And Measuring",
+        body:
+          "The project starts with a free consultation at the home or business. The visit covers how each room is used, product and material comparisons with real samples, precise window measurements, and pricing. Most consultations take about an hour, and the measurements taken during this visit are the ones the order is built from."
+      },
+      {
+        heading: "Step 2: Custom Manufacturing",
+        body:
+          "Every product is made to order for the exact window, so manufacturing is the longest part of the timeline. Lead times vary by product, material, and finish: simpler shades and blinds generally arrive faster, while custom-painted or specialty-shaped shutters take longer. The quote includes the expected timeline for the specific products ordered, and 805 Shutters tracks the order and schedules installation as soon as it arrives.",
+        bullets: [
+          "Shades and blinds are usually the faster products to arrive",
+          "Custom shutters take longer because each panel is built to the window",
+          "Specialty shapes, custom paint matches, and motorization can add time",
+          "Commercial projects can be phased so busy areas are done first"
+        ]
+      },
+      {
+        heading: "Step 3: Installation Day",
+        body:
+          "Installation is the fastest step. A typical room of shades or blinds is installed in well under an hour, most whole-home shutter projects are finished in a few hours, and even large installations rarely need more than a day. The installer mounts, levels, and adjusts every unit, walks through operation and care, and hauls away packaging."
+      },
+      {
+        heading: "What Can Change The Timeline",
+        body:
+          "The main variables are product type, material and finish choices, motorization, specialty window shapes, and seasonal manufacturer volume. Repairs or replacements of existing treatments can sometimes move faster. If a project has a hard deadline — a move-in date, a rental turnover, or a commercial opening — mention it during the consultation so product choices can match the date."
+      }
+    ],
+    faqs: [
+      {
+        question: "How long does the in-home consultation take?",
+        answer:
+          "About an hour for most homes. The visit includes product samples, measurements, and pricing, and there is no charge or obligation."
+      },
+      {
+        question: "Why do custom window treatments take weeks to arrive?",
+        answer:
+          "Because each shutter panel, shade, and blind is manufactured to the exact measurements of your windows rather than pulled from a warehouse shelf. That is also why they fit and operate better than ready-made products."
+      },
+      {
+        question: "How long is installation day?",
+        answer:
+          "Most single rooms take under an hour, whole-home projects a few hours, and large or commercial installations up to a day. The installer adjusts every unit and shows you how to operate it before leaving."
+      }
+    ],
+    relatedLinks: [
+      { label: "Book consultation", href: "/book-consultation/" },
+      { label: "Free consultation request", href: "/free-window-treatment-consultation/" },
+      { label: "Window treatment comparison guide", href: "/window-treatment-comparison-guide/" },
+      { label: "Custom shutters", href: "/shutters/" }
     ]
   }
 ];
