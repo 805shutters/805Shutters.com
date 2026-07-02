@@ -3633,6 +3633,7 @@ body:has(.mobile-crm-login) {
    removing the shell padding so the builder fills the viewport edge-to-edge. */
 body.qb-fullscreen .crm-topbar,
 body.qb-fullscreen .crm-tabs,
+body.qb-fullscreen .crm-global-search,
 body.qb-fullscreen .crm-alert {
   display: none;
 }
@@ -3644,6 +3645,7 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-topbar,
 .crm-tabs,
+.crm-global-search,
 .crm-workspace,
 .crm-login-panel {
   width: min(1500px, 100%);
@@ -3809,6 +3811,158 @@ body.qb-fullscreen .crm-app-shell {
   border-color: #b91c1c;
 }
 
+.crm-global-search {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-global-search-bar {
+  display: grid;
+  grid-template-columns: minmax(128px, 0.18fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.crm-global-search-bar label {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-global-search-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.crm-global-search-input-row input {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 11px 13px;
+  border: 1px solid #d8d8d2;
+  border-radius: 0;
+  background: #fbfbfa;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.crm-global-search-input-row input:focus {
+  outline: 2px solid #111111;
+  outline-offset: -1px;
+  border-color: #111111;
+  background: var(--white);
+}
+
+.crm-global-search-bar > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-global-search-body {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.28fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.crm-global-search-results {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.crm-global-search-results button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-height: 58px;
+  padding: 10px;
+  background: #f7f7f5;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-align: left;
+}
+
+.crm-global-search-results button.active,
+.crm-global-search-results button:hover {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.crm-global-search-results strong {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.crm-global-search-results span {
+  grid-column: 1 / -1;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 0.78;
+  overflow-wrap: anywhere;
+}
+
+.crm-global-search-results em {
+  color: inherit;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.crm-global-search-detail {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.crm-global-search-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.crm-global-search-links .crm-ghost-button {
+  min-height: 34px;
+  padding: 7px 10px;
+}
+
+.crm-global-search-links .crm-ghost-button span {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .crm-tabs {
   display: flex;
   gap: 8px;
@@ -3848,6 +4002,15 @@ body.qb-fullscreen .crm-app-shell {
 
   .crm-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .crm-global-search-bar,
+  .crm-global-search-body {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-global-search-links {
+    justify-content: flex-start;
   }
 
   .crm-metric {

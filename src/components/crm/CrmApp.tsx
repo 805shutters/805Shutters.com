@@ -773,6 +773,45 @@ export function CrmApp({
     setDrill(null);
   }
 
+  function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {
+    const customerName = entry.customerName || entry.name;
+    setDrill(null);
+    setFocusCustomer(null);
+
+    if (page.target === "customers") {
+      openCustomerFile(customerName);
+      return;
+    }
+
+    if (page.target === "jobs") {
+      setActiveTab("jobs");
+      setActiveJobStatus(null);
+      setJobSearch(customerName);
+      return;
+    }
+
+    if (page.target === "bookkeeping") {
+      setActiveTab("bookkeeping");
+      return;
+    }
+
+    if (page.target === "quotes") {
+      setActiveTab("quotes");
+      if (page.quoteId) setBuilderQuoteId(page.quoteId);
+      return;
+    }
+
+    if (page.target === "calendar") {
+      setActiveTab("calendar");
+      setCalendarManagementMode("appointments");
+      const event = events.find((item) => item.id === page.eventId);
+      if (event) {
+        setCalendarDate(calendarEventDateValue(event));
+        setViewingCalendarEvent(event);
+      }
+    }
+  }
+
   function openSummaryDrill(metric: string) {
     const payload = buildSummaryDrill(
       metric,
@@ -2060,6 +2099,20 @@ export function CrmApp({
         </section>
       </header>
 
+      <GlobalCustomerSearchPanel
+        jobs={jobs}
+        quotes={quotes}
+        rows={rows}
+        files={customerFiles}
+        events={events}
+        busy={busy}
+        onOpenPage={openCustomerSearchPage}
+        onOpenCustomer={openCustomerFile}
+        onReassignSale={reassignSale}
+        onMeasureNeededAction={updateMeasureNeededEntry}
+        onSaveField={saveDrillField}
+      />
+
       {message ? <p className="crm-alert">{message}</p> : null}
 
       <nav className="crm-tabs" aria-label="CRM sections">
@@ -2723,6 +2776,20 @@ type DrillFieldPatch = {
   row?: Record<string, unknown>;
   message?: string;
 };
+type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "calendar";
+type CustomerSearchPage = {
+  target: CustomerSearchPageTarget;
+  label: string;
+  detail?: string;
+  quoteId?: string | null;
+  eventId?: string | null;
+};
+type CustomerSearchResult = {
+  id: string;
+  entry: DrillEntry;
+  pages: CustomerSearchPage[];
+  score: number;
+};
 type MeasureNeededAction = "request" | "measured";
 type MeasureNeededApiResult = {
   job: CrmJob;
@@ -3120,6 +3187,326 @@ function quotesToEntries(
         value: toCurrency(quote.quote_total)
       };
     });
+}
+
+function searchValuesMatch(values: unknown[], query: string) {
+  const terms = normalizeJobSearchText(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return false;
+  const haystack = normalizeJobSearchText(values.join(" "));
+  const digitHaystack = compactJobSearchDigits(values.join(" "));
+
+  return terms.every((term) => {
+    if (haystack.includes(term)) return true;
+    const digits = compactJobSearchDigits(term);
+    return Boolean(digits && digitHaystack.includes(digits));
+  });
+}
+
+function jobSearchValues(job: CrmJob) {
+  return [
+    job.customer_name,
+    job.phone,
+    job.email,
+    job.address,
+    job.city,
+    job.product_interest,
+    job.sales_owner,
+    job.status,
+    job.priority,
+    job.next_action,
+    job.next_action_due,
+    job.notes,
+    job.quote_total,
+    job.estimated_total
+  ];
+}
+
+function rowSearchValues(row: CrmBookkeepingRow) {
+  return [
+    row.customerName,
+    row.quoteNumber,
+    row.source,
+    row.soldDate,
+    row.total,
+    row.depositDue,
+    row.depositPaid,
+    row.balancePaid,
+    row.paidTotal,
+    row.paymentType,
+    row.cogs,
+    row.balance,
+    row.salesOwner,
+    row.manufacturerName,
+    row.manufacturerOrderRef,
+    row.installationInvoiceNumber,
+    row.notes,
+    row.status,
+    effectiveBookkeepingStatus(row)
+  ];
+}
+
+function quoteSearchValues(quote: CrmQuote) {
+  return [
+    quote.customer_name,
+    quote.quote_number,
+    quote.quote_label,
+    quote.status,
+    quote.live_status,
+    quote.quote_total,
+    quote.materials_cost,
+    quote.deposit_required,
+    quote.balance_due,
+    quote.sold_by,
+    quote.customer_email,
+    quote.customer_phone,
+    quote.customer_address,
+    quote.manufacturer_name,
+    quote.manufacturer_order_ref,
+    quote.notes
+  ];
+}
+
+function eventSearchValues(event: CrmCalendarEvent) {
+  return [
+    event.title,
+    event.customer_name,
+    event.customer_phone,
+    event.customer_email,
+    event.customer_address,
+    event.customer_city,
+    event.product_interest,
+    event.job_status,
+    event.assigned_to,
+    event.event_type,
+    event.status,
+    event.notes,
+    event.customer_notes,
+    event.start_at
+  ];
+}
+
+function fileSearchValues(file: CrmCustomerFile) {
+  return [
+    file.customerName,
+    file.phone,
+    file.email,
+    file.address,
+    file.city,
+    file.latestStatus,
+    file.latestSoldDate,
+    file.lifetimeValue,
+    file.openBalance,
+    ...file.jobs.flatMap(jobSearchValues),
+    ...file.bookkeepingRows.flatMap(rowSearchValues),
+    ...file.quotes.flatMap(quoteSearchValues),
+    ...file.products.flatMap((product) => [
+      product.room,
+      product.product_type,
+      product.description,
+      product.width,
+      product.height,
+      product.quantity,
+      product.supplier,
+      product.material,
+      product.fabric,
+      product.color,
+      product.control_type,
+      product.mount_type,
+      product.status
+    ]),
+    ...file.contracts.flatMap((contract) => [
+      contract.title,
+      contract.status,
+      contract.total_amount,
+      contract.signed_at,
+      contract.contract_url,
+      contract.share_token
+    ]),
+    ...file.notes
+  ];
+}
+
+function customerSearchResultKey(entry: DrillEntry) {
+  if (entry.row) return `row:${entry.row.id}`;
+  if (entry.job) return `job:${entry.job.id}`;
+  if (entry.file) return `file:${entry.file.id}`;
+  return `entry:${entry.id}`;
+}
+
+function customerSearchResultDate(entry: DrillEntry) {
+  return dateSortValue(
+    entry.row?.soldDate ||
+      entry.job?.appointment_start ||
+      entry.job?.updated_at ||
+      entry.file?.latestSoldDate ||
+      entry.file?.customer?.updated_at ||
+      null
+  );
+}
+
+function customerSearchScore(entry: DrillEntry, query: string, sourceRank: number) {
+  const normalizedQuery = normalizeJobSearchText(query);
+  const customerName = normalizeJobSearchText(entry.customerName || entry.name);
+  let score = sourceRank;
+
+  if (customerName === normalizedQuery) score -= 100;
+  else if (customerName.startsWith(normalizedQuery)) score -= 65;
+  else if (customerName.includes(normalizedQuery)) score -= 35;
+
+  if (entry.row?.balance && entry.row.balance > 0) score -= 4;
+  if (entry.job && WON_JOB_STATUSES.includes(entry.job.status)) score -= 2;
+  return score;
+}
+
+function primaryQuoteForEntry(entry: DrillEntry, quotes: CrmQuote[]) {
+  const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
+  const quoteIds = uniqueCustomerFileIds([
+    entry.row?.quoteId,
+    ...(entry.file?.quotes.map((quote) => quote.id) || [])
+  ]);
+  const candidates = quotes.filter(
+    (quote) =>
+      quoteIds.includes(quote.id) ||
+      (jobId && quote.job_id === jobId) ||
+      normalizeCustomerName(quote.customer_name || "") === normalizeCustomerName(entry.customerName)
+  );
+
+  return [...candidates].sort(
+    (a, b) =>
+      dateSortValue(b.sold_at || b.approved_at || b.ordered_at || b.received_at || b.installed_at || b.created_at) -
+      dateSortValue(a.sold_at || a.approved_at || a.ordered_at || a.received_at || a.installed_at || a.created_at)
+  )[0];
+}
+
+function calendarEventForEntry(entry: DrillEntry, events: CrmCalendarEvent[]) {
+  const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
+  const customerName = normalizeCustomerName(entry.customerName);
+  return [...events]
+    .filter(
+      (event) =>
+        (jobId && event.job_id === jobId) ||
+        normalizeCustomerName(event.customer_name || event.title || "") === customerName
+    )
+    .sort((a, b) => dateSortValue(b.start_at) - dateSortValue(a.start_at))[0];
+}
+
+function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], events: CrmCalendarEvent[]): CustomerSearchPage[] {
+  const pages: CustomerSearchPage[] = [{ target: "customers", label: "Customer File" }];
+  const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
+  if (jobId || entry.job) pages.push({ target: "jobs", label: "Jobs" });
+  if (entry.row) pages.push({ target: "bookkeeping", label: "Bookkeeping" });
+
+  const quote = primaryQuoteForEntry(entry, quotes);
+  if (quote) {
+    pages.push({
+      target: "quotes",
+      label: entry.file && entry.file.quotes.length > 1 ? `Quotes (${entry.file.quotes.length})` : "Quote",
+      quoteId: quote.id,
+      detail: quote.quote_number || quote.quote_label || undefined
+    });
+  }
+
+  const event = calendarEventForEntry(entry, events);
+  if (event) {
+    pages.push({
+      target: "calendar",
+      label: "Calendar",
+      eventId: event.id,
+      detail: formatShortDate(event.start_at)
+    });
+  }
+
+  return pages;
+}
+
+function addCustomerSearchResult(
+  results: Map<string, CustomerSearchResult>,
+  entry: DrillEntry | undefined,
+  quotes: CrmQuote[],
+  events: CrmCalendarEvent[],
+  query: string,
+  sourceRank: number
+) {
+  if (!entry) return;
+  const pages = customerSearchPagesForEntry(entry, quotes, events);
+  const id = customerSearchResultKey(entry);
+  const score = customerSearchScore(entry, query, sourceRank);
+  const existing = results.get(id);
+  if (!existing || score < existing.score) {
+    results.set(id, { id, entry, pages, score });
+  }
+}
+
+function buildCustomerSearchResults({
+  query,
+  jobs,
+  quotes,
+  rows,
+  files,
+  events
+}: {
+  query: string;
+  jobs: CrmJob[];
+  quotes: CrmQuote[];
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+  events: CrmCalendarEvent[];
+}) {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  const results = new Map<string, CustomerSearchResult>();
+  const rowMap = rowsByJobId(rows);
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+
+  for (const file of files) {
+    if (!searchValuesMatch(fileSearchValues(file), trimmed)) continue;
+
+    for (const row of file.bookkeepingRows) {
+      addCustomerSearchResult(results, rowsToEntries([row], (item) => item.total, { jobs, files })[0], quotes, events, trimmed, 10);
+    }
+    for (const job of file.jobs) {
+      addCustomerSearchResult(results, jobToEntry(job, rowMap.get(job.id), files), quotes, events, trimmed, 12);
+    }
+    if (!file.bookkeepingRows.length && !file.jobs.length) {
+      addCustomerSearchResult(results, filesToEntries([file])[0], quotes, events, trimmed, 18);
+    }
+  }
+
+  for (const job of jobs) {
+    if (!searchValuesMatch(jobSearchValues(job), trimmed)) continue;
+    addCustomerSearchResult(results, jobToEntry(job, rowMap.get(job.id), files), quotes, events, trimmed, 0);
+  }
+
+  for (const row of rows) {
+    if (!searchValuesMatch(rowSearchValues(row), trimmed)) continue;
+    addCustomerSearchResult(results, rowsToEntries([row], (item) => item.total, { jobs, files })[0], quotes, events, trimmed, 2);
+  }
+
+  for (const quote of quotes) {
+    if (!searchValuesMatch(quoteSearchValues(quote), trimmed)) continue;
+    const job = jobsById.get(quote.job_id);
+    const entry = job
+      ? jobToEntry(job, rowMap.get(job.id), files)
+      : quotesToEntries([quote], jobs, rows, files)[0];
+    addCustomerSearchResult(results, entry, quotes, events, trimmed, 4);
+  }
+
+  for (const event of events) {
+    if (!searchValuesMatch(eventSearchValues(event), trimmed)) continue;
+    const job = event.job_id ? jobsById.get(event.job_id) : undefined;
+    const file = customerFileForName(files, event.customer_name || event.title || "");
+    const entry = job
+      ? jobToEntry(job, rowMap.get(job.id), files)
+      : file
+        ? filesToEntries([file])[0]
+        : undefined;
+    addCustomerSearchResult(results, entry, quotes, events, trimmed, 8);
+  }
+
+  return [...results.values()]
+    .sort((a, b) => a.score - b.score || customerSearchResultDate(b.entry) - customerSearchResultDate(a.entry))
+    .slice(0, 12);
 }
 
 function reviewEmailsToEntries({
@@ -4653,6 +5040,145 @@ function InlineDepositValue({
   );
 }
 
+function GlobalCustomerSearchPanel({
+  jobs,
+  quotes,
+  rows,
+  files,
+  events,
+  busy,
+  onOpenPage,
+  onOpenCustomer,
+  onReassignSale,
+  onMeasureNeededAction,
+  onSaveField
+}: {
+  jobs: CrmJob[];
+  quotes: CrmQuote[];
+  rows: CrmBookkeepingRow[];
+  files: CrmCustomerFile[];
+  events: CrmCalendarEvent[];
+  busy: boolean;
+  onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
+  onOpenCustomer: (customerName: string) => void;
+  onReassignSale?: (entry: DrillEntry, owner: string) => void;
+  onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
+  onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const normalizedQuery = query.trim();
+  const results = useMemo(
+    () => buildCustomerSearchResults({ query: normalizedQuery, jobs, quotes, rows, files, events }),
+    [events, files, jobs, normalizedQuery, quotes, rows]
+  );
+
+  useEffect(() => {
+    if (normalizedQuery.length < 2) {
+      if (selectedResultId) setSelectedResultId(null);
+      return;
+    }
+
+    if (!results.length) {
+      if (selectedResultId) setSelectedResultId(null);
+      return;
+    }
+
+    if (!selectedResultId || !results.some((result) => result.id === selectedResultId)) {
+      setSelectedResultId(results[0].id);
+    }
+  }, [normalizedQuery, results, selectedResultId]);
+
+  const selectedResult = results.find((result) => result.id === selectedResultId) || results[0] || null;
+  const payload: DrillPayload | null = selectedResult
+    ? {
+        title: "Customer Search",
+        subtitle: selectedResult.entry.meta || "Matching CRM record",
+        entries: [selectedResult.entry],
+        placement: "summary"
+      }
+    : null;
+
+  return (
+    <section className="crm-global-search" aria-label="Customer search">
+      <div className="crm-global-search-bar">
+        <label htmlFor="crm-global-customer-search">Customer Search</label>
+        <div className="crm-global-search-input-row">
+          <input
+            id="crm-global-customer-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Name, phone, address, job, quote..."
+          />
+          {query ? (
+            <button type="button" className="crm-ghost-button" onClick={() => setQuery("")}>
+              Clear
+            </button>
+          ) : null}
+        </div>
+        <span>
+          {normalizedQuery.length >= 2
+            ? results.length
+              ? `${results.length} match${results.length === 1 ? "" : "es"}`
+              : "No matches"
+            : `${files.length} customer files`}
+        </span>
+      </div>
+
+      {normalizedQuery.length >= 2 && results.length ? (
+        <div className="crm-global-search-body">
+          <div className="crm-global-search-results" role="listbox" aria-label="Customer search results">
+            {results.map((result) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={result.id === selectedResult?.id}
+                className={result.id === selectedResult?.id ? "active" : ""}
+                key={result.id}
+                onClick={() => setSelectedResultId(result.id)}
+              >
+                <strong>{result.entry.customerName || result.entry.name}</strong>
+                <span>{result.entry.meta || "Customer record"}</span>
+                <em>{result.entry.value || "Open"}</em>
+              </button>
+            ))}
+          </div>
+
+          {selectedResult && payload ? (
+            <div className="crm-global-search-detail">
+              <div className="crm-global-search-links" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
+                {selectedResult.pages.map((page) => (
+                  <button
+                    type="button"
+                    className="crm-ghost-button"
+                    key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
+                    onClick={() => onOpenPage(page, selectedResult.entry)}
+                  >
+                    {page.label}
+                    {page.detail ? <span>{page.detail}</span> : null}
+                  </button>
+                ))}
+              </div>
+              <DrillDetailCard
+                entry={selectedResult.entry}
+                payload={payload}
+                busy={busy}
+                onOpenCustomer={onOpenCustomer}
+                onReassignSale={onReassignSale}
+                onMeasureNeededAction={onMeasureNeededAction}
+                onSaveField={onSaveField}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : normalizedQuery.length >= 2 ? (
+        <p className="crm-empty">No customer, job, quote, or bookkeeping row matches "{normalizedQuery}".</p>
+      ) : null}
+    </section>
+  );
+}
+
 function DrillDetailPanel({
   payload,
   busy,
@@ -4812,10 +5338,24 @@ function DrillDetailCard({
   const canMarkOrdered =
     (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
     (canEditQuoteRow || canEditJob);
+  const canMarkComplete =
+    canEditJob ||
+    Boolean(row && (canEditQuoteRow || row.source !== "crm_quote"));
   const markOrdered = () => {
     if (canEditQuoteRow) return saveRow({ status: "ordered" }, "Marked ordered.");
     if (canEditJob) return saveJob({ status: "ordered" }, "Marked ordered.");
     return Promise.resolve(false);
+  };
+  const markComplete = () => {
+    const patch: DrillFieldPatch = { message: "Marked complete." };
+    if (canEditJob) patch.job = { status: "installed" };
+    if (row) {
+      patch.row =
+        row.source === "crm_quote" && row.quoteId
+          ? { quote_total: row.total, status: "installed", installation_complete: true }
+          : { installation_complete: true };
+    }
+    return onSaveField(entry, patch);
   };
   const statusEditor: DrillInlineEditor | undefined =
     canEditQuoteRow && row
@@ -5031,6 +5571,11 @@ function DrillDetailCard({
           {canMarkOrdered ? (
             <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void markOrdered()}>
               Mark Ordered
+            </button>
+          ) : null}
+          {canMarkComplete ? (
+            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void markComplete()}>
+              Mark Complete
             </button>
           ) : null}
           <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
