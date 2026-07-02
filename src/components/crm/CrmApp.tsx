@@ -1,6 +1,6 @@
 "use client";
 
-import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Children, DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
@@ -6340,6 +6340,32 @@ function customerFileDetailLine(parts: Array<string | number | null | undefined 
   return parts.filter(Boolean).join(" / ");
 }
 
+function customerFilePhoneHref(phone: string | null | undefined) {
+  const digits = String(phone || "").replace(/[^\d+]/g, "");
+  return digits ? `tel:${digits}` : null;
+}
+
+function customerFileQuoteUrl(quote: CrmQuote) {
+  return quote.share_token ? `/quote/${quote.share_token}` : null;
+}
+
+function CustomerFileCell({
+  children,
+  empty = "Pending",
+  wide = false
+}: {
+  children?: ReactNode;
+  empty?: string;
+  wide?: boolean;
+}) {
+  const items = Children.toArray(children).filter((item) => typeof item !== "string" || item.trim());
+  return (
+    <ul className={`crm-customer-cell-list${wide ? " wide" : ""}`}>
+      {items.length ? items.map((item, index) => <li key={index}>{item}</li>) : <li className="crm-customer-empty-cell">{empty}</li>}
+    </ul>
+  );
+}
+
 function CustomerFilesView({
   files,
   activeStatus,
@@ -6495,6 +6521,9 @@ function CustomerFilesView({
             { total: 0, depositDue: 0, depositPaid: 0, paid: 0, balance: 0, cogs: 0, expenses: 0, remake: 0, installation: 0 }
           );
           const statusTokens = Array.from(customerFileStatusTokens(file));
+          const lifecycleLabel = statusTokens.length ? statusTokens.map(titleCase).join(", ") : "Need to Schedule";
+          const phoneHref = customerFilePhoneHref(file.phone);
+          const mailHref = file.email ? `mailto:${file.email}` : null;
 
           return (
             <tr
@@ -6513,59 +6542,77 @@ function CustomerFilesView({
                 </div>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
-                  <li>
+                <CustomerFileCell>
+                  <>
                     <strong>Phone</strong>
                     <span>{file.phone || "Pending"}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Email</strong>
                     <span>{file.email || "Pending"}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>City</strong>
                     <span>{file.city || "Pending"}</span>
-                  </li>
-                </ul>
+                  </>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
-                  <li>
+                <CustomerFileCell wide>
+                  <>
                     <strong>Project Address</strong>
                     <span>{file.address || "Pending"}</span>
-                  </li>
+                  </>
                   {sortedJobs.map((job) => (
-                    <li key={`job-address-${job.id}`}>
+                    <Fragment key={`job-address-${job.id}`}>
                       <strong>{job.product_interest || "Job"}</strong>
                       <span>{customerFileDetailLine([job.address, job.city]) || "No job address"}</span>
-                    </li>
+                    </Fragment>
                   ))}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
-                  <li>
+                <CustomerFileCell wide>
+                  <>
                     <strong>Latest</strong>
                     <span>{file.latestStatus || "Open"}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Lifecycle</strong>
-                    <span>{statusTokens.length ? statusTokens.map(titleCase).join(", ") : "Need to Schedule"}</span>
-                  </li>
-                  <li>
+                    <span>{lifecycleLabel}</span>
+                  </>
+                  {sortedJobs.map((job) => (
+                    <Fragment key={`job-status-${job.id}`}>
+                      <strong>Job</strong>
+                      <span>{customerFileDetailLine([titleCase(job.status), job.sales_owner])}</span>
+                    </Fragment>
+                  ))}
+                  {sortedQuotes.map((quote) => (
+                    <Fragment key={`quote-status-${quote.id}`}>
+                      <strong>Quote</strong>
+                      <span>{customerFileDetailLine([quote.quote_number || "Quote", quote.live_status || quote.status])}</span>
+                    </Fragment>
+                  ))}
+                  {sortedBookkeepingRows.map((row) => (
+                    <Fragment key={`ledger-status-${row.source}-${row.id}`}>
+                      <strong>Ledger</strong>
+                      <span>{customerFileDetailLine([row.quoteNumber || row.source.replace("_", " "), bookkeepingStatusLabel(row)])}</span>
+                    </Fragment>
+                  ))}
+                  <>
                     <strong>Contracts</strong>
                     <span>{file.contracts.length}</span>
-                  </li>
-                </ul>
+                  </>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
-                  <li>
+                <CustomerFileCell wide>
+                  <>
                     <strong>Sold Date</strong>
                     <span>{formatShortDate(file.latestSoldDate)}</span>
-                  </li>
+                  </>
                   {sortedJobs.map((job) => (
-                    <li key={`job-date-${job.id}`}>
+                    <Fragment key={`job-date-${job.id}`}>
                       <strong>{titleCase(job.status)}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6574,28 +6621,41 @@ function CustomerFilesView({
                           `Created ${formatShortDate(job.created_at)}`
                         ])}
                       </span>
-                    </li>
+                    </Fragment>
                   ))}
-                </ul>
+                  {sortedQuotes.map((quote) => (
+                    <Fragment key={`quote-date-${quote.id}`}>
+                      <strong>{quote.quote_number || "Quote"}</strong>
+                      <span>
+                        {customerFileDetailLine([
+                          quote.sent_at ? `Sent ${formatShortDate(quote.sent_at)}` : null,
+                          quote.signed_at ? `Signed ${formatShortDate(quote.signed_at)}` : null,
+                          quote.sold_at ? `Sold ${formatShortDate(quote.sold_at)}` : null,
+                          quote.ordered_at ? `Ordered ${formatShortDate(quote.ordered_at)}` : null,
+                          quote.installed_at ? `Installed ${formatShortDate(quote.installed_at)}` : null
+                        ]) || `Created ${formatShortDate(quote.created_at)}`}
+                      </span>
+                    </Fragment>
+                  ))}
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
+                <CustomerFileCell empty="No product details imported yet.">
                   {file.products.map((product) => (
-                    <li key={`product-main-${product.id}`}>
+                    <Fragment key={`product-main-${product.id}`}>
                       <strong>{customerFileDetailLine([product.room, product.product_type]) || "Product"}</strong>
                       <span>
                         {product.quantity} item{product.quantity === 1 ? "" : "s"}
                         {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
                       </span>
-                    </li>
+                    </Fragment>
                   ))}
-                  {!file.products.length ? <li className="crm-customer-empty-cell">No product details imported yet.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No product details imported yet.">
                   {file.products.map((product) => (
-                    <li key={`product-detail-${product.id}`}>
+                    <Fragment key={`product-detail-${product.id}`}>
                       <strong>{product.product_type}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6610,47 +6670,46 @@ function CustomerFilesView({
                           product.status ? `Status: ${product.status}` : null
                         ]) || "Product details pending"}
                       </span>
-                    </li>
+                    </Fragment>
                   ))}
-                  {!file.products.length ? <li className="crm-customer-empty-cell">No product details imported yet.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list">
-                  <li>
+                <CustomerFileCell wide>
+                  <>
                     <strong>Lifetime</strong>
                     <span>{toCurrency(file.lifetimeValue)}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Open Balance</strong>
                     <span className={file.openBalance > 0 ? "warn" : ""}>{toCurrency(file.openBalance)}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Ledger Total</strong>
                     <span>{toCurrency(totals.total)}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Paid</strong>
                     <span>{toCurrency(totals.paid)}</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Deposit</strong>
                     <span>{toCurrency(totals.depositPaid)} paid / {toCurrency(totals.depositDue)} due</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>COGS + Expenses</strong>
                     <span>{toCurrency(totals.cogs)} COGS / {toCurrency(totals.expenses)} expenses</span>
-                  </li>
-                  <li>
+                  </>
+                  <>
                     <strong>Install + Remake</strong>
                     <span>{toCurrency(totals.installation)} install / {toCurrency(totals.remake)} remake</span>
-                  </li>
-                </ul>
+                  </>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No payment or credit records attached.">
                   {payments.map(({ row, payment }) => (
-                    <li key={`payment-${row.id}-${payment.id}`}>
+                    <Fragment key={`payment-${row.id}-${payment.id}`}>
                       <strong>{payment.payment_label}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6660,29 +6719,26 @@ function CustomerFilesView({
                           row.quoteNumber || row.source.replace("_", " ")
                         ])}
                       </span>
-                    </li>
+                    </Fragment>
                   ))}
                   {creditsIn.map(({ row, credit }) => (
-                    <li key={`credit-in-${row.id}-${credit.id}`}>
+                    <Fragment key={`credit-in-${row.id}-${credit.id}`}>
                       <strong>Credit In</strong>
                       <span>{customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}</span>
-                    </li>
+                    </Fragment>
                   ))}
                   {creditsOut.map(({ row, credit }) => (
-                    <li key={`credit-out-${row.id}-${credit.id}`}>
+                    <Fragment key={`credit-out-${row.id}-${credit.id}`}>
                       <strong>Credit Out</strong>
                       <span>{customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}</span>
-                    </li>
+                    </Fragment>
                   ))}
-                  {!payments.length && !creditsIn.length && !creditsOut.length ? (
-                    <li className="crm-customer-empty-cell">No payment or credit records attached.</li>
-                  ) : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No job attached.">
                   {sortedJobs.map((job) => (
-                    <li key={`job-${job.id}`}>
+                    <Fragment key={`job-${job.id}`}>
                       <strong>{customerFileDetailLine([titleCase(job.status), job.sales_owner])}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6697,15 +6753,14 @@ function CustomerFilesView({
                           job.notes
                         ]) || "No job details"}
                       </span>
-                    </li>
+                    </Fragment>
                   ))}
-                  {!sortedJobs.length ? <li className="crm-customer-empty-cell">No job attached.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No quote attached.">
                   {sortedQuotes.map((quote) => (
-                    <li key={`quote-${quote.id}`}>
+                    <Fragment key={`quote-${quote.id}`}>
                       <strong>{customerFileDetailLine([quote.quote_number || "Quote", quote.live_status || quote.status, quote.quote_label])}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6722,15 +6777,19 @@ function CustomerFilesView({
                           quote.notes
                         ])}
                       </span>
-                    </li>
+                      {customerFileQuoteUrl(quote) ? (
+                        <a href={customerFileQuoteUrl(quote) || undefined} target="_blank" rel="noreferrer">
+                          Open quote
+                        </a>
+                      ) : null}
+                    </Fragment>
                   ))}
-                  {!sortedQuotes.length ? <li className="crm-customer-empty-cell">No quote attached.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No bookkeeping row attached.">
                   {sortedBookkeepingRows.map((row) => (
-                    <li key={`bookkeeping-${row.source}-${row.id}`}>
+                    <Fragment key={`bookkeeping-${row.source}-${row.id}`}>
                       <strong>{customerFileDetailLine([row.quoteNumber || row.source.replace("_", " "), bookkeepingStatusLabel(row)])}</strong>
                       <span>
                         {customerFileDetailLine([
@@ -6749,17 +6808,31 @@ function CustomerFilesView({
                           row.notes
                         ])}
                       </span>
-                    </li>
+                      {row.manufacturerOrderUrl ? (
+                        <a href={row.manufacturerOrderUrl} target="_blank" rel="noreferrer">
+                          Order
+                        </a>
+                      ) : null}
+                      {row.manufacturerDocumentUrl ? (
+                        <a href={row.manufacturerDocumentUrl} target="_blank" rel="noreferrer">
+                          Manufacturer doc
+                        </a>
+                      ) : null}
+                      {row.installationInvoiceUrl ? (
+                        <a href={row.installationInvoiceUrl} target="_blank" rel="noreferrer">
+                          Install invoice
+                        </a>
+                      ) : null}
+                    </Fragment>
                   ))}
-                  {!sortedBookkeepingRows.length ? <li className="crm-customer-empty-cell">No bookkeeping row attached.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No contract or document link attached.">
                   {file.contracts.map((contract) => {
                     const url = contractUrl(contract);
                     return (
-                      <li key={`contract-${contract.id}`}>
+                      <Fragment key={`contract-${contract.id}`}>
                         <strong>{contract.title}</strong>
                         <span>
                           {customerFileDetailLine([
@@ -6773,35 +6846,44 @@ function CustomerFilesView({
                             View document
                           </a>
                         ) : null}
-                      </li>
+                      </Fragment>
                     );
                   })}
-                  {!file.contracts.length ? <li className="crm-customer-empty-cell">No contract or document link attached.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td>
-                <ul className="crm-customer-cell-list wide">
+                <CustomerFileCell wide empty="No notes attached.">
                   {file.notes.map((note, index) => (
-                    <li key={`note-${file.id}-${index}`}>
+                    <Fragment key={`note-${file.id}-${index}`}>
                       <span>{note}</span>
-                    </li>
+                    </Fragment>
                   ))}
-                  {!file.notes.length ? <li className="crm-customer-empty-cell">No notes attached.</li> : null}
-                </ul>
+                </CustomerFileCell>
               </td>
               <td className="crm-customer-actions-cell">
-                {onDelete ? (
-                  <button
-                    type="button"
-                    className="crm-ghost-button crm-delete-button crm-customer-delete-button"
-                    disabled={busy}
-                    onClick={() => onDelete(file)}
-                  >
-                    Delete
-                  </button>
-                ) : (
-                  <span>No actions</span>
-                )}
+                <div className="crm-customer-actions-stack">
+                  {phoneHref ? (
+                    <a href={phoneHref} className="crm-customer-action-link">
+                      Call
+                    </a>
+                  ) : null}
+                  {mailHref ? (
+                    <a href={mailHref} className="crm-customer-action-link">
+                      Email
+                    </a>
+                  ) : null}
+                  {onDelete ? (
+                    <button
+                      type="button"
+                      className="crm-ghost-button crm-delete-button crm-customer-delete-button"
+                      disabled={busy}
+                      onClick={() => onDelete(file)}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                  {!phoneHref && !mailHref && !onDelete ? <span>No actions</span> : null}
+                </div>
               </td>
             </tr>
           );
