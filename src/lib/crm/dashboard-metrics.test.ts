@@ -4,7 +4,8 @@ import {
   needToOrderRows,
   quotedPipelineQuotes,
   depositNeededRows,
-  balanceDueCompletedRows
+  balanceDueCompletedRows,
+  soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 
@@ -205,6 +206,43 @@ describe("dashboard summary metrics", () => {
     });
 
     expect(summary.measureNeeded).toBe(1);
+  });
+
+  it("counts Sold Jobs from CRM job lifecycle statuses, not bookkeeping rows", () => {
+    const jobs = [
+      job({ id: "new", status: "new" }),
+      job({ id: "scheduled", status: "scheduled" }),
+      job({ id: "quoted", status: "quoted" }),
+      job({ id: "sold", status: "sold" }),
+      job({ id: "ordered", status: "ordered" }),
+      job({ id: "installed", status: "installed" }),
+      job({ id: "invoiced", status: "invoiced" }),
+      job({ id: "closed", status: "closed" }),
+      job({ id: "lost", status: "lost" })
+    ];
+    const rows = [
+      row({ id: "manual-a", jobId: null, source: "manual", status: "manual" }),
+      row({ id: "manual-b", jobId: null, source: "manual", status: "manual" }),
+      row({ id: "legacy", jobId: null, source: "legacy_sheet", status: "legacy" }),
+      row({ id: "sold-row", jobId: "sold", status: "sold" })
+    ];
+
+    const summary = buildDashboardSummaryMetrics({
+      jobs,
+      quotes: [],
+      rows,
+      installationInvoiceEmails: [],
+      orderCogsEmails: []
+    });
+
+    expect(soldLifecycleJobs(jobs).map((item) => item.id)).toEqual([
+      "sold",
+      "ordered",
+      "installed",
+      "invoiced",
+      "closed"
+    ]);
+    expect(summary.soldJobs).toBe(5);
   });
 
   it("separates quoted pipeline from sold pipeline", () => {

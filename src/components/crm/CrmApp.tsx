@@ -32,7 +32,7 @@ import {
   openBalanceRows,
   openSoldRows,
   quotedPipelineQuotes,
-  soldRows
+  soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import {
@@ -3722,11 +3722,11 @@ function buildSummaryDrill(
     case "soldJobs":
       return {
         title: "Sold Jobs",
-        subtitle: "All sold jobs in the ledger",
+        subtitle: "CRM jobs from sold through closed",
         metric,
         allowSaleReassignment: true,
         placement: "summary",
-        entries: rowsToEntries(distinctRowsByJob(soldRows(rows)), (row) => row.total, { jobs, files }).map((entry) => ({ ...entry, canReassignSale: true }))
+        entries: jobsToEntries(soldLifecycleJobs(jobs), rows, { files }).map((entry) => ({ ...entry, canReassignSale: true }))
       };
     case "quotedPipeline":
       return {

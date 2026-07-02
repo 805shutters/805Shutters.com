@@ -5,6 +5,7 @@ import {
   CrmBookkeepingStatus,
   CrmInstallationInvoiceEmail,
   CrmJob,
+  CrmJobStatus,
   CrmOrderCogsEmail,
   CrmQuote
 } from "@/lib/crm/types";
@@ -23,6 +24,14 @@ const SOLD_PIPELINE_STATUSES = new Set<CrmBookkeepingStatus>([
 
 const SOLD_JOB_STATUSES = new Set<CrmBookkeepingStatus>([
   ...SOLD_PIPELINE_STATUSES,
+  "closed"
+]);
+
+const SOLD_CRM_JOB_STATUSES = new Set<CrmJobStatus>([
+  "sold",
+  "ordered",
+  "installed",
+  "invoiced",
   "closed"
 ]);
 
@@ -52,6 +61,10 @@ export function openSoldRows(rows: CrmBookkeepingRow[]) {
 
 export function soldRows(rows: CrmBookkeepingRow[]) {
   return rows.filter((row) => row.total > 0 && SOLD_JOB_STATUSES.has(effectiveBookkeepingStatus(row)));
+}
+
+export function soldLifecycleJobs(jobs: CrmJob[]) {
+  return jobs.filter((job) => SOLD_CRM_JOB_STATUSES.has(job.status));
 }
 
 export function needToOrderRows(rows: CrmBookkeepingRow[]) {
@@ -148,7 +161,7 @@ export function buildDashboardSummaryMetrics({
     openJobs: distinctRowsByJob(openRows).length,
     scheduledJobs: jobs.filter((job) => job.status === "scheduled").length,
     quotedJobs: jobs.filter((job) => job.status === "quoted").length,
-    soldJobs: distinctRowsByJob(soldRows(rows)).length,
+    soldJobs: soldLifecycleJobs(jobs).length,
     quotedPipeline: quotedQuotes.reduce((total, quote) => total + (Number(quote.quote_total) || 0), 0),
     soldPipeline: openRows.reduce((total, row) => total + (Number(row.total) || 0), 0),
     depositCollected: jobs.reduce((total, job) => total + (Number(job.deposit_paid) || 0), 0),
