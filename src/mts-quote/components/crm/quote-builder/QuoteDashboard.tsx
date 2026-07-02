@@ -3,44 +3,26 @@ import { useMemo, useState } from "react";
 import { cn } from "@mts/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
-import { useWorkflowRuns } from "@mts/hooks/useWorkflowRuns";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
-import {
-  QUOTE_NORMAN_ORDER_WORKFLOW_ID,
-  buildQuoteOrderAgentQueueMetadata,
-  getLatestQuoteOrderAgentQueueByQuoteId,
-  getLatestQuoteOrderAgentRunsByQuoteId,
-  getRollerShadeOrderReadiness,
-  type QuoteOrderAgentQueueRow,
-} from "@mts/lib/quoteOrderWorkflow";
 import { QuoteStatsBar, type StatsFilter } from "./QuoteStatsBar";
 import { QuotesTable } from "./QuotesTable";
 import { NewQuoteDialog, type NewQuoteData } from "./NewQuoteDialog";
 import { ContractsSection } from "./ContractsSection";
-import { SalesLedger } from "./SalesLedger";
-import { QuoteOrderStatusPanel } from "./QuoteOrderStatusPanel";
 import { QuotePortfolioDialog } from "./QuotePortfolioDialog";
 import { Button } from "@mts/components/ui/button";
 import { CalendarDays, Clock, ExternalLink, Plus, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
-import { STATUS_LABELS, STATUS_TIMESTAMP_COLUMN } from "@mts/lib/quoteStatus";
+import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
 import {
   filterCalendarAppointmentsForStatsTile,
   filterQuotesForStatsTile,
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
-import type {
-  QuoteLineItemWithDesigns,
-  SalesQuote,
-  SalesQuoteDesign,
-  SalesQuoteLineItem,
-  SalesQuoteWithItems,
-  QuoteStatus,
-} from "@mts/types/quote";
+import type { SalesQuote } from "@mts/types/quote";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
@@ -107,30 +89,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
     },
   });
 
-  const { data: quoteOrderAgentRuns = [] } = useWorkflowRuns(QUOTE_NORMAN_ORDER_WORKFLOW_ID, 100);
-  const agentRunsByQuoteId = useMemo(
-    () => getLatestQuoteOrderAgentRunsByQuoteId(quoteOrderAgentRuns),
-    [quoteOrderAgentRuns]
-  );
-
-  const { data: quoteOrderAgentQueue = [] } = useQuery({
-    queryKey: queryKeys.salesQuotes.orderAgentQueue(activeAccountId),
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("quote_order_agent_queue")
-        .select("*")
-        .eq("account_id", activeAccountId)
-        .order("requested_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      return (data || []) as QuoteOrderAgentQueueRow[];
-    },
-  });
-  const agentQueueByQuoteId = useMemo(
-    () => getLatestQuoteOrderAgentQueueByQuoteId(quoteOrderAgentQueue),
-    [quoteOrderAgentQueue]
-  );
-
   const filteredQuotes = useMemo(
     () => filterQuotesForStatsTile(quotes, activeFilter, sales805Appointments),
     [quotes, activeFilter, sales805Appointments]
@@ -150,119 +108,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
         : [],
     [activeAccountId, activeFilter, filteredQuoteIds, sales805Appointments]
   );
-  const quoteIds = useMemo(() => quotes.map((quote) => quote.id), [quotes]);
-
-  const { data: quoteLineItemsByQuoteId = {} } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.byAccount(activeAccountId), "order-line-items", quoteIds],
-    enabled: quoteIds.length > 0,
-    queryFn: async () => {
-      const { data: lineItems, error: lineItemError } = await (supabase as any)
-        .from("sales_quote_line_items")
-        .select("*")
-        .in("quote_id", quoteIds)
-        .order("sort_order", { ascending: true });
-      if (lineItemError) throw lineItemError;
-
-      const lineItemIds = ((lineItems || []) as SalesQuoteLineItem[]).map((item) => item.id);
-      const { data: designs, error: designError } = lineItemIds.length
-        ? await (supabase as any)
-            .from("sales_quote_designs")
-            .select("*")
-            .in("line_item_id", lineItemIds)
-        : { data: [], error: null };
-      if (designError) throw designError;
-
-      return buildQuoteLineItemsByQuoteId(
-        (lineItems || []) as SalesQuoteLineItem[],
-        (designs || []) as SalesQuoteDesign[]
-      );
-    },
-  });
-
-  const orderPanelQuotes = useMemo<SalesQuoteWithItems[]>(
-    () =>
-      filteredQuotes.map((quote) => ({
-        ...quote,
-        line_items: quoteLineItemsByQuoteId[quote.id] || [],
-      })),
-    [filteredQuotes, quoteLineItemsByQuoteId]
-  );
-
-  const updateOrderStatus = useMutation({
-    mutationFn: async ({
-      quote,
-      status,
-      orderRef,
-    }: {
-      quote: SalesQuote;
-      status: Extract<QuoteStatus, "ordered" | "received" | "installed">;
-      orderRef?: string;
-    }) => {
-      const patch: Record<string, unknown> = { status };
-      const tsColumn = STATUS_TIMESTAMP_COLUMN[status];
-      if (tsColumn) patch[tsColumn] = new Date().toISOString();
-
-      if (status === "ordered") {
-        patch.manufacturer_order_ref = orderRef?.trim() || quote.manufacturer_order_ref || null;
-        patch.manufacturer_name = quote.manufacturer_name || "Norman";
-      }
-
-      const { error } = await (supabase as any)
-        .from("sales_quotes")
-        .update(patch)
-        .eq("id", quote.id);
-      if (error) throw error;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      toast.success(`Quote moved to ${STATUS_LABELS[variables.status]}`);
-    },
-    onError: (error) => {
-      toast.error("Failed to update order status: " + error.message);
-    },
-  });
-
-  const queueOrderAgentDraft = useMutation({
-    mutationFn: async (quote: SalesQuote) => {
-      const lineItems = quoteLineItemsByQuoteId[quote.id] || (await fetchQuoteLineItems(quote.id));
-      const quoteWithItems: SalesQuoteWithItems = { ...quote, line_items: lineItems };
-      const rollerReadiness = getRollerShadeOrderReadiness(quoteWithItems);
-      if (rollerReadiness.applies && !rollerReadiness.ready) {
-        throw new Error(
-          `Roller shade order is missing: ${rollerReadiness.missingFields.join("; ")}`
-        );
-      }
-
-      const { data: session } = await supabase.auth.getSession();
-      const { error } = await (supabase as any).from("quote_order_agent_queue").insert({
-        quote_id: quote.id,
-        account_id: quote.account_id,
-        request_type: "portal_draft",
-        status: "queued",
-        requested_by: session?.session?.user?.id || null,
-        metadata: buildQuoteOrderAgentQueueMetadata(quoteWithItems),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.orderAgentQueue(activeAccountId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.byAccount(activeAccountId), "order-line-items"],
-      });
-      toast.success("Norman draft agent queued");
-    },
-    onError: (error) => {
-      const message = /duplicate key/i.test(error.message)
-        ? "This quote already has an open Norman agent request."
-        : /Roller shade order is missing/i.test(error.message)
-          ? error.message
-          : "Failed to queue Norman agent: " + error.message;
-      toast.error(message);
-    },
-  });
-
   // Create new quote
   const createQuote = useMutation({
     mutationFn: async (formData: NewQuoteData) => {
@@ -505,24 +350,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
         theme={activeAccount.prefix === "805" ? "bw" : "blue"}
       />
 
-      <QuoteOrderStatusPanel
-        quotes={orderPanelQuotes}
-        agentRunsByQuoteId={agentRunsByQuoteId}
-        agentQueueByQuoteId={agentQueueByQuoteId}
-        onOpenQuote={handleOpenQuote}
-        onOpenContract={(quote) => {
-          setActiveQuote(quote.id);
-          setActiveTab("contract");
-        }}
-        onMarkOrdered={(quote, orderRef) =>
-          updateOrderStatus.mutate({ quote, status: "ordered", orderRef })
-        }
-        onMoveStatus={(quote, status) => updateOrderStatus.mutate({ quote, status })}
-        onQueueAgentDraft={(quote) => queueOrderAgentDraft.mutate(quote)}
-        isUpdating={updateOrderStatus.isPending}
-        isQueueingAgent={queueOrderAgentDraft.isPending}
-      />
-
       {filteredSales805Appointments.length > 0 && (
         <Sales805AppointmentMatches
           appointments={filteredSales805Appointments}
@@ -536,9 +363,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
           }
         />
       )}
-
-      {/* Sales Ledger — primary view: spreadsheet of every sold job */}
-      {!quoteOperatorMode && <SalesLedger quotes={filteredQuotes} onOpenQuote={handleOpenQuote} />}
 
       {/* Quotes Table — secondary view: all quotes including drafts/sent/archived */}
       <QuotesTable
@@ -654,47 +478,4 @@ function formatAppointmentDate(isoDate: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function buildQuoteLineItemsByQuoteId(
-  lineItems: SalesQuoteLineItem[],
-  designs: SalesQuoteDesign[]
-): Record<string, QuoteLineItemWithDesigns[]> {
-  const designsByLineItem = designs.reduce<Record<string, SalesQuoteDesign[]>>((acc, design) => {
-    if (!acc[design.line_item_id]) acc[design.line_item_id] = [];
-    acc[design.line_item_id].push(design);
-    return acc;
-  }, {});
-
-  return lineItems.reduce<Record<string, QuoteLineItemWithDesigns[]>>((acc, item) => {
-    if (!acc[item.quote_id]) acc[item.quote_id] = [];
-    acc[item.quote_id].push({
-      ...item,
-      designs: designsByLineItem[item.id] || [],
-    });
-    return acc;
-  }, {});
-}
-
-async function fetchQuoteLineItems(quoteId: string): Promise<QuoteLineItemWithDesigns[]> {
-  const { data: lineItems, error: lineItemError } = await (supabase as any)
-    .from("sales_quote_line_items")
-    .select("*")
-    .eq("quote_id", quoteId)
-    .order("sort_order", { ascending: true });
-  if (lineItemError) throw lineItemError;
-
-  const typedLineItems = (lineItems || []) as SalesQuoteLineItem[];
-  const lineItemIds = typedLineItems.map((item) => item.id);
-  const { data: designs, error: designError } = lineItemIds.length
-    ? await (supabase as any)
-        .from("sales_quote_designs")
-        .select("*")
-        .in("line_item_id", lineItemIds)
-    : { data: [], error: null };
-  if (designError) throw designError;
-
-  return Object.values(
-    buildQuoteLineItemsByQuoteId(typedLineItems, (designs || []) as SalesQuoteDesign[])
-  ).flat();
 }
