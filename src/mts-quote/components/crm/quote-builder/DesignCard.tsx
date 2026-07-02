@@ -3656,7 +3656,6 @@ function ShutterDesignOptions({
               </Button>
             )}
           </div>
-          <PriceExplanation design={design} productType={productType} rawSqft={null} sqft={null} />
         </div>
       )}
     </div>
@@ -5210,7 +5209,6 @@ function ShadesAndBlindsOptions({
               </Button>
             )}
           </div>
-          <PriceExplanation design={design} productType={productType} rawSqft={null} sqft={null} />
         </div>
       )}
     </div>
