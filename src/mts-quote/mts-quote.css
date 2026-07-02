@@ -1697,7 +1697,7 @@
 
 .mts-quote-scope .quote-view-toggle {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(86px, 1fr));
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
   overflow: hidden;
   border: 1px solid #d8d8d2;
   border-radius: 8px;

@@ -14,17 +14,19 @@ import "./mts-quote.css";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { LayoutDashboard, Hammer, FileSignature } from "lucide-react";
+import { LayoutDashboard, Hammer, FileSignature, TableProperties } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
 import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
 import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
+import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
   { value: "builder", label: "Builder", icon: Hammer, requiresQuote: true },
+  { value: "pricing", label: "Pricing Grids", icon: TableProperties, requiresQuote: false },
   { value: "contract", label: "Contract", icon: FileSignature, requiresQuote: true },
 ] as const;
 
@@ -33,9 +35,11 @@ export function QuoteWorkspace() {
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
   const { activeTab, setActiveTab, activeQuoteId } = useQuoteBuilderStore();
 
-  // dashboard/builder/contract only; anything else falls back to dashboard
+  // dashboard/builder/pricing/contract only; anything else falls back to dashboard
   const effectiveTab =
-    activeTab === "builder" || activeTab === "contract" ? activeTab : "dashboard";
+    activeTab === "builder" || activeTab === "pricing" || activeTab === "contract"
+      ? activeTab
+      : "dashboard";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -80,6 +84,7 @@ export function QuoteWorkspace() {
           <div>
             {effectiveTab === "dashboard" && <QuoteDashboard quoteOperatorMode={false} />}
             {effectiveTab === "builder" && <QuoteBuilder />}
+            {effectiveTab === "pricing" && <PricingGrids />}
             {effectiveTab === "contract" && <QuoteContract />}
           </div>
 

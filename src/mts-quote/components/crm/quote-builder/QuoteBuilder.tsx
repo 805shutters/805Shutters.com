@@ -1182,7 +1182,7 @@ export function QuoteBuilder() {
                     <Pencil className="h-4 w-4 text-muted-foreground" />
                   </button>
                 )}
-                {/* Builder / Contract toggle */}
+                {/* Builder / Pricing Grids / Contract toggle */}
                 <div className="quote-view-toggle ml-1" role="group" aria-label="Quote view">
                   <button
                     type="button"
@@ -1191,6 +1191,14 @@ export function QuoteBuilder() {
                     onClick={() => setActiveTab("builder")}
                   >
                     Builder
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed="false"
+                    onClick={() => setActiveTab("pricing")}
+                    className="quote-view-toggle__button"
+                  >
+                    Pricing Grids
                   </button>
                   <button
                     type="button"
