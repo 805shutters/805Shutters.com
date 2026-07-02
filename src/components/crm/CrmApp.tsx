@@ -1327,6 +1327,58 @@ export function CrmApp({
     }
   }
 
+  async function applyLedgerLineAction(action: LedgerLineAction) {
+    if (!session) return false;
+
+    const basePaths: Record<LedgerLineKind, string> = {
+      payment: "/api/crm/bookkeeping/payments",
+      credit: "/api/crm/bookkeeping/credits",
+      expense: "/api/crm/expenses"
+    };
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (action.op === "create") {
+        await crmFetch(session, basePaths[action.kind], {
+          method: "POST",
+          body: JSON.stringify(action.payload || {})
+        });
+      } else if (action.op === "update") {
+        await crmFetch(session, `${basePaths[action.kind]}/${action.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(action.payload || {})
+        });
+      } else {
+        await crmFetch(session, `${basePaths[action.kind]}/${action.id}`, { method: "DELETE" });
+      }
+
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill) {
+        setDrill(
+          rebuildDrillPayload(
+            drill,
+            dashboardResult.jobs,
+            dashboardResult.quotes,
+            dashboardResult.bookkeepingRows,
+            dashboardResult.customerFiles,
+            dashboardResult.installationInvoiceEmails,
+            dashboardResult.orderCogsEmails
+          )
+        );
+      }
+      setMessage(action.message || "Ledger updated.");
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ledger line could not be updated.");
+      await refresh();
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
@@ -2202,6 +2254,7 @@ export function CrmApp({
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
             onSaveField={saveDrillField}
+            onLedgerLineAction={applyLedgerLineAction}
           />
         </div>
       ) : null}
@@ -2242,6 +2295,7 @@ export function CrmApp({
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
             onSaveField={saveDrillField}
+            onLedgerLineAction={applyLedgerLineAction}
           />
           <section className="crm-command-grid">
             <AccountabilityBoard items={accountability} />
@@ -2836,6 +2890,14 @@ type DrillPayload = {
 type DrillFieldPatch = {
   job?: Record<string, unknown>;
   row?: Record<string, unknown>;
+  message?: string;
+};
+type LedgerLineKind = "payment" | "credit" | "expense";
+type LedgerLineAction = {
+  kind: LedgerLineKind;
+  op: "create" | "update" | "delete";
+  id?: string;
+  payload?: Record<string, unknown>;
   message?: string;
 };
 type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "calendar";
@@ -4371,7 +4433,8 @@ function CommandDashboard({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
-  onSaveField
+  onSaveField,
+  onLedgerLineAction
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -4387,6 +4450,7 @@ function CommandDashboard({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
+  onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
 }) {
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
@@ -4498,6 +4562,7 @@ function CommandDashboard({
         onReassignSale={onReassignSale}
         onMeasureNeededAction={onMeasureNeededAction}
         onSaveField={onSaveField}
+        onLedgerLineAction={onLedgerLineAction}
       />
     ) : null;
 
@@ -4520,6 +4585,7 @@ function CommandDashboard({
           onReassignSale={onReassignSale}
           onMeasureNeededAction={onMeasureNeededAction}
           onSaveField={onSaveField}
+          onLedgerLineAction={onLedgerLineAction}
         />
         <strong>{jobs.length} jobs</strong>
       </div>
@@ -4853,6 +4919,7 @@ type DrillPanelProps = {
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
+  onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
 };
 
 type DrillInlineOption = {
@@ -5133,7 +5200,8 @@ function GlobalCustomerSearchPanel({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
-  onSaveField
+  onSaveField,
+  onLedgerLineAction
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -5146,6 +5214,7 @@ function GlobalCustomerSearchPanel({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
+  onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
@@ -5250,6 +5319,7 @@ function GlobalCustomerSearchPanel({
                 onReassignSale={onReassignSale}
                 onMeasureNeededAction={onMeasureNeededAction}
                 onSaveField={onSaveField}
+                onLedgerLineAction={onLedgerLineAction}
               />
             </div>
           ) : null}
@@ -5268,7 +5338,8 @@ function DrillDetailPanel({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
-  onSaveField
+  onSaveField,
+  onLedgerLineAction
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -5297,6 +5368,7 @@ function DrillDetailPanel({
             onReassignSale={onReassignSale}
             onMeasureNeededAction={onMeasureNeededAction}
             onSaveField={onSaveField}
+            onLedgerLineAction={onLedgerLineAction}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -5312,7 +5384,8 @@ function DrillDetailCard({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
-  onSaveField
+  onSaveField,
+  onLedgerLineAction
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
@@ -5321,6 +5394,7 @@ function DrillDetailCard({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
+  onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
 }) {
   const row = entry.row;
   const job = entry.job;
@@ -5780,7 +5854,7 @@ function DrillDetailCard({
               </details>
             ) : null}
 
-            {hasActivity ? (
+            {hasActivity || (row && onLedgerLineAction) ? (
               <details className="crm-drill-line-section">
                 <summary>
                   <span>Payments + Activity</span>
@@ -5788,39 +5862,214 @@ function DrillDetailCard({
                 </summary>
                 <div className="crm-drill-line-list">
                   {row?.payments.map((payment) => (
-                    <div className="crm-drill-line-item" key={payment.id}>
-                      <strong>{payment.payment_label || formatPaymentType(payment.payment_type)}</strong>
-                      <span>{[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}</span>
-                      <em>{toLedgerCurrency(payment.amount)}</em>
-                    </div>
+                    <DrillLedgerLine
+                      key={payment.id}
+                      title={payment.payment_label || formatPaymentType(payment.payment_type)}
+                      subtitle={[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}
+                      amount={toLedgerCurrency(payment.amount)}
+                      busy={busy}
+                      fields={[
+                        { name: "payment_label", label: "Label", type: "text", value: payment.payment_label || "" },
+                        { name: "amount", label: "Amount", type: "number", value: String(payment.amount ?? "") },
+                        { name: "paid_at", label: "Paid on", type: "date", value: (payment.paid_at || "").slice(0, 10) },
+                        {
+                          name: "payment_type",
+                          label: "Type",
+                          type: "select",
+                          value: payment.payment_type || "other",
+                          options: LEDGER_PAYMENT_TYPE_OPTIONS
+                        }
+                      ]}
+                      onSave={
+                        onLedgerLineAction
+                          ? (values) =>
+                              onLedgerLineAction({
+                                kind: "payment",
+                                op: "update",
+                                id: payment.id,
+                                payload: {
+                                  payment_label: values.payment_label,
+                                  amount: Number(values.amount || 0),
+                                  paid_at: values.paid_at || null,
+                                  payment_type: values.payment_type
+                                },
+                                message: "Payment updated. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      onDelete={
+                        onLedgerLineAction
+                          ? () =>
+                              onLedgerLineAction({
+                                kind: "payment",
+                                op: "delete",
+                                id: payment.id,
+                                message: "Payment deleted. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      deleteConfirm={`Delete this ${toLedgerCurrency(payment.amount)} payment?\n\nThe customer's balance and all profit numbers will recalculate.`}
+                    />
                   ))}
                   {row?.creditsIn.map((credit) => (
-                    <div className="crm-drill-line-item" key={`credit-in-${credit.id}`}>
-                      <strong>Credit In</strong>
-                      <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-                      <em>{toLedgerCurrency(credit.amount)}</em>
-                    </div>
+                    <DrillLedgerLine
+                      key={`credit-in-${credit.id}`}
+                      title="Credit In"
+                      subtitle={[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}
+                      amount={toLedgerCurrency(credit.amount)}
+                      busy={busy}
+                      fields={[
+                        { name: "amount", label: "Amount", type: "number", value: String(credit.amount ?? "") },
+                        { name: "credit_date", label: "Date", type: "date", value: (credit.credit_date || "").slice(0, 10) },
+                        { name: "note", label: "Note", type: "text", value: credit.note || "" }
+                      ]}
+                      onSave={
+                        onLedgerLineAction
+                          ? (values) =>
+                              onLedgerLineAction({
+                                kind: "credit",
+                                op: "update",
+                                id: credit.id,
+                                payload: {
+                                  amount: Number(values.amount || 0),
+                                  credit_date: values.credit_date || null,
+                                  note: values.note
+                                },
+                                message: "Credit updated. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      onDelete={
+                        onLedgerLineAction
+                          ? () =>
+                              onLedgerLineAction({
+                                kind: "credit",
+                                op: "delete",
+                                id: credit.id,
+                                message: "Credit deleted. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      deleteConfirm={`Delete this ${toLedgerCurrency(credit.amount)} credit?\n\nThe customer's balance and all profit numbers will recalculate.`}
+                    />
                   ))}
                   {row?.creditsOut.map((credit) => (
-                    <div className="crm-drill-line-item" key={`credit-out-${credit.id}`}>
-                      <strong>Credit Out</strong>
-                      <span>{[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}</span>
-                      <em>{toLedgerCurrency(credit.amount)}</em>
-                    </div>
+                    <DrillLedgerLine
+                      key={`credit-out-${credit.id}`}
+                      title="Credit Out"
+                      subtitle={[formatShortDate(credit.credit_date), credit.note].filter(Boolean).join(" / ")}
+                      amount={toLedgerCurrency(credit.amount)}
+                      busy={busy}
+                      fields={[
+                        { name: "amount", label: "Amount", type: "number", value: String(credit.amount ?? "") },
+                        { name: "credit_date", label: "Date", type: "date", value: (credit.credit_date || "").slice(0, 10) },
+                        { name: "note", label: "Note", type: "text", value: credit.note || "" }
+                      ]}
+                      onSave={
+                        onLedgerLineAction
+                          ? (values) =>
+                              onLedgerLineAction({
+                                kind: "credit",
+                                op: "update",
+                                id: credit.id,
+                                payload: {
+                                  amount: Number(values.amount || 0),
+                                  credit_date: values.credit_date || null,
+                                  note: values.note
+                                },
+                                message: "Credit updated. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      onDelete={
+                        onLedgerLineAction
+                          ? () =>
+                              onLedgerLineAction({
+                                kind: "credit",
+                                op: "delete",
+                                id: credit.id,
+                                message: "Credit deleted. Balances recalculated."
+                              })
+                          : undefined
+                      }
+                      deleteConfirm={`Delete this ${toLedgerCurrency(credit.amount)} credit?\n\nThe customer's balance and all profit numbers will recalculate.`}
+                    />
                   ))}
                   {row?.expenses.map((expense) => (
-                    <div className="crm-drill-line-item" key={`expense-${expense.id}`}>
-                      <strong>{expense.label}</strong>
-                      <span>{[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}</span>
-                      <em>{toLedgerCurrency(expense.amount)}</em>
-                    </div>
+                    <DrillLedgerLine
+                      key={`expense-${expense.id}`}
+                      title={expense.label}
+                      subtitle={[titleCase(expense.category), formatShortDate(expense.incurred_on), expense.notes].filter(Boolean).join(" / ")}
+                      amount={toLedgerCurrency(expense.amount)}
+                      busy={busy}
+                      fields={[
+                        { name: "label", label: "Label", type: "text", value: expense.label || "" },
+                        { name: "amount", label: "Amount", type: "number", value: String(expense.amount ?? "") },
+                        { name: "incurred_on", label: "Date", type: "date", value: (expense.incurred_on || "").slice(0, 10) },
+                        {
+                          name: "category",
+                          label: "Category",
+                          type: "select",
+                          value: expense.category || "other",
+                          options: LEDGER_EXPENSE_CATEGORY_OPTIONS
+                        }
+                      ]}
+                      onSave={
+                        onLedgerLineAction
+                          ? (values) =>
+                              onLedgerLineAction({
+                                kind: "expense",
+                                op: "update",
+                                id: expense.id,
+                                payload: {
+                                  label: values.label,
+                                  amount: Number(values.amount || 0),
+                                  incurred_on: values.incurred_on || null,
+                                  category: values.category
+                                },
+                                message: "Expense updated. Profit recalculated."
+                              })
+                          : undefined
+                      }
+                      onDelete={
+                        onLedgerLineAction
+                          ? () =>
+                              onLedgerLineAction({
+                                kind: "expense",
+                                op: "delete",
+                                id: expense.id,
+                                message: "Expense deleted. Profit recalculated."
+                              })
+                          : undefined
+                      }
+                      deleteConfirm={`Delete the "${expense.label}" expense of ${toLedgerCurrency(expense.amount)}?\n\nProfit numbers will recalculate.`}
+                    />
                   ))}
                   {row && row.remakeTotal > 0 ? (
                     <div className="crm-drill-line-item" key={`remake-${row.id}`}>
                       <strong>Remake</strong>
-                      <span>Mistake / reorder cost</span>
+                      <span>Mistake / reorder cost (edit via the Remake field)</span>
                       <em>{toLedgerCurrency(-row.remakeTotal)}</em>
                     </div>
+                  ) : null}
+                  {row && onLedgerLineAction ? (
+                    <DrillAddExpenseForm
+                      busy={busy}
+                      onAdd={(payload) =>
+                        onLedgerLineAction({
+                          kind: "expense",
+                          op: "create",
+                          payload: {
+                            ...payload,
+                            ...(row.source === "crm_quote" && row.quoteId
+                              ? { quote_id: row.quoteId }
+                              : { bookkeeping_entry_id: row.id }),
+                            job_id: row.jobId
+                          },
+                          message: "Expense added. Profit recalculated."
+                        })
+                      }
+                    />
                   ) : null}
                 </div>
               </details>
@@ -6220,6 +6469,241 @@ function DrillDetailEditForm({
         </button>
       </div>
     </form>
+  );
+}
+
+const LEDGER_PAYMENT_TYPE_OPTIONS: DrillInlineOption[] = [
+  { value: "zelle", label: "Zelle" },
+  { value: "cash", label: "Cash" },
+  { value: "check", label: "Check" },
+  { value: "credit_card", label: "Credit Card" },
+  { value: "other", label: "Other" }
+];
+
+const LEDGER_EXPENSE_CATEGORY_OPTIONS: DrillInlineOption[] = [
+  { value: "materials", label: "Materials" },
+  { value: "installation_extra", label: "Installation Extra" },
+  { value: "processing_fee", label: "Processing Fee" },
+  { value: "permit", label: "Permit" },
+  { value: "repair", label: "Repair" },
+  { value: "remake", label: "Remake" },
+  { value: "referral", label: "Referral" },
+  { value: "other", label: "Other" }
+];
+
+type DrillLedgerLineField = {
+  name: string;
+  label: string;
+  type: "text" | "number" | "date" | "select";
+  value: string;
+  options?: DrillInlineOption[];
+};
+
+function DrillLedgerLine({
+  title,
+  subtitle,
+  amount,
+  busy,
+  fields,
+  onSave,
+  onDelete,
+  deleteConfirm
+}: {
+  title: string;
+  subtitle: string;
+  amount: string;
+  busy: boolean;
+  fields: DrillLedgerLineField[];
+  onSave?: (values: Record<string, string>) => Promise<boolean>;
+  onDelete?: () => Promise<boolean>;
+  deleteConfirm?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const canEdit = Boolean(fields.length && onSave);
+
+  const startEdit = () => {
+    setDraft(Object.fromEntries(fields.map((field) => [field.name, field.value])));
+    setEditing(true);
+  };
+
+  const save = async () => {
+    if (!onSave) return;
+    const saved = await onSave(draft);
+    if (saved) setEditing(false);
+  };
+
+  const remove = () => {
+    if (!onDelete) return;
+    if (deleteConfirm && typeof window !== "undefined" && !window.confirm(deleteConfirm)) return;
+    void onDelete();
+  };
+
+  const setDraftField = (name: string, value: string) => setDraft((prev) => ({ ...prev, [name]: value }));
+
+  if (editing) {
+    return (
+      <div className="crm-drill-line-item crm-drill-line-editing">
+        <strong>{title}</strong>
+        <div className="crm-drill-line-edit-fields">
+          {fields.map((field) => (
+            <label key={field.name}>
+              <span>{field.label}</span>
+              {field.type === "select" ? (
+                <select
+                  className="crm-inline-edit-control"
+                  value={draft[field.name] ?? ""}
+                  disabled={busy}
+                  onChange={(event) => setDraftField(field.name, event.target.value)}
+                >
+                  {(field.options || []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  className="crm-inline-edit-control"
+                  type={field.type}
+                  step={field.type === "number" ? "0.01" : undefined}
+                  value={draft[field.name] ?? ""}
+                  disabled={busy}
+                  onChange={(event) => setDraftField(field.name, event.target.value)}
+                />
+              )}
+            </label>
+          ))}
+        </div>
+        <div className="crm-drill-line-actions">
+          <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void save()}>
+            Save
+          </button>
+          <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => setEditing(false)}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`crm-drill-line-item${canEdit || onDelete ? " crm-drill-line-item--actions" : ""}`}>
+      <strong>{title}</strong>
+      <span>{subtitle}</span>
+      <em>{amount}</em>
+      {canEdit || onDelete ? (
+        <div className="crm-drill-line-actions">
+          {canEdit ? (
+            <button type="button" className="crm-ghost-button" disabled={busy} onClick={startEdit}>
+              Edit
+            </button>
+          ) : null}
+          {onDelete ? (
+            <button type="button" className="crm-ghost-button crm-delete-button" disabled={busy} onClick={remove}>
+              Delete
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DrillAddExpenseForm({
+  busy,
+  onAdd
+}: {
+  busy: boolean;
+  onAdd: (payload: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [category, setCategory] = useState("other");
+  const [amount, setAmount] = useState("");
+  const [incurredOn, setIncurredOn] = useState("");
+
+  const reset = () => {
+    setLabel("");
+    setCategory("other");
+    setAmount("");
+    setIncurredOn("");
+  };
+
+  const submit = async () => {
+    const added = await onAdd({
+      label: label.trim(),
+      category,
+      amount: Number(amount || 0),
+      incurred_on: incurredOn || null
+    });
+    if (added) {
+      reset();
+      setOpen(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div className="crm-drill-line-item crm-drill-line-add">
+        <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => setOpen(true)}>
+          + Add expense
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="crm-drill-line-item crm-drill-line-editing">
+      <strong>New expense</strong>
+      <div className="crm-drill-line-edit-fields">
+        <label>
+          <span>Label</span>
+          <input className="crm-inline-edit-control" value={label} disabled={busy} onChange={(event) => setLabel(event.target.value)} />
+        </label>
+        <label>
+          <span>Amount</span>
+          <input
+            className="crm-inline-edit-control"
+            type="number"
+            step="0.01"
+            value={amount}
+            disabled={busy}
+            onChange={(event) => setAmount(event.target.value)}
+          />
+        </label>
+        <label>
+          <span>Date</span>
+          <input className="crm-inline-edit-control" type="date" value={incurredOn} disabled={busy} onChange={(event) => setIncurredOn(event.target.value)} />
+        </label>
+        <label>
+          <span>Category</span>
+          <select className="crm-inline-edit-control" value={category} disabled={busy} onChange={(event) => setCategory(event.target.value)}>
+            {LEDGER_EXPENSE_CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="crm-drill-line-actions">
+        <button type="button" className="crm-ghost-button" disabled={busy || !label.trim() || !(Number(amount) > 0)} onClick={() => void submit()}>
+          Save expense
+        </button>
+        <button
+          type="button"
+          className="crm-ghost-button"
+          disabled={busy}
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

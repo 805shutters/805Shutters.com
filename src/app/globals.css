@@ -12614,6 +12614,55 @@ html.mobile-menu-open {
   grid-template-columns: minmax(90px, 0.45fr) minmax(0, 1fr) auto;
 }
 
+.crm-drill-line-item--actions {
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 2fr) auto auto;
+}
+
+.crm-drill-line-actions {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.crm-drill-line-actions .crm-ghost-button {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: 10px;
+}
+
+.crm-drill-line-editing {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.crm-drill-line-edit-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.crm-drill-line-edit-fields label {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crm-drill-line-edit-fields label span {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.crm-drill-line-add {
+  grid-template-columns: 1fr;
+}
+
 .crm-sale-owner-control {
   display: grid;
   grid-template-columns: auto minmax(120px, 1fr);

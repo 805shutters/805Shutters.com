@@ -745,6 +745,7 @@ export async function recordCrmActivity(
       | "quote"
       | "bookkeeping_entry"
       | "bookkeeping_payment"
+      | "bookkeeping_credit"
       | "expense"
       | "calendar_event"
       | "customer"
@@ -3037,6 +3038,290 @@ async function closeBookkeepingJobAfterBalancePaid(
   if (status === "closed" || status === "lost") return;
 
   await updateCrmJob(supabase, jobId, { status: "closed" }, actor);
+}
+
+// --- Ledger line-item CRUD (payments, credits, expenses) -------------------
+// These edit/delete ONLY the leaf row; the parent job/quote/bookkeeping entry
+// is never touched. Balances, profit, Ken's cut, and Jessica's commission are
+// derived from these rows in bookkeeping.ts, so any change here recomputes
+// them on the next load. Every mutation records a before/after activity event.
+
+export async function updateCrmBookkeepingPayment(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quote_bookkeeping_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Payment was not found.");
+
+  const patch: Record<string, unknown> = {};
+  if (payload.amount !== undefined) {
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Payment amount must be greater than zero.");
+    patch.amount = amount;
+  }
+  if (payload.payment_label !== undefined) {
+    patch.payment_label = optionalText(payload.payment_label) || "Balance payment";
+  }
+  if (payload.payment_type !== undefined) {
+    patch.payment_type = normalizePaymentType(optionalText(payload.payment_type)) || "other";
+  }
+  if (payload.paid_at !== undefined) patch.paid_at = payload.paid_at || null;
+  if (payload.notes !== undefined) patch.notes = optionalText(payload.notes);
+
+  if (!Object.keys(patch).length) throw new CrmAuthError(400, "No supported payment fields provided.");
+
+  patch.meta = {
+    ...objectMeta((existing as CrmBookkeepingPayment & { meta?: unknown }).meta),
+    lastUpdatedBy: actor.email,
+    lastUpdatedAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("crm_quote_bookkeeping_payments")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Payment could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "bookkeeping_payment",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmBookkeepingPayment;
+}
+
+export async function deleteCrmBookkeepingPayment(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quote_bookkeeping_payments")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Payment was not found.");
+
+  const { error } = await supabase.from("crm_quote_bookkeeping_payments").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Payment could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "bookkeeping_payment",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
+}
+
+export async function updateCrmBookkeepingCredit(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quote_bookkeeping_credits")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Credit was not found.");
+
+  const patch: Record<string, unknown> = {};
+  if (payload.amount !== undefined) {
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Credit amount must be greater than zero.");
+    patch.amount = amount;
+  }
+  if (payload.credit_date !== undefined) patch.credit_date = payload.credit_date || null;
+  if (payload.note !== undefined) patch.note = optionalText(payload.note);
+
+  if (!Object.keys(patch).length) throw new CrmAuthError(400, "No supported credit fields provided.");
+
+  patch.meta = {
+    ...objectMeta((existing as CrmBookkeepingCredit & { meta?: unknown }).meta),
+    lastUpdatedBy: actor.email,
+    lastUpdatedAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("crm_quote_bookkeeping_credits")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Credit could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "bookkeeping_credit",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmBookkeepingCredit;
+}
+
+export async function deleteCrmBookkeepingCredit(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quote_bookkeeping_credits")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Credit was not found.");
+
+  const { error } = await supabase.from("crm_quote_bookkeeping_credits").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Credit could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "bookkeeping_credit",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
+}
+
+const jobExpenseCategories = new Set([
+  "materials",
+  "installation_extra",
+  "processing_fee",
+  "permit",
+  "repair",
+  "remake",
+  "referral",
+  "other"
+]);
+
+function normalizeExpenseCategory(value: unknown) {
+  const category = String(value || "").trim().toLowerCase();
+  if (!jobExpenseCategories.has(category)) {
+    throw new CrmAuthError(400, "Expense category is not recognized.");
+  }
+  return category;
+}
+
+export async function createCrmJobExpense(
+  supabase: CrmSupabaseClient,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const bookkeepingEntryId = optionalText(payload.bookkeeping_entry_id);
+  const quoteId = optionalText(payload.quote_id);
+  const jobId = optionalText(payload.job_id);
+  if (!bookkeepingEntryId && !quoteId && !jobId) {
+    throw new CrmAuthError(400, "An expense must be tied to a bookkeeping row, quote, or job.");
+  }
+
+  const amount = toMoney(payload.amount);
+  if (amount <= 0) throw new CrmAuthError(400, "Expense amount must be greater than zero.");
+
+  const record = {
+    bookkeeping_entry_id: bookkeepingEntryId,
+    quote_id: quoteId,
+    job_id: jobId,
+    label: requiredText(payload.label, "Expense label is required."),
+    category: payload.category === undefined ? "other" : normalizeExpenseCategory(payload.category),
+    amount,
+    incurred_on: payload.incurred_on || null,
+    notes: optionalText(payload.notes),
+    source: payload.source === "legacy_sheet" ? "legacy_sheet" : "manual",
+    meta: { createdBy: actor.email }
+  };
+
+  const { data, error } = await supabase.from("crm_job_expenses").insert(record).select("*").single();
+  if (error || !data) throw new CrmAuthError(502, "Expense could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "expense",
+    entityId: data.id,
+    action: "create",
+    after: data
+  });
+
+  return data as CrmJobExpense;
+}
+
+export async function updateCrmJobExpense(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_job_expenses")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Expense was not found.");
+
+  const patch: Record<string, unknown> = {};
+  if (payload.amount !== undefined) {
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Expense amount must be greater than zero.");
+    patch.amount = amount;
+  }
+  if (payload.label !== undefined) patch.label = requiredText(payload.label, "Expense label is required.");
+  if (payload.category !== undefined) patch.category = normalizeExpenseCategory(payload.category);
+  if (payload.incurred_on !== undefined) patch.incurred_on = payload.incurred_on || null;
+  if (payload.notes !== undefined) patch.notes = optionalText(payload.notes);
+
+  if (!Object.keys(patch).length) throw new CrmAuthError(400, "No supported expense fields provided.");
+
+  patch.meta = {
+    ...objectMeta((existing as CrmJobExpense & { meta?: unknown }).meta),
+    lastUpdatedBy: actor.email,
+    lastUpdatedAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("crm_job_expenses")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Expense could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "expense",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmJobExpense;
+}
+
+export async function deleteCrmJobExpense(supabase: CrmSupabaseClient, id: string, actor: CrmActor) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_job_expenses")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Expense was not found.");
+
+  const { error } = await supabase.from("crm_job_expenses").delete().eq("id", id);
+  if (error) throw new CrmAuthError(502, "Expense could not be deleted.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "expense",
+    entityId: id,
+    action: "delete",
+    before: existing
+  });
+
+  return { id };
 }
 
 const allowedSettingKeys = new Set(["ken_opening_balance"]);

@@ -3,16 +3,23 @@ import {
   assertMikePaymentAdmin,
   buildDashboardData,
   cancelCrmCalendarEvent,
+  createCrmJobExpense,
   createCrmQuote,
   createPartnerPaymentBatch,
+  deleteCrmBookkeepingCredit,
+  deleteCrmBookkeepingPayment,
   deleteCrmCustomerFile,
+  deleteCrmJobExpense,
   deleteCrmLedgerRow,
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
   resolveFullPartnerPaymentAmount,
   resolveQuoteBookkeepingCustomerName,
   syncRemakeExpense,
+  updateCrmBookkeepingCredit,
   updateCrmBookkeepingEntry,
+  updateCrmBookkeepingPayment,
+  updateCrmJobExpense,
   updateCrmQuote,
   updateCrmSettings
 } from "./backend";
@@ -1493,5 +1500,235 @@ describe("deleteCrmLedgerRow", () => {
     await expect(deleteCrmLedgerRow(supabase, "missing-row", actor)).rejects.toMatchObject({ status: 404 });
     expect(deletes).toHaveLength(0);
     expect(updates).toHaveLength(0);
+  });
+});
+
+function ledgerLineRecorder(opts: { table: string; row: Record<string, unknown> | null }) {
+  const deletes: Array<{ table: string; filters: Record<string, unknown> }> = [];
+  const updates: Array<{ table: string; filters: Record<string, unknown>; payload: Record<string, unknown> }> = [];
+  const inserts: Array<{ table: string; payload: Record<string, unknown> }> = [];
+
+  class QueryRecorder {
+    table: string;
+    filters: Record<string, unknown> = {};
+    payload: Record<string, unknown> | null = null;
+    operation: "select" | "update" | "insert" | "delete" = "select";
+
+    constructor(table: string) {
+      this.table = table;
+    }
+
+    select() {
+      return this;
+    }
+
+    eq(key: string, value: unknown) {
+      this.filters[key] = value;
+      return this;
+    }
+
+    update(payload: Record<string, unknown>) {
+      this.operation = "update";
+      this.payload = payload;
+      return this;
+    }
+
+    insert(payload: Record<string, unknown>) {
+      this.operation = "insert";
+      this.payload = payload;
+      return this;
+    }
+
+    delete() {
+      this.operation = "delete";
+      return this;
+    }
+
+    async maybeSingle() {
+      if (this.table === opts.table && opts.row && this.filters.id === opts.row.id) {
+        return { data: opts.row, error: null };
+      }
+      return { data: null, error: null };
+    }
+
+    async single() {
+      if (this.operation === "update") {
+        updates.push({ table: this.table, filters: this.filters, payload: this.payload || {} });
+        return { data: { ...(opts.row || {}), ...(this.payload || {}) }, error: null };
+      }
+      if (this.operation === "insert") {
+        inserts.push({ table: this.table, payload: this.payload || {} });
+        return { data: { id: "new-line-1", ...(this.payload || {}) }, error: null };
+      }
+      return { data: opts.row, error: null };
+    }
+
+    then<TResult1 = unknown, TResult2 = never>(
+      onfulfilled?: ((value: { data: null; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+    ) {
+      if (this.operation === "delete") deletes.push({ table: this.table, filters: this.filters });
+      if (this.operation === "insert") inserts.push({ table: this.table, payload: this.payload || {} });
+      if (this.operation === "update") updates.push({ table: this.table, filters: this.filters, payload: this.payload || {} });
+      return Promise.resolve({ data: null, error: null } as { data: null; error: null }).then(onfulfilled, onrejected);
+    }
+  }
+
+  const supabase = {
+    from(table: string) {
+      return new QueryRecorder(table);
+    }
+  } as unknown as Parameters<typeof deleteCrmBookkeepingPayment>[0];
+
+  return { deletes, updates, inserts, supabase };
+}
+
+describe("ledger payment line CRUD", () => {
+  it("updates amount, label, date, and type on the payment row only", async () => {
+    const { updates, supabase } = ledgerLineRecorder({
+      table: "crm_quote_bookkeeping_payments",
+      row: { id: "payment-1", amount: 500, payment_label: "Deposit", payment_type: "check", meta: {} }
+    });
+
+    await updateCrmBookkeepingPayment(
+      supabase,
+      "payment-1",
+      { amount: "750.25", payment_label: "Balance payment", payment_type: "zelle", paid_at: "2026-07-01" },
+      actor
+    );
+
+    const paymentUpdates = updates.filter((update) => update.table === "crm_quote_bookkeeping_payments");
+    expect(paymentUpdates).toHaveLength(1);
+    expect(paymentUpdates[0].filters.id).toBe("payment-1");
+    expect(paymentUpdates[0].payload).toMatchObject({
+      amount: 750.25,
+      payment_label: "Balance payment",
+      payment_type: "zelle",
+      paid_at: "2026-07-01"
+    });
+  });
+
+  it("rejects a zero or negative payment amount", async () => {
+    const { supabase } = ledgerLineRecorder({
+      table: "crm_quote_bookkeeping_payments",
+      row: { id: "payment-1", amount: 500, meta: {} }
+    });
+
+    await expect(updateCrmBookkeepingPayment(supabase, "payment-1", { amount: 0 }, actor)).rejects.toMatchObject({
+      status: 400
+    });
+  });
+
+  it("deletes only the payment row and records an audit event with the before snapshot", async () => {
+    const before = { id: "payment-1", amount: 500, payment_label: "Deposit", meta: {} };
+    const { deletes, inserts, supabase } = ledgerLineRecorder({
+      table: "crm_quote_bookkeeping_payments",
+      row: before
+    });
+
+    await deleteCrmBookkeepingPayment(supabase, "payment-1", actor);
+
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].table).toBe("crm_quote_bookkeeping_payments");
+    expect(deletes[0].filters.id).toBe("payment-1");
+    const audit = inserts.find((insert) => insert.table === "crm_activity_events");
+    expect(audit?.payload).toMatchObject({ entity_type: "bookkeeping_payment", action: "delete", before_data: before });
+  });
+
+  it("404s when the payment does not exist", async () => {
+    const { deletes, supabase } = ledgerLineRecorder({ table: "crm_quote_bookkeeping_payments", row: null });
+    await expect(deleteCrmBookkeepingPayment(supabase, "missing", actor)).rejects.toMatchObject({ status: 404 });
+    expect(deletes).toHaveLength(0);
+  });
+});
+
+describe("ledger credit line CRUD", () => {
+  it("updates amount, date, and note on the credit row", async () => {
+    const { updates, supabase } = ledgerLineRecorder({
+      table: "crm_quote_bookkeeping_credits",
+      row: { id: "credit-1", amount: 100, note: "Old", meta: {} }
+    });
+
+    await updateCrmBookkeepingCredit(supabase, "credit-1", { amount: 250, credit_date: "2026-07-02", note: "Adjusted" }, actor);
+
+    const creditUpdates = updates.filter((update) => update.table === "crm_quote_bookkeeping_credits");
+    expect(creditUpdates).toHaveLength(1);
+    expect(creditUpdates[0].payload).toMatchObject({ amount: 250, credit_date: "2026-07-02", note: "Adjusted" });
+  });
+
+  it("deletes only the credit row and audits it", async () => {
+    const { deletes, inserts, supabase } = ledgerLineRecorder({
+      table: "crm_quote_bookkeeping_credits",
+      row: { id: "credit-1", amount: 100, meta: {} }
+    });
+
+    await deleteCrmBookkeepingCredit(supabase, "credit-1", actor);
+
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].table).toBe("crm_quote_bookkeeping_credits");
+    const audit = inserts.find((insert) => insert.table === "crm_activity_events");
+    expect(audit?.payload).toMatchObject({ entity_type: "bookkeeping_credit", action: "delete" });
+  });
+});
+
+describe("job expense CRUD", () => {
+  it("creates an expense tied to a bookkeeping entry", async () => {
+    const { inserts, supabase } = ledgerLineRecorder({ table: "crm_job_expenses", row: null });
+
+    await createCrmJobExpense(
+      supabase,
+      { bookkeeping_entry_id: "entry-1", label: "Permit fee", category: "permit", amount: 85, incurred_on: "2026-07-01" },
+      actor
+    );
+
+    const expenseInsert = inserts.find((insert) => insert.table === "crm_job_expenses");
+    expect(expenseInsert?.payload).toMatchObject({
+      bookkeeping_entry_id: "entry-1",
+      label: "Permit fee",
+      category: "permit",
+      amount: 85,
+      source: "manual"
+    });
+  });
+
+  it("refuses an expense with no target row", async () => {
+    const { supabase } = ledgerLineRecorder({ table: "crm_job_expenses", row: null });
+    await expect(createCrmJobExpense(supabase, { label: "Orphan", amount: 10 }, actor)).rejects.toMatchObject({
+      status: 400
+    });
+  });
+
+  it("refuses an unknown category", async () => {
+    const { supabase } = ledgerLineRecorder({ table: "crm_job_expenses", row: null });
+    await expect(
+      createCrmJobExpense(supabase, { job_id: "job-1", label: "Bad", category: "bribery", amount: 10 }, actor)
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("updates the expense row in place", async () => {
+    const { updates, supabase } = ledgerLineRecorder({
+      table: "crm_job_expenses",
+      row: { id: "expense-1", label: "Permit fee", category: "permit", amount: 85, meta: {} }
+    });
+
+    await updateCrmJobExpense(supabase, "expense-1", { amount: 120, category: "repair" }, actor);
+
+    const expenseUpdates = updates.filter((update) => update.table === "crm_job_expenses");
+    expect(expenseUpdates).toHaveLength(1);
+    expect(expenseUpdates[0].payload).toMatchObject({ amount: 120, category: "repair" });
+  });
+
+  it("deletes only the expense row and audits it", async () => {
+    const { deletes, inserts, supabase } = ledgerLineRecorder({
+      table: "crm_job_expenses",
+      row: { id: "expense-1", amount: 85, meta: {} }
+    });
+
+    await deleteCrmJobExpense(supabase, "expense-1", actor);
+
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].table).toBe("crm_job_expenses");
+    const audit = inserts.find((insert) => insert.table === "crm_activity_events");
+    expect(audit?.payload).toMatchObject({ entity_type: "expense", action: "delete" });
   });
 });
