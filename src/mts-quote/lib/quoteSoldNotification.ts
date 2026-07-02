@@ -1,8 +1,11 @@
 export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
+export const SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT = "805-298-5555" as const;
 
 interface SoldQuoteSmsInput {
   account_id?: string | null;
   customer_name: string | null;
+  customer_phone?: string | null;
+  customer_address?: string | null;
   total_amount: number | null;
   deposit_paid: number | null;
   share_token?: string | null;
@@ -37,18 +40,38 @@ function buildContractUrl(shareToken?: string | null): string | null {
   return `${origin.replace(/\/+$/, "")}/quote/${encodeURIComponent(token)}`;
 }
 
+function optionalSmsLine(label: string, value?: string | null): string | null {
+  const text = value?.trim();
+  return text ? `${label}: ${text}` : null;
+}
+
 export function build805SoldQuoteSmsMessage(
   quote: SoldQuoteSmsInput,
-  contractUrl = buildContractUrl(quote.share_token)
+  contractUrl = buildContractUrl(quote.share_token),
+  includeCustomerContact = false
 ): string {
   const customerName = quote.customer_name?.trim() || "Unknown customer";
   const lines = [
     `Customer Name: ${customerName}`,
     `Total Sale Amount: ${money(Number(quote.total_amount) || 0)}`,
     `Deposit Amount: ${money(soldDepositAmount(quote))}`,
-  ];
+    includeCustomerContact ? optionalSmsLine("Customer Phone", quote.customer_phone) : null,
+    includeCustomerContact ? optionalSmsLine("Customer Address", quote.customer_address) : null,
+  ].filter((line): line is string => Boolean(line));
   if (contractUrl) lines.push(`Contract PDF: ${contractUrl}`);
   return lines.join("\n");
+}
+
+export function build805SoldQuoteSmsMessageForRecipient(
+  recipient: string,
+  quote: SoldQuoteSmsInput,
+  contractUrl = buildContractUrl(quote.share_token)
+): string {
+  return build805SoldQuoteSmsMessage(
+    quote,
+    contractUrl,
+    recipient === SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
+  );
 }
 
 export async function send805SoldQuoteNotification({
