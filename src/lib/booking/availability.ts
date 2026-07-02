@@ -21,6 +21,7 @@ export const bookingSlotTimes = Array.from(
 );
 export const fallbackBookingOwner = "Unassigned";
 export const sameDayBookingLeadTimeMinutes = 4 * 60;
+export const maxSelfBookingAppointmentsPerDay = 4;
 
 type SupabaseQueryError = {
   code?: string;
@@ -186,6 +187,19 @@ function isSameLosAngelesDay(left: Date, right: Date) {
   return losAngelesDateString(left) === losAngelesDateString(right);
 }
 
+function selfBookingAppointmentCountForDay(date: string, events: CrmCalendarEvent[]) {
+  return events.filter(
+    (event) =>
+      event.status !== "canceled" &&
+      event.event_type !== "block" &&
+      losAngelesDateString(new Date(event.start_at)) === date
+  ).length;
+}
+
+function isUnderDailySelfBookingCap(date: string, events: CrmCalendarEvent[]) {
+  return selfBookingAppointmentCountForDay(date, events) < maxSelfBookingAppointmentsPerDay;
+}
+
 function isWithinTravelRange(
   owner: string,
   slotStart: Date,
@@ -261,15 +275,18 @@ export function buildBookingAvailability(
     const date = `${year}-${String(monthNumber).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const isPast = date < today;
     const isSunday = dayOfWeek(date) === 0;
+    const isUnderDailyCap = isUnderDailySelfBookingCap(date, events);
     const slots = bookingSlotTimes.map((time) => {
       const start = zonedTimeToUtc(date, time);
       const end = addMinutes(start, durationMinutes);
       const hasLeadTime = meetsSameDayLeadTime(date, start, options);
       const available = usePublishedSlots
         ? !isPast &&
+          isUnderDailyCap &&
           hasLeadTime &&
           repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events, options).length > 0
         : !isPast &&
+          isUnderDailyCap &&
           hasLeadTime &&
           !isSunday &&
           fitsFallbackWorkingDay(date, end) &&
@@ -327,6 +344,7 @@ export function freeRepsForSlot(
   const end = addMinutes(start, appointmentDuration(options));
 
   if (!meetsSameDayLeadTime(date, start, options)) return [];
+  if (!isUnderDailySelfBookingCap(date, events)) return [];
 
   if (!availabilitySlots || availabilitySlots.length === 0) {
     return dayOfWeek(date) !== 0 &&

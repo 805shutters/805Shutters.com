@@ -191,6 +191,46 @@ describe("buildBookingAvailability", () => {
     expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
   });
 
+  it("allows a fitting fourth self-booking when three short appointments are already on the day", () => {
+    const availability = buildBookingAvailability("2030-06", [
+      eventAt("2030-06-03", "08:00"),
+      eventAt("2030-06-03", "09:00"),
+      eventAt("2030-06-03", "10:00")
+    ]);
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
+  });
+
+  it("blocks public self-booking once four appointments already exist on the day", () => {
+    const availability = buildBookingAvailability("2030-06", [
+      eventAt("2030-06-03", "08:00"),
+      eventAt("2030-06-03", "09:00"),
+      eventAt("2030-06-03", "10:00"),
+      eventAt("2030-06-03", "12:00")
+    ]);
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
+  });
+
+  it("applies the four-appointment self-booking cap to published CRM availability", () => {
+    const availability = buildBookingAvailability(
+      "2030-06",
+      [
+        eventAt("2030-06-03", "08:00"),
+        eventAt("2030-06-03", "09:00"),
+        eventAt("2030-06-03", "10:00"),
+        eventAt("2030-06-03", "12:00")
+      ],
+      [publishedSlot("2030-06-03", "11:00")]
+    );
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(false);
+  });
+
   it("blocks same-day fallback slots when another appointment is more than 20 miles away", () => {
     const availability = buildBookingAvailability(
       "2030-06",
@@ -224,6 +264,18 @@ describe("freeRepsForSlot", () => {
 
     expect(freeRepsForSlot("2030-06-03", "13:00", slots, [], { now })).toEqual([]);
     expect(freeRepsForSlot("2030-06-03", "13:30", slots, [], { now })).toEqual(["Jessica"]);
+  });
+
+  it("does not return reps after the public self-booking daily cap is reached", () => {
+    const events = [
+      eventAt("2030-06-03", "08:00"),
+      eventAt("2030-06-03", "09:00"),
+      eventAt("2030-06-03", "10:00"),
+      eventAt("2030-06-03", "12:00")
+    ];
+    const slots = [publishedSlot("2030-06-03", "11:00")];
+
+    expect(freeRepsForSlot("2030-06-03", "11:00", slots, events)).toEqual([]);
   });
 
   it("filters out only the rep whose same-day route would exceed 20 miles", () => {
