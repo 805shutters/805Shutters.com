@@ -7285,6 +7285,26 @@ body:has(.booking-page--focused) .assistant-widget {
   transform: translateX(-10%);
 }
 
+.booking-page__calendar-help {
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 13px clamp(18px, 3vw, 30px);
+  border: 1px solid #111111;
+  border-bottom: 0;
+  background: #f7f7f5;
+  color: #111111;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.booking-page__calendar-help a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
 .booking-page__intro {
   display: grid;
   justify-items: center;
@@ -9012,6 +9032,12 @@ body:has(.booking-page--focused) .assistant-widget {
 
   .booking-page__masthead-logo {
     width: clamp(92px, 27vw, 128px);
+  }
+
+  .booking-page__calendar-help {
+    width: min(100% - 16px, 620px);
+    padding: 12px 14px;
+    font-size: 14px;
   }
 
   .booking-page__intro {

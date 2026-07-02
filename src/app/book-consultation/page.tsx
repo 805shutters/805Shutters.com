@@ -169,6 +169,10 @@ export default function BookConsultationPage() {
           height={209}
         />
       </header>
+      <p className="booking-page__calendar-help">
+        Don't see a time that works? Text us at{" "}
+        <a href={`sms:${site.phoneHref.replace("tel:", "")}`}>{site.phone}</a> and we'll schedule directly with you.
+      </p>
       <BookingCalendar
         className="booking-panel booking-panel--page"
         deferDetailsUntilDate
