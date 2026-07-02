@@ -6532,14 +6532,20 @@ function CustomerFilesView({
               key={file.id}
             >
               <td className="crm-customer-name-cell">
-                <div className="crm-customer-table-primary">
-                  <div className="crm-customer-table-title">
-                    <h3>{file.customerName}</h3>
-                    <strong>{toCurrency(file.lifetimeValue)}</strong>
-                  </div>
-                  <p className="crm-customer-phone-line">{file.phone || "Phone pending"}</p>
-                  <p>{customerFileDetailLine([file.city, file.latestStatus || "Open"])}</p>
-                </div>
+                <CustomerFileCell wide>
+                  <>
+                    <strong>{file.customerName}</strong>
+                    <span>{toCurrency(file.lifetimeValue)}</span>
+                  </>
+                  <>
+                    <strong>Phone</strong>
+                    <span>{file.phone || "Pending"}</span>
+                  </>
+                  <>
+                    <strong>Status</strong>
+                    <span>{customerFileDetailLine([file.city, file.latestStatus || "Open"])}</span>
+                  </>
+                </CustomerFileCell>
               </td>
               <td>
                 <CustomerFileCell>

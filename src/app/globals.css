@@ -4136,19 +4136,19 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-customer-table {
   width: max-content;
-  min-width: 4300px;
+  min-width: 5600px;
   border-collapse: separate;
   border-spacing: 0;
   color: var(--ink);
-  font-size: 12px;
-  line-height: 1.2;
+  font-size: 10px;
+  line-height: 1.05;
 }
 
 .crm-customer-table th,
 .crm-customer-table td {
-  min-width: 180px;
-  height: 44px;
-  padding: 4px 8px;
+  min-width: 160px;
+  height: 28px;
+  padding: 2px 4px;
   vertical-align: middle;
   background: #ffffff;
   border-right: 1px solid #dfe5ef;
@@ -4161,11 +4161,11 @@ body.qb-fullscreen .crm-app-shell {
   position: sticky;
   top: 0;
   z-index: 2;
-  height: 34px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 6px;
   background: #f8fafc;
   color: #64748b;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -4177,8 +4177,8 @@ body.qb-fullscreen .crm-app-shell {
   position: sticky;
   left: 0;
   z-index: 3;
-  width: 320px;
-  min-width: 320px;
+  width: 480px;
+  min-width: 480px;
   background: #ffffff;
   box-shadow: 1px 0 0 #d8dfea, 10px 0 18px rgba(15, 23, 42, 0.04);
 }
@@ -4192,9 +4192,9 @@ body.qb-fullscreen .crm-app-shell {
   position: sticky;
   right: 0;
   z-index: 3;
-  width: 170px;
-  min-width: 170px;
-  max-width: 170px;
+  width: 126px;
+  min-width: 126px;
+  max-width: 126px;
   background: #ffffff;
   box-shadow: -1px 0 0 #d8dfea, -10px 0 18px rgba(15, 23, 42, 0.04);
 }
@@ -4219,7 +4219,7 @@ body.qb-fullscreen .crm-app-shell {
 .crm-customer-table td:nth-child(13),
 .crm-customer-table th:nth-child(14),
 .crm-customer-table td:nth-child(14) {
-  min-width: 330px;
+  min-width: 420px;
 }
 
 .crm-customer-table tbody tr:nth-child(even) td {
@@ -4297,11 +4297,11 @@ body.qb-fullscreen .crm-app-shell {
 .crm-customer-table-primary .crm-customer-phone-line {
   width: fit-content;
   max-width: 100%;
-  padding: 3px 7px;
-  border-radius: 5px;
+  padding: 2px 5px;
+  border-radius: 3px;
   background: #eaf1ff;
   color: #1d4ed8;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 950;
 }
 
@@ -4309,7 +4309,7 @@ body.qb-fullscreen .crm-app-shell {
   display: flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -4328,23 +4328,23 @@ body.qb-fullscreen .crm-app-shell {
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  gap: 5px;
-  min-height: 28px;
+  gap: 4px;
+  min-height: 20px;
   min-width: max-content;
   max-width: none;
-  padding: 4px 7px;
+  padding: 2px 5px;
   border: 1px solid #dbe7fb;
-  border-radius: 5px;
+  border-radius: 3px;
   background: #eef5ff;
   color: #475569;
-  font-size: 11px;
-  line-height: 1.15;
+  font-size: 10px;
+  line-height: 1;
   white-space: nowrap;
 }
 
 .crm-customer-cell-list strong {
   color: #0f172a;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1;
@@ -4363,12 +4363,12 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-customer-cell-list a {
   width: max-content;
-  padding: 4px 7px;
+  padding: 2px 5px;
   border: 1px solid #bfdbfe;
-  border-radius: 5px;
+  border-radius: 3px;
   background: #ffffff;
   color: #1d4ed8;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 900;
   text-decoration: none;
   white-space: nowrap;
@@ -4376,16 +4376,16 @@ body.qb-fullscreen .crm-app-shell {
 
 .crm-customer-delete-button {
   width: fit-content;
-  min-height: 28px;
-  padding: 5px 8px;
+  min-height: 22px;
+  padding: 3px 6px;
   border-color: #fecaca;
   color: #b91c1c;
-  font-size: 10px;
+  font-size: 9px;
 }
 
 .crm-customer-actions-cell {
   color: #64748b;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -4393,21 +4393,21 @@ body.qb-fullscreen .crm-app-shell {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
-  min-height: 34px;
+  gap: 4px;
+  min-height: 24px;
 }
 
 .crm-customer-action-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  padding: 5px 8px;
+  min-height: 22px;
+  padding: 3px 6px;
   border: 1px solid #bfdbfe;
-  border-radius: 5px;
+  border-radius: 3px;
   background: #ffffff;
   color: #1d4ed8;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 900;
   letter-spacing: 0.04em;
   text-decoration: none;
@@ -4416,8 +4416,8 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-customer-actions-stack .crm-customer-delete-button {
-  min-height: 28px;
-  padding: 5px 8px;
+  min-height: 22px;
+  padding: 3px 6px;
 }
 
 .crm-customer-empty-cell {
