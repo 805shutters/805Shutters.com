@@ -15,9 +15,9 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1181);
+    expect(productColorOptions).toHaveLength(1231);
     expect(getProductColorOptions("roller")).toHaveLength(343);
-    expect(getProductColorOptions("roman")).toHaveLength(152);
+    expect(getProductColorOptions("roman")).toHaveLength(202);
     expect(getProductColorOptions("honeycomb")).toHaveLength(213);
     expect(getProductColorOptions("vertical_honeycomb")).toHaveLength(213);
     expect(getProductColorOptions("smartdrape")).toHaveLength(74);
@@ -33,12 +33,14 @@ describe("Norman product color options", () => {
   it("routes fabric-priced shade colors to the catalog price groups", () => {
     expect(findColor("roman", (row) => row.colorCode === "F1064" && row.collection === "Solids")).toMatchObject({
       colorName: "Anti White",
-      programId: "roman_cordless_usa_price_group_2_pg2",
+      programId: "roman_cordless_usa_price_group_3_pg3",
       selectionMode: "fabric",
       available: true,
     });
-    expect(findColor("roman", (row) => row.publicCollection === "Libeco™ Belgian Linen")).toMatchObject({
-      collection: "Libeco",
+    expect(
+      findColor("roman", (row) => row.collection === "Belgian Linen" && row.colorCode === "F1051")
+    ).toMatchObject({
+      colorName: "Warm Gray 8029",
       programId: "roman_cordless_usa_price_group_3_pg3",
     });
     expect(findColor("smartdrape", (row) => row.colorCode === "F1124" && row.collection === "Plain")).toMatchObject({

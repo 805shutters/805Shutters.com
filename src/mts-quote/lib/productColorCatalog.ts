@@ -309,7 +309,16 @@ function rowMatchesMtsContext(
   switch (productType) {
     case "Roman Shades": {
       const selectedCategory = stringOption(optionsJson, "roman_fabric_category");
-      return !selectedCategory || normalize(row.collection) === normalize(selectedCategory);
+      if (selectedCategory && normalize(row.collection) !== normalize(selectedCategory)) {
+        return false;
+      }
+      // The dealer catalog records which fold styles each fabric is offered
+      // in; once a style is chosen, only offer fabrics available for it.
+      const foldStyle = stringOption(optionsJson, "fold_style");
+      if (foldStyle && row.romanStyles && !row.romanStyles.includes(foldStyle)) {
+        return false;
+      }
+      return true;
     }
     case "Honeycomb Shades": {
       const selectedCellSize = stringOption(optionsJson, "cell_size");

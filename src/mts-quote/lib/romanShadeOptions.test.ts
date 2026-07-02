@@ -12,6 +12,8 @@ import {
   getRomanFoldStylesFor,
 } from "./quoteConstants";
 import { MOTORIZATION_OPTIONS } from "./pricingData";
+import { getMtsProductColorRows, searchMtsProductColors } from "./productColorCatalog";
+import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 
 describe("Roman Shades Norman-mirroring options", () => {
   it("offers the four Norman control types", () => {
@@ -79,5 +81,63 @@ describe("Roman Shades Norman-mirroring options", () => {
 
   it("has no duplicate back-shade fabrics", () => {
     expect(new Set(ROMAN_BACK_SHADE_FABRICS).size).toBe(ROMAN_BACK_SHADE_FABRICS.length);
+  });
+});
+
+describe("Roman Shades dealer fabric catalog", () => {
+  it("contains the full dealer catalog (202 colors, every collection)", () => {
+    expect(normanRomanDealerFabricRows.length).toBe(202);
+    const collections = new Set(normanRomanDealerFabricRows.map((row) => row.collection));
+    for (const name of ROMAN_FABRIC_CATEGORY_NAMES) {
+      expect(collections.has(name), `catalog is missing collection "${name}"`).toBe(true);
+    }
+  });
+
+  it("every color resolves to a priced program (no review flags)", () => {
+    for (const row of normanRomanDealerFabricRows) {
+      expect(row.needsPriceGroupReview, `${row.collection} ${row.colorCode}`).toBe(false);
+    }
+    const rows = getMtsProductColorRows("Roman Shades", {});
+    expect(rows.length).toBe(202);
+    for (const row of rows) {
+      expect(row.programId, `${row.collection} ${row.colorCode} has no program`).toBeTruthy();
+      expect(row.requiresProgram).toBe(false);
+    }
+  });
+
+  it("filters colors by selected fabric category", () => {
+    const alma = getMtsProductColorRows("Roman Shades", { roman_fabric_category: "Alma" });
+    expect(alma.length).toBe(10);
+    expect(alma.every((row) => row.collection === "Alma")).toBe(true);
+  });
+
+  it("filters colors by fold style like the Norman form", () => {
+    // Ribbon Banded offers only 1 Taylor color at Norman.
+    const taylorRibbon = getMtsProductColorRows("Roman Shades", {
+      roman_fabric_category: "Taylor",
+      fold_style: "Ribbon Banded",
+    });
+    expect(taylorRibbon.length).toBe(1);
+    const taylorAll = getMtsProductColorRows("Roman Shades", {
+      roman_fabric_category: "Taylor",
+    });
+    expect(taylorAll.length).toBe(8);
+  });
+
+  it("every style×category combination offers at least one color", () => {
+    for (const style of ROMAN_FOLD_STYLES) {
+      for (const category of getRomanFabricCategoryNamesFor(style, "Single")) {
+        const rows = getMtsProductColorRows("Roman Shades", {
+          roman_fabric_category: category,
+          fold_style: style,
+        });
+        expect(rows.length, `${style} / ${category} has no colors`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("finds Alma by search (was missing from the public-page catalog)", () => {
+    const results = searchMtsProductColors("Roman Shades", {}, "alma dusk");
+    expect(results.some((row) => row.colorCode === "F1621")).toBe(true);
   });
 });

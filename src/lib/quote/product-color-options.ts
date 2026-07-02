@@ -6,6 +6,7 @@ import {
   normanRollerFabricColors,
 } from "./norman-roller-fabrics";
 import { normanProductColorRows } from "./norman-product-colors.generated";
+import { normanRomanDealerFabricRows } from "./norman-roman-dealer-fabrics.generated";
 
 export const PRODUCT_COLOR_ID_DETAIL = "fabric_color_id";
 export const PRODUCT_COLOR_CODE_DETAIL = NORMAN_ROLLER_COLOR_CODE_DETAIL;
@@ -36,6 +37,8 @@ export type ProductColorOption = {
   available: boolean;
   automaticDetails: Record<string, string>;
   searchText: string;
+  /** Roman Shades: fold styles this fabric can be ordered in (dealer form data). */
+  romanStyles?: readonly string[];
 };
 
 const defaultProgramByProduct: Record<string, string> = {
@@ -157,7 +160,58 @@ function resolveGeneratedRow(
   };
 }
 
-const generatedProductColorOptions: ProductColorOption[] = normanProductColorRows.map((row, index) => {
+// Roman rows come from the dealer order-form catalog below, which is complete
+// (the public product pages only show a subset of colors).
+const generatedSourceRows = normanProductColorRows.filter((row) => row.productId !== "roman");
+
+const ROMAN_PROGRAM_BY_PRICE_GROUP: Record<string, string> = {
+  group1: "roman_cordless_usa_price_group_1_pg1",
+  group2: "roman_cordless_usa_price_group_2_pg2",
+  group3: "roman_cordless_usa_price_group_3_pg3",
+};
+
+const romanDealerColorOptions: ProductColorOption[] = normanRomanDealerFabricRows.map(
+  (row, index) => {
+    const programId = ROMAN_PROGRAM_BY_PRICE_GROUP[row.priceGroup] ?? null;
+    const fabricType = row.openness || "";
+    const searchText = [
+      row.collection,
+      // The public product pages call Belgian Linen "Libeco" — keep it findable.
+      row.collection === "Belgian Linen" ? "libeco" : "",
+      fabricType,
+      row.colorCode,
+      row.colorName,
+      "roman",
+      programId ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return {
+      id: optionId({ ...row, productId: "roman", fabricType }, index),
+      productId: "roman",
+      collection: row.collection,
+      publicCollection: row.collection,
+      fabricType,
+      colorCode: row.colorCode,
+      colorName: row.colorName,
+      publicColorName: row.colorName,
+      frStatus: "",
+      imageUrl: row.imageUrl,
+      sourcePage: "https://www.normanwindowcoverings.com/Login/RomanShades/OrderRM.asp",
+      sourcePageModified: null,
+      sourceNote: "Norman dealer Roman Shades order form catalog",
+      programId,
+      selectionMode: "fabric",
+      requiresProgram: !programId,
+      available: !row.discontinued,
+      automaticDetails: {},
+      searchText,
+      romanStyles: row.styles,
+    };
+  }
+);
+
+const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.map((row, index) => {
   const resolved = resolveGeneratedRow(row);
   const collection = row.collection || "";
   const publicCollection = row.publicCollection || collection;
@@ -211,7 +265,11 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
   searchText: row.searchText,
 }));
 
-export const productColorOptions = [...rollerProductColorOptions, ...generatedProductColorOptions] as const;
+export const productColorOptions = [
+  ...rollerProductColorOptions,
+  ...generatedProductColorOptions,
+  ...romanDealerColorOptions,
+] as const;
 
 const optionsByProduct = new Map<string, ProductColorOption[]>();
 for (const row of productColorOptions) {

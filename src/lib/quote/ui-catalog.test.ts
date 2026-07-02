@@ -38,7 +38,7 @@ describe("buildUiCatalog", () => {
   });
 
   it("exposes searchable Norman colors for every supported product category", () => {
-    expect(ui.products.find((p) => p.id === "roman")!.fabricColors).toHaveLength(152);
+    expect(ui.products.find((p) => p.id === "roman")!.fabricColors).toHaveLength(202);
     expect(ui.products.find((p) => p.id === "honeycomb")!.fabricColors).toHaveLength(213);
     expect(ui.products.find((p) => p.id === "vertical_honeycomb")!.fabricColors).toHaveLength(213);
     expect(ui.products.find((p) => p.id === "smartdrape")!.fabricColors).toHaveLength(74);
@@ -51,7 +51,7 @@ describe("buildUiCatalog", () => {
     expect(ui.products.find((p) => p.id === "citylights_aluminum")!.fabricColors).toHaveLength(33);
     expect(ui.products.find((p) => p.id === "roman")!.fabricColors.find((row) => row.colorCode === "F1064")).toMatchObject({
       collection: "Solids",
-      programId: "roman_cordless_usa_price_group_2_pg2",
+      programId: "roman_cordless_usa_price_group_3_pg3",
       selectionMode: "fabric",
     });
     expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors.find((row) => row.colorCode === "1003")).toMatchObject({
