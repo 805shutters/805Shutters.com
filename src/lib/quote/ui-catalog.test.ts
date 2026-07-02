@@ -51,7 +51,7 @@ describe("buildUiCatalog", () => {
     expect(ui.products.find((p) => p.id === "citylights_aluminum")!.fabricColors).toHaveLength(33);
     expect(ui.products.find((p) => p.id === "roman")!.fabricColors.find((row) => row.colorCode === "F1064")).toMatchObject({
       collection: "Solids",
-      programId: "roman_cordless_usa_price_group_3_pg3",
+      programId: "roman_cordless_usa_price_group_2_pg2",
       selectionMode: "fabric",
     });
     expect(ui.products.find((p) => p.id === "wood_blinds")!.fabricColors.find((row) => row.colorCode === "1003")).toMatchObject({

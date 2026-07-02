@@ -335,7 +335,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Bali-F0668-Black-Walnut.jpg",
     "styles": [
@@ -351,7 +351,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Bali-F1668-Sand.jpg",
     "styles": [
@@ -367,7 +367,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Bali-F1669-Flax.jpg",
     "styles": [
@@ -383,7 +383,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Bail-F1926-Latte.jpg",
     "styles": [
@@ -399,7 +399,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Bail-F1927-Stone-Gray.jpg",
     "styles": [
@@ -415,7 +415,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Bali-F2023-Desert-Beige.jpg",
     "styles": [
@@ -431,7 +431,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Bali-F2024-Warm-Mocha.jpg",
     "styles": [
@@ -447,7 +447,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Bali-F2025-Soft-Sandstone.jpg",
     "styles": [
@@ -463,7 +463,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Bali-F2026-Gentle-Ash.jpg",
     "styles": [
@@ -479,7 +479,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "LF",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Bali-F2027-Gray.jpg",
     "styles": [
@@ -1076,7 +1076,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/08/Ellie-F1939-Linen-White.jpg",
     "styles": [
@@ -1094,7 +1094,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/08/Ellie-F1940-Wheat.jpg",
     "styles": [
@@ -1112,7 +1112,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group3",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/08/Ellie-F1941-Mist-Gray.jpg",
     "styles": [
@@ -2441,7 +2441,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "Sheer",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group1",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Scarlett-F1599-Cottage-Linen.jpg",
     "styles": [
@@ -2457,7 +2457,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "Sheer",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group1",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Scarlett-F1600-Seashell.jpg",
     "styles": [
@@ -2473,7 +2473,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "Sheer",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group1",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Scarlett-F1601-Crema.jpg",
     "styles": [
@@ -2489,7 +2489,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "Sheer",
     "discontinued": false,
-    "priceGroup": "group2",
+    "priceGroup": "group1",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Scarlett-F1602-Stone.jpg",
     "styles": [
@@ -2826,7 +2826,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group1",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2023/09/F1470-Cloud-White.jpg",
     "styles": [
@@ -2843,7 +2843,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group1",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2026/02/Sheer-Elegance-F1657-Floral-White.jpg",
     "styles": [
@@ -2860,7 +2860,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1916-Snow.jpg",
     "styles": [
@@ -2878,7 +2878,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1917-Cream.jpg",
     "styles": [
@@ -2896,7 +2896,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1918-Natural.jpg",
     "styles": [
@@ -2914,7 +2914,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1919-Silverware.jpg",
     "styles": [
@@ -2932,7 +2932,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1920-Canvas.jpg",
     "styles": [
@@ -2950,7 +2950,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1921-Graphite.jpg",
     "styles": [
@@ -2968,7 +2968,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1922-Stone.jpg",
     "styles": [
@@ -2986,7 +2986,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "N",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2025/04/Sierra-F1923-Caviar.jpg",
     "styles": [
@@ -3004,7 +3004,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2020/03/Solids-F1063-Slate-Gray.jpg",
     "styles": [
@@ -3022,7 +3022,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2020/03/Solids-F1064-Anti-White.jpg",
     "styles": [
@@ -3040,7 +3040,7 @@ export const normanRomanDealerFabricRows: readonly NormanRomanDealerFabricRow[] 
     "joinable": "Y",
     "openness": "",
     "discontinued": false,
-    "priceGroup": "group3",
+    "priceGroup": "group2",
     "needsPriceGroupReview": false,
     "imageUrl": "https://normanusa.com/app/uploads/2020/03/Solids-F1067-Taupe.jpg",
     "styles": [

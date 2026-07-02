@@ -188,6 +188,7 @@ import {
   ROLLER_MOTORIZATION,
   ROLLER_SURCHARGES,
   ROMAN_SURCHARGES,
+  getRomanFabricValancePrice,
   SHUTTER_FIXED_SURCHARGES,
   SHUTTER_PERCENTAGE_SURCHARGES,
   SMARTDRAPE_SURCHARGES,
@@ -455,7 +456,8 @@ function getMotorOptionSurcharge(
 
 function getAutomaticOptionSurcharges(
   productType: string,
-  design: SalesQuoteDesign | undefined
+  design: SalesQuoteDesign | undefined,
+  width?: number | null
 ): QuoteSurcharge[] {
   if (!design) return [];
 
@@ -506,15 +508,65 @@ function getAutomaticOptionSurcharges(
   }
 
   if (productType === "Roman Shades") {
+    // Automatic surcharges per the Norman 2026 Retail Guide (July 1, 2026),
+    // Centerpiece Roman Shades page.
     if (liftSystem === "SmartRelease") {
       appendSurcharge(
         surcharges,
         toAutomaticSurcharge(
           productType,
-          findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
+          findSurcharge(ROMAN_SURCHARGES, "SmartRelease"),
           "Control Type",
           "SmartRelease"
         )
+      );
+    }
+    if (design.shade_type === "Day & Night") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROMAN_SURCHARGES, "Day & Night (includes roller shade)"),
+          "Shade Type"
+        )
+      );
+    }
+    const foldStyleSurcharges: Record<string, string> = {
+      "Ribbon Banded": "Ribbon Banding",
+      "Edge Banded": "Edge Banding / Border",
+      "Soft Fold": "Soft Fold",
+    };
+    const foldStyleSurcharge = foldStyleSurcharges[String(opts.fold_style || "")];
+    if (foldStyleSurcharge) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROMAN_SURCHARGES, foldStyleSurcharge),
+          "Shade Style"
+        )
+      );
+    }
+    if (design.valance === "Fabric Valance" && width && width > 0) {
+      appendSurcharge(surcharges, {
+        id: slugifySurcharge(`${productType}-automatic-fabric-valance`),
+        name: "Fabric Valance",
+        type: "fixed",
+        value: getRomanFabricValancePrice(width),
+        quantity: 1,
+        category: "Automatic Option Surcharges",
+        portalLabel: "Fabric Valance",
+      });
+    }
+    const poleSurcharges: Record<string, string> = {
+      "Pole with Attachment": "Cordless Operating Pole",
+      "Attachment Only": "Pole Attachment Only",
+    };
+    const poleSurcharge = poleSurcharges[String(opts.poles || "")];
+    if (poleSurcharge) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(productType, findSurcharge(ROMAN_SURCHARGES, poleSurcharge), "Poles")
       );
     }
     if (String(opts.hold_downs || "") === "Magnetic") {
@@ -532,7 +584,7 @@ function getAutomaticOptionSurcharges(
         surcharges,
         toAutomaticSurcharge(
           productType,
-          findSurcharge(ROMAN_SURCHARGES, "Room Darkening Liner"),
+          findSurcharge(ROMAN_SURCHARGES, "Blackout Lining"),
           "Lining",
           "Blackout"
         )
@@ -621,10 +673,16 @@ function getAutomaticOptionSurcharges(
   }
 
   if (design.motor_type) {
-    appendSurcharge(
-      surcharges,
-      getMotorOptionSurcharge(productType, design.motor_type, motorBrand)
-    );
+    const motorSurcharge = getMotorOptionSurcharge(productType, design.motor_type, motorBrand);
+    // Day & Night romans use two motors (guide: "use single motor surcharge X 2").
+    if (
+      motorSurcharge &&
+      productType === "Roman Shades" &&
+      design.shade_type === "Day & Night"
+    ) {
+      motorSurcharge.quantity = 2;
+    }
+    appendSurcharge(surcharges, motorSurcharge);
   }
 
   if (design.remote_type) {
@@ -1524,14 +1582,16 @@ function buildDraftShutterDesign(activeVariant: string): SalesQuoteDesign {
 function SurchargePicker({
   productType,
   design,
+  width,
   onUpdate,
 }: {
   productType: string;
   design: SalesQuoteDesign | undefined;
+  width?: number | null;
   onUpdate: (field: string, value: unknown) => void;
 }) {
   const [adding, setAdding] = useState(false);
-  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design);
+  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design, width);
   const savedSurcharges = getSelectedSurcharges(design);
   const selectedSurcharges = dedupeQuoteSurcharges([...automaticSurcharges, ...savedSurcharges]);
   const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
@@ -2636,7 +2696,7 @@ export function DesignCard({
     if (basePrice === null) return;
 
     const selectedSurcharges = dedupeQuoteSurcharges([
-      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthIn),
       ...getSelectedSurcharges(currentDesign),
     ]);
     const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
@@ -2721,7 +2781,7 @@ export function DesignCard({
     if (basePrice === null) return;
 
     const selectedSurcharges = dedupeQuoteSurcharges([
-      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+      ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthInches),
       ...getSelectedSurcharges(currentDesign),
     ]);
     if (!hasMotorizationSurcharge(selectedSurcharges)) return;
@@ -2860,7 +2920,7 @@ export function DesignCard({
 
     if (basePrice !== null) {
       const selectedSurcharges = dedupeQuoteSurcharges([
-        ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign),
+        ...getAutomaticOptionSurcharges(lineItem.product_type, currentDesign, widthInches),
         ...getSelectedSurcharges(currentDesign),
       ]);
       const surchargeTotal = calculateSurchargeTotal(basePrice, selectedSurcharges);
@@ -3249,6 +3309,7 @@ export function DesignCard({
           <SurchargePicker
             productType={lineItem.product_type}
             design={currentDesign}
+            width={widthIn}
             onUpdate={updateField}
           />
           <Button

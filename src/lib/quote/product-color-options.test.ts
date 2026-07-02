@@ -33,7 +33,7 @@ describe("Norman product color options", () => {
   it("routes fabric-priced shade colors to the catalog price groups", () => {
     expect(findColor("roman", (row) => row.colorCode === "F1064" && row.collection === "Solids")).toMatchObject({
       colorName: "Anti White",
-      programId: "roman_cordless_usa_price_group_3_pg3",
+      programId: "roman_cordless_usa_price_group_2_pg2",
       selectionMode: "fabric",
       available: true,
     });

@@ -1140,16 +1140,16 @@ export const ROMAN_FABRIC_CATEGORIES: readonly RomanFabricCategory[] = [
   {
     name: "Bali",
     colors: [
-      romanColor("F0668", "Black Walnut", "group2"),
-      romanColor("F1668", "Sand", "group2"),
-      romanColor("F1669", "Flax", "group2"),
-      romanColor("F1926", "Latte", "group2"),
-      romanColor("F1927", "Stone Gray", "group2"),
-      romanColor("F2023", "Desert Beige", "group2"),
-      romanColor("F2024", "Warm Mocha", "group2"),
-      romanColor("F2025", "Soft Sandstone", "group2"),
-      romanColor("F2026", "Gentle Ash", "group2"),
-      romanColor("F2027", "Gray", "group2"),
+      romanColor("F0668", "Black Walnut", "group3"),
+      romanColor("F1668", "Sand", "group3"),
+      romanColor("F1669", "Flax", "group3"),
+      romanColor("F1926", "Latte", "group3"),
+      romanColor("F1927", "Stone Gray", "group3"),
+      romanColor("F2023", "Desert Beige", "group3"),
+      romanColor("F2024", "Warm Mocha", "group3"),
+      romanColor("F2025", "Soft Sandstone", "group3"),
+      romanColor("F2026", "Gentle Ash", "group3"),
+      romanColor("F2027", "Gray", "group3"),
     ],
   },
   {
@@ -1215,9 +1215,9 @@ export const ROMAN_FABRIC_CATEGORIES: readonly RomanFabricCategory[] = [
   {
     name: "Ellie",
     colors: [
-      romanColor("F1939", "Linen White", "group2"),
-      romanColor("F1940", "Wheat", "group2"),
-      romanColor("F1941", "Mist Gray", "group2"),
+      romanColor("F1939", "Linen White", "group3"),
+      romanColor("F1940", "Wheat", "group3"),
+      romanColor("F1941", "Mist Gray", "group3"),
     ],
   },
   {
@@ -1344,10 +1344,10 @@ export const ROMAN_FABRIC_CATEGORIES: readonly RomanFabricCategory[] = [
   {
     name: "Scarlett",
     colors: [
-      romanColor("F1599", "Cottage Linen", "group2"),
-      romanColor("F1600", "Seashell", "group2"),
-      romanColor("F1601", "Crema", "group2"),
-      romanColor("F1602", "Stone", "group2"),
+      romanColor("F1599", "Cottage Linen", "group1"),
+      romanColor("F1600", "Seashell", "group1"),
+      romanColor("F1601", "Crema", "group1"),
+      romanColor("F1602", "Stone", "group1"),
     ],
   },
   {
@@ -1374,8 +1374,8 @@ export const ROMAN_FABRIC_CATEGORIES: readonly RomanFabricCategory[] = [
     name: "Sheer Elegance",
     colors: [
       romanColor("F1085", "Dim Ecru", "group1"),
-      romanColor("F1470", "Cloud White", "group1"),
-      romanColor("F1657", "Floral White", "group1"),
+      romanColor("F1470", "Cloud White", "group2"),
+      romanColor("F1657", "Floral White", "group2"),
       romanColor("F1082", "Corn White", "group2"),
       romanColor("F1083", "Sea Green", "group2"),
     ],
@@ -1383,23 +1383,23 @@ export const ROMAN_FABRIC_CATEGORIES: readonly RomanFabricCategory[] = [
   {
     name: "Sierra",
     colors: [
-      romanColor("F1916", "Snow", "group3"),
-      romanColor("F1917", "Cream", "group3"),
-      romanColor("F1918", "Natural", "group3"),
-      romanColor("F1919", "Silverware", "group3"),
-      romanColor("F1920", "Canvas", "group3"),
-      romanColor("F1921", "Graphite", "group3"),
-      romanColor("F1922", "Stone", "group3"),
-      romanColor("F1923", "Caviar", "group3"),
+      romanColor("F1916", "Snow", "group2"),
+      romanColor("F1917", "Cream", "group2"),
+      romanColor("F1918", "Natural", "group2"),
+      romanColor("F1919", "Silverware", "group2"),
+      romanColor("F1920", "Canvas", "group2"),
+      romanColor("F1921", "Graphite", "group2"),
+      romanColor("F1922", "Stone", "group2"),
+      romanColor("F1923", "Caviar", "group2"),
     ],
   },
   {
     name: "Solids",
     colors: [
       romanColor("F1069", "Linen White", "group2"),
-      romanColor("F1063", "Slate Gray", "group3"),
-      romanColor("F1064", "Anti White", "group3"),
-      romanColor("F1067", "Taupe", "group3"),
+      romanColor("F1063", "Slate Gray", "group2"),
+      romanColor("F1064", "Anti White", "group2"),
+      romanColor("F1067", "Taupe", "group2"),
     ],
   },
   {

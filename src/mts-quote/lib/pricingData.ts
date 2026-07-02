@@ -488,76 +488,71 @@ export const ROLLER_PRICING: Record<string, PriceGrid> = {
 
 // ========== ROMAN SHADES PRICING ==========
 export const ROMAN_PRICING: Record<string, PriceGrid> = {
+  // Grids match the Norman 2026 Retail Guide effective July 1, 2026
+  // (Centerpiece Roman Shades, cordless USA) — verified cell-by-cell
+  // against the PDF and src/lib/quote/catalog/norman-2026.catalog.json.
   group1: {
-    name: "Cordless - Price Group 1 (Sheer Elegance, Valencia)",
-    fabrics: ["Sheer Elegance", "Valencia", "Heritage", "Classic Linen"],
+    name: "Cordless - Price Group 1 (Scarlett, Sheer Elegance F1085, Valencia F0255)",
+    fabrics: ["Scarlett", "Sheer Elegance", "Valencia"],
     maxWidth: 96,
     maxHeight: 102,
     heights: [36, 42, 48, 54, 60, 66, 72, 78, 90, 102],
     widths: [24, 31, 36, 42, 48, 54, 60, 66, 72, 84, 96],
     prices: [
-      [392, 439, 569, 635, 665, 742, 910, 959, 1031, 1087, 1368],
-      [417, 607, 694, 768, 837, 923, 954, 1016, 1069, 1263, 1522],
-      [484, 672, 752, 833, 912, 999, 1007, 1048, 1122, 1339, 1613],
-      [557, 721, 800, 889, 984, 1042, 1080, 1120, 1184, 1487, 1750],
-      [608, 800, 835, 973, 1021, 1097, 1113, 1179, 1232, 1610, 2036],
-      [635, 833, 923, 1011, 1073, 1138, 1168, 1227, 1282, 1800, 2102],
-      [718, 896, 984, 1062, 1120, 1194, 1217, 1278, 1377, 1904, 2238],
-      [769, 936, 1048, 1117, 1188, 1252, 1277, 1358, 1535, 1974, 2320],
-      [815, 999, 1097, 1186, 1245, 1317, 1344, 1518, 1593, 2028, 2464],
-      [862, 1061, 1149, 1253, 1303, 1381, 1411, 1679, 1652, 2083, 2609],
+      [404, 453, 587, 655, 685, 765, 938, 988, 1062, 1120, 1410],
+      [430, 626, 715, 792, 863, 951, 983, 1047, 1102, 1301, 1568],
+      [499, 693, 775, 858, 940, 1029, 1038, 1080, 1156, 1380, 1662],
+      [574, 743, 824, 916, 1014, 1074, 1113, 1154, 1220, 1532, 1803],
+      [627, 824, 861, 1003, 1052, 1130, 1147, 1215, 1269, 1659, 2098],
+      [655, 858, 951, 1042, 1106, 1173, 1204, 1264, 1321, 1854, 2166],
+      [740, 923, 1014, 1094, 1154, 1230, 1254, 1317, 1419, 1962, 2306],
+      [793, 965, 1080, 1151, 1224, 1290, 1316, 1399, 1582, 2034, 2390],
+      [840, 1029, 1130, 1222, 1283, 1357, 1385, 1564, 1641, 2089, 2538],
+      [888, 1093, 1184, 1291, 1343, 1423, 1454, 1730, 1702, 2146, 2688],
     ],
   },
   group2: {
     name: "Cordless - Price Group 2",
-    fabrics: [
-      "Alma",
-      "Caroline",
-      "Windsor",
-      "Lakeside",
-      "Lorraine",
-      "Seabreeze",
-      "Taylor",
-      "Madison",
-    ],
+    fabrics: ["Alma", "Caroline", "Windsor", "Lakeside", "Lorraine", "Seabreeze", "Taylor", "Patterns", "Francis", "Ella", "Solids", "Bora Bora", "Catalina", "Java", "Phuket", "Riviera", "Sumatra", "Sierra", "Ashley", "Whispering Willow", "Impressions", "Louise"],
     maxWidth: 96,
     maxHeight: 102,
     heights: [36, 42, 48, 54, 60, 66, 72, 78, 90, 102],
     widths: [24, 31, 36, 42, 48, 54, 60, 66, 72, 84, 96],
     prices: [
-      [477, 595, 677, 783, 889, 991, 1060, 1156, 1245, 1338, 1649],
-      [549, 676, 769, 870, 1012, 1113, 1150, 1227, 1289, 1401, 1838],
-      [591, 768, 837, 956, 1106, 1209, 1259, 1317, 1405, 1549, 1949],
-      [664, 874, 966, 1078, 1183, 1261, 1304, 1401, 1458, 1661, 2115],
-      [737, 966, 1007, 1175, 1231, 1324, 1390, 1490, 1601, 1770, 2454],
-      [783, 999, 1113, 1222, 1290, 1374, 1466, 1643, 1764, 1915, 2539],
-      [850, 1079, 1183, 1281, 1357, 1445, 1604, 1791, 1921, 2102, 2702],
-      [931, 1133, 1263, 1351, 1432, 1579, 1744, 1975, 2091, 2261, 2801],
-      [1006, 1209, 1324, 1431, 1505, 1673, 1877, 2075, 2175, 2365, 2974],
-      [1082, 1283, 1386, 1509, 1579, 1767, 2011, 2175, 2259, 2468, 3147],
+      [492, 613, 698, 807, 916, 1021, 1092, 1191, 1283, 1379, 1699],
+      [566, 697, 793, 897, 1043, 1147, 1185, 1264, 1328, 1444, 1894],
+      [609, 792, 863, 985, 1140, 1246, 1297, 1357, 1448, 1596, 2008],
+      [684, 901, 995, 1111, 1219, 1299, 1344, 1444, 1502, 1711, 2179],
+      [760, 995, 1038, 1211, 1268, 1364, 1432, 1535, 1650, 1824, 2528],
+      [807, 1029, 1147, 1259, 1329, 1416, 1510, 1693, 1817, 1973, 2616],
+      [876, 1112, 1219, 1320, 1398, 1489, 1653, 1845, 1979, 2166, 2784],
+      [959, 1167, 1301, 1392, 1475, 1627, 1797, 2035, 2154, 2329, 2886],
+      [1037, 1246, 1364, 1474, 1551, 1724, 1934, 2138, 2241, 2436, 3064],
+      [1115, 1322, 1428, 1555, 1627, 1821, 2072, 2241, 2327, 2543, 3242],
     ],
   },
   group3: {
-    name: "Cordless - Price Group 3",
-    fabrics: ["Blake", "Libeco", "Rochelle", "Breeze", "Sierra"],
+    name: "Cordless - Price Group 3 (Roman only)",
+    fabrics: ["Blake", "Belgian Linen", "Rochelle", "Bali", "Breeze", "Ellie"],
     maxWidth: 96,
     maxHeight: 102,
     heights: [36, 42, 48, 54, 60, 66, 72, 78, 90, 102],
     widths: [24, 31, 36, 42, 48, 54, 60, 66, 72, 84, 96],
     prices: [
-      [575, 718, 815, 942, 1070, 1192, 1277, 1391, 1501, 1612, 1987],
-      [662, 814, 926, 1049, 1219, 1341, 1385, 1477, 1554, 1689, 2213],
-      [712, 925, 1010, 1152, 1332, 1456, 1516, 1587, 1693, 1867, 2347],
-      [800, 1053, 1163, 1299, 1424, 1518, 1569, 1689, 1756, 2001, 2547],
-      [886, 1163, 1214, 1416, 1481, 1595, 1676, 1794, 1929, 2134, 2957],
-      [942, 1202, 1341, 1473, 1555, 1655, 1766, 1980, 2126, 2306, 3059],
-      [1024, 1301, 1424, 1543, 1635, 1740, 1933, 2157, 2315, 2531, 3255],
-      [1123, 1365, 1522, 1627, 1726, 1904, 2102, 2380, 2519, 2724, 3374],
-      [1213, 1456, 1595, 1724, 1814, 2017, 2260, 2500, 2620, 2848, 3584],
-      [1304, 1547, 1670, 1818, 1904, 2130, 2423, 2620, 2720, 2974, 3790],
+      [593, 740, 840, 971, 1103, 1228, 1316, 1433, 1547, 1661, 2047],
+      [682, 839, 954, 1081, 1256, 1382, 1427, 1522, 1601, 1740, 2280],
+      [734, 953, 1041, 1187, 1372, 1500, 1562, 1635, 1744, 1924, 2418],
+      [824, 1085, 1198, 1338, 1467, 1564, 1617, 1740, 1809, 2062, 2624],
+      [913, 1198, 1251, 1459, 1526, 1643, 1727, 1848, 1987, 2199, 3046],
+      [971, 1239, 1382, 1518, 1602, 1705, 1819, 2040, 2190, 2376, 3151],
+      [1055, 1341, 1467, 1590, 1685, 1793, 1991, 2222, 2385, 2607, 3353],
+      [1157, 1406, 1568, 1676, 1778, 1962, 2166, 2452, 2595, 2806, 3476],
+      [1250, 1500, 1643, 1776, 1869, 2078, 2328, 2575, 2699, 2934, 3692],
+      [1344, 1594, 1721, 1873, 1962, 2194, 2496, 2699, 2802, 3064, 3904],
     ],
   },
 };
+
 
 // ========== PERFECTSHEER (SHEER SHADES) PRICING ==========
 export const PERFECTSHEER_PRICING: Record<string, PriceGrid> = {
@@ -1007,15 +1002,40 @@ export const ROLLER_SURCHARGES: Surcharge[] = [
   { name: "Magnetic Hold Down", type: "fixed", value: 27 },
 ];
 
+// Norman 2026 Retail Guide effective July 1, 2026 — Centerpiece Roman Shades
+// surcharge page. Percentages apply to the shade's grid price.
 export const ROMAN_SURCHARGES: Surcharge[] = [
+  { name: "SmartRelease", type: "fixed", value: 89 },
+  { name: "Blackout Lining", type: "percentage", value: 10 },
+  { name: "Ribbon Banding", type: "percentage", value: 15 },
+  { name: "Soft Fold", type: "percentage", value: 30 },
+  { name: "Edge Banding / Border", type: "percentage", value: 30 },
+  { name: "Piping", type: "percentage", value: 15 },
+  { name: "Day & Night (includes roller shade)", type: "fixed", value: 425 },
+  { name: "Magnetic Hold Down", type: "fixed", value: 28 },
+  { name: "Pole Attachment Only", type: "fixed", value: 40 },
+  { name: "Cordless Operating Pole", type: "fixed", value: 89 },
+  { name: "Shim", type: "fixed", value: 7 },
   { name: "LightGuard 360", type: "fixed", value: 364 },
   { name: "Premium Wood Light Guard", type: "fixed", value: 113 },
-  { name: "Shim", type: "fixed", value: 6 },
   { name: "Basic Light Guard", type: "fixed", value: 43 },
   { name: "Keystone", type: "fixed", value: 70 },
-  { name: "Magnetic Hold Down", type: "fixed", value: 27 },
-  { name: "Room Darkening Liner", type: "fixed", value: 20 },
 ];
+
+// Fabric valance surcharge ladder for Centerpiece Roman Shades (July 2026
+// guide): price by ordered width, using the first ladder width >= the order.
+export const ROMAN_FABRIC_VALANCE_SURCHARGE = {
+  widths: [24, 31, 36, 42, 48, 54, 60, 66, 72, 84, 96, 108, 120, 132, 144],
+  prices: [128, 133, 145, 155, 161, 178, 188, 204, 221, 255, 293, 326, 359, 387, 408],
+} as const;
+
+export function getRomanFabricValancePrice(width: number): number {
+  const { widths, prices } = ROMAN_FABRIC_VALANCE_SURCHARGE;
+  for (let i = 0; i < widths.length; i++) {
+    if (width <= widths[i]) return prices[i];
+  }
+  return prices[prices.length - 1];
+}
 
 export const VERTICAL_SURCHARGES: Surcharge[] = [
   { name: "Shim", type: "fixed", value: 6 },
@@ -1149,10 +1169,10 @@ export const MOTORIZATION_OPTIONS: MotorOption[] = [
   { name: "DC Low Voltage Hard Wire", price: 482, brand: "Norman" },
   { name: "AC Adapter Plug-In", price: 482, brand: "Norman" },
   { name: "Automate Li-Ion ARC (Rechargeable)", price: 682, brand: "Automate Home" },
-  { name: "Automate 12V DC Motor", price: 682, brand: "Automate Home" },
-  // Norman
+  { name: "Automate 12V DC Motor", price: 814, brand: "Automate Home" },
+  // Norman — prices per the 2026 Retail Guide effective July 1, 2026
   { name: "Single Motor (AC Adapter)", price: 482, brand: "Norman" },
-  { name: "Power Distribution Panel", price: 214, brand: "Norman" },
+  { name: "Power Distribution Panel", price: 931, brand: "Norman" },
   { name: "Single Motor (Battery)", price: 482, brand: "Norman" },
   { name: "Dual Motor (AC Adapter)", price: 642, brand: "Norman" },
   { name: "Wired Charging Wand", price: 161, brand: "Norman" },
@@ -1168,17 +1188,23 @@ export const MOTORIZATION_OPTIONS: MotorOption[] = [
   { name: "Charging Kit", price: 43, brand: "Norman" },
   { name: "Dual Motor (Battery)", price: 642, brand: "Norman" },
   { name: "Skylight Motor", price: 611, brand: "Norman" },
-  { name: "AutoWand", price: 279, brand: "Norman" },
+  { name: "AutoWand", price: 166, brand: "Norman" },
+  { name: "AutoWand Charging Kit", price: 45, brand: "Norman" },
+  { name: "Extension Cable", price: 43, brand: "Norman" },
+  { name: "SmartSense", price: 60, brand: "Norman" },
 
-  // Automate Home
-  { name: "Charging Kit", price: 43, brand: "Automate Home" },
-  { name: "15-Channel Remote", price: 107, brand: "Automate Home" },
-  { name: "5-Channel Wall Switch", price: 107, brand: "Automate Home" },
+  // Automate Home — prices per the 2026 Retail Guide effective July 1, 2026
+  { name: "Charging Kit", price: 103, brand: "Automate Home" },
+  { name: "15-Channel Remote", price: 140, brand: "Automate Home" },
+  { name: "5-Channel Wall Switch", price: 163, brand: "Automate Home" },
   { name: "Hub", price: 483, brand: "Automate Home" },
-  { name: "Power Distribution Panel", price: 214, brand: "Automate Home" },
-  { name: "Solar Panel", price: 161, brand: "Automate Home" },
+  { name: "Power Distribution Panel", price: 1133, brand: "Automate Home" },
+  { name: "Solar Panel", price: 242, brand: "Automate Home" },
   { name: "Motor (Battery or AC)", price: 682, brand: "Automate Home" },
-  { name: "Repeater", price: 107, brand: "Automate Home" },
+  { name: "Low Voltage DC Motor", price: 814, brand: "Automate Home" },
+  { name: "External Battery Pack", price: 230, brand: "Automate Home" },
+  { name: "DC Connection Harness", price: 19, brand: "Automate Home" },
+  { name: "Repeater", price: 272, brand: "Automate Home" },
 
   // Automate
   { name: "15-Channel Remote", price: 140, brand: "Automate" },
