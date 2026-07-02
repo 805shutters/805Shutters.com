@@ -3963,6 +3963,32 @@ body.qb-fullscreen .crm-app-shell {
   text-transform: uppercase;
 }
 
+.crm-dashboard-head {
+  align-items: center;
+}
+
+.crm-dashboard-head > div:first-child,
+.crm-dashboard-head > strong {
+  flex: 0 0 auto;
+}
+
+.crm-dashboard-head .crm-global-search {
+  flex: 1 1 640px;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.crm-dashboard-head .crm-global-search-bar {
+  grid-template-columns: minmax(116px, auto) minmax(220px, 1fr) auto;
+}
+
+.crm-dashboard-head .crm-global-search-body {
+  margin-top: 10px;
+}
+
 .crm-tabs {
   display: flex;
   gap: 8px;

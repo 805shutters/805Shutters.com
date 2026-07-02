@@ -2109,20 +2109,6 @@ export function CrmApp({
         </section>
       </header>
 
-      <GlobalCustomerSearchPanel
-        jobs={jobs}
-        quotes={quotes}
-        rows={rows}
-        files={customerFiles}
-        events={events}
-        busy={busy}
-        onOpenPage={openCustomerSearchPage}
-        onOpenCustomer={openCustomerFile}
-        onReassignSale={reassignSale}
-        onMeasureNeededAction={updateMeasureNeededEntry}
-        onSaveField={saveDrillField}
-      />
-
       {message ? <p className="crm-alert">{message}</p> : null}
 
       <nav className="crm-tabs" aria-label="CRM sections">
@@ -2184,10 +2170,13 @@ export function CrmApp({
         <>
           <CommandDashboard
             jobs={jobs}
+            quotes={quotes}
             rows={rows}
             files={customerFiles}
+            events={events}
             activeDrill={commandDrill}
             busy={busy}
+            onOpenPage={openCustomerSearchPage}
             onDrill={setDrill}
             onCloseDrill={() => setDrill(null)}
             onOpenCustomer={openCustomerFile}
@@ -4307,10 +4296,13 @@ function JobTrackingView({
 
 function CommandDashboard({
   jobs,
+  quotes,
   rows,
   files,
+  events,
   activeDrill,
   busy,
+  onOpenPage,
   onDrill,
   onCloseDrill,
   onOpenCustomer,
@@ -4319,10 +4311,13 @@ function CommandDashboard({
   onSaveField
 }: {
   jobs: CrmJob[];
+  quotes: CrmQuote[];
   rows: CrmBookkeepingRow[];
   files: CrmCustomerFile[];
+  events: CrmCalendarEvent[];
   activeDrill: DrillPayload | null;
   busy: boolean;
+  onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
   onOpenCustomer: (customerName: string) => void;
@@ -4445,11 +4440,24 @@ function CommandDashboard({
 
   return (
     <section className="crm-dashboard">
-      <div className="crm-section-head">
+      <div className="crm-section-head crm-dashboard-head">
         <div>
           <p className="eyebrow">Our Numbers</p>
           <h2>Business At A Glance</h2>
         </div>
+        <GlobalCustomerSearchPanel
+          jobs={jobs}
+          quotes={quotes}
+          rows={rows}
+          files={files}
+          events={events}
+          busy={busy}
+          onOpenPage={onOpenPage}
+          onOpenCustomer={onOpenCustomer}
+          onReassignSale={onReassignSale}
+          onMeasureNeededAction={onMeasureNeededAction}
+          onSaveField={onSaveField}
+        />
         <strong>{jobs.length} jobs</strong>
       </div>
 
