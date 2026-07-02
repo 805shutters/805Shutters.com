@@ -160,14 +160,7 @@ export default function BookConsultationPage() {
         <Link className="booking-page__home-link" href="/" aria-label="Return to homepage">
           ×
         </Link>
-        <div className="booking-page__masthead-copy">
-          <p className="eyebrow">Ventura County shutters, shades, and blinds</p>
-          <h1>Book Your Free Window Treatment Consultation</h1>
-          <p>
-            Pick a time for 805 Shutters to review your windows, compare products, measure accurately, and plan the
-            right custom window treatments before you order.
-          </p>
-        </div>
+        <h1>Let's Book!</h1>
         <img
           className="booking-page__masthead-logo"
           src="/brand/805-shutters-logo-exact-transparent.png"
@@ -176,6 +169,12 @@ export default function BookConsultationPage() {
           height={209}
         />
       </header>
+      <BookingCalendar
+        className="booking-panel booking-panel--page"
+        deferDetailsUntilDate
+        eyebrow=""
+        heading=""
+      />
       <section className="booking-page__overview" aria-labelledby="booking-consultation-overview">
         <div>
           <p className="eyebrow">What this appointment covers</p>
@@ -192,12 +191,6 @@ export default function BookConsultationPage() {
           ))}
         </ul>
       </section>
-      <BookingCalendar
-        className="booking-panel booking-panel--page"
-        deferDetailsUntilDate
-        eyebrow="Choose a time"
-        heading="Schedule your free consultation"
-      />
       <section className="booking-page__details" aria-labelledby="booking-consultation-details">
         <div className="booking-page__section-head">
           <p className="eyebrow">Before we arrive</p>
