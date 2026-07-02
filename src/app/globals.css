@@ -4430,6 +4430,12 @@ button.crm-customer-action-link {
   opacity: 0.55;
 }
 
+.crm-customer-payment-link {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
 .crm-customer-actions-stack .crm-customer-delete-button {
   min-height: 22px;
   padding: 3px 6px;

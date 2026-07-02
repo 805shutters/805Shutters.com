@@ -6412,6 +6412,11 @@ function customerFileQuoteUrl(quote: CrmQuote) {
   return quote.share_token ? `/quote/${quote.share_token}` : null;
 }
 
+function customerFilePaymentUrl(quote: CrmQuote) {
+  const quoteUrl = customerFileQuoteUrl(quote);
+  return quoteUrl ? `${quoteUrl}#payment` : null;
+}
+
 function CustomerFileCell({
   children,
   empty = "Pending",
@@ -6442,8 +6447,14 @@ function CustomerFilePaymentActions({
 }) {
   if (!onSendPaymentLink && !onCopyPaymentLink) return null;
   const label = quote.quote_number || "quote";
+  const paymentUrl = customerFilePaymentUrl(quote);
   return (
     <div className="crm-customer-pay-actions" role="group" aria-label={`Payment link actions for ${label}`}>
+      {paymentUrl ? (
+        <a className="crm-customer-action-link crm-customer-payment-link" href={paymentUrl} target="_blank" rel="noreferrer">
+          Payment link
+        </a>
+      ) : null}
       {onSendPaymentLink ? (
         <>
           <button
@@ -6640,6 +6651,8 @@ function CustomerFilesView({
           const lifecycleLabel = statusTokens.length ? statusTokens.map(titleCase).join(", ") : "Need to Schedule";
           const phoneHref = customerFilePhoneHref(file.phone);
           const mailHref = file.email ? `mailto:${file.email}` : null;
+          const primaryPaymentQuote = sortedQuotes.find((quote) => quote.share_token) || sortedQuotes[0] || null;
+          const primaryPaymentUrl = primaryPaymentQuote ? customerFilePaymentUrl(primaryPaymentQuote) : null;
 
           return (
             <tr
@@ -7000,6 +7013,21 @@ function CustomerFilesView({
                       Email
                     </a>
                   ) : null}
+                  {primaryPaymentUrl ? (
+                    <a href={primaryPaymentUrl} target="_blank" rel="noreferrer" className="crm-customer-action-link crm-customer-payment-link">
+                      Payment link
+                    </a>
+                  ) : null}
+                  {primaryPaymentQuote && onCopyPaymentLink ? (
+                    <button
+                      type="button"
+                      className="crm-customer-action-link"
+                      disabled={busy}
+                      onClick={() => onCopyPaymentLink(primaryPaymentQuote)}
+                    >
+                      Copy pay link
+                    </button>
+                  ) : null}
                   {onDelete ? (
                     <button
                       type="button"
@@ -7010,7 +7038,7 @@ function CustomerFilesView({
                       Delete
                     </button>
                   ) : null}
-                  {!phoneHref && !mailHref && !onDelete ? <span>No actions</span> : null}
+                  {!phoneHref && !mailHref && !primaryPaymentQuote && !onDelete ? <span>No actions</span> : null}
                 </div>
               </td>
             </tr>
