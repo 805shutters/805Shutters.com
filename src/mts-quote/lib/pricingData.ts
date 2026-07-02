@@ -47,29 +47,33 @@ export const HONEYCOMB_PRICING: Record<string, PriceGrid> = {
     ],
   },
   flame_resistant_3_8_single: {
+    // Norman 2026 Retail Guide effective July 1, 2026 — Flame Resistant
+    // Fabrics page (the previous grid was mistakenly a copy of the first 11
+    // rows of the 3/8" single grid).
     name: 'Flame Resistant 3/8" Single',
     fabrics: [
       "Flame Resistant LF",
       "Flame Resistant RD",
-      "Flame Resistant BO",
-      "Commercial Flame Resistant",
+      "FR Essentials",
     ],
     maxWidth: 120,
-    maxHeight: 96,
-    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96],
+    maxHeight: 120,
+    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120],
     widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 84, 96, 108, 120],
     prices: [
-      [270, 336, 351, 387, 418, 448, 472, 569, 600, 666, 727, 868, 1153],
-      [311, 347, 367, 404, 437, 471, 501, 601, 635, 705, 770, 924, 1227],
-      [319, 359, 382, 424, 484, 497, 527, 634, 672, 747, 821, 981, 1301],
-      [334, 373, 398, 443, 500, 522, 552, 669, 707, 791, 868, 1035, 1365],
-      [342, 394, 415, 465, 527, 546, 577, 705, 744, 843, 920, 1097, 1446],
-      [367, 423, 443, 482, 532, 566, 605, 739, 779, 872, 968, 1148, 1515],
-      [376, 434, 456, 502, 543, 595, 635, 770, 820, 925, 1017, 1206, 1593],
-      [438, 504, 537, 590, 639, 699, 747, 800, 850, 956, 1061, 1258, 1657],
-      [449, 523, 554, 608, 666, 727, 779, 830, 888, 999, 1108, 1316, 1727],
-      [465, 537, 573, 629, 688, 752, 810, 866, 924, 1042, 1155, 1369, 1797],
-      [474, 552, 592, 650, 713, 780, 841, 897, 960, 1082, 1204, 1425, 1873],
+      [471, 587, 611, 676, 730, 780, 826, 992, 1048, 1162, 1268, 1518, 1766],
+      [543, 605, 641, 705, 765, 823, 875, 1049, 1111, 1233, 1348, 1618, 1887],
+      [558, 629, 667, 742, 846, 868, 920, 1108, 1176, 1309, 1433, 1713, 1993],
+      [581, 651, 695, 772, 873, 911, 966, 1169, 1238, 1381, 1518, 1810, 2104],
+      [600, 689, 725, 813, 920, 956, 1010, 1233, 1300, 1475, 1609, 1919, 2231],
+      [641, 739, 772, 842, 932, 989, 1058, 1291, 1363, 1525, 1693, 2009, 2325],
+      [658, 759, 798, 877, 949, 1039, 1111, 1348, 1432, 1619, 1777, 2109, 2440],
+      [767, 882, 939, 1029, 1116, 1221, 1309, 1399, 1487, 1672, 1854, 2202, 2548],
+      [782, 913, 968, 1064, 1162, 1268, 1363, 1452, 1552, 1746, 1937, 2303, 2667],
+      [813, 939, 1001, 1098, 1200, 1316, 1416, 1515, 1618, 1822, 2019, 2397, 2774],
+      [828, 966, 1033, 1138, 1247, 1365, 1471, 1569, 1679, 1892, 2105, 2492, 2879],
+      [887, 1041, 1116, 1233, 1361, 1487, 1606, 1726, 1847, 2092, 2329, 2756, 3184],
+      [949, 1113, 1200, 1333, 1473, 1612, 1746, 1878, 2011, 2293, 2554, 3019, 3486],
     ],
   },
   half_cordless_double: {
@@ -139,43 +143,53 @@ export const HONEYCOMB_PRICING: Record<string, PriceGrid> = {
     ],
   },
   three_4_single_woven_group1: {
+    // Norman 2026 Retail Guide effective July 1, 2026 — 3/4" & 1 1/4"
+    // Cordless Single Cell woven page, group 1 (heights now run to 120").
     name: '3/4" Cordless Single Woven - Group 1 (Windsong)',
     fabrics: ["Windsong LF", "Windsong RD", "Windsong BO", "Woven Texture Group 1"],
     maxWidth: 86,
-    maxHeight: 86,
-    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 86],
+    maxHeight: 120,
+    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120],
     widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 84, 86],
     prices: [
-      [390, 484, 506, 560, 604, 647, 684, 822, 868, 962, 1051],
-      [451, 501, 531, 586, 632, 680, 725, 869, 920, 1023, 1118],
-      [463, 519, 552, 616, 700, 721, 762, 915, 974, 1083, 1189],
-      [483, 541, 573, 641, 724, 753, 800, 967, 1024, 1142, 1256],
-      [497, 569, 600, 674, 762, 791, 839, 1023, 1078, 1220, 1333],
-      [531, 614, 641, 696, 769, 819, 876, 1069, 1128, 1263, 1402],
-      [546, 628, 659, 727, 787, 862, 920, 1118, 1186, 1342, 1473],
-      [633, 731, 776, 851, 927, 1013, 1083, 1157, 1230, 1384, 1536],
-      [651, 754, 802, 882, 962, 1051, 1128, 1204, 1286, 1446, 1604],
-      [674, 776, 829, 913, 993, 1090, 1170, 1255, 1339, 1509, 1673],
+      [402, 499, 522, 577, 623, 667, 705, 847, 895, 991, 1083],
+      [465, 517, 547, 604, 651, 701, 747, 896, 948, 1054, 1152],
+      [477, 535, 569, 635, 721, 743, 785, 943, 1004, 1116, 1225],
+      [498, 558, 591, 661, 746, 776, 824, 997, 1055, 1177, 1294],
+      [512, 587, 618, 695, 785, 815, 865, 1054, 1111, 1257, 1373],
+      [547, 633, 661, 717, 793, 844, 903, 1102, 1162, 1301, 1445],
+      [563, 647, 679, 749, 811, 888, 948, 1152, 1222, 1383, 1518],
+      [652, 753, 800, 877, 955, 1044, 1116, 1192, 1267, 1426, 1583],
+      [671, 777, 827, 909, 991, 1083, 1162, 1241, 1325, 1490, 1653],
+      [692, 800, 847, 941, 1016, 1127, 1208, 1291, 1379, 1557, 1725],
+      [712, 822, 868, 973, 1041, 1172, 1253, 1342, 1432, 1624, 1797],
+      [728, 837, 886, 1005, 1059, 1216, 1298, 1392, 1492, 1705, 1870],
+      [743, 851, 905, 1037, 1078, 1260, 1344, 1442, 1552, 1787, 1943],
     ],
   },
   three_4_single_woven_group2: {
+    // Norman 2026 Retail Guide effective July 1, 2026 — 3/4" & 1 1/4"
+    // Cordless Single Cell woven page, group 2 (heights now run to 120").
     name: '3/4" Cordless Single Woven - Group 2 (Breeze)',
     fabrics: ["Breeze LF", "Breeze RD", "Breeze BO", "Woven Texture Group 2"],
     maxWidth: 86,
-    maxHeight: 86,
-    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 86],
+    maxHeight: 120,
+    heights: [36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 96, 108, 120],
     widths: [24, 30, 36, 42, 48, 54, 60, 66, 72, 84, 86],
     prices: [
-      [449, 556, 583, 646, 695, 744, 788, 946, 999, 1106, 1207],
-      [518, 577, 611, 675, 727, 782, 836, 1000, 1059, 1176, 1284],
-      [532, 598, 632, 708, 805, 829, 875, 1054, 1121, 1245, 1368],
-      [555, 622, 657, 739, 835, 867, 920, 1111, 1179, 1313, 1445],
-      [573, 655, 691, 774, 875, 911, 965, 1176, 1240, 1404, 1533],
-      [611, 706, 739, 802, 883, 942, 1008, 1230, 1297, 1454, 1610],
-      [628, 722, 757, 838, 905, 990, 1059, 1284, 1364, 1545, 1693],
-      [728, 843, 894, 981, 1065, 1166, 1245, 1332, 1415, 1594, 1767],
-      [748, 868, 922, 1013, 1106, 1207, 1297, 1385, 1478, 1664, 1846],
-      [774, 894, 953, 1051, 1143, 1253, 1348, 1444, 1538, 1737, 1924],
+      [463, 573, 601, 666, 716, 767, 812, 975, 1029, 1140, 1244],
+      [534, 595, 630, 696, 749, 806, 862, 1030, 1091, 1212, 1323],
+      [548, 616, 651, 730, 830, 854, 902, 1086, 1155, 1283, 1410],
+      [572, 641, 677, 762, 861, 894, 948, 1145, 1215, 1353, 1489],
+      [591, 675, 712, 798, 902, 939, 994, 1212, 1278, 1447, 1579],
+      [630, 728, 762, 827, 910, 971, 1039, 1267, 1336, 1498, 1659],
+      [647, 744, 780, 864, 933, 1020, 1091, 1323, 1405, 1592, 1744],
+      [750, 869, 921, 1011, 1097, 1201, 1283, 1372, 1458, 1642, 1821],
+      [771, 895, 950, 1044, 1140, 1244, 1336, 1427, 1523, 1714, 1902],
+      [799, 930, 988, 1086, 1189, 1296, 1397, 1483, 1587, 1787, 1984],
+      [826, 964, 1025, 1127, 1239, 1349, 1458, 1538, 1650, 1859, 2067],
+      [860, 1007, 1072, 1178, 1295, 1412, 1526, 1595, 1711, 1931, 2150],
+      [880, 1033, 1101, 1211, 1337, 1454, 1579, 1650, 1776, 2003, 2189],
     ],
   },
   three_8_single_and_3_4_single: {
@@ -207,6 +221,56 @@ export const HONEYCOMB_PRICING: Record<string, PriceGrid> = {
       [507, 596, 639, 705, 778, 850, 919, 987, 1057, 1195, 1331, 1576, 2066],
       [543, 636, 688, 764, 842, 922, 999, 1074, 1149, 1312, 1459, 1726, 2256],
       [572, 676, 749, 820, 904, 997, 1079, 1162, 1249, 1422, 1652, 1874, 2450],
+    ],
+  },
+};
+
+// Vertical (VertiCell) Portrait Honeycomb — Norman 2026 Retail Guide
+// effective July 1, 2026, pages 13-14; grids verified against
+// src/lib/quote/catalog/norman-2026.catalog.json (vertical_honeycomb).
+export const VERTICAL_HONEYCOMB_PRICING: Record<string, PriceGrid> = {
+  vertical_3_4_single: {
+    name: '3/4" & 1 1/4" Single Cell Vertical',
+    fabrics: ["Light Filtering", "Room Darkening", "Sheer"],
+    maxWidth: 146,
+    maxHeight: 120,
+    heights: [36, 42, 48, 54, 60, 66, 73, 78, 84, 90, 96, 108, 120],
+    widths: [24, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 96, 108, 120, 132, 146],
+    prices: [
+      [565, 609, 667, 714, 762, 809, 861, 905, 956, 1005, 1048, 1140, 1226, 1307, 1392, 1476],
+      [602, 658, 715, 774, 824, 879, 940, 990, 1044, 1100, 1147, 1236, 1322, 1422, 1525, 1629],
+      [644, 701, 767, 830, 886, 945, 1007, 1078, 1126, 1180, 1239, 1338, 1426, 1555, 1692, 1830],
+      [673, 748, 817, 888, 948, 1005, 1068, 1130, 1190, 1243, 1307, 1409, 1520, 1632, 1753, 1872],
+      [714, 792, 869, 943, 1005, 1068, 1137, 1200, 1265, 1329, 1389, 1509, 1629, 1751, 1880, 2010],
+      [753, 835, 918, 1002, 1073, 1137, 1205, 1281, 1343, 1416, 1479, 1612, 1741, 1871, 2010, 2147],
+      [798, 882, 972, 1061, 1131, 1196, 1266, 1359, 1423, 1496, 1572, 1713, 1847, 1993, 2144, 2294],
+      [838, 927, 1025, 1108, 1187, 1251, 1329, 1422, 1488, 1574, 1645, 1804, 1941, 2092, 2251, 2409],
+      [879, 973, 1075, 1163, 1249, 1322, 1406, 1499, 1571, 1663, 1737, 1904, 2057, 2212, 2377, 2543],
+      [916, 1022, 1122, 1216, 1306, 1389, 1475, 1576, 1657, 1749, 1832, 2008, 2173, 2339, 2514, 2687],
+      [956, 1064, 1163, 1262, 1356, 1441, 1532, 1643, 1725, 1823, 1908, 2094, 2259, 2443, 2634, 2828],
+      [1036, 1152, 1263, 1366, 1470, 1568, 1681, 1798, 1895, 1998, 2092, 2302, 2490, 2683, 2887, 3088],
+      [1108, 1239, 1406, 1522, 1628, 1739, 1867, 1995, 2101, 2219, 2305, 2545, 2752, 2962, 3183, 3404],
+    ],
+  },
+  vertical_flame_resistant: {
+    name: 'Flame Resistant Fabrics (3/4" Single Vertical Only)',
+    fabrics: ["Flame Resistant LF", "Flame Resistant RD", "FR Essentials"],
+    maxWidth: 146,
+    maxHeight: 96,
+    heights: [36, 42, 48, 54, 60, 66, 73, 78, 84, 90, 96],
+    widths: [24, 32, 36, 42, 48, 54, 60, 66, 72, 78, 84, 96, 108, 120, 132, 146],
+    prices: [
+      [987, 1066, 1164, 1250, 1330, 1414, 1504, 1584, 1672, 1757, 1833, 1995, 2145, 2286, 2435, 2582],
+      [1051, 1149, 1251, 1353, 1441, 1539, 1644, 1732, 1826, 1926, 2007, 2163, 2312, 2486, 2668, 2849],
+      [1127, 1225, 1342, 1452, 1549, 1654, 1762, 1883, 1970, 2063, 2168, 2341, 2495, 2721, 2959, 3201],
+      [1178, 1310, 1428, 1552, 1657, 1757, 1869, 1977, 2082, 2173, 2286, 2463, 2657, 2855, 3067, 3277],
+      [1250, 1383, 1519, 1651, 1757, 1869, 1987, 2099, 2213, 2325, 2430, 2640, 2849, 3064, 3289, 3516],
+      [1317, 1459, 1604, 1753, 1877, 1987, 2107, 2239, 2348, 2478, 2587, 2822, 3045, 3273, 3516, 3757],
+      [1395, 1542, 1702, 1854, 1978, 2094, 2215, 2377, 2488, 2619, 2750, 2997, 3233, 3485, 3752, 4014],
+      [1463, 1624, 1793, 1937, 2075, 2187, 2325, 2486, 2603, 2754, 2877, 3156, 3394, 3661, 3938, 4215],
+      [1539, 1703, 1880, 2037, 2182, 2312, 2459, 2623, 2749, 2909, 3037, 3333, 3598, 3870, 4160, 4449],
+      [1601, 1789, 1963, 2125, 2282, 2430, 2581, 2756, 2899, 3060, 3205, 3511, 3803, 4092, 4399, 4701],
+      [1672, 1863, 2037, 2208, 2372, 2523, 2682, 2874, 3017, 3189, 3336, 3664, 3952, 4274, 4609, 4949],
     ],
   },
 };
@@ -967,33 +1031,35 @@ export const ONYX_SHUTTER_FIXED_SURCHARGES: Surcharge[] = [
   { name: "Scribe greater than 54 cubic inches (per piece)", type: "fixed", value: 15 },
 ];
 
+// Norman 2026 Retail Guide effective July 1, 2026 — Portrait Honeycomb
+// surcharge page (p10). Entry names predating the July sync are kept where
+// they already existed so saved quotes' name lookups keep working.
 export const HONEYCOMB_SURCHARGES: Surcharge[] = [
-  // General surcharges
-  { name: "LightGuard 360", type: "fixed", value: 364 },
-
-  // 9/16" Single Cell surcharges
-  { name: "Solus Fabric Surcharge", type: "fixed", value: 20 },
-  { name: "FR Essentials Fabric Surcharge", type: "fixed", value: 20 },
-  { name: "Shim", type: "fixed", value: 6 },
-  { name: "Side Mount Bracket", type: "fixed", value: 22 },
-  { name: "Light Guard - Pole Attachment Only", type: "fixed", value: 43 },
-  { name: "Magnetic Hold Down", type: "fixed", value: 27 },
-  { name: "Cut-out Cordless Operating Pole", type: "fixed", value: 86 },
-  { name: "Specialty Shapes", type: "fixed", value: 113 },
-  { name: "SmartFit with Frame", type: "fixed", value: 284 },
-  { name: "SmartFit Dual Shade with Frame", type: "fixed", value: 370 },
-  { name: "Room Darkening Fabric Surcharge", type: "fixed", value: 20 },
-  { name: "Sheer Fabric Surcharge", type: "fixed", value: 20 },
-  { name: "Blackout Fabric Surcharge", type: "fixed", value: 20 },
-
-  // 3/4" Woven Windsong surcharges
-  { name: "Continuous Cord Loop", type: "fixed", value: 70 },
-  { name: "SmartFit Dual Shade", type: "fixed", value: 172 },
-  { name: "SmartFit", type: "fixed", value: 86 },
-  { name: "SmartRelease", type: "fixed", value: 86 },
-
-  // 3/4" Woven Breeze surcharges
-  { name: "TDBU (Top Down Bottom Up)", type: "fixed", value: 86 },
+  { name: "Shim", type: "fixed", value: 7 },
+  { name: "Side Mount Bracket", type: "fixed", value: 23 },
+  // Guide: "Light Guard | Pole Attachment only".
+  { name: "Light Guard - Pole Attachment Only", type: "fixed", value: 45 },
+  { name: "Magnetic Hold Down", type: "fixed", value: 28 },
+  // Guide: "Cut-out | Cordless operating pole".
+  { name: "Cut-out Cordless Operating Pole", type: "fixed", value: 89 },
+  { name: "Specialty Shapes", type: "fixed", value: 117 },
+  { name: "SmartFit", type: "fixed", value: 89 },
+  { name: "SmartFit with Frame", type: "fixed", value: 293 },
+  { name: "SmartFit Dual Shade", type: "fixed", value: 178 },
+  { name: "SmartFit Dual Shade with Frame", type: "fixed", value: 382 },
+  { name: "Continuous Cord Loop", type: "fixed", value: 73 },
+  { name: "SmartRelease", type: "fixed", value: 89 },
+  // Guide line item "TDBU | TD" — covers every top-down operating system.
+  { name: "TDBU (Top Down Bottom Up)", type: "fixed", value: 89 },
+  // Guide: 20% of the single-shade price (replaces the old fixed-$20
+  // Room Darkening / Sheer / Solus / FR Essentials / Blackout entries).
+  {
+    name: "Room Darkening | Sheer | Solus | FR Essentials Fabric",
+    type: "percentage",
+    value: 20,
+  },
+  // Day & Night operating systems are priced as two shades.
+  { name: "Day & Night (priced as 2 shades)", type: "percentage", value: 100 },
 ];
 
 // Norman 2026 Retail Guide effective July 1, 2026 — Soluna Roller Shades
@@ -1228,6 +1294,12 @@ export const MOTORIZATION_OPTIONS: MotorOption[] = [
   { name: "AC Adapter Plug-In", price: 482, brand: "Norman" },
   { name: "Automate Li-Ion ARC (Rechargeable)", price: 682, brand: "Automate Home" },
   { name: "Automate 12V DC Motor", price: 814, brand: "Automate Home" },
+  // Norman power sources as named on the Norman honeycomb order form
+  // (guide honeycomb column: Norman motor $482, Automate Home motor $682).
+  { name: "Rechargeable Battery (Wireless Charging Wand)", price: 482, brand: "Norman" },
+  { name: "Rechargeable Battery (Wired Charging Wand)", price: 482, brand: "Norman" },
+  { name: "Automate Home Battery Pack", price: 682, brand: "Automate Home" },
+  { name: "Automate Home AC Adapter", price: 682, brand: "Automate Home" },
   // Norman — prices per the 2026 Retail Guide effective July 1, 2026
   { name: "Single Motor (AC Adapter)", price: 482, brand: "Norman" },
   { name: "Power Distribution Panel", price: 931, brand: "Norman" },

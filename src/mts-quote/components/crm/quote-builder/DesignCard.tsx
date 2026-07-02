@@ -105,9 +105,23 @@ import {
   getRomanFabricColorsForCategory,
   HONEYCOMB_MOUNT_TYPES,
   HONEYCOMB_CELL_SIZES,
-  HONEYCOMB_SHADE_TYPES,
-  HONEYCOMB_LIFT_SYSTEMS,
   HONEYCOMB_LIGHT_CONTROL,
+  HONEYCOMB_RAIL_COLORS,
+  HONEYCOMB_POLE_OPTIONS,
+  HONEYCOMB_HOLD_DOWNS,
+  HONEYCOMB_SHADE_TYPES_2ON1,
+  HONEYCOMB_CHAIN_LOCATIONS,
+  HONEYCOMB_CHAIN_LENGTHS,
+  HONEYCOMB_AUTOMATE_POWER_SOURCES,
+  canonicalizeHoneycombCellSize,
+  getHoneycombMotorsFor,
+  getHoneycombOperatingSystemsFor,
+  honeycombOperatingSystemAllows2On1,
+  isHoneycombChainOperatingSystem,
+  isHoneycombCordlessPoleOperatingSystem,
+  isHoneycombDayNightOperatingSystem,
+  isHoneycombFrameCellSize,
+  isHoneycombMotorizedOperatingSystem,
   PERFECTSHEER_MOUNT_TYPES,
   PERFECTSHEER_LIGHT_CONTROL,
   PERFECTSHEER_LIFT_SYSTEMS,
@@ -138,6 +152,11 @@ import {
 import {
   getHoneycombFabricGroups,
 } from "@mts/lib/fabricCatalog";
+import {
+  getHoneycombDealerFabricTypesFor,
+  isHoneycombDealerColorAvailable,
+  isHoneycombDealerColorSurcharged,
+} from "@mts/lib/honeycombDealerFabrics";
 import {
   ROLLER_FABRIC_COLOR_CODE_DETAIL,
   ROLLER_FABRIC_COLOR_COLLECTION_DETAIL,
@@ -540,16 +559,130 @@ function getAutomaticOptionSurcharges(
     }
   }
 
-  if (productType === "Honeycomb Shades" && liftSystem === "Smart Release") {
-    appendSurcharge(
-      surcharges,
-      toAutomaticSurcharge(
-        productType,
-        findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
-        "Lift System",
-        "Smart Release"
-      )
-    );
+  if (productType === "Honeycomb Shades") {
+    // Automatic surcharges per the Norman 2026 Retail Guide (July 1, 2026),
+    // Portrait Honeycomb page. Legacy lift-system values ("Smart Release",
+    // "Top Down-Bottom Up") from saved quotes keep resolving.
+    const operatingSystem = liftSystem || "";
+    const canonicalCellSize = canonicalizeHoneycombCellSize(cellSize) || "";
+    const isFrameSize = isHoneycombFrameCellSize(canonicalCellSize);
+    const isSmartFitOs = operatingSystem.startsWith("SmartFit");
+    // Legacy saved designs marked dual SmartFit shades via shade_type.
+    const isDualSmartFit =
+      operatingSystem === "SmartFit Dual Shade" || design.shade_type === "Day/Night*";
+
+    if (operatingSystem === "SmartRelease" || operatingSystem === "Smart Release") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
+          "Operating System",
+          "SmartRelease"
+        )
+      );
+    } else if (operatingSystem.includes("Cord Loop")) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "Continuous Cord Loop"),
+          "Operating System"
+        )
+      );
+    }
+
+    if (
+      operatingSystem.includes("TDBU") ||
+      /\bTD\b/.test(operatingSystem) ||
+      operatingSystem === "Top Down-Bottom Up"
+    ) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "TDBU (Top Down Bottom Up)"),
+          "Operating System",
+          "TDBU | TD"
+        )
+      );
+    }
+
+    if (isFrameSize) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(
+            HONEYCOMB_SURCHARGES,
+            isDualSmartFit ? "SmartFit Dual Shade with Frame" : "SmartFit with Frame"
+          ),
+          "Shade Size"
+        )
+      );
+    } else if (isSmartFitOs) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(
+            HONEYCOMB_SURCHARGES,
+            operatingSystem === "SmartFit Dual Shade" ? "SmartFit Dual Shade" : "SmartFit"
+          ),
+          "Operating System"
+        )
+      );
+    }
+
+    // Day & Night systems are priced as two shades (100% of the grid price).
+    if (isHoneycombDayNightOperatingSystem(operatingSystem)) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "Day & Night (priced as 2 shades)"),
+          "Operating System"
+        )
+      );
+    }
+
+    // 20% fabric surcharge for the RD | Sheer | Solus | FR Essentials family
+    // — detected from the dealer availability flag when a picker color is
+    // stored, with a text fallback for legacy fabric labels.
+    const fabricColorCode = String(opts[PRODUCT_COLOR_CODE_DETAIL] || "");
+    const fabricHaystack = [
+      String(opts[PRODUCT_COLOR_TYPE_DETAIL] || ""),
+      String(opts[PRODUCT_COLOR_COLLECTION_DETAIL] || ""),
+      design.fabric || "",
+    ].join(" ");
+    const surchargedFabric = fabricColorCode
+      ? isHoneycombDealerColorSurcharged(canonicalCellSize, fabricColorCode)
+      : /room darkening|blackout|sheer|solus|fr essentials/i.test(fabricHaystack) ||
+        /\s(RD|BO)\b/.test(fabricHaystack);
+    if (surchargedFabric) {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(
+            HONEYCOMB_SURCHARGES,
+            "Room Darkening | Sheer | Solus | FR Essentials Fabric"
+          ),
+          "Fabric"
+        )
+      );
+    }
+
+    if (String(opts.hold_downs || "") === "Magnetic") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "Magnetic Hold Down"),
+          "Hold Down Brackets"
+        )
+      );
+    }
   }
 
   if (productType === "Roman Shades") {
@@ -637,31 +770,6 @@ function getAutomaticOptionSurcharges(
     }
   }
 
-  if (productType === "Honeycomb Shades" && liftSystem === "Top Down-Bottom Up") {
-    appendSurcharge(
-      surcharges,
-      toAutomaticSurcharge(
-        productType,
-        findSurcharge(HONEYCOMB_SURCHARGES, "TDBU (Top Down Bottom Up)"),
-        "Lift System",
-        "Top Down-Bottom Up"
-      )
-    );
-  }
-
-  if (productType === "Honeycomb Shades" && cellSize.includes("SmartFit")) {
-    const smartFitCharge =
-      design.shade_type === "Day/Night*" ? "SmartFit Dual Shade with Frame" : "SmartFit with Frame";
-    appendSurcharge(
-      surcharges,
-      toAutomaticSurcharge(
-        productType,
-        findSurcharge(HONEYCOMB_SURCHARGES, smartFitCharge),
-        "Cell Size"
-      )
-    );
-  }
-
   const selectedValance = typeof design.valance === "string" ? design.valance.toLowerCase() : "";
   const hasWoodValance =
     selectedValance.includes("premium wood") || selectedValance.includes("modern wood");
@@ -719,11 +827,11 @@ function getAutomaticOptionSurcharges(
 
   if (design.motor_type) {
     const motorSurcharge = getMotorOptionSurcharge(productType, design.motor_type, motorBrand);
-    // Day & Night romans use two motors (guide: "use single motor surcharge X 2").
+    // Day & Night shades use two motors (guide: "use single motor surcharge X 2").
     if (
       motorSurcharge &&
-      productType === "Roman Shades" &&
-      design.shade_type === "Day & Night"
+      ((productType === "Roman Shades" && design.shade_type === "Day & Night") ||
+        (productType === "Honeycomb Shades" && liftSystem === "Motorized Day & Night"))
     ) {
       motorSurcharge.quantity = 2;
     }
@@ -817,7 +925,10 @@ function getAvailableSurcharges(
   }
 
   const opts = (design?.options_json as Record<string, string> | undefined) || {};
-  const motorized = design?.lift_system === "Motorized" || opts.control_type === "Motorized";
+  // Honeycomb motorized operating systems include TD / TDBU / Day & Night
+  // variants — treat every "Motorized*" lift system as motorized.
+  const motorized =
+    (design?.lift_system || "").startsWith("Motorized") || opts.control_type === "Motorized";
   const supportsMotorization = [
     "Roller Shades",
     "Roman Shades",
@@ -1062,10 +1173,9 @@ function getDependentProductColorField(productType: string, changedField: string
   if (productType === "Roman Shades" && changedField === "json:roman_fabric_category") {
     return "fabric";
   }
-  if (
-    productType === "Honeycomb Shades" &&
-    (changedField === "json:cell_size" || changedField === "json:light_control")
-  ) {
+  // Honeycomb cell-size changes clear the fabric only when the color is no
+  // longer offered for the new size (see the dedicated handleUpdate cascade).
+  if (productType === "Honeycomb Shades" && changedField === "json:light_control") {
     return "fabric";
   }
   if (productType === "Sheer Shades" && changedField === "json:light_control") {
@@ -1305,10 +1415,12 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
       return [
         "mount_type",
         "json:cell_size",
-        "shade_type",
         "lift_system",
+        "motor_type",
+        "remote_type",
         "json:light_control",
         "fabric",
+        "json:back_fabric",
       ].filter((field) => allFields.includes(field));
     case "Sheer Shades":
       return ["mount_type", "json:light_control", "lift_system", "fabric"].filter((field) =>
@@ -4149,6 +4261,133 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    // Honeycomb Shades cascades — mirror Norman's dependency rules with
+    // validity-based clearing (see docs/norman-honeycomb-order-map.md).
+    if (productType === "Honeycomb Shades" && field === "json:cell_size") {
+      const nextSize = typeof value === "string" ? value : null;
+      const nextJson: Record<string, unknown> = { ...currentJson, cell_size: nextSize };
+      const patch: Partial<SalesQuoteDesign> = {};
+
+      // Frame (SmartFit/Decoflex) sizes only take the SmartFit systems.
+      const allowedSystems = getHoneycombOperatingSystemsFor(nextSize);
+      if (design?.lift_system && !allowedSystems.includes(design.lift_system)) {
+        patch.lift_system = null;
+        patch.motor_type = null;
+        patch.remote_type = null;
+        patch.shade_type = null;
+        nextJson.chain_location = null;
+        nextJson.chain_length = null;
+        nextJson.poles = null;
+        nextJson.hub_required = null;
+        nextJson.back_fabric = null;
+      }
+
+      // Frame quantity / pre-drill only exist for the frame sizes.
+      if (!isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(nextSize))) {
+        nextJson.frame_qty = null;
+        nextJson.pre_drilled = null;
+      }
+
+      // The back (Day & Night) fabric list is per shade size.
+      const backFabric = String(nextJson.back_fabric || "");
+      if (backFabric && !getHoneycombDealerFabricTypesFor(nextSize).includes(backFabric)) {
+        nextJson.back_fabric = null;
+      }
+
+      // Clear the fabric only when its color is no longer offered for the
+      // new size on the Norman dealer form.
+      const fabricColorCode = stringOption(currentJson, PRODUCT_COLOR_CODE_DETAIL);
+      const clearFabric = Boolean(
+        design?.fabric &&
+          fabricColorCode &&
+          nextSize &&
+          !isHoneycombDealerColorAvailable(nextSize, fabricColorCode)
+      );
+      if (clearFabric) setOpenOptionField("fabric");
+
+      onUpdateFields({
+        ...patch,
+        ...(clearFabric ? { fabric: null } : {}),
+        options_json: clearFabric ? withoutProductColorDetails(nextJson) : nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "lift_system") {
+      const nextOs = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson };
+      if (!isHoneycombChainOperatingSystem(nextOs)) {
+        nextJson.chain_location = null;
+        nextJson.chain_length = null;
+      }
+      if (!isHoneycombCordlessPoleOperatingSystem(nextOs)) {
+        nextJson.poles = null;
+      }
+      const motorized = isHoneycombMotorizedOperatingSystem(nextOs);
+      if (!motorized) nextJson.hub_required = null;
+      if (!isHoneycombDayNightOperatingSystem(nextOs)) nextJson.back_fabric = null;
+
+      // Keep the power source / remote only while they stay valid for the
+      // new system's motor family.
+      const motors = motorized ? getHoneycombMotorsFor(nextOs) : [];
+      const keepMotor = Boolean(
+        design?.motor_type && (motors as readonly string[]).includes(design.motor_type)
+      );
+      const remotes =
+        keepMotor && design?.motor_type && design.motor_type !== "AutoWand"
+          ? HONEYCOMB_AUTOMATE_POWER_SOURCES.has(design.motor_type)
+            ? ROMAN_REMOTES_AUTOMATE
+            : ROMAN_REMOTES_NORMAN
+          : ([] as readonly string[]);
+      const keepRemote = Boolean(
+        design?.remote_type && (remotes as readonly string[]).includes(design.remote_type)
+      );
+      // "2 on 1" is only offered on a few operating systems.
+      const clearShadeType =
+        design?.shade_type === "2 on 1" && !honeycombOperatingSystemAllows2On1(nextOs);
+
+      onUpdateFields({
+        lift_system: nextOs,
+        motor_type: keepMotor ? design?.motor_type || null : null,
+        remote_type: keepRemote ? design?.remote_type || null : null,
+        ...(clearShadeType ? { shade_type: null } : {}),
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "motor_type") {
+      const nextSource = typeof value === "string" ? value : null;
+      const remotes =
+        nextSource && nextSource !== "AutoWand"
+          ? HONEYCOMB_AUTOMATE_POWER_SOURCES.has(nextSource)
+            ? ROMAN_REMOTES_AUTOMATE
+            : ROMAN_REMOTES_NORMAN
+          : ([] as readonly string[]);
+      const keepRemote =
+        design?.remote_type && (remotes as readonly string[]).includes(design.remote_type);
+      onUpdateFields({
+        motor_type: nextSource,
+        ...(keepRemote ? {} : { remote_type: null }),
+        ...(nextSource === "AutoWand"
+          ? { options_json: { ...currentJson, hub_required: null } }
+          : {}),
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "mount_type") {
+      const nextMount = typeof value === "string" ? value : null;
+      onUpdateFields({
+        mount_type: nextMount,
+        // Hold downs are an outside-mount option at Norman.
+        ...(nextMount !== "Outside Mount"
+          ? { options_json: { ...currentJson, hold_downs: null } }
+          : {}),
+      });
+      return;
+    }
+
     if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
       let nextJson = withoutProductColorDetails(currentJson);
       const jsonKey = getJsonFieldKey(field);
@@ -4545,7 +4784,19 @@ function ShadesAndBlindsOptions({
       }
 
       case "Honeycomb Shades": {
-        const liftSystem = getFieldValue(design, "lift_system");
+        // Mirrors the Norman Portrait Honeycomb order form flow — see
+        // docs/norman-honeycomb-order-map.md for the cascade source.
+        const mountType = getFieldValue(design, "mount_type");
+        const storedCellSize = getFieldValue(design, "json:cell_size");
+        const cellSize = canonicalizeHoneycombCellSize(storedCellSize);
+        const operatingSystem = getFieldValue(design, "lift_system");
+        const powerSource = getFieldValue(design, "motor_type");
+
+        // Keep legacy stored values selectable so old quotes still render.
+        const withStoredValue = (choices: readonly string[], stored: string | null) =>
+          stored && !choices.includes(stored)
+            ? ([...choices, stored] as readonly string[])
+            : choices;
 
         const options: GridOption[] = [
           {
@@ -4557,68 +4808,148 @@ function ShadesAndBlindsOptions({
           },
           {
             key: "cell_size",
-            label: "Cell Size",
+            label: "Shade Size",
             field: "json:cell_size",
-            type: "buttons",
-            options: HONEYCOMB_CELL_SIZES,
+            type: "select",
+            options: withStoredValue(HONEYCOMB_CELL_SIZES, storedCellSize),
           },
           {
+            key: "operating_system",
+            label: "Operating System",
+            field: "lift_system",
+            type: "select",
+            options: withStoredValue(getHoneycombOperatingSystemsFor(cellSize), operatingSystem),
+          },
+        ];
+
+        // Chain controls — the Cord Loop family and SmartRelease.
+        if (isHoneycombChainOperatingSystem(operatingSystem)) {
+          options.push({
+            key: "chain_location",
+            label: "Chain Location",
+            field: "json:chain_location",
+            type: "buttons",
+            options: HONEYCOMB_CHAIN_LOCATIONS,
+          });
+          options.push({
+            key: "chain_length",
+            label: "Chain Length",
+            field: "json:chain_length",
+            type: "buttons",
+            options: HONEYCOMB_CHAIN_LENGTHS,
+          });
+        }
+
+        // Cordless and SmartFit systems take an operating pole.
+        if (isHoneycombCordlessPoleOperatingSystem(operatingSystem)) {
+          options.push({
+            key: "poles",
+            label: "Poles",
+            field: "json:poles",
+            type: "select",
+            options: HONEYCOMB_POLE_OPTIONS,
+          });
+        }
+
+        // Motorization — power source drives which remotes/hubs apply.
+        if (isHoneycombMotorizedOperatingSystem(operatingSystem)) {
+          options.push({
+            key: "motor_type",
+            label: "Power Source",
+            field: "motor_type",
+            type: "select",
+            options: withStoredValue(getHoneycombMotorsFor(operatingSystem), powerSource),
+          });
+          if (powerSource && powerSource !== "AutoWand") {
+            const isAutomate = HONEYCOMB_AUTOMATE_POWER_SOURCES.has(powerSource);
+            options.push({
+              key: "remote_type",
+              label: isAutomate ? "Remote / Wall Switch" : "Remote Type",
+              field: "remote_type",
+              type: "select",
+              options: isAutomate ? ROMAN_REMOTES_AUTOMATE : ROMAN_REMOTES_NORMAN,
+            });
+            options.push({
+              key: "hub_required",
+              label: "Hub Required",
+              field: "json:hub_required",
+              type: "yes-no",
+              noFirst: true,
+            });
+          }
+        }
+
+        // Day & Night systems add the back shade fabric (the rep records the
+        // fabric line here; the front color comes from the fabric search).
+        if (isHoneycombDayNightOperatingSystem(operatingSystem)) {
+          options.push({
+            key: "back_fabric",
+            label: "Back Shade Fabric",
+            field: "json:back_fabric",
+            type: "select",
+            options: getHoneycombDealerFabricTypesFor(cellSize),
+          });
+        }
+
+        // SmartFit-with-Frame (Decoflex) sizes add the frame details.
+        if (isHoneycombFrameCellSize(cellSize)) {
+          options.push({
+            key: "frame_qty",
+            label: "Frame Quantity",
+            field: "json:frame_qty",
+            type: "select",
+            options: ["1", "2", "3"] as readonly string[],
+          });
+          options.push({
+            key: "pre_drilled",
+            label: "Pre-Drilled Frame",
+            field: "json:pre_drilled",
+            type: "yes-no",
+            noFirst: true,
+          });
+        }
+
+        // "2 on 1" shades are only offered on a few operating systems.
+        if (honeycombOperatingSystemAllows2On1(operatingSystem)) {
+          options.push({
             key: "shade_type",
             label: "Shade Type",
             field: "shade_type",
             type: "buttons",
-            options: HONEYCOMB_SHADE_TYPES,
-          },
-          {
-            key: "lift",
-            label: "Lift System",
-            field: "lift_system",
-            type: "buttons",
-            options: HONEYCOMB_LIFT_SYSTEMS,
-          },
-          {
-            key: "light_control",
-            label: "Light Control",
-            field: "json:light_control",
-            type: "buttons",
-            options: HONEYCOMB_LIGHT_CONTROL,
-          },
-          {
-            key: "fabric",
-            label: "Fabric",
-            field: "fabric",
-            type: "select",
-            options: [] as readonly string[],
-          },
-        ];
+            options: HONEYCOMB_SHADE_TYPES_2ON1,
+          });
+        }
 
-        // Show motorization options if Motorized is selected
-        if (liftSystem === "Motorized") {
+        options.push({
+          key: "light_control",
+          label: "Light Control",
+          field: "json:light_control",
+          type: "buttons",
+          options: HONEYCOMB_LIGHT_CONTROL,
+        });
+        options.push({
+          key: "fabric",
+          label: "Fabric",
+          field: "fabric",
+          type: "select",
+          options: [] as readonly string[],
+        });
+        options.push({
+          key: "rail_color",
+          label: "Rail Color",
+          field: "json:rail_color",
+          type: "select",
+          options: HONEYCOMB_RAIL_COLORS,
+        });
+
+        // Hold downs are an outside-mount option at Norman.
+        if (mountType === "Outside Mount") {
           options.push({
-            key: "motor_type",
-            label: "Motor Type",
-            field: "motor_type",
-            type: "select",
-            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
-          });
-          options.push({
-            key: "hub_required",
-            label: "Hub Required",
-            field: "json:hub_required",
-            type: "yes-no",
-            noFirst: true,
-          });
-          options.push({
-            key: "remote_type",
-            label: "Remote Type",
-            field: "remote_type",
-            type: "select",
-            options: [
-              "15-Channel Remote",
-              "5-Channel Wall Switch",
-              "SmartDial Remote",
-              "Basic Remote",
-            ] as readonly string[],
+            key: "hold_downs",
+            label: "Hold Down Brackets",
+            field: "json:hold_downs",
+            type: "buttons",
+            options: HONEYCOMB_HOLD_DOWNS,
           });
         }
 

@@ -13,6 +13,7 @@ import {
   searchProductColorOptions,
   type ProductColorOption,
 } from "@/lib/quote/product-color-options";
+import { isHoneycombDealerColorAvailable } from "./honeycombDealerFabrics";
 
 export {
   PRODUCT_COLOR_CODE_DETAIL,
@@ -329,11 +330,23 @@ function rowMatchesMtsContext(
     }
     case "Honeycomb Shades": {
       const selectedCellSize = stringOption(optionsJson, "cell_size");
+      const lightControl = stringOption(optionsJson, "light_control");
       if (selectedCellSize && !honeycombProgramMatchesCellSize(row.programId, selectedCellSize)) {
         return false;
       }
-      const lightControl = stringOption(optionsJson, "light_control");
-      return matchesLightControl(row, lightControl);
+      if (!matchesLightControl(row, lightControl)) {
+        return false;
+      }
+      // Norman's dealer form only offers certain fabrics/colors per shade
+      // size — mirror that with the captured availability data (permissive
+      // when the data has no entry for the size).
+      if (
+        selectedCellSize &&
+        !isHoneycombDealerColorAvailable(selectedCellSize, row.colorCode, lightControl)
+      ) {
+        return false;
+      }
+      return true;
     }
     case "Sheer Shades": {
       const lightControl = stringOption(optionsJson, "light_control");
@@ -352,15 +365,32 @@ function rowMatchesMtsContext(
   }
 }
 
+// Resolve a builder cell-size label (current '3/8" Single Cell' style, legacy
+// bare '3/4"' style, or the SmartFit frame labels) to a program-map key.
+function honeycombCellSizeProgramKey(cellSize: string): string | null {
+  const normalized = normalize(cellSize);
+  // SmartFit / Decoflex frame sizes have no dedicated pricing program.
+  if (normalized.includes("smartfit") || normalized.includes("decoflex")) return null;
+  const isDouble = normalized.includes("double");
+  const isSingle = normalized.includes("single");
+  if (/\b9 16\b/.test(normalized)) return "9/16";
+  if (/\b1 2\b/.test(normalized)) return "1/2";
+  if (/\b3 8\b/.test(normalized)) return "3/8";
+  if (/\b1 1 4\b/.test(normalized)) return "1 1/4";
+  if (/\b3 4\b/.test(normalized)) {
+    if (isDouble) return "3/4 double";
+    if (isSingle) return "3/4 single";
+    return "3/4";
+  }
+  return null;
+}
+
 function honeycombProgramMatchesCellSize(programId: string | null | undefined, cellSize: string): boolean {
-  if (!programId) return false;
-  const normalizedCellSize = normalize(cellSize)
-    .replace(/\bcell\b/g, "")
-    .replace(/\bsingle\b/g, " single")
-    .replace(/\bdouble\b/g, " double")
-    .replace(/\s+/g, " ")
-    .trim();
-  const allowed = HONEYCOMB_PROGRAMS_BY_CELL_SIZE[normalizedCellSize] ?? HONEYCOMB_PROGRAMS_BY_CELL_SIZE[stripQuotes(normalizedCellSize)];
+  // Most picker rows carry no program (the rep confirms the price group
+  // later) — keep those selectable for any size.
+  if (!programId) return true;
+  const key = honeycombCellSizeProgramKey(cellSize);
+  const allowed = key ? HONEYCOMB_PROGRAMS_BY_CELL_SIZE[key] : undefined;
   if (!allowed) return true;
   return allowed.includes(programId);
 }
@@ -408,10 +438,6 @@ function normalizeVerticalCollection(value: string | null | undefined): string {
 function stringOption(optionsJson: Record<string, unknown>, key: string): string | null {
   const value = optionsJson[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function stripQuotes(value: string): string {
-  return value.replace(/"/g, "").trim();
 }
 
 function normalize(value: string | null | undefined): string {

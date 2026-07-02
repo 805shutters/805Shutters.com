@@ -15,7 +15,6 @@ import {
   type PriceGrid,
   type ShutterProgram,
 } from "./pricingData";
-import { findHoneycombFabricOption } from "./fabricCatalog";
 import {
   getHoneycombGrid,
   getRollerFabricPriceGroup,
@@ -194,57 +193,6 @@ export interface PriceLookupOptions {
   fabric?: string; // for fabric-based routing
 }
 
-/**
- * Detect fabric surcharge from fabric name
- */
-function getFabricSurcharge(fabric?: string): number {
-  if (!fabric) return 0;
-
-  const honeycombFabric = findHoneycombFabricOption(fabric);
-  if (
-    honeycombFabric?.lightControl === "Room Darkening" ||
-    honeycombFabric?.lightControl === "Blackout" ||
-    honeycombFabric?.lightControl === "Designer RD" ||
-    honeycombFabric?.lightControl === "Solus"
-  ) {
-    return 20;
-  }
-
-  const fabricLower = fabric.toLowerCase();
-  const fabricUpper = fabric.toUpperCase();
-
-  // Check for Room Darkening
-  if (
-    fabricLower.includes("room darkening") ||
-    fabricUpper.includes(" RD") ||
-    fabric.endsWith(" RD")
-  ) {
-    return 20;
-  }
-
-  // Check for Blackout
-  if (fabricLower.includes("blackout") || fabricUpper.includes(" BO") || fabric.endsWith(" BO")) {
-    return 20;
-  }
-
-  // Check for Sheer
-  if (fabricLower.includes("sheer") || fabricLower.includes("whisper")) {
-    return 20;
-  }
-
-  // Check for Solus (if applicable)
-  if (fabricLower.includes("solus")) {
-    return 20;
-  }
-
-  // Check for FR Essentials
-  if (fabricLower.includes("fr essentials") || fabricLower.includes("flame resistant")) {
-    return 20;
-  }
-
-  return 0;
-}
-
 function getCatalogGridKey(productType: string, options: PriceLookupOptions): string | null {
   return options.catalogProgramId
     ? getMtsGridKeyForCatalogProgram(productType, options.catalogProgramId)
@@ -253,8 +201,11 @@ function getCatalogGridKey(productType: string, options: PriceLookupOptions): st
 
 /**
  * Honeycomb Shades
- * Routes to correct grid based on cell size + fabric selection
- * Automatically applies fabric-specific surcharges
+ * Routes to correct grid based on cell size + fabric selection.
+ * Fabric surcharges (RD | Sheer | Solus | FR Essentials = 20% per the July
+ * 2026 guide) are applied as automatic option surcharges in the quote
+ * builder, not baked into the grid price (the old fixed-$20 built-in
+ * adjustment was removed with the July 2026 sync).
  */
 export function getHoneycombPrice(options: PriceLookupOptions): number | null {
   const { width, height, cellSize, fabric } = options;
@@ -265,12 +216,7 @@ export function getHoneycombPrice(options: PriceLookupOptions): number | null {
   const grid = HONEYCOMB_PRICING[gridKey as keyof typeof HONEYCOMB_PRICING];
   if (!grid) return null;
 
-  const basePrice = lookupGridPrice(grid, width, height);
-  if (basePrice === null) return null;
-
-  // Apply fabric surcharge automatically
-  const fabricSurcharge = getFabricSurcharge(fabric);
-  return basePrice + fabricSurcharge;
+  return lookupGridPrice(grid, width, height);
 }
 
 /**
@@ -457,12 +403,12 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
         (options.cellSize && options.fabric
           ? getHoneycombGrid(options.cellSize, options.fabric)
           : "general_3_4_double");
-      const builtInAdjustment = getFabricSurcharge(options.fabric);
+      // Fabric surcharges are automatic option surcharges (20% per the July
+      // 2026 guide) — no built-in grid adjustment.
       return gridBreakdown(
         options,
         HONEYCOMB_PRICING[gridKey as keyof typeof HONEYCOMB_PRICING],
-        gridKey,
-        builtInAdjustment
+        gridKey
       );
     }
     case "Roller Shades": {

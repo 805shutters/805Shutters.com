@@ -1494,8 +1494,12 @@ export const ROMAN_GROUP3_FABRICS = ROMAN_FABRIC_CATEGORIES.flatMap((category) =
   category.colors.filter((color) => color.priceGroup === "group3").map(formatRomanFabricColor)
 );
 
-// Honeycomb Shade Options
+// Honeycomb Shade Options — mirrors the Norman Portrait Honeycomb dealer
+// order form (QB_Order.asp inline flow), captured live 2026-07-01. See
+// docs/norman-honeycomb-order-map.md for the verified cascade source.
 export const HONEYCOMB_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
+// Norman "Shade Size" list; "Decoflex" / "Decoflex for skylights" are sold as
+// SmartFit with Frame / SmartFit Sloped with Frame.
 export const HONEYCOMB_CELL_SIZES = [
   '3/8" Single Cell',
   '9/16" Single Cell',
@@ -1503,9 +1507,161 @@ export const HONEYCOMB_CELL_SIZES = [
   '1 1/4" Single Cell',
   '1/2" Double Cell',
   '3/4" Double Cell',
-  "SmartFit® with Frame",
-  "SmartFit® for Sloped Windows with Frame",
+  "SmartFit with Frame",
+  "SmartFit Sloped with Frame",
 ] as const;
+
+// Saved designs may still hold the pre-Norman-alignment SmartFit labels.
+const HONEYCOMB_LEGACY_CELL_SIZE_LABELS: Record<string, string> = {
+  "SmartFit® with Frame": "SmartFit with Frame",
+  "SmartFit® for Sloped Windows with Frame": "SmartFit Sloped with Frame",
+};
+
+export function canonicalizeHoneycombCellSize(
+  cellSize: string | null | undefined
+): string | null {
+  if (!cellSize) return null;
+  const trimmed = cellSize.trim();
+  return HONEYCOMB_LEGACY_CELL_SIZE_LABELS[trimmed] ?? trimmed;
+}
+
+export function isHoneycombFrameCellSize(cellSize: string | null | undefined): boolean {
+  return Boolean(cellSize && cellSize.includes("SmartFit"));
+}
+
+// Operating systems in the Norman order-form order (all 14 stay enabled for
+// every non-frame size at Norman's DOM level — we mirror that permissively).
+export const HONEYCOMB_OPERATING_SYSTEMS = [
+  "SmartRise Cordless",
+  "Cordless TDBU",
+  "Cordless Day & Night",
+  "SmartFit",
+  "Cord Loop",
+  "SmartRelease",
+  "Cord Loop TD",
+  "Cord Loop Day & Night",
+  "SmartFit for Sloped Windows",
+  "SmartFit Dual Shade",
+  "Motorized",
+  "Motorized TD",
+  "Motorized TDBU",
+  "Motorized Day & Night",
+] as const;
+
+export const HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS = [
+  "SmartFit",
+  "SmartFit for Sloped Windows",
+  "SmartFit Dual Shade",
+] as const;
+
+// SmartFit-with-Frame sizes (Norman "Decoflex") only take the SmartFit
+// family; every other size offers all 14 systems.
+export function getHoneycombOperatingSystemsFor(
+  cellSize: string | null | undefined
+): readonly string[] {
+  return isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(cellSize))
+    ? HONEYCOMB_SMARTFIT_OPERATING_SYSTEMS
+    : HONEYCOMB_OPERATING_SYSTEMS;
+}
+
+export function isHoneycombChainOperatingSystem(os: string | null | undefined): boolean {
+  return Boolean(os && (os.includes("Cord Loop") || os === "SmartRelease"));
+}
+
+export function isHoneycombCordlessPoleOperatingSystem(os: string | null | undefined): boolean {
+  return Boolean(
+    os &&
+      (os === "SmartRise Cordless" ||
+        os === "Cordless TDBU" ||
+        os === "Cordless Day & Night" ||
+        os.startsWith("SmartFit"))
+  );
+}
+
+export function isHoneycombMotorizedOperatingSystem(os: string | null | undefined): boolean {
+  return Boolean(os && os.startsWith("Motorized"));
+}
+
+export function isHoneycombDayNightOperatingSystem(os: string | null | undefined): boolean {
+  return Boolean(os && os.includes("Day & Night"));
+}
+
+// Norman only offers "2 on 1" shades for these systems (live-verified).
+export function honeycombOperatingSystemAllows2On1(os: string | null | undefined): boolean {
+  return os === "SmartRise Cordless" || os === "Cord Loop" || os === "SmartRelease";
+}
+
+// Rail colors from the Norman order form (dplHRFinish, 19 options).
+export const HONEYCOMB_RAIL_COLORS = [
+  "Default",
+  "Agave",
+  "Bianca",
+  "Black Ink",
+  "Celery",
+  "Chocolate",
+  "Cottage White",
+  "Cream",
+  "Ginger Spice",
+  "Gray Cloud",
+  "Indigo",
+  "Nature",
+  "Plum Purple",
+  "Sahara",
+  "Sand",
+  "Silver",
+  "Sky",
+  "Terra",
+  "White",
+] as const;
+
+export const HONEYCOMB_POLE_OPTIONS = [
+  "None",
+  "Pole with Attachment",
+  "Attachment Only",
+] as const;
+export const HONEYCOMB_HOLD_DOWNS = ["None", "Standard", "Magnetic"] as const;
+export const HONEYCOMB_SHADE_TYPES_2ON1 = ["Single", "2 on 1"] as const;
+export const HONEYCOMB_CHAIN_LOCATIONS = ["Left", "Right"] as const;
+export const HONEYCOMB_CHAIN_LENGTHS = ["Standard", "Custom"] as const;
+
+// Power sources per operating-system family, exactly as Norman groups them
+// (dplMotorType). Names must match MOTORIZATION_OPTIONS entries in
+// pricingData.ts so the automatic motorization surcharge lookup prices them.
+export const HONEYCOMB_MOTORS_FULL = [
+  "Rechargeable Battery (Wireless Charging Wand)",
+  "Rechargeable Battery (Wired Charging Wand)",
+  "AC Adapter Plug-In",
+  "DC Low Voltage Hard Wire",
+  "AutoWand",
+  "Automate Home Battery Pack",
+  "Automate Home AC Adapter",
+] as const;
+export const HONEYCOMB_MOTORS_TD = [
+  "Automate Home Battery Pack",
+  "Automate Home AC Adapter",
+] as const;
+// Motorized TDBU and Motorized Day & Night take the four Norman Smart sources.
+export const HONEYCOMB_MOTORS_TDBU = [
+  "Rechargeable Battery (Wireless Charging Wand)",
+  "Rechargeable Battery (Wired Charging Wand)",
+  "AC Adapter Plug-In",
+  "DC Low Voltage Hard Wire",
+] as const;
+export const HONEYCOMB_MOTORS_DAYNIGHT = HONEYCOMB_MOTORS_TDBU;
+
+export const HONEYCOMB_AUTOMATE_POWER_SOURCES = new Set<string>([
+  "Automate Home Battery Pack",
+  "Automate Home AC Adapter",
+]);
+
+export function getHoneycombMotorsFor(os: string | null | undefined): readonly string[] {
+  if (os === "Motorized TD") return HONEYCOMB_MOTORS_TD;
+  if (os === "Motorized TDBU") return HONEYCOMB_MOTORS_TDBU;
+  if (os === "Motorized Day & Night") return HONEYCOMB_MOTORS_DAYNIGHT;
+  return HONEYCOMB_MOTORS_FULL;
+}
+
+// Pre-Norman-alignment shade types; saved designs may still hold these.
 export const HONEYCOMB_SHADE_TYPES = ["Single", "Day/Night*"] as const;
 export const HONEYCOMB_ADDITIONAL_OPTIONS = ["No", "Yes"] as const;
 export const HONEYCOMB_LIFT_SYSTEMS = [
@@ -1567,6 +1723,8 @@ export function getHoneycombGrid(cellSize: string, fabric: string): string {
       return "three_8_single_and_3_4_single";
     case '3/4" Double Cell':
     case '1 1/4" Single Cell':
+    case "SmartFit with Frame":
+    case "SmartFit Sloped with Frame":
     case "SmartFit® with Frame":
     case "SmartFit® for Sloped Windows with Frame":
     default:
