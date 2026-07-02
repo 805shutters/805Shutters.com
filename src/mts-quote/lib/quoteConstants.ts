@@ -869,15 +869,226 @@ export const ROLLER_LIGHT_FILTERING_FABRICS = [
   "Lola LF",
 ] as const;
 
-// Roman Shade Options
+// Roman Shade Options — mirrors the Norman Roman Shades order form
+// (see docs/norman-roman-shades-order-map.md).
 export const ROMAN_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
-export const ROMAN_LIFT_SYSTEMS = ["Cordless", "Motorized"] as const;
-export const ROMAN_VALANCES = [
+export const ROMAN_SHADE_TYPES = ["Single", "Day & Night", "Common Valance"] as const;
+export const ROMAN_LIFT_SYSTEMS = [
+  "Cordless",
+  "Continuous Cord Loop",
+  "Motorized",
+  "SmartRelease",
+] as const;
+export const ROMAN_VALANCES = ["No Valance", "Fabric Valance"] as const;
+// Pre-Norman-alignment valance values; saved designs may still hold these.
+export const ROMAN_LEGACY_VALANCES = [
   "Standard Cassette Valance",
   "Decorative Fabric Valance",
   "Premium Wood Valance",
   "No Valance / Open Roll",
 ] as const;
+export const ROMAN_VALANCE_RETURNS_INSIDE = ["No Returns", "Wrapped Returns"] as const;
+export const ROMAN_VALANCE_RETURNS_OUTSIDE = ["Wrapped Returns", "Pleated Returns"] as const;
+export const ROMAN_FOLD_STYLES = [
+  "Flat Fold without Seams",
+  "Flat Fold with Batten Back",
+  "Edge Banded",
+  "Ribbon Banded",
+  "Soft Fold",
+] as const;
+export type RomanFoldStyle = (typeof ROMAN_FOLD_STYLES)[number];
+// Norman removes Edge/Ribbon Banded for Day & Night and Common Valance shades.
+export const ROMAN_FOLD_STYLES_LIMITED = [
+  "Flat Fold without Seams",
+  "Flat Fold with Batten Back",
+  "Soft Fold",
+] as const;
+export const ROMAN_CHAIN_TYPES = ["Standard (Plastic)", "Stainless Steel"] as const;
+export const ROMAN_CHAIN_COLORS = ["White", "Cottage White", "Black"] as const;
+export const ROMAN_CHAIN_LOCATIONS = ["Left", "Right"] as const;
+export const ROMAN_CHAIN_LENGTHS = [
+  "Standard",
+  '16"',
+  '24"',
+  '36"',
+  '48"',
+  '60"',
+  '84"',
+] as const;
+export const ROMAN_POLE_OPTIONS = ["None", "Pole with Attachment", "Attachment Only"] as const;
+export const ROMAN_POLE_LENGTHS = ['36"', '60"'] as const;
+export const ROMAN_LININGS = ["Translucent", "Blackout"] as const;
+export const ROMAN_BACK_HEM_BARS = ["Plain", "Fabric-Wrapped"] as const;
+export const ROMAN_HOLD_DOWNS = ["None", "Magnetic"] as const;
+export const ROMAN_MAGNET_COLORS = [
+  "Antique Brass",
+  "Bisque",
+  "Black",
+  "Bright Brass",
+  "Brown Gray",
+  "Crisp Linen",
+  "Nickel-Plated",
+  "Pearl",
+  "Pure White",
+  "Sea Mist",
+  "Silk White",
+  "Stone Gray",
+  "String",
+  "Taupe Gray",
+] as const;
+// Power sources exactly as Norman groups them. Names must match
+// MOTORIZATION_OPTIONS entries in pricingData.ts so the automatic
+// motorization surcharge lookup can price them.
+export const ROMAN_POWER_SOURCES = [
+  "Rechargeable Battery (AC Charger)",
+  "DC Low Voltage Hard Wire",
+  "AC Adapter Plug-In",
+  "AutoWand",
+  "Automate Li-Ion ARC (Rechargeable)",
+  "Automate 12V DC Motor",
+] as const;
+export const ROMAN_AUTOMATE_POWER_SOURCES = new Set<string>([
+  "Automate Li-Ion ARC (Rechargeable)",
+  "Automate 12V DC Motor",
+]);
+export const ROMAN_REMOTES_NORMAN = ["Basic Remote", "SmartDial Remote"] as const;
+export const ROMAN_REMOTES_AUTOMATE = ["15-Channel Remote", "5-Channel Wall Switch"] as const;
+// Back (roller) shade patterns offered for Day & Night romans, from the live
+// Norman form's "Back Shade Fabric" list.
+export const ROMAN_BACK_SHADE_FABRICS = [
+  "Amelia",
+  "Amelia RD",
+  "Bermuda",
+  "Bora Bora",
+  "Breeze",
+  "Breeze RD",
+  "Breeze Screen 1%",
+  "Breeze Screen 3%",
+  "Brook",
+  "Callie",
+  "Callie RD",
+  "Caroline",
+  "Catalina",
+  "Chelsea",
+  "Clarissa",
+  "Cory",
+  "Dazzle",
+  "Elements",
+  "Elements (White Backing)",
+  "Emery",
+  "Fiji",
+  "Flow 1%",
+  "Flow (5%)",
+  "Flow 7%",
+  "Francis",
+  "Francis RD",
+  "Galaxy 3%",
+  "Garden",
+  "Hayes",
+  "Jamaica",
+  "Java",
+  "Jubilee 3%",
+  "Kendra",
+  "Lake Tahoe",
+  "Lakeshore",
+  "Lakeview 3%",
+  "Lakeview 7%",
+  "Lakeview 10%",
+  "Lola BO",
+  "Lola LF",
+  "Meadows 1%",
+  "Meadows 3%",
+  "Moon 5%",
+  "NA300 (1%)",
+  "NA300 (3%)",
+  "NA300 (5%)",
+  "NA400 (3%)",
+  "NA400 (5%)",
+  "NA400 (10%)",
+  "NA820 (3%)",
+  "Phuket",
+  "Remy",
+  "Remy RD",
+  "Riviera",
+  "Scarlett",
+  "Serene (1%)",
+  "Serene 3%",
+  "Serene 7%",
+  "Sheer",
+  "Shimmer",
+  "Sierra",
+  "Sumatra",
+  "Summerland",
+  "Valerie",
+  "Verona LF",
+  "Windsong 1%",
+  "Windsong 5%",
+] as const;
+
+// Fabric collections available per fold style — verified live against the
+// Norman form on 2026-07-01 (changing the style repopulates the collection
+// list). null = no style filter (full catalog).
+const ROMAN_STYLE_FABRIC_CATEGORIES: Record<RomanFoldStyle, readonly string[] | null> = {
+  "Flat Fold with Batten Back": null,
+  "Flat Fold without Seams": [
+    "Alma",
+    "Ashley",
+    "Belgian Linen",
+    "Blake",
+    "Breeze",
+    "Caroline",
+    "Ella",
+    "Ellie",
+    "Francis",
+    "Impressions",
+    "Lakeside",
+    "Lorraine",
+    "Louise",
+    "Patterns",
+    "Seabreeze",
+    "Sheer Elegance",
+    "Sierra",
+    "Solids",
+    "Taylor",
+    "Valencia",
+    "Whispering Willow",
+    "Windsor",
+  ],
+  "Edge Banded": ["Alma", "Francis", "Lakeside"],
+  "Ribbon Banded": ["Alma", "Ella", "Francis", "Taylor"],
+  "Soft Fold": [
+    "Alma",
+    "Ashley",
+    "Belgian Linen",
+    "Blake",
+    "Breeze",
+    "Caroline",
+    "Ella",
+    "Ellie",
+    "Francis",
+    "Impressions",
+    "Lorraine",
+    "Louise",
+    "Patterns",
+    "Rochelle",
+    "Seabreeze",
+    "Sierra",
+    "Solids",
+    "Taylor",
+    "Valencia",
+    "Whispering Willow",
+    "Windsor",
+  ],
+};
+
+// Norman drops these collections for Common Valance shades.
+const ROMAN_COMMON_VALANCE_EXCLUDED_CATEGORIES = new Set(["Bali", "Scarlett"]);
+
+export function getRomanFoldStylesFor(shadeType: string | null | undefined): readonly string[] {
+  return shadeType === "Day & Night" || shadeType === "Common Valance"
+    ? ROMAN_FOLD_STYLES_LIMITED
+    : ROMAN_FOLD_STYLES;
+}
 
 export type RomanFabricPriceGroup = "group1" | "group2" | "group3";
 
@@ -1249,6 +1460,23 @@ export function formatRomanFabricColor(color: RomanFabricColor): string {
 }
 
 export const ROMAN_FABRIC_CATEGORY_NAMES = ROMAN_FABRIC_CATEGORIES.map((category) => category.name);
+
+// Collections offered for a given fold style + shade type, intersected with
+// the color catalog so we never offer a collection we can't price.
+export function getRomanFabricCategoryNamesFor(
+  foldStyle: string | null | undefined,
+  shadeType: string | null | undefined
+): string[] {
+  const styleList =
+    foldStyle && foldStyle in ROMAN_STYLE_FABRIC_CATEGORIES
+      ? ROMAN_STYLE_FABRIC_CATEGORIES[foldStyle as RomanFoldStyle]
+      : null;
+  let names = styleList ? [...styleList] : [...ROMAN_FABRIC_CATEGORY_NAMES];
+  if (shadeType === "Common Valance") {
+    names = names.filter((name) => !ROMAN_COMMON_VALANCE_EXCLUDED_CATEGORIES.has(name));
+  }
+  return names.filter((name) => ROMAN_FABRIC_CATEGORY_NAMES.includes(name));
+}
 
 export const ROMAN_ALL_FABRICS = ROMAN_FABRIC_CATEGORIES.flatMap((category) =>
   category.colors.map(formatRomanFabricColor)

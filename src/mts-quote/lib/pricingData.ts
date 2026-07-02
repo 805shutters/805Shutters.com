@@ -1142,6 +1142,14 @@ export interface MotorOption {
 }
 
 export const MOTORIZATION_OPTIONS: MotorOption[] = [
+  // Norman power sources as named on the Norman Roman Shades order form
+  // (aliases of the single-motor prices so the automatic surcharge lookup
+  // resolves the Roman quote builder's Power Source selections).
+  { name: "Rechargeable Battery (AC Charger)", price: 482, brand: "Norman" },
+  { name: "DC Low Voltage Hard Wire", price: 482, brand: "Norman" },
+  { name: "AC Adapter Plug-In", price: 482, brand: "Norman" },
+  { name: "Automate Li-Ion ARC (Rechargeable)", price: 682, brand: "Automate Home" },
+  { name: "Automate 12V DC Motor", price: 682, brand: "Automate Home" },
   // Norman
   { name: "Single Motor (AC Adapter)", price: 482, brand: "Norman" },
   { name: "Power Distribution Panel", price: 214, brand: "Norman" },

@@ -76,9 +76,28 @@ import {
   getRollerFabricPriceGroup,
   getRomanFabricPriceGroup,
   ROMAN_MOUNT_TYPES,
+  ROMAN_SHADE_TYPES,
   ROMAN_LIFT_SYSTEMS,
   ROMAN_VALANCES,
-  ROMAN_FABRIC_CATEGORY_NAMES,
+  ROMAN_VALANCE_RETURNS_INSIDE,
+  ROMAN_VALANCE_RETURNS_OUTSIDE,
+  ROMAN_CHAIN_TYPES,
+  ROMAN_CHAIN_COLORS,
+  ROMAN_CHAIN_LOCATIONS,
+  ROMAN_CHAIN_LENGTHS,
+  ROMAN_POLE_OPTIONS,
+  ROMAN_POLE_LENGTHS,
+  ROMAN_LININGS,
+  ROMAN_BACK_HEM_BARS,
+  ROMAN_HOLD_DOWNS,
+  ROMAN_MAGNET_COLORS,
+  ROMAN_POWER_SOURCES,
+  ROMAN_AUTOMATE_POWER_SOURCES,
+  ROMAN_REMOTES_NORMAN,
+  ROMAN_REMOTES_AUTOMATE,
+  ROMAN_BACK_SHADE_FABRICS,
+  getRomanFoldStylesFor,
+  getRomanFabricCategoryNamesFor,
   getRomanFabricCategoryForColor,
   getRomanFabricCategoryName,
   getRomanFabricCanonicalLabel,
@@ -481,6 +500,41 @@ function getAutomaticOptionSurcharges(
         "Smart Release"
       )
     );
+  }
+
+  if (productType === "Roman Shades") {
+    if (liftSystem === "SmartRelease") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(HONEYCOMB_SURCHARGES, "SmartRelease"),
+          "Control Type",
+          "SmartRelease"
+        )
+      );
+    }
+    if (String(opts.hold_downs || "") === "Magnetic") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROMAN_SURCHARGES, "Magnetic Hold Down"),
+          "Hold Down Brackets"
+        )
+      );
+    }
+    if (String(opts.lining || "") === "Blackout") {
+      appendSurcharge(
+        surcharges,
+        toAutomaticSurcharge(
+          productType,
+          findSurcharge(ROMAN_SURCHARGES, "Room Darkening Liner"),
+          "Lining",
+          "Blackout"
+        )
+      );
+    }
   }
 
   if (productType === "Honeycomb Shades" && liftSystem === "Top Down-Bottom Up") {
@@ -1121,10 +1175,20 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
     case "Roman Shades":
       return [
         "mount_type",
+        "shade_type",
         "lift_system",
-        "valance",
+        "json:chain_type",
+        "json:chain_location",
+        "json:chain_length",
+        "motor_type",
+        "remote_type",
+        "json:fold_style",
         "json:roman_fabric_category",
         "fabric",
+        "json:back_fabric",
+        "valance",
+        "json:valance_returns",
+        "json:lining",
       ].filter((field) => allFields.includes(field));
     case "Honeycomb Shades":
       return [
@@ -3690,6 +3754,173 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    // Roman Shades cascades — mirror Norman's dependency rules, but clear a
+    // dependent field only when its current value becomes invalid (Norman
+    // wipes style + fabric unconditionally; we keep what still fits).
+    if (productType === "Roman Shades" && field === "shade_type") {
+      const nextShadeType = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson };
+      let clearFabric = false;
+
+      const fold = String(nextJson.fold_style || "");
+      if (fold && !getRomanFoldStylesFor(nextShadeType).includes(fold)) {
+        nextJson.fold_style = null;
+      }
+      const category = String(nextJson.roman_fabric_category || "");
+      if (
+        category &&
+        !getRomanFabricCategoryNamesFor(String(nextJson.fold_style || ""), nextShadeType).includes(
+          category
+        )
+      ) {
+        nextJson.roman_fabric_category = null;
+        clearFabric = true;
+      }
+      if (nextShadeType !== "Day & Night") {
+        nextJson.back_fabric = null;
+        nextJson.back_hem_bar = null;
+      }
+
+      onUpdateFields({
+        shade_type: nextShadeType,
+        // Norman forces a valance on Common Valance shades.
+        ...(nextShadeType === "Common Valance" ? { valance: "Fabric Valance" } : {}),
+        ...(clearFabric ? { fabric: null } : {}),
+        options_json: clearFabric ? withoutProductColorDetails(nextJson) : nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "lift_system") {
+      const nextControl = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson };
+      if (!(nextControl === "Continuous Cord Loop" || nextControl === "SmartRelease")) {
+        nextJson.chain_type = null;
+        nextJson.chain_color = null;
+        nextJson.chain_location = null;
+        nextJson.chain_length = null;
+      }
+      if (nextControl !== "Cordless") {
+        nextJson.poles = null;
+        nextJson.pole_length = null;
+      }
+      if (nextControl !== "Motorized") {
+        nextJson.hub_required = null;
+      }
+      onUpdateFields({
+        lift_system: nextControl,
+        motor_type: nextControl === "Motorized" ? design?.motor_type || null : null,
+        remote_type: nextControl === "Motorized" ? design?.remote_type || null : null,
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "json:fold_style") {
+      const nextStyle = typeof value === "string" ? value : null;
+      const nextJson: Record<string, unknown> = { ...currentJson, fold_style: nextStyle };
+      const category = String(nextJson.roman_fabric_category || "");
+      const allowed = getRomanFabricCategoryNamesFor(
+        nextStyle,
+        design?.shade_type || null
+      );
+      if (category && !allowed.includes(category)) {
+        nextJson.roman_fabric_category = null;
+        onUpdateFields({
+          fabric: null,
+          options_json: withoutProductColorDetails(nextJson),
+        });
+      } else {
+        onUpdateFields({ options_json: nextJson });
+      }
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "motor_type") {
+      const nextSource = typeof value === "string" ? value : null;
+      const remotes = nextSource
+        ? ROMAN_AUTOMATE_POWER_SOURCES.has(nextSource)
+          ? ROMAN_REMOTES_AUTOMATE
+          : ROMAN_REMOTES_NORMAN
+        : [];
+      const keepRemote =
+        design?.remote_type && (remotes as readonly string[]).includes(design.remote_type);
+      onUpdateFields({
+        motor_type: nextSource,
+        ...(keepRemote ? {} : { remote_type: null }),
+        ...(nextSource === "AutoWand"
+          ? { options_json: { ...currentJson, hub_required: null } }
+          : {}),
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "mount_type") {
+      const nextMount = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson };
+      if (nextMount !== "Outside Mount") {
+        nextJson.hold_downs = null;
+        nextJson.magnet_color = null;
+        // Pleated returns are an outside-mount option at Norman.
+        if (nextJson.valance_returns === "Pleated Returns") nextJson.valance_returns = null;
+      }
+      // Inside Mount + Continuous Cord Loop is standard chain length only.
+      if (
+        nextMount === "Inside Mount" &&
+        design?.lift_system === "Continuous Cord Loop" &&
+        nextJson.chain_length &&
+        nextJson.chain_length !== "Standard"
+      ) {
+        nextJson.chain_length = "Standard";
+      }
+      onUpdateFields({ mount_type: nextMount, options_json: nextJson });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "valance") {
+      const nextValance = typeof value === "string" ? value : null;
+      onUpdateFields({
+        valance: nextValance,
+        ...(nextValance !== "Fabric Valance"
+          ? { options_json: { ...currentJson, valance_returns: null } }
+          : {}),
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "json:chain_type") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          chain_type: value,
+          ...(value === "Standard (Plastic)" ? {} : { chain_color: null }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "json:poles") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          poles: value,
+          ...(value === "Pole with Attachment" ? {} : { pole_length: null }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "json:hold_downs") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          hold_downs: value,
+          ...(value === "Magnetic" ? {} : { magnet_color: null }),
+        },
+      });
+      return;
+    }
+
     if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
       let nextJson = withoutProductColorDetails(currentJson);
       const jsonKey = getJsonFieldKey(field);
@@ -3859,7 +4090,23 @@ function ShadesAndBlindsOptions({
       }
 
       case "Roman Shades": {
-        const liftSystem = getFieldValue(design, "lift_system");
+        // Mirrors the Norman Roman Shades order form flow — see
+        // docs/norman-roman-shades-order-map.md for the cascade source.
+        const opts = (design?.options_json as Record<string, unknown>) || {};
+        const mountType = getFieldValue(design, "mount_type");
+        const shadeType = getFieldValue(design, "shade_type");
+        const controlType = getFieldValue(design, "lift_system");
+        const foldStyle = String(opts.fold_style || "");
+        const chainType = String(opts.chain_type || "");
+        const poles = String(opts.poles || "");
+        const powerSource = getFieldValue(design, "motor_type");
+        const valance = getFieldValue(design, "valance");
+        const holdDowns = String(opts.hold_downs || "");
+        const isDayNight = shadeType === "Day & Night";
+        const isCommonValance = shadeType === "Common Valance";
+        const isChainControl =
+          controlType === "Continuous Cord Loop" || controlType === "SmartRelease";
+
         const options: GridOption[] = [
           {
             key: "mount",
@@ -3869,63 +4116,201 @@ function ShadesAndBlindsOptions({
             options: ROMAN_MOUNT_TYPES,
           },
           {
-            key: "lift",
-            label: "Lift System",
+            key: "shade_type",
+            label: "Shade Type",
+            field: "shade_type",
+            type: "buttons",
+            options: ROMAN_SHADE_TYPES,
+          },
+          {
+            key: "control",
+            label: "Control Type",
             field: "lift_system",
             type: "buttons",
             options: ROMAN_LIFT_SYSTEMS,
           },
-          {
-            key: "valance",
-            label: "Valance",
-            field: "valance",
-            type: "select",
-            options: ROMAN_VALANCES,
-          },
-          {
-            key: "roman_fabric_category",
-            label: "Fabric Category",
-            field: "json:roman_fabric_category",
-            type: "select",
-            options: ROMAN_FABRIC_CATEGORY_NAMES,
-          },
-          {
-            key: "roman_fabric_color",
-            label: "Fabric Color",
-            field: "fabric",
-            type: "select",
-            options: [] as readonly string[],
-          },
         ];
 
-        // Show motorization options if Motorized is selected
-        if (liftSystem === "Motorized") {
+        // Chain controls — Continuous Cord Loop and SmartRelease only.
+        if (isChainControl) {
+          options.push({
+            key: "chain_type",
+            label: "Chain Type",
+            field: "json:chain_type",
+            type: "buttons",
+            options: ROMAN_CHAIN_TYPES,
+          });
+          if (chainType === "Standard (Plastic)") {
+            options.push({
+              key: "chain_color",
+              label: "Chain Color",
+              field: "json:chain_color",
+              type: "buttons",
+              options: ROMAN_CHAIN_COLORS,
+            });
+          }
+          options.push({
+            key: "chain_location",
+            label: "Chain Location",
+            field: "json:chain_location",
+            type: "buttons",
+            options: ROMAN_CHAIN_LOCATIONS,
+          });
+          // Norman: Inside Mount + Continuous Cord Loop is standard-length only.
+          const standardOnly =
+            controlType === "Continuous Cord Loop" && mountType === "Inside Mount";
+          options.push({
+            key: "chain_length",
+            label: "Chain Length",
+            field: "json:chain_length",
+            type: "select",
+            options: standardOnly ? (["Standard"] as readonly string[]) : ROMAN_CHAIN_LENGTHS,
+          });
+        }
+
+        // Cordless pole options.
+        if (controlType === "Cordless") {
+          options.push({
+            key: "poles",
+            label: "Poles",
+            field: "json:poles",
+            type: "select",
+            options: ROMAN_POLE_OPTIONS,
+          });
+          if (poles === "Pole with Attachment") {
+            options.push({
+              key: "pole_length",
+              label: "Pole Length",
+              field: "json:pole_length",
+              type: "buttons",
+              options: ROMAN_POLE_LENGTHS,
+            });
+          }
+        }
+
+        // Motorization — power source drives which remotes/hubs apply.
+        if (controlType === "Motorized") {
           options.push({
             key: "motor_type",
-            label: "Motor Type",
+            label: "Power Source",
             field: "motor_type",
             type: "select",
-            options: MOTORIZATION_OPTIONS.map((m) => m.name) as readonly string[],
+            options: ROMAN_POWER_SOURCES,
           });
+          if (powerSource && powerSource !== "AutoWand") {
+            const isAutomate = ROMAN_AUTOMATE_POWER_SOURCES.has(powerSource);
+            options.push({
+              key: "remote_type",
+              label: isAutomate ? "Remote / Wall Switch" : "Remote Type",
+              field: "remote_type",
+              type: "select",
+              options: isAutomate ? ROMAN_REMOTES_AUTOMATE : ROMAN_REMOTES_NORMAN,
+            });
+            options.push({
+              key: "hub_required",
+              label: "Hub Required",
+              field: "json:hub_required",
+              type: "yes-no",
+              noFirst: true,
+            });
+          }
+        }
+
+        // Shade style filters the available fabric collections.
+        options.push({
+          key: "fold_style",
+          label: "Shade Style",
+          field: "json:fold_style",
+          type: "select",
+          options: getRomanFoldStylesFor(shadeType),
+        });
+        options.push({
+          key: "roman_fabric_category",
+          label: "Fabric Category",
+          field: "json:roman_fabric_category",
+          type: "select",
+          options: getRomanFabricCategoryNamesFor(foldStyle, shadeType),
+        });
+        options.push({
+          key: "roman_fabric_color",
+          label: isDayNight ? "Front Shade Fabric" : "Fabric Color",
+          field: "fabric",
+          type: "select",
+          options: [] as readonly string[],
+        });
+
+        // Day & Night adds the back roller shade.
+        if (isDayNight) {
           options.push({
-            key: "hub_required",
-            label: "Hub Required",
-            field: "json:hub_required",
-            type: "yes-no",
-            noFirst: true,
-          });
-          options.push({
-            key: "remote_type",
-            label: "Remote Type",
-            field: "remote_type",
+            key: "back_fabric",
+            label: "Back Shade Fabric",
+            field: "json:back_fabric",
             type: "select",
-            options: [
-              "15-Channel Remote",
-              "5-Channel Wall Switch",
-              "SmartDial Remote",
-              "Basic Remote",
-            ] as readonly string[],
+            options: ROMAN_BACK_SHADE_FABRICS,
           });
+          options.push({
+            key: "back_hem_bar",
+            label: "Back Shade Hem Bar",
+            field: "json:back_hem_bar",
+            type: "buttons",
+            options: ROMAN_BACK_HEM_BARS,
+          });
+        }
+
+        // Valance — Common Valance shades must have one (Norman forces Yes).
+        const valanceChoices = isCommonValance
+          ? (["Fabric Valance"] as readonly string[])
+          : ROMAN_VALANCES;
+        options.push({
+          key: "valance",
+          label: "Valance",
+          field: "valance",
+          type: "select",
+          // Keep legacy stored values selectable so old quotes still render.
+          options:
+            valance && !valanceChoices.includes(valance)
+              ? ([...valanceChoices, valance] as readonly string[])
+              : valanceChoices,
+        });
+        if (valance === "Fabric Valance") {
+          options.push({
+            key: "valance_returns",
+            label: "Valance Returns",
+            field: "json:valance_returns",
+            type: "select",
+            options:
+              mountType === "Outside Mount"
+                ? ROMAN_VALANCE_RETURNS_OUTSIDE
+                : ROMAN_VALANCE_RETURNS_INSIDE,
+          });
+        }
+
+        options.push({
+          key: "lining",
+          label: "Lining",
+          field: "json:lining",
+          type: "buttons",
+          options: ROMAN_LININGS,
+        });
+
+        // Hold downs are an outside-mount option (magnetic catch).
+        if (mountType === "Outside Mount") {
+          options.push({
+            key: "hold_downs",
+            label: "Hold Down Brackets",
+            field: "json:hold_downs",
+            type: "buttons",
+            options: ROMAN_HOLD_DOWNS,
+          });
+          if (holdDowns === "Magnetic") {
+            options.push({
+              key: "magnet_color",
+              label: "Magnet Catch Color",
+              field: "json:magnet_color",
+              type: "select",
+              options: ROMAN_MAGNET_COLORS,
+            });
+          }
         }
 
         return options;
