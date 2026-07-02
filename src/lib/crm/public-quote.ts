@@ -34,6 +34,12 @@ type CrmActor = { email: string; userId?: string };
 
 const BUSINESS_NAME = "805 Shutters";
 export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
+export const SOLD_QUOTE_CONTACT_SMS_RECIPIENT = "805-298-5555" as const;
+
+type SignedShopSmsContact = {
+  customerPhone?: string | null;
+  customerAddress?: string | null;
+};
 
 export type PublicQuoteLine = {
   id: string;
@@ -538,12 +544,39 @@ export function soldQuoteShopSmsRecipients(): string[] {
   return [...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS];
 }
 
-export function buildSignedShopSms(customerName: string, total: number, depositAmount: number): string {
+function optionalSmsLine(label: string, value?: string | null): string | null {
+  const text = value?.trim();
+  return text ? `${label}: ${text}` : null;
+}
+
+export function buildSignedShopSms(
+  customerName: string,
+  total: number,
+  depositAmount: number,
+  contact: SignedShopSmsContact = {},
+): string {
   return [
     `Customer Name: ${customerName}`,
     `Total Sale Amount: ${money(total)}`,
     `Deposit Amount: ${money(depositAmount)}`,
-  ].join("\n");
+    optionalSmsLine("Customer Phone", contact.customerPhone),
+    optionalSmsLine("Customer Address", contact.customerAddress),
+  ].filter((line): line is string => Boolean(line)).join("\n");
+}
+
+export function buildSignedShopSmsForRecipient(
+  recipient: string,
+  customerName: string,
+  total: number,
+  depositAmount: number,
+  contact: SignedShopSmsContact = {},
+): string {
+  return buildSignedShopSms(
+    customerName,
+    total,
+    depositAmount,
+    recipient === SOLD_QUOTE_CONTACT_SMS_RECIPIENT ? contact : {},
+  );
 }
 export function buildSignedCustomerSms(customerName: string): string {
   return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Reply with any questions.`;
@@ -826,6 +859,10 @@ export async function acceptPublicQuote(
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
   const soldSync = await syncSoldBookkeeping(supabase, quote, soldTotal);
   const customerPhone = soldSync.customerPhone;
+  const shopSmsContact: SignedShopSmsContact = {
+    customerPhone: quote.customer_phone || customerPhone,
+    customerAddress: quote.customer_address || soldSync.job?.address || null,
+  };
 
   await syncSignedQuoteArtifacts(
     supabase,
@@ -854,7 +891,10 @@ export async function acceptPublicQuote(
     // Notify the required sold-quote recipients, then customer.
     // Best-effort; never blocks signing.
     for (const num of soldQuoteShopSmsRecipients()) {
-      await sendSms({ to: num, body: buildSignedShopSms(printedName, soldTotal, signedPub.depositDue) });
+      await sendSms({
+        to: num,
+        body: buildSignedShopSmsForRecipient(num, printedName, soldTotal, signedPub.depositDue, shopSmsContact),
+      });
     }
     if (customerPhone) {
       await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });

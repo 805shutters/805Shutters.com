@@ -4,8 +4,10 @@ import {
   describeDesign,
   buildQuoteShareSms,
   buildSignedShopSms,
+  buildSignedShopSmsForRecipient,
   buildSignedCustomerSms,
   REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS,
+  SOLD_QUOTE_CONTACT_SMS_RECIPIENT,
   soldQuoteShopSmsRecipients,
   formatDimensions,
   expandPublicQuoteLine,
@@ -137,6 +139,28 @@ describe("signed SMS copy", () => {
         "Deposit Amount: $2,125.00",
       ].join("\n")
     );
+  });
+  it("primary shop recipient gets customer phone and address", () => {
+    const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {
+      customerPhone: "805-555-1212",
+      customerAddress: "123 Main St, Ventura, CA",
+    });
+    expect(msg).toBe(
+      [
+        "Customer Name: Jane Smith",
+        "Total Sale Amount: $4,250.00",
+        "Deposit Amount: $2,125.00",
+        "Customer Phone: 805-555-1212",
+        "Customer Address: 123 Main St, Ventura, CA",
+      ].join("\n")
+    );
+  });
+  it("other shop recipients keep the base sale fields only", () => {
+    const msg = buildSignedShopSmsForRecipient("805-630-0848", "Jane Smith", 4250, 2125, {
+      customerPhone: "805-555-1212",
+      customerAddress: "123 Main St, Ventura, CA",
+    });
+    expect(msg).toBe(buildSignedShopSms("Jane Smith", 4250, 2125));
   });
   it("shop sale SMS always includes the required recipients", () => {
     expect(soldQuoteShopSmsRecipients()).toEqual([...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS]);
