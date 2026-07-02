@@ -20,6 +20,7 @@ export const bookingSlotTimes = Array.from(
   }
 );
 export const fallbackBookingOwner = "Unassigned";
+export const sameDayBookingLeadTimeMinutes = 4 * 60;
 
 type SupabaseQueryError = {
   code?: string;
@@ -44,6 +45,7 @@ export type BookingAvailabilityOptions = {
   appointmentDurationMinutes?: number;
   travelPoint?: BookingGeoPoint | null;
   maxTravelMiles?: number;
+  now?: Date;
 };
 
 function formatParts(date: Date) {
@@ -114,6 +116,16 @@ function addMinutes(date: Date, minutes: number) {
 function appointmentDuration(options: BookingAvailabilityOptions = {}) {
   const duration = Number(options.appointmentDurationMinutes || bookingSlotDurationMinutes);
   return Number.isFinite(duration) && duration > 0 ? duration : bookingSlotDurationMinutes;
+}
+
+function currentBookingTime(options: BookingAvailabilityOptions = {}) {
+  return options.now instanceof Date && Number.isFinite(options.now.getTime()) ? options.now : new Date();
+}
+
+function meetsSameDayLeadTime(date: string, slotStart: Date, options: BookingAvailabilityOptions = {}) {
+  const now = currentBookingTime(options);
+  if (date !== losAngelesDateString(now)) return true;
+  return slotStart.getTime() - now.getTime() >= sameDayBookingLeadTimeMinutes * 60 * 1000;
 }
 
 export function isAvailabilitySlotsMissing(error: SupabaseQueryError) {
@@ -235,7 +247,7 @@ export function buildBookingAvailability(
 ) {
   const [year, monthNumber] = month.split("-").map(Number);
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
-  const today = losAngelesDateString();
+  const today = losAngelesDateString(currentBookingTime(options));
   // Published slots only RESTRICT availability when some exist for the month. An
   // empty result (a future month no rep has published yet) must not read as
   // "nothing bookable" — fall through to the working-hours default instead, so
@@ -252,10 +264,13 @@ export function buildBookingAvailability(
     const slots = bookingSlotTimes.map((time) => {
       const start = zonedTimeToUtc(date, time);
       const end = addMinutes(start, durationMinutes);
+      const hasLeadTime = meetsSameDayLeadTime(date, start, options);
       const available = usePublishedSlots
         ? !isPast &&
+          hasLeadTime &&
           repsFreeForWindow(ownersOfferingSlot(availabilitySlots, start, end), start, end, events, options).length > 0
         : !isPast &&
+          hasLeadTime &&
           !isSunday &&
           fitsFallbackWorkingDay(date, end) &&
           !hasOverlap(events, start, end) &&
@@ -310,6 +325,8 @@ export function freeRepsForSlot(
 ) {
   const start = zonedTimeToUtc(date, time);
   const end = addMinutes(start, appointmentDuration(options));
+
+  if (!meetsSameDayLeadTime(date, start, options)) return [];
 
   if (!availabilitySlots || availabilitySlots.length === 0) {
     return dayOfWeek(date) !== 0 &&

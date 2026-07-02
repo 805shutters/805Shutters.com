@@ -115,6 +115,31 @@ describe("buildBookingAvailability", () => {
     expect(sunday?.available).toBe(false);
   });
 
+  it("requires four hours of lead time for same-day fallback slots", () => {
+    const availability = buildBookingAvailability("2030-06", [], undefined, {
+      now: zonedTimeToUtc("2030-06-03", "09:30")
+    });
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+    const tuesday = availability.days.find((day) => day.date === "2030-06-04");
+
+    expect(monday?.slots.find((slot) => slot.time === "13:00")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "13:30")?.available).toBe(true);
+    expect(tuesday?.slots.find((slot) => slot.time === "08:00")?.available).toBe(true);
+  });
+
+  it("requires four hours of lead time for same-day published CRM availability", () => {
+    const availability = buildBookingAvailability(
+      "2030-06",
+      [],
+      [publishedSlot("2030-06-03", "13:00"), publishedSlot("2030-06-03", "13:30")],
+      { now: zonedTimeToUtc("2030-06-03", "09:30") }
+    );
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "13:00")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "13:30")?.available).toBe(true);
+  });
+
   it("requires a continuous open window for longer appointments", () => {
     const availability = buildBookingAvailability(
       "2030-06",
@@ -191,6 +216,14 @@ describe("freeRepsForSlot", () => {
   it("treats an empty published-slots month like the working-hours fallback", () => {
     expect(freeRepsForSlot("2030-06-03", "09:00", [], [])).toEqual(["Unassigned"]);
     expect(freeRepsForSlot("2030-06-02", "09:00", [], [])).toEqual([]);
+  });
+
+  it("does not return reps for same-day slots inside the four-hour lead time", () => {
+    const now = zonedTimeToUtc("2030-06-03", "09:30");
+    const slots = [publishedSlot("2030-06-03", "13:00"), publishedSlot("2030-06-03", "13:30")];
+
+    expect(freeRepsForSlot("2030-06-03", "13:00", slots, [], { now })).toEqual([]);
+    expect(freeRepsForSlot("2030-06-03", "13:30", slots, [], { now })).toEqual(["Jessica"]);
   });
 
   it("filters out only the rep whose same-day route would exceed 20 miles", () => {
