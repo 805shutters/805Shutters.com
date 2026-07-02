@@ -4415,6 +4415,21 @@ body.qb-fullscreen .crm-app-shell {
   white-space: nowrap;
 }
 
+.crm-customer-pay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+button.crm-customer-action-link {
+  cursor: pointer;
+}
+
+.crm-customer-action-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .crm-customer-actions-stack .crm-customer-delete-button {
   min-height: 22px;
   padding: 3px 6px;

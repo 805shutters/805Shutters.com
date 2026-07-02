@@ -64,6 +64,7 @@ type CrmTab = "command" | "tracking" | "quotes" | "customers" | "jobs" | "bookke
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
+type PaymentLinkChannel = "email" | "sms";
 type PartnerPaymentRequest = {
   person: CrmPaymentPerson;
   paid_on?: string | null;
@@ -1383,6 +1384,64 @@ export function CrmApp({
     }
   }
 
+  async function sendCustomerFilePaymentLink(quote: CrmQuote, channel: PaymentLinkChannel) {
+    if (!session) return;
+    const label = quote.quote_number || quote.customer_name || "quote";
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{
+        url: string;
+        sms: { sent: boolean; skipped?: string; error?: string };
+        email: { sent: boolean; skipped?: string; error?: string };
+      }>(session, `/api/crm/quotes/${quote.id}/payment-link`, {
+        method: "POST",
+        body: JSON.stringify({
+          channels: {
+            email: channel === "email",
+            sms: channel === "sms"
+          }
+        })
+      });
+      if (channel === "email") {
+        setMessage(result.email.sent ? `Payment link emailed for ${label}.` : `Payment email skipped for ${label}: ${result.email.error || result.email.skipped || "not sent"}.`);
+      } else {
+        setMessage(result.sms.sent ? `Payment link texted for ${label}.` : `Payment text skipped for ${label}: ${result.sms.error || result.sms.skipped || "not sent"}.`);
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Payment link could not be sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function copyCustomerFilePaymentLink(quote: CrmQuote) {
+    if (!session) return;
+    const label = quote.quote_number || quote.customer_name || "quote";
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{ url: string }>(session, `/api/crm/quotes/${quote.id}/share`, {
+        method: "POST"
+      });
+      const paymentUrl = `${result.url.split("#")[0]}#payment`;
+      try {
+        await navigator.clipboard.writeText(paymentUrl);
+        setMessage(`Payment link copied for ${label}.`);
+      } catch {
+        setMessage(`Payment link ready for ${label}: ${paymentUrl}`);
+      }
+      await refresh();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Payment link could not be copied.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function updateQuote(event: FormEvent<HTMLFormElement>, quote: CrmQuote) {
     event.preventDefault();
     if (!session) return;
@@ -2197,6 +2256,8 @@ export function CrmApp({
           focusCustomer={focusCustomer}
           onFocusHandled={() => setFocusCustomer(null)}
           onDelete={deleteCustomerFile}
+          onSendPaymentLink={sendCustomerFilePaymentLink}
+          onCopyPaymentLink={copyCustomerFilePaymentLink}
           busy={busy}
         />
       ) : null}
@@ -2327,6 +2388,8 @@ export function CrmApp({
               focusCustomer={focusCustomer}
               onFocusHandled={() => setFocusCustomer(null)}
               onDelete={deleteCustomerFile}
+              onSendPaymentLink={sendCustomerFilePaymentLink}
+              onCopyPaymentLink={copyCustomerFilePaymentLink}
               busy={busy}
             />
           </div>
@@ -6366,12 +6429,63 @@ function CustomerFileCell({
   );
 }
 
+function CustomerFilePaymentActions({
+  quote,
+  busy,
+  onSendPaymentLink,
+  onCopyPaymentLink
+}: {
+  quote: CrmQuote;
+  busy: boolean;
+  onSendPaymentLink?: (quote: CrmQuote, channel: PaymentLinkChannel) => void;
+  onCopyPaymentLink?: (quote: CrmQuote) => void;
+}) {
+  if (!onSendPaymentLink && !onCopyPaymentLink) return null;
+  const label = quote.quote_number || "quote";
+  return (
+    <div className="crm-customer-pay-actions" role="group" aria-label={`Payment link actions for ${label}`}>
+      {onSendPaymentLink ? (
+        <>
+          <button
+            type="button"
+            className="crm-customer-action-link"
+            disabled={busy}
+            onClick={() => onSendPaymentLink(quote, "email")}
+          >
+            Email pay link
+          </button>
+          <button
+            type="button"
+            className="crm-customer-action-link"
+            disabled={busy}
+            onClick={() => onSendPaymentLink(quote, "sms")}
+          >
+            Text pay link
+          </button>
+        </>
+      ) : null}
+      {onCopyPaymentLink ? (
+        <button
+          type="button"
+          className="crm-customer-action-link"
+          disabled={busy}
+          onClick={() => onCopyPaymentLink(quote)}
+        >
+          Copy pay link
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function CustomerFilesView({
   files,
   activeStatus,
   focusCustomer,
   onFocusHandled,
   onDelete,
+  onSendPaymentLink,
+  onCopyPaymentLink,
   busy = false
 }: {
   files: CrmCustomerFile[];
@@ -6379,6 +6493,8 @@ function CustomerFilesView({
   focusCustomer?: string | null;
   onFocusHandled?: () => void;
   onDelete?: (file: CrmCustomerFile) => void;
+  onSendPaymentLink?: (quote: CrmQuote, channel: PaymentLinkChannel) => void;
+  onCopyPaymentLink?: (quote: CrmQuote) => void;
   busy?: boolean;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
@@ -6788,6 +6904,12 @@ function CustomerFilesView({
                           Open quote
                         </a>
                       ) : null}
+                      <CustomerFilePaymentActions
+                        quote={quote}
+                        busy={busy}
+                        onSendPaymentLink={onSendPaymentLink}
+                        onCopyPaymentLink={onCopyPaymentLink}
+                      />
                     </Fragment>
                   ))}
                 </CustomerFileCell>
