@@ -1048,8 +1048,9 @@ export function buildDashboardData({
 
   const baseBookkeepingRows = buildBookkeepingRows({ quotes, entries, payments, credits, expenses });
   const liveJobs = projectLiveJobStatuses(jobs, baseBookkeepingRows);
-  const bookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs);
-  const liveQuotes = projectLiveQuoteStatuses(quotes, bookkeepingRows);
+  const statusBookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs);
+  const liveQuotes = projectLiveQuoteStatuses(quotes, statusBookkeepingRows);
+  const bookkeepingRows = projectBookkeepingRowContacts(statusBookkeepingRows, liveJobs, liveQuotes, customers);
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
   const accountability = buildAccountabilityQueue(bookkeepingRows);
   const kenPayoff = buildKenPayoffSummary({
@@ -1125,6 +1126,35 @@ function projectLiveQuoteStatuses(quotes: CrmQuote[], rows: CrmBookkeepingRow[])
   return quotes.map((quote) => {
     const liveStatus = statusByQuoteId.get(quote.id) || quote.status;
     return liveStatus === quote.live_status ? quote : { ...quote, live_status: liveStatus };
+  });
+}
+
+function projectBookkeepingRowContacts(
+  rows: CrmBookkeepingRow[],
+  jobs: CrmJob[],
+  quotes: CrmQuote[],
+  customers: CrmCustomer[]
+) {
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
+  const customerByName = new Map(
+    customers.map((customer) => [
+      normalizeCustomerKey(customer.normalized_name || customer.display_name),
+      customer
+    ])
+  );
+
+  return rows.map((row) => {
+    const job = row.jobId ? jobById.get(row.jobId) : null;
+    const quote = row.quoteId ? quoteById.get(row.quoteId) : null;
+    const customer = customerByName.get(normalizeCustomerKey(row.customerName));
+    const customerPhone =
+      optionalText(job?.phone) ||
+      optionalText(quote?.customer_phone) ||
+      optionalText(row.customerPhone) ||
+      optionalText(customer?.phone);
+
+    return customerPhone === row.customerPhone ? row : { ...row, customerPhone };
   });
 }
 

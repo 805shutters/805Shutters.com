@@ -85,6 +85,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     quoteId: null,
     jobId: "job-1",
     customerName: "Test Customer",
+    customerPhone: null,
     quoteNumber: null,
     soldDate: "2026-06-01",
     total: 1000,

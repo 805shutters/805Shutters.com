@@ -61,6 +61,7 @@ export function buildCustomerFiles({
     file.bookkeepingRows.push(row);
     file.lifetimeValue += Number(row.total) || 0;
     file.openBalance += Math.max(Number(row.balance) || 0, 0);
+    file.phone ||= row.customerPhone;
     file.latestStatus = effectiveBookkeepingStatus(row);
     file.latestSoldDate = newestDate(file.latestSoldDate, row.soldDate);
     if (row.notes) file.notes.push(row.notes);
@@ -120,6 +121,7 @@ export function buildCustomerFiles({
     const file = ensureFile(fileMap, key, quote.customer_name || job?.customer_name || "Linked customer");
     pushUnique(file.quotes, quote.id, quote);
     if (job) pushUnique(file.jobs, job.id, job);
+    file.phone ||= quote.customer_phone || job?.phone || null;
     if (!file.bookkeepingRows.length) file.latestStatus = quote.live_status || quote.status;
     file.latestSoldDate = newestDate(file.latestSoldDate, quote.sold_at || quote.approved_at || quote.created_at);
     if (quote.notes) file.notes.push(quote.notes);

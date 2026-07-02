@@ -420,10 +420,54 @@ describe("buildDashboardData", () => {
     expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.latestStatus).toBe("closed");
     expect(data.customerFiles.find((file) => file.customerName === "Paid Status")?.latestStatus).toBe("invoiced");
     expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.latestStatus).toBe("sold");
+    expect(data.bookkeepingRows.find((item) => item.id === "quote-sold-open")?.customerPhone).toBe("8055551212");
+    expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.phone).toBe("8055551212");
     expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.lifetimeValue).toBe(1000);
     expect(data.customerFiles.find((file) => file.customerName === "Sold Open")?.openBalance).toBe(1000);
     expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.lifetimeValue).toBe(1000);
     expect(data.customerFiles.find((file) => file.customerName === "Paid Balance")?.openBalance).toBe(0);
+  });
+
+  it("projects customer-table phone numbers onto standalone bookkeeping rows", () => {
+    const data = buildDashboardData({
+      jobs: [],
+      quotes: [],
+      events: [],
+      customers: [
+        {
+          id: "customer-legacy",
+          created_at: "2026-06-20T00:00:00.000Z",
+          updated_at: "2026-06-20T00:00:00.000Z",
+          source: "bookkeeping_import",
+          display_name: "Legacy Customer",
+          normalized_name: "legacy customer",
+          phone: "805-555-4343",
+          email: null,
+          address: null,
+          city: null,
+          first_sold_date: null,
+          latest_sold_date: null,
+          latest_status: null,
+          lifetime_value: 0,
+          open_balance: 0,
+          notes: null,
+          meta: {}
+        }
+      ],
+      products: [],
+      contracts: [],
+      entries: [bookkeepingEntry({ id: "entry-legacy", job_id: null, customer_name: "Legacy Customer" })],
+      payments: [],
+      credits: [],
+      expenses: [],
+      installationInvoiceEmails: [],
+      kenPayments: [],
+      openingBalance: 0,
+      payoffTarget: 500000
+    });
+
+    expect(data.bookkeepingRows.find((row) => row.id === "entry-legacy")?.customerPhone).toBe("805-555-4343");
+    expect(data.customerFiles.find((file) => file.customerName === "Legacy Customer")?.phone).toBe("805-555-4343");
   });
 });
 

@@ -75,6 +75,7 @@ export function buildBookkeepingRows({
   const expensesByEntryId = groupExpenses(expenses, "bookkeeping_entry_id");
   const expensesByQuoteId = groupExpenses(expenses, "quote_id");
   const expensesByJobId = groupExpenses(expenses, "job_id");
+  const quoteById = new Map(quotes.map((quote) => [quote.id, quote]));
   const activeEntries = entries.filter((entry) => !hasLedgerDeleteTombstone(entry.meta));
   const quoteMetadataEntries = activeEntries.filter((entry) => entry.source === "crm_quote" && entry.quote_id);
   const quoteMetadataByQuoteId = new Map(
@@ -117,7 +118,8 @@ export function buildBookkeepingRows({
       paymentsByEntryId.get(entry.id) || [],
       creditsToEntryId.get(entry.id) || [],
       creditsFromEntryId.get(entry.id) || [],
-      resolveExpenses({ entryId: entry.id, quoteId: entry.quote_id, jobId: entry.job_id })
+      resolveExpenses({ entryId: entry.id, quoteId: entry.quote_id, jobId: entry.job_id }),
+      entry.quote_id ? quoteById.get(entry.quote_id) || null : null
     )
   );
 
@@ -441,7 +443,8 @@ function buildEntryRow(
   payments: CrmBookkeepingPayment[],
   creditsIn: CrmBookkeepingCredit[],
   creditsOut: CrmBookkeepingCredit[],
-  expenses: CrmJobExpense[]
+  expenses: CrmJobExpense[],
+  linkedQuote: CrmQuote | null = null
 ): CrmBookkeepingRow {
   const total = Number(entry.total_amount) || 0;
   const depositPaid = sumPayments(payments.filter(isDepositPayment));
@@ -476,6 +479,7 @@ function buildEntryRow(
     quoteId: entry.quote_id,
     jobId: entry.job_id,
     customerName: entry.customer_name,
+    customerPhone: entryCustomerPhone(entry) || cleanOptionalText(linkedQuote?.customer_phone),
     quoteNumber: entry.imported_sheet_row ? `Sheet row ${entry.imported_sheet_row}` : null,
     soldDate: entry.sold_date,
     total,
@@ -578,6 +582,7 @@ function buildQuoteRow(
     quoteId: quote.id,
     jobId: quote.job_id,
     customerName: quote.customer_name || entry?.customer_name || "Linked job",
+    customerPhone: cleanOptionalText(quote.customer_phone) || (entry ? entryCustomerPhone(entry) : null),
     quoteNumber: quote.quote_number,
     soldDate,
     total,
@@ -621,6 +626,21 @@ function buildQuoteRow(
     expensesTotal,
     remakeTotal
   };
+}
+
+function cleanOptionalText(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
+function metadataPhone(meta: Record<string, unknown> | null | undefined) {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  return cleanOptionalText(meta.customer_phone) || cleanOptionalText(meta.customerPhone) || cleanOptionalText(meta.phone);
+}
+
+function entryCustomerPhone(entry: CrmBookkeepingEntry) {
+  return metadataPhone(entry.meta);
 }
 
 function groupPayments(payments: CrmBookkeepingPayment[], key: "bookkeeping_entry_id" | "quote_id") {

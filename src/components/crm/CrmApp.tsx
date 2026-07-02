@@ -463,18 +463,28 @@ function calendarEventAssignmentLabel(event: CrmCalendarEvent) {
   return cleanCalendarText(event.assigned_to) || "Unassigned";
 }
 
+function customerPhoneLine(phone: string | null | undefined) {
+  const cleanPhone = cleanCalendarText(phone);
+  return cleanPhone ? `Phone: ${cleanPhone}` : null;
+}
+
 function calendarEventDescriptionLines(event: CrmCalendarEvent) {
   const address = cleanCalendarText(event.customer_address || event.location);
   const city = cleanCalendarText(event.customer_city);
   const notes = cleanCalendarText(event.customer_notes || event.notes);
 
   return [
-    cleanCalendarText(event.customer_phone) ? `Phone: ${cleanCalendarText(event.customer_phone)}` : null,
+    customerPhoneLine(event.customer_phone),
     address ? `Address: ${address}` : null,
     city ? `City: ${city}` : null,
     cleanCalendarText(event.product_interest) ? `Product: ${cleanCalendarText(event.product_interest)}` : null,
     notes ? `Notes: ${notes}` : null
   ].filter((line): line is string => Boolean(line));
+}
+
+function calendarEventSecondaryDescriptionLines(event: CrmCalendarEvent) {
+  const phoneLine = customerPhoneLine(event.customer_phone);
+  return calendarEventDescriptionLines(event).filter((line) => line !== phoneLine);
 }
 
 function calendarEventDescriptionLabel(event: CrmCalendarEvent) {
@@ -3224,6 +3234,7 @@ function jobSearchValues(job: CrmJob) {
 function rowSearchValues(row: CrmBookkeepingRow) {
   return [
     row.customerName,
+    row.customerPhone,
     row.quoteNumber,
     row.source,
     row.soldDate,
@@ -5290,11 +5301,11 @@ function DrillDetailCard({
   const contactItems: Array<{ key: string; value: string; fallback: string; editor?: DrillInlineEditor }> = [
     {
       key: "phone",
-      value: file?.phone || job?.phone || "",
+      value: file?.phone || job?.phone || row?.customerPhone || "",
       fallback: "Phone pending",
       editor: canEditJob
         ? {
-            value: file?.phone || job?.phone || "",
+            value: file?.phone || job?.phone || row?.customerPhone || "",
             disabled: busy,
             ariaLabel: "Edit phone",
             onSave: (value) => saveJob({ phone: value.trim() }, "Phone updated.")
@@ -6488,6 +6499,7 @@ function CustomerFilesView({
                     <h3>{file.customerName}</h3>
                     <strong>{toCurrency(file.lifetimeValue)}</strong>
                   </div>
+                  <p className="crm-customer-phone-line">{file.phone || "Phone pending"}</p>
                   <p>{customerFileDetailLine([file.city, file.latestStatus || "Open"])}</p>
                   {onDelete ? (
                     <button
@@ -6676,6 +6688,7 @@ function CustomerFilesView({
                       <span>
                         {customerFileDetailLine([
                           job.product_interest,
+                          job.phone ? `Phone ${job.phone}` : null,
                           job.next_action ? `Next: ${job.next_action}` : null,
                           job.next_action_due ? `Due ${formatShortDate(job.next_action_due)}` : null,
                           job.appointment_start ? `Appt ${formatShortDate(job.appointment_start)}` : null,
@@ -6700,6 +6713,7 @@ function CustomerFilesView({
                           `Total ${toCurrency(quote.quote_total)}`,
                           `Deposit ${toCurrency(quote.deposit_required)}`,
                           `Balance ${toCurrency(quote.balance_due)}`,
+                          quote.customer_phone ? `Phone ${quote.customer_phone}` : null,
                           quote.sent_at ? `Sent ${formatShortDate(quote.sent_at)}` : null,
                           quote.sold_at ? `Sold ${formatShortDate(quote.sold_at)}` : null,
                           quote.ordered_at ? `Ordered ${formatShortDate(quote.ordered_at)}` : null,
@@ -6722,6 +6736,7 @@ function CustomerFilesView({
                       <span>
                         {customerFileDetailLine([
                           formatShortDate(row.soldDate),
+                          row.customerPhone ? `Phone ${row.customerPhone}` : null,
                           `Total ${toCurrency(row.total)}`,
                           `Paid ${toCurrency(row.paidTotal)}`,
                           `Balance ${toCurrency(row.balance)}`,
@@ -6806,7 +6821,7 @@ function SnapshotColumn({
       {rows.map((row) => (
         <article key={`${title}-${row.id}`}>
           <strong>{row.customerName}</strong>
-          <span>{row.manufacturerName || row.manufacturerOrderRef || formatShortDate(row.soldDate)}</span>
+          <span>{customerFileDetailLine([row.customerPhone, row.manufacturerName || row.manufacturerOrderRef || formatShortDate(row.soldDate)])}</span>
           <em>{row.balance > 0 ? toCurrency(row.balance) : bookkeepingStatusLabel(row)}</em>
         </article>
       ))}
@@ -8240,6 +8255,7 @@ function ReadOnlyBookkeepingSpreadsheet({
                     >
                       <td>
                         <strong>{row.customerName}</strong>
+                        <span className="crm-bookkeeping-customer-phone">{row.customerPhone || "Phone pending"}</span>
                         <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
                         <em className="crm-bookkeeping-status" data-status={bookkeepingStatusKey(row)}>
                           {bookkeepingStatusLabel(row)}
@@ -8569,6 +8585,7 @@ function BookkeepingSpreadsheet({
                   ) : (
                     <BookkeepingCellButton ariaLabel={`Edit customer and owner for ${row.customerName}`} onClick={() => openEdit(row, "customer")}>
                       <strong>{row.customerName}</strong>
+                      <span className="crm-bookkeeping-customer-phone">{row.customerPhone || "Phone pending"}</span>
                       <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
                       <em className="crm-bookkeeping-status" data-status={bookkeepingStatusKey(row)}>
                         {bookkeepingStatusLabel(row)}
@@ -9689,10 +9706,11 @@ function CalendarTimelineGrid({
         {events.map((event) => {
           const placement = calendarEventPlacement(event, days);
           if (!placement) return null;
-          const detailLines = calendarEventDescriptionLines(event);
+          const detailLines = calendarEventSecondaryDescriptionLines(event);
           const descriptionLabel = calendarEventDescriptionLabel(event);
           const canManage = canRescheduleCalendarEvent(event);
           const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
+          const customerPhone = cleanCalendarText(event.customer_phone);
 
           return (
             <article
@@ -9730,6 +9748,7 @@ function CalendarTimelineGrid({
                 <h3>{calendarEventCustomerLabel(event)}</h3>
                 {assignmentLabel ? <span className="crm-calendar-event-owner-badge">{assignmentLabel}</span> : null}
               </div>
+              {customerPhone ? <p className="crm-calendar-event-phone">{customerPhone}</p> : null}
               <div className="crm-calendar-event-details">
                 {detailLines.map((line) => (
                   <p key={line}>{line}</p>
@@ -9787,10 +9806,12 @@ function CalendarMonthGrid({
               <div className="crm-calendar-month-events">
                 {eventPreview.map((event) => {
                   const className = `crm-calendar-month-event ${calendarEventToneClassName(event)}`;
+                  const customerPhone = cleanCalendarText(event.customer_phone);
                   const preview = (
                     <>
                       <strong>{calendarTimeFormatter.format(new Date(event.start_at))}</strong>
                       <span>{calendarEventCustomerLabel(event)}</span>
+                      {customerPhone ? <em>{customerPhone}</em> : null}
                     </>
                   );
 
@@ -10192,8 +10213,9 @@ function CalendarAppointmentDetailModal({
   onCancel: (event: CrmCalendarEvent) => void;
 }) {
   const date = calendarEventDateValue(event);
-  const detailLines = calendarEventDescriptionLines(event);
+  const detailLines = calendarEventSecondaryDescriptionLines(event);
   const assignmentLabel = event.event_type === "block" ? "" : calendarEventAssignmentLabel(event);
+  const customerPhone = cleanCalendarText(event.customer_phone);
 
   return (
     <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-appointment-detail-title">
@@ -10212,6 +10234,7 @@ function CalendarAppointmentDetailModal({
           {formatCalendarLongDay(date)} - {calendarTimeFormatter.format(new Date(event.start_at))} -{" "}
           {calendarTimeFormatter.format(new Date(event.end_at))}
         </p>
+        {customerPhone ? <p className="crm-slot-phone-summary">Phone: {customerPhone}</p> : null}
         <div className="crm-appointment-detail-lines">
           {assignmentLabel ? <p>Scheduled for: {assignmentLabel}</p> : null}
           {detailLines.map((line) => (

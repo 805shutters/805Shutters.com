@@ -4197,6 +4197,12 @@ body.qb-fullscreen .crm-app-shell {
   line-height: 1.35;
 }
 
+.crm-customer-table-primary .crm-customer-phone-line {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 950;
+}
+
 .crm-customer-cell-list {
   display: grid;
   gap: 8px;
@@ -5335,6 +5341,15 @@ body.qb-fullscreen .crm-app-shell {
   min-width: 0;
 }
 
+.crm-calendar-event-phone {
+  margin: 0;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
 .crm-calendar-event-block p {
   margin: 0;
   color: inherit;
@@ -5497,7 +5512,8 @@ button.crm-calendar-month-event:focus-visible {
 }
 
 .crm-calendar-month-event strong,
-.crm-calendar-month-event span {
+.crm-calendar-month-event span,
+.crm-calendar-month-event em {
   min-width: 0;
   overflow: hidden;
   font-size: 10px;
@@ -5509,6 +5525,14 @@ button.crm-calendar-month-event:focus-visible {
 
 .crm-calendar-month-event strong {
   flex: 0 0 auto;
+}
+
+.crm-calendar-month-event em {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: inherit;
+  font-style: normal;
+  opacity: 0.78;
 }
 
 .crm-calendar-month-more {
@@ -6271,6 +6295,19 @@ button.crm-calendar-month-event:focus-visible {
   margin-top: 4px;
   color: var(--muted);
   font-size: 11px;
+}
+
+.crm-bookkeeping-table td span.crm-bookkeeping-customer-phone {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.crm-slot-phone-summary {
+  margin: -8px 0 14px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 950;
 }
 
 .crm-bookkeeping-table td span.crm-bookkeeping-balance-paid-cell {

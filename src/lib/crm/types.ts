@@ -381,6 +381,7 @@ export type CrmBookkeepingRow = {
   quoteId: string | null;
   jobId: string | null;
   customerName: string;
+  customerPhone: string | null;
   quoteNumber: string | null;
   soldDate: string | null;
   total: number;
