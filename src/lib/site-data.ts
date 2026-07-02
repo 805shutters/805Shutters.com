@@ -64,6 +64,8 @@ export const site = {
     "Oxnard",
     "Simi Valley",
     "Moorpark",
+    "Newbury Park",
+    "Westlake Village",
     "Ojai",
     "Santa Rosa Valley",
     "Port Hueneme",
@@ -82,7 +84,7 @@ export const ogDefaults = {
 } as const;
 
 export const images = {
-  hero: "/images/805-hero-window-treatments.png",
+  hero: "/images/805-hero-window-treatments.jpg",
   shutters:
     "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
   shades: "/images/805-portfolio-shades-bedroom.jpg",
@@ -253,6 +255,7 @@ const cityPages = [
   ["camarillo", "camarillo-ca", "Camarillo"],
   ["fillmore", "fillmore-ca", "Fillmore"],
   ["moorpark", "moorpark-ca", "Moorpark"],
+  ["newbury-park", "newbury-park-ca", "Newbury Park"],
   ["oak-park", "oak-park-ca", "Oak Park"],
   ["ojai", "ojai-ca", "Ojai"],
   ["oxnard", "oxnard-ca", "Oxnard"],
@@ -261,7 +264,8 @@ const cityPages = [
   ["santa-rosa-valley", "santa-rosa-valley-ca", "Santa Rosa Valley"],
   ["simi-valley", "simi-valley-ca", "Simi Valley"],
   ["thousand-oaks", "thousand-oaks-ca", "Thousand Oaks"],
-  ["ventura", "ventura-ca", "Ventura"]
+  ["ventura", "ventura-ca", "Ventura"],
+  ["westlake-village", "westlake-village-ca", "Westlake Village"]
 ] as const;
 
 // Major commercial hubs every commercial city/roller-shade page links to
@@ -415,7 +419,7 @@ const parentPages: SitePage[] = [
       {
         heading: "Local Shutter Service Areas",
         body:
-          "Our team works across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby Ventura County communities.",
+          "Our team works across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby Ventura County communities.",
         bullets: site.areas,
         links: [
           { label: "Shutters in Camarillo", href: "/shutters/camarillo/" },
@@ -1011,7 +1015,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Service Area",
         body:
-          "We serve Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities."
+          "We serve Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities."
       },
       {
         heading: "Start With A Free Consultation",
@@ -1063,7 +1067,7 @@ const supportPages: SitePage[] = [
           "Over 30 years of local experience",
           "Custom measuring and professional installation",
           "Shutters, shades, blinds, and commercial coverings in one place",
-          "Service across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby cities"
+          "Service across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby cities"
         ]
       },
       {
@@ -1160,7 +1164,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Do you serve my area?",
         body:
-          "805 Shutters serves Ventura County and nearby communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Oak Park, and Fillmore."
+          "805 Shutters serves Ventura County and nearby communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Oak Park, and Fillmore."
       },
       {
         heading: "Can you help compare shutters, shades, and blinds?",
@@ -1266,7 +1270,7 @@ const supportPages: SitePage[] = [
 ];
 
 const projectServiceArea =
-  "805 Shutters, Shades & Blinds serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities.";
+  "805 Shutters, Shades & Blinds serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities.";
 
 const projectCompanyProof =
   "805 Shutters, Shades & Blinds is a family-owned local business with over 30 years of experience measuring and installing custom shutters, shades, blinds, commercial roller shades, and window coverings across Ventura County and nearby communities.";
@@ -1693,7 +1697,7 @@ function windowCoveringCityGallery(city: string): NonNullable<SitePage["gallery"
       imageAlt: `Full-height cellular shades for a ${city} window covering project`
     },
     {
-      image: "/images/commercial-mode/commercial-small-office-roller-shades.png",
+      image: "/images/commercial-mode/commercial-small-office-roller-shades.jpg",
       imageAlt: `Commercial roller shades for a ${city} office window covering project`
     }
   ];
@@ -2129,7 +2133,7 @@ const priorityCityPageOverrides: Record<string, CityPageOverride> = {
       {
         question: "Who installs custom blinds in Ventura County?",
         answer:
-          "805 Shutters installs custom blinds across Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby communities."
+          "805 Shutters installs custom blinds across Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby communities."
       },
       {
         question: "What blind styles can I compare?",
@@ -2255,6 +2259,8 @@ const commercialCityContext: Record<string, string> = {
     "downtown Fillmore storefronts, citrus and agricultural packing facilities, and small professional offices",
   Moorpark:
     "Moorpark commerce-center offices, light-industrial space along the 118, and neighborhood retail and professional suites",
+  "Newbury Park":
+    "Newbury Park biotech and business parks along Rancho Conejo, professional offices, and retail centers off the 101",
   "Oak Park":
     "Oak Park professional offices, retail centers, and medical and dental suites near the Thousand Oaks border",
   Ojai:
@@ -2272,7 +2278,9 @@ const commercialCityContext: Record<string, string> = {
   "Thousand Oaks":
     "Thousand Oaks corporate campuses, biotech and professional offices along the 101, retail centers, and medical buildings near Los Robles",
   Ventura:
-    "downtown Ventura storefronts, Main Street retail, harbor-area businesses, and county, professional, and medical offices"
+    "downtown Ventura storefronts, Main Street retail, harbor-area businesses, and county, professional, and medical offices",
+  "Westlake Village":
+    "Westlake Village corporate campuses and financial offices along the 101, hospitality properties, and medical and professional suites"
 };
 
 function commercialCityPage({ city, caSlug }: { city: string; caSlug: string }): SitePage {
@@ -2401,7 +2409,7 @@ function searchDepthSections(page: SitePage): PageSection[] {
       {
         heading: "Local Commercial Service Area",
         body:
-          "805 Shutters supports commercial projects throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
+          "805 Shutters supports commercial projects throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
       },
       {
         heading: "Commercial Quote Details That Affect Pricing",
@@ -2439,7 +2447,7 @@ function searchDepthSections(page: SitePage): PageSection[] {
     {
       heading: "Local Service Area",
       body:
-        "805 Shutters works throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
+        "805 Shutters works throughout Ventura County, including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Santa Rosa Valley, Oak Park, Fillmore, and nearby communities."
     },
     {
       heading: "Product Details That Affect The Quote",
@@ -2536,8 +2544,11 @@ export const homePage: SitePage = withSearchDepth({
     {
       heading: "Popular Service Areas",
       body:
-        "805 Shutters serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby communities.",
-      bullets: site.areas
+        "805 Shutters serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby communities.",
+      links: site.areas.map((area) => ({
+        label: `Window treatments in ${area}`,
+        href: `/window-treatments/${area.toLowerCase().replace(/ /g, "-")}-ca/`
+      }))
     }
   ],
   cta: "Schedule a free in-home consultation"

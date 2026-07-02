@@ -139,7 +139,7 @@ export const metadata: Metadata = {
     url: `${site.baseUrl}/book-consultation/`,
     images: [
       {
-        url: "/images/805-hero-window-treatments.png",
+        url: "/images/805-hero-window-treatments.jpg",
         alt: "Custom window treatments installed in a Ventura County home"
       }
     ]

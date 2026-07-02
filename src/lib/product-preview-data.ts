@@ -36,8 +36,8 @@ export const residentialCategoryItems: CategoryNavItem[] = [
     href: "/shades/",
     products: [
       { label: "Roller Shades", image: "/images/editorial-scroll/coastal-living-roller-shades.jpg" },
-      { label: "Honeycomb Shades", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
-      { label: "Room Darkening", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png" },
+      { label: "Honeycomb Shades", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp" },
+      { label: "Room Darkening", image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp" },
       { label: "Layered Shades", image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg" },
       { label: "Roman Shades", image: "/images/805-portfolio-shades-bedroom.jpg" },
       { label: "Natural Shades", image: "/images/editorial-scroll/breakfast-room-woven-shades.jpg" },

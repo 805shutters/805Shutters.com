@@ -236,7 +236,7 @@ export function buildAiSiteIndexPages() {
       description:
         "Choose a free in-home consultation time with 805 Shutters for custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings in Ventura County.",
       intent: "Direct appointment booking",
-      image: absoluteUrl("/images/805-hero-window-treatments.png"),
+      image: absoluteUrl("/images/805-hero-window-treatments.jpg"),
       sectionCount: 5,
       faqCount: 4
     },

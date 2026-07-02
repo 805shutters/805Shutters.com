@@ -80,7 +80,7 @@ export function localBusinessJsonLd() {
         url: site.baseUrl,
         telephone: site.phone,
         email: site.email,
-        image: `${site.baseUrl}/images/805-hero-window-treatments.png`,
+        image: `${site.baseUrl}/images/805-hero-window-treatments.jpg`,
         logo: `${site.baseUrl}/brand/805-shutters-logo-exact-transparent.png`,
         sameAs,
         description:

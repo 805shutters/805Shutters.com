@@ -14,8 +14,8 @@ export const commercialBrand = {
  */
 export const commercialModeImages = {
   hero: "/images/product-previews/commercial-socal-office-hero.jpg",
-  smallOffice: "/images/commercial-mode/commercial-small-office-roller-shades.png",
-  motorized: "/images/commercial-mode/commercial-small-office-roller-shades.png",
+  smallOffice: "/images/commercial-mode/commercial-small-office-roller-shades.jpg",
+  motorized: "/images/commercial-mode/commercial-small-office-roller-shades.jpg",
   warehouseTenantImprovement: "/images/product-previews/commercial-warehouse-tenant-improvement.jpg",
   industrialWarehouse: "/images/product-previews/commercial-industrial-warehouse.jpg",
   school: "/images/product-previews/commercial-socal-school.jpg",

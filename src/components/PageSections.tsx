@@ -261,19 +261,19 @@ const commercialPortfolioStories: PortfolioStory[] = [
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Original Home Photo",
-    image: "/images/homepage-flow/main-homepage-photo.png",
+    image: "/images/homepage-flow/main-homepage-photo.jpg",
     imageAlt: page.imageAlt
   },
   {
     label: "Shutters",
     tagline: "Frame the room with custom-fit shutters.",
-    image: "/images/homepage-flow/shutters.png",
+    image: "/images/homepage-flow/shutters.webp",
     imageAlt: "Arched dining room windows fitted with white plantation shutters"
   },
   {
     label: "Honeycomb Shades",
     tagline: "True room darkening rest.",
-    image: "/images/editorial-scroll/room-darkening-honeycomb-shades.png",
+    image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp",
     imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
   },
   {
@@ -291,13 +291,13 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Vertical Cellular Shades",
     tagline: "Insulated comfort for wide patio doors.",
-    image: "/images/homepage-flow/vertical-cellular-shades.png",
+    image: "/images/homepage-flow/vertical-cellular-shades.webp",
     imageAlt: "Sliding glass door fitted with vertical cellular shades"
   },
   {
     label: "Stained Wood Shutters",
     tagline: "Classic stained wood matched to the room.",
-    image: "/images/homepage-flow/stained-wood-library-shutters.png",
+    image: "/images/homepage-flow/stained-wood-library-shutters.webp",
     imageAlt: "Dark home library with classic stained wood shutters matched to built-in bookcases"
   },
   {
@@ -309,25 +309,25 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Vertical Blinds",
     tagline: "Cover wide doors with smooth, practical control.",
-    image: "/images/homepage-flow/vertical-blinds.png",
+    image: "/images/homepage-flow/vertical-blinds.webp",
     imageAlt: "Sliding patio door fitted with cream vertical blinds"
   },
   {
     label: "Mini Blinds",
     tagline: "Slim lines for simple everyday privacy.",
-    image: "/images/homepage-flow/mini-blinds.png",
+    image: "/images/homepage-flow/mini-blinds.webp",
     imageAlt: "Coastal home office windows fitted with slim white mini blinds"
   },
   {
     label: "Layered Shades",
     tagline: "Shift from filtered light to privacy in one treatment.",
-    image: "/images/homepage-flow/layered-kitchen-shades.png",
+    image: "/images/homepage-flow/layered-kitchen-shades.webp",
     imageAlt: "Layered shades matched to colorful marble in a bright kitchen"
   },
   {
     label: "Sheer Shades",
     tagline: "Soften the sun while keeping the room open.",
-    image: "/images/homepage-flow/sheer-shades.png",
+    image: "/images/homepage-flow/sheer-shades.webp",
     imageAlt: "Living room windows fitted with translucent sheer shades"
   },
   {
@@ -339,19 +339,19 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Panel Track Shades",
     tagline: "Wide panels that make sliding doors feel clean.",
-    image: "/images/homepage-flow/panel-track-shades.png",
+    image: "/images/homepage-flow/panel-track-shades.webp",
     imageAlt: "Sliding glass door fitted with wide panel track shades"
   },
   {
     label: "Skylight Shades",
     tagline: "Tame overhead heat without losing daylight.",
-    image: "/images/homepage-flow/skylight-shades.png",
+    image: "/images/homepage-flow/skylight-shades.webp",
     imageAlt: "Two drywall skylights fitted with light-filtering cellular shades"
   },
   {
     label: "Skylight Shutters",
     tagline: "Make angled light easier to control.",
-    image: "/images/homepage-flow/skylight-shutters.png",
+    image: "/images/homepage-flow/skylight-shutters.webp",
     imageAlt: "Angled skylights fitted with white louvered shutters"
   }
 ];
@@ -1210,7 +1210,9 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
   const heroMediaSlides = commercialMode ? heroSlides : heroSlides.slice(0, 1);
   const residentialPhotoFlowSlides = commercialMode ? [] : heroSlides.slice(1);
-  const heroTitle = commercialMode ? "Commercial shade systems for every workspace" : "Proudly serving Ventura County for the last 30 years";
+  const heroTitle = commercialMode
+    ? "Commercial shade systems for every workspace"
+    : "Custom Shutters, Shades & Blinds — Proudly Serving Ventura County for 30 Years";
   const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 

@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     url: site.baseUrl,
     images: [
       {
-        url: "/images/805-hero-window-treatments.png",
+        url: "/images/805-hero-window-treatments.jpg",
         width: 1774,
         height: 887,
         alt: "Custom window treatments installed in a Ventura County home"

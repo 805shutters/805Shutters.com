@@ -1802,7 +1802,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+  background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   border: 0;
   text-align: center;
 }
@@ -1865,7 +1865,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
   width: 100%;
   height: 100%;
   margin: 0;
-  background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+  background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
 }
 
 .home-hero-slide {
@@ -9672,7 +9672,7 @@ body:has(.booking-page--focused) .assistant-widget {
     display: block;
     min-height: 100svh;
     overflow: hidden;
-    background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+    background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
   .home-editorial-panel::after {
@@ -9723,7 +9723,7 @@ body:has(.booking-page--focused) .assistant-widget {
     height: 100%;
     aspect-ratio: auto;
     margin: 0;
-    background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+    background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
   body.commercial-mode .home-hero-media,
@@ -9976,7 +9976,7 @@ body:has(.booking-page--focused) .assistant-widget {
     display: block;
     min-height: 100svh;
     overflow: hidden;
-    background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+    background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
   body.home-page-active .home-editorial-panel::after {
@@ -10016,7 +10016,7 @@ body:has(.booking-page--focused) .assistant-widget {
     height: 100%;
     aspect-ratio: auto;
     margin: 0;
-    background: #111111 url("/images/805-hero-window-treatments.png") center / cover no-repeat;
+    background: #111111 url("/images/805-hero-window-treatments.jpg") center / cover no-repeat;
   }
 
   body.commercial-mode.home-page-active .home-hero-media,

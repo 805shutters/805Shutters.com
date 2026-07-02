@@ -64,7 +64,7 @@ export const answerPages: AnswerPage[] = [
       {
         heading: "Ventura County Conditions",
         body:
-          "Homes across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, and nearby cities often need to balance sun exposure, afternoon glare, privacy from neighbors, coastal light, and patio heat. Those conditions change which window treatment performs best.",
+          "Homes across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby cities often need to balance sun exposure, afternoon glare, privacy from neighbors, coastal light, and patio heat. Those conditions change which window treatment performs best.",
         bullets: [
           "Shutters for durable privacy and a finished look",
           "Roller or solar shades for glare and large glass",
@@ -255,7 +255,7 @@ export const answerPages: AnswerPage[] = [
       {
         heading: "Ventura County Commercial Coverage",
         body:
-          "805 Shutters serves commercial buyers across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Ojai, Santa Rosa Valley, and nearby communities. The same commercial walkthrough can compare roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, vertical blinds, and motorized shade options."
+          "805 Shutters serves commercial buyers across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, and nearby communities. The same commercial walkthrough can compare roller shades, solar shades, blackout shades, honeycomb shades, faux wood blinds, vertical blinds, and motorized shade options."
       }
     ],
     faqs: [
