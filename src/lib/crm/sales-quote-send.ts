@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { sendQuoteToCustomer } from "@/lib/crm/public-quote";
+import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 
 type CrmSupabaseClient = SupabaseClient;
 type AnyRow = Record<string, any>;
@@ -64,6 +64,36 @@ export async function sendSalesQuoteToCustomer(
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
   return result;
+}
+
+export async function sendSalesQuotePaymentLinkToCustomer(
+  supabase: CrmSupabaseClient,
+  salesQuoteId: string,
+  actor: CrmActor,
+  options: SendSalesQuoteOptions = {},
+) {
+  const quote = await loadSalesQuote(supabase, salesQuoteId);
+  const requestedEmails = uniqueEmails(options.emails);
+  const requestedPhone = textOrNull(options.phone);
+  const contactPatch: AnyRow = {};
+
+  if (requestedEmails.length) contactPatch.customer_email = requestedEmails[0];
+  if (requestedPhone) contactPatch.customer_phone = requestedPhone;
+
+  const quoteForSend = { ...quote, ...contactPatch };
+  if (Object.keys(contactPatch).length) {
+    const { error } = await supabase.from("sales_quotes").update(contactPatch).eq("id", salesQuoteId);
+    if (error) throw new CrmAuthError(502, "Customer contact could not be saved before sending the payment link.");
+  }
+
+  const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quoteForSend);
+  return sendQuotePaymentLinkToCustomer(supabase, crmQuoteId, actor, {
+    email: options.channels?.email,
+    sms: options.channels?.sms,
+    emailRecipients: requestedEmails,
+    phone: requestedPhone,
+    note: options.note,
+  });
 }
 
 async function loadSalesQuote(supabase: CrmSupabaseClient, salesQuoteId: string) {

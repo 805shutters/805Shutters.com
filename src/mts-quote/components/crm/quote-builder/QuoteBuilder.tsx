@@ -19,6 +19,7 @@ import {
   Pencil,
   CopyCheck,
   Send,
+  CreditCard,
   DollarSign,
   Percent,
   X,
@@ -165,6 +166,14 @@ type LineNumberRange = {
   end: number;
   label: string;
   numbers: number[];
+};
+
+type PaymentLinkSendResponse = {
+  url?: string;
+  email?: { sent?: boolean; skipped?: string; error?: string };
+  sms?: { sent?: boolean; skipped?: string; error?: string };
+  message?: string;
+  error?: string;
 };
 
 function buildLineNumberRanges(lineItems: Pick<SalesQuoteLineItem, "id" | "quantity">[]) {
@@ -646,6 +655,55 @@ export function QuoteBuilder() {
     },
   });
 
+  const sendPaymentLink = useMutation<PaymentLinkSendResponse, Error>({
+    mutationFn: async () => {
+      if (!quote) throw new Error("Quote is required.");
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("CRM session is required.");
+
+      const customerEmail = quote.customer_email?.trim();
+      const response = await fetch(`/api/crm/sales-quotes/${encodeURIComponent(quote.id)}/payment-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          channels: { email: true, sms: false },
+          emails: customerEmail ? [customerEmail] : [],
+        }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as PaymentLinkSendResponse;
+      if (!response.ok) throw new Error(data.message || data.error || "Failed to send payment link");
+      return data;
+    },
+    onSuccess: async (data) => {
+      if (data.email?.sent) {
+        toast.success("Payment link emailed to customer");
+        return;
+      }
+
+      let copied = false;
+      if (data.url) {
+        try {
+          await navigator.clipboard.writeText(data.url);
+          copied = true;
+        } catch {
+          /* best-effort copy fallback */
+        }
+      }
+
+      const reason = data.email?.error || data.email?.skipped || "email was not sent";
+      toast.warning(`Payment link created${copied ? " and copied" : ""}, but ${reason}.`);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to send payment link");
+    },
+  });
+
   // Upsert design
   const upsertDesign = useMutation({
     mutationKey: quoteDesignMutationKey,
@@ -1102,6 +1160,19 @@ export function QuoteBuilder() {
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quote
+                  </Button>
+                )}
+                {quote && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => sendPaymentLink.mutate()}
+                    disabled={sendPaymentLink.isPending}
+                    className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
+                    title="Email the deposit payment link to the customer"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {sendPaymentLink.isPending ? "Sending..." : "Send Payment Link"}
                   </Button>
                 )}
                 {quote && (quote.status === "sold" || quote.status === "ordered") && (
