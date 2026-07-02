@@ -405,6 +405,9 @@ export type CrmBookkeepingRow = {
   installationMatchStatus: CrmInstallationMatchStatus;
   installationMatchedAt: string | null;
   isInstallationComplete: boolean;
+  // Work is done but no MTS installer invoice has been matched yet, so the
+  // installation cost is unknown and Mike/Jessica payouts must not finalize.
+  isMissingInstallerInvoice: boolean;
   remainingProfitBeforeJessica: number;
   jessicaCommission: number;
   jessicaCommissionPaidAt: string | null;
@@ -476,6 +479,7 @@ export type CrmAccountabilityItem = {
     | "payment_due"
     | "awaiting_product"
     | "ready_to_install"
+    | "missing_installer_invoice"
     | "commission_due";
   label: string;
   detail: string;

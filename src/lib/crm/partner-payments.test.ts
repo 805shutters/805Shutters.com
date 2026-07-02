@@ -62,6 +62,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     installationMatchStatus: "matched",
     installationMatchedAt: "2026-06-10T00:00:00.000Z",
     isInstallationComplete: true,
+    isMissingInstallerInvoice: false,
     remainingProfitBeforeJessica: 600,
     jessicaCommission: 0,
     jessicaCommissionPaidAt: null,
@@ -179,6 +180,25 @@ describe("partner payment row helpers", () => {
     expect(buildUnpaidPartnerPaymentItemForRow("mike", row({ isPaidInFull: false, balance: 100 }))).toBeNull();
     expect(buildUnpaidPartnerPaymentItemForRow("jessica", row({ jessicaCommission: 0 }))).toBeNull();
   });
+
+  it("holds Mike/Jessica items while the installer invoice is missing, but not Ken's", () => {
+    const heldRow = row({
+      id: "held-row",
+      salesOwner: "jessica",
+      kenCut: 100,
+      mikeProfit: 300,
+      jessicaCommission: 300,
+      jessicaCommissionOwed: 0,
+      isMissingInstallerInvoice: true
+    });
+    expect(buildUnpaidPartnerPaymentItemForRow("mike", heldRow)).toBeNull();
+    expect(buildUnpaidPartnerPaymentItemForRow("jessica", heldRow)).toBeNull();
+    expect(buildUnpaidPartnerPaymentItemForRow("ken", heldRow)).toMatchObject({
+      person: "ken",
+      remainingAmount: 100,
+      paymentState: "unpaid"
+    });
+  });
 });
 
 describe("buildPartnerPaymentLedger", () => {
@@ -215,6 +235,28 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.people.ken).toMatchObject({ earned: 200, paid: 0, owed: 200, activeJobCount: 2 });
     expect(ledger.people.mike).toMatchObject({ earned: 1000, paid: 0, owed: 1000, activeJobCount: 2 });
     expect(ledger.people.jessica).toMatchObject({ earned: 400, paid: 0, owed: 400, activeJobCount: 1 });
+  });
+
+  it("keeps Ken payable but holds Mike/Jessica on rows missing the installer invoice", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "held-sale",
+          salesOwner: "jessica",
+          kenCut: 100,
+          mikeProfit: 400,
+          jessicaCommission: 400,
+          jessicaCommissionOwed: 0,
+          isMissingInstallerInvoice: true
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: []
+    });
+
+    expect(ledger.people.ken).toMatchObject({ earned: 100, owed: 100, activeJobCount: 1 });
+    expect(ledger.people.mike).toMatchObject({ earned: 0, owed: 0, activeJobCount: 0 });
+    expect(ledger.people.jessica).toMatchObject({ earned: 0, owed: 0, activeJobCount: 0 });
   });
 
   it("tracks Mike and Jessica sold earnings before jobs become payable", () => {

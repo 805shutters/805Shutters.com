@@ -40,6 +40,10 @@ function rowCommission(row: CrmBookkeepingRow) {
   const closedAt = paidInFullDate(row);
   if (!closedAt) return null;
 
+  // No commission accrues until the MTS installer invoice is matched (or
+  // waived) — without it the profit pool is missing the installation cost.
+  if (row.isMissingInstallerInvoice) return null;
+
   const profit = roundCents(Math.max(row.remainingProfitBeforeJessica || 0, 0));
   if (profit <= 0) return null;
 

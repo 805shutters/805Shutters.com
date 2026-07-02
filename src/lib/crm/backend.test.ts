@@ -676,7 +676,17 @@ describe("partner payment write rules", () => {
           customer_name: "Mike Paid Job"
         })
       ],
-      crm_quote_bookkeeping_entries: [],
+      crm_quote_bookkeeping_entries: [
+        // Installer invoice matched (waived at $0) so the job is payable —
+        // unmatched rows are held for the missing installer invoice.
+        bookkeepingEntry({
+          source: "crm_quote",
+          quote_id: "quote-1",
+          cogs_amount: 100,
+          installation_match_status: "matched",
+          installation_matched_at: "2026-06-25T00:00:00.000Z"
+        })
+      ],
       crm_quote_bookkeeping_payments: [
         payment({ id: "quote-payment-1", quote_id: "quote-1", job_id: "job-1", amount: 1000 })
       ],
@@ -811,7 +821,17 @@ describe("partner payment write rules", () => {
           customer_name: "Susan Milani"
         })
       ],
-      crm_quote_bookkeeping_entries: [],
+      crm_quote_bookkeeping_entries: [
+        // Installer invoice matched (waived at $0) so the job is payable —
+        // unmatched rows are held for the missing installer invoice.
+        bookkeepingEntry({
+          source: "crm_quote",
+          quote_id: "quote-1",
+          cogs_amount: 100,
+          installation_match_status: "matched",
+          installation_matched_at: "2026-06-25T00:00:00.000Z"
+        })
+      ],
       crm_quote_bookkeeping_payments: [
         payment({ id: "quote-payment-1", quote_id: "quote-1", job_id: "job-1", amount: 1000 })
       ],

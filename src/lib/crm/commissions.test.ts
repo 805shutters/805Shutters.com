@@ -51,6 +51,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     installationMatchStatus: "matched",
     installationMatchedAt: "2026-06-10T00:00:00.000Z",
     isInstallationComplete: true,
+    isMissingInstallerInvoice: false,
     remainingProfitBeforeJessica: 600,
     jessicaCommission: 0,
     jessicaCommissionPaidAt: null,
@@ -119,6 +120,27 @@ describe("buildCommissionSummary", () => {
       jessicaEarned: 400,
       jessicaPaid: 0,
       jessicaOwed: 400
+    });
+  });
+
+  it("holds commission on paid-in-full jobs still waiting on the MTS installer invoice", () => {
+    const summary = buildCommissionSummary(
+      [
+        row({
+          id: "waiting-on-installer-invoice",
+          salesOwner: "jessica",
+          remainingProfitBeforeJessica: 800,
+          isMissingInstallerInvoice: true
+        })
+      ],
+      []
+    );
+
+    expect(summary.totals).toMatchObject({
+      mikeEarned: 0,
+      jessicaEarned: 0,
+      mikeOwed: 0,
+      jessicaOwed: 0
     });
   });
 

@@ -5432,9 +5432,13 @@ function DrillDetailCard({
     const patch: DrillFieldPatch = { message: "Marked complete." };
     if (canEditJob) patch.job = { status: "installed" };
     if (row) {
+      // Quote-backed jobs only advance to installed here; the installer invoice
+      // match stays open so the job carries a "missing installer invoice" hold
+      // until the MTS invoice email lands (or the checkbox waives it). Manual
+      // rows have no status, so the checkbox-style waive is all they get.
       patch.row =
         row.source === "crm_quote" && row.quoteId
-          ? { quote_total: row.total, status: "installed", installation_complete: true }
+          ? { quote_total: row.total, status: "installed" }
           : { installation_complete: true };
     }
     return onSaveField(entry, patch);
@@ -5733,7 +5737,16 @@ function DrillDetailCard({
               <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
               <DrillFact
                 label="Install Status"
-                value={row ? (row.isInstallationComplete ? "Complete" : titleCase(row.installationMatchStatus)) : "No install row"}
+                value={
+                  row
+                    ? row.isInstallationComplete
+                      ? "Complete"
+                      : row.isMissingInstallerInvoice
+                        ? "Missing installer invoice"
+                        : titleCase(row.installationMatchStatus)
+                    : "No install row"
+                }
+                tone={row?.isMissingInstallerInvoice ? "warn" : undefined}
                 editor={installStatusEditor}
               />
             </div>
@@ -8519,7 +8532,15 @@ function ReadOnlyBookkeepingSpreadsheet({
                       <td>{formatPaymentType(row.paymentType)}</td>
                       <td>{row.cogs <= 0 ? <span className="crm-bookkeeping-pill">Missing</span> : toLedgerCurrency(row.cogs)}</td>
                       <td className={row.remakeTotal > 0 ? "crm-ledger-money-warn" : undefined}>{toLedgerCurrency(-row.remakeTotal)}</td>
-                      <td>{row.isInstallationComplete ? toLedgerCurrency(row.installationInvoiceAmount) : "No install invoice"}</td>
+                      <td>
+                        {row.isInstallationComplete ? (
+                          toLedgerCurrency(row.installationInvoiceAmount)
+                        ) : row.isMissingInstallerInvoice ? (
+                          <span className="crm-bookkeeping-pill">Missing installer invoice</span>
+                        ) : (
+                          "No install invoice"
+                        )}
+                      </td>
                       <td className={row.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>
                         {toLedgerCurrency(row.balance)}
                       </td>
@@ -8945,7 +8966,13 @@ function BookkeepingSpreadsheet({
                     <BookkeepingInstallationEditor row={row} busy={busy} onSave={(patch) => saveCell(row, patch)} onCancel={closeEdit} />
                   ) : (
                     <BookkeepingCellButton ariaLabel={`Edit installation for ${row.customerName}`} onClick={() => openEdit(row, "installation")}>
-                      {row.isInstallationComplete ? toLedgerCurrency(row.installationInvoiceAmount) : "No install invoice"}
+                      {row.isInstallationComplete ? (
+                        toLedgerCurrency(row.installationInvoiceAmount)
+                      ) : row.isMissingInstallerInvoice ? (
+                        <span className="crm-bookkeeping-pill">Missing installer invoice</span>
+                      ) : (
+                        "No install invoice"
+                      )}
                     </BookkeepingCellButton>
                   )}
                 </td>

@@ -17,10 +17,6 @@ import {
 
 export const OWNER_COMMISSION_RATE = 0.1;
 
-// Jessica's sales closed on or after this date are exempt from Ken's cut.
-// Documented in supabase migration 20260610000000_profit_split_50_50.sql.
-export const JESSICA_KEN_CUT_EXEMPT_FROM = "2026-06-10";
-
 // Fixed price the business is being purchased from Ken for. Every dollar paid to
 // Ken (opening balance + recorded checks) counts toward this payoff.
 export const BUSINESS_PAYOFF_TARGET = 500000;
@@ -383,6 +379,20 @@ export function buildAccountabilityQueue(rows: CrmBookkeepingRow[]): CrmAccounta
       });
     }
 
+    if (row.isMissingInstallerInvoice) {
+      items.push({
+        id: `${row.id}-missing-installer-invoice`,
+        type: "missing_installer_invoice",
+        label: "Missing installer invoice",
+        detail: `${row.customerName} is complete but the MTS installer invoice hasn't arrived, so profit and payouts are on hold.`,
+        owner: "Bookkeeping",
+        urgency: "urgent",
+        rowId: row.id,
+        quoteId: row.quoteId,
+        jobId: row.jobId
+      });
+    }
+
     if (row.jessicaCommissionOwed > 0) {
       items.push({
         id: `${row.id}-jessica-owed`,
@@ -456,13 +466,14 @@ function buildEntryRow(
   const { otherExpenses, expensesTotal, remakeTotal } = splitRemakeExpenses(expenses);
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
-  const kenCut = computeKenCut({
-    total,
-    salesOwner: entry.sales_owner,
-    soldDate: entry.sold_date,
-    override: entry.ken_cut_override
-  });
+  const kenCut = computeKenCut({ total, override: entry.ken_cut_override });
   const installation = getInstallationFields(entry);
+  const missingInstallerInvoice = isMissingInstallerInvoice({
+    source: entry.source,
+    matchStatus: entry.installation_match_status,
+    quoteStatus: linkedQuote?.status || null,
+    isPaidInFull
+  });
   const profit = calculateBookkeepingProfit({
     total,
     cogs,
@@ -503,10 +514,14 @@ function buildEntryRow(
     installationMatchStatus: entry.installation_match_status,
     installationMatchedAt: entry.installation_matched_at,
     isInstallationComplete: installation.isComplete,
+    isMissingInstallerInvoice: missingInstallerInvoice && !entry.jessica_commission_paid_at,
     remainingProfitBeforeJessica: profit.remainingProfitBeforeJessica,
     jessicaCommission: profit.jessicaCommission,
     jessicaCommissionPaidAt: entry.jessica_commission_paid_at,
-    jessicaCommissionOwed: entry.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
+    // Owed only once the installer invoice is in (or waived) — until then the
+    // profit pool is overstated and the payout must not be processed.
+    jessicaCommissionOwed:
+      entry.jessica_commission_paid_at || missingInstallerInvoice ? 0 : profit.jessicaCommission,
     isPaidInFull,
     manufacturerName: entry.manufacturer_name,
     manufacturerOrderRef: entry.manufacturer_order_ref,
@@ -559,13 +574,14 @@ function buildQuoteRow(
   const isPaidInFull = isPaidInFullBalance(total, balance);
   const soldDate = quote.sold_at || quote.approved_at || quote.ordered_at || quote.created_at;
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
-  const kenCut = computeKenCut({
-    total,
-    salesOwner,
-    soldDate,
-    override: entry?.ken_cut_override
-  });
+  const kenCut = computeKenCut({ total, override: entry?.ken_cut_override });
   const installation = getInstallationFields(entry);
+  const missingInstallerInvoice = isMissingInstallerInvoice({
+    source: "crm_quote",
+    matchStatus: entry?.installation_match_status || null,
+    quoteStatus: quote.status,
+    isPaidInFull
+  });
   const profit = calculateBookkeepingProfit({
     total,
     cogs,
@@ -608,10 +624,12 @@ function buildQuoteRow(
     installationMatchStatus: entry?.installation_match_status || "unmatched",
     installationMatchedAt: entry?.installation_matched_at || null,
     isInstallationComplete: installation.isComplete,
+    isMissingInstallerInvoice: missingInstallerInvoice && !entry?.jessica_commission_paid_at,
     remainingProfitBeforeJessica: profit.remainingProfitBeforeJessica,
     jessicaCommission: profit.jessicaCommission,
     jessicaCommissionPaidAt: entry?.jessica_commission_paid_at || null,
-    jessicaCommissionOwed: entry?.jessica_commission_paid_at ? 0 : profit.jessicaCommission,
+    jessicaCommissionOwed:
+      entry?.jessica_commission_paid_at || missingInstallerInvoice ? 0 : profit.jessicaCommission,
     isPaidInFull,
     manufacturerName: entry?.manufacturer_name || quote.manufacturer_name,
     manufacturerOrderRef: entry?.manufacturer_order_ref || quote.manufacturer_order_ref,
@@ -704,31 +722,20 @@ function groupExpenses(
   }, new Map());
 }
 
-function isOnOrAfter(date: string | null | undefined, cutoff: string) {
-  if (!date) return false;
-  return date.slice(0, 10) >= cutoff;
-}
-
 function computeKenCut({
   total,
-  salesOwner,
-  soldDate,
   override
 }: {
   total: number;
-  salesOwner: CrmBookkeepingSalesOwner | null;
-  soldDate: string | null | undefined;
   override: number | null | undefined;
 }) {
   // An explicit override pins the dollar amount (0 waives Ken's cut entirely).
   if (override !== null && override !== undefined) {
     return roundCents(Math.max(Number(override) || 0, 0));
   }
-  // Jessica's own sales closed on/after the cutoff are exempt; everyone else
-  // (and all older rows) keeps the historical 10% so legacy math is unchanged.
-  if (salesOwner === "jessica" && isOnOrAfter(soldDate, JESSICA_KEN_CUT_EXEMPT_FROM)) {
-    return 0;
-  }
+  // Ken gets 10% of every sale, regardless of who sold it (owner decision
+  // 2026-07-02, replacing the short-lived Jessica exemption from migration
+  // 20260610000000_profit_split_50_50.sql).
   return roundCents(total * OWNER_COMMISSION_RATE);
 }
 
@@ -746,6 +753,29 @@ function isPaidInFullBalance(total: number, balance: number) {
 
 function bookkeepingStatusForBalance(status: CrmBookkeepingStatus, total: number, balance: number): CrmBookkeepingStatus {
   return isPaidInFullBalance(total, balance) ? "closed" : status;
+}
+
+const INSTALL_DONE_QUOTE_STATUSES = new Set<CrmQuoteStatus>(["installed", "invoiced", "paid"]);
+
+// The work is finished (job installed or fully paid) but no MTS installer
+// invoice has been matched, so the installation cost is unknown. Legacy sheet
+// rows predate the invoice pipeline and are never flagged. Manually checking
+// "installation complete" sets the match status to "matched", which waives the
+// hold for jobs with no installer invoice expected.
+function isMissingInstallerInvoice({
+  source,
+  matchStatus,
+  quoteStatus,
+  isPaidInFull
+}: {
+  source: CrmBookkeepingRow["source"];
+  matchStatus: string | null | undefined;
+  quoteStatus: CrmQuoteStatus | null;
+  isPaidInFull: boolean;
+}) {
+  if (source === "legacy_sheet") return false;
+  if (matchStatus === "matched") return false;
+  return (quoteStatus !== null && INSTALL_DONE_QUOTE_STATUSES.has(quoteStatus)) || isPaidInFull;
 }
 
 function getInstallationFields(entry: CrmBookkeepingEntry | null) {

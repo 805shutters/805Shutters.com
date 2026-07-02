@@ -152,6 +152,11 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
     });
     if (kenItem) items.push(kenItem);
 
+    // Ken's 10% comes off the sale total, so it's final immediately; Mike and
+    // Jessica split what's left AFTER installation, so their payouts wait for
+    // the MTS installer invoice.
+    if (row.isMissingInstallerInvoice) continue;
+
     const mikeItem = createEarnedItem({ row, person: "mike", amount: row.mikeProfit, closedAt });
     if (mikeItem) items.push(mikeItem);
 
@@ -191,6 +196,7 @@ export function buildUnpaidPartnerPaymentItemForRow(
   person: CrmPaymentPerson,
   row: CrmBookkeepingRow
 ): CrmPartnerPaymentLedgerItem | null {
+  if (person !== "ken" && row.isMissingInstallerInvoice) return null;
   const closedAt = paidInFullDate(row);
   const earnedItem = closedAt
     ? createEarnedItem({

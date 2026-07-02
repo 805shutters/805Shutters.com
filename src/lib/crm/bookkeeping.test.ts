@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BUSINESS_PAYOFF_TARGET,
-  JESSICA_KEN_CUT_EXEMPT_FROM,
   OWNER_COMMISSION_RATE,
+  buildAccountabilityQueue,
   buildBookkeepingRows,
   buildKenPayoffSummary,
   effectiveBookkeepingStatus,
@@ -416,32 +416,21 @@ describe("Ken cut", () => {
     expect(row.mikeProfit).toBe(6000);
   });
 
-  it("still charges Mike 10% even on sales after the exemption date", () => {
-    const [row] = rowsFrom({
-      entries: [entry({ total_amount: 10000, sales_owner: "mike", sold_date: "2026-12-01" })]
-    });
-    expect(row.kenCut).toBe(1000);
-  });
-
-  it("still charges Jessica 10% on sales before the exemption date", () => {
-    const [row] = rowsFrom({
-      entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: "2026-06-09" })]
-    });
-    expect(row.kenCut).toBe(1000);
-  });
-
-  it("exempts Jessica on sales on or after the exemption date", () => {
-    const [row] = rowsFrom({
-      entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: JESSICA_KEN_CUT_EXEMPT_FROM })]
-    });
-    expect(row.kenCut).toBe(0);
-  });
-
-  it("exempts Jessica regardless of whether installation is complete", () => {
+  it("charges 10% on Jessica's sales too — the June 2026 exemption is gone", () => {
     const [row] = rowsFrom({
       entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: "2026-07-01" })]
     });
-    expect(row.kenCut).toBe(0);
+    expect(row.kenCut).toBe(1000);
+  });
+
+  it("charges 10% regardless of sold date", () => {
+    const dates = ["2026-06-09", "2026-06-10", "2026-12-01"];
+    for (const soldDate of dates) {
+      const [row] = rowsFrom({
+        entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: soldDate })]
+      });
+      expect(row.kenCut).toBe(1000);
+    }
   });
 });
 
@@ -525,12 +514,12 @@ describe("Jessica's 50% commission", () => {
         })
       ]
     });
-    // Ken exempt (Jessica, after cutoff); install cost applies.
-    expect(row.kenCut).toBe(0);
+    // Ken's 10% comes off first, then the matched install cost.
+    expect(row.kenCut).toBe(1000);
     expect(row.isInstallationComplete).toBe(true);
-    expect(row.remainingProfitBeforeJessica).toBe(6000); // 10000 - 3000 - 0 - 1000
-    expect(row.jessicaCommission).toBe(3000);
-    expect(row.mikeProfit).toBe(3000);
+    expect(row.remainingProfitBeforeJessica).toBe(5000); // 10000 - 3000 - 1000 - 1000
+    expect(row.jessicaCommission).toBe(2500);
+    expect(row.mikeProfit).toBe(2500);
   });
 
   it("splits Jessica's own sale even before an install invoice is matched", () => {
@@ -540,9 +529,9 @@ describe("Jessica's 50% commission", () => {
       ]
     });
     expect(row.isInstallationComplete).toBe(false);
-    expect(row.remainingProfitBeforeJessica).toBe(7000); // 10000 - 3000 - 0 (exempt) - 0 install
-    expect(row.jessicaCommission).toBe(3500);
-    expect(row.mikeProfit).toBe(3500);
+    expect(row.remainingProfitBeforeJessica).toBe(6000); // 10000 - 3000 - 1000 (Ken) - 0 install
+    expect(row.jessicaCommission).toBe(3000);
+    expect(row.mikeProfit).toBe(3000);
   });
 
   it("uses a quote's sold-by Jessica value for the 50/50 split", () => {
@@ -560,9 +549,9 @@ describe("Jessica's 50% commission", () => {
     });
     expect(row.salesOwner).toBe("jessica");
     expect(row.isInstallationComplete).toBe(false);
-    expect(row.remainingProfitBeforeJessica).toBe(7000);
-    expect(row.jessicaCommission).toBe(3500);
-    expect(row.mikeProfit).toBe(3500);
+    expect(row.remainingProfitBeforeJessica).toBe(6000);
+    expect(row.jessicaCommission).toBe(3000);
+    expect(row.mikeProfit).toBe(3000);
   });
 
   it("keeps 100% with Mike on his own sales (no split)", () => {
@@ -596,9 +585,9 @@ describe("Jessica's 50% commission", () => {
       ],
       expenses: [expense({ id: "x1", bookkeeping_entry_id: "e1", amount: 400 })]
     });
-    expect(row.remainingProfitBeforeJessica).toBe(5600); // 10000 - 3000 - 0 - 1000 - 400
-    expect(row.jessicaCommission).toBe(2800);
-    expect(row.mikeProfit).toBe(2800);
+    expect(row.remainingProfitBeforeJessica).toBe(4600); // 10000 - 3000 - 1000 - 1000 - 400
+    expect(row.jessicaCommission).toBe(2300);
+    expect(row.mikeProfit).toBe(2300);
   });
 
   it("nets remake costs out before splitting Jessica's commission", () => {
@@ -617,9 +606,9 @@ describe("Jessica's 50% commission", () => {
     });
     expect(row.expensesTotal).toBe(0);
     expect(row.remakeTotal).toBe(500);
-    expect(row.remainingProfitBeforeJessica).toBe(5500); // 10000 - 3000 - 0 - 1000 - 500
-    expect(row.jessicaCommission).toBe(2750);
-    expect(row.mikeProfit).toBe(2750);
+    expect(row.remainingProfitBeforeJessica).toBe(4500); // 10000 - 3000 - 1000 - 1000 - 500
+    expect(row.jessicaCommission).toBe(2250);
+    expect(row.mikeProfit).toBe(2250);
   });
 
   it("reports commission as owed until it is marked paid", () => {
@@ -631,12 +620,12 @@ describe("Jessica's 50% commission", () => {
       installation_invoice_amount: 1000
     });
     const [owedRow] = rowsFrom({ entries: [unpaid] });
-    expect(owedRow.jessicaCommissionOwed).toBe(3000);
+    expect(owedRow.jessicaCommissionOwed).toBe(2500);
 
     const [paidRow] = rowsFrom({
       entries: [{ ...unpaid, jessica_commission_paid_at: "2026-08-01T00:00:00.000Z" }]
     });
-    expect(paidRow.jessicaCommission).toBe(3000);
+    expect(paidRow.jessicaCommission).toBe(2500);
     expect(paidRow.jessicaCommissionOwed).toBe(0);
   });
 
@@ -653,9 +642,74 @@ describe("Jessica's 50% commission", () => {
         })
       ]
     });
-    expect(row.remainingProfitBeforeJessica).toBe(66.67);
-    expect(row.jessicaCommission).toBe(33.34); // 66.67 / 2, rounded
-    expect(row.mikeProfit).toBe(33.33);
+    expect(row.remainingProfitBeforeJessica).toBe(56.67); // 100 - 33.33 - 10 (Ken)
+    expect(row.jessicaCommission).toBe(28.34); // 56.67 / 2, rounded
+    expect(row.mikeProfit).toBe(28.33);
+  });
+});
+
+describe("missing installer invoice hold", () => {
+  it("flags a paid-in-full manual row with no matched installer invoice and holds Jessica's owed", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: "2026-07-01" })],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
+    });
+    expect(row.isMissingInstallerInvoice).toBe(true);
+    expect(row.jessicaCommission).toBe(3000); // estimate still shown
+    expect(row.jessicaCommissionOwed).toBe(0); // but nothing owed until the invoice lands
+
+    const queue = buildAccountabilityQueue([row]);
+    expect(queue.some((item) => item.type === "missing_installer_invoice")).toBe(true);
+    expect(queue.some((item) => item.type === "commission_due")).toBe(false);
+  });
+
+  it("flags an installed quote even before it is paid in full", () => {
+    const [row] = rowsFrom({
+      quotes: [quote({ id: "q1", status: "installed", quote_total: 10000, sold_by: "Jessica", sold_at: "2026-07-01" })]
+    });
+    expect(row.isMissingInstallerInvoice).toBe(true);
+    expect(row.jessicaCommissionOwed).toBe(0);
+  });
+
+  it("clears the flag once the installer invoice is matched", () => {
+    const [row] = rowsFrom({
+      entries: [
+        installedEntry({
+          id: "e1",
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "jessica",
+          sold_date: "2026-07-01",
+          installation_invoice_amount: 1000
+        })
+      ],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
+    });
+    expect(row.isMissingInstallerInvoice).toBe(false);
+    expect(row.jessicaCommissionOwed).toBe(2500); // 10000 - 3000 - 1000 - 1000, split
+  });
+
+  it("never flags legacy sheet rows", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ id: "e1", source: "legacy_sheet", total_amount: 10000, sales_owner: "mike" })],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
+    });
+    expect(row.isMissingInstallerInvoice).toBe(false);
+  });
+
+  it("does not hold rows whose Jessica commission was already paid out", () => {
+    const [row] = rowsFrom({
+      entries: [
+        entry({
+          id: "e1",
+          total_amount: 10000,
+          sales_owner: "jessica",
+          jessica_commission_paid_at: "2026-06-01T00:00:00.000Z"
+        })
+      ],
+      payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
+    });
+    expect(row.isMissingInstallerInvoice).toBe(false);
   });
 });
 
@@ -689,10 +743,10 @@ describe("quote-sourced rows", () => {
     expect(rows).toHaveLength(1);
     const [row] = rows;
     expect(row.source).toBe("crm_quote");
-    expect(row.kenCut).toBe(0);
-    expect(row.remainingProfitBeforeJessica).toBe(6000);
-    expect(row.jessicaCommission).toBe(3000);
-    expect(row.mikeProfit).toBe(3000);
+    expect(row.kenCut).toBe(1000);
+    expect(row.remainingProfitBeforeJessica).toBe(5000);
+    expect(row.jessicaCommission).toBe(2500);
+    expect(row.mikeProfit).toBe(2500);
   });
 });
 
@@ -721,10 +775,10 @@ describe("sumBookkeepingRows", () => {
     expect(totals.cogs).toBe(4000);
     expect(totals.expensesTotal).toBe(400);
     expect(totals.remakeTotal).toBe(200);
-    expect(totals.kenCut).toBe(500); // e1 exempt (0) + e2 10% of 5000 (500)
-    expect(totals.jessicaCommission).toBe(2700); // half of (10000-3000-1000-400-200)
-    expect(totals.jessicaCommissionOwed).toBe(2700);
-    expect(totals.mikeProfit).toBe(6200); // e1 2700 + e2 (5000-1000-500) 3500
+    expect(totals.kenCut).toBe(1500); // 10% of 10000 + 10% of 5000
+    expect(totals.jessicaCommission).toBe(2200); // half of (10000-3000-1000-1000-400-200)
+    expect(totals.jessicaCommissionOwed).toBe(2200);
+    expect(totals.mikeProfit).toBe(5700); // e1 2200 + e2 (5000-1000-500) 3500
   });
 
   it("tracks Ken's current-month due and running total from closed jobs only", () => {
@@ -789,15 +843,15 @@ describe("buildCommissionSummary", () => {
     expect(summary.monthly).toHaveLength(1);
     expect(summary.monthly[0]).toMatchObject({
       periodMonth: "2026-07-01",
-      mikeEarned: 8000,
-      jessicaEarned: 3000,
+      mikeEarned: 7500, // 5000 own sale + 2500 half of Jessica's
+      jessicaEarned: 2500,
       mikePaid: 0,
       jessicaPaid: 0,
-      mikeBalance: 8000,
-      jessicaBalance: 3000
+      mikeBalance: 7500,
+      jessicaBalance: 2500
     });
-    expect(summary.totals.mikeOwed).toBe(8000);
-    expect(summary.totals.jessicaOwed).toBe(3000);
+    expect(summary.totals.mikeOwed).toBe(7500);
+    expect(summary.totals.jessicaOwed).toBe(2500);
   });
 
   it("subtracts Mike/Jessica payment ledger rows into running balances", () => {
@@ -838,15 +892,15 @@ describe("buildCommissionSummary", () => {
     ]);
 
     expect(summary.totals).toMatchObject({
-      mikeEarned: 8000,
+      mikeEarned: 7500,
       mikePaid: 2500,
-      mikeOwed: 5500,
-      jessicaEarned: 3000,
+      mikeOwed: 5000,
+      jessicaEarned: 2500,
       jessicaPaid: 1000,
-      jessicaOwed: 2000
+      jessicaOwed: 1500
     });
-    expect(summary.monthly[0].mikeBalance).toBe(5500);
-    expect(summary.monthly[0].jessicaBalance).toBe(2000);
+    expect(summary.monthly[0].mikeBalance).toBe(5000);
+    expect(summary.monthly[0].jessicaBalance).toBe(1500);
   });
 });
 
@@ -872,14 +926,14 @@ describe("buildKenPayoffSummary", () => {
     expect(summary.kenOwed).toBe(1000);
   });
 
-  it("excludes Jessica's exempt jobs from Ken's check even when paid in full", () => {
+  it("accrues Ken's 10% on Jessica's paid-in-full jobs too", () => {
     const rows = rowsFrom({
       entries: [entry({ id: "e1", total_amount: 10000, sales_owner: "jessica", sold_date: "2026-07-01" })],
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
     const summary = buildKenPayoffSummary({ rows, payments: [] });
-    expect(summary.kenAccruedCompleted).toBe(0);
-    expect(summary.completedJobs).toBe(0);
+    expect(summary.kenAccruedCompleted).toBe(1000);
+    expect(summary.completedJobs).toBe(1);
   });
 
   it("counts opening balance plus recorded payments toward the payoff", () => {

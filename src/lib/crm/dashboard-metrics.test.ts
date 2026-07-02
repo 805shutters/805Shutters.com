@@ -109,6 +109,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     installationMatchStatus: "unmatched",
     installationMatchedAt: null,
     isInstallationComplete: false,
+    isMissingInstallerInvoice: false,
     remainingProfitBeforeJessica: 0,
     jessicaCommission: 0,
     jessicaCommissionPaidAt: null,
