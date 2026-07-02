@@ -6443,6 +6443,7 @@ function CustomerFilesView({
               <th>Bookkeeping</th>
               <th>Contracts + Documents</th>
               <th>Notes</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -6509,16 +6510,6 @@ function CustomerFilesView({
                   </div>
                   <p className="crm-customer-phone-line">{file.phone || "Phone pending"}</p>
                   <p>{customerFileDetailLine([file.city, file.latestStatus || "Open"])}</p>
-                  {onDelete ? (
-                    <button
-                      type="button"
-                      className="crm-ghost-button crm-delete-button crm-customer-delete-button"
-                      disabled={busy}
-                      onClick={() => onDelete(file)}
-                    >
-                      Delete
-                    </button>
-                  ) : null}
                 </div>
               </td>
               <td>
@@ -6797,6 +6788,20 @@ function CustomerFilesView({
                   ))}
                   {!file.notes.length ? <li className="crm-customer-empty-cell">No notes attached.</li> : null}
                 </ul>
+              </td>
+              <td className="crm-customer-actions-cell">
+                {onDelete ? (
+                  <button
+                    type="button"
+                    className="crm-ghost-button crm-delete-button crm-customer-delete-button"
+                    disabled={busy}
+                    onClick={() => onDelete(file)}
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  <span>No actions</span>
+                )}
               </td>
             </tr>
           );
