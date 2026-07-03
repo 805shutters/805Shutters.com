@@ -14,3 +14,14 @@ export const productInterestOptions = [
   "Vertical Honeycomb",
   "Layered Shades"
 ] as const;
+
+export const commercialProjectTypeOptions = [
+  "Retail Store",
+  "School",
+  "Office Building",
+  "Warehouse",
+  "Medical Office",
+  "Restaurant / Hospitality",
+  "Property Management",
+  "Other Commercial"
+] as const;

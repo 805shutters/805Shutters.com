@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { trackBookingStep } from "@/lib/client-tracking";
-import { BookingCalendar } from "./BookingCalendar";
+import { BookingCalendar, type BookingCalendarVariant } from "./BookingCalendar";
 
 export function AppointmentBooking({
   className = "button primary",
-  label = "Book an appointment here"
+  label = "Book an appointment here",
+  bookingVariant = "standard"
 }: {
   className?: string;
   label?: string;
+  bookingVariant?: BookingCalendarVariant;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -30,7 +32,13 @@ export function AppointmentBooking({
       {open ? (
         <div className="booking-modal" role="dialog" aria-modal="true" aria-label="Book an appointment">
           <div className="booking-modal__backdrop" onClick={closeBooking} />
-          <BookingCalendar active={open} onDone={closeBooking} onClose={closeBooking} showClose />
+          <BookingCalendar
+            active={open}
+            onDone={closeBooking}
+            onClose={closeBooking}
+            showClose
+            variant={bookingVariant}
+          />
         </div>
       ) : null}
     </>

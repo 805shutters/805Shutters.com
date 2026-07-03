@@ -15,7 +15,7 @@ import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { syncAppointmentToGoogleCalendars, GoogleCalendarSyncResult } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
-import { productInterestOptions } from "@/lib/product-interest-options";
+import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
 export const runtime = "nodejs";
 
@@ -68,7 +68,7 @@ function pickRep(freeReps: string[]) {
   return freeReps[0] || null;
 }
 const allowedProductTypes = new Map<string, string>(
-  productInterestOptions.map((label) => [label.toLowerCase(), label])
+  [...productInterestOptions, ...commercialProjectTypeOptions].map((label) => [label.toLowerCase(), label])
 );
 
 function clean(value: unknown) {

@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
 import { getCurrentAttributionParams, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
-import { productInterestOptions } from "@/lib/product-interest-options";
+import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
   time: string;
@@ -37,7 +37,10 @@ type BookingCalendarProps = {
   onDone?: () => void;
   showClose?: boolean;
   onClose?: () => void;
+  variant?: BookingCalendarVariant;
 };
+
+export type BookingCalendarVariant = "standard" | "commercial";
 
 const windowCountOptions = [
   { label: "1-5", value: "5" },
@@ -47,6 +50,16 @@ const windowCountOptions = [
   { label: "21-25", value: "25" },
   { label: "26-30", value: "30" },
   { label: "31 +", value: "31" }
+];
+
+const commercialWindowCountOptions = [
+  { label: "1-5", value: "5" },
+  { label: "6-10", value: "10" },
+  { label: "11-30", value: "30" },
+  { label: "31-50", value: "50" },
+  { label: "51-100", value: "100" },
+  { label: "100-500", value: "500" },
+  { label: "500+", value: "501" }
 ];
 
 function currentMonth() {
@@ -91,12 +104,29 @@ export function BookingCalendar({
   active = true,
   className = "booking-panel",
   deferDetailsUntilDate = false,
-  eyebrow = "Free In-Home Consultation",
-  heading = "Book a consultation",
+  eyebrow,
+  heading,
   onDone,
   showClose = false,
-  onClose
+  onClose,
+  variant = "standard"
 }: BookingCalendarProps) {
+  const isCommercialBooking = variant === "commercial";
+  const panelClassName = [className, isCommercialBooking ? "booking-panel--commercial" : ""]
+    .filter(Boolean)
+    .join(" ");
+  const resolvedEyebrow = eyebrow ?? (isCommercialBooking ? "Commercial Shade Audit" : "Free In-Home Consultation");
+  const resolvedHeading = heading ?? (isCommercialBooking ? "Book a commercial shade audit" : "Book a consultation");
+  const projectOptions = isCommercialBooking ? commercialProjectTypeOptions : productInterestOptions;
+  const projectQuestion = isCommercialBooking
+    ? "What type of commercial space is this? (optional)"
+    : "Do you know which type of product you're interested in? (optional)";
+  const projectOptionsLabel = isCommercialBooking ? "Commercial project type" : "Product interest";
+  const windowCountQuestion = isCommercialBooking
+    ? "Approximately how many commercial windows need shades?"
+    : "Approximately how many windows do you need covered?";
+  const addressQuestion = isCommercialBooking ? "What site address should we go to?" : "What address should we go to?";
+  const windowOptions = isCommercialBooking ? commercialWindowCountOptions : windowCountOptions;
   const [month, setMonth] = useState(currentMonth());
   const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -310,15 +340,15 @@ export function BookingCalendar({
     }
   }
 
-  const hasPanelHead = Boolean(eyebrow || heading || showClose);
+  const hasPanelHead = Boolean(resolvedEyebrow || resolvedHeading || showClose);
 
   return (
-    <div className={className}>
+    <div className={panelClassName}>
       {hasPanelHead ? (
         <div className="booking-panel__head">
           <div>
-            {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
-            {heading ? <h2>{heading}</h2> : null}
+            {resolvedEyebrow ? <p className="eyebrow">{resolvedEyebrow}</p> : null}
+            {resolvedHeading ? <h2>{resolvedHeading}</h2> : null}
           </div>
           {showClose ? (
             <button type="button" className="booking-close" onClick={onClose} aria-label="Close booking">
@@ -340,12 +370,12 @@ export function BookingCalendar({
         <>
           <div className="booking-project-panel">
             <div>
-              <h3>Do you know which type of product you're interested in? (optional)</h3>
+              <h3>{projectQuestion}</h3>
             </div>
 
-            <fieldset className="booking-product-options" aria-label="Product interest">
+            <fieldset className="booking-product-options" aria-label={projectOptionsLabel}>
               <div className="booking-product-grid">
-                {productInterestOptions.map((productType) => (
+                {projectOptions.map((productType) => (
                   <button
                     type="button"
                     key={productType}
@@ -359,10 +389,10 @@ export function BookingCalendar({
               </div>
             </fieldset>
 
-            <fieldset className="booking-product-options" aria-label="Approximately how many windows do you need covered?">
-              <h3>Approximately how many windows do you need covered?</h3>
+            <fieldset className="booking-product-options" aria-label={windowCountQuestion}>
+              <h3>{windowCountQuestion}</h3>
               <div className="booking-count-grid">
-                {windowCountOptions.map((option) => (
+                {windowOptions.map((option) => (
                   <button
                     type="button"
                     key={option.value}
@@ -377,7 +407,7 @@ export function BookingCalendar({
             </fieldset>
 
             <label>
-              <span className="booking-address-heading">What address should we go to?</span>
+              <span className="booking-address-heading">{addressQuestion}</span>
               <AddressAutocomplete
                 name="projectAddress"
                 value={serviceAddress}
@@ -393,7 +423,7 @@ export function BookingCalendar({
                 disabled={!projectDetailsReady || loading}
                 onClick={showAvailability}
               >
-                {loading ? "Checking availability..." : "Show dates and times"}
+                {loading ? "Checking availability..." : isCommercialBooking ? "Show audit dates and times" : "Show dates and times"}
               </button>
               {selectedAppointmentLength ? (
                 <p className="booking-helper booking-helper--flush">

@@ -8629,6 +8629,257 @@ body:has(.booking-page--focused) .assistant-widget {
   line-height: 1.5;
 }
 
+.booking-panel--commercial {
+  border: 2px solid #0f1011;
+  background: #181a1b;
+  color: #f6f1e8;
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1px rgba(243, 180, 63, 0.18);
+}
+
+.booking-panel--commercial .booking-panel__head {
+  border-bottom: 1px solid #f3b43f;
+  background:
+    repeating-linear-gradient(135deg, rgba(243, 180, 63, 0.12) 0 8px, transparent 8px 16px),
+    #151617;
+}
+
+.booking-panel--commercial .booking-panel__head h2,
+.booking-panel--commercial .booking-project-panel h3,
+.booking-panel--commercial .booking-address-heading,
+.booking-panel--commercial .booking-detail-panel h3,
+.booking-panel--commercial .booking-complete h3 {
+  color: #f6f1e8;
+  font-family: var(--font-body);
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.booking-panel--commercial .eyebrow,
+.booking-panel--commercial .booking-optional {
+  color: #f3b43f;
+}
+
+.booking-panel--commercial .booking-close {
+  color: #f6f1e8;
+}
+
+.booking-panel--commercial .booking-close:hover,
+.booking-panel--commercial .booking-close:focus-visible {
+  border-color: #f3b43f;
+  color: #f3b43f;
+  outline: none;
+}
+
+.booking-panel--commercial .booking-project-panel,
+.booking-panel--commercial .booking-detail-panel,
+.booking-panel--commercial .booking-step,
+.booking-panel--commercial .booking-form {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    #1d1f20;
+  background-size: 28px 28px;
+}
+
+.booking-panel--commercial .booking-project-panel {
+  border-bottom-color: #4c5154;
+}
+
+.booking-panel--commercial label,
+.booking-panel--commercial .booking-product-options legend {
+  color: #f6f1e8;
+}
+
+.booking-panel--commercial input,
+.booking-panel--commercial textarea {
+  border-color: #6f7378;
+  background: #101112;
+  color: #f6f1e8;
+}
+
+.booking-panel--commercial input:focus,
+.booking-panel--commercial textarea:focus {
+  border-color: #f3b43f;
+  outline: 2px solid rgba(243, 180, 63, 0.35);
+  outline-offset: -1px;
+}
+
+.booking-panel--commercial input:disabled,
+.booking-panel--commercial textarea:disabled {
+  border-color: #3b3f42;
+  background: #242729;
+  color: #8f9497;
+}
+
+.booking-panel--commercial .booking-product-grid button,
+.booking-panel--commercial .booking-count-grid button,
+.booking-panel--commercial .booking-slots button {
+  border-color: #6f7378;
+  background:
+    linear-gradient(180deg, #373b3e, #222527);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  color: #f6f1e8;
+}
+
+.booking-panel--commercial .booking-product-grid button:not(:disabled):hover,
+.booking-panel--commercial .booking-product-grid button:not(:disabled):focus-visible,
+.booking-panel--commercial .booking-count-grid button:not(:disabled):hover,
+.booking-panel--commercial .booking-count-grid button:not(:disabled):focus-visible,
+.booking-panel--commercial .booking-slots button:not(:disabled):hover {
+  border-color: #f3b43f;
+  background:
+    linear-gradient(180deg, #4b4f52, #2d3032);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(243, 180, 63, 0.28);
+  transform: none;
+}
+
+.booking-panel--commercial .booking-product-grid button.active,
+.booking-panel--commercial .booking-product-grid button.active:not(:disabled):hover,
+.booking-panel--commercial .booking-product-grid button.active:not(:disabled):focus-visible,
+.booking-panel--commercial .booking-count-grid button.active,
+.booking-panel--commercial .booking-count-grid button.active:not(:disabled):hover,
+.booking-panel--commercial .booking-count-grid button.active:not(:disabled):focus-visible,
+.booking-panel--commercial .booking-slots button.active {
+  border-color: #f3b43f;
+  background: #f3b43f;
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(0, 0, 0, 0.32);
+  color: #111111;
+  transform: none;
+}
+
+.booking-panel--commercial .booking-project-button,
+.booking-panel--commercial .booking-submit-row button {
+  border-color: #f3b43f;
+  background: #f3b43f;
+  color: #111111;
+}
+
+.booking-panel--commercial .booking-project-button:not(:disabled):hover,
+.booking-panel--commercial .booking-submit-row button:not(:disabled):hover {
+  border-color: #f6f1e8;
+  background: #f6f1e8;
+  color: #111111;
+}
+
+.booking-panel--commercial .booking-project-button:disabled,
+.booking-panel--commercial .booking-submit-row button:disabled,
+.booking-panel--commercial .booking-slots button:disabled,
+.booking-panel--commercial .booking-product-grid button:disabled,
+.booking-panel--commercial .booking-count-grid button:disabled {
+  border-color: #3b3f42;
+  background: #242729;
+  box-shadow: none;
+  color: #8f9497;
+}
+
+.booking-panel--commercial .booking-calendar-shell {
+  background: #151617;
+}
+
+.booking-panel--commercial .booking-calendar-head {
+  border-bottom-color: #f3b43f;
+  background: #111213;
+}
+
+.booking-panel--commercial .booking-calendar-head h3 {
+  color: #f6f1e8;
+  font-family: var(--font-body);
+  font-weight: 900;
+}
+
+.booking-panel--commercial .booking-calendar-head button {
+  color: #f3b43f;
+}
+
+.booking-panel--commercial .booking-calendar-head button:hover,
+.booking-panel--commercial .booking-calendar-head button:focus-visible {
+  background: #f3b43f;
+  color: #111111;
+  outline: none;
+}
+
+.booking-panel--commercial .booking-weekdays {
+  border-bottom-color: #4c5154;
+  background: #2b2e30;
+  color: #d7d5cc;
+}
+
+.booking-panel--commercial .booking-days {
+  background:
+    linear-gradient(90deg, rgba(243, 180, 63, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(243, 180, 63, 0.06) 1px, transparent 1px),
+    #17191a;
+  background-size: 42px 42px;
+}
+
+.booking-panel--commercial .booking-day {
+  border-color: #3b3f42;
+  background: #242729;
+  box-shadow: none;
+  color: #8f9497;
+}
+
+.booking-panel--commercial .booking-day--available {
+  border-color: #f3b43f;
+  background: #e7e1d5;
+  box-shadow: inset 0 0 0 1px rgba(17, 17, 17, 0.42);
+  color: #111111;
+}
+
+.booking-panel--commercial .booking-day:not(:disabled):hover,
+.booking-panel--commercial .booking-day--selected {
+  border-color: #f3b43f;
+  background: #f3b43f;
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(243, 180, 63, 0.24);
+  color: #111111;
+  transform: none;
+}
+
+.booking-panel--commercial .booking-day--disabled {
+  background: #202223;
+  color: #606568;
+  opacity: 1;
+}
+
+.booking-panel--commercial .booking-day--empty {
+  background: transparent;
+}
+
+.booking-panel--commercial .booking-helper,
+.booking-panel--commercial .booking-selection-summary,
+.booking-panel--commercial .booking-message,
+.booking-panel--commercial .booking-slots p,
+.booking-panel--commercial .booking-complete p {
+  color: #d7d5cc;
+}
+
+.booking-panel--commercial .booking-helper.error,
+.booking-panel--commercial .booking-message.error {
+  color: #f3b43f;
+}
+
+.booking-panel--commercial .booking-form {
+  border-top-color: #4c5154;
+}
+
+.booking-panel--commercial .booking-submit-secondary {
+  border-color: #6f7378;
+  background: #2b2e30;
+  color: #f6f1e8;
+}
+
 @media (max-width: 920px) {
   .site-masthead,
   .page-editorial-panel,

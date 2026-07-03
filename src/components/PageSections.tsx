@@ -1116,7 +1116,11 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
             <h1>{page.h1}</h1>
             <p className="lede">{page.intro}</p>
             <div className="hero-actions">
-              <AppointmentBooking className="button primary commercial-cta-button" label="Book a commercial shade audit" />
+              <AppointmentBooking
+                className="button primary commercial-cta-button"
+                label="Book a commercial shade audit"
+                bookingVariant="commercial"
+              />
               <TrackedPhoneLink className="button secondary hero-phone" location={`${page.path} hero`}>
                 Call {site.phone}
               </TrackedPhoneLink>
@@ -1234,7 +1238,11 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
             <h2>{page.cta || "Schedule a free commercial shade audit"}</h2>
           </div>
           <div className="hero-actions">
-            <AppointmentBooking className="button primary commercial-cta-button" label="Book a commercial shade audit" />
+            <AppointmentBooking
+              className="button primary commercial-cta-button"
+              label="Book a commercial shade audit"
+              bookingVariant="commercial"
+            />
             <TrackedPhoneLink className="button secondary" location={`${page.path} cta`}>
               Call {site.phone}
             </TrackedPhoneLink>
@@ -1425,7 +1433,10 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
             <h2>{page.cta || "Schedule a free consultation"}</h2>
           </div>
           <div className="hero-actions">
-            <AppointmentBooking label={commercialMode ? "Book a commercial shade audit" : "Book an appointment here"} />
+            <AppointmentBooking
+              label={commercialMode ? "Book a commercial shade audit" : "Book an appointment here"}
+              bookingVariant={commercialMode ? "commercial" : "standard"}
+            />
             <TrackedPhoneLink className="button secondary" location="home cta">
               Call {site.phone}
             </TrackedPhoneLink>
