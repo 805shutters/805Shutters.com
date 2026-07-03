@@ -533,6 +533,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 .masthead-link,
 .category-nav a,
 .header-phone,
+.phone-note a,
 .social-links a,
 .footer-links a {
   transition: color 280ms ease;
@@ -541,6 +542,7 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 .masthead-link:hover,
 .category-nav a:hover,
 .header-phone:hover,
+.phone-note a:hover,
 .social-links a:hover,
 .footer-links a:hover {
   color: var(--accent);
@@ -565,6 +567,16 @@ body:has(.home-editorial) .social-links .social-link-yelp {
   letter-spacing: 0.18em;
   line-height: 1;
   word-spacing: 0.24em;
+}
+
+.phone-note a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.phone-note a:focus-visible {
+  outline: 1px solid currentColor;
+  outline-offset: 4px;
 }
 
 .category-nav {
@@ -1018,6 +1030,7 @@ body:has(.home-editorial) .category-dot {
 body:has(.home-editorial) .category-nav a:hover,
 body:has(.home-editorial) .masthead-link:hover,
 body:has(.home-editorial) .header-phone:hover,
+body:has(.home-editorial) .phone-note a:hover,
 body:has(.home-editorial) .social-links a:hover {
   color: var(--white);
 }

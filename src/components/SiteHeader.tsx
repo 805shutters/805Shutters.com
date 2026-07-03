@@ -233,13 +233,25 @@ export function SiteHeader() {
         <div className="masthead-actions">
           <CalendarRouteLink className="header-calendar-link--phone-row" />
           <div className="phone-stack">
-            <Link className="masthead-link masthead-email" href={site.emailHref}>
+            <a className="masthead-link masthead-email" href={site.emailHref}>
               {site.email}
-            </Link>
+            </a>
             <TrackedPhoneLink className="header-phone" location="header">
               {site.phone}
             </TrackedPhoneLink>
-            <span className="phone-note">CALL • TEXT • EMAIL</span>
+            <span className="phone-note" aria-label="Contact 805 Shutters">
+              <TrackedPhoneLink ariaLabel="Call 805 Shutters" location="header action">
+                CALL
+              </TrackedPhoneLink>{" "}
+              <span aria-hidden="true">•</span>{" "}
+              <a href={site.smsHref} aria-label="Text 805 Shutters">
+                TEXT
+              </a>{" "}
+              <span aria-hidden="true">•</span>{" "}
+              <a href={site.emailHref} aria-label="Email 805 Shutters">
+                EMAIL
+              </a>
+            </span>
           </div>
         </div>
       </div>
