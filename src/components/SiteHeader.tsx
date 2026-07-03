@@ -152,63 +152,65 @@ export function SiteHeader() {
             <CommercialModeBadge />
             <CalendarRouteLink className="header-calendar-link--with-commercial" />
           </div>
-          <div className="social-links" aria-label="Social links">
-            <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
-              <FacebookIcon />
-            </a>
-            <a href={site.social.instagram} aria-label="805 Shutters on Instagram" target="_blank" rel="noreferrer">
-              <InstagramIcon />
-            </a>
-            <span className="social-link-with-panel" onMouseEnter={loadYelpReviews} onFocus={loadYelpReviews}>
-              <a
-                className="social-link-yelp"
-                href={site.social.yelp}
-                aria-label="805 Shutters on Yelp"
-                aria-describedby="yelp-review-preview"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <span className="yelp-text-mark" aria-hidden="true">
-                  <span className="yelp-text">yelp</span>
-                  <span className="yelp-burst">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </span>
+          <div className="masthead-social-row">
+            <div className="social-links" aria-label="Social links">
+              <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
+                <FacebookIcon />
               </a>
-              <span className="yelp-review-popover" id="yelp-review-preview">
-                <span className="yelp-review-title">Yelp reviews</span>
-                {yelpReviewStatus === "loading" ? (
-                  <span className="yelp-review-note">Loading review excerpts...</span>
-                ) : yelpReviews.length ? (
-                  <span className="yelp-review-list">
-                    {yelpReviews.map((review) => (
-                      <span className="yelp-review-item" key={review.id}>
-                        <span className="yelp-review-stars" aria-label={`${review.rating} star Yelp review`}>
-                          {"★".repeat(Math.max(0, Math.min(5, review.rating)))}
-                        </span>
-                        <span className="yelp-review-text">{review.text}</span>
-                        <span className="yelp-review-author">{review.userName}</span>
-                      </span>
-                    ))}
+              <a href={site.social.instagram} aria-label="805 Shutters on Instagram" target="_blank" rel="noreferrer">
+                <InstagramIcon />
+              </a>
+              <span className="social-link-with-panel" onMouseEnter={loadYelpReviews} onFocus={loadYelpReviews}>
+                <a
+                  className="social-link-yelp"
+                  href={site.social.yelp}
+                  aria-label="805 Shutters on Yelp"
+                  aria-describedby="yelp-review-preview"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <span className="yelp-text-mark" aria-hidden="true">
+                    <span className="yelp-text">yelp</span>
+                    <span className="yelp-burst">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </span>
                   </span>
-                ) : (
-                  <span className="yelp-review-note">Open Yelp for current customer reviews.</span>
-                )}
-                <span className="yelp-review-footer">View every review on Yelp</span>
+                </a>
+                <span className="yelp-review-popover" id="yelp-review-preview">
+                  <span className="yelp-review-title">Yelp reviews</span>
+                  {yelpReviewStatus === "loading" ? (
+                    <span className="yelp-review-note">Loading review excerpts...</span>
+                  ) : yelpReviews.length ? (
+                    <span className="yelp-review-list">
+                      {yelpReviews.map((review) => (
+                        <span className="yelp-review-item" key={review.id}>
+                          <span className="yelp-review-stars" aria-label={`${review.rating} star Yelp review`}>
+                            {"★".repeat(Math.max(0, Math.min(5, review.rating)))}
+                          </span>
+                          <span className="yelp-review-text">{review.text}</span>
+                          <span className="yelp-review-author">{review.userName}</span>
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="yelp-review-note">Open Yelp for current customer reviews.</span>
+                  )}
+                  <span className="yelp-review-footer">View every review on Yelp</span>
+                </span>
               </span>
-            </span>
+            </div>
+            <Link
+              className="masthead-link masthead-about-link"
+              href="/#about"
+              onClick={scrollToAbout}
+            >
+              About Us
+            </Link>
           </div>
-          <Link
-            className="masthead-link masthead-about-link"
-            href="/#about"
-            onClick={scrollToAbout}
-          >
-            About Us
-          </Link>
         </div>
         <Link className={`brand ${isCommercialMode ? "brand--commercial" : "brand--exact"}`} href="/" aria-label={brandName}>
           <span className="brand-text-logo" aria-hidden="true">

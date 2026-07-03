@@ -318,18 +318,26 @@ body.commercial-mode .header-phone {
   gap: 13px;
 }
 
-.masthead-contact-left .social-links {
+.masthead-social-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
   justify-self: start;
 }
 
-/* "About Us" jump link sits directly under the social row / Yelp logo.
-   Reuses .masthead-link so it inherits the white-on-photo / dark-when-scrolled flip. */
+/* Reuses .masthead-link so it inherits the white-on-photo / dark-when-scrolled flip. */
 .masthead-about-link {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
   font-family: var(--font-body);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
   text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -947,7 +955,7 @@ body:has(.home-editorial) .masthead-contact-left {
   }
 }
 
-body:has(.home-editorial) .masthead-contact-left .social-links {
+body:has(.home-editorial) .masthead-contact-left .masthead-social-row {
   margin-top: 18px;
 }
 
