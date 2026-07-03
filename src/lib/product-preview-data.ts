@@ -25,7 +25,7 @@ export const residentialCategoryItems: CategoryNavItem[] = [
     label: "Blinds",
     href: "/blinds/",
     products: [
-      { label: "Faux Wood", image: "/images/commercial-mode/commercial-office-faux-wood-blinds.png" },
+      { label: "Faux Wood", image: "/images/commercial-mode/commercial-office-faux-wood-blinds.webp" },
       { label: "Premium Wood", image: "/images/805-portfolio-blinds-office.jpg" },
       { label: "Vertical Blinds", image: "/images/product-previews/vertical-blinds-sliding-door.jpg" },
       { label: "Aluminum Blinds", image: "/images/product-previews/aluminum-blinds-window.jpg" }

@@ -21,11 +21,11 @@ export const commercialModeImages = {
   school: "/images/product-previews/commercial-socal-school.jpg",
   propertyExterior: "/images/product-previews/commercial-socal-property-managers.jpg",
   storefrontCorner: "/images/product-previews/commercial-socal-storefront-corner.jpg",
-  conference: "/images/commercial-mode/commercial-conference-blackout-shades.png",
-  medical: "/images/commercial-mode/commercial-medical-privacy-shades.png",
-  storefront: "/images/commercial-mode/commercial-local-storefront-solar-shades.png",
-  honeycomb: "/images/commercial-mode/commercial-single-room-honeycomb-shades.png",
-  fauxWood: "/images/commercial-mode/commercial-office-faux-wood-blinds.png"
+  conference: "/images/commercial-mode/commercial-conference-blackout-shades.webp",
+  medical: "/images/commercial-mode/commercial-medical-privacy-shades.webp",
+  storefront: "/images/commercial-mode/commercial-local-storefront-solar-shades.webp",
+  honeycomb: "/images/commercial-mode/commercial-single-room-honeycomb-shades.webp",
+  fauxWood: "/images/commercial-mode/commercial-office-faux-wood-blinds.webp"
 };
 
 export const commercialServices: Service[] = [
