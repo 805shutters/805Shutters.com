@@ -108,6 +108,54 @@
     "natural": "/images/portfolio-enhanced/plantation-shutters-dining-room-natural.jpg"
   },
   {
+    "base": "fabric-roller-shade-valance-detail",
+    "source": "2026-07-02-fabric-roller-shade-valance-detail.jpg",
+    "category": "Shades",
+    "title": "Fabric Roller Shade Detail",
+    "alt": "Fabric roller shade with a matching valance installed over a Ventura County window",
+    "position": "center",
+    "grade": "shade",
+    "wide": "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-wide.jpg",
+    "card": "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-card.jpg",
+    "natural": "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-natural.jpg"
+  },
+  {
+    "base": "bedroom-plantation-shutters-angle",
+    "source": "2026-07-02-bedroom-plantation-shutters-angle.jpg",
+    "category": "Shutters",
+    "title": "Bedroom Plantation Shutters",
+    "alt": "White plantation shutters installed on a Ventura County bedroom window",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bedroom-plantation-shutters-angle-wide.jpg",
+    "card": "/images/portfolio-enhanced/bedroom-plantation-shutters-angle-card.jpg",
+    "natural": "/images/portfolio-enhanced/bedroom-plantation-shutters-angle-natural.jpg"
+  },
+  {
+    "base": "bedroom-plantation-shutters-straight",
+    "source": "2026-07-02-bedroom-plantation-shutters-straight.jpg",
+    "category": "Shutters",
+    "title": "Straight-On Bedroom Shutters",
+    "alt": "Straight-on view of white plantation shutters in a Ventura County bedroom",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bedroom-plantation-shutters-straight-wide.jpg",
+    "card": "/images/portfolio-enhanced/bedroom-plantation-shutters-straight-card.jpg",
+    "natural": "/images/portfolio-enhanced/bedroom-plantation-shutters-straight-natural.jpg"
+  },
+  {
+    "base": "bedroom-plantation-shutters-wide-angle",
+    "source": "2026-07-02-bedroom-plantation-shutters-wide-angle.jpg",
+    "category": "Shutters",
+    "title": "Bedroom Shutters Wide Angle",
+    "alt": "Wide angle view of white plantation shutters in a Ventura County bedroom",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bedroom-plantation-shutters-wide-angle-wide.jpg",
+    "card": "/images/portfolio-enhanced/bedroom-plantation-shutters-wide-angle-card.jpg",
+    "natural": "/images/portfolio-enhanced/bedroom-plantation-shutters-wide-angle-natural.jpg"
+  },
+  {
     "base": "bay-window-plantation-shutters-front",
     "source": "2026-07-01-bay-window-plantation-shutters-front.jpg",
     "category": "Shutters",

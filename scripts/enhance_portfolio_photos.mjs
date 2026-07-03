@@ -89,6 +89,42 @@ const photos = [
     grade: "editorial"
   },
   {
+    base: "fabric-roller-shade-valance-detail",
+    source: "2026-07-02-fabric-roller-shade-valance-detail.jpg",
+    category: "Shades",
+    title: "Fabric Roller Shade Detail",
+    alt: "Fabric roller shade with a matching valance installed over a Ventura County window",
+    position: "center",
+    grade: "shade"
+  },
+  {
+    base: "bedroom-plantation-shutters-angle",
+    source: "2026-07-02-bedroom-plantation-shutters-angle.jpg",
+    category: "Shutters",
+    title: "Bedroom Plantation Shutters",
+    alt: "White plantation shutters installed on a Ventura County bedroom window",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "bedroom-plantation-shutters-straight",
+    source: "2026-07-02-bedroom-plantation-shutters-straight.jpg",
+    category: "Shutters",
+    title: "Straight-On Bedroom Shutters",
+    alt: "Straight-on view of white plantation shutters in a Ventura County bedroom",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "bedroom-plantation-shutters-wide-angle",
+    source: "2026-07-02-bedroom-plantation-shutters-wide-angle.jpg",
+    category: "Shutters",
+    title: "Bedroom Shutters Wide Angle",
+    alt: "Wide angle view of white plantation shutters in a Ventura County bedroom",
+    position: "center",
+    grade: "phone"
+  },
+  {
     base: "bay-window-plantation-shutters-front",
     source: "2026-07-01-bay-window-plantation-shutters-front.jpg",
     category: "Shutters",
@@ -243,6 +279,15 @@ const gradePresets = {
     contrast: 1.04,
     clahe: { width: 112, height: 112, maxSlope: 2 },
     sharpen: { sigma: 0.68, m1: 1.08, m2: 1.42 }
+  },
+  shade: {
+    normaliseLower: 0.2,
+    normaliseUpper: 99.6,
+    brightness: 1.07,
+    saturation: 1.01,
+    contrast: 1.04,
+    clahe: { width: 96, height: 96, maxSlope: 2 },
+    sharpen: { sigma: 0.7, m1: 1.12, m2: 1.48 }
   },
   phone: {
     normaliseLower: 0.15,

@@ -386,6 +386,30 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
 
 const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
+    category: "Shades",
+    title: "Fabric Roller Shade Detail",
+    image: "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-card.jpg",
+    imageAlt: "Fabric roller shade with a matching valance installed over a Ventura County window"
+  },
+  {
+    category: "Shutters",
+    title: "Bedroom Plantation Shutters",
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-angle-card.jpg",
+    imageAlt: "White plantation shutters installed on a Ventura County bedroom window"
+  },
+  {
+    category: "Shutters",
+    title: "Straight-On Bedroom Shutters",
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-straight-card.jpg",
+    imageAlt: "Straight-on view of white plantation shutters in a Ventura County bedroom"
+  },
+  {
+    category: "Shutters",
+    title: "Bedroom Shutters Wide Angle",
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-wide-angle-card.jpg",
+    imageAlt: "Wide angle view of white plantation shutters in a Ventura County bedroom"
+  },
+  {
     category: "Shutters",
     title: "Bay Window Plantation Shutters",
     image: "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg",
