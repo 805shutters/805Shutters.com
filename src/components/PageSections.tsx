@@ -386,6 +386,24 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
 
 const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
+    category: "Shutters",
+    title: "Bay Window Plantation Shutters",
+    image: "/images/portfolio-enhanced/bay-window-plantation-shutters-front-card.jpg",
+    imageAlt: "White plantation shutters installed across a Ventura County bay window"
+  },
+  {
+    category: "Shutters",
+    title: "Angled Bay Window Shutters",
+    image: "/images/portfolio-enhanced/bay-window-plantation-shutters-angle-card.jpg",
+    imageAlt: "White plantation shutters installed on an angled Ventura County bay window"
+  },
+  {
+    category: "Shutters",
+    title: "Tall Window Shutter Detail",
+    image: "/images/portfolio-enhanced/two-story-shutter-installation-detail-card.jpg",
+    imageAlt: "Custom plantation shutter detail on tall angled Ventura County windows"
+  },
+  {
     category: "Shades",
     title: "Layered Bedroom Shades",
     image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
