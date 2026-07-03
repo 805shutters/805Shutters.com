@@ -340,7 +340,6 @@ export function buildAiSearchFeed() {
       cities: site.areas,
       primaryServices,
       reviews: {
-        yelpRating: site.reviews.yelpRating,
         yelpUrl: site.social.yelp
       },
       sameAs: [

@@ -355,7 +355,7 @@ body.commercial-mode .header-phone {
 }
 
 .social-links .social-link-yelp {
-  width: 100px;
+  width: 72px;
   height: 28px;
   color: inherit;
   transition:
@@ -430,18 +430,6 @@ body:has(.home-editorial) .social-links .social-link-yelp {
 
 .yelp-burst span:nth-child(5) {
   transform: rotate(192deg) translateX(1px);
-}
-
-.yelp-rating {
-  display: inline-flex;
-  min-width: 29px;
-  align-items: baseline;
-  justify-content: center;
-  color: currentColor;
-  font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 0;
-  line-height: 1;
 }
 
 .yelp-review-popover {

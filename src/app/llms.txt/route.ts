@@ -19,7 +19,6 @@ export function GET() {
     `Email: ${site.email}`,
     `Service area: ${site.areas.join(", ")}`,
     `Primary services: ${primaryServices.join(", ")}`,
-    `Yelp rating: ${site.reviews.yelpRating}`,
     "",
     "## High-intent pages",
     `- [Free window treatment consultation](${site.baseUrl}/free-window-treatment-consultation/): Request a free in-home consultation for shutters, shades, blinds, exterior shades, or commercial window coverings.`,

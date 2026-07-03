@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 const proofPoints = [
   "Family-owned Ventura County company",
   "30+ years local experience",
-  `${site.reviews.yelpRating} Yelp rating`,
+  "Yelp reviews",
   "Free in-home consultation"
 ];
 
