@@ -9,6 +9,15 @@ export type CalendarAppointmentForStats = {
   status: string | null;
 };
 
+export function getQuoteStatsStatus(
+  quote: Pick<SalesQuote, "status" | "signed_at" | "customer_signature">
+): QuoteStatus {
+  if ((quote.status === "draft" || quote.status === "sent") && (quote.signed_at || quote.customer_signature)) {
+    return "sold";
+  }
+  return quote.status;
+}
+
 function isActiveCalendarAppointment(appointment: CalendarAppointmentForStats): boolean {
   return Boolean(appointment.appointment_date) && appointment.status !== "cancelled";
 }
@@ -53,19 +62,23 @@ export function filterQuotesForStatsTile(
       );
     case "upcoming":
       return quotes.filter(
-        (q) =>
-          (matchingCalendarQuoteIds.has(q.id) ||
-            (q.appointment_date &&
-              q.appointment_date >= today &&
-              q.status !== "sold" &&
-              q.status !== "installed")) &&
-          q.status !== "archived"
+        (q) => {
+          const status = getQuoteStatsStatus(q);
+          return (
+            (matchingCalendarQuoteIds.has(q.id) ||
+              (q.appointment_date &&
+                q.appointment_date >= today &&
+                status !== "sold" &&
+                status !== "installed")) &&
+            status !== "archived"
+          );
+        }
       );
     case "all":
       return quotes;
     default:
       if (STATUS_ORDER.includes(filter as QuoteStatus)) {
-        return quotes.filter((q) => q.status === filter);
+        return quotes.filter((q) => getQuoteStatsStatus(q) === filter);
       }
       return quotes;
   }

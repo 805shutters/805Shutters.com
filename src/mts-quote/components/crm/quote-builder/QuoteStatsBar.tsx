@@ -1,5 +1,6 @@
 import { cn } from "@mts/lib/utils";
 import { STATUS_ORDER, STATUS_LABELS } from "@mts/lib/quoteStatus";
+import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 import type { SalesQuote, QuoteStatus } from "@mts/types/quote";
 
 export type StatsFilter = "all" | "today" | "upcoming" | QuoteStatus;
@@ -41,7 +42,8 @@ export function QuoteStatsBar({
     archived: 0,
   };
   quotes.forEach((q) => {
-    if (q.status in statusCounts) statusCounts[q.status as QuoteStatus]++;
+    const status = getQuoteStatsStatus(q);
+    if (status in statusCounts) statusCounts[status]++;
   });
 
   const activeCalendarAppointments = calendarAppointments.filter(
@@ -60,14 +62,16 @@ export function QuoteStatsBar({
     activeCalendarAppointments.filter((appointment) => appointment.appointment_date === today)
       .length;
   const upcomingCount =
-    quoteAppointments.filter(
-      (q) =>
+    quoteAppointments.filter((q) => {
+      const status = getQuoteStatsStatus(q);
+      return (
         q.appointment_date &&
         q.appointment_date >= today &&
-        q.status !== "sold" &&
-        q.status !== "installed" &&
-        q.status !== "archived"
-    ).length +
+        status !== "sold" &&
+        status !== "installed" &&
+        status !== "archived"
+      );
+    }).length +
     activeCalendarAppointments.filter(
       (appointment) => appointment.appointment_date && appointment.appointment_date >= today
     ).length;
