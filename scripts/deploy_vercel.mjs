@@ -3,7 +3,7 @@
 import { spawnSync } from "node:child_process";
 
 const PROJECT = "805";
-const VERIFY_URL = "https://805-one.vercel.app";
+const VERIFY_URL = "https://www.805shutters.com";
 const WAIT_MS = 10_000;
 const MAX_WAIT_MS = 10 * 60_000;
 
@@ -94,7 +94,7 @@ async function waitForVercelDeployment(sha) {
   process.exit(1);
 }
 
-function verifyPublicVercelSite() {
+function verifyWebsite() {
   const html = run("curl", ["-fsSL", VERIFY_URL], { capture: true });
   if (!html.includes("__next") || !html.includes("805 Shutters")) {
     console.error(`${VERIFY_URL} did not look like the expected Next.js site.`);
@@ -112,10 +112,10 @@ run("npm", ["run", "build"]);
 run("git", ["push", "origin", "main"]);
 
 const deployment = await waitForVercelDeployment(sha);
-verifyPublicVercelSite();
+verifyWebsite();
 
 console.log("");
 console.log("Vercel deployment verified.");
 console.log(`Commit: ${sha}`);
 console.log(`Deployment: https://${deployment.url}`);
-console.log(`Public Vercel URL: ${VERIFY_URL}`);
+console.log(`Website URL: ${VERIFY_URL}`);

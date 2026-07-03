@@ -246,7 +246,6 @@ function isAllowedHost(host: string) {
   return (
     host === "805shutters.com" ||
     host === "www.805shutters.com" ||
-    host === "805-one.vercel.app" ||
     host.endsWith("-805-shutters.vercel.app") ||
     host === "localhost" ||
     host === "127.0.0.1"

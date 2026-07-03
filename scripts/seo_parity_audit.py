@@ -340,7 +340,7 @@ def render_markdown(report: dict[str, Any]) -> str:
 def main() -> int:
   parser = argparse.ArgumentParser()
   parser.add_argument("--live-base", default="https://www.805shutters.com")
-  parser.add_argument("--candidate-base", default="https://805-one.vercel.app")
+  parser.add_argument("--candidate-base", required=True)
   parser.add_argument("--output", default="reports/seo-parity-audit.json")
   parser.add_argument("--markdown", default="reports/seo-parity-audit.md")
   parser.add_argument("--workers", type=int, default=6)

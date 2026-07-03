@@ -200,6 +200,13 @@ const canonicalHostRedirect = {
   permanent: true
 };
 
+const publicVercelHostRedirect = {
+  source: "/:path*",
+  has: [{ type: "host", value: "^805-one\\.vercel\\.app$" }],
+  destination: "https://www.805shutters.com/:path*",
+  permanent: true
+};
+
 const malformedPhoneRedirects = ["/TEL\\:8058069344/", "/tel\\:8058069344/"].map((source) => ({
   source,
   destination: "/contact/",
@@ -229,7 +236,7 @@ const nextConfig = {
     ];
   },
   async redirects() {
-    return [canonicalHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
+    return [canonicalHostRedirect, publicVercelHostRedirect, ...malformedPhoneRedirects, ...legacyRedirects];
   }
 };
 
