@@ -4065,16 +4065,35 @@ body.qb-fullscreen .crm-app-shell {
   min-width: 0;
 }
 
+.crm-global-search-route-panel {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-global-search-route-panel > span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
 .crm-global-search-links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
   gap: 8px;
+  min-width: 0;
 }
 
 .crm-global-search-links .crm-ghost-button {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
   min-height: 34px;
   padding: 7px 10px;
+  text-align: left;
 }
 
 .crm-global-search-links .crm-ghost-button span {
@@ -12732,6 +12751,152 @@ html.mobile-menu-open {
   color: #4d4d49;
 }
 
+.crm-drill-action-board {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.6fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.crm-drill-action-section {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  background: #ffffff;
+  border: 1px solid #d8d8d2;
+}
+
+.crm-drill-action-section > span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-drill-action-section--money {
+  grid-column: span 1;
+}
+
+.crm-drill-status-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #cfcfc8;
+  background: #f7f7f5;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.crm-drill-action-section--status > strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.crm-drill-command-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.crm-drill-command-button {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 8px 9px;
+  background: #f7f7f5;
+  border: 1px solid #cfcfc8;
+  color: var(--ink);
+  text-align: left;
+}
+
+.crm-drill-command-button:hover:not(:disabled),
+.crm-drill-command-button:focus-visible {
+  border-color: var(--ink);
+  background: #ffffff;
+}
+
+.crm-drill-command-button strong {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.crm-drill-command-button span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.crm-drill-amount-command {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  background: #f7f7f5;
+  border: 1px solid #cfcfc8;
+}
+
+.crm-drill-amount-command label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.crm-drill-amount-command label span {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.crm-drill-amount-command input {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 5px 7px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.crm-drill-amount-command div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.crm-drill-amount-command button {
+  min-height: 28px;
+  padding: 5px 7px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .crm-drill-column-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1.1fr);
@@ -13311,6 +13476,7 @@ html.mobile-menu-open {
   }
 
   .crm-drill-column-grid,
+  .crm-drill-action-board,
   .crm-drill-compact-grid,
   .crm-drill-edit-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -13362,6 +13528,7 @@ html.mobile-menu-open {
   }
 
   .crm-drill-column-grid,
+  .crm-drill-action-board,
   .crm-drill-compact-grid,
   .crm-drill-edit-grid {
     grid-template-columns: 1fr;

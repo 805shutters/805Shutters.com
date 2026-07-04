@@ -4940,6 +4940,23 @@ type DrillInlineEditor = {
   onSave: (value: string) => Promise<boolean>;
 };
 
+type DrillCommandButton = {
+  key: string;
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+  onClick: () => void;
+};
+
+type DrillAmountCommand = {
+  key: string;
+  label: string;
+  detail: string;
+  defaultValue: number;
+  disabled?: boolean;
+  onSave: (amount: number) => Promise<boolean>;
+};
+
 function InlineEditableValue({
   value,
   editor,
@@ -5300,18 +5317,21 @@ function GlobalCustomerSearchPanel({
 
           {selectedResult && payload ? (
             <div className="crm-global-search-detail">
-              <div className="crm-global-search-links" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
-                {selectedResult.pages.map((page) => (
-                  <button
-                    type="button"
-                    className="crm-ghost-button"
-                    key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
-                    onClick={() => onOpenPage(page, selectedResult.entry)}
-                  >
-                    {page.label}
-                    {page.detail ? <span>{page.detail}</span> : null}
-                  </button>
-                ))}
+              <div className="crm-global-search-route-panel" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
+                <span>Routes</span>
+                <div className="crm-global-search-links">
+                  {selectedResult.pages.map((page) => (
+                    <button
+                      type="button"
+                      className="crm-ghost-button"
+                      key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
+                      onClick={() => onOpenPage(page, selectedResult.entry)}
+                    >
+                      {page.label}
+                      {page.detail ? <span>{page.detail}</span> : null}
+                    </button>
+                  ))}
+                </div>
               </div>
               <DrillDetailCard
                 entry={selectedResult.entry}
@@ -5699,6 +5719,168 @@ function DrillDetailCard({
         onSave: (value) => saveJob({ next_action: value.trim() }, "Next action updated.")
       }
     : undefined;
+  const depositShortfall = row ? roundCurrency(Math.max((row.depositDue || 0) - (row.depositPaid || 0), 0)) : 0;
+  const configuredBalanceDue = row ? roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0)) : 0;
+  const balancePaymentShortfall = row ? roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0)) : 0;
+  const openJobBalance = row ? roundCurrency(Math.max(row.balance || 0, 0)) : 0;
+  const rowPaymentType = row?.paymentType || "other";
+  const paidAt = todayInputValue();
+  const statusControl =
+    statusEditor && statusEditor.type === "select"
+      ? {
+          value: statusEditor.value,
+          options: statusEditor.options || [],
+          onSave: statusEditor.onSave
+        }
+      : null;
+  const payJobPatch = row
+    ? {
+        payment_type: rowPaymentType,
+        paid_at: paidAt,
+        ...(depositShortfall > 0 ? { deposit_paid_target: row.depositDue } : {}),
+        ...(balancePaymentShortfall > 0 ? { balance_paid_target: configuredBalanceDue } : {}),
+        mark_balance_paid: true,
+        ...(row.source === "crm_quote" ? { status: "paid" } : {})
+      }
+    : null;
+  const workflowCommandOptions: Array<DrillCommandButton | null> = [
+    measureNeededActive
+      ? {
+          key: "measured",
+          label: "Measured",
+          detail: "Measure complete",
+          disabled: busy,
+          onClick: () => void onMeasureNeededAction?.(entry, "measured")
+        }
+      : canRequestMeasure
+        ? {
+            key: "measure-needed",
+            label: "Measure Needed",
+            detail: "Create measure task",
+            disabled: busy,
+            onClick: () => void onMeasureNeededAction?.(entry, "request")
+          }
+        : null,
+    canMarkOrdered
+      ? {
+          key: "mark-ordered",
+          label: "Mark Ordered",
+          detail: "Move to ordered",
+          disabled: busy,
+          onClick: () => void markOrdered()
+        }
+      : null,
+    canMarkComplete
+      ? {
+          key: "mark-complete",
+          label: "Mark Complete",
+          detail: "Install complete",
+          disabled: busy,
+          onClick: () => void markComplete()
+        }
+      : null,
+    {
+      key: "open-file",
+      label: "Open File",
+      detail: "Customer file",
+      onClick: () => onOpenCustomer(entry.customerName)
+    }
+  ];
+  const workflowCommands = workflowCommandOptions.filter((command): command is DrillCommandButton => Boolean(command));
+  const moneyCommandOptions: Array<DrillCommandButton | null> = [
+    row && payJobPatch && (depositShortfall > 0 || balancePaymentShortfall > 0 || openJobBalance > 0)
+      ? {
+          key: "pay-job",
+          label: "Pay Job",
+          detail: toLedgerCurrency(openJobBalance || depositShortfall + balancePaymentShortfall),
+          disabled: busy,
+          onClick: () => void saveRow(payJobPatch, "Job marked paid.")
+        }
+      : null,
+    row && depositShortfall > 0
+      ? {
+          key: "pay-deposit",
+          label: "Pay Deposit",
+          detail: toLedgerCurrency(depositShortfall),
+          disabled: busy,
+          onClick: () =>
+            void saveRow(
+              {
+                deposit_paid_target: row.depositDue,
+                payment_type: rowPaymentType,
+                paid_at: paidAt
+              },
+              "Deposit paid."
+            )
+        }
+      : null,
+    row && balancePaymentShortfall > 0
+      ? {
+          key: "pay-balance",
+          label: "Pay Balance",
+          detail: toLedgerCurrency(balancePaymentShortfall),
+          disabled: busy,
+          onClick: () =>
+            void saveRow(
+              {
+                balance_paid_target: configuredBalanceDue,
+                payment_type: rowPaymentType,
+                paid_at: paidAt,
+                ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
+                ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
+              },
+              "Balance paid."
+            )
+        }
+      : null
+  ];
+  const moneyCommands = moneyCommandOptions.filter((command): command is DrillCommandButton => Boolean(command));
+  const amountCommands: DrillAmountCommand[] = row
+    ? [
+        {
+          key: "write-cogs",
+          label: "Write COGS",
+          detail: row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing",
+          defaultValue: row.cogs || 0,
+          disabled: busy,
+          onSave: (amount) =>
+            saveRow(row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount }, "COGS updated.")
+        },
+        {
+          key: "set-deposit",
+          label: "Set Deposit Due",
+          detail: toLedgerCurrency(row.depositDue),
+          defaultValue: row.depositDue || 0,
+          disabled: busy,
+          onSave: (amount) => saveRow({ deposit_required: amount }, "Deposit due updated.")
+        },
+        {
+          key: "set-balance",
+          label: "Set Balance Due",
+          detail: toLedgerCurrency(row.balance),
+          defaultValue: row.balance || 0,
+          disabled: busy,
+          onSave: (amount) => saveRow({ balance_due_target: amount }, "Balance updated.")
+        },
+        {
+          key: "add-payment",
+          label: "Add Payment",
+          detail: formatPaymentType(row.paymentType),
+          defaultValue: 0,
+          disabled: busy,
+          onSave: (amount) =>
+            saveRow(
+              {
+                payment_amount: amount,
+                payment_label: "Balance payment",
+                payment_type: rowPaymentType,
+                paid_at: paidAt
+              },
+              "Payment recorded."
+            )
+        }
+      ]
+    : [];
 
   return (
     <article className="crm-drill-detail-card">
@@ -5719,32 +5901,60 @@ function DrillDetailCard({
               : "Contact details pending"}
           </p>
         </div>
-        <div className="crm-drill-detail-value">
-          {entry.value ? <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong> : null}
-          {measureNeededActive ? (
-            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => onMeasureNeededAction?.(entry, "measured")}>
-              Measured
-            </button>
-          ) : canRequestMeasure ? (
-            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => onMeasureNeededAction?.(entry, "request")}>
-              Measure Needed
-            </button>
-          ) : null}
-          {canMarkOrdered ? (
-            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void markOrdered()}>
-              Mark Ordered
-            </button>
-          ) : null}
-          {canMarkComplete ? (
-            <button type="button" className="crm-ghost-button" disabled={busy} onClick={() => void markComplete()}>
-              Mark Complete
-            </button>
-          ) : null}
-          <button type="button" className="crm-ghost-button" onClick={() => onOpenCustomer(entry.customerName)}>
-            Open File
-          </button>
-        </div>
+        {entry.value ? (
+          <div className="crm-drill-detail-value">
+            <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong>
+          </div>
+        ) : null}
       </header>
+
+      <div className="crm-drill-action-board">
+        <section className="crm-drill-action-section crm-drill-action-section--status">
+          <span>Status</span>
+          {statusControl ? (
+            <select
+              className="crm-drill-status-select"
+              value={statusControl.value}
+              disabled={busy}
+              onChange={(event) => void statusControl.onSave(event.target.value)}
+              aria-label={`Status for ${customerName}`}
+            >
+              {statusControl.options.map((option) => (
+                <option value={option.value} key={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <strong>{titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))}</strong>
+          )}
+        </section>
+
+        {workflowCommands.length ? (
+          <section className="crm-drill-action-section">
+            <span>Buttons</span>
+            <div className="crm-drill-command-grid">
+              {workflowCommands.map((command) => (
+                <DrillCommandButtonControl command={command} key={command.key} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {moneyCommands.length || amountCommands.length ? (
+          <section className="crm-drill-action-section crm-drill-action-section--money">
+            <span>Money</span>
+            <div className="crm-drill-command-grid">
+              {moneyCommands.map((command) => (
+                <DrillCommandButtonControl command={command} key={command.key} />
+              ))}
+              {amountCommands.map((command) => (
+                <DrillAmountCommandControl command={command} key={command.key} />
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
 
       {canReassignSale ? (
         <label className="crm-sale-owner-control crm-sale-owner-control--inline">
@@ -6105,6 +6315,75 @@ function DrillDetailCard({
         ) : null}
         </>
     </article>
+  );
+}
+
+function DrillCommandButtonControl({ command }: { command: DrillCommandButton }) {
+  return (
+    <button type="button" className="crm-drill-command-button" disabled={command.disabled} onClick={command.onClick}>
+      <strong>{command.label}</strong>
+      {command.detail ? <span>{command.detail}</span> : null}
+    </button>
+  );
+}
+
+function DrillAmountCommandControl({ command }: { command: DrillAmountCommand }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(command.defaultValue ? String(command.defaultValue) : "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setValue(command.defaultValue ? String(command.defaultValue) : "");
+  }, [command.defaultValue, editing]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const amount = roundCurrency(Number(value || 0));
+    if (!Number.isFinite(amount) || amount < 0) return;
+
+    setSaving(true);
+    const saved = await command.onSave(amount);
+    setSaving(false);
+    if (saved) setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="crm-drill-command-button"
+        disabled={command.disabled}
+        onClick={() => setEditing(true)}
+      >
+        <strong>{command.label}</strong>
+        <span>{command.detail}</span>
+      </button>
+    );
+  }
+
+  return (
+    <form className="crm-drill-amount-command" onSubmit={submit}>
+      <label>
+        <span>{command.label}</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={value}
+          autoFocus
+          disabled={command.disabled || saving}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </label>
+      <div>
+        <button type="submit" disabled={command.disabled || saving}>
+          Save
+        </button>
+        <button type="button" disabled={saving} onClick={() => setEditing(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 
