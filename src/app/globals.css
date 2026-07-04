@@ -4418,6 +4418,62 @@ body.qb-fullscreen .crm-app-shell {
   max-width: 240px;
 }
 
+/* Both lines stay short: one compact row of data, one compact row of actions. */
+.crm-customer-table tbody tr.crm-customer-info-row td,
+.crm-customer-table tbody tr.crm-customer-action-row td {
+  height: 30px;
+  vertical-align: middle;
+}
+
+.crm-cf-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.crm-cf-name h3 {
+  margin: 0;
+  max-width: 122px;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.crm-cf-name p {
+  margin: 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-cf-action-lead span {
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Editable values advertise themselves with a dotted underline. */
+.crm-cf-td .crm-inline-edit-value:not(:disabled),
+.crm-cf-chip .crm-inline-edit-value:not(:disabled) {
+  cursor: pointer;
+  text-decoration: underline dotted rgba(100, 116, 139, 0.55);
+  text-underline-offset: 2px;
+}
+
 .crm-cf-td {
   overflow: hidden;
   vertical-align: middle;

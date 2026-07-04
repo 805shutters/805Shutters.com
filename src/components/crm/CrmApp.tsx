@@ -7715,7 +7715,7 @@ function CustomerFilesView({
               mike: 0
             }
           );
-          const onlyRow = sortedBookkeepingRows.length === 1 ? sortedBookkeepingRows[0] : null;
+          const primaryRow = sortedBookkeepingRows[0] || null;
           const primaryJob = sortedJobs[0] || null;
           const phoneHref = customerFilePhoneHref(file.phone);
           const mailHref = file.email ? `mailto:${file.email}` : null;
@@ -7729,7 +7729,7 @@ function CustomerFilesView({
             : Array.from(new Set(sortedJobs.map((job) => job.product_interest).filter(Boolean))).join(", ");
           const noteSummary = file.notes.join(" · ");
           const saleValue = totals.total || file.lifetimeValue;
-          const balanceValue = onlyRow ? Math.max(onlyRow.balance, 0) : totals.balance;
+          const balanceValue = totals.balance;
 
           const isFocused = highlighted === normalizeCustomerName(file.customerName);
           const focusClassName = isFocused ? "crm-focus" : "";
@@ -7737,18 +7737,28 @@ function CustomerFilesView({
           return (
             <Fragment key={file.id}>
               <tr className={`crm-customer-info-row ${focusClassName}`} id={customerCardDomId(file.customerName)}>
-                <td className="crm-customer-name-cell" rowSpan={2}>
-                  <div className="crm-customer-table-primary">
-                    <div className="crm-customer-table-title">
-                      <h3>{file.customerName}</h3>
-                    </div>
+                <td className="crm-customer-name-cell">
+                  <div className="crm-cf-name" title={`${file.customerName} · ${file.latestStatus || "Open"}`}>
+                    <h3>{file.customerName}</h3>
                     <p>{file.latestStatus || "Open"}</p>
                   </div>
                 </td>
                 <td className="crm-cf-td money">
                   <InlineEditableValue
                     value={toCurrency(saleValue)}
-                    editor={onlyRow ? rowMoneyEditor(onlyRow, "Edit sale total", onlyRow.total, rowTotalPatch(onlyRow), "Total updated.") : undefined}
+                    editor={
+                      primaryRow
+                        ? rowMoneyEditor(primaryRow, "Edit sale total", primaryRow.total, rowTotalPatch(primaryRow), "Total updated.")
+                        : primaryJob && onSaveJob
+                          ? {
+                              type: "number",
+                              value: primaryJob.estimated_total ? String(primaryJob.estimated_total) : "",
+                              disabled: busy,
+                              ariaLabel: "Edit estimated total",
+                              onSave: (next) => onSaveJob(primaryJob, { estimated_total: roundCurrency(Number(next || 0)) }, "Total updated.")
+                            }
+                          : undefined
+                    }
                     className="crm-cf-money"
                   />
                 </td>
@@ -7760,8 +7770,8 @@ function CustomerFilesView({
                     <InlineEditableValue
                       value={toCurrency(totals.depositPaid)}
                       editor={
-                        onlyRow
-                          ? rowMoneyEditor(onlyRow, "Edit deposit paid", onlyRow.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")
+                        primaryRow
+                          ? rowMoneyEditor(primaryRow, "Edit deposit paid", primaryRow.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")
                           : undefined
                       }
                       className="crm-cf-money"
@@ -7770,8 +7780,8 @@ function CustomerFilesView({
                     <InlineEditableValue
                       value={toCurrency(totals.depositDue)}
                       editor={
-                        onlyRow
-                          ? rowMoneyEditor(onlyRow, "Edit deposit due", onlyRow.depositDue, (amount) => ({ deposit_required: amount }), "Deposit due updated.")
+                        primaryRow
+                          ? rowMoneyEditor(primaryRow, "Edit deposit due", primaryRow.depositDue, (amount) => ({ deposit_required: amount }), "Deposit due updated.")
                           : undefined
                       }
                       className="crm-cf-money"
@@ -7782,8 +7792,8 @@ function CustomerFilesView({
                   <InlineEditableValue
                     value={toCurrency(balanceValue)}
                     editor={
-                      onlyRow
-                        ? rowMoneyEditor(onlyRow, "Edit balance due", Math.max(onlyRow.balance, 0), (amount) => ({ balance_due_target: amount }), "Balance updated.")
+                      primaryRow
+                        ? rowMoneyEditor(primaryRow, "Edit balance due", Math.max(primaryRow.balance, 0), (amount) => ({ balance_due_target: amount }), "Balance updated.")
                         : undefined
                     }
                     className={`crm-cf-money${balanceValue > 0 ? " warn" : ""}`}
@@ -7792,7 +7802,7 @@ function CustomerFilesView({
                 <td className="crm-cf-td money">
                   <InlineEditableValue
                     value={totals.cogs > 0 ? toCurrency(totals.cogs) : "Missing"}
-                    editor={onlyRow ? rowMoneyEditor(onlyRow, "Edit COGS", onlyRow.cogs, rowCogsPatch(onlyRow), "COGS updated.") : undefined}
+                    editor={primaryRow ? rowMoneyEditor(primaryRow, "Edit COGS", primaryRow.cogs, rowCogsPatch(primaryRow), "COGS updated.") : undefined}
                     className={`crm-cf-money${totals.cogs <= 0 && saleValue > 0 ? " warn" : ""}`}
                   />
                 </td>
@@ -7804,17 +7814,25 @@ function CustomerFilesView({
                 </td>
                 <td className="crm-cf-td money">
                   <InlineEditableValue
-                    value={toCurrency(onlyRow ? onlyRow.installationInvoiceAmount : totals.installInvoiced)}
+                    value={toCurrency(totals.installInvoiced)}
                     editor={
-                      onlyRow
-                        ? rowMoneyEditor(onlyRow, "Edit installation amount", onlyRow.installationInvoiceAmount, (amount) => ({ installation_invoice_amount: amount }), "Installation amount updated.")
+                      primaryRow
+                        ? rowMoneyEditor(primaryRow, "Edit installation amount", primaryRow.installationInvoiceAmount, (amount) => ({ installation_invoice_amount: amount }), "Installation amount updated.")
                         : undefined
                     }
                     className="crm-cf-money"
                   />
                 </td>
                 <td className="crm-cf-td money">
-                  <span className="crm-cf-money">{toCurrency(totals.ken)}</span>
+                  <InlineEditableValue
+                    value={toCurrency(totals.ken)}
+                    editor={
+                      primaryRow
+                        ? rowMoneyEditor(primaryRow, "Edit Ken cut override", primaryRow.kenCut, (amount) => ({ ken_cut_override: amount }), "Ken cut updated.")
+                        : undefined
+                    }
+                    className="crm-cf-money"
+                  />
                 </td>
                 <td className="crm-cf-td money">
                   <span className={`crm-cf-money${totals.jessicaOwed > 0 ? " warn" : ""}`}>
@@ -7865,7 +7883,26 @@ function CustomerFilesView({
                   </span>
                 </td>
                 <td className="crm-cf-td">
-                  <span className="crm-cf-text">{formatShortDate(file.latestSoldDate)}</span>
+                  <InlineEditableValue
+                    value={formatShortDate(primaryRow?.soldDate || file.latestSoldDate)}
+                    editor={
+                      primaryRow && onSaveRow
+                        ? {
+                            type: "date",
+                            value: dateInputValue(primaryRow.soldDate || file.latestSoldDate),
+                            disabled: busy,
+                            ariaLabel: "Edit sold date",
+                            onSave: (next) =>
+                              onSaveRow(
+                                primaryRow,
+                                primaryRow.source === "crm_quote" ? { sold_at: next || null } : { sold_date: next || null },
+                                "Sold date updated."
+                              )
+                          }
+                        : undefined
+                    }
+                    className="crm-cf-text"
+                  />
                 </td>
                 <td className="crm-cf-td">
                   <span className="crm-cf-doc-links">
@@ -7888,12 +7925,17 @@ function CustomerFilesView({
                   </span>
                 </td>
                 <td className="crm-cf-td wide">
-                  <span className="crm-cf-text" title={noteSummary || undefined}>
-                    {noteSummary || "None"}
-                  </span>
+                  <InlineEditableValue
+                    value={noteSummary || "None"}
+                    editor={primaryJob ? jobFieldEditor(primaryJob, "Edit notes", primaryJob.notes, "notes", "Notes updated.") : undefined}
+                    className="crm-cf-text"
+                  />
                 </td>
               </tr>
               <tr className={`crm-customer-action-row ${focusClassName}`}>
+                <td className="crm-customer-name-cell crm-cf-action-lead">
+                  <span>Actions</span>
+                </td>
                 <td className="crm-customer-action-cell" colSpan={18}>
                   <div className="crm-customer-action-strip">
                     {sortedJobs.map((job) => {
