@@ -2327,10 +2327,13 @@ export function CrmApp({
 
       {globalDrill ? (
         <div className="crm-inline-drill-shell">
-          <DrillDetailPanel
+          <DrillSearchResultsPanel
             payload={globalDrill}
+            quotes={quotes}
+            events={events}
             busy={busy}
             onClose={() => setDrill(null)}
+            onOpenPage={openCustomerSearchPage}
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
@@ -5037,6 +5040,126 @@ type DrillPanelProps = {
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
 };
+
+function DrillSearchResultsPanel({
+  payload,
+  quotes,
+  events,
+  busy,
+  onClose,
+  onOpenPage,
+  onOpenCustomer,
+  onReassignSale,
+  onMeasureNeededAction,
+  onSaveField,
+  onLedgerLineAction
+}: DrillPanelProps & {
+  quotes: CrmQuote[];
+  events: CrmCalendarEvent[];
+  onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
+}) {
+  const results = useMemo(
+    () =>
+      payload.entries.map((entry, index) => ({
+        id: `${customerSearchResultKey(entry)}:${index}`,
+        entry,
+        pages: customerSearchPagesForEntry(entry, quotes, events)
+      })),
+    [events, payload.entries, quotes]
+  );
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!results.length) {
+      if (selectedResultId) setSelectedResultId(null);
+      return;
+    }
+
+    if (!selectedResultId || !results.some((result) => result.id === selectedResultId)) {
+      setSelectedResultId(results[0].id);
+    }
+  }, [results, selectedResultId]);
+
+  const selectedResult = results.find((result) => result.id === selectedResultId) || results[0] || null;
+  const selectedPayload: DrillPayload | null = selectedResult
+    ? {
+        ...payload,
+        subtitle: selectedResult.entry.meta || payload.subtitle,
+        entries: [selectedResult.entry]
+      }
+    : null;
+
+  return (
+    <section className="crm-global-search crm-global-search--drill" aria-label={payload.title}>
+      <div className="crm-global-search-bar">
+        <label>{payload.title}</label>
+        <div className="crm-global-search-drill-title">
+          <strong>{payload.subtitle}</strong>
+        </div>
+        <span>
+          {payload.entries.length} {payload.entries.length === 1 ? "record" : "records"}
+        </span>
+        <button type="button" className="crm-ghost-button" onClick={onClose}>
+          Close
+        </button>
+      </div>
+
+      {results.length ? (
+        <div className="crm-global-search-body">
+          <div className="crm-global-search-results" role="listbox" aria-label={`${payload.title} records`}>
+            {results.map((result) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={result.id === selectedResult?.id}
+                className={result.id === selectedResult?.id ? "active" : ""}
+                key={result.id}
+                onClick={() => setSelectedResultId(result.id)}
+              >
+                <strong>{result.entry.customerName || result.entry.name}</strong>
+                <span>{result.entry.meta || "Customer record"}</span>
+                <em>{result.entry.value || "Open"}</em>
+              </button>
+            ))}
+          </div>
+
+          {selectedResult && selectedPayload ? (
+            <div className="crm-global-search-detail">
+              <div className="crm-global-search-route-panel" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
+                <span>Routes</span>
+                <div className="crm-global-search-links">
+                  {selectedResult.pages.map((page) => (
+                    <button
+                      type="button"
+                      className="crm-ghost-button"
+                      key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
+                      onClick={() => onOpenPage(page, selectedResult.entry)}
+                    >
+                      {page.label}
+                      {page.detail ? <span>{page.detail}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <DrillDetailCard
+                entry={selectedResult.entry}
+                payload={selectedPayload}
+                busy={busy}
+                onOpenCustomer={onOpenCustomer}
+                onReassignSale={onReassignSale}
+                onMeasureNeededAction={onMeasureNeededAction}
+                onSaveField={onSaveField}
+                onLedgerLineAction={onLedgerLineAction}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="crm-empty">No customers in this segment.</p>
+      )}
+    </section>
+  );
+}
 
 type DrillInlineOption = {
   value: string;

@@ -3960,6 +3960,10 @@ body.qb-fullscreen .crm-app-shell {
   min-width: 0;
 }
 
+.crm-global-search--drill .crm-global-search-bar {
+  grid-template-columns: minmax(128px, 0.18fr) minmax(0, 1fr) auto auto;
+}
+
 .crm-global-search-bar label {
   color: var(--accent);
   font-size: 10px;
@@ -3995,6 +3999,20 @@ body.qb-fullscreen .crm-app-shell {
   outline-offset: -1px;
   border-color: #111111;
   background: var(--white);
+}
+
+.crm-global-search-drill-title {
+  min-width: 0;
+}
+
+.crm-global-search-drill-title strong {
+  display: block;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .crm-global-search-bar > span {
@@ -4239,6 +4257,10 @@ body.qb-fullscreen .crm-app-shell {
 
   .crm-global-search-bar,
   .crm-global-search-body {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-global-search--drill .crm-global-search-bar {
     grid-template-columns: 1fr;
   }
 
