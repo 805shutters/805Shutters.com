@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
@@ -1189,6 +1189,59 @@ export function CrmApp({
     }
   }
 
+  async function saveCustomerRowField(row: CrmBookkeepingRow, patch: Record<string, unknown>, message?: string) {
+    if (!session) return false;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (row.source === "crm_quote" && row.quoteId) {
+        await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify(patch)
+        });
+      } else {
+        await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(patch)
+        });
+      }
+      await refresh();
+      setMessage(message || `${row.customerName} updated.`);
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Field could not be updated.");
+      await refresh();
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveCustomerJobField(job: CrmJob, patch: Record<string, unknown>, message?: string) {
+    if (!session) return false;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      await crmFetch<{ job: CrmJob }>(session, `/api/crm/jobs/${job.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch)
+      });
+      await refresh();
+      setMessage(message || `${job.customer_name} updated.`);
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Job could not be updated.");
+      await refresh();
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function reassignSale(entry: DrillEntry, owner: string) {
     if (!session || !entry.jobId) return;
 
@@ -2313,6 +2366,8 @@ export function CrmApp({
           onSendPaymentLink={sendCustomerFilePaymentLink}
           onCopyPaymentLink={copyCustomerFilePaymentLink}
           onStatusChange={updateJobStatus}
+          onSaveRow={saveCustomerRowField}
+          onSaveJob={saveCustomerJobField}
           busy={busy}
         />
       ) : null}
@@ -2446,6 +2501,8 @@ export function CrmApp({
               onSendPaymentLink={sendCustomerFilePaymentLink}
               onCopyPaymentLink={copyCustomerFilePaymentLink}
               onStatusChange={updateJobStatus}
+              onSaveRow={saveCustomerRowField}
+              onSaveJob={saveCustomerJobField}
               busy={busy}
             />
           </div>
@@ -7389,94 +7446,10 @@ function customerFilePaymentUrl(quote: CrmQuote) {
   return quoteUrl ? `${quoteUrl}#payment` : null;
 }
 
-function hasCustomerFileValue(value: ReactNode): boolean {
-  if (Array.isArray(value)) return value.some(hasCustomerFileValue);
-  return value !== null && value !== undefined && value !== false && String(value).trim() !== "";
-}
-
-function CustomerFileLine({
-  label,
-  children,
-  warn = false
-}: {
-  label?: string;
-  children?: ReactNode;
-  warn?: boolean;
-}) {
-  if (!hasCustomerFileValue(children)) return null;
-  return (
-    <span className={warn ? "warn" : undefined}>
-      {label ? <strong>{label}</strong> : null}
-      {children}
-    </span>
-  );
-}
-
-function CustomerFileLineCell({
-  children,
-  empty = "-",
-  className = ""
-}: {
-  children?: ReactNode;
-  empty?: string;
-  className?: string;
-}) {
-  const items = Children.toArray(children).filter((item) => typeof item !== "string" || item.trim());
-  return <div className={`crm-customer-line-cell${className ? ` ${className}` : ""}`}>{items.length ? items : <span className="crm-customer-empty-text">{empty}</span>}</div>;
-}
-
 function nextJobStatus(status: CrmJobStatus) {
   if (status === "closed" || status === "lost") return null;
   const index = crmJobStatuses.indexOf(status);
   return index >= 0 ? crmJobStatuses[index + 1] ?? null : null;
-}
-
-function CustomerFileStatusSystem({
-  jobs,
-  onStatusChange,
-  busy
-}: {
-  jobs: CrmJob[];
-  onStatusChange?: (job: CrmJob, status: CrmJobStatus) => void;
-  busy: boolean;
-}) {
-  if (!jobs.length) {
-    return (
-      <div className="crm-customer-status-system empty">
-        <span>No job status buttons yet.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="crm-customer-status-system">
-      {jobs.map((job) => {
-        const nextStatus = nextJobStatus(job.status);
-        const jobLabel = customerFileDetailLine([job.product_interest || "Job", job.sales_owner, job.city]);
-        return (
-          <div className="crm-customer-status-track" key={job.id}>
-            <span className="crm-customer-status-track-label">{jobLabel || "Job"}</span>
-            {jobColumns.map((column) => {
-              const isActive = job.status === column.status;
-              const isNext = nextStatus === column.status;
-              return (
-                <button
-                  type="button"
-                  className={`crm-customer-status-button${isActive ? " active" : ""}${isNext ? " next" : ""}`}
-                  aria-current={isActive ? "step" : undefined}
-                  disabled={busy || !onStatusChange || isActive}
-                  onClick={() => onStatusChange?.(job, column.status)}
-                  key={column.status}
-                >
-                  {column.label}
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
-  );
 }
 
 function CustomerFilePaymentActions({
@@ -7543,6 +7516,8 @@ function CustomerFilesView({
   onSendPaymentLink,
   onCopyPaymentLink,
   onStatusChange,
+  onSaveRow,
+  onSaveJob,
   busy = false
 }: {
   files: CrmCustomerFile[];
@@ -7553,11 +7528,50 @@ function CustomerFilesView({
   onSendPaymentLink?: (quote: CrmQuote, channel: PaymentLinkChannel) => void;
   onCopyPaymentLink?: (quote: CrmQuote) => void;
   onStatusChange?: (job: CrmJob, status: CrmJobStatus) => void;
+  onSaveRow?: (row: CrmBookkeepingRow, patch: Record<string, unknown>, message?: string) => Promise<boolean>;
+  onSaveJob?: (job: CrmJob, patch: Record<string, unknown>, message?: string) => Promise<boolean>;
   busy?: boolean;
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
-  const customerGroupColSpan = 14;
+  const rowMoneyEditor = (
+    row: CrmBookkeepingRow,
+    label: string,
+    value: number | null | undefined,
+    patch: (amount: number) => Record<string, unknown>,
+    message: string
+  ): DrillInlineEditor | undefined =>
+    onSaveRow
+      ? {
+          type: "number",
+          value: value ? String(value) : "",
+          disabled: busy,
+          ariaLabel: label,
+          onSave: (next) => onSaveRow(row, patch(roundCurrency(Number(next || 0))), message)
+        }
+      : undefined;
+  const jobFieldEditor = (
+    job: CrmJob,
+    label: string,
+    value: string | null | undefined,
+    key: keyof CrmJob & string,
+    message: string,
+    options: { type?: "text" | "email"; autocomplete?: "address" } = {}
+  ): DrillInlineEditor | undefined =>
+    onSaveJob
+      ? {
+          type: options.type,
+          autocomplete: options.autocomplete,
+          value: value || "",
+          disabled: busy,
+          ariaLabel: label,
+          onSave: (next) => onSaveJob(job, { [key]: next.trim() || null }, message)
+        }
+      : undefined;
+  const rowCogsPatch = (row: CrmBookkeepingRow) => (amount: number) =>
+    row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount };
+  const rowTotalPatch = (row: CrmBookkeepingRow) => (amount: number) =>
+    row.source === "crm_quote" ? { quote_total: amount } : { total_amount: amount };
   const sortedFiles = useMemo(
     () =>
       [...files].sort((a, b) => {
@@ -7631,21 +7645,24 @@ function CustomerFilesView({
           <thead>
             <tr>
               <th>Customer</th>
-              <th>Value</th>
+              <th>Sale</th>
+              <th>Paid</th>
+              <th>Deposit</th>
+              <th>Balance</th>
+              <th>COGS</th>
+              <th>Expenses</th>
+              <th>Install</th>
+              <th>Ken</th>
+              <th>Jessica</th>
+              <th>Mike</th>
               <th>Phone</th>
               <th>Email</th>
               <th>City</th>
               <th>Address</th>
               <th>Product</th>
-              <th>Details</th>
-              <th>Open</th>
               <th>Sold</th>
-              <th>Jobs</th>
-              <th>Quotes</th>
-              <th>Ledger</th>
-              <th>Contracts</th>
+              <th>Docs</th>
               <th>Notes</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -7664,24 +7681,6 @@ function CustomerFilesView({
               dateSortValue(a.sold_at || a.approved_at || a.ordered_at || a.received_at || a.installed_at || a.created_at);
             return dateDelta || (a.quote_number || a.id).localeCompare(b.quote_number || b.id);
           });
-          const payments = sortedBookkeepingRows.flatMap((row) =>
-            row.payments.map((payment) => ({
-              row,
-              payment
-            }))
-          );
-          const creditsIn = sortedBookkeepingRows.flatMap((row) =>
-            row.creditsIn.map((credit) => ({
-              row,
-              credit
-            }))
-          );
-          const creditsOut = sortedBookkeepingRows.flatMap((row) =>
-            row.creditsOut.map((credit) => ({
-              row,
-              credit
-            }))
-          );
           const totals = sortedBookkeepingRows.reduce(
             (sum, row) => ({
               total: sum.total + row.total,
@@ -7692,16 +7691,45 @@ function CustomerFilesView({
               cogs: sum.cogs + row.cogs,
               expenses: sum.expenses + row.expensesTotal,
               remake: sum.remake + row.remakeTotal,
-              installation: sum.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)
+              installation: sum.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0),
+              installInvoiced: sum.installInvoiced + row.installationInvoiceAmount,
+              ken: sum.ken + row.kenCut,
+              jessica: sum.jessica + row.jessicaCommission,
+              jessicaOwed: sum.jessicaOwed + row.jessicaCommissionOwed,
+              mike: sum.mike + row.mikeProfit
             }),
-            { total: 0, depositDue: 0, depositPaid: 0, paid: 0, balance: 0, cogs: 0, expenses: 0, remake: 0, installation: 0 }
+            {
+              total: 0,
+              depositDue: 0,
+              depositPaid: 0,
+              paid: 0,
+              balance: 0,
+              cogs: 0,
+              expenses: 0,
+              remake: 0,
+              installation: 0,
+              installInvoiced: 0,
+              ken: 0,
+              jessica: 0,
+              jessicaOwed: 0,
+              mike: 0
+            }
           );
-          const statusTokens = Array.from(customerFileStatusTokens(file));
-          const lifecycleLabel = statusTokens.length ? statusTokens.map(titleCase).join(", ") : "Need to Schedule";
+          const onlyRow = sortedBookkeepingRows.length === 1 ? sortedBookkeepingRows[0] : null;
+          const primaryJob = sortedJobs[0] || null;
           const phoneHref = customerFilePhoneHref(file.phone);
           const mailHref = file.email ? `mailto:${file.email}` : null;
           const primaryPaymentQuote = sortedQuotes.find((quote) => quote.share_token) || sortedQuotes[0] || null;
-          const primaryPaymentUrl = primaryPaymentQuote ? customerFilePaymentUrl(primaryPaymentQuote) : null;
+          const primaryQuoteUrl = primaryPaymentQuote ? customerFileQuoteUrl(primaryPaymentQuote) : null;
+          const productSummary = file.products.length
+            ? customerFileDetailLine([
+                `${file.products.reduce((sum, product) => sum + (product.quantity || 0), 0)} items`,
+                Array.from(new Set(file.products.map((product) => product.product_type).filter(Boolean))).join(", ")
+              ])
+            : Array.from(new Set(sortedJobs.map((job) => job.product_interest).filter(Boolean))).join(", ");
+          const noteSummary = file.notes.join(" · ");
+          const saleValue = totals.total || file.lifetimeValue;
+          const balanceValue = onlyRow ? Math.max(onlyRow.balance, 0) : totals.balance;
 
           const isFocused = highlighted === normalizeCustomerName(file.customerName);
           const focusClassName = isFocused ? "crm-focus" : "";
@@ -7709,7 +7737,7 @@ function CustomerFilesView({
           return (
             <Fragment key={file.id}>
               <tr className={`crm-customer-info-row ${focusClassName}`} id={customerCardDomId(file.customerName)}>
-                <td className="crm-customer-name-cell" rowSpan={3}>
+                <td className="crm-customer-name-cell" rowSpan={2}>
                   <div className="crm-customer-table-primary">
                     <div className="crm-customer-table-title">
                       <h3>{file.customerName}</h3>
@@ -7717,296 +7745,388 @@ function CustomerFilesView({
                     <p>{file.latestStatus || "Open"}</p>
                   </div>
                 </td>
-                <td>
-                  <CustomerFileLineCell className="money">
-                    <CustomerFileLine>{toCurrency(file.lifetimeValue)}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <InlineEditableValue
+                    value={toCurrency(saleValue)}
+                    editor={onlyRow ? rowMoneyEditor(onlyRow, "Edit sale total", onlyRow.total, rowTotalPatch(onlyRow), "Total updated.") : undefined}
+                    className="crm-cf-money"
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{file.phone || "Pending"}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className="crm-cf-money">{toCurrency(totals.paid)}</span>
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{file.email || "Pending"}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className="crm-cf-pair">
+                    <InlineEditableValue
+                      value={toCurrency(totals.depositPaid)}
+                      editor={
+                        onlyRow
+                          ? rowMoneyEditor(onlyRow, "Edit deposit paid", onlyRow.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")
+                          : undefined
+                      }
+                      className="crm-cf-money"
+                    />
+                    <span className="crm-cf-sep">/</span>
+                    <InlineEditableValue
+                      value={toCurrency(totals.depositDue)}
+                      editor={
+                        onlyRow
+                          ? rowMoneyEditor(onlyRow, "Edit deposit due", onlyRow.depositDue, (amount) => ({ deposit_required: amount }), "Deposit due updated.")
+                          : undefined
+                      }
+                      className="crm-cf-money"
+                    />
+                  </span>
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{file.city || "Pending"}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <InlineEditableValue
+                    value={toCurrency(balanceValue)}
+                    editor={
+                      onlyRow
+                        ? rowMoneyEditor(onlyRow, "Edit balance due", Math.max(onlyRow.balance, 0), (amount) => ({ balance_due_target: amount }), "Balance updated.")
+                        : undefined
+                    }
+                    className={`crm-cf-money${balanceValue > 0 ? " warn" : ""}`}
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell empty="Pending">
-                    <CustomerFileLine>{file.address || "Pending"}</CustomerFileLine>
-                    {sortedJobs.map((job) => (
-                      <CustomerFileLine label={job.product_interest || "Job"} key={`job-address-${job.id}`}>
-                        {customerFileDetailLine([job.address, job.city]) || null}
-                      </CustomerFileLine>
-                    ))}
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <InlineEditableValue
+                    value={totals.cogs > 0 ? toCurrency(totals.cogs) : "Missing"}
+                    editor={onlyRow ? rowMoneyEditor(onlyRow, "Edit COGS", onlyRow.cogs, rowCogsPatch(onlyRow), "COGS updated.") : undefined}
+                    className={`crm-cf-money${totals.cogs <= 0 && saleValue > 0 ? " warn" : ""}`}
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell empty="Pending">
-                    {file.products.map((product) => (
-                      <CustomerFileLine label={customerFileDetailLine([product.room, product.product_type]) || "Product"} key={`product-main-${product.id}`}>
-                        {product.quantity} item{product.quantity === 1 ? "" : "s"}
-                        {product.total_price ? ` / ${toCurrency(product.total_price)}` : ""}
-                      </CustomerFileLine>
-                    ))}
-                    {!file.products.length
-                      ? sortedJobs.map((job) => (
-                          <CustomerFileLine key={`job-product-${job.id}`}>{job.product_interest || null}</CustomerFileLine>
-                        ))
-                      : null}
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className="crm-cf-money">
+                    {toCurrency(totals.expenses)}
+                    {totals.remake > 0 ? ` + ${toCurrency(totals.remake)} rmk` : ""}
+                  </span>
                 </td>
-                <td>
-                  <CustomerFileLineCell empty="Pending">
-                    {file.products.map((product) => (
-                      <CustomerFileLine label={product.product_type} key={`product-detail-${product.id}`}>
-                        {customerFileDetailLine([
-                          product.description,
-                          product.fabric ? `Fabric: ${product.fabric}` : null,
-                          product.material ? `Material: ${product.material}` : null,
-                          product.color ? `Color: ${product.color}` : null,
-                          product.control_type ? `Control: ${product.control_type}` : null,
-                          product.mount_type ? `Mount: ${product.mount_type}` : null,
-                          product.width && product.height ? `${product.width} x ${product.height}` : null,
-                          product.supplier ? `Supplier: ${product.supplier}` : null,
-                          product.status ? `Status: ${product.status}` : null
-                        ]) || null}
-                      </CustomerFileLine>
-                    ))}
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <InlineEditableValue
+                    value={toCurrency(onlyRow ? onlyRow.installationInvoiceAmount : totals.installInvoiced)}
+                    editor={
+                      onlyRow
+                        ? rowMoneyEditor(onlyRow, "Edit installation amount", onlyRow.installationInvoiceAmount, (amount) => ({ installation_invoice_amount: amount }), "Installation amount updated.")
+                        : undefined
+                    }
+                    className="crm-cf-money"
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell className="money">
-                    <CustomerFileLine warn={file.openBalance > 0}>{toCurrency(file.openBalance)}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className="crm-cf-money">{toCurrency(totals.ken)}</span>
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{formatShortDate(file.latestSoldDate)}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className={`crm-cf-money${totals.jessicaOwed > 0 ? " warn" : ""}`}>
+                    {toCurrency(totals.jessica)}
+                    {totals.jessicaOwed > 0 ? " owed" : ""}
+                  </span>
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{sortedJobs.length ? `${sortedJobs.length} job${sortedJobs.length === 1 ? "" : "s"}` : "No job"}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td money">
+                  <span className="crm-cf-money">{toCurrency(totals.mike)}</span>
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{sortedQuotes.length ? `${sortedQuotes.length} quote${sortedQuotes.length === 1 ? "" : "s"}` : "No quote"}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td">
+                  <InlineEditableValue
+                    value={file.phone || "Pending"}
+                    editor={primaryJob ? jobFieldEditor(primaryJob, "Edit phone", file.phone || primaryJob.phone, "phone", "Phone updated.") : undefined}
+                    className="crm-cf-text"
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell className="money">
-                    <CustomerFileLine label={sortedBookkeepingRows.length ? `${sortedBookkeepingRows.length}` : undefined}>
-                      {toCurrency(totals.total)}
-                    </CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td">
+                  <InlineEditableValue
+                    value={file.email || "Pending"}
+                    editor={
+                      primaryJob ? jobFieldEditor(primaryJob, "Edit email", file.email || primaryJob.email, "email", "Email updated.", { type: "email" }) : undefined
+                    }
+                    className="crm-cf-text"
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell>
-                    <CustomerFileLine>{file.contracts.length}</CustomerFileLine>
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td">
+                  <InlineEditableValue
+                    value={file.city || "Pending"}
+                    editor={primaryJob ? jobFieldEditor(primaryJob, "Edit city", file.city || primaryJob.city, "city", "City updated.") : undefined}
+                    className="crm-cf-text"
+                  />
                 </td>
-                <td>
-                  <CustomerFileLineCell empty="None">
-                    {file.notes.slice(0, 2).map((note, index) => (
-                      <CustomerFileLine key={`note-summary-${file.id}-${index}`}>{note}</CustomerFileLine>
-                    ))}
-                  </CustomerFileLineCell>
+                <td className="crm-cf-td wide">
+                  <InlineEditableValue
+                    value={file.address || "Pending"}
+                    editor={
+                      primaryJob
+                        ? jobFieldEditor(primaryJob, "Edit address", file.address || primaryJob.address, "address", "Address updated.", { autocomplete: "address" })
+                        : undefined
+                    }
+                    className="crm-cf-text"
+                  />
                 </td>
-                <td className="crm-customer-actions-cell" rowSpan={3}>
-                  <div className="crm-customer-actions-stack">
-                    {phoneHref ? (
-                      <a href={phoneHref} className="crm-customer-action-link">
-                        Call
+                <td className="crm-cf-td wide">
+                  <span className="crm-cf-text" title={productSummary || undefined}>
+                    {productSummary || "Pending"}
+                  </span>
+                </td>
+                <td className="crm-cf-td">
+                  <span className="crm-cf-text">{formatShortDate(file.latestSoldDate)}</span>
+                </td>
+                <td className="crm-cf-td">
+                  <span className="crm-cf-doc-links">
+                    {primaryQuoteUrl ? (
+                      <a href={primaryQuoteUrl} target="_blank" rel="noreferrer">
+                        Quote
                       </a>
                     ) : null}
-                    {mailHref ? (
-                      <a href={mailHref} className="crm-customer-action-link">
-                        Email
-                      </a>
-                    ) : null}
-                    {primaryPaymentUrl ? (
-                      <a href={primaryPaymentUrl} target="_blank" rel="noreferrer" className="crm-customer-action-link crm-customer-payment-link">
-                        Payment link
-                      </a>
-                    ) : null}
-                    {primaryPaymentQuote && onCopyPaymentLink ? (
-                      <button
-                        type="button"
-                        className="crm-customer-action-link"
-                        disabled={busy}
-                        onClick={() => onCopyPaymentLink(primaryPaymentQuote)}
-                      >
-                        Copy pay link
-                      </button>
-                    ) : null}
-                    {onDelete ? (
-                      <button
-                        type="button"
-                        className="crm-ghost-button crm-delete-button crm-customer-delete-button"
-                        disabled={busy}
-                        onClick={() => onDelete(file)}
-                      >
-                        Delete
-                      </button>
-                    ) : null}
-                    {!phoneHref && !mailHref && !primaryPaymentQuote && !onDelete ? <span>No actions</span> : null}
-                  </div>
+                    {file.contracts.slice(0, 1).map((contract) => {
+                      const url = contractUrl(contract);
+                      return url ? (
+                        <a href={url} target="_blank" rel="noreferrer" key={`contract-link-${contract.id}`}>
+                          Contract
+                        </a>
+                      ) : (
+                        <span key={`contract-link-${contract.id}`}>{contract.title}</span>
+                      );
+                    })}
+                    {!file.contracts.length && !primaryQuoteUrl ? <span className="crm-customer-empty-text">None</span> : null}
+                  </span>
+                </td>
+                <td className="crm-cf-td wide">
+                  <span className="crm-cf-text" title={noteSummary || undefined}>
+                    {noteSummary || "None"}
+                  </span>
                 </td>
               </tr>
-              <tr className={`crm-customer-detail-row ${focusClassName}`}>
-                <td className="crm-customer-subrow-cell" colSpan={customerGroupColSpan}>
-                  <div className="crm-customer-status-strip">
-                    <CustomerFileLine label="Latest">{file.latestStatus || "Open"}</CustomerFileLine>
-                    <CustomerFileLine label="Lifecycle">{lifecycleLabel}</CustomerFileLine>
-                    <CustomerFileLine label="Paid">{toCurrency(totals.paid)}</CustomerFileLine>
-                    <CustomerFileLine label="Deposit">
-                      {toCurrency(totals.depositPaid)} / {toCurrency(totals.depositDue)}
-                    </CustomerFileLine>
-                    <CustomerFileLine label="Costs">
-                      {toCurrency(totals.cogs)} COGS / {toCurrency(totals.expenses)} exp
-                    </CustomerFileLine>
-                    <CustomerFileLine label="Install">
-                      {toCurrency(totals.installation)} install / {toCurrency(totals.remake)} remake
-                    </CustomerFileLine>
-                    {payments.map(({ row, payment }) => (
-                      <CustomerFileLine label={payment.payment_label} key={`payment-${row.id}-${payment.id}`}>
-                        {customerFileDetailLine([
-                          toLedgerCurrency(payment.amount),
-                          formatPaymentType(payment.payment_type),
-                          formatShortDate(payment.paid_at),
-                          row.quoteNumber || row.source.replace("_", " ")
-                        ])}
-                      </CustomerFileLine>
-                    ))}
-                    {creditsIn.map(({ credit }) => (
-                      <CustomerFileLine label="Credit In" key={`credit-in-${credit.id}`}>
-                        {customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}
-                      </CustomerFileLine>
-                    ))}
-                    {creditsOut.map(({ credit }) => (
-                      <CustomerFileLine label="Credit Out" key={`credit-out-${credit.id}`}>
-                        {customerFileDetailLine([toLedgerCurrency(credit.amount), formatShortDate(credit.credit_date), credit.note])}
-                      </CustomerFileLine>
-                    ))}
-                    {sortedJobs.map((job) => (
-                      <CustomerFileLine label="Job" key={`job-status-${job.id}`}>
-                        {customerFileDetailLine([
-                          titleCase(job.status),
-                          job.sales_owner,
-                          job.next_action ? `Next: ${job.next_action}` : null,
-                          job.next_action_due ? `Due ${formatShortDate(job.next_action_due)}` : null,
-                          job.appointment_start ? `Appt ${formatShortDate(job.appointment_start)}` : null,
-                          job.estimated_total ? `Est ${toCurrency(job.estimated_total)}` : null,
-                          job.deposit_paid ? `Deposit ${toCurrency(job.deposit_paid)}` : null,
-                          job.priority ? `Priority ${job.priority}` : null,
-                          job.notes
-                        ])}
-                      </CustomerFileLine>
-                    ))}
-                    {sortedQuotes.map((quote) => (
-                      <Fragment key={`quote-status-${quote.id}`}>
-                        <CustomerFileLine label={quote.quote_number || "Quote"}>
-                          {customerFileDetailLine([
-                            quote.live_status || quote.status,
-                            `Total ${toCurrency(quote.quote_total)}`,
-                            `Deposit ${toCurrency(quote.deposit_required)}`,
-                            `Balance ${toCurrency(quote.balance_due)}`,
-                            quote.sent_at ? `Sent ${formatShortDate(quote.sent_at)}` : null,
-                            quote.sold_at ? `Sold ${formatShortDate(quote.sold_at)}` : null,
-                            quote.ordered_at ? `Ordered ${formatShortDate(quote.ordered_at)}` : null,
-                            quote.installed_at ? `Installed ${formatShortDate(quote.installed_at)}` : null,
-                            quote.manufacturer_name,
-                            quote.manufacturer_order_ref,
-                            quote.notes
-                          ])}
-                        </CustomerFileLine>
-                        {customerFileQuoteUrl(quote) ? (
-                          <a href={customerFileQuoteUrl(quote) || undefined} target="_blank" rel="noreferrer">
-                            Open quote
-                          </a>
-                        ) : null}
+              <tr className={`crm-customer-action-row ${focusClassName}`}>
+                <td className="crm-customer-action-cell" colSpan={18}>
+                  <div className="crm-customer-action-strip">
+                    {sortedJobs.map((job) => {
+                      const nextStatus = nextJobStatus(job.status);
+                      return (
+                        <div className="crm-cf-track" key={`job-track-${job.id}`}>
+                          <span className="crm-cf-track-label" title={customerFileDetailLine([job.product_interest || "Job", job.sales_owner]) || "Job"}>
+                            {job.product_interest || "Job"}
+                            {job.sales_owner && job.sales_owner !== "Unassigned" ? ` · ${job.sales_owner}` : ""}
+                          </span>
+                          {jobColumns.map((column) => {
+                            const isActive = job.status === column.status;
+                            const isNext = nextStatus === column.status;
+                            return (
+                              <button
+                                type="button"
+                                className={`crm-customer-status-button${isActive ? " active" : ""}${isNext ? " next" : ""}`}
+                                aria-current={isActive ? "step" : undefined}
+                                disabled={busy || !onStatusChange || isActive}
+                                onClick={() => onStatusChange?.(job, column.status)}
+                                key={column.status}
+                              >
+                                {column.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                    {sortedBookkeepingRows.map((row) => {
+                      const depositShortfall = roundCurrency(Math.max((row.depositDue || 0) - (row.depositPaid || 0), 0));
+                      const configuredBalanceDue = roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0));
+                      const balanceShortfall = roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0));
+                      const openBalance = roundCurrency(Math.max(row.balance || 0, 0));
+                      const rowPaymentType = row.paymentType || "other";
+                      const paidAt = todayInputValue();
+                      const rowLabel = row.quoteNumber || row.source.replace("_", " ");
+                      const markPaidPatch = {
+                        payment_type: rowPaymentType,
+                        paid_at: paidAt,
+                        ...(depositShortfall > 0 ? { deposit_paid_target: row.depositDue } : {}),
+                        ...(balanceShortfall > 0 ? { balance_paid_target: configuredBalanceDue } : {}),
+                        mark_balance_paid: true,
+                        ...(row.source === "crm_quote" ? { status: "paid" } : {})
+                      };
+                      return (
+                        <div className="crm-cf-seg" key={`money-${row.source}-${row.id}`}>
+                          <span className="crm-cf-seg-label" title={rowLabel}>
+                            {rowLabel}
+                          </span>
+                          {row.source === "crm_quote" && onSaveRow ? (
+                            <select
+                              className="crm-cf-select"
+                              value={String(row.status || "sold")}
+                              disabled={busy}
+                              aria-label={`Status for ${rowLabel}`}
+                              onChange={(event) => void onSaveRow(row, { status: event.target.value }, "Status updated.")}
+                            >
+                              {crmQuoteStatuses.map((status) => (
+                                <option value={status} key={status}>
+                                  {titleCase(status)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="crm-cf-seg-status">{bookkeepingStatusLabel(row)}</span>
+                          )}
+                          <span className="crm-cf-chip">
+                            <strong>Total</strong>
+                            <InlineEditableValue
+                              value={toLedgerCurrency(row.total)}
+                              editor={rowMoneyEditor(row, `Edit total for ${rowLabel}`, row.total, rowTotalPatch(row), "Total updated.")}
+                            />
+                          </span>
+                          <span className="crm-cf-chip">
+                            <strong>COGS</strong>
+                            <InlineEditableValue
+                              value={row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing"}
+                              editor={rowMoneyEditor(row, `Edit COGS for ${rowLabel}`, row.cogs, rowCogsPatch(row), "COGS updated.")}
+                            />
+                          </span>
+                          <span className="crm-cf-chip">
+                            <strong>Dep</strong>
+                            <InlineEditableValue
+                              value={toLedgerCurrency(row.depositPaid)}
+                              editor={rowMoneyEditor(row, `Edit deposit paid for ${rowLabel}`, row.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")}
+                            />
+                            <span className="crm-cf-sep">/</span>
+                            <InlineEditableValue
+                              value={toLedgerCurrency(row.depositDue)}
+                              editor={rowMoneyEditor(row, `Edit deposit due for ${rowLabel}`, row.depositDue, (amount) => ({ deposit_required: amount }), "Deposit due updated.")}
+                            />
+                          </span>
+                          <span className="crm-cf-chip">
+                            <strong>Bal Paid</strong>
+                            <InlineEditableValue
+                              value={toLedgerCurrency(row.balancePaid)}
+                              editor={rowMoneyEditor(row, `Edit balance paid for ${rowLabel}`, row.balancePaid, (amount) => ({ balance_paid_target: amount }), "Balance paid updated.")}
+                            />
+                          </span>
+                          <span className="crm-cf-chip">
+                            <strong>Owes</strong>
+                            <span className={openBalance > 0 ? "warn" : undefined}>{toLedgerCurrency(openBalance)}</span>
+                          </span>
+                          <span className="crm-cf-chip crm-cf-chip--add">
+                            <InlineEditableValue
+                              value="+ Payment"
+                              editor={
+                                onSaveRow
+                                  ? {
+                                      type: "number",
+                                      value: "",
+                                      disabled: busy,
+                                      ariaLabel: `Add payment for ${rowLabel}`,
+                                      onSave: (next) => {
+                                        const amount = roundCurrency(Number(next || 0));
+                                        if (!amount || amount <= 0) return Promise.resolve(false);
+                                        return onSaveRow(
+                                          row,
+                                          {
+                                            payment_amount: amount,
+                                            payment_label: "Balance payment",
+                                            payment_type: rowPaymentType,
+                                            paid_at: paidAt
+                                          },
+                                          "Payment recorded."
+                                        );
+                                      }
+                                    }
+                                  : undefined
+                              }
+                            />
+                          </span>
+                          {onSaveRow ? (
+                            <select
+                              className="crm-cf-select"
+                              value={rowPaymentType}
+                              disabled={busy}
+                              aria-label={`Payment type for ${rowLabel}`}
+                              onChange={(event) => void onSaveRow(row, { payment_type: event.target.value }, "Payment type updated.")}
+                            >
+                              {paymentTypes.map((item) => (
+                                <option value={item.value} key={item.value}>
+                                  {item.label}
+                                </option>
+                              ))}
+                            </select>
+                          ) : null}
+                          {onSaveRow && depositShortfall > 0 ? (
+                            <button
+                              type="button"
+                              className="crm-customer-action-link"
+                              disabled={busy}
+                              onClick={() =>
+                                void onSaveRow(
+                                  row,
+                                  { deposit_paid_target: row.depositDue, payment_type: rowPaymentType, paid_at: paidAt },
+                                  "Deposit paid."
+                                )
+                              }
+                            >
+                              Pay Deposit {toLedgerCurrency(depositShortfall)}
+                            </button>
+                          ) : null}
+                          {onSaveRow && balanceShortfall > 0 ? (
+                            <button
+                              type="button"
+                              className="crm-customer-action-link"
+                              disabled={busy}
+                              onClick={() =>
+                                void onSaveRow(
+                                  row,
+                                  {
+                                    balance_paid_target: configuredBalanceDue,
+                                    payment_type: rowPaymentType,
+                                    paid_at: paidAt,
+                                    ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
+                                    ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
+                                  },
+                                  "Balance paid."
+                                )
+                              }
+                            >
+                              Pay Balance {toLedgerCurrency(balanceShortfall)}
+                            </button>
+                          ) : null}
+                          {onSaveRow && openBalance > 0 ? (
+                            <button
+                              type="button"
+                              className="crm-customer-action-link crm-customer-payment-link"
+                              disabled={busy}
+                              onClick={() => void onSaveRow(row, markPaidPatch, "Job marked paid.")}
+                            >
+                              Mark Paid
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                    <div className="crm-cf-seg crm-cf-seg--contact">
+                      {phoneHref ? (
+                        <a href={phoneHref} className="crm-customer-action-link">
+                          Call
+                        </a>
+                      ) : null}
+                      {mailHref ? (
+                        <a href={mailHref} className="crm-customer-action-link">
+                          Email
+                        </a>
+                      ) : null}
+                      {primaryPaymentQuote ? (
                         <CustomerFilePaymentActions
-                          quote={quote}
+                          quote={primaryPaymentQuote}
                           busy={busy}
                           onSendPaymentLink={onSendPaymentLink}
                           onCopyPaymentLink={onCopyPaymentLink}
                         />
-                      </Fragment>
-                    ))}
-                    {sortedBookkeepingRows.map((row) => (
-                      <Fragment key={`bookkeeping-${row.source}-${row.id}`}>
-                        <CustomerFileLine label={row.quoteNumber || row.source.replace("_", " ")}>
-                          {customerFileDetailLine([
-                            bookkeepingStatusLabel(row),
-                            formatShortDate(row.soldDate),
-                            `Paid ${toCurrency(row.paidTotal)}`,
-                            `Balance ${toCurrency(row.balance)}`,
-                            `COGS ${toCurrency(row.cogs)}`,
-                            row.manufacturerName,
-                            row.manufacturerOrderRef,
-                            row.paymentType ? formatPaymentType(row.paymentType) : null,
-                            row.notes
-                          ])}
-                        </CustomerFileLine>
-                        {row.manufacturerOrderUrl ? (
-                          <a href={row.manufacturerOrderUrl} target="_blank" rel="noreferrer">
-                            Order
-                          </a>
-                        ) : null}
-                        {row.manufacturerDocumentUrl ? (
-                          <a href={row.manufacturerDocumentUrl} target="_blank" rel="noreferrer">
-                            Manufacturer doc
-                          </a>
-                        ) : null}
-                        {row.installationInvoiceUrl ? (
-                          <a href={row.installationInvoiceUrl} target="_blank" rel="noreferrer">
-                            Install invoice
-                          </a>
-                        ) : null}
-                      </Fragment>
-                    ))}
-                    {file.contracts.map((contract) => {
-                      const url = contractUrl(contract);
-                      return (
-                        <Fragment key={`contract-${contract.id}`}>
-                          <CustomerFileLine label={contract.title}>
-                            {customerFileDetailLine([
-                              contract.status || "Document",
-                              contract.signed_at ? `Signed ${formatShortDate(contract.signed_at)}` : null,
-                              contract.total_amount ? toCurrency(contract.total_amount) : null
-                            ])}
-                          </CustomerFileLine>
-                          {url ? (
-                            <a href={url} target="_blank" rel="noreferrer">
-                              View document
-                            </a>
-                          ) : null}
-                        </Fragment>
-                      );
-                    })}
-                    {!sortedJobs.length &&
-                    !sortedQuotes.length &&
-                    !sortedBookkeepingRows.length &&
-                    !payments.length &&
-                    !creditsIn.length &&
-                    !creditsOut.length &&
-                    !file.contracts.length ? (
-                      <span className="crm-customer-empty-text">No status details yet.</span>
+                      ) : null}
+                      {onDelete ? (
+                        <button
+                          type="button"
+                          className="crm-ghost-button crm-delete-button crm-customer-delete-button"
+                          disabled={busy}
+                          onClick={() => onDelete(file)}
+                        >
+                          Delete
+                        </button>
+                      ) : null}
+                    </div>
+                    {!sortedJobs.length && !sortedBookkeepingRows.length && !phoneHref && !mailHref && !primaryPaymentQuote && !onDelete ? (
+                      <span className="crm-customer-empty-text">No actions yet.</span>
                     ) : null}
                   </div>
-                </td>
-              </tr>
-              <tr className={`crm-customer-status-row ${focusClassName}`}>
-                <td className="crm-customer-status-system-cell" colSpan={customerGroupColSpan}>
-                  <CustomerFileStatusSystem jobs={sortedJobs} busy={busy} onStatusChange={onStatusChange} />
                 </td>
               </tr>
             </Fragment>

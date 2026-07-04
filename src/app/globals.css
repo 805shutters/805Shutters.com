@@ -4393,63 +4393,221 @@ body.qb-fullscreen .crm-app-shell {
   z-index: 4;
 }
 
-.crm-customer-table th:last-child,
-.crm-customer-actions-cell {
-  position: sticky;
-  right: 0;
-  z-index: 3;
-  width: 154px;
-  min-width: 154px;
-  max-width: 154px;
-  background: #ffffff;
-  box-shadow: -1px 0 0 #d8dfea, -10px 0 18px rgba(15, 23, 42, 0.04);
+/* Money columns (Sale ... Mike, columns 2-11): tight fixed width, no stretch. */
+.crm-customer-table th:nth-child(n + 2):nth-child(-n + 11),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(n + 2):nth-child(-n + 11) {
+  min-width: 88px;
+  max-width: 136px;
 }
 
-.crm-customer-table th:last-child {
-  z-index: 4;
-}
-
-.crm-customer-table th:nth-child(3),
-.crm-customer-table td:nth-child(3),
-.crm-customer-table th:nth-child(5),
-.crm-customer-table td:nth-child(5),
-.crm-customer-table th:nth-child(9),
-.crm-customer-table td:nth-child(9),
-.crm-customer-table th:nth-child(10),
-.crm-customer-table td:nth-child(10),
-.crm-customer-table th:nth-child(11),
-.crm-customer-table td:nth-child(11),
-.crm-customer-table th:nth-child(12),
-.crm-customer-table td:nth-child(12),
-.crm-customer-table th:nth-child(13),
-.crm-customer-table td:nth-child(13),
-.crm-customer-table th:nth-child(14),
-.crm-customer-table td:nth-child(14) {
-  min-width: 86px;
-  max-width: 120px;
-}
-
+/* Deposit pair needs a touch more room. */
 .crm-customer-table th:nth-child(4),
-.crm-customer-table td:nth-child(4),
-.crm-customer-table th:nth-child(6),
-.crm-customer-table td:nth-child(6),
-.crm-customer-table th:nth-child(7),
-.crm-customer-table td:nth-child(7),
-.crm-customer-table th:nth-child(8),
-.crm-customer-table td:nth-child(8),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(4) {
+  min-width: 128px;
+  max-width: 170px;
+}
+
+/* Wide text columns: Address (15), Product (16), Notes (19). */
 .crm-customer-table th:nth-child(15),
-.crm-customer-table td:nth-child(15) {
-  min-width: 150px;
-  max-width: 230px;
+.crm-customer-table tr.crm-customer-info-row td:nth-child(15),
+.crm-customer-table th:nth-child(16),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(16),
+.crm-customer-table th:nth-child(19),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(19) {
+  min-width: 170px;
+  max-width: 240px;
 }
 
-.crm-customer-table tbody tr.crm-customer-detail-row td,
-.crm-customer-table tbody tr.crm-customer-status-row td {
+.crm-cf-td {
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.crm-cf-money,
+.crm-cf-text {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.crm-cf-money {
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  font-weight: 920;
+}
+
+.crm-cf-money.warn,
+.crm-cf-chip .warn {
+  color: #b91c1c;
+  font-weight: 950;
+}
+
+.crm-cf-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.crm-cf-pair .crm-inline-edit-value {
+  width: auto;
+}
+
+.crm-cf-sep {
+  color: #94a3b8;
+  font-weight: 800;
+}
+
+.crm-cf-doc-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.crm-cf-doc-links a {
+  padding: 2px 6px;
+  border: 1px solid #bfdbfe;
+  border-radius: 3px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* Line 2: the action line. One horizontal strip that holds every control. */
+.crm-customer-table tbody tr.crm-customer-action-row td.crm-customer-action-cell {
+  padding: 5px 8px;
   background: #fbfdff;
+  border-bottom: 2px solid #cbd5e1;
+  vertical-align: middle;
 }
 
-.crm-customer-table tbody tr.crm-customer-status-row td {
-  border-bottom: 2px solid #cbd5e1;
+.crm-customer-action-strip {
+  position: sticky;
+  left: 198px;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: max-content;
+  max-width: none;
+  padding-right: 8px;
+  white-space: nowrap;
+}
+
+.crm-cf-track,
+.crm-cf-seg {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid #dbe3f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.crm-cf-track-label,
+.crm-cf-seg-label {
+  max-width: 130px;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-cf-seg-status {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-cf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 23px;
+  padding: 2px 6px;
+  border: 1px solid #dbe7fb;
+  border-radius: 5px;
+  background: #eef5ff;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.crm-cf-chip strong {
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.crm-cf-chip .crm-inline-edit-value {
+  width: auto;
+}
+
+.crm-cf-chip--add {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.crm-cf-select {
+  min-height: 23px;
+  padding: 2px 4px;
+  border: 1px solid #d8dfea;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.crm-cf-seg--contact {
+  border-style: dashed;
+}
+
+.crm-customer-action-strip .crm-customer-action-link,
+.crm-customer-action-strip .crm-customer-delete-button {
+  min-height: 23px;
+  padding: 3px 7px;
+  font-size: 9px;
+}
+
+.crm-customer-action-strip .crm-customer-pay-actions {
+  flex-wrap: nowrap;
+}
+
+.crm-cf-td .crm-inline-edit-control,
+.crm-customer-action-strip .crm-inline-edit-control {
+  width: 96px;
+  min-height: 23px;
+  padding: 2px 5px;
+  font-size: 11px;
 }
 
 .crm-customer-table tbody tr:hover td {
