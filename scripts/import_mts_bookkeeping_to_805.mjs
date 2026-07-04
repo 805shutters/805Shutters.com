@@ -27,6 +27,7 @@ loadEnv(".env.local");
 
 const dryRun = process.argv.includes("--dry-run");
 const verifyOnly = process.argv.includes("--verify");
+const quoteSystemOnly = process.argv.includes("--quote-system-only");
 const repairContractUrlsOnly = process.argv.includes("--repair-contract-urls");
 const repairEntryJobsOnly = process.argv.includes("--repair-entry-jobs");
 const mtsUrl = process.env.MTS_SUPABASE_URL;
@@ -77,10 +78,31 @@ if (!mtsUrl || !mtsKey || !target) {
 const mts = createClient(mtsUrl, mtsKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
 const quotes = await queryAll(mts.from("sales_quotes").select("*").eq("account_id", accountId).order("created_at"));
-const entries = await queryAll(mts.from("quote_bookkeeping_entries").select("*").eq("account_id", accountId).order("created_at"));
-const payments = await queryAll(mts.from("quote_bookkeeping_payments").select("*").eq("account_id", accountId).order("created_at"));
-const credits = await queryAll(mts.from("quote_bookkeeping_credits").select("*").eq("account_id", accountId).order("created_at"));
+const allEntries = await queryAll(mts.from("quote_bookkeeping_entries").select("*").eq("account_id", accountId).order("created_at"));
+const allPayments = await queryAll(mts.from("quote_bookkeeping_payments").select("*").eq("account_id", accountId).order("created_at"));
+const allCredits = await queryAll(mts.from("quote_bookkeeping_credits").select("*").eq("account_id", accountId).order("created_at"));
 const quoteIds = quotes.map((quote) => quote.id);
+const quoteIdSet = new Set(quoteIds);
+const entries = quoteSystemOnly
+  ? allEntries.filter((entry) => entry.quote_id && quoteIdSet.has(entry.quote_id))
+  : allEntries;
+const entryIdSet = new Set(entries.map((entry) => entry.id));
+const payments = quoteSystemOnly
+  ? allPayments.filter(
+      (payment) =>
+        (payment.quote_id && quoteIdSet.has(payment.quote_id)) ||
+        (payment.bookkeeping_entry_id && entryIdSet.has(payment.bookkeeping_entry_id))
+    )
+  : allPayments;
+const credits = quoteSystemOnly
+  ? allCredits.filter(
+      (credit) =>
+        (credit.from_quote_id && quoteIdSet.has(credit.from_quote_id)) ||
+        (credit.to_quote_id && quoteIdSet.has(credit.to_quote_id)) ||
+        (credit.from_bookkeeping_entry_id && entryIdSet.has(credit.from_bookkeeping_entry_id)) ||
+        (credit.to_bookkeeping_entry_id && entryIdSet.has(credit.to_bookkeeping_entry_id))
+    )
+  : allCredits;
 const lineItems = await queryByIds("sales_quote_line_items", "quote_id", quoteIds);
 const lineItemIds = lineItems.map((item) => item.id);
 const designs = await queryByIds("sales_quote_designs", "line_item_id", lineItemIds);
@@ -90,13 +112,21 @@ console.log(
     {
       dryRun,
       verifyOnly,
+      quoteSystemOnly,
       accountId,
       quotes: quotes.length,
       entries: entries.length,
       payments: payments.length,
       credits: credits.length,
       lineItems: lineItems.length,
-      designs: designs.length
+      designs: designs.length,
+      excluded: quoteSystemOnly
+        ? {
+            entries: allEntries.length - entries.length,
+            payments: allPayments.length - payments.length,
+            credits: allCredits.length - credits.length
+          }
+        : undefined
     },
     null,
     2
