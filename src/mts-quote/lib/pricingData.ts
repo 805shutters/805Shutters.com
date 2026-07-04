@@ -1073,12 +1073,12 @@ export interface ShutterProgram {
 }
 
 export const NORMAN_SHUTTER_PROGRAMS: ShutterProgram[] = [
-  { name: "Woodlore", wholesalePrice: 13.1, retailPrice: 34.0, tariff: 0 },
-  { name: "Woodlore Plus", wholesalePrice: 14.55, retailPrice: 41.5, tariff: 0 },
-  { name: "Woodlore Aquashield", wholesalePrice: 17.95, retailPrice: 48.0, tariff: 0 },
-  { name: "Brightwood", wholesalePrice: 15.85, retailPrice: 44.0, tariff: 0 },
-  { name: "Normandy Painted", wholesalePrice: 17.35, retailPrice: 38.0, tariff: 0 },
-  { name: "Normandy Stained", wholesalePrice: 18.1, retailPrice: 42.0, tariff: 0 },
+  { name: "Woodlore", wholesalePrice: 13.1, retailPrice: 35.0, tariff: 0 },
+  { name: "Woodlore Plus", wholesalePrice: 14.55, retailPrice: 36.0, tariff: 0 },
+  { name: "Woodlore Aquashield", wholesalePrice: 17.95, retailPrice: 38.0, tariff: 0 },
+  { name: "Brightwood", wholesalePrice: 15.85, retailPrice: 40.0, tariff: 0 },
+  { name: "Normandy Painted", wholesalePrice: 17.35, retailPrice: 42.0, tariff: 0 },
+  { name: "Normandy Stained", wholesalePrice: 18.1, retailPrice: 46.0, tariff: 0 },
 ];
 
 // ========== ONYX SHUTTERS PRICING ==========
@@ -1110,7 +1110,7 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   {
     name: "Vinyl",
     wholesalePrice: 12.0,
-    retailPrice: calculateOnyxRetailPrice(12.0),
+    retailPrice: 31.0,
     tariff: 0,
   },
   {
@@ -1122,13 +1122,13 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   {
     name: "Onyx US Made Vinyl",
     wholesalePrice: 13.65,
-    retailPrice: calculateOnyxRetailPrice(13.65),
+    retailPrice: 33.0,
     tariff: 0,
   },
   {
     name: "Poly Composite",
     wholesalePrice: 15.0,
-    retailPrice: 30.0,
+    retailPrice: 31.0,
     tariff: 0,
   },
 ];

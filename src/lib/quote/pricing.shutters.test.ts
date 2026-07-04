@@ -21,12 +21,14 @@ function line(r: ReturnType<typeof ok>, id: string) {
 describe("shutter $/sqft pricing", () => {
   it("uses the configured shutter retail square-foot rates", () => {
     const cases = [
-      ["Poly", "onyx_shutters", "poly_composite", 30],
-      ["Composite", "norman_shutters", "woodlore", 34],
-      ["Painted Wood - Norman", "norman_shutters", "normandy_painted", 38],
+      ["Poly", "onyx_shutters", "poly_composite", 31],
+      ["Composite", "norman_shutters", "woodlore", 35],
+      ["Painted Wood - Norman", "norman_shutters", "normandy_painted", 42],
       ["Painted Wood - Onyx", "onyx_shutters", "painted_basswood", 38],
-      ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 42],
+      ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 46],
       ["Stained Wood - Onyx", "onyx_shutters", "stained_basswood", 42],
+      ["Onyx Vinyl", "onyx_shutters", "vinyl", 31],
+      ["Onyx USA Made", "onyx_shutters", "onyx_us_made_vinyl", 33],
     ] as const;
 
     for (const [label, productId, programId, pricePerSqft] of cases) {
@@ -38,21 +40,21 @@ describe("shutter $/sqft pricing", () => {
     }
   });
 
-  it("Norman Woodlore Composite ($34/sqft): 30x60 = 12.5 sqft = $425", () => {
+  it("Norman Woodlore Composite ($35/sqft): 30x60 = 12.5 sqft = $437.50", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60 }));
     expect(r.sqft).toBe(12.5);
     expect(r.billableSqft).toBe(12.5);
-    expect(r.base).toBe(425);
+    expect(r.base).toBe(437.5);
     expect(r.wholesaleBase).toBe(163.75);
     expect(r.wholesaleUnitPrice).toBe(163.75);
-    expect(r.total).toBe(425);
+    expect(r.total).toBe(437.5);
   });
 
-  it("applies the 8 sq ft minimum: Woodlore 24x24 (4 sqft) bills 8 sqft = $272", () => {
+  it("applies the 8 sq ft minimum: Woodlore 24x24 (4 sqft) bills 8 sqft = $280", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 24, heightInches: 24 }));
     expect(r.sqft).toBe(4);
     expect(r.billableSqft).toBe(8);
-    expect(r.base).toBe(272);
+    expect(r.base).toBe(280);
   });
 
   it("Onyx Painted Basswood ($38/sqft): 30x60 = $475", () => {
@@ -72,9 +74,9 @@ describe("shutter $/sqft pricing", () => {
 
   it("percent surcharge (Cafe Shutters 30%) applies off the sqft base", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges: [{ id: "cafe_shutters" }] }));
-    expect(r.surchargeLines[0].amount).toBe(127.5); // 30% of 425.00
+    expect(r.surchargeLines[0].amount).toBe(131.25); // 30% of 437.50
     expect(r.surchargeLines[0].wholesaleAmount).toBe(49.13); // 30% of 163.75
-    expect(r.unitPrice).toBe(552.5);
+    expect(r.unitPrice).toBe(568.75);
     expect(r.wholesaleUnitPrice).toBe(212.88);
   });
 
@@ -86,14 +88,14 @@ describe("shutter $/sqft pricing", () => {
 
   it("prices Norman bypass/bifold track selections from the visible detail options", () => {
     const cases = [
-      [{ panel_config: "bypass" }, "bypass_and_bifold_track_shutters", 170],
-      [{ panel_config: "bifold" }, "bypass_and_bifold_track_shutters", 170],
-      [{ track_system: "bypass_track" }, "bypass_track", 170],
-      [{ track_system: "bifold_180" }, "bifold_180", 170],
-      [{ track_system: "floating_90_bifold" }, "floating_90_bifold", 191.25],
-      [{ track_system: "triple_track" }, "triple_track", 42.5],
-      [{ track_system: "track_only" }, "track_only", 42.5],
-      [{ track_system: "track_header_fascia" }, "track_w_header_and_fascia", 85],
+      [{ panel_config: "bypass" }, "bypass_and_bifold_track_shutters", 175],
+      [{ panel_config: "bifold" }, "bypass_and_bifold_track_shutters", 175],
+      [{ track_system: "bypass_track" }, "bypass_track", 175],
+      [{ track_system: "bifold_180" }, "bifold_180", 175],
+      [{ track_system: "floating_90_bifold" }, "floating_90_bifold", 196.88],
+      [{ track_system: "triple_track" }, "triple_track", 43.75],
+      [{ track_system: "track_only" }, "track_only", 43.75],
+      [{ track_system: "track_header_fascia" }, "track_w_header_and_fascia", 87.5],
     ] as const;
 
     for (const [details, surchargeId, expectedAmount] of cases) {

@@ -20,7 +20,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 34.0,
+          "pricePerSqft": 35.0,
           "costPerSqft": 13.1,
           "minSqft": 8,
           "maxWidth": null,
@@ -41,7 +41,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 41.5,
+          "pricePerSqft": 36.0,
           "costPerSqft": 14.55,
           "minSqft": 8,
           "maxWidth": null,
@@ -62,7 +62,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 48.0,
+          "pricePerSqft": 38.0,
           "costPerSqft": 17.95,
           "minSqft": 8,
           "maxWidth": null,
@@ -83,7 +83,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 44.0,
+          "pricePerSqft": 40.0,
           "costPerSqft": 15.85,
           "minSqft": 8,
           "maxWidth": null,
@@ -104,7 +104,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 38.0,
+          "pricePerSqft": 42.0,
           "costPerSqft": 17.35,
           "minSqft": 8,
           "maxWidth": null,
@@ -125,7 +125,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 42.0,
+          "pricePerSqft": 46.0,
           "costPerSqft": 18.1,
           "minSqft": 8,
           "maxWidth": null,
@@ -686,7 +686,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 28.0,
+          "pricePerSqft": 31.0,
           "costPerSqft": 12.0,
           "minSqft": 8,
           "maxWidth": null,
@@ -728,7 +728,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 31.85,
+          "pricePerSqft": 33.0,
           "costPerSqft": 13.65,
           "minSqft": 8,
           "maxWidth": null,
@@ -749,7 +749,7 @@
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 30.0,
+          "pricePerSqft": 31.0,
           "costPerSqft": 15.0,
           "minSqft": 8,
           "maxWidth": null,

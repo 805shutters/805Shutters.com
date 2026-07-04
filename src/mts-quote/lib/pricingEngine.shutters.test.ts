@@ -5,12 +5,14 @@ import { NORMAN_SHUTTER_PROGRAMS, ONYX_SHUTTER_PROGRAMS } from "./pricingData";
 describe("MTS quote shutter square-foot defaults", () => {
   it("uses the configured shutter retail square-foot rates", () => {
     const cases = [
-      ["Poly", "Onyx", "Poly Composite", 30],
-      ["Composite", "Norman", "Woodlore", 34],
-      ["Painted Wood - Norman", "Norman", "Normandy Painted", 38],
+      ["Poly", "Onyx", "Poly Composite", 31],
+      ["Composite", "Norman", "Woodlore", 35],
+      ["Painted Wood - Norman", "Norman", "Normandy Painted", 42],
       ["Painted Wood - Onyx", "Onyx", "Painted Basswood", 38],
-      ["Stained Wood - Norman", "Norman", "Normandy Stained", 42],
+      ["Stained Wood - Norman", "Norman", "Normandy Stained", 46],
       ["Stained Wood - Onyx", "Onyx", "Stained Basswood", 42],
+      ["Onyx Vinyl", "Onyx", "Vinyl", 31],
+      ["Onyx USA Made", "Onyx", "Onyx US Made Vinyl", 33],
     ] as const;
 
     for (const [label, supplier, program, retailPrice] of cases) {
