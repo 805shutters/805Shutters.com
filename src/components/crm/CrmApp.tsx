@@ -3,7 +3,7 @@
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { effectiveBookkeepingStatus, formatPaymentType } from "@/lib/crm/bookkeeping";
+import { effectiveBookkeepingStatus, formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
   buildUnpaidPartnerPaymentItemForRow,
@@ -3634,6 +3634,43 @@ function calendarEventForEntry(entry: DrillEntry, events: CrmCalendarEvent[]) {
     .sort((a, b) => dateSortValue(b.start_at) - dateSortValue(a.start_at))[0];
 }
 
+function rowNeedsOrder(row: CrmBookkeepingRow | null | undefined) {
+  if (!row) return false;
+  const status = effectiveBookkeepingStatus(row);
+  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && (status === "sold" || status === "approved");
+}
+
+function rowDepositShortfall(row: CrmBookkeepingRow | null | undefined) {
+  if (!row) return 0;
+  const status = effectiveBookkeepingStatus(row);
+  const due = Number(row.depositDue) || 0;
+  const paid = Number(row.depositPaid) || 0;
+  return status === "sold" || status === "approved" ? roundCurrency(Math.max(due - paid, 0)) : 0;
+}
+
+function rowBalanceShortfall(row: CrmBookkeepingRow | null | undefined) {
+  if (!row) return 0;
+  const status = effectiveBookkeepingStatus(row);
+  const completed = status === "installed" || status === "invoiced" || status === "closed";
+  return !isPaidInFullBookkeepingRow(row) && completed ? roundCurrency(Math.max(Number(row.balance) || 0, 0)) : 0;
+}
+
+function rowMissingCogs(row: CrmBookkeepingRow | null | undefined) {
+  return Boolean(row && row.total > 0 && row.cogs <= 0);
+}
+
+function rowMissingManufacturer(row: CrmBookkeepingRow | null | undefined) {
+  return Boolean(rowNeedsOrder(row) && !row?.manufacturerName?.trim());
+}
+
+function rowMissingOrderRef(row: CrmBookkeepingRow | null | undefined) {
+  return Boolean(rowNeedsOrder(row) && !row?.manufacturerOrderRef?.trim());
+}
+
+function rowMissingInstallInvoice(row: CrmBookkeepingRow | null | undefined) {
+  return Boolean(row?.isMissingInstallerInvoice || (row && effectiveBookkeepingStatus(row) === "installed" && row.installationInvoiceAmount <= 0));
+}
+
 function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], events: CrmCalendarEvent[]): CustomerSearchPage[] {
   const pages: CustomerSearchPage[] = [{ target: "customers", label: "Customer File" }];
   const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
@@ -5181,6 +5218,7 @@ type DrillCommandButton = {
   key: string;
   label: string;
   detail?: string;
+  tone?: "missing" | "warning";
   disabled?: boolean;
   onClick: () => void;
 };
@@ -5190,6 +5228,7 @@ type DrillAmountCommand = {
   label: string;
   detail: string;
   defaultValue: number;
+  tone?: "missing" | "warning";
   disabled?: boolean;
   onSave: (amount: number) => Promise<boolean>;
 };
@@ -5200,6 +5239,7 @@ type DrillTextCommand = {
   detail: string;
   defaultValue: string;
   placeholder?: string;
+  tone?: "missing" | "warning";
   disabled?: boolean;
   onSave: (value: string) => Promise<boolean>;
 };
@@ -6031,6 +6071,13 @@ function DrillDetailCard({
   const configuredBalanceDue = row ? roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0)) : 0;
   const balancePaymentShortfall = row ? roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0)) : 0;
   const openJobBalance = row ? roundCurrency(Math.max(row.balance || 0, 0)) : 0;
+  const needsOrderHighlight = rowNeedsOrder(row);
+  const depositMissingHighlight = rowDepositShortfall(row) > 0;
+  const balanceMissingHighlight = rowBalanceShortfall(row) > 0;
+  const cogsMissingHighlight = rowMissingCogs(row);
+  const manufacturerMissingHighlight = rowMissingManufacturer(row);
+  const orderRefMissingHighlight = rowMissingOrderRef(row);
+  const installMissingHighlight = rowMissingInstallInvoice(row);
   const rowPaymentType = row?.paymentType || "other";
   const paidAt = todayInputValue();
   const statusControl =
@@ -6074,6 +6121,7 @@ function DrillDetailCard({
           key: "mark-ordered",
           label: "Mark Ordered",
           detail: "Move to ordered",
+          tone: needsOrderHighlight ? "warning" : undefined,
           disabled: busy,
           onClick: () => void markOrdered()
         }
@@ -6101,6 +6149,7 @@ function DrillDetailCard({
           key: "pay-job",
           label: "Pay Job",
           detail: toLedgerCurrency(openJobBalance || depositShortfall + balancePaymentShortfall),
+          tone: depositMissingHighlight || balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onClick: () => void saveRow(payJobPatch, "Job marked paid.")
         }
@@ -6110,6 +6159,7 @@ function DrillDetailCard({
           key: "pay-deposit",
           label: "Pay Deposit",
           detail: toLedgerCurrency(depositShortfall),
+          tone: "missing",
           disabled: busy,
           onClick: () =>
             void saveRow(
@@ -6127,6 +6177,7 @@ function DrillDetailCard({
           key: "pay-balance",
           label: "Pay Balance",
           detail: toLedgerCurrency(balancePaymentShortfall),
+          tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onClick: () =>
             void saveRow(
@@ -6159,6 +6210,7 @@ function DrillDetailCard({
           label: "Deposit Due",
           detail: toLedgerCurrency(row.depositDue),
           defaultValue: row.depositDue || 0,
+          tone: depositMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ deposit_required: amount }, "Deposit due updated.")
         },
@@ -6167,6 +6219,7 @@ function DrillDetailCard({
           label: "Deposit Paid",
           detail: toLedgerCurrency(row.depositPaid),
           defaultValue: row.depositPaid || 0,
+          tone: depositMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) =>
             saveRow(
@@ -6183,6 +6236,7 @@ function DrillDetailCard({
           label: "Balance Due",
           detail: toLedgerCurrency(row.balance),
           defaultValue: row.balance || 0,
+          tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ balance_due_target: amount }, "Balance updated.")
         },
@@ -6191,6 +6245,7 @@ function DrillDetailCard({
           label: "Balance Paid",
           detail: toLedgerCurrency(row.balancePaid),
           defaultValue: row.balancePaid || 0,
+          tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) =>
             saveRow(
@@ -6207,6 +6262,7 @@ function DrillDetailCard({
           label: "Write COGS",
           detail: row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing",
           defaultValue: row.cogs || 0,
+          tone: cogsMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) =>
             saveRow(row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount }, "COGS updated.")
@@ -6216,6 +6272,7 @@ function DrillDetailCard({
           label: "Install $",
           detail: toLedgerCurrency(row.installationInvoiceAmount),
           defaultValue: row.installationInvoiceAmount || 0,
+          tone: installMissingHighlight ? "warning" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ installation_invoice_amount: amount }, "Installation amount updated.")
         },
@@ -6246,6 +6303,7 @@ function DrillDetailCard({
           detail: row.manufacturerName || "Needs order details",
           defaultValue: row.manufacturerName || "",
           placeholder: "Manufacturer",
+          tone: manufacturerMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (value) => saveRow({ manufacturer_name: value.trim() }, "Manufacturer updated.")
         },
@@ -6255,6 +6313,7 @@ function DrillDetailCard({
           detail: row.manufacturerOrderRef || "No order number",
           defaultValue: row.manufacturerOrderRef || "",
           placeholder: "Order number",
+          tone: orderRefMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (value) => saveRow({ manufacturer_order_ref: value.trim() }, "Order number updated.")
         }
@@ -6397,13 +6456,18 @@ function DrillDetailCard({
               <DrillFact label="Total" value={toLedgerCurrency(row?.total ?? job?.quote_total ?? job?.estimated_total ?? file?.lifetimeValue)} editor={totalEditor} />
               <DrillFact label="Paid" value={toLedgerCurrency(row?.paidTotal ?? job?.deposit_paid)} />
               <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} editor={balanceEditor} />
-              <DrillFact label="Deposit" value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"} depositEditor={depositEditor} />
-              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} editor={balancePaidEditor} />
+              <DrillFact
+                label="Deposit"
+                value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"}
+                tone={depositMissingHighlight ? "warn" : undefined}
+                depositEditor={depositEditor}
+              />
+              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} tone={balanceMissingHighlight ? "warn" : undefined} editor={balancePaidEditor} />
               <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
               <DrillFact
                 label="COGS"
                 value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"}
-                tone={row && row.cogs <= 0 ? "warn" : undefined}
+                tone={cogsMissingHighlight ? "warn" : undefined}
                 editor={cogsEditor}
               />
               <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
@@ -6411,17 +6475,17 @@ function DrillDetailCard({
               {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
                 <DrillFact label="Jessica Profit" value={toLedgerCurrency(row.jessicaCommission)} tone="good" />
               ) : null}
-              <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} editor={installAmountEditor} />
+              <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} tone={installMissingHighlight ? "warn" : undefined} editor={installAmountEditor} />
             </div>
           </section>
 
           <section className="crm-drill-fact-column">
             <h4>Status + Product</h4>
             <div className="crm-drill-fact-column-list">
-              <DrillFact label="Status" value={titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))} editor={statusEditor} />
+              <DrillFact label="Status" value={titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))} tone={needsOrderHighlight ? "warn" : undefined} editor={statusEditor} />
               {job ? <DrillFact label="Measure" value={measureNeededLabel(job)} tone={measureNeededActive ? "warn" : undefined} /> : null}
-              <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} editor={manufacturerEditor} />
-              <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} editor={orderRefEditor} />
+              <DrillFact label="Manufacturer" value={row?.manufacturerName || "Needs order details"} tone={manufacturerMissingHighlight ? "warn" : undefined} editor={manufacturerEditor} />
+              <DrillFact label="Order #" value={row?.manufacturerOrderRef || "No order number"} tone={orderRefMissingHighlight ? "warn" : undefined} editor={orderRefEditor} />
               <DrillFact
                 label="Install Status"
                 value={
@@ -6721,7 +6785,7 @@ function DrillDetailCard({
 
 function DrillCommandButtonControl({ command }: { command: DrillCommandButton }) {
   return (
-    <button type="button" className="crm-drill-command-button" disabled={command.disabled} onClick={command.onClick}>
+    <button type="button" className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`} disabled={command.disabled} onClick={command.onClick}>
       <strong>{command.label}</strong>
       {command.detail ? <span>{command.detail}</span> : null}
     </button>
@@ -6752,7 +6816,7 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
     return (
       <button
         type="button"
-        className="crm-drill-command-button"
+        className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}
         disabled={command.disabled}
         onClick={() => setEditing(true)}
       >
@@ -6763,7 +6827,7 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
   }
 
   return (
-    <form className="crm-drill-amount-command" onSubmit={submit}>
+    <form className={`crm-drill-amount-command ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`} onSubmit={submit}>
       <label>
         <span>{command.label}</span>
         <input
@@ -6815,7 +6879,7 @@ function DrillTextCommandControl({ command }: { command: DrillTextCommand }) {
     return (
       <button
         type="button"
-        className="crm-drill-command-button"
+        className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}
         disabled={command.disabled}
         onClick={() => setEditing(true)}
       >
@@ -6826,7 +6890,7 @@ function DrillTextCommandControl({ command }: { command: DrillTextCommand }) {
   }
 
   return (
-    <form className="crm-drill-amount-command crm-drill-text-command" onSubmit={submit}>
+    <form className={`crm-drill-amount-command crm-drill-text-command ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`} onSubmit={submit}>
       <label>
         <span>{command.label}</span>
         <input
@@ -7785,6 +7849,21 @@ function CustomerFilesView({
           onSave: (next) => onSaveRow(row, patch(roundCurrency(Number(next || 0))), message)
         }
       : undefined;
+  const rowTextEditor = (
+    row: CrmBookkeepingRow,
+    label: string,
+    value: string | null | undefined,
+    patch: (next: string) => Record<string, unknown>,
+    message: string
+  ): DrillInlineEditor | undefined =>
+    onSaveRow
+      ? {
+          value: value || "",
+          disabled: busy,
+          ariaLabel: label,
+          onSave: (next) => onSaveRow(row, patch(next.trim()), message)
+        }
+      : undefined;
   const jobFieldEditor = (
     job: CrmJob,
     label: string,
@@ -7991,27 +8070,39 @@ function CustomerFilesView({
           const noteSummary = file.notes.join(" · ");
           const saleValue = totals.total || file.lifetimeValue;
           const balanceValue = totals.balance;
+          const fileNeedsOrder = sortedBookkeepingRows.some(rowNeedsOrder);
+          const fileDepositMissing = sortedBookkeepingRows.some((row) => rowDepositShortfall(row) > 0);
+          const fileBalanceMissing = sortedBookkeepingRows.some((row) => rowBalanceShortfall(row) > 0);
+          const fileCogsMissing = sortedBookkeepingRows.some(rowMissingCogs);
+          const fileInstallMissing = sortedBookkeepingRows.some(rowMissingInstallInvoice);
+          const fileHasMissingWork = fileNeedsOrder || fileDepositMissing || fileBalanceMissing || fileCogsMissing || fileInstallMissing;
+          const fileMissingPhone = fileHasMissingWork && !(file.phone || primaryJob?.phone);
+          const fileMissingAddress = fileHasMissingWork && !(file.address || primaryJob?.address);
+          const fileMissingEmail = fileHasMissingWork && !(file.email || primaryJob?.email);
+          const fileMissingCity = fileHasMissingWork && !(file.city || primaryJob?.city);
+          const fileMissingProduct = fileHasMissingWork && !productSummary;
+          const fileMissingSoldDate = fileHasMissingWork && !(primaryRow?.soldDate || file.latestSoldDate);
 
           const isFocused = highlighted === normalizeCustomerName(file.customerName);
           const focusClassName = isFocused ? "crm-focus" : "";
 
           return (
             <Fragment key={file.id}>
-              <tr className={`crm-customer-info-row ${focusClassName}`} id={customerCardDomId(file.customerName)}>
+              <tr className={`crm-customer-info-row ${focusClassName}${fileHasMissingWork ? " crm-customer-info-row--missing" : ""}`} id={customerCardDomId(file.customerName)}>
                 <td className="crm-customer-name-cell">
                   <div className="crm-cf-name" title={`${file.customerName} · ${file.latestStatus || "Open"}`}>
                     <h3>{file.customerName}</h3>
                     <p>{file.latestStatus || "Open"}</p>
                   </div>
                 </td>
-                <td className="crm-cf-td">
+                <td className={`crm-cf-td${fileMissingPhone ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={file.phone || "Pending"}
                     editor={primaryJob ? jobFieldEditor(primaryJob, "Edit phone", file.phone || primaryJob.phone, "phone", "Phone updated.") : undefined}
                     className="crm-cf-text"
                   />
                 </td>
-                <td className="crm-cf-td wide">
+                <td className={`crm-cf-td wide${fileMissingAddress ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={file.address || "Pending"}
                     editor={
@@ -8041,7 +8132,7 @@ function CustomerFilesView({
                     className="crm-cf-money"
                   />
                 </td>
-                <td className="crm-cf-td money">
+                <td className={`crm-cf-td money${fileDepositMissing ? " crm-missing-data" : ""}`}>
                   <span className="crm-cf-pair">
                     <InlineEditableValue
                       value={toCurrency(totals.depositPaid)}
@@ -8064,7 +8155,7 @@ function CustomerFilesView({
                     />
                   </span>
                 </td>
-                <td className="crm-cf-td money">
+                <td className={`crm-cf-td money${fileBalanceMissing ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={toCurrency(balanceValue)}
                     editor={
@@ -8075,7 +8166,7 @@ function CustomerFilesView({
                     className={`crm-cf-money${balanceValue > 0 ? " warn" : ""}`}
                   />
                 </td>
-                <td className="crm-cf-td money">
+                <td className={`crm-cf-td money${fileCogsMissing ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={totals.cogs > 0 ? toCurrency(totals.cogs) : "Missing"}
                     editor={primaryRow ? rowMoneyEditor(primaryRow, "Edit COGS", primaryRow.cogs, rowCogsPatch(primaryRow), "COGS updated.") : undefined}
@@ -8091,7 +8182,7 @@ function CustomerFilesView({
                     {totals.remake > 0 ? ` + ${toCurrency(totals.remake)} rmk` : ""}
                   </span>
                 </td>
-                <td className="crm-cf-td money">
+                <td className={`crm-cf-td money${fileInstallMissing ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={toCurrency(totals.installInvoiced)}
                     editor={
@@ -8122,7 +8213,7 @@ function CustomerFilesView({
                 <td className="crm-cf-td money">
                   <span className="crm-cf-money">{toCurrency(totals.mike)}</span>
                 </td>
-                <td className="crm-cf-td">
+                <td className={`crm-cf-td${fileMissingEmail ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={file.email || "Pending"}
                     editor={
@@ -8131,19 +8222,19 @@ function CustomerFilesView({
                     className="crm-cf-text"
                   />
                 </td>
-                <td className="crm-cf-td">
+                <td className={`crm-cf-td${fileMissingCity ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={file.city || "Pending"}
                     editor={primaryJob ? jobFieldEditor(primaryJob, "Edit city", file.city || primaryJob.city, "city", "City updated.") : undefined}
                     className="crm-cf-text"
                   />
                 </td>
-                <td className="crm-cf-td wide">
+                <td className={`crm-cf-td wide${fileMissingProduct ? " crm-missing-data" : ""}`}>
                   <span className="crm-cf-text" title={productSummary || undefined}>
                     {productSummary || "Pending"}
                   </span>
                 </td>
-                <td className="crm-cf-td">
+                <td className={`crm-cf-td${fileMissingSoldDate ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={formatShortDate(primaryRow?.soldDate || file.latestSoldDate)}
                     editor={
@@ -8231,6 +8322,13 @@ function CustomerFilesView({
                       const configuredBalanceDue = roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0));
                       const balanceShortfall = roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0));
                       const openBalance = roundCurrency(Math.max(row.balance || 0, 0));
+                      const rowNeedsOrderHighlight = rowNeedsOrder(row);
+                      const rowDepositMissingHighlight = rowDepositShortfall(row) > 0;
+                      const rowBalanceMissingHighlight = rowBalanceShortfall(row) > 0;
+                      const rowCogsMissingHighlight = rowMissingCogs(row);
+                      const rowManufacturerMissingHighlight = rowMissingManufacturer(row);
+                      const rowOrderRefMissingHighlight = rowMissingOrderRef(row);
+                      const rowInstallMissingHighlight = rowMissingInstallInvoice(row);
                       const rowPaymentType = row.paymentType || "other";
                       const paidAt = todayInputValue();
                       const rowLabel = row.quoteNumber || row.source.replace("_", " ");
@@ -8243,7 +8341,7 @@ function CustomerFilesView({
                         ...(row.source === "crm_quote" ? { status: "paid" } : {})
                       };
                       return (
-                        <div className="crm-cf-seg" key={`money-${row.source}-${row.id}`}>
+                        <div className={`crm-cf-seg${rowNeedsOrderHighlight || rowDepositMissingHighlight || rowBalanceMissingHighlight || rowCogsMissingHighlight || rowInstallMissingHighlight ? " crm-cf-seg--missing" : ""}`} key={`money-${row.source}-${row.id}`}>
                           <span className="crm-cf-seg-label" title={rowLabel}>
                             {rowLabel}
                           </span>
@@ -8264,6 +8362,24 @@ function CustomerFilesView({
                           ) : (
                             <span className="crm-cf-seg-status">{bookkeepingStatusLabel(row)}</span>
                           )}
+                          {rowNeedsOrderHighlight ? (
+                            <>
+                              <span className={`crm-cf-chip${rowManufacturerMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
+                                <strong>Mfr</strong>
+                                <InlineEditableValue
+                                  value={row.manufacturerName || "Missing"}
+                                  editor={rowTextEditor(row, `Edit manufacturer for ${rowLabel}`, row.manufacturerName, (value) => ({ manufacturer_name: value }), "Manufacturer updated.")}
+                                />
+                              </span>
+                              <span className={`crm-cf-chip${rowOrderRefMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
+                                <strong>Order #</strong>
+                                <InlineEditableValue
+                                  value={row.manufacturerOrderRef || "Missing"}
+                                  editor={rowTextEditor(row, `Edit order number for ${rowLabel}`, row.manufacturerOrderRef, (value) => ({ manufacturer_order_ref: value }), "Order number updated.")}
+                                />
+                              </span>
+                            </>
+                          ) : null}
                           <span className="crm-cf-chip">
                             <strong>Total</strong>
                             <InlineEditableValue
@@ -8271,14 +8387,14 @@ function CustomerFilesView({
                               editor={rowMoneyEditor(row, `Edit total for ${rowLabel}`, row.total, rowTotalPatch(row), "Total updated.")}
                             />
                           </span>
-                          <span className="crm-cf-chip">
+                          <span className={`crm-cf-chip${rowCogsMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>COGS</strong>
                             <InlineEditableValue
                               value={row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing"}
                               editor={rowMoneyEditor(row, `Edit COGS for ${rowLabel}`, row.cogs, rowCogsPatch(row), "COGS updated.")}
                             />
                           </span>
-                          <span className="crm-cf-chip">
+                          <span className={`crm-cf-chip${rowDepositMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>Dep</strong>
                             <InlineEditableValue
                               value={toLedgerCurrency(row.depositPaid)}
@@ -8290,17 +8406,26 @@ function CustomerFilesView({
                               editor={rowMoneyEditor(row, `Edit deposit due for ${rowLabel}`, row.depositDue, (amount) => ({ deposit_required: amount }), "Deposit due updated.")}
                             />
                           </span>
-                          <span className="crm-cf-chip">
+                          <span className={`crm-cf-chip${rowBalanceMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>Bal Paid</strong>
                             <InlineEditableValue
                               value={toLedgerCurrency(row.balancePaid)}
                               editor={rowMoneyEditor(row, `Edit balance paid for ${rowLabel}`, row.balancePaid, (amount) => ({ balance_paid_target: amount }), "Balance paid updated.")}
                             />
                           </span>
-                          <span className="crm-cf-chip">
+                          <span className={`crm-cf-chip${rowBalanceMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>Owes</strong>
                             <span className={openBalance > 0 ? "warn" : undefined}>{toLedgerCurrency(openBalance)}</span>
                           </span>
+                          {rowInstallMissingHighlight ? (
+                            <span className="crm-cf-chip crm-cf-chip--missing">
+                              <strong>Install</strong>
+                              <InlineEditableValue
+                                value={row.installationInvoiceAmount > 0 ? toLedgerCurrency(row.installationInvoiceAmount) : "Missing"}
+                                editor={rowMoneyEditor(row, `Edit installation amount for ${rowLabel}`, row.installationInvoiceAmount, (amount) => ({ installation_invoice_amount: amount }), "Installation amount updated.")}
+                              />
+                            </span>
+                          ) : null}
                           <span className="crm-cf-chip crm-cf-chip--add">
                             <InlineEditableValue
                               value="+ Payment"

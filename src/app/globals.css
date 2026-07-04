@@ -4622,6 +4622,25 @@ body.qb-fullscreen .crm-app-shell {
   font-weight: 950;
 }
 
+.crm-customer-info-row--missing .crm-customer-name-cell {
+  box-shadow:
+    inset 4px 0 0 #f97316,
+    1px 0 0 #d8dfea,
+    10px 0 18px rgba(15, 23, 42, 0.04);
+}
+
+.crm-missing-data {
+  background: #fff7ed !important;
+  box-shadow: inset 0 0 0 2px #f97316;
+}
+
+.crm-missing-data .crm-cf-money,
+.crm-missing-data .crm-cf-text,
+.crm-missing-data .crm-inline-edit-value {
+  color: #9a3412;
+  font-weight: 950;
+}
+
 .crm-cf-pair {
   display: inline-flex;
   align-items: center;
@@ -4691,6 +4710,11 @@ body.qb-fullscreen .crm-app-shell {
   background: #ffffff;
 }
 
+.crm-cf-seg--missing {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
 .crm-cf-track-label,
 .crm-cf-seg-label {
   max-width: 130px;
@@ -4730,6 +4754,18 @@ body.qb-fullscreen .crm-app-shell {
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.crm-cf-chip--missing {
+  border-color: #dc2626;
+  background: #fff1f2;
+  color: #991b1b;
+}
+
+.crm-cf-chip.crm-cf-chip--missing strong,
+.crm-cf-chip.crm-cf-chip--missing .crm-inline-edit-value,
+.crm-cf-chip.crm-cf-chip--missing span {
+  color: #991b1b;
 }
 
 .crm-cf-chip strong {
@@ -13297,6 +13333,28 @@ html.mobile-menu-open {
   overflow-wrap: anywhere;
 }
 
+.crm-drill-command-button--missing {
+  border-color: #dc2626;
+  background: #fff1f2;
+  color: #991b1b;
+}
+
+.crm-drill-command-button--missing span,
+.crm-drill-command-button--missing label span {
+  color: #991b1b;
+}
+
+.crm-drill-command-button--warning {
+  border-color: #f97316;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.crm-drill-command-button--warning span,
+.crm-drill-command-button--warning label span {
+  color: #9a3412;
+}
+
 .crm-drill-amount-command {
   display: grid;
   gap: 6px;
@@ -13352,6 +13410,16 @@ html.mobile-menu-open {
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.crm-drill-amount-command.crm-drill-command-button--missing {
+  border-color: #dc2626;
+  background: #fff1f2;
+}
+
+.crm-drill-amount-command.crm-drill-command-button--warning {
+  border-color: #f97316;
+  background: #fff7ed;
 }
 
 .crm-drill-column-grid {
@@ -13541,6 +13609,11 @@ html.mobile-menu-open {
   border-bottom: 1px solid #e5e5df;
 }
 
+.crm-drill-compact-grid .crm-drill-fact.warn {
+  background: #fff7ed;
+  box-shadow: inset 4px 0 0 #f97316;
+}
+
 .crm-drill-compact-grid .crm-drill-fact:last-child {
   border-bottom: 0;
 }
@@ -13567,7 +13640,8 @@ html.mobile-menu-open {
 }
 
 .crm-drill-fact.warn strong {
-  color: #5b5b58;
+  color: #9a3412;
+  font-weight: 950;
 }
 
 .crm-drill-fact.good strong {
