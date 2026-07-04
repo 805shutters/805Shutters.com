@@ -4006,6 +4006,61 @@ body.qb-fullscreen .crm-app-shell {
   border-top: 1px solid var(--line);
 }
 
+.crm-global-search-body--contract {
+  grid-template-columns: minmax(440px, 0.95fr) minmax(620px, 1.05fr);
+  align-items: start;
+}
+
+.crm-global-contract-pane {
+  position: sticky;
+  top: 14px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  height: min(82vh, 980px);
+  min-height: 640px;
+  overflow: hidden;
+  background: var(--white);
+  border: 1px solid var(--line);
+}
+
+.crm-global-contract-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-global-contract-pane-head span,
+.crm-global-contract-pane-head a {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.crm-global-contract-pane-head a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.crm-global-contract-pane-head a:hover,
+.crm-global-contract-pane-head a:focus-visible {
+  color: var(--accent);
+}
+
+.crm-global-contract-pane iframe {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  border: 0;
+  background: #ffffff;
+}
+
 .crm-global-search-results {
   display: grid;
   align-content: start;
@@ -4179,6 +4234,13 @@ body.qb-fullscreen .crm-app-shell {
 
   .crm-global-search-links {
     justify-content: flex-start;
+  }
+
+  .crm-global-contract-pane {
+    position: relative;
+    top: auto;
+    height: min(76vh, 760px);
+    min-height: 520px;
   }
 
   .crm-metric {

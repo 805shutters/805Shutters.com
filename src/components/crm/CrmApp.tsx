@@ -5270,6 +5270,8 @@ function GlobalCustomerSearchPanel({
   }, [normalizedQuery, results, selectedResultId]);
 
   const selectedResult = results.find((result) => result.id === selectedResultId) || results[0] || null;
+  const selectedContractDocument =
+    selectedResult?.entry.documents?.find((document) => document.kind === "Contract copy" && Boolean(document.url)) || null;
   const payload: DrillPayload | null = selectedResult
     ? {
         title: "Customer Search",
@@ -5307,23 +5309,30 @@ function GlobalCustomerSearchPanel({
       </div>
 
       {normalizedQuery.length >= 2 && results.length ? (
-        <div className="crm-global-search-body">
-          <div className="crm-global-search-results" role="listbox" aria-label="Customer search results">
-            {results.map((result) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={result.id === selectedResult?.id}
-                className={result.id === selectedResult?.id ? "active" : ""}
-                key={result.id}
-                onClick={() => setSelectedResultId(result.id)}
-              >
-                <strong>{result.entry.customerName || result.entry.name}</strong>
-                <span>{result.entry.meta || "Customer record"}</span>
-                <em>{result.entry.value || "Open"}</em>
-              </button>
-            ))}
-          </div>
+        <div className={`crm-global-search-body${selectedContractDocument ? " crm-global-search-body--contract" : ""}`}>
+          {selectedContractDocument ? (
+            <ContractPreviewPane
+              document={selectedContractDocument}
+              customerName={selectedResult?.entry.customerName || selectedResult?.entry.name || "Customer"}
+            />
+          ) : (
+            <div className="crm-global-search-results" role="listbox" aria-label="Customer search results">
+              {results.map((result) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={result.id === selectedResult?.id}
+                  className={result.id === selectedResult?.id ? "active" : ""}
+                  key={result.id}
+                  onClick={() => setSelectedResultId(result.id)}
+                >
+                  <strong>{result.entry.customerName || result.entry.name}</strong>
+                  <span>{result.entry.meta || "Customer record"}</span>
+                  <em>{result.entry.value || "Open"}</em>
+                </button>
+              ))}
+            </div>
+          )}
 
           {selectedResult && payload ? (
             <div className="crm-global-search-detail">
@@ -5360,6 +5369,26 @@ function GlobalCustomerSearchPanel({
         <p className="crm-empty">No customer, job, quote, or bookkeeping row matches "{normalizedQuery}".</p>
       ) : null}
     </section>
+  );
+}
+
+function ContractPreviewPane({
+  document,
+  customerName
+}: {
+  document: DrillDocument;
+  customerName: string;
+}) {
+  return (
+    <aside className="crm-global-contract-pane" aria-label={`Contract for ${customerName}`}>
+      <div className="crm-global-contract-pane-head">
+        <span>Contract</span>
+        <a href={document.url} target="_blank" rel="noreferrer">
+          Open
+        </a>
+      </div>
+      <iframe title={`${customerName} contract`} src={document.url} />
+    </aside>
   );
 }
 
