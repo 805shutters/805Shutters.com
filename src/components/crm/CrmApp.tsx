@@ -2918,6 +2918,7 @@ type DrillDocument = {
   id: string;
   title: string;
   url: string;
+  quoteId?: string | null;
   status?: string | null;
   kind: string;
 };
@@ -3172,12 +3173,30 @@ function contractUrl(contract: CrmCustomerFile["contracts"][number]) {
   return null;
 }
 
+function mtsContractQuoteId(contract: CrmCustomerFile["contracts"][number], file?: CrmCustomerFile) {
+  const contractValue = contract.meta?.mts_quote_id;
+  if (typeof contractValue === "string" && contractValue.trim()) return contractValue;
+
+  const relatedQuote = file?.quotes.find(
+    (quote) =>
+      (contract.quote_id && quote.id === contract.quote_id) ||
+      (contract.share_token && quote.share_token === contract.share_token)
+  );
+  const quoteValue = relatedQuote?.meta?.mts_quote_id;
+  return typeof quoteValue === "string" && quoteValue.trim() ? quoteValue : null;
+}
+
 function crmContractPreviewUrl(url: string) {
   const hashIndex = url.indexOf("#");
   const base = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
   const hash = hashIndex >= 0 ? url.slice(hashIndex) : "";
   if (/[?&]crmContract=/.test(base)) return url;
   return `${base}${base.includes("?") ? "&" : "?"}crmContract=1${hash}`;
+}
+
+function documentPreviewUrl(document: DrillDocument) {
+  if (document.quoteId) return `/crm/quote/${document.quoteId}/contract-preview`;
+  return crmContractPreviewUrl(document.url);
 }
 
 function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
@@ -3206,12 +3225,14 @@ function documentsForDetail(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCus
   const documents: DrillDocument[] = [];
 
   for (const contract of relatedContracts(file, row, job)) {
-    const url = contractUrl(contract);
+    const previewQuoteId = mtsContractQuoteId(contract, file);
+    const url = contractUrl(contract) || (previewQuoteId ? `/crm/quote/${previewQuoteId}/contract-preview` : null);
     if (!url) continue;
     documents.push({
       id: `contract-${contract.id}`,
       title: contract.title || "Contract copy",
       url,
+      quoteId: previewQuoteId,
       status: contract.status,
       kind: "Contract copy"
     });
@@ -5444,7 +5465,7 @@ function ContractPreviewPane({
   document: DrillDocument;
   customerName: string;
 }) {
-  const previewUrl = crmContractPreviewUrl(document.url);
+  const previewUrl = documentPreviewUrl(document);
 
   return (
     <aside className="crm-global-contract-pane" aria-label={`Contract for ${customerName}`}>
