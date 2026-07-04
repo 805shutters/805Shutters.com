@@ -6917,6 +6917,10 @@ button.crm-calendar-month-event:focus-visible {
   padding-bottom: 6px;
 }
 
+.crm-installation-ledger-summary {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
 .crm-bookkeeping-summary-card {
   display: grid;
   align-content: center;
@@ -6998,6 +7002,10 @@ button.crm-calendar-month-event:focus-visible {
   font-size: 12px;
 }
 
+.crm-installation-ledger .crm-bookkeeping-table {
+  min-width: 1320px;
+}
+
 .crm-bookkeeping-table th {
   position: sticky;
   top: 0;
@@ -7036,6 +7044,52 @@ button.crm-calendar-month-event:focus-visible {
 .crm-bookkeeping-table--legacy td {
   padding: 14px 10px;
   font-size: 14px;
+}
+
+.crm-ledger-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--white);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.crm-ledger-action-link:hover,
+.crm-ledger-action-link:focus-visible {
+  border-color: var(--ink);
+}
+
+.crm-ledger-action-link:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.crm-bookkeeping-install-open,
+.crm-bookkeeping-install-paid {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.crm-bookkeeping-install-open {
+  color: #9a4c00;
+}
+
+.crm-bookkeeping-install-paid {
+  color: #1f6f3a;
 }
 
 .crm-bookkeeping-row--closed td {
@@ -12835,7 +12889,7 @@ html.mobile-menu-open {
 
 .crm-stat-band {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
 }
 

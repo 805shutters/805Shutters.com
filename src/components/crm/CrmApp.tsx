@@ -572,6 +572,10 @@ function buildBookkeepingRowPayload(row: CrmBookkeepingRow, patch: Record<string
     paid_at: todayInputValue(),
     remake_amount: row.remakeTotal || 0,
     installation_invoice_amount: row.installationInvoiceAmount || 0,
+    installation_invoice_paid_at: row.installationInvoicePaidAt || "",
+    installation_invoice_paid_amount: row.installationInvoicePaidAmount || 0,
+    installation_invoice_payment_method: row.installationInvoicePaymentMethod || "",
+    installation_invoice_payment_notes: row.installationInvoicePaymentNotes || "",
     installation_complete: row.isInstallationComplete,
     ken_cut_override: row.kenCutOverride ?? null,
     manufacturer_name: row.manufacturerName || "",
@@ -2020,6 +2024,35 @@ export function CrmApp({
     }
   }
 
+  async function saveInstallationInvoiceLedgerItem(item: InstallationInvoiceLedgerItem, patch: Record<string, unknown>) {
+    if (!session) return;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (item.invoice) {
+        await crmFetch(session, `/api/crm/installation-invoices/${item.invoice.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(patch)
+        });
+      }
+      if (item.row) {
+        await persistBookkeepingRowPatch(item.row, patch);
+      }
+      await refresh();
+      setMessage(
+        patch.installation_invoice_paid_at
+          ? `${item.customerName} install invoice marked paid.`
+          : `${item.customerName} install invoice reopened.`
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Installation invoice could not be updated.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function markBookkeepingBalancePaid(row: CrmBookkeepingRow) {
     if (!session) return;
 
@@ -2391,6 +2424,7 @@ export function CrmApp({
             rows={rows}
             files={customerFiles}
             events={events}
+            installationInvoiceEmails={installationInvoiceEmails}
             activeDrill={commandDrill}
             busy={busy}
             onOpenPage={openCustomerSearchPage}
@@ -2581,7 +2615,13 @@ export function CrmApp({
               onOpenPayoff={() => openTab("payoff")}
             />
             <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
-            <InstallationInvoiceInbox invoices={installationInvoiceEmails} onPull={pullInstallationInvoices} busy={busy} />
+            <InstallationInvoiceInbox
+              invoices={installationInvoiceEmails}
+              rows={rows}
+              onPull={pullInstallationInvoices}
+              onSaveInvoice={saveInstallationInvoiceLedgerItem}
+              busy={busy}
+            />
           </div>
         </section>
       ) : null}
@@ -2990,6 +3030,35 @@ type DrillEntry = {
   documents?: DrillDocument[];
   products?: CrmCustomerFile["products"];
   notes?: string[];
+};
+type InstallationInvoiceLedgerStatus = "open" | "paid" | "partial" | "review";
+type InstallationInvoiceLedgerItem = {
+  id: string;
+  source: "email" | "bookkeeping";
+  customerName: string;
+  invoiceNumber: string | null;
+  invoiceUrl: string | null;
+  receivedAt: string | null;
+  amount: number;
+  paidAmount: number;
+  openAmount: number;
+  paidAt: string | null;
+  paymentMethod: string | null;
+  paymentNotes: string | null;
+  status: InstallationInvoiceLedgerStatus;
+  matchStatus: string | null;
+  reason: string | null;
+  row?: CrmBookkeepingRow;
+  invoice?: CrmInstallationInvoiceEmail;
+};
+type InstallationInvoiceLedger = {
+  items: InstallationInvoiceLedgerItem[];
+  openItems: InstallationInvoiceLedgerItem[];
+  paidItems: InstallationInvoiceLedgerItem[];
+  reviewItems: InstallationInvoiceLedgerItem[];
+  totalBilled: number;
+  totalPaid: number;
+  totalOpen: number;
 };
 type DrillPayload = {
   title: string;
@@ -3409,6 +3478,199 @@ function rowsToEntries(
         notes: detailNotes(row, job, file)
       };
     });
+}
+
+function installationInvoiceEmailKind(invoice: CrmInstallationInvoiceEmail) {
+  const kind = invoice.raw?.emailKind;
+  return typeof kind === "string" ? kind : null;
+}
+
+function isInstallationInvoiceLedgerEmail(invoice: CrmInstallationInvoiceEmail) {
+  if (installationInvoiceEmailKind(invoice) === "completed_service_report") return false;
+  return Boolean(
+    Number(invoice.extracted_invoice_amount) > 0 ||
+      invoice.extracted_invoice_number ||
+      invoice.match_status === "matched" ||
+      invoice.match_status === "needs_review" ||
+      invoice.match_status === "error"
+  );
+}
+
+function installationInvoiceMatchesRow(invoice: CrmInstallationInvoiceEmail, row: CrmBookkeepingRow) {
+  if (invoice.matched_bookkeeping_entry_id && invoice.matched_bookkeeping_entry_id === row.id) return true;
+  if (invoice.matched_quote_id && invoice.matched_quote_id === row.quoteId) return true;
+  if (invoice.matched_job_id && invoice.matched_job_id === row.jobId) return true;
+  if (invoice.gmail_message_id && invoice.gmail_message_id === row.installationInvoiceDocumentId) return true;
+  return Boolean(
+    invoice.extracted_invoice_number &&
+      row.installationInvoiceNumber &&
+      invoice.extracted_invoice_number === row.installationInvoiceNumber
+  );
+}
+
+function rowForInstallationInvoice(invoice: CrmInstallationInvoiceEmail, rows: CrmBookkeepingRow[]) {
+  return rows.find((row) => installationInvoiceMatchesRow(invoice, row));
+}
+
+function installationInvoicePaymentState(amount: number, paidAt: string | null | undefined, rawPaidAmount: unknown) {
+  const parsedPaidAmount = Number(rawPaidAmount);
+  const paidAmount = roundCurrency(
+    Number.isFinite(parsedPaidAmount) && parsedPaidAmount > 0 ? parsedPaidAmount : paidAt ? amount : 0
+  );
+  const openAmount = roundCurrency(Math.max(amount - paidAmount, 0));
+  const isPaid = amount > 0 && openAmount <= 0.009 && Boolean(paidAt || paidAmount > 0);
+  return { paidAmount, openAmount, isPaid };
+}
+
+function installationInvoiceLedgerStatus(
+  matchStatus: string | null,
+  amount: number,
+  paidAt: string | null,
+  paidAmount: number,
+  openAmount: number
+): InstallationInvoiceLedgerStatus {
+  if (amount > 0 && openAmount <= 0.009 && Boolean(paidAt || paidAmount > 0)) return "paid";
+  if (paidAmount > 0) return "partial";
+  if (matchStatus === "needs_review" || matchStatus === "error" || matchStatus === "unmatched") return "review";
+  return "open";
+}
+
+function buildInstallationInvoiceLedger(rows: CrmBookkeepingRow[], invoices: CrmInstallationInvoiceEmail[]): InstallationInvoiceLedger {
+  const items: InstallationInvoiceLedgerItem[] = [];
+  const ledgerEmails = invoices.filter(isInstallationInvoiceLedgerEmail);
+
+  for (const invoice of ledgerEmails) {
+    const row = rowForInstallationInvoice(invoice, rows);
+    const amount = roundCurrency(Number(invoice.extracted_invoice_amount ?? row?.installationInvoiceAmount ?? 0));
+    const paidAt = invoice.installation_invoice_paid_at || row?.installationInvoicePaidAt || null;
+    const invoicePaidAmount = Number(invoice.installation_invoice_paid_amount);
+    const rowPaidAmount = Number(row?.installationInvoicePaidAmount);
+    const rawPaidAmount = invoicePaidAmount > 0 ? invoicePaidAmount : rowPaidAmount > 0 ? rowPaidAmount : invoice.installation_invoice_paid_amount;
+    const payment = installationInvoicePaymentState(amount, paidAt, rawPaidAmount);
+    const customerName = invoice.extracted_customer_name || row?.customerName || "Install invoice review";
+    const status = installationInvoiceLedgerStatus(
+      invoice.match_status,
+      amount,
+      paidAt,
+      payment.paidAmount,
+      payment.openAmount
+    );
+
+    items.push({
+      id: `email-${invoice.id}`,
+      source: "email",
+      customerName,
+      invoiceNumber: invoice.extracted_invoice_number || row?.installationInvoiceNumber || null,
+      invoiceUrl: invoice.email_url || row?.installationInvoiceUrl || null,
+      receivedAt: invoice.sent_at || invoice.processed_at || invoice.created_at,
+      amount,
+      paidAmount: payment.paidAmount,
+      openAmount: payment.openAmount,
+      paidAt,
+      paymentMethod: invoice.installation_invoice_payment_method || row?.installationInvoicePaymentMethod || null,
+      paymentNotes: invoice.installation_invoice_payment_notes || row?.installationInvoicePaymentNotes || null,
+      status,
+      matchStatus: invoice.match_status,
+      reason: invoice.match_reason || invoice.error_message || null,
+      row,
+      invoice
+    });
+  }
+
+  for (const row of rows) {
+    const hasManualInvoice = Boolean(
+      row.installationInvoiceAmount > 0 ||
+        row.installationInvoiceDocumentId ||
+        row.installationInvoiceNumber ||
+        row.installationInvoiceUrl
+    );
+    if (!hasManualInvoice) continue;
+    if (ledgerEmails.some((invoice) => installationInvoiceMatchesRow(invoice, row))) continue;
+
+    const amount = roundCurrency(row.installationInvoiceAmount);
+    const payment = installationInvoicePaymentState(amount, row.installationInvoicePaidAt, row.installationInvoicePaidAmount);
+    const status = installationInvoiceLedgerStatus(
+      row.installationMatchStatus,
+      amount,
+      row.installationInvoicePaidAt,
+      payment.paidAmount,
+      payment.openAmount
+    );
+
+    items.push({
+      id: `bookkeeping-${bookkeepingRowKey(row)}`,
+      source: "bookkeeping",
+      customerName: row.customerName,
+      invoiceNumber: row.installationInvoiceNumber,
+      invoiceUrl: row.installationInvoiceUrl,
+      receivedAt: row.installationMatchedAt || row.soldDate,
+      amount,
+      paidAmount: payment.paidAmount,
+      openAmount: payment.openAmount,
+      paidAt: row.installationInvoicePaidAt,
+      paymentMethod: row.installationInvoicePaymentMethod,
+      paymentNotes: row.installationInvoicePaymentNotes,
+      status,
+      matchStatus: row.installationMatchStatus,
+      reason: row.isInstallationComplete ? "Recorded on customer file" : "Manual install invoice",
+      row
+    });
+  }
+
+  const sortedItems = items.sort((a, b) => dateSortValue(b.receivedAt) - dateSortValue(a.receivedAt));
+  const openItems = sortedItems.filter((item) => item.openAmount > 0);
+  const paidItems = sortedItems.filter((item) => item.status === "paid");
+  const reviewItems = sortedItems.filter((item) => item.status === "review");
+
+  return {
+    items: sortedItems,
+    openItems,
+    paidItems,
+    reviewItems,
+    totalBilled: roundCurrency(sortedItems.reduce((sum, item) => sum + item.amount, 0)),
+    totalPaid: roundCurrency(sortedItems.reduce((sum, item) => sum + item.paidAmount, 0)),
+    totalOpen: roundCurrency(sortedItems.reduce((sum, item) => sum + item.openAmount, 0))
+  };
+}
+
+function installationLedgerItemsToDrillEntries(
+  items: InstallationInvoiceLedgerItem[],
+  jobs: CrmJob[],
+  files: CrmCustomerFile[]
+): DrillEntry[] {
+  return items.map((item) => {
+    const rowEntry = item.row ? rowsToEntries([item.row], () => item.openAmount || item.amount, { jobs, files })[0] : null;
+    const job = rowEntry?.job || (item.invoice?.matched_job_id ? jobs.find((entry) => entry.id === item.invoice?.matched_job_id) : undefined);
+    const file = rowEntry?.file || customerFileForName(files, item.customerName);
+    const baseDocuments = rowEntry?.documents || documentsForDetail(undefined, job, file);
+    const invoiceDocument =
+      item.invoiceUrl
+        ? [{ id: `install-ledger-document-${item.id}`, title: item.invoiceNumber || "Install invoice", url: item.invoiceUrl, status: item.status, kind: item.source === "email" ? "Gmail" : "Install invoice" }]
+        : [];
+
+    return {
+      ...(rowEntry || {
+        id: item.id,
+        name: item.customerName,
+        customerName: item.customerName,
+        meta: "Install invoice",
+        jobId: job?.id || item.invoice?.matched_job_id || null,
+        job,
+        file,
+        documents: baseDocuments,
+        products: productsForDetail(file, undefined, job),
+        notes: detailNotes(undefined, job, file)
+      }),
+      id: item.id,
+      name: item.customerName,
+      customerName: item.customerName,
+      meta: ["Install invoice", titleCase(item.status), formatShortDate(item.receivedAt), item.reason].filter(Boolean).join(" · "),
+      value: toCurrency(item.openAmount || item.amount),
+      tone: item.openAmount > 0 ? ("warn" as const) : undefined,
+      documents: uniqueDocuments([...baseDocuments, ...invoiceDocument]),
+      notes: Array.from(new Set([...(rowEntry?.notes || []), item.paymentNotes, item.reason].filter(Boolean) as string[]))
+    };
+  });
 }
 
 function filesToEntries(list: CrmCustomerFile[]): DrillEntry[] {
@@ -4607,6 +4869,7 @@ function CommandDashboard({
   rows,
   files,
   events,
+  installationInvoiceEmails,
   activeDrill,
   busy,
   onOpenPage,
@@ -4623,6 +4886,7 @@ function CommandDashboard({
   rows: CrmBookkeepingRow[];
   files: CrmCustomerFile[];
   events: CrmCalendarEvent[];
+  installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   activeDrill: DrillPayload | null;
   busy: boolean;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
@@ -4643,8 +4907,9 @@ function CommandDashboard({
     const mikeNet = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
     const jessicaNetRows = rows.filter((row) => (row.jessicaCommission || 0) > 0);
     const jessicaNet = jessicaNetRows.reduce((sum, row) => sum + (row.jessicaCommission || 0), 0);
-    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, mikeNet, jessicaNet, jessicaNetRows };
-  }, [rows]);
+    const installationLedger = buildInstallationInvoiceLedger(rows, installationInvoiceEmails);
+    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, mikeNet, jessicaNet, jessicaNetRows, installationLedger };
+  }, [rows, installationInvoiceEmails]);
 
   const productMixReport = useMemo(() => {
     const map = new Map<string, CrmJob[]>();
@@ -4810,6 +5075,20 @@ function CommandDashboard({
               subtitle: "Jobs with money still owed",
               placement: "numbers",
               entries: rowsToEntries(numbers.outstandingRows, (row) => row.balance, { jobs, files })
+            })
+          }
+        />
+        <StatTile
+          label="Install Fees"
+          value={toCurrency(numbers.installationLedger.totalOpen)}
+          sub={`${numbers.installationLedger.openItems.length} open / ${toCurrency(numbers.installationLedger.totalPaid)} paid`}
+          tone={numbers.installationLedger.totalOpen > 0 ? "warn" : undefined}
+          onClick={() =>
+            onDrill({
+              title: "Open Install Fees",
+              subtitle: "Installer invoices received and not fully paid",
+              placement: "numbers",
+              entries: installationLedgerItemsToDrillEntries(numbers.installationLedger.openItems, jobs, files)
             })
           }
         />
@@ -6579,6 +6858,17 @@ function DrillDetailCard({
                 <DrillFact label="Jessica Profit" value={toLedgerCurrency(row.jessicaCommission)} tone="good" />
               ) : null}
               <DrillFact label="Install $" value={row ? toLedgerCurrency(row.installationInvoiceAmount) : "No install row"} tone={installMissingHighlight ? "warn" : undefined} editor={installAmountEditor} />
+              {row && row.installationInvoiceAmount > 0 ? (
+                <DrillFact
+                  label="Install Payable"
+                  value={
+                    row.isInstallationInvoicePaid
+                      ? `${toLedgerCurrency(row.installationInvoicePaidAmount)} paid`
+                      : `${toLedgerCurrency(row.installationInvoiceOpenAmount)} open`
+                  }
+                  tone={row.installationInvoiceOpenAmount > 0 ? "warn" : "good"}
+                />
+              ) : null}
             </div>
           </section>
 
@@ -7181,6 +7471,10 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       installation_invoice_amount: Number(formString(formData, "installation_invoice_amount") || 0),
       installation_invoice_number: formString(formData, "installation_invoice_number"),
       installation_invoice_url: formString(formData, "installation_invoice_url"),
+      installation_invoice_paid_at: formString(formData, "installation_invoice_paid_at") || null,
+      installation_invoice_paid_amount: Number(formString(formData, "installation_invoice_paid_amount") || 0),
+      installation_invoice_payment_method: formString(formData, "installation_invoice_payment_method"),
+      installation_invoice_payment_notes: formString(formData, "installation_invoice_payment_notes"),
       installation_complete: formData.get("installation_complete") === "on",
       ken_cut_override: kenCutOverride === "" ? null : Number(kenCutOverride),
       manufacturer_name: formString(formData, "manufacturer_name"),
@@ -7237,6 +7531,7 @@ function DrillDetailEditForm({
   const cogs = row?.cogs ?? 0;
   const remakeAmount = row?.remakeTotal ?? 0;
   const installationAmount = row?.installationInvoiceAmount ?? 0;
+  const installationPaidAmount = row?.installationInvoicePaidAmount ?? 0;
   const paymentType = row?.paymentType || "other";
   const soldByOwner = saleOwnerDisplayName(row?.salesOwner || (job && WON_JOB_STATUSES.includes(job.status) ? job.sales_owner : null));
   const belongsToOwner = saleOwnerDisplayName(job?.sales_owner);
@@ -7494,6 +7789,33 @@ function DrillDetailEditForm({
             Install Invoice URL
             <input name="installation_invoice_url" type="url" defaultValue={row?.installationInvoiceUrl || ""} disabled={!row} />
           </label>
+          <div className="crm-field-row">
+            <label>
+              Install Paid Date
+              <input name="installation_invoice_paid_at" type="date" defaultValue={dateInputValue(row?.installationInvoicePaidAt)} disabled={!row} />
+            </label>
+            <label>
+              Install Paid Amount
+              <input
+                name="installation_invoice_paid_amount"
+                type="number"
+                min="0"
+                step="0.01"
+                defaultValue={installationPaidAmount || ""}
+                disabled={!row}
+              />
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Install Payment Method
+              <input name="installation_invoice_payment_method" defaultValue={row?.installationInvoicePaymentMethod || ""} disabled={!row} />
+            </label>
+            <label>
+              Install Payment Notes
+              <input name="installation_invoice_payment_notes" defaultValue={row?.installationInvoicePaymentNotes || ""} disabled={!row} />
+            </label>
+          </div>
           <label className="crm-checkbox">
             <input name="installation_complete" type="checkbox" defaultChecked={Boolean(row?.isInstallationComplete)} disabled={!row} />
             Installation complete
@@ -9034,13 +9356,18 @@ function JobCard({
 
 function InstallationInvoiceInbox({
   invoices,
+  rows,
   onPull,
+  onSaveInvoice,
   busy
 }: {
   invoices: CrmInstallationInvoiceEmail[];
+  rows: CrmBookkeepingRow[];
   onPull: () => void;
+  onSaveInvoice: (item: InstallationInvoiceLedgerItem, patch: Record<string, unknown>) => Promise<void>;
   busy: boolean;
 }) {
+  const ledger = useMemo(() => buildInstallationInvoiceLedger(rows, invoices), [rows, invoices]);
   const counts = invoices.reduce(
     (current, invoice) => {
       current[invoice.match_status] += 1;
@@ -9048,18 +9375,45 @@ function InstallationInvoiceInbox({
     },
     { matched: 0, needs_review: 0, unmatched: 0, skipped: 0, error: 0 }
   );
-  const recent = invoices.slice(0, 12);
+  const ledgerRows = ledger.items;
+  const summary = [
+    { label: "Open Installer Invoices", value: toLedgerCurrency(ledger.totalOpen), detail: `${ledger.openItems.length} unpaid` },
+    { label: "Total Billed", value: toLedgerCurrency(ledger.totalBilled), detail: `${ledger.items.length} invoices` },
+    { label: "Total Paid", value: toLedgerCurrency(ledger.totalPaid), detail: `${ledger.paidItems.length} paid` },
+    { label: "Needs Review", value: String(ledger.reviewItems.length), detail: `${counts.unmatched} unmatched / ${counts.error} errors` }
+  ];
+  const markPaid = (item: InstallationInvoiceLedgerItem) =>
+    onSaveInvoice(item, {
+      installation_invoice_paid_at: todayInputValue(),
+      installation_invoice_paid_amount: item.amount || item.openAmount
+    });
+  const reopen = (item: InstallationInvoiceLedgerItem) =>
+    onSaveInvoice(item, {
+      installation_invoice_paid_at: null,
+      installation_invoice_paid_amount: 0,
+      installation_invoice_payment_method: "",
+      installation_invoice_payment_notes: ""
+    });
 
   return (
-    <section className="crm-ledger crm-installation-inbox">
+    <section className="crm-ledger crm-installation-inbox crm-installation-ledger">
       <div className="crm-section-head">
         <div>
           <p className="eyebrow">Install emails</p>
-          <h2>805 Gmail Reconciliation</h2>
+          <h2>Installation Fee Ledger</h2>
         </div>
         <button type="button" onClick={onPull} disabled={busy}>
           Pull Install Emails
         </button>
+      </div>
+      <div className="crm-bookkeeping-summary-grid crm-installation-ledger-summary" aria-label="Installation invoice ledger totals">
+        {summary.map((card) => (
+          <article className="crm-bookkeeping-summary-card" key={card.label}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+            <em>{card.detail}</em>
+          </article>
+        ))}
       </div>
       <div className="crm-bookkeeping-counts" aria-label="Installation email pull counts">
         <span>Matched: {counts.matched}</span>
@@ -9071,39 +9425,62 @@ function InstallationInvoiceInbox({
         <table className="crm-bookkeeping-table">
           <thead>
             <tr>
-              <th>Email</th>
+              <th>Invoice</th>
               <th>Customer</th>
+              <th>Received</th>
               <th>Amount</th>
+              <th>Paid</th>
+              <th>Open</th>
               <th>Status</th>
               <th>Reason</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {recent.map((invoice) => (
-              <tr key={invoice.id}>
+            {ledgerRows.map((item) => (
+              <tr key={item.id}>
                 <td>
-                  {invoice.email_url ? (
-                    <a href={invoice.email_url} target="_blank" rel="noreferrer">
-                      {invoice.extracted_invoice_number || invoice.subject || "Gmail install email"}
+                  {item.invoiceUrl ? (
+                    <a href={item.invoiceUrl} target="_blank" rel="noreferrer">
+                      {item.invoiceNumber || "Install invoice"}
                     </a>
                   ) : (
-                    invoice.extracted_invoice_number || invoice.subject || "Gmail install email"
+                    item.invoiceNumber || "Install invoice"
                   )}
-                  <span>{formatShortDate(invoice.sent_at || invoice.processed_at)}</span>
+                  <span>{item.source === "email" ? "Gmail" : "Customer file"}</span>
                 </td>
-                <td>{invoice.extracted_customer_name || "Needs review"}</td>
-                <td>{invoice.extracted_invoice_amount ? toLedgerCurrency(invoice.extracted_invoice_amount) : "-"}</td>
+                <td>{item.customerName || "Needs review"}</td>
+                <td>{formatShortDate(item.receivedAt)}</td>
+                <td>{item.amount ? toLedgerCurrency(item.amount) : "-"}</td>
                 <td>
-                  <span className={`crm-bookkeeping-pill crm-bookkeeping-pill--${invoice.match_status}`}>
-                    {titleCase(invoice.match_status)}
+                  {item.paidAmount ? toLedgerCurrency(item.paidAmount) : "-"}
+                  {item.paidAt ? <span>{formatShortDate(item.paidAt)}</span> : null}
+                </td>
+                <td>{item.openAmount ? toLedgerCurrency(item.openAmount) : "$0.00"}</td>
+                <td>
+                  <span className={`crm-bookkeeping-pill crm-bookkeeping-pill--${item.status}`}>
+                    {titleCase(item.status)}
                   </span>
                 </td>
-                <td>{invoice.match_reason || invoice.error_message || "-"}</td>
+                <td>{item.reason || "-"}</td>
+                <td>
+                  {item.status === "paid" ? (
+                    <button type="button" className="crm-ledger-action-link" disabled={busy} onClick={() => void reopen(item)}>
+                      Reopen
+                    </button>
+                  ) : item.amount > 0 ? (
+                    <button type="button" className="crm-ledger-action-link" disabled={busy} onClick={() => void markPaid(item)}>
+                      Mark Paid
+                    </button>
+                  ) : (
+                    <span className="crm-bookkeeping-pill">Review</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!recent.length ? <p className="crm-empty">No install emails processed yet.</p> : null}
+        {!ledgerRows.length ? <p className="crm-empty">No install invoices recorded yet.</p> : null}
       </div>
     </section>
   );
@@ -10045,12 +10422,16 @@ function BookkeepingInstallationEditor({
   onCancel: () => void;
 }) {
   const [amount, setAmount] = useState(row.installationInvoiceAmount ? String(row.installationInvoiceAmount) : "");
+  const [paidAmount, setPaidAmount] = useState(row.installationInvoicePaidAmount ? String(row.installationInvoicePaidAmount) : "");
+  const [paidAt, setPaidAt] = useState(dateInputValue(row.installationInvoicePaidAt));
   const [complete, setComplete] = useState(row.isInstallationComplete);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await onSave({
       installation_invoice_amount: Number(amount || 0),
+      installation_invoice_paid_amount: Number(paidAmount || 0),
+      installation_invoice_paid_at: paidAt || null,
       installation_complete: complete
     });
     onCancel();
@@ -10069,6 +10450,21 @@ function BookkeepingInstallationEditor({
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancel();
         }}
+      />
+      <input
+        type="date"
+        value={paidAt}
+        aria-label={`Install paid date for ${row.customerName}`}
+        onChange={(event) => setPaidAt(event.target.value)}
+      />
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        placeholder="Paid"
+        value={paidAmount}
+        aria-label={`Install paid amount for ${row.customerName}`}
+        onChange={(event) => setPaidAmount(event.target.value)}
       />
       <label className="crm-bookkeeping-inline-check">
         <input type="checkbox" checked={complete} onChange={(event) => setComplete(event.target.checked)} />
@@ -10744,6 +11140,13 @@ function BookkeepingSpreadsheet({
                       ) : (
                         "No install invoice"
                       )}
+                      {row.installationInvoiceAmount > 0 ? (
+                        <span className={row.installationInvoiceOpenAmount > 0 ? "crm-bookkeeping-install-open" : "crm-bookkeeping-install-paid"}>
+                          {row.installationInvoiceOpenAmount > 0
+                            ? `${toLedgerCurrency(row.installationInvoiceOpenAmount)} open`
+                            : `${toLedgerCurrency(row.installationInvoicePaidAmount)} paid`}
+                        </span>
+                      ) : null}
                     </BookkeepingCellButton>
                   )}
                 </td>

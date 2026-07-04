@@ -20,11 +20,20 @@ import {
   updateCrmBookkeepingEntry,
   updateCrmBookkeepingPayment,
   updateCrmJobExpense,
+  updateCrmInstallationInvoiceEmail,
   updateCrmQuote,
   updateCrmSettings
 } from "./backend";
 import { CrmAuthError } from "./auth";
-import { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmCalendarEvent, CrmCustomerContract, CrmJob, CrmQuote } from "./types";
+import {
+  CrmBookkeepingEntry,
+  CrmBookkeepingPayment,
+  CrmCalendarEvent,
+  CrmCustomerContract,
+  CrmInstallationInvoiceEmail,
+  CrmJob,
+  CrmQuote
+} from "./types";
 
 type FakeExpense = {
   id: string;
@@ -253,6 +262,44 @@ function bookkeepingEntry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBook
   };
 }
 
+function installationInvoiceEmail(overrides: Partial<CrmInstallationInvoiceEmail> = {}): CrmInstallationInvoiceEmail {
+  return {
+    id: "install-email-1",
+    created_at: "2026-06-20T00:00:00.000Z",
+    updated_at: "2026-06-20T00:00:00.000Z",
+    mailbox_email: "805shutters@gmail.com",
+    gmail_message_id: "gmail-install-1",
+    gmail_thread_id: null,
+    gmail_history_id: null,
+    subject: "Install invoice",
+    from_email: "installer@example.com",
+    to_email: "805shutters@gmail.com",
+    sent_at: "2026-06-20T00:00:00.000Z",
+    snippet: null,
+    attachment_names: [],
+    email_url: "https://mail.google.com/mail/u/0/#inbox/gmail-install-1",
+    raw: {},
+    extracted_customer_name: "Manual Customer",
+    extracted_invoice_amount: 375,
+    extracted_invoice_number: "INV-805",
+    installation_invoice_paid_at: null,
+    installation_invoice_paid_amount: 0,
+    installation_invoice_payment_method: null,
+    installation_invoice_payment_notes: null,
+    extraction_confidence: 0.95,
+    matched_job_id: "job-1",
+    matched_quote_id: null,
+    matched_bookkeeping_entry_id: "entry-1",
+    match_status: "matched",
+    match_confidence: 0.9,
+    match_reason: "Matched by customer",
+    processed_at: "2026-06-20T00:00:00.000Z",
+    applied_at: "2026-06-20T00:00:00.000Z",
+    error_message: null,
+    ...overrides
+  };
+}
+
 type RecordedSupabaseCall = {
   table: string;
   action: "insert" | "update" | "upsert" | "delete";
@@ -261,13 +308,20 @@ type RecordedSupabaseCall = {
 };
 
 function createSupabaseRecorder(
-  options: { job?: CrmJob; existingQuote?: CrmQuote; existingEntry?: CrmBookkeepingEntry | null; lineItemCount?: number } = {}
+  options: {
+    job?: CrmJob;
+    existingQuote?: CrmQuote;
+    existingEntry?: CrmBookkeepingEntry | null;
+    existingInstallationInvoiceEmail?: CrmInstallationInvoiceEmail | null;
+    lineItemCount?: number;
+  } = {}
 ) {
   const calls: RecordedSupabaseCall[] = [];
   const state = {
     job: options.job ?? job(),
     existingQuote: options.existingQuote ?? quote({ status: "ordered" }),
     existingEntry: options.existingEntry ?? null,
+    existingInstallationInvoiceEmail: options.existingInstallationInvoiceEmail ?? null,
     lineItemCount: options.lineItemCount ?? 0
   };
 
@@ -335,6 +389,9 @@ function createSupabaseRecorder(
       }
       if (this.table === "crm_quotes") return { data: state.existingQuote, error: null };
       if (this.table === "crm_quote_bookkeeping_entries") return { data: state.existingEntry, error: null };
+      if (this.table === "crm_installation_invoice_emails") {
+        return { data: state.existingInstallationInvoiceEmail, error: null };
+      }
       return { data: null, error: null };
     }
 
@@ -370,6 +427,13 @@ function createSupabaseRecorder(
           ...(this.payload as Partial<CrmBookkeepingEntry>)
         });
         return { data: state.existingEntry, error: null };
+      }
+      if (this.table === "crm_installation_invoice_emails" && this.action === "update") {
+        state.existingInstallationInvoiceEmail = installationInvoiceEmail({
+          ...(state.existingInstallationInvoiceEmail || installationInvoiceEmail()),
+          ...(this.payload as Partial<CrmInstallationInvoiceEmail>)
+        });
+        return { data: state.existingInstallationInvoiceEmail, error: null };
       }
       return { data: this.payload ?? null, error: null };
     }
@@ -649,6 +713,93 @@ describe("quote bookkeeping notes", () => {
       quote_id: "quote-1",
       customer_name: "Actual Ledger Customer",
       manufacturer_order_ref: "PO-123"
+    });
+  });
+
+  it("records installation invoice payment fields on a quote-backed bookkeeping row", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "ordered" }),
+      existingEntry: bookkeepingEntry({ quote_id: "quote-1", customer_name: "Actual Ledger Customer" })
+    });
+
+    await updateCrmQuote(
+      supabase,
+      "quote-1",
+      {
+        installation_invoice_paid_at: "2026-07-04",
+        installation_invoice_paid_amount: 425.75,
+        installation_invoice_payment_method: "check",
+        installation_invoice_payment_notes: "Installer invoice 805-44"
+      },
+      actor
+    );
+
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(entryUpsert?.payload).toMatchObject({
+      quote_id: "quote-1",
+      installation_invoice_paid_at: "2026-07-04",
+      installation_invoice_paid_amount: 425.75,
+      installation_invoice_payment_method: "check",
+      installation_invoice_payment_notes: "Installer invoice 805-44"
+    });
+  });
+
+  it("records installation invoice payment fields on a manual bookkeeping row", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingEntry: bookkeepingEntry({ id: "entry-1", job_id: "job-1", installation_invoice_amount: 425.75 })
+    });
+
+    await updateCrmBookkeepingEntry(
+      supabase,
+      "entry-1",
+      {
+        installation_invoice_paid_at: "2026-07-04",
+        installation_invoice_paid_amount: 425.75,
+        installation_invoice_payment_method: "check"
+      },
+      actor
+    );
+
+    const entryUpdate = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "update"
+    );
+    expect(entryUpdate?.payload).toMatchObject({
+      installation_invoice_paid_at: "2026-07-04",
+      installation_invoice_paid_amount: 425.75,
+      installation_invoice_payment_method: "check"
+    });
+  });
+
+  it("defaults a Gmail installation invoice paid amount to the extracted invoice amount", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingInstallationInvoiceEmail: installationInvoiceEmail({
+        id: "install-email-1",
+        extracted_invoice_amount: 375
+      })
+    });
+
+    await updateCrmInstallationInvoiceEmail(
+      supabase,
+      "install-email-1",
+      {
+        installation_invoice_paid_at: "2026-07-04"
+      },
+      actor
+    );
+
+    const emailUpdate = calls.find(
+      (call) => call.table === "crm_installation_invoice_emails" && call.action === "update"
+    );
+    expect(emailUpdate?.payload).toMatchObject({
+      installation_invoice_paid_at: "2026-07-04",
+      installation_invoice_paid_amount: 375
+    });
+    expect(calls.find((call) => call.table === "crm_activity_events" && call.action === "insert")?.payload).toMatchObject({
+      entity_type: "installation_invoice_email",
+      entity_id: "install-email-1",
+      action: "update"
     });
   });
 

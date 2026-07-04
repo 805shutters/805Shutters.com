@@ -241,6 +241,10 @@ export type CrmBookkeepingEntry = {
   installation_invoice_amount: number;
   installation_invoice_number: string | null;
   installation_invoice_url: string | null;
+  installation_invoice_paid_at?: string | null;
+  installation_invoice_paid_amount?: number | null;
+  installation_invoice_payment_method?: string | null;
+  installation_invoice_payment_notes?: string | null;
   installation_match_status: CrmInstallationMatchStatus;
   installation_matched_at: string | null;
   jessica_commission_paid_at: string | null;
@@ -329,6 +333,10 @@ export type CrmInstallationInvoiceEmail = {
   extracted_customer_name: string | null;
   extracted_invoice_amount: number | null;
   extracted_invoice_number: string | null;
+  installation_invoice_paid_at?: string | null;
+  installation_invoice_paid_amount?: number | null;
+  installation_invoice_payment_method?: string | null;
+  installation_invoice_payment_notes?: string | null;
   extraction_confidence: number;
   matched_job_id: string | null;
   matched_quote_id: string | null;
@@ -404,6 +412,12 @@ export type CrmBookkeepingRow = {
   installationInvoiceAmount: number;
   installationInvoiceNumber: string | null;
   installationInvoiceUrl: string | null;
+  installationInvoicePaidAt: string | null;
+  installationInvoicePaidAmount: number;
+  installationInvoicePaymentMethod: string | null;
+  installationInvoicePaymentNotes: string | null;
+  installationInvoiceOpenAmount: number;
+  isInstallationInvoicePaid: boolean;
   installationMatchStatus: CrmInstallationMatchStatus;
   installationMatchedAt: string | null;
   isInstallationComplete: boolean;

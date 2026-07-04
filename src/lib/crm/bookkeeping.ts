@@ -498,6 +498,7 @@ function buildEntryRow(
     isInstallationComplete: installation.isComplete,
     expenses: expensesTotal + remakeTotal
   });
+  const installationPayment = getInstallationPaymentFields(entry, installation.invoiceAmount);
 
   return {
     id: entry.id,
@@ -528,6 +529,12 @@ function buildEntryRow(
     installationInvoiceAmount: installation.invoiceAmount,
     installationInvoiceNumber: entry.installation_invoice_number,
     installationInvoiceUrl: entry.installation_invoice_url,
+    installationInvoicePaidAt: installationPayment.paidAt,
+    installationInvoicePaidAmount: installationPayment.paidAmount,
+    installationInvoicePaymentMethod: entry.installation_invoice_payment_method || null,
+    installationInvoicePaymentNotes: entry.installation_invoice_payment_notes || null,
+    installationInvoiceOpenAmount: installationPayment.openAmount,
+    isInstallationInvoicePaid: installationPayment.isPaid,
     installationMatchStatus: entry.installation_match_status,
     installationMatchedAt: entry.installation_matched_at,
     isInstallationComplete: installation.isComplete,
@@ -611,6 +618,7 @@ function buildQuoteRow(
     isInstallationComplete: installation.isComplete,
     expenses: expensesTotal + remakeTotal
   });
+  const installationPayment = getInstallationPaymentFields(entry, installation.invoiceAmount);
 
   return {
     id: quote.id,
@@ -643,6 +651,12 @@ function buildQuoteRow(
     installationInvoiceAmount: installation.invoiceAmount,
     installationInvoiceNumber: entry?.installation_invoice_number || null,
     installationInvoiceUrl: entry?.installation_invoice_url || null,
+    installationInvoicePaidAt: installationPayment.paidAt,
+    installationInvoicePaidAmount: installationPayment.paidAmount,
+    installationInvoicePaymentMethod: entry?.installation_invoice_payment_method || null,
+    installationInvoicePaymentNotes: entry?.installation_invoice_payment_notes || null,
+    installationInvoiceOpenAmount: installationPayment.openAmount,
+    isInstallationInvoicePaid: installationPayment.isPaid,
     installationMatchStatus: entry?.installation_match_status || "unmatched",
     installationMatchedAt: entry?.installation_matched_at || null,
     isInstallationComplete: installation.isComplete,
@@ -811,6 +825,18 @@ function getInstallationFields(entry: CrmBookkeepingEntry | null) {
     entry?.installation_match_status === "matched";
 
   return { invoiceAmount, isComplete };
+}
+
+function getInstallationPaymentFields(entry: CrmBookkeepingEntry | null, invoiceAmount: number) {
+  const paidAt = entry?.installation_invoice_paid_at || null;
+  const rawPaidAmount = Number(entry?.installation_invoice_paid_amount);
+  const paidAmount = roundCents(
+    Number.isFinite(rawPaidAmount) && rawPaidAmount > 0 ? rawPaidAmount : paidAt ? invoiceAmount : 0
+  );
+  const openAmount = roundCents(Math.max(invoiceAmount - paidAmount, 0));
+  const isPaid = invoiceAmount > 0 && openAmount <= 0.009 && Boolean(paidAt || paidAmount > 0);
+
+  return { paidAt, paidAmount, openAmount, isPaid };
 }
 
 function calculateBookkeepingProfit({

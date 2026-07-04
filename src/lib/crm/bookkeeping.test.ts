@@ -39,6 +39,10 @@ function entry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBookkeepingEntr
     installation_invoice_amount: 0,
     installation_invoice_number: null,
     installation_invoice_url: null,
+    installation_invoice_paid_at: null,
+    installation_invoice_paid_amount: 0,
+    installation_invoice_payment_method: null,
+    installation_invoice_payment_notes: null,
     installation_match_status: "unmatched",
     installation_matched_at: null,
     jessica_commission_paid_at: null,
@@ -654,6 +658,53 @@ describe("Jessica's 50% commission", () => {
     });
     expect(paidRow.jessicaCommission).toBe(2500);
     expect(paidRow.jessicaCommissionOwed).toBe(0);
+  });
+
+  it("tracks paid and open installation invoice amounts separately from customer payments", () => {
+    const rows = rowsFrom({
+      entries: [
+        installedEntry({
+          id: "open-install",
+          total_amount: 5000,
+          cogs_amount: 1200,
+          installation_invoice_amount: 750,
+          installation_invoice_paid_amount: 250,
+          installation_invoice_paid_at: null
+        }),
+        installedEntry({
+          id: "paid-install",
+          total_amount: 5000,
+          cogs_amount: 1200,
+          installation_invoice_amount: 750,
+          installation_invoice_paid_amount: 750,
+          installation_invoice_paid_at: "2026-07-20",
+          installation_invoice_payment_method: "check",
+          installation_invoice_payment_notes: "Installer batch"
+        }),
+        installedEntry({
+          id: "date-only-install",
+          total_amount: 5000,
+          cogs_amount: 1200,
+          installation_invoice_amount: 400,
+          installation_invoice_paid_at: "2026-07-21"
+        })
+      ]
+    });
+    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    const openRow = rowsById.get("open-install");
+    const paidRow = rowsById.get("paid-install");
+    const paidDateOnlyRow = rowsById.get("date-only-install");
+
+    expect(openRow?.installationInvoicePaidAmount).toBe(250);
+    expect(openRow?.installationInvoiceOpenAmount).toBe(500);
+    expect(openRow?.isInstallationInvoicePaid).toBe(false);
+    expect(paidRow?.installationInvoicePaidAmount).toBe(750);
+    expect(paidRow?.installationInvoiceOpenAmount).toBe(0);
+    expect(paidRow?.isInstallationInvoicePaid).toBe(true);
+    expect(paidRow?.installationInvoicePaymentMethod).toBe("check");
+    expect(paidRow?.installationInvoicePaymentNotes).toBe("Installer batch");
+    expect(paidDateOnlyRow?.installationInvoicePaidAmount).toBe(400);
+    expect(paidDateOnlyRow?.isInstallationInvoicePaid).toBe(true);
   });
 
   it("rounds split commission to whole cents", () => {

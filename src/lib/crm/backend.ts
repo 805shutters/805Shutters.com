@@ -152,6 +152,10 @@ const allowedEntryPatchFields = new Set([
   "installation_invoice_amount",
   "installation_invoice_number",
   "installation_invoice_url",
+  "installation_invoice_paid_at",
+  "installation_invoice_paid_amount",
+  "installation_invoice_payment_method",
+  "installation_invoice_payment_notes",
   "installation_match_status",
   "installation_matched_at",
   "manufacturer_name",
@@ -161,6 +165,13 @@ const allowedEntryPatchFields = new Set([
   "notes",
   "imported_sheet_row",
   "ken_cut_override"
+]);
+
+const allowedInstallationInvoiceEmailPatchFields = new Set([
+  "installation_invoice_paid_at",
+  "installation_invoice_paid_amount",
+  "installation_invoice_payment_method",
+  "installation_invoice_payment_notes"
 ]);
 
 export function toMoney(value: unknown) {
@@ -752,6 +763,7 @@ export async function recordCrmActivity(
       | "ken_payment"
       | "commission_payment"
       | "order_cogs_email"
+      | "installation_invoice_email"
       | "settings"
       | "session"
       | "system";
@@ -1387,7 +1399,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .from("crm_installation_invoice_emails")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(2000),
     supabase
       .from("crm_ken_payments")
       .select("*")
@@ -2651,6 +2663,10 @@ export async function updateCrmQuote(
   const hasEntryOnlyBookkeepingPatch = [
     "bookkeeping_notes",
     "installation_invoice_amount",
+    "installation_invoice_paid_at",
+    "installation_invoice_paid_amount",
+    "installation_invoice_payment_method",
+    "installation_invoice_payment_notes",
     "installation_complete",
     "ken_cut_override",
     "remake_amount",
@@ -2749,6 +2765,18 @@ export async function updateCrmQuote(
       ...(payload.installation_invoice_amount !== undefined
         ? { installation_invoice_amount: toMoney(payload.installation_invoice_amount) }
         : {}),
+      ...(payload.installation_invoice_paid_at !== undefined
+        ? { installation_invoice_paid_at: optionalText(payload.installation_invoice_paid_at) }
+        : {}),
+      ...(payload.installation_invoice_paid_amount !== undefined
+        ? { installation_invoice_paid_amount: toMoney(payload.installation_invoice_paid_amount) }
+        : {}),
+      ...(payload.installation_invoice_payment_method !== undefined
+        ? { installation_invoice_payment_method: optionalText(payload.installation_invoice_payment_method) }
+        : {}),
+      ...(payload.installation_invoice_payment_notes !== undefined
+        ? { installation_invoice_payment_notes: optionalText(payload.installation_invoice_payment_notes) }
+        : {}),
       ...(typeof payload.installation_complete === "boolean"
         ? {
             installation_match_status: payload.installation_complete ? "matched" : "unmatched",
@@ -2810,6 +2838,70 @@ export async function updateCrmQuote(
   });
 
   return quote as CrmQuote;
+}
+
+export async function updateCrmInstallationInvoiceEmail(
+  supabase: CrmSupabaseClient,
+  id: string,
+  payload: Record<string, unknown>,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_installation_invoice_emails")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Installation invoice was not found.");
+
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (!allowedInstallationInvoiceEmailPatchFields.has(key)) continue;
+    if (key === "installation_invoice_paid_amount") {
+      patch[key] = toMoney(value);
+    } else {
+      patch[key] = optionalText(value);
+    }
+  }
+
+  const paidAt = optionalText(payload.installation_invoice_paid_at);
+  if (hasPayloadKey(payload, "installation_invoice_paid_at")) {
+    if (paidAt && !hasPayloadKey(payload, "installation_invoice_paid_amount")) {
+      patch.installation_invoice_paid_amount = toMoney(
+        (existing as CrmInstallationInvoiceEmail).extracted_invoice_amount
+      );
+    }
+    if (!paidAt && !hasPayloadKey(payload, "installation_invoice_paid_amount")) {
+      patch.installation_invoice_paid_amount = 0;
+    }
+  }
+
+  if (!Object.keys(patch).length) {
+    throw new CrmAuthError(400, "No supported installation invoice fields provided.");
+  }
+
+  patch.raw = {
+    ...objectMeta((existing as CrmInstallationInvoiceEmail).raw),
+    lastPaymentStatusUpdatedBy: actor.email,
+    lastPaymentStatusUpdatedAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from("crm_installation_invoice_emails")
+    .update(patch)
+    .eq("id", id)
+    .select("*")
+    .single();
+  if (error || !data) throw new CrmAuthError(502, "Installation invoice could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "installation_invoice_email",
+    entityId: id,
+    action: "update",
+    before: existing,
+    after: data
+  });
+
+  return data as CrmInstallationInvoiceEmail;
 }
 
 export async function deleteCrmLedgerRow(
@@ -2924,6 +3016,10 @@ export async function createCrmBookkeepingEntry(
       installation_invoice_amount: toMoney(payload.installation_invoice_amount),
       installation_invoice_number: optionalText(payload.installation_invoice_number),
       installation_invoice_url: optionalText(payload.installation_invoice_url),
+      installation_invoice_paid_at: optionalText(payload.installation_invoice_paid_at),
+      installation_invoice_paid_amount: toMoney(payload.installation_invoice_paid_amount),
+      installation_invoice_payment_method: optionalText(payload.installation_invoice_payment_method),
+      installation_invoice_payment_notes: optionalText(payload.installation_invoice_payment_notes),
       installation_match_status: payload.installation_complete ? "matched" : "unmatched",
       installation_matched_at: payload.installation_complete ? now : null,
       manufacturer_name: optionalText(payload.manufacturer_name),
@@ -3015,7 +3111,7 @@ export async function updateCrmBookkeepingEntry(
     } else if (key === "sales_owner") {
       patch.sales_owner = normalizeOwner(value);
       patch.sales_owner_set_at = now;
-    } else if (["total_amount", "cogs_amount", "installation_invoice_amount"].includes(key)) {
+    } else if (["total_amount", "cogs_amount", "installation_invoice_amount", "installation_invoice_paid_amount"].includes(key)) {
       patch[key] = toMoney(value);
     } else if (key === "ken_cut_override") {
       // null/blank reverts to the default rule; a number pins it (0 waives).
