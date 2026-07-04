@@ -2177,7 +2177,7 @@ export function CrmApp({
     );
   }
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="crm-app-shell">
         <section className="crm-login-panel">
@@ -5361,11 +5361,26 @@ function GlobalCustomerSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const [settledQuery, setSettledQuery] = useState("");
   const normalizedQuery = query.trim();
   const results = useMemo(
     () => buildCustomerSearchResults({ query: normalizedQuery, jobs, quotes, rows, files, events }),
     [events, files, jobs, normalizedQuery, quotes, rows]
   );
+  const previewReady = normalizedQuery.length >= 2 && settledQuery === normalizedQuery;
+
+  useEffect(() => {
+    if (normalizedQuery.length < 2) {
+      setSettledQuery("");
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSettledQuery(normalizedQuery);
+    }, 450);
+
+    return () => window.clearTimeout(timer);
+  }, [normalizedQuery]);
 
   useEffect(() => {
     if (normalizedQuery.length < 2) {
@@ -5378,12 +5393,14 @@ function GlobalCustomerSearchPanel({
       return;
     }
 
+    if (!previewReady) return;
+
     if (!selectedResultId || !results.some((result) => result.id === selectedResultId)) {
       setSelectedResultId(results[0].id);
     }
-  }, [normalizedQuery, results, selectedResultId]);
+  }, [normalizedQuery, previewReady, results, selectedResultId]);
 
-  const selectedResult = results.find((result) => result.id === selectedResultId) || results[0] || null;
+  const selectedResult = previewReady ? results.find((result) => result.id === selectedResultId) || results[0] || null : null;
   const selectedContractDocument =
     selectedResult?.entry.documents?.find((document) => document.kind === "Contract copy" && Boolean(document.url)) || null;
   const payload: DrillPayload | null = selectedResult
@@ -5408,7 +5425,14 @@ function GlobalCustomerSearchPanel({
             placeholder="Name, phone, address, job, quote..."
           />
           {query ? (
-            <button type="button" className="crm-ghost-button" onClick={() => setQuery("")}>
+            <button
+              type="button"
+              className="crm-ghost-button"
+              onClick={() => {
+                setQuery("");
+                setSettledQuery("");
+              }}
+            >
               Clear
             </button>
           ) : null}
@@ -5438,7 +5462,10 @@ function GlobalCustomerSearchPanel({
                   aria-selected={result.id === selectedResult?.id}
                   className={result.id === selectedResult?.id ? "active" : ""}
                   key={result.id}
-                  onClick={() => setSelectedResultId(result.id)}
+                  onClick={() => {
+                    setSelectedResultId(result.id);
+                    setSettledQuery(normalizedQuery);
+                  }}
                 >
                   <strong>{result.entry.customerName || result.entry.name}</strong>
                   <span>{result.entry.meta || "Customer record"}</span>
