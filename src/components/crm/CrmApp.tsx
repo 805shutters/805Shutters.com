@@ -109,6 +109,10 @@ const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuse
 
 const productOptions = [...productInterestOptions, "Mixed"];
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
+const ownerSelectOptions = ownerOptions.map((owner) => ({
+  value: owner,
+  label: owner === "Unassigned" ? "Not assigned" : owner
+}));
 const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> = [
   { value: "check", label: "Check" },
   { value: "cash", label: "Cash" },
@@ -3206,6 +3210,11 @@ function saleOwnerDisplayName(value: string | null | undefined) {
   return "Unassigned";
 }
 
+function saleOwnerDetailLabel(value: string | null | undefined) {
+  const owner = saleOwnerDisplayName(value);
+  return owner === "Unassigned" ? "Not assigned" : owner;
+}
+
 function customerFileForName(files: CrmCustomerFile[] = [], name: string) {
   const normalized = normalizeCustomerName(name);
   return files.find((file) => normalizeCustomerName(file.customerName) === normalized);
@@ -5880,6 +5889,43 @@ function DrillDetailCard({
   ];
   const visibleContactItems = canEditJob ? contactItems : contactItems.filter((item) => item.value);
   const liveRowStatus = row ? effectiveBookkeepingStatus(row) : null;
+  const wonJobHasNoLedgerRow = Boolean(job && !row && WON_JOB_STATUSES.includes(job.status));
+  const soldByOwner = saleOwnerDisplayName(row?.salesOwner || (wonJobHasNoLedgerRow ? job?.sales_owner : null));
+  const belongsToOwner = saleOwnerDisplayName(job?.sales_owner);
+  const saveSaleOwner = (owner: string) => {
+    const nextOwner = saleOwnerDisplayName(owner);
+    if (canEditJob) {
+      return saveJob({ sales_owner: nextOwner }, "Sale owner updated. Profit split recalculated.");
+    }
+    if (row) {
+      return saveRow(
+        row.source === "crm_quote" ? { sold_by: nextOwner } : { sales_owner: nextOwner },
+        "Sale owner updated. Profit split recalculated."
+      );
+    }
+    return Promise.resolve(false);
+  };
+  const soldByEditor: DrillInlineEditor | undefined =
+    row || canEditJob
+      ? {
+          type: "select",
+          value: soldByOwner,
+          options: ownerSelectOptions,
+          disabled: busy,
+          ariaLabel: "Edit sold by",
+          onSave: saveSaleOwner
+        }
+      : undefined;
+  const belongsToEditor: DrillInlineEditor | undefined = canEditJob
+    ? {
+        type: "select",
+        value: belongsToOwner,
+        options: ownerSelectOptions,
+        disabled: busy,
+        ariaLabel: "Edit job owner",
+        onSave: saveSaleOwner
+      }
+    : undefined;
   const measureNeededActive = Boolean(job && isMeasureNeededJob(job));
   const canRequestMeasure =
     Boolean(onMeasureNeededAction && job && !measureNeededActive) &&
@@ -6494,6 +6540,8 @@ function DrillDetailCard({
             <div className="crm-drill-fact-column-list">
               <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} editor={soldDateEditor} />
               <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} editor={quoteNumberEditor} />
+              <DrillFact label="Sold By" value={saleOwnerDetailLabel(soldByOwner)} editor={soldByEditor} />
+              <DrillFact label="Belongs To" value={saleOwnerDetailLabel(belongsToOwner)} editor={belongsToEditor} />
               <DrillFact label="Due" value={formatShortDate(job?.next_action_due)} editor={dueEditor} />
               <DrillFact
                 label="Appointment"
@@ -7088,6 +7136,8 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
   const row = entry.row;
   const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
   const customerName = formString(formData, "customer_name") || entry.customerName;
+  const belongsToOwner = formString(formData, "belongs_to_owner");
+  const soldByOwner = formString(formData, "sold_by_owner");
   const patch: DrillFieldPatch = {};
 
   if (jobId) {
@@ -7107,6 +7157,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
     };
     const jobStatus = formString(formData, "job_status");
     if (jobStatus) jobPatch.status = jobStatus;
+    if (belongsToOwner) jobPatch.sales_owner = belongsToOwner;
     patch.job = jobPatch;
   }
 
@@ -7116,7 +7167,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
     const cogs = Number(formString(formData, "cogs_amount") || 0);
     const paymentAmount = Number(formString(formData, "payment_amount") || 0);
     const kenCutOverride = formString(formData, "ken_cut_override");
-    const sharedRowPatch = {
+    const sharedRowPatch: Record<string, unknown> = {
       customer_name: customerName,
       payment_type: formString(formData, "payment_type") || "other",
       payment_amount: paymentAmount,
@@ -7138,12 +7189,14 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       manufacturer_document_url: formString(formData, "manufacturer_document_url"),
       notes: formString(formData, "row_notes")
     };
+    if (soldByOwner) sharedRowPatch.sales_owner = soldByOwner;
 
     patch.row =
       row.source === "crm_quote" && row.quoteId
         ? {
             ...sharedRowPatch,
             status: formString(formData, "quote_status") || row.status,
+            sold_by: soldByOwner || undefined,
             quote_number: formString(formData, "quote_number"),
             quote_total: total,
             materials_cost: cogs,
@@ -7185,6 +7238,8 @@ function DrillDetailEditForm({
   const remakeAmount = row?.remakeTotal ?? 0;
   const installationAmount = row?.installationInvoiceAmount ?? 0;
   const paymentType = row?.paymentType || "other";
+  const soldByOwner = saleOwnerDisplayName(row?.salesOwner || (job && WON_JOB_STATUSES.includes(job.status) ? job.sales_owner : null));
+  const belongsToOwner = saleOwnerDisplayName(job?.sales_owner);
 
   return (
     <form className="crm-drill-edit-form" onSubmit={onSubmit}>
@@ -7253,6 +7308,28 @@ function DrillDetailEditForm({
               <select name="product_interest" defaultValue={job?.product_interest || "Shutters"} disabled={!job}>
                 {productOptions.map((item) => (
                   <option key={item}>{item}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="crm-field-row">
+            <label>
+              Sold By
+              <select name="sold_by_owner" defaultValue={soldByOwner} disabled={!row && !job}>
+                {ownerSelectOptions.map((item) => (
+                  <option value={item.value} key={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Belongs To
+              <select name="belongs_to_owner" defaultValue={belongsToOwner} disabled={!job}>
+                {ownerSelectOptions.map((item) => (
+                  <option value={item.value} key={item.value}>
+                    {item.label}
+                  </option>
                 ))}
               </select>
             </label>
