@@ -12782,17 +12782,49 @@ html.mobile-menu-open {
   grid-column: span 2;
 }
 
-.crm-drill-status-select {
-  width: 100%;
+.crm-drill-action-section--status {
+  grid-column: 1 / -1;
+}
+
+.crm-drill-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 6px;
   min-width: 0;
-  min-height: 36px;
+}
+
+.crm-drill-status-grid button {
+  min-width: 0;
+  min-height: 38px;
   padding: 7px 9px;
   border: 1px solid #cfcfc8;
   background: #f7f7f5;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.crm-drill-status-grid button.active,
+.crm-drill-status-grid button[aria-pressed="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.crm-drill-status-grid button:hover:not(:disabled),
+.crm-drill-status-grid button:focus-visible {
+  border-color: var(--ink);
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.crm-drill-status-grid button.active:hover:not(:disabled),
+.crm-drill-status-grid button.active:focus-visible {
+  background: var(--ink);
+  color: var(--white);
 }
 
 .crm-drill-action-section--status > strong {
@@ -13544,6 +13576,10 @@ html.mobile-menu-open {
   }
 
   .crm-drill-action-section--editable {
+    grid-column: auto;
+  }
+
+  .crm-drill-action-section--status {
     grid-column: auto;
   }
 

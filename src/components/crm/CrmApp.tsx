@@ -5969,19 +5969,22 @@ function DrillDetailCard({
         <section className="crm-drill-action-section crm-drill-action-section--status">
           <span>Status</span>
           {statusControl ? (
-            <select
-              className="crm-drill-status-select"
-              value={statusControl.value}
-              disabled={busy}
-              onChange={(event) => void statusControl.onSave(event.target.value)}
-              aria-label={`Status for ${customerName}`}
-            >
+            <div className="crm-drill-status-grid" role="group" aria-label={`Status for ${customerName}`}>
               {statusControl.options.map((option) => (
-                <option value={option.value} key={option.value}>
+                <button
+                  type="button"
+                  className={option.value === statusControl.value ? "active" : ""}
+                  aria-pressed={option.value === statusControl.value}
+                  disabled={busy}
+                  key={option.value}
+                  onClick={() => {
+                    if (option.value !== statusControl.value) void statusControl.onSave(option.value);
+                  }}
+                >
                   {option.label}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
           ) : (
             <strong>{titleCase(String(liveRowStatus || job?.status || file?.latestStatus || "open"))}</strong>
           )}
