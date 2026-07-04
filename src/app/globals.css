@@ -12753,10 +12753,11 @@ html.mobile-menu-open {
 
 .crm-drill-action-board {
   display: grid;
-  grid-template-columns: minmax(170px, 0.6fr) minmax(0, 1fr) minmax(0, 1.35fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
   min-width: 0;
-  padding-bottom: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #d8d8d2;
 }
 
 .crm-drill-action-section {
@@ -12777,8 +12778,8 @@ html.mobile-menu-open {
   text-transform: uppercase;
 }
 
-.crm-drill-action-section--money {
-  grid-column: span 1;
+.crm-drill-action-section--editable {
+  grid-column: span 2;
 }
 
 .crm-drill-status-select {
@@ -12805,6 +12806,10 @@ html.mobile-menu-open {
   grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
   gap: 6px;
   min-width: 0;
+}
+
+.crm-drill-command-grid--editable {
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
 }
 
 .crm-drill-command-button {
@@ -12877,6 +12882,10 @@ html.mobile-menu-open {
   color: var(--ink);
   font-size: 13px;
   font-weight: 850;
+}
+
+.crm-drill-text-command input {
+  min-height: 30px;
 }
 
 .crm-drill-amount-command div {
@@ -13532,6 +13541,10 @@ html.mobile-menu-open {
   .crm-drill-compact-grid,
   .crm-drill-edit-grid {
     grid-template-columns: 1fr;
+  }
+
+  .crm-drill-action-section--editable {
+    grid-column: auto;
   }
 
   .crm-drill-line-section summary {

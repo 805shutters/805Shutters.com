@@ -4957,6 +4957,16 @@ type DrillAmountCommand = {
   onSave: (amount: number) => Promise<boolean>;
 };
 
+type DrillTextCommand = {
+  key: string;
+  label: string;
+  detail: string;
+  defaultValue: string;
+  placeholder?: string;
+  disabled?: boolean;
+  onSave: (value: string) => Promise<boolean>;
+};
+
 function InlineEditableValue({
   value,
   editor,
@@ -5838,6 +5848,63 @@ function DrillDetailCard({
   const amountCommands: DrillAmountCommand[] = row
     ? [
         {
+          key: "set-total",
+          label: "Sold Total",
+          detail: toLedgerCurrency(row.total),
+          defaultValue: row.total || 0,
+          disabled: busy,
+          onSave: (amount) =>
+            saveRow(row.source === "crm_quote" ? { quote_total: amount } : { total_amount: amount }, "Total updated.")
+        },
+        {
+          key: "set-deposit",
+          label: "Deposit Due",
+          detail: toLedgerCurrency(row.depositDue),
+          defaultValue: row.depositDue || 0,
+          disabled: busy,
+          onSave: (amount) => saveRow({ deposit_required: amount }, "Deposit due updated.")
+        },
+        {
+          key: "set-deposit-paid",
+          label: "Deposit Paid",
+          detail: toLedgerCurrency(row.depositPaid),
+          defaultValue: row.depositPaid || 0,
+          disabled: busy,
+          onSave: (amount) =>
+            saveRow(
+              {
+                deposit_paid_target: amount,
+                payment_type: rowPaymentType,
+                paid_at: paidAt
+              },
+              "Deposit paid updated."
+            )
+        },
+        {
+          key: "set-balance",
+          label: "Balance Due",
+          detail: toLedgerCurrency(row.balance),
+          defaultValue: row.balance || 0,
+          disabled: busy,
+          onSave: (amount) => saveRow({ balance_due_target: amount }, "Balance updated.")
+        },
+        {
+          key: "set-balance-paid",
+          label: "Balance Paid",
+          detail: toLedgerCurrency(row.balancePaid),
+          defaultValue: row.balancePaid || 0,
+          disabled: busy,
+          onSave: (amount) =>
+            saveRow(
+              {
+                balance_paid_target: amount,
+                payment_type: rowPaymentType,
+                paid_at: paidAt
+              },
+              "Balance paid updated."
+            )
+        },
+        {
           key: "write-cogs",
           label: "Write COGS",
           detail: row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing",
@@ -5847,20 +5914,12 @@ function DrillDetailCard({
             saveRow(row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount }, "COGS updated.")
         },
         {
-          key: "set-deposit",
-          label: "Set Deposit Due",
-          detail: toLedgerCurrency(row.depositDue),
-          defaultValue: row.depositDue || 0,
+          key: "set-install",
+          label: "Install $",
+          detail: toLedgerCurrency(row.installationInvoiceAmount),
+          defaultValue: row.installationInvoiceAmount || 0,
           disabled: busy,
-          onSave: (amount) => saveRow({ deposit_required: amount }, "Deposit due updated.")
-        },
-        {
-          key: "set-balance",
-          label: "Set Balance Due",
-          detail: toLedgerCurrency(row.balance),
-          defaultValue: row.balance || 0,
-          disabled: busy,
-          onSave: (amount) => saveRow({ balance_due_target: amount }, "Balance updated.")
+          onSave: (amount) => saveRow({ installation_invoice_amount: amount }, "Installation amount updated.")
         },
         {
           key: "add-payment",
@@ -5881,34 +5940,32 @@ function DrillDetailCard({
         }
       ]
     : [];
+  const orderCommands: DrillTextCommand[] = row
+    ? [
+        {
+          key: "manufacturer",
+          label: "Manufacturer",
+          detail: row.manufacturerName || "Needs order details",
+          defaultValue: row.manufacturerName || "",
+          placeholder: "Manufacturer",
+          disabled: busy,
+          onSave: (value) => saveRow({ manufacturer_name: value.trim() }, "Manufacturer updated.")
+        },
+        {
+          key: "order-ref",
+          label: "Order #",
+          detail: row.manufacturerOrderRef || "No order number",
+          defaultValue: row.manufacturerOrderRef || "",
+          placeholder: "Order number",
+          disabled: busy,
+          onSave: (value) => saveRow({ manufacturer_order_ref: value.trim() }, "Order number updated.")
+        }
+      ]
+    : [];
 
   return (
     <article className="crm-drill-detail-card">
-      <header className="crm-drill-detail-card-head">
-        <div>
-          <p className="eyebrow">{entry.meta || payload.subtitle}</p>
-          <h3>
-            <InlineEditableValue value={customerName} editor={customerNameEditor} className="crm-inline-edit-heading" />
-          </h3>
-          <p className="crm-drill-contact-line">
-            {visibleContactItems.length
-              ? visibleContactItems.map((item, index) => (
-                  <Fragment key={item.key}>
-                    {index ? <span className="crm-contact-divider">/</span> : null}
-                    <InlineEditableValue value={item.value || item.fallback} editor={item.editor} className="crm-inline-edit-contact" />
-                  </Fragment>
-                ))
-              : "Contact details pending"}
-          </p>
-        </div>
-        {entry.value ? (
-          <div className="crm-drill-detail-value">
-            <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong>
-          </div>
-        ) : null}
-      </header>
-
-      <div className="crm-drill-action-board">
+      <div className="crm-drill-action-board" aria-label={`Process controls for ${customerName}`}>
         <section className="crm-drill-action-section crm-drill-action-section--status">
           <span>Status</span>
           {statusControl ? (
@@ -5932,7 +5989,7 @@ function DrillDetailCard({
 
         {workflowCommands.length ? (
           <section className="crm-drill-action-section">
-            <span>Buttons</span>
+            <span>Process Buttons</span>
             <div className="crm-drill-command-grid">
               {workflowCommands.map((command) => (
                 <DrillCommandButtonControl command={command} key={command.key} />
@@ -5941,20 +5998,63 @@ function DrillDetailCard({
           </section>
         ) : null}
 
-        {moneyCommands.length || amountCommands.length ? (
-          <section className="crm-drill-action-section crm-drill-action-section--money">
-            <span>Money</span>
+        {moneyCommands.length ? (
+          <section className="crm-drill-action-section crm-drill-action-section--payment">
+            <span>Payment Buttons</span>
             <div className="crm-drill-command-grid">
               {moneyCommands.map((command) => (
                 <DrillCommandButtonControl command={command} key={command.key} />
               ))}
+            </div>
+          </section>
+        ) : null}
+
+        {amountCommands.length ? (
+          <section className="crm-drill-action-section crm-drill-action-section--editable">
+            <span>Editable Amounts</span>
+            <div className="crm-drill-command-grid crm-drill-command-grid--editable">
               {amountCommands.map((command) => (
                 <DrillAmountCommandControl command={command} key={command.key} />
               ))}
             </div>
           </section>
         ) : null}
+
+        {orderCommands.length ? (
+          <section className="crm-drill-action-section crm-drill-action-section--order">
+            <span>Order Details</span>
+            <div className="crm-drill-command-grid">
+              {orderCommands.map((command) => (
+                <DrillTextCommandControl command={command} key={command.key} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
+
+      <header className="crm-drill-detail-card-head">
+        <div>
+          <p className="eyebrow">{entry.meta || payload.subtitle}</p>
+          <h3>
+            <InlineEditableValue value={customerName} editor={customerNameEditor} className="crm-inline-edit-heading" />
+          </h3>
+          <p className="crm-drill-contact-line">
+            {visibleContactItems.length
+              ? visibleContactItems.map((item, index) => (
+                  <Fragment key={item.key}>
+                    {index ? <span className="crm-contact-divider">/</span> : null}
+                    <InlineEditableValue value={item.value || item.fallback} editor={item.editor} className="crm-inline-edit-contact" />
+                  </Fragment>
+                ))
+              : "Contact details pending"}
+          </p>
+        </div>
+        {entry.value ? (
+          <div className="crm-drill-detail-value">
+            <strong className={entry.tone === "warn" ? "warn" : ""}>{entry.value}</strong>
+          </div>
+        ) : null}
+      </header>
 
       {canReassignSale ? (
         <label className="crm-sale-owner-control crm-sale-owner-control--inline">
@@ -6370,6 +6470,68 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
           min="0"
           step="0.01"
           value={value}
+          autoFocus
+          disabled={command.disabled || saving}
+          onChange={(event) => setValue(event.target.value)}
+        />
+      </label>
+      <div>
+        <button type="submit" disabled={command.disabled || saving}>
+          Save
+        </button>
+        <button type="button" disabled={saving} onClick={() => setEditing(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function DrillTextCommandControl({ command }: { command: DrillTextCommand }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(command.defaultValue);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setValue(command.defaultValue);
+  }, [command.defaultValue, editing]);
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextValue = value.trim();
+    if (nextValue === command.defaultValue) {
+      setEditing(false);
+      return;
+    }
+
+    setSaving(true);
+    const saved = await command.onSave(nextValue);
+    setSaving(false);
+    if (saved) setEditing(false);
+  };
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        className="crm-drill-command-button"
+        disabled={command.disabled}
+        onClick={() => setEditing(true)}
+      >
+        <strong>{command.label}</strong>
+        <span>{command.detail}</span>
+      </button>
+    );
+  }
+
+  return (
+    <form className="crm-drill-amount-command crm-drill-text-command" onSubmit={submit}>
+      <label>
+        <span>{command.label}</span>
+        <input
+          type="text"
+          value={value}
+          placeholder={command.placeholder}
           autoFocus
           disabled={command.disabled || saving}
           onChange={(event) => setValue(event.target.value)}
