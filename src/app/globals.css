@@ -4033,10 +4033,34 @@ body.qb-fullscreen .crm-app-shell {
   border-top: 1px solid var(--line);
 }
 
+.crm-global-search-body--results-only {
+  grid-template-columns: 1fr;
+}
+
+.crm-global-search-body--results-only .crm-global-search-results {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
 .crm-global-search-body--contract {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 16px;
+}
+
+.crm-global-search-body--contract .crm-global-search-results {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  max-height: 176px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.crm-global-search-body--contract .crm-global-contract-pane {
+  grid-column: 1;
+}
+
+.crm-global-search-body--contract .crm-global-search-detail {
+  grid-column: 2;
 }
 
 .crm-global-contract-pane {
@@ -13927,6 +13951,12 @@ html.mobile-menu-open {
 
   .crm-global-search-body--contract {
     grid-template-columns: 1fr;
+  }
+
+  .crm-global-search-body--contract .crm-global-search-results,
+  .crm-global-search-body--contract .crm-global-contract-pane,
+  .crm-global-search-body--contract .crm-global-search-detail {
+    grid-column: auto;
   }
 
   .crm-global-contract-pane {

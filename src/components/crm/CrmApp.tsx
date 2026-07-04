@@ -5484,26 +5484,11 @@ function GlobalCustomerSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
-  const [settledQuery, setSettledQuery] = useState("");
   const normalizedQuery = query.trim();
   const results = useMemo(
     () => buildCustomerSearchResults({ query: normalizedQuery, jobs, quotes, rows, files, events }),
     [events, files, jobs, normalizedQuery, quotes, rows]
   );
-  const previewReady = normalizedQuery.length >= 2 && settledQuery === normalizedQuery;
-
-  useEffect(() => {
-    if (normalizedQuery.length < 2) {
-      setSettledQuery("");
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setSettledQuery(normalizedQuery);
-    }, 450);
-
-    return () => window.clearTimeout(timer);
-  }, [normalizedQuery]);
 
   useEffect(() => {
     if (normalizedQuery.length < 2) {
@@ -5511,21 +5496,26 @@ function GlobalCustomerSearchPanel({
       return;
     }
 
-    if (!results.length) {
+    if (selectedResultId && !results.some((result) => result.id === selectedResultId)) {
       if (selectedResultId) setSelectedResultId(null);
-      return;
     }
+  }, [normalizedQuery, results, selectedResultId]);
 
-    if (!previewReady) return;
-
-    if (!selectedResultId || !results.some((result) => result.id === selectedResultId)) {
-      setSelectedResultId(results[0].id);
-    }
-  }, [normalizedQuery, previewReady, results, selectedResultId]);
-
-  const selectedResult = previewReady ? results.find((result) => result.id === selectedResultId) || results[0] || null : null;
+  const selectedResult = results.find((result) => result.id === selectedResultId) || null;
   const selectedContractDocument =
     selectedResult?.entry.documents?.find((document) => document.kind === "Contract copy" && Boolean(document.url)) || null;
+  const selectedQuotePage = selectedResult?.pages.find((page) => page.target === "quotes" && Boolean(page.quoteId)) || null;
+  const selectedPreviewDocument =
+    selectedContractDocument ||
+    (selectedQuotePage?.quoteId
+      ? {
+          id: `quote-preview-${selectedQuotePage.quoteId}`,
+          title: selectedQuotePage.detail ? `Quote ${selectedQuotePage.detail}` : "Quote contract preview",
+          url: `/crm/quote/${selectedQuotePage.quoteId}/contract-preview`,
+          quoteId: selectedQuotePage.quoteId,
+          kind: "Contract copy" as const
+        }
+      : null);
   const payload: DrillPayload | null = selectedResult
     ? {
         title: "Customer Search",
@@ -5544,7 +5534,13 @@ function GlobalCustomerSearchPanel({
             id="crm-global-customer-search"
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setSelectedResultId(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault();
+            }}
             placeholder="Name, phone, address, job, quote..."
           />
           {query ? (
@@ -5553,7 +5549,7 @@ function GlobalCustomerSearchPanel({
               className="crm-ghost-button"
               onClick={() => {
                 setQuery("");
-                setSettledQuery("");
+                setSelectedResultId(null);
               }}
             >
               Clear
@@ -5570,33 +5566,40 @@ function GlobalCustomerSearchPanel({
       </div>
 
       {normalizedQuery.length >= 2 && results.length ? (
-        <div className={`crm-global-search-body${selectedContractDocument ? " crm-global-search-body--contract" : ""}`}>
-          {selectedContractDocument ? (
+        <div
+          className={[
+            "crm-global-search-body",
+            selectedResult ? "crm-global-search-body--selected" : "crm-global-search-body--results-only",
+            selectedPreviewDocument ? "crm-global-search-body--contract" : ""
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <div className="crm-global-search-results" role="listbox" aria-label="Customer search results">
+            {results.map((result) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={result.id === selectedResult?.id}
+                className={result.id === selectedResult?.id ? "active" : ""}
+                key={result.id}
+                onClick={() => {
+                  setSelectedResultId(result.id);
+                }}
+              >
+                <strong>{result.entry.customerName || result.entry.name}</strong>
+                <span>{result.entry.meta || "Customer record"}</span>
+                <em>{result.entry.value || "Open"}</em>
+              </button>
+            ))}
+          </div>
+
+          {selectedResult && selectedPreviewDocument ? (
             <ContractPreviewPane
-              document={selectedContractDocument}
+              document={selectedPreviewDocument}
               customerName={selectedResult?.entry.customerName || selectedResult?.entry.name || "Customer"}
             />
-          ) : (
-            <div className="crm-global-search-results" role="listbox" aria-label="Customer search results">
-              {results.map((result) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={result.id === selectedResult?.id}
-                  className={result.id === selectedResult?.id ? "active" : ""}
-                  key={result.id}
-                  onClick={() => {
-                    setSelectedResultId(result.id);
-                    setSettledQuery(normalizedQuery);
-                  }}
-                >
-                  <strong>{result.entry.customerName || result.entry.name}</strong>
-                  <span>{result.entry.meta || "Customer record"}</span>
-                  <em>{result.entry.value || "Open"}</em>
-                </button>
-              ))}
-            </div>
-          )}
+          ) : null}
 
           {selectedResult && payload ? (
             <div className="crm-global-search-detail">
