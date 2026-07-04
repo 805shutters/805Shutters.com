@@ -15,8 +15,24 @@ function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
 }
 
-export default async function PublicQuotePage({ params }: { params: Promise<{ token: string }> }) {
+type PublicQuotePageSearchParams = Record<string, string | string[] | undefined>;
+
+function searchParamEnabled(searchParams: PublicQuotePageSearchParams, key: string) {
+  const value = searchParams[key];
+  const first = Array.isArray(value) ? value[0] : value;
+  return first === "" || first === "1" || first === "true";
+}
+
+export default async function PublicQuotePage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ token: string }>;
+  searchParams?: Promise<PublicQuotePageSearchParams>;
+}) {
   const { token } = await params;
+  const query = searchParams ? await searchParams : {};
+  const crmContractPreview = searchParamEnabled(query, "crmContract");
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return (
@@ -33,7 +49,10 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
   const venmoQrSvg = await QRCode.toString(venmoProfileUrl(), { type: "svg", margin: 1 });
 
   return (
-    <main style={wrap}>
+    <main
+      className={crmContractPreview ? "public-quote-contract-embed" : undefined}
+      style={crmContractPreview ? contractPreviewWrap : wrap}
+    >
       <style>{`@media print { .no-print { display: none !important; } main { padding: 0 !important; } }`}</style>
       <div className="no-print" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <PrintButton />
@@ -87,3 +106,10 @@ export default async function PublicQuotePage({ params }: { params: Promise<{ to
 }
 
 const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const contractPreviewWrap = {
+  maxWidth: "none",
+  margin: 0,
+  padding: "18px 20px 32px",
+  fontFamily: "system-ui, sans-serif",
+  color: "#0b0b0b"
+} as const;

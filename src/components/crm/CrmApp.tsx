@@ -3167,9 +3167,17 @@ function relatedJobForRow(row: CrmBookkeepingRow, jobs: CrmJob[] = []) {
 }
 
 function contractUrl(contract: CrmCustomerFile["contracts"][number]) {
-  if (contract.contract_url) return contract.contract_url;
   if (contract.share_token) return `/quote/${contract.share_token}`;
+  if (contract.contract_url) return contract.contract_url;
   return null;
+}
+
+function crmContractPreviewUrl(url: string) {
+  const hashIndex = url.indexOf("#");
+  const base = hashIndex >= 0 ? url.slice(0, hashIndex) : url;
+  const hash = hashIndex >= 0 ? url.slice(hashIndex) : "";
+  if (/[?&]crmContract=/.test(base)) return url;
+  return `${base}${base.includes("?") ? "&" : "?"}crmContract=1${hash}`;
 }
 
 function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
@@ -5436,15 +5444,17 @@ function ContractPreviewPane({
   document: DrillDocument;
   customerName: string;
 }) {
+  const previewUrl = crmContractPreviewUrl(document.url);
+
   return (
     <aside className="crm-global-contract-pane" aria-label={`Contract for ${customerName}`}>
       <div className="crm-global-contract-pane-head">
         <span>Contract</span>
-        <a href={document.url} target="_blank" rel="noreferrer">
+        <a href={previewUrl} target="_blank" rel="noreferrer">
           Open
         </a>
       </div>
-      <iframe title={`${customerName} contract`} src={document.url} />
+      <iframe title={`${customerName} contract`} src={previewUrl} />
     </aside>
   );
 }

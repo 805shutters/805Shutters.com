@@ -3017,6 +3017,15 @@ body:has(.crm-app-shell) {
   background: #f7f7f5;
 }
 
+body:has(.public-quote-contract-embed) .site-header-shell,
+body:has(.public-quote-contract-embed) .site-footer {
+  display: none;
+}
+
+body:has(.public-quote-contract-embed) {
+  background: #ffffff;
+}
+
 body:has(.mobile-crm-app) .site-header-shell,
 body:has(.mobile-crm-app) .site-footer,
 body:has(.mobile-crm-app) .assistant-widget {
