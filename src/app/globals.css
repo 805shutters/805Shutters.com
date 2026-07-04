@@ -4402,23 +4402,30 @@ body.qb-fullscreen .crm-app-shell {
   z-index: 4;
 }
 
-/* Money columns (Sale ... Mike, columns 2-11): tight fixed width, no stretch. */
-.crm-customer-table th:nth-child(n + 2):nth-child(-n + 11),
-.crm-customer-table tr.crm-customer-info-row td:nth-child(n + 2):nth-child(-n + 11) {
+/* Phone column (2). */
+.crm-customer-table th:nth-child(2),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(2) {
+  min-width: 104px;
+  max-width: 136px;
+}
+
+/* Money columns (Sale ... Mike, columns 4-13): tight fixed width, no stretch. */
+.crm-customer-table th:nth-child(n + 4):nth-child(-n + 13),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(n + 4):nth-child(-n + 13) {
   min-width: 88px;
   max-width: 136px;
 }
 
 /* Deposit pair needs a touch more room. */
-.crm-customer-table th:nth-child(4),
-.crm-customer-table tr.crm-customer-info-row td:nth-child(4) {
+.crm-customer-table th:nth-child(5),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(5) {
   min-width: 128px;
   max-width: 170px;
 }
 
-/* Wide text columns: Address (15), Product (16), Notes (19). */
-.crm-customer-table th:nth-child(15),
-.crm-customer-table tr.crm-customer-info-row td:nth-child(15),
+/* Wide text columns: Address (3), Product (16), Notes (19). */
+.crm-customer-table th:nth-child(3),
+.crm-customer-table tr.crm-customer-info-row td:nth-child(3),
 .crm-customer-table th:nth-child(16),
 .crm-customer-table tr.crm-customer-info-row td:nth-child(16),
 .crm-customer-table th:nth-child(19),
@@ -4427,11 +4434,20 @@ body.qb-fullscreen .crm-app-shell {
   max-width: 240px;
 }
 
-/* Both lines stay short: one compact row of data, one compact row of actions. */
+/* Both lines stay short and equal: one compact row of data, one of actions. */
 .crm-customer-table tbody tr.crm-customer-info-row td,
 .crm-customer-table tbody tr.crm-customer-action-row td {
-  height: 30px;
+  height: 35px;
   vertical-align: middle;
+}
+
+/* The site-wide button touch-target (min-height 48px) must not inflate the
+   inline editors inside the customer grid. */
+.crm-cf-td .crm-inline-edit-value,
+.crm-cf-pair .crm-inline-edit-value,
+.crm-cf-chip .crm-inline-edit-value {
+  min-height: 0;
+  height: auto;
 }
 
 .crm-cf-name {
@@ -4550,7 +4566,7 @@ body.qb-fullscreen .crm-app-shell {
 
 /* Line 2: the action line. One horizontal strip that holds every control. */
 .crm-customer-table tbody tr.crm-customer-action-row td.crm-customer-action-cell {
-  padding: 5px 8px;
+  padding: 2px 8px;
   background: #fbfdff;
   border-bottom: 2px solid #cbd5e1;
   vertical-align: middle;
@@ -4576,7 +4592,7 @@ body.qb-fullscreen .crm-app-shell {
   flex-wrap: nowrap;
   flex: 0 0 auto;
   gap: 4px;
-  padding: 3px 6px;
+  padding: 2px 6px;
   border: 1px solid #dbe3f0;
   border-radius: 6px;
   background: #ffffff;

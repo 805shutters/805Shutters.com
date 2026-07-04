@@ -7645,20 +7645,20 @@ function CustomerFilesView({
           <thead>
             <tr>
               <th>Customer</th>
+              <th>Phone</th>
+              <th>Address</th>
               <th>Sale</th>
-              <th>Paid</th>
               <th>Deposit</th>
               <th>Balance</th>
               <th>COGS</th>
+              <th>Paid</th>
               <th>Expenses</th>
               <th>Install</th>
               <th>Ken</th>
               <th>Jessica</th>
               <th>Mike</th>
-              <th>Phone</th>
               <th>Email</th>
               <th>City</th>
-              <th>Address</th>
               <th>Product</th>
               <th>Sold</th>
               <th>Docs</th>
@@ -7743,6 +7743,24 @@ function CustomerFilesView({
                     <p>{file.latestStatus || "Open"}</p>
                   </div>
                 </td>
+                <td className="crm-cf-td">
+                  <InlineEditableValue
+                    value={file.phone || "Pending"}
+                    editor={primaryJob ? jobFieldEditor(primaryJob, "Edit phone", file.phone || primaryJob.phone, "phone", "Phone updated.") : undefined}
+                    className="crm-cf-text"
+                  />
+                </td>
+                <td className="crm-cf-td wide">
+                  <InlineEditableValue
+                    value={file.address || "Pending"}
+                    editor={
+                      primaryJob
+                        ? jobFieldEditor(primaryJob, "Edit address", file.address || primaryJob.address, "address", "Address updated.", { autocomplete: "address" })
+                        : undefined
+                    }
+                    className="crm-cf-text"
+                  />
+                </td>
                 <td className="crm-cf-td money">
                   <InlineEditableValue
                     value={toCurrency(saleValue)}
@@ -7761,9 +7779,6 @@ function CustomerFilesView({
                     }
                     className="crm-cf-money"
                   />
-                </td>
-                <td className="crm-cf-td money">
-                  <span className="crm-cf-money">{toCurrency(totals.paid)}</span>
                 </td>
                 <td className="crm-cf-td money">
                   <span className="crm-cf-pair">
@@ -7807,6 +7822,9 @@ function CustomerFilesView({
                   />
                 </td>
                 <td className="crm-cf-td money">
+                  <span className="crm-cf-money">{toCurrency(totals.paid)}</span>
+                </td>
+                <td className="crm-cf-td money">
                   <span className="crm-cf-money">
                     {toCurrency(totals.expenses)}
                     {totals.remake > 0 ? ` + ${toCurrency(totals.remake)} rmk` : ""}
@@ -7845,13 +7863,6 @@ function CustomerFilesView({
                 </td>
                 <td className="crm-cf-td">
                   <InlineEditableValue
-                    value={file.phone || "Pending"}
-                    editor={primaryJob ? jobFieldEditor(primaryJob, "Edit phone", file.phone || primaryJob.phone, "phone", "Phone updated.") : undefined}
-                    className="crm-cf-text"
-                  />
-                </td>
-                <td className="crm-cf-td">
-                  <InlineEditableValue
                     value={file.email || "Pending"}
                     editor={
                       primaryJob ? jobFieldEditor(primaryJob, "Edit email", file.email || primaryJob.email, "email", "Email updated.", { type: "email" }) : undefined
@@ -7863,17 +7874,6 @@ function CustomerFilesView({
                   <InlineEditableValue
                     value={file.city || "Pending"}
                     editor={primaryJob ? jobFieldEditor(primaryJob, "Edit city", file.city || primaryJob.city, "city", "City updated.") : undefined}
-                    className="crm-cf-text"
-                  />
-                </td>
-                <td className="crm-cf-td wide">
-                  <InlineEditableValue
-                    value={file.address || "Pending"}
-                    editor={
-                      primaryJob
-                        ? jobFieldEditor(primaryJob, "Edit address", file.address || primaryJob.address, "address", "Address updated.", { autocomplete: "address" })
-                        : undefined
-                    }
                     className="crm-cf-text"
                   />
                 </td>
