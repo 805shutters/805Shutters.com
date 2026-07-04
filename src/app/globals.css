@@ -4300,11 +4300,49 @@ body.qb-fullscreen .crm-app-shell {
   border: 1px solid var(--line);
 }
 
+.crm-customer-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.crm-customer-search input {
+  flex: 0 1 460px;
+  min-width: 220px;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid #d8dfea;
+  border-radius: 5px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.crm-customer-search input:focus {
+  border-color: #2563eb;
+  outline: none;
+}
+
+.crm-customer-search span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.crm-customer-search .crm-ghost-button {
+  min-height: 34px;
+}
+
 .crm-customer-filter-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 16px 0 18px;
+  margin: 12px 0 18px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--line);
 }

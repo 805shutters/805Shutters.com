@@ -7477,6 +7477,27 @@ function customerFilePaymentUrl(quote: CrmQuote) {
   return quoteUrl ? `${quoteUrl}#payment` : null;
 }
 
+function customerFileSearchText(file: CrmCustomerFile) {
+  return [
+    file.customerName,
+    file.phone,
+    file.email,
+    file.city,
+    file.address,
+    file.latestStatus,
+    ...file.notes,
+    ...file.products.map((product) => [product.product_type, product.room, product.description].filter(Boolean).join(" ")),
+    ...file.jobs.map((job) =>
+      [job.product_interest, job.sales_owner, job.status, job.city, job.address, job.phone, job.email, job.notes].filter(Boolean).join(" ")
+    ),
+    ...file.quotes.map((quote) => [quote.quote_number, quote.manufacturer_name, quote.status].filter(Boolean).join(" ")),
+    ...file.bookkeepingRows.map((row) => [row.quoteNumber, row.manufacturerName, row.manufacturerOrderRef].filter(Boolean).join(" "))
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
 function nextJobStatus(status: CrmJobStatus) {
   if (status === "closed" || status === "lost") return null;
   const index = crmJobStatuses.indexOf(status);
@@ -7565,6 +7586,8 @@ function CustomerFilesView({
 }) {
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
+  const [search, setSearch] = useState("");
+  const normalizedSearch = search.trim().toLowerCase();
   const rowMoneyEditor = (
     row: CrmBookkeepingRow,
     label: string,
@@ -7615,19 +7638,26 @@ function CustomerFilesView({
     () => sortedFiles.filter((file) => customerFileMatchesStatus(file, activeStatus ?? null)),
     [activeStatus, sortedFiles]
   );
+  const searchedFiles = useMemo(
+    () =>
+      normalizedSearch
+        ? statusFilteredFiles.filter((file) => customerFileSearchText(file).includes(normalizedSearch))
+        : statusFilteredFiles,
+    [normalizedSearch, statusFilteredFiles]
+  );
   const visibleFiles = useMemo(
-    () => (activeFilter ? statusFilteredFiles.filter((file) => customerFileMatchesFilter(file, activeFilter)) : statusFilteredFiles),
-    [activeFilter, statusFilteredFiles]
+    () => (activeFilter ? searchedFiles.filter((file) => customerFileMatchesFilter(file, activeFilter)) : searchedFiles),
+    [activeFilter, searchedFiles]
   );
   const filterCounts = useMemo(
     () =>
       new Map<CustomerFileFilter, number>(
         customerFileFilters.map((filter) => [
           filter.value,
-          statusFilteredFiles.filter((file) => customerFileMatchesFilter(file, filter.value)).length
+          searchedFiles.filter((file) => customerFileMatchesFilter(file, filter.value)).length
         ])
       ),
-    [statusFilteredFiles]
+    [searchedFiles]
   );
 
   useEffect(() => {
@@ -7653,10 +7683,29 @@ function CustomerFilesView({
         </div>
         <strong>{visibleFiles.length}</strong>
       </div>
+      <div className="crm-customer-search" role="search" aria-label="Search customer files">
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search customers: name, phone, address, city, product, quote #..."
+          aria-label="Search customer files"
+        />
+        {search ? (
+          <button type="button" className="crm-ghost-button" onClick={() => setSearch("")}>
+            Clear
+          </button>
+        ) : null}
+        <span>
+          {normalizedSearch
+            ? `${searchedFiles.length} of ${statusFilteredFiles.length} customers`
+            : `${statusFilteredFiles.length} customers`}
+        </span>
+      </div>
       <div className="crm-customer-filter-bar" aria-label="Customer lifecycle filters">
         <button type="button" className={!activeFilter ? "active" : ""} aria-pressed={!activeFilter} onClick={() => setActiveFilter(null)}>
           All
-          <span>{statusFilteredFiles.length}</span>
+          <span>{searchedFiles.length}</span>
         </button>
         {customerFileFilters.map((filter) => (
           <button
@@ -8211,7 +8260,8 @@ function CustomerFilesView({
       {!files.length ? <p className="crm-empty">No customer files yet. Bookkeeping rows will appear here automatically.</p> : null}
       {files.length && !visibleFiles.length ? (
         <p className="crm-empty">
-          No customer files match {activeFilter ? "this lifecycle filter" : statusLabel(activeStatus ?? null).toLowerCase()}.
+          No customer files match{" "}
+          {normalizedSearch ? `"${search.trim()}"` : activeFilter ? "this lifecycle filter" : statusLabel(activeStatus ?? null).toLowerCase()}.
         </p>
       ) : null}
     </section>
