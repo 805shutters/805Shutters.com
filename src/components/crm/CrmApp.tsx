@@ -739,6 +739,8 @@ export function CrmApp({
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
+  const crmLoadedRef = useRef(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
@@ -865,6 +867,8 @@ export function CrmApp({
   async function signOut() {
     if (!supabase) return;
     await supabase.auth.signOut();
+    sessionIdentityRef.current = null;
+    crmLoadedRef.current = false;
     setSession(null);
     setUser(null);
     setData(null);
@@ -883,6 +887,7 @@ export function CrmApp({
     const dashboardResult = await crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs");
     setUser(sessionResult);
     setData(dashboardResult);
+    crmLoadedRef.current = true;
     setLastSyncedAt(Date.now());
   }
 
@@ -1014,6 +1019,8 @@ export function CrmApp({
     async function clearCrmSession(notice?: string) {
       await activeSupabase.auth.signOut().catch(() => undefined);
       if (!mounted) return;
+      sessionIdentityRef.current = null;
+      crmLoadedRef.current = false;
       setSession(null);
       setUser(null);
       setData(null);
@@ -1050,6 +1057,9 @@ export function CrmApp({
         const callbackSession = await consumeEmailOtpCallback();
         const activeSession = callbackSession ?? (await activeSupabase.auth.getSession()).data.session;
         if (!mounted) return;
+        sessionIdentityRef.current = activeSession
+          ? { userId: activeSession.user.id, accessToken: activeSession.access_token }
+          : null;
         setSession(activeSession);
 
         if (activeSession) {
@@ -1065,8 +1075,25 @@ export function CrmApp({
 
     initializeCrmSession();
 
-    const { data: listener } = activeSupabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = activeSupabase.auth.onAuthStateChange((event, nextSession) => {
       if (!mounted) return;
+      if (event === "INITIAL_SESSION") return;
+
+      const nextIdentity = nextSession
+        ? { userId: nextSession.user.id, accessToken: nextSession.access_token }
+        : null;
+      const currentIdentity = sessionIdentityRef.current;
+      const sameUser = Boolean(
+        nextIdentity && currentIdentity && nextIdentity.userId === currentIdentity.userId
+      );
+
+      if (nextSession && sameUser && crmLoadedRef.current) {
+        sessionIdentityRef.current = nextIdentity;
+        setSession(nextSession);
+        return;
+      }
+
+      sessionIdentityRef.current = nextIdentity;
       setSession(nextSession);
       if (nextSession) {
         setLoading(true);
@@ -1079,6 +1106,7 @@ export function CrmApp({
             if (mounted) setLoading(false);
           });
       } else {
+        crmLoadedRef.current = false;
         setUser(null);
         setData(null);
       }

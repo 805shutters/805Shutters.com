@@ -12,6 +12,7 @@ import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 export function QuoteContractPreviewStandalone({ quoteId }: { quoteId: string }) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
+  const activeQuoteId = useQuoteBuilderStore((state) => state.activeQuoteId);
   const setActiveQuote = useQuoteBuilderStore((state) => state.setActiveQuote);
   const setActiveTab = useQuoteBuilderStore((state) => state.setActiveTab);
 
@@ -28,7 +29,11 @@ export function QuoteContractPreviewStandalone({ quoteId }: { quoteId: string })
           className="mts-quote-scope crm-quote-contract-preview min-h-screen bg-[#f3f3f0] light"
           data-theme="light"
         >
-          <QuoteContract />
+          {activeQuoteId === quoteId ? (
+            <QuoteContract />
+          ) : (
+            <div className="p-6 text-center text-muted-foreground">Loading quote contract...</div>
+          )}
           <Toaster richColors position="top-right" />
         </div>
       </PortalContainerContext.Provider>
