@@ -4007,8 +4007,9 @@ body.qb-fullscreen .crm-app-shell {
 }
 
 .crm-global-search-body--contract {
-  grid-template-columns: minmax(440px, 0.95fr) minmax(620px, 1.05fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
+  gap: 16px;
 }
 
 .crm-global-contract-pane {
@@ -4017,8 +4018,8 @@ body.qb-fullscreen .crm-app-shell {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
-  height: min(82vh, 980px);
-  min-height: 640px;
+  height: calc(100vh - 112px);
+  min-height: 760px;
   overflow: hidden;
   background: var(--white);
   border: 1px solid var(--line);
@@ -4232,6 +4233,14 @@ body.qb-fullscreen .crm-app-shell {
     grid-template-columns: 1fr;
   }
 
+  .crm-dashboard:has(.crm-global-search-body--contract) {
+    width: calc(100vw - 40px);
+  }
+
+  .crm-global-search-body--contract {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
   .crm-global-search-links {
     justify-content: flex-start;
   }
@@ -4239,8 +4248,8 @@ body.qb-fullscreen .crm-app-shell {
   .crm-global-contract-pane {
     position: relative;
     top: auto;
-    height: min(76vh, 760px);
-    min-height: 520px;
+    height: calc(100vh - 96px);
+    min-height: 680px;
   }
 
   .crm-metric {
@@ -12632,8 +12641,30 @@ html.mobile-menu-open {
   gap: 18px;
 }
 
+.crm-dashboard:has(.crm-global-search-body--contract) {
+  width: calc(100vw - 56px);
+  max-width: none;
+}
+
 .crm-dashboard > .crm-section-head {
   margin-bottom: 0;
+}
+
+.crm-dashboard-head:has(.crm-global-search-body--contract) {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+  gap: 0;
+}
+
+.crm-dashboard-head:has(.crm-global-search-body--contract) > div:first-child,
+.crm-dashboard-head:has(.crm-global-search-body--contract) > strong {
+  display: none;
+}
+
+.crm-dashboard-head:has(.crm-global-search-body--contract) .crm-global-search {
+  width: 100%;
+  flex: none;
 }
 
 .crm-stat-band {
@@ -13805,6 +13836,19 @@ html.mobile-menu-open {
 }
 
 @media (max-width: 620px) {
+  .crm-dashboard:has(.crm-global-search-body--contract) {
+    width: 100%;
+  }
+
+  .crm-global-search-body--contract {
+    grid-template-columns: 1fr;
+  }
+
+  .crm-global-contract-pane {
+    height: 70vh;
+    min-height: 460px;
+  }
+
   .crm-job-tracking-head,
   .crm-job-tracking-actions {
     display: grid;
