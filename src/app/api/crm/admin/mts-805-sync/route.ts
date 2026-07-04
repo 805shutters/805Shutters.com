@@ -862,6 +862,7 @@ function normalizePaymentTypeValue(value: unknown) {
   if (lower.includes("cash")) return "cash";
   if (lower.includes("check") || lower === "ck") return "check";
   if (lower.includes("card") || lower.includes("credit") || lower === "cc") return "credit_card";
+  if (lower.includes("venmo")) return "venmo";
   return "other";
 }
 

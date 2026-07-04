@@ -4812,6 +4812,27 @@ body.qb-fullscreen .crm-app-shell {
   flex-wrap: nowrap;
 }
 
+.crm-customer-payment-method-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 23px;
+  padding: 2px 5px;
+  border: 1px solid #cfcfc8;
+  border-radius: 5px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-customer-payment-method-action > span:first-child {
+  color: #475569;
+  white-space: nowrap;
+}
+
 .crm-cf-td .crm-inline-edit-control,
 .crm-customer-action-strip .crm-inline-edit-control {
   width: 96px;
@@ -13410,6 +13431,67 @@ html.mobile-menu-open {
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.crm-drill-command-button--picker {
+  cursor: default;
+}
+
+.crm-payment-type-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.crm-payment-type-picker button {
+  min-height: 28px;
+  padding: 5px 7px;
+  border: 1px solid #cfcfc8;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-payment-type-picker button.active,
+.crm-payment-type-picker button:hover:not(:disabled),
+.crm-payment-type-picker button:focus-visible {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+}
+
+.crm-payment-type-picker--compact {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+}
+
+.crm-payment-type-picker--compact button {
+  min-height: 21px;
+  padding: 2px 5px;
+  font-size: 8px;
+}
+
+.crm-payment-type-cancel {
+  min-height: 23px;
+  padding: 2px 6px;
+  border: 1px solid #d8dfea;
+  background: #ffffff;
+  color: #475569;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.crm-drill-command-button .crm-payment-type-cancel {
+  width: 100%;
+  min-height: 26px;
 }
 
 .crm-drill-amount-command.crm-drill-command-button--missing {

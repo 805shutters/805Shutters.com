@@ -429,6 +429,7 @@ export function normalizePaymentType(value: string | null | undefined): CrmBookk
   if (lower.includes("cash")) return "cash";
   if (lower.includes("check") || lower === "ck") return "check";
   if (lower.includes("card") || lower.includes("credit") || lower === "cc") return "credit_card";
+  if (lower.includes("venmo")) return "venmo";
   return value ? "other" : null;
 }
 
@@ -439,6 +440,7 @@ export function formatPaymentType(value: CrmBookkeepingPaymentType | null): stri
     cash: "Cash",
     check: "Check",
     credit_card: "Credit Card",
+    venmo: "Venmo",
     other: "Other"
   }[value];
 }
@@ -468,8 +470,10 @@ function buildEntryRow(
   linkedQuote: CrmQuote | null = null
 ): CrmBookkeepingRow {
   const total = Number(entry.total_amount) || 0;
-  const depositPaid = sumPayments(payments.filter(isDepositPayment));
-  const balancePaid = sumPayments(payments.filter((payment) => !isDepositPayment(payment)));
+  const depositPayments = payments.filter(isDepositPayment);
+  const balancePayments = payments.filter((payment) => !isDepositPayment(payment));
+  const depositPaid = sumPayments(depositPayments);
+  const balancePaid = sumPayments(balancePayments);
   const paidTotal = roundCents(depositPaid + balancePaid);
   const creditIn = sumCredits(creditsIn);
   const creditOut = sumCredits(creditsOut);
@@ -507,7 +511,9 @@ function buildEntryRow(
     total,
     depositDue: entryDepositDue(entry, total),
     depositPaid,
+    depositPaymentType: latestPaymentType(depositPayments),
     balancePaid,
+    balancePaymentType: latestPaymentType(balancePayments),
     paidTotal,
     creditIn,
     creditOut,
@@ -573,8 +579,10 @@ function buildQuoteRow(
   // unpaid-but-sold quote assumed its REQUIRED deposit was paid (deposit_required
   // is what's owed, not collected) — overstating revenue and mis-flagging jobs as
   // paid-in-full. Now collected = recorded payments only.
-  const explicitDepositPaid = sumPayments(payments.filter(isDepositPayment));
-  const explicitBalancePaid = sumPayments(payments.filter((payment) => !isDepositPayment(payment)));
+  const depositPayments = payments.filter(isDepositPayment);
+  const balancePayments = payments.filter((payment) => !isDepositPayment(payment));
+  const explicitDepositPaid = sumPayments(depositPayments);
+  const explicitBalancePaid = sumPayments(balancePayments);
   const depositPaid = explicitDepositPaid;
   const balancePaid = explicitBalancePaid;
   const paidTotal = roundCents(depositPaid + balancePaid);
@@ -618,7 +626,9 @@ function buildQuoteRow(
     // hardcoded 50%. 0 when no deposit was set.
     depositDue: roundCents(Number(quote.deposit_required) || 0),
     depositPaid,
+    depositPaymentType: latestPaymentType(depositPayments),
     balancePaid,
+    balancePaymentType: latestPaymentType(balancePayments),
     paidTotal,
     creditIn,
     creditOut,
@@ -700,6 +710,10 @@ function groupCredits(
 
 function sumPayments(payments: CrmBookkeepingPayment[]) {
   return roundCents(payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0));
+}
+
+function latestPaymentType(payments: CrmBookkeepingPayment[]) {
+  return payments.find((payment) => Number(payment.amount) > 0)?.payment_type || null;
 }
 
 function sumCredits(credits: CrmBookkeepingCredit[]) {

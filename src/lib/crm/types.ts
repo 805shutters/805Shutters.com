@@ -28,7 +28,7 @@ export const crmQuoteStatuses = [
 export type CrmJobStatus = (typeof crmJobStatuses)[number];
 export type CrmQuoteStatus = (typeof crmQuoteStatuses)[number];
 export type CrmBookkeepingStatus = CrmQuoteStatus | "legacy" | "manual" | "closed";
-export type CrmBookkeepingPaymentType = "zelle" | "cash" | "check" | "credit_card" | "other";
+export type CrmBookkeepingPaymentType = "zelle" | "cash" | "check" | "credit_card" | "venmo" | "other";
 export type CrmBookkeepingEntrySource = "crm_quote" | "legacy_sheet" | "manual";
 export type CrmBookkeepingPaymentSource = "crm_quote" | "legacy_sheet" | "manual";
 export type CrmBookkeepingSalesOwner = "mike" | "jessica";
@@ -387,7 +387,9 @@ export type CrmBookkeepingRow = {
   total: number;
   depositDue: number;
   depositPaid: number;
+  depositPaymentType?: CrmBookkeepingPaymentType | null;
   balancePaid: number;
+  balancePaymentType?: CrmBookkeepingPaymentType | null;
   paidTotal: number;
   creditIn: number;
   creditOut: number;

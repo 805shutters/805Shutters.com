@@ -397,14 +397,16 @@ describe("paid-in-full status", () => {
     const [row] = rowsFrom({
       quotes: [quote({ id: "q1", status: "sold", quote_total: 1000, deposit_required: 500 })],
       payments: [
-        payment({ id: "p1", quote_id: "q1", payment_label: "Deposit", amount: 500 }),
-        payment({ id: "p2", quote_id: "q1", payment_label: "Balance payment", amount: 500 })
+        payment({ id: "p1", quote_id: "q1", payment_label: "Deposit", payment_type: "check", amount: 500 }),
+        payment({ id: "p2", quote_id: "q1", payment_label: "Balance payment", payment_type: "venmo", amount: 500 })
       ]
     });
 
     expect(row.isPaidInFull).toBe(true);
     expect(row.status).toBe("closed");
     expect(row.balance).toBe(0);
+    expect(row.depositPaymentType).toBe("check");
+    expect(row.balancePaymentType).toBe("venmo");
   });
 
   it("applies balance adjustment credits to the visible open balance", () => {

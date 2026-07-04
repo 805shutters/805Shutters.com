@@ -110,12 +110,14 @@ const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuse
 const productOptions = [...productInterestOptions, "Mixed"];
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const paymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> = [
-  { value: "zelle", label: "Zelle" },
-  { value: "cash", label: "Cash" },
   { value: "check", label: "Check" },
+  { value: "cash", label: "Cash" },
   { value: "credit_card", label: "Credit Card" },
+  { value: "zelle", label: "Zelle" },
+  { value: "venmo", label: "Venmo" },
   { value: "other", label: "Other" }
 ];
+const quickPaymentTypes: Array<{ value: CrmBookkeepingPaymentType; label: string }> = paymentTypes.filter((item) => item.value !== "other");
 const customerFileFilters: Array<{ value: CustomerFileFilter; label: string }> = [
   { value: "need_to_schedule", label: "Need to Schedule" },
   { value: "scheduled", label: "Scheduled" },
@@ -205,6 +207,21 @@ function toLedgerCurrency(value: number | null | undefined) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value || 0);
+}
+
+function paymentMethodSuffix(type: CrmBookkeepingPaymentType | null | undefined) {
+  if (!type || type === "other") return "";
+  return ` (${formatPaymentType(type)})`;
+}
+
+function ledgerCurrencyWithPaymentType(value: number | null | undefined, type: CrmBookkeepingPaymentType | null | undefined) {
+  return `${toLedgerCurrency(value)}${paymentMethodSuffix(type)}`;
+}
+
+function paymentTypeDefault(type: CrmBookkeepingPaymentType | null | undefined, fallback?: CrmBookkeepingPaymentType | null): CrmBookkeepingPaymentType {
+  if (type && type !== "other") return type;
+  if (fallback && fallback !== "other") return fallback;
+  return "check";
 }
 
 function formatShortDate(value: string | null | undefined) {
@@ -5219,6 +5236,10 @@ type DrillCommandButton = {
   label: string;
   detail?: string;
   tone?: "missing" | "warning";
+  paymentTypePicker?: {
+    defaultValue: CrmBookkeepingPaymentType;
+    onSelect: (paymentType: CrmBookkeepingPaymentType) => void;
+  };
   disabled?: boolean;
   onClick: () => void;
 };
@@ -5229,8 +5250,10 @@ type DrillAmountCommand = {
   detail: string;
   defaultValue: number;
   tone?: "missing" | "warning";
+  paymentType?: CrmBookkeepingPaymentType | null;
+  requirePaymentType?: boolean;
   disabled?: boolean;
-  onSave: (amount: number) => Promise<boolean>;
+  onSave: (amount: number, paymentType?: CrmBookkeepingPaymentType) => Promise<boolean>;
 };
 
 type DrillTextCommand = {
@@ -6079,6 +6102,8 @@ function DrillDetailCard({
   const orderRefMissingHighlight = rowMissingOrderRef(row);
   const installMissingHighlight = rowMissingInstallInvoice(row);
   const rowPaymentType = row?.paymentType || "other";
+  const depositPaymentType = paymentTypeDefault(row?.depositPaymentType, rowPaymentType);
+  const balancePaymentType = paymentTypeDefault(row?.balancePaymentType, rowPaymentType);
   const paidAt = todayInputValue();
   const statusControl =
     statusEditor && statusEditor.type === "select"
@@ -6161,11 +6186,23 @@ function DrillDetailCard({
           detail: toLedgerCurrency(depositShortfall),
           tone: "missing",
           disabled: busy,
+          paymentTypePicker: {
+            defaultValue: depositPaymentType,
+            onSelect: (paymentType) =>
+              void saveRow(
+                {
+                  deposit_paid_target: row.depositDue,
+                  payment_type: paymentType,
+                  paid_at: paidAt
+                },
+                "Deposit paid."
+              )
+          },
           onClick: () =>
             void saveRow(
               {
                 deposit_paid_target: row.depositDue,
-                payment_type: rowPaymentType,
+                payment_type: depositPaymentType,
                 paid_at: paidAt
               },
               "Deposit paid."
@@ -6179,11 +6216,25 @@ function DrillDetailCard({
           detail: toLedgerCurrency(balancePaymentShortfall),
           tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
+          paymentTypePicker: {
+            defaultValue: balancePaymentType,
+            onSelect: (paymentType) =>
+              void saveRow(
+                {
+                  balance_paid_target: configuredBalanceDue,
+                  payment_type: paymentType,
+                  paid_at: paidAt,
+                  ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
+                  ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
+                },
+                "Balance paid."
+              )
+          },
           onClick: () =>
             void saveRow(
               {
                 balance_paid_target: configuredBalanceDue,
-                payment_type: rowPaymentType,
+                payment_type: balancePaymentType,
                 paid_at: paidAt,
                 ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
                 ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
@@ -6217,15 +6268,17 @@ function DrillDetailCard({
         {
           key: "set-deposit-paid",
           label: "Deposit Paid",
-          detail: toLedgerCurrency(row.depositPaid),
+          detail: ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType),
           defaultValue: row.depositPaid || 0,
+          paymentType: depositPaymentType,
+          requirePaymentType: true,
           tone: depositMissingHighlight ? "missing" : undefined,
           disabled: busy,
-          onSave: (amount) =>
+          onSave: (amount, paymentType) =>
             saveRow(
               {
                 deposit_paid_target: amount,
-                payment_type: rowPaymentType,
+                payment_type: paymentType || depositPaymentType,
                 paid_at: paidAt
               },
               "Deposit paid updated."
@@ -6243,15 +6296,17 @@ function DrillDetailCard({
         {
           key: "set-balance-paid",
           label: "Balance Paid",
-          detail: toLedgerCurrency(row.balancePaid),
+          detail: ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType),
           defaultValue: row.balancePaid || 0,
+          paymentType: balancePaymentType,
+          requirePaymentType: true,
           tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
-          onSave: (amount) =>
+          onSave: (amount, paymentType) =>
             saveRow(
               {
                 balance_paid_target: amount,
-                payment_type: rowPaymentType,
+                payment_type: paymentType || balancePaymentType,
                 paid_at: paidAt
               },
               "Balance paid updated."
@@ -6458,11 +6513,11 @@ function DrillDetailCard({
               <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} editor={balanceEditor} />
               <DrillFact
                 label="Deposit"
-                value={row ? `${toLedgerCurrency(row.depositPaid)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"}
+                value={row ? `${ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"}
                 tone={depositMissingHighlight ? "warn" : undefined}
                 depositEditor={depositEditor}
               />
-              <DrillFact label="Balance Paid" value={row ? toLedgerCurrency(row.balancePaid) : "No ledger row"} tone={balanceMissingHighlight ? "warn" : undefined} editor={balancePaidEditor} />
+              <DrillFact label="Balance Paid" value={row ? ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType) : "No ledger row"} tone={balanceMissingHighlight ? "warn" : undefined} editor={balancePaidEditor} />
               <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
               <DrillFact
                 label="COGS"
@@ -6784,8 +6839,49 @@ function DrillDetailCard({
 }
 
 function DrillCommandButtonControl({ command }: { command: DrillCommandButton }) {
+  const [choosingPaymentType, setChoosingPaymentType] = useState(false);
+
+  if (command.paymentTypePicker && choosingPaymentType) {
+    return (
+      <div className={`crm-drill-command-button crm-drill-command-button--picker ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}>
+        <strong>{command.label}</strong>
+        {command.detail ? <span>{command.detail}</span> : null}
+        <div className="crm-payment-type-picker" role="group" aria-label={`Payment type for ${command.label}`}>
+          {quickPaymentTypes.map((item) => (
+            <button
+              type="button"
+              className={item.value === command.paymentTypePicker?.defaultValue ? "active" : ""}
+              key={item.value}
+              disabled={command.disabled}
+              onClick={() => {
+                command.paymentTypePicker?.onSelect(item.value);
+                setChoosingPaymentType(false);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button type="button" className="crm-payment-type-cancel" disabled={command.disabled} onClick={() => setChoosingPaymentType(false)}>
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <button type="button" className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`} disabled={command.disabled} onClick={command.onClick}>
+    <button
+      type="button"
+      className={`crm-drill-command-button ${command.tone ? `crm-drill-command-button--${command.tone}` : ""}`}
+      disabled={command.disabled}
+      onClick={() => {
+        if (command.paymentTypePicker) {
+          setChoosingPaymentType(true);
+          return;
+        }
+        command.onClick();
+      }}
+    >
       <strong>{command.label}</strong>
       {command.detail ? <span>{command.detail}</span> : null}
     </button>
@@ -6795,11 +6891,16 @@ function DrillCommandButtonControl({ command }: { command: DrillCommandButton })
 function DrillAmountCommandControl({ command }: { command: DrillAmountCommand }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(command.defaultValue ? String(command.defaultValue) : "");
+  const [paymentType, setPaymentType] = useState<CrmBookkeepingPaymentType>(command.paymentType || "check");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!editing) setValue(command.defaultValue ? String(command.defaultValue) : "");
   }, [command.defaultValue, editing]);
+
+  useEffect(() => {
+    if (!editing) setPaymentType(command.paymentType || "check");
+  }, [command.paymentType, editing]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -6807,7 +6908,7 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
     if (!Number.isFinite(amount) || amount < 0) return;
 
     setSaving(true);
-    const saved = await command.onSave(amount);
+    const saved = await command.onSave(amount, command.requirePaymentType ? paymentType : undefined);
     setSaving(false);
     if (saved) setEditing(false);
   };
@@ -6840,6 +6941,21 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
           onChange={(event) => setValue(event.target.value)}
         />
       </label>
+      {command.requirePaymentType ? (
+        <div className="crm-payment-type-picker" role="group" aria-label={`Payment type for ${command.label}`}>
+          {quickPaymentTypes.map((item) => (
+            <button
+              type="button"
+              className={paymentType === item.value ? "active" : ""}
+              key={item.value}
+              disabled={command.disabled || saving}
+              onClick={() => setPaymentType(item.value)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div>
         <button type="submit" disabled={command.disabled || saving}>
           Save
@@ -6849,6 +6965,57 @@ function DrillAmountCommandControl({ command }: { command: DrillAmountCommand })
         </button>
       </div>
     </form>
+  );
+}
+
+function CustomerFilePaymentMethodAction({
+  label,
+  amountLabel,
+  defaultValue,
+  disabled,
+  onSelect
+}: {
+  label: string;
+  amountLabel: string;
+  defaultValue: CrmBookkeepingPaymentType;
+  disabled?: boolean;
+  onSelect: (paymentType: CrmBookkeepingPaymentType) => void;
+}) {
+  const [choosingPaymentType, setChoosingPaymentType] = useState(false);
+
+  if (!choosingPaymentType) {
+    return (
+      <button type="button" className="crm-customer-action-link" disabled={disabled} onClick={() => setChoosingPaymentType(true)}>
+        {label} {amountLabel}
+      </button>
+    );
+  }
+
+  return (
+    <span className="crm-customer-payment-method-action">
+      <span>
+        {label} {amountLabel}
+      </span>
+      <span className="crm-payment-type-picker crm-payment-type-picker--compact" role="group" aria-label={`Payment type for ${label}`}>
+        {quickPaymentTypes.map((item) => (
+          <button
+            type="button"
+            className={item.value === defaultValue ? "active" : ""}
+            key={item.value}
+            disabled={disabled}
+            onClick={() => {
+              onSelect(item.value);
+              setChoosingPaymentType(false);
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+      </span>
+      <button type="button" className="crm-payment-type-cancel" disabled={disabled} onClick={() => setChoosingPaymentType(false)}>
+        Cancel
+      </button>
+    </span>
   );
 }
 
@@ -7281,10 +7448,11 @@ function DrillDetailEditForm({
 }
 
 const LEDGER_PAYMENT_TYPE_OPTIONS: DrillInlineOption[] = [
-  { value: "zelle", label: "Zelle" },
-  { value: "cash", label: "Cash" },
   { value: "check", label: "Check" },
+  { value: "cash", label: "Cash" },
   { value: "credit_card", label: "Credit Card" },
+  { value: "zelle", label: "Zelle" },
+  { value: "venmo", label: "Venmo" },
   { value: "other", label: "Other" }
 ];
 
@@ -8135,10 +8303,20 @@ function CustomerFilesView({
                 <td className={`crm-cf-td money${fileDepositMissing ? " crm-missing-data" : ""}`}>
                   <span className="crm-cf-pair">
                     <InlineEditableValue
-                      value={toCurrency(totals.depositPaid)}
+                      value={`${toCurrency(totals.depositPaid)}${paymentMethodSuffix(primaryRow?.depositPaymentType)}`}
                       editor={
                         primaryRow
-                          ? rowMoneyEditor(primaryRow, "Edit deposit paid", primaryRow.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")
+                          ? rowMoneyEditor(
+                              primaryRow,
+                              "Edit deposit paid",
+                              primaryRow.depositPaid,
+                              (amount) => ({
+                                deposit_paid_target: amount,
+                                payment_type: paymentTypeDefault(primaryRow.depositPaymentType, primaryRow.paymentType),
+                                paid_at: todayInputValue()
+                              }),
+                              "Deposit paid updated."
+                            )
                           : undefined
                       }
                       className="crm-cf-money"
@@ -8330,6 +8508,8 @@ function CustomerFilesView({
                       const rowOrderRefMissingHighlight = rowMissingOrderRef(row);
                       const rowInstallMissingHighlight = rowMissingInstallInvoice(row);
                       const rowPaymentType = row.paymentType || "other";
+                      const depositPaymentType = paymentTypeDefault(row.depositPaymentType, rowPaymentType);
+                      const balancePaymentType = paymentTypeDefault(row.balancePaymentType, rowPaymentType);
                       const paidAt = todayInputValue();
                       const rowLabel = row.quoteNumber || row.source.replace("_", " ");
                       const markPaidPatch = {
@@ -8397,8 +8577,14 @@ function CustomerFilesView({
                           <span className={`crm-cf-chip${rowDepositMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>Dep</strong>
                             <InlineEditableValue
-                              value={toLedgerCurrency(row.depositPaid)}
-                              editor={rowMoneyEditor(row, `Edit deposit paid for ${rowLabel}`, row.depositPaid, (amount) => ({ deposit_paid_target: amount }), "Deposit paid updated.")}
+                              value={ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType)}
+                              editor={rowMoneyEditor(
+                                row,
+                                `Edit deposit paid for ${rowLabel}`,
+                                row.depositPaid,
+                                (amount) => ({ deposit_paid_target: amount, payment_type: depositPaymentType, paid_at: paidAt }),
+                                "Deposit paid updated."
+                              )}
                             />
                             <span className="crm-cf-sep">/</span>
                             <InlineEditableValue
@@ -8409,8 +8595,14 @@ function CustomerFilesView({
                           <span className={`crm-cf-chip${rowBalanceMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
                             <strong>Bal Paid</strong>
                             <InlineEditableValue
-                              value={toLedgerCurrency(row.balancePaid)}
-                              editor={rowMoneyEditor(row, `Edit balance paid for ${rowLabel}`, row.balancePaid, (amount) => ({ balance_paid_target: amount }), "Balance paid updated.")}
+                              value={ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType)}
+                              editor={rowMoneyEditor(
+                                row,
+                                `Edit balance paid for ${rowLabel}`,
+                                row.balancePaid,
+                                (amount) => ({ balance_paid_target: amount, payment_type: balancePaymentType, paid_at: paidAt }),
+                                "Balance paid updated."
+                              )}
                             />
                           </span>
                           <span className={`crm-cf-chip${rowBalanceMissingHighlight ? " crm-cf-chip--missing" : ""}`}>
@@ -8471,32 +8663,32 @@ function CustomerFilesView({
                             </select>
                           ) : null}
                           {onSaveRow && depositShortfall > 0 ? (
-                            <button
-                              type="button"
-                              className="crm-customer-action-link"
+                            <CustomerFilePaymentMethodAction
+                              label="Pay Deposit"
+                              amountLabel={toLedgerCurrency(depositShortfall)}
+                              defaultValue={depositPaymentType}
                               disabled={busy}
-                              onClick={() =>
+                              onSelect={(paymentType) =>
                                 void onSaveRow(
                                   row,
-                                  { deposit_paid_target: row.depositDue, payment_type: rowPaymentType, paid_at: paidAt },
+                                  { deposit_paid_target: row.depositDue, payment_type: paymentType, paid_at: paidAt },
                                   "Deposit paid."
                                 )
                               }
-                            >
-                              Pay Deposit {toLedgerCurrency(depositShortfall)}
-                            </button>
+                            />
                           ) : null}
                           {onSaveRow && balanceShortfall > 0 ? (
-                            <button
-                              type="button"
-                              className="crm-customer-action-link"
+                            <CustomerFilePaymentMethodAction
+                              label="Pay Balance"
+                              amountLabel={toLedgerCurrency(balanceShortfall)}
+                              defaultValue={balancePaymentType}
                               disabled={busy}
-                              onClick={() =>
+                              onSelect={(paymentType) =>
                                 void onSaveRow(
                                   row,
                                   {
                                     balance_paid_target: configuredBalanceDue,
-                                    payment_type: rowPaymentType,
+                                    payment_type: paymentType,
                                     paid_at: paidAt,
                                     ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
                                     ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
@@ -8504,9 +8696,7 @@ function CustomerFilesView({
                                   "Balance paid."
                                 )
                               }
-                            >
-                              Pay Balance {toLedgerCurrency(balanceShortfall)}
-                            </button>
+                            />
                           ) : null}
                           {onSaveRow && openBalance > 0 ? (
                             <button
