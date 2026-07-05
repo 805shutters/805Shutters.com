@@ -14339,42 +14339,43 @@ html.mobile-menu-open {
   }
 }
 
-/* Financing announcement banner (above the sticky header; residential mode only) */
-.financing-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 9px 16px;
-  background: #111;
-  color: #fbfbfa;
-  text-decoration: none;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  text-align: center;
+/* Footer social links (moved from the header masthead) */
+.site-footer .footer-social {
+  margin-top: 16px;
+  justify-content: flex-start;
 }
 
-.financing-banner:hover .financing-banner-cta,
-.financing-banner:focus-visible .financing-banner-cta {
-  color: #fbfbfa;
-  border-color: #fbfbfa;
+body .site-footer .social-links a {
+  color: var(--ink);
 }
 
-.financing-banner-cta {
-  color: #b8b8b3;
-  border-bottom: 1px solid #b8b8b3;
-  padding-bottom: 1px;
+body .site-footer .social-links a:hover,
+body .site-footer .social-links a:focus-visible {
+  color: var(--muted);
+}
+
+/* In the footer the Yelp review popover opens upward so it stays on screen. */
+.site-footer .yelp-review-popover {
+  top: auto;
+  bottom: calc(100% + 13px);
+  transform: translate(calc(-50% + 36px), -8px);
+}
+
+.site-footer .social-link-with-panel:hover .yelp-review-popover,
+.site-footer .social-link-with-panel:focus-within .yelp-review-popover {
+  transform: translate(calc(-50% + 36px), 0);
+}
+
+.site-footer .yelp-review-popover::before {
+  top: auto;
+  bottom: -7px;
+  border-left: none;
+  border-top: none;
+  border-right: 1px solid rgba(17, 17, 17, 0.13);
+  border-bottom: 1px solid rgba(17, 17, 17, 0.13);
+}
+
+/* Masthead financing link mirrors the About Us link treatment. */
+.masthead-financing-link {
   white-space: nowrap;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-
-@media (max-width: 620px) {
-  .financing-banner {
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    gap: 8px;
-    padding: 8px 12px;
-    flex-wrap: wrap;
-  }
 }
