@@ -22,7 +22,7 @@ import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
 import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
 import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
-import type { CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
@@ -34,12 +34,16 @@ const tabs = [
 type QuoteWorkspaceProps = {
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
+  crmCalendarEvents?: CrmCalendarEvent[];
+  onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string) => void;
 };
 
 export function QuoteWorkspace({
   crmJobs = [],
   crmQuotes = [],
+  crmCalendarEvents = [],
+  onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
@@ -116,6 +120,8 @@ export function QuoteWorkspace({
                 newQuoteRequest={newQuoteRequest}
                 crmJobs={crmJobs}
                 crmQuotes={crmQuotes}
+                crmCalendarEvents={crmCalendarEvents}
+                onOpenCrmCalendarDate={onOpenCrmCalendarDate}
                 onOpenCrmQuote={onOpenCrmQuote}
               />
             )}

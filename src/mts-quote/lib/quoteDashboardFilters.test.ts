@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  dashboardTodayDate,
+  filterCalendarAppointmentsForStatsTile,
   filterQuotesForStatsTile,
   getQuoteStatsStatus,
   type QuoteStatsSource,
@@ -113,7 +115,7 @@ describe("quote dashboard stats filters", () => {
   });
 
   it("keeps timestamp-archived quotes out of date tiles", () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = dashboardTodayDate();
     const archivedToday = quote({
       id: "archived-today",
       status: "sent",
@@ -171,7 +173,7 @@ describe("quote dashboard stats filters", () => {
   });
 
   it("matches calendar appointments through source sales quote ids", () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = dashboardTodayDate();
     const row: QuoteStatsSource = {
       id: "crm-row",
       sourceQuoteId: "sales-row",
@@ -183,5 +185,24 @@ describe("quote dashboard stats filters", () => {
         { id: "appointment", quote_id: "sales-row", appointment_date: today, status: "scheduled" },
       ]).map((item) => item.id)
     ).toEqual(["crm-row"]);
+  });
+
+  it("keeps calendar-only appointments visible without double-counting quote-linked appointments", () => {
+    const future = "2099-01-01";
+    const linkedQuote = quote({ id: "quote-linked", status: "sent" });
+    const appointments = [
+      { id: "calendar-only", quote_id: null, appointment_date: future, status: "scheduled" },
+      { id: "linked-calendar", quote_id: "quote-linked", appointment_date: future, status: "scheduled" },
+      { id: "canceled-calendar", quote_id: null, appointment_date: future, status: "canceled" },
+    ];
+
+    expect(filterQuotesForStatsTile([linkedQuote], "upcoming", appointments).map((item) => item.id)).toEqual([
+      "quote-linked",
+    ]);
+    expect(
+      filterCalendarAppointmentsForStatsTile(appointments, "upcoming", new Set(["quote-linked"])).map(
+        (item) => item.id
+      )
+    ).toEqual(["calendar-only"]);
   });
 });

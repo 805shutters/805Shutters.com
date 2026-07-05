@@ -16,21 +16,39 @@ import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
+import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
   filterQuotesForStatsTile,
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
-import type { CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
   newQuoteRequest?: number;
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
+  crmCalendarEvents?: CrmCalendarEvent[];
+  onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string) => void;
 }
+
+type DashboardCalendarAppointment = {
+  id: string;
+  sourceType: "sales_805" | "crm_calendar";
+  salesAppointment?: Sales805Appointment;
+  quote_id: string | null;
+  crm_quote_id?: string | null;
+  customer_name: string;
+  customer_phone: string | null;
+  customer_address: string | null;
+  appointment_date: string | null;
+  start_time: string | null;
+  assigned_to: string;
+  status: string | null;
+};
 
 const FILTER_LABELS: Record<StatsFilter, string> = {
   all: "All Quotes",
@@ -51,7 +69,9 @@ const SALES_805_DASHBOARD_APPOINTMENTS_QUERY_KEY = [
 
 function dateOnly(value: string | null | undefined): string | null {
   if (!value) return null;
-  return value.split("T")[0] || null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? losAngelesDateString(date) : null;
 }
 
 function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
@@ -64,11 +84,37 @@ function crmQuoteCustomerName(quote: CrmQuote, job?: CrmJob): string {
   return quote.customer_name || job?.customer_name || "—";
 }
 
+function metaString(value: unknown, key: string): string | null {
+  if (!value || typeof value !== "object") return null;
+  const item = (value as Record<string, unknown>)[key];
+  return typeof item === "string" && item ? item : null;
+}
+
+function isDashboardCrmCalendarEvent(event: CrmCalendarEvent): boolean {
+  return event.event_type !== "block" && (event.status === "scheduled" || event.status === "rescheduled");
+}
+
+function crmCalendarAppointmentDate(event: CrmCalendarEvent): string | null {
+  const date = new Date(event.start_at);
+  return Number.isFinite(date.getTime()) ? losAngelesDateString(date) : null;
+}
+
+function crmCalendarAppointmentTime(event: CrmCalendarEvent): string | null {
+  const date = new Date(event.start_at);
+  return Number.isFinite(date.getTime()) ? losAngelesTimeString(date) : null;
+}
+
+function appointmentSortKey(appointment: DashboardCalendarAppointment): string {
+  return `${appointment.appointment_date || "9999-12-31"}T${appointment.start_time || "99:99"}:${appointment.customer_name}`;
+}
+
 export function QuoteDashboard({
   quoteOperatorMode = false,
   newQuoteRequest = 0,
   crmJobs = [],
   crmQuotes = [],
+  crmCalendarEvents = [],
+  onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
@@ -176,9 +222,62 @@ export function QuoteDashboard({
     });
   }, [crmJobs, crmQuotes, quotes]);
 
+  const dashboardCalendarAppointments = useMemo<DashboardCalendarAppointment[]>(() => {
+    const crmQuoteIdsByJobId = new Map(
+      crmQuotes
+        .filter((quote) => quote.job_id)
+        .map((quote) => [quote.job_id, quote.id] as const)
+    );
+    const importedSalesAppointmentIds = new Set(
+      crmCalendarEvents
+        .map((event) => metaString(event.meta, "mts_appointment_id"))
+        .filter((id): id is string => Boolean(id))
+    );
+
+    const crmAppointments = crmCalendarEvents
+      .filter(isDashboardCrmCalendarEvent)
+      .map((event): DashboardCalendarAppointment => {
+        const crmQuoteId = event.job_id ? crmQuoteIdsByJobId.get(event.job_id) || null : null;
+        return {
+          id: `crm:${event.id}`,
+          sourceType: "crm_calendar",
+          quote_id: crmQuoteId || metaString(event.meta, "mts_quote_id"),
+          crm_quote_id: crmQuoteId,
+          customer_name:
+            event.customer_name || metaString(event.meta, "customer_name") || event.title || "Calendar appointment",
+          customer_phone: event.customer_phone || metaString(event.meta, "customer_phone"),
+          customer_address: event.customer_address || event.location,
+          appointment_date: crmCalendarAppointmentDate(event),
+          start_time: crmCalendarAppointmentTime(event),
+          assigned_to: event.assigned_to || "Unassigned",
+          status: event.status,
+        };
+      });
+
+    const salesAppointments = sales805Appointments
+      .filter((appointment) => !importedSalesAppointmentIds.has(appointment.id))
+      .map((appointment): DashboardCalendarAppointment => ({
+        id: `sales:${appointment.id}`,
+        sourceType: "sales_805",
+        salesAppointment: appointment,
+        quote_id: appointment.quote_id,
+        customer_name: appointment.customer_name,
+        customer_phone: appointment.customer_phone,
+        customer_address: appointment.customer_address,
+        appointment_date: appointment.appointment_date,
+        start_time: appointment.start_time,
+        assigned_to: appointment.assigned_to,
+        status: appointment.status,
+      }));
+
+    return [...crmAppointments, ...salesAppointments].sort((left, right) =>
+      appointmentSortKey(left).localeCompare(appointmentSortKey(right))
+    );
+  }, [crmCalendarEvents, crmQuotes, sales805Appointments]);
+
   const filteredQuotes = useMemo(
-    () => filterQuotesForStatsTile(dashboardQuotes, activeFilter, sales805Appointments),
-    [dashboardQuotes, activeFilter, sales805Appointments]
+    () => filterQuotesForStatsTile(dashboardQuotes, activeFilter, dashboardCalendarAppointments),
+    [dashboardCalendarAppointments, dashboardQuotes, activeFilter]
   );
   const filteredQuoteIds = useMemo(
     () =>
@@ -189,16 +288,16 @@ export function QuoteDashboard({
       ),
     [filteredQuotes]
   );
-  const filteredSales805Appointments = useMemo(
+  const filteredDashboardCalendarAppointments = useMemo(
     () =>
       activeAccountId === ACCOUNT_IDS.SHUTTERS_805
         ? filterCalendarAppointmentsForStatsTile(
-            sales805Appointments,
+            dashboardCalendarAppointments,
             activeFilter,
             filteredQuoteIds
           )
         : [],
-    [activeAccountId, activeFilter, filteredQuoteIds, sales805Appointments]
+    [activeAccountId, activeFilter, dashboardCalendarAppointments, filteredQuoteIds]
   );
   // Create new quote
   const createQuote = useMutation({
@@ -395,25 +494,43 @@ export function QuoteDashboard({
     setActiveTab("builder");
   };
 
+  const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
+    if (appointment.sourceType === "sales_805" && appointment.salesAppointment) {
+      createQuoteFromAppointment.mutate(appointment.salesAppointment);
+      return;
+    }
+
+    if (appointment.crm_quote_id) {
+      onOpenCrmQuote?.(appointment.crm_quote_id);
+      return;
+    }
+
+    if (appointment.appointment_date) {
+      onOpenCrmCalendarDate?.(appointment.appointment_date);
+    }
+  };
+
   return (
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
       {/* Stats Bar — status filter tabs */}
       <QuoteStatsBar
         quotes={dashboardQuotes}
         calendarAppointments={
-          activeAccountId === ACCOUNT_IDS.SHUTTERS_805 ? sales805Appointments : []
+          activeAccountId === ACCOUNT_IDS.SHUTTERS_805 ? dashboardCalendarAppointments : []
         }
         activeFilter={activeFilter}
         onFilterChange={setActiveFilter}
         theme={activeAccount.prefix === "805" ? "bw" : "blue"}
       />
 
-      {filteredSales805Appointments.length > 0 && (
+      {filteredDashboardCalendarAppointments.length > 0 && (
         <Sales805AppointmentMatches
-          appointments={filteredSales805Appointments}
+          appointments={filteredDashboardCalendarAppointments}
           isOpening={createQuoteFromAppointment.isPending}
-          openingAppointmentId={createQuoteFromAppointment.variables?.id || null}
-          onOpenAppointment={(appointment) => createQuoteFromAppointment.mutate(appointment)}
+          openingAppointmentId={
+            createQuoteFromAppointment.variables ? `sales:${createQuoteFromAppointment.variables.id}` : null
+          }
+          onOpenAppointment={handleOpenDashboardAppointment}
           title={
             activeFilter === "today"
               ? "Today's 805 Calendar Appointments"
@@ -475,10 +592,10 @@ function Sales805AppointmentMatches({
   onOpenAppointment,
   title,
 }: {
-  appointments: Sales805Appointment[];
+  appointments: DashboardCalendarAppointment[];
   isOpening: boolean;
   openingAppointmentId: string | null;
-  onOpenAppointment: (appointment: Sales805Appointment) => void;
+  onOpenAppointment: (appointment: DashboardCalendarAppointment) => void;
   title: string;
 }) {
   return (
@@ -492,6 +609,16 @@ function Sales805AppointmentMatches({
       <div className="divide-y">
         {appointments.map((appointment) => {
           const isPending = isOpening && openingAppointmentId === appointment.id;
+          const actionLabel =
+            appointment.sourceType === "sales_805"
+              ? appointment.quote_id
+                ? "Open Quote"
+                : isPending
+                  ? "Creating..."
+                  : "Create Quote"
+              : appointment.crm_quote_id
+                ? "Open Quote"
+                : "Open Calendar";
           return (
             <div
               key={appointment.id}
@@ -507,7 +634,7 @@ function Sales805AppointmentMatches({
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
                   <span className="inline-flex items-center gap-1">
                     <CalendarDays className="h-4 w-4" />
-                    {formatAppointmentDate(appointment.appointment_date)}
+                    {appointment.appointment_date ? formatAppointmentDate(appointment.appointment_date) : "Date TBD"}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Clock className="h-4 w-4" />
@@ -527,7 +654,7 @@ function Sales805AppointmentMatches({
                 onClick={() => onOpenAppointment(appointment)}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
-                {appointment.quote_id ? "Open Quote" : isPending ? "Creating..." : "Create Quote"}
+                {actionLabel}
               </Button>
             </div>
           );

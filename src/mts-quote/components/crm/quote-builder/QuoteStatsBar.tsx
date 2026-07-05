@@ -1,6 +1,6 @@
 import { cn } from "@mts/lib/utils";
 import { STATUS_ORDER, STATUS_LABELS } from "@mts/lib/quoteStatus";
-import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashboardFilters";
+import { dashboardTodayDate, getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashboardFilters";
 import type { QuoteStatus } from "@mts/types/quote";
 
 export type StatsFilter = "all" | "today" | "upcoming" | QuoteStatus;
@@ -29,7 +29,7 @@ export function QuoteStatsBar({
   onFilterChange,
   theme = "blue",
 }: QuoteStatsBarProps) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = dashboardTodayDate();
 
   // Count per lifecycle status (archived excluded from default totals)
   const statusCounts: Record<QuoteStatus, number> = {
@@ -47,7 +47,10 @@ export function QuoteStatsBar({
   });
 
   const activeCalendarAppointments = calendarAppointments.filter(
-    (appointment) => appointment.appointment_date && appointment.status !== "cancelled"
+    (appointment) =>
+      appointment.appointment_date &&
+      appointment.status !== "cancelled" &&
+      appointment.status !== "canceled"
   );
   const calendarQuoteIds = new Set(
     activeCalendarAppointments

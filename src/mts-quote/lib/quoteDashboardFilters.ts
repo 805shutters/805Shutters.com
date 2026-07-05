@@ -1,4 +1,5 @@
 import { STATUS_ORDER } from "@mts/lib/quoteStatus";
+import { losAngelesDateString } from "@/lib/booking/availability";
 import type { QuoteStatus } from "@mts/types/quote";
 import type { StatsFilter } from "@mts/components/crm/quote-builder/QuoteStatsBar";
 
@@ -25,6 +26,10 @@ export type QuoteStatsSource = {
   archived_at?: string | null;
   customer_signature?: string | null;
 };
+
+export function dashboardTodayDate(): string {
+  return losAngelesDateString();
+}
 
 export function getQuoteStatsStatus(quote: QuoteStatsSource): QuoteStatus {
   const rawStatus = `${quote.live_status || quote.status || ""}`.toLowerCase();
@@ -66,7 +71,8 @@ function quoteMatchesCalendarQuoteId(
 }
 
 function isActiveCalendarAppointment(appointment: CalendarAppointmentForStats): boolean {
-  return Boolean(appointment.appointment_date) && appointment.status !== "cancelled";
+  const status = String(appointment.status || "").toLowerCase();
+  return Boolean(appointment.appointment_date) && status !== "cancelled" && status !== "canceled";
 }
 
 function appointmentMatchesDateFilter(
@@ -92,7 +98,7 @@ export function filterQuotesForStatsTile<T extends QuoteStatsSource>(
   filter: StatsFilter,
   calendarAppointments: CalendarAppointmentForStats[] = []
 ): T[] {
-  const today = new Date().toISOString().split("T")[0];
+  const today = dashboardTodayDate();
   const matchingCalendarQuoteIds = new Set(
     calendarAppointments
       .filter((appointment) => appointmentMatchesDateFilter(appointment, filter, today))
@@ -139,7 +145,7 @@ export function filterCalendarAppointmentsForStatsTile<T extends CalendarAppoint
 ): T[] {
   if (filter !== "today" && filter !== "upcoming") return [];
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = dashboardTodayDate();
   return appointments.filter(
     (appointment) =>
       appointmentMatchesDateFilter(appointment, filter, today) &&

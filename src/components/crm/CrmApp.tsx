@@ -2414,7 +2414,14 @@ export function CrmApp({
           session={session}
           jobs={jobs}
           quotes={quotes}
+          events={events}
           onChanged={refresh}
+          onOpenCalendarDate={(date) => {
+            setCalendarDate(date);
+            setCalendarView("week");
+            setCalendarManagementMode("appointments");
+            setActiveTab("calendar");
+          }}
           onOpenCrmQuote={setBuilderQuoteId}
         />
       ) : null}
