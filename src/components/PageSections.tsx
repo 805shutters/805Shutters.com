@@ -361,7 +361,8 @@ const featuredHomeShutterSlide: HomeHeroSlide = {
   label: "Custom Shutters",
   tagline: "Clean white shutters, custom fit to the room.",
   image: "/images/homepage-flow/white-shutters-living-room.jpg",
-  imageAlt: "Bright living room with a cream sofa and custom white plantation shutters"
+  imageAlt: "Bright living room with a cream sofa and custom white plantation shutters",
+  fit: "wide"
 };
 
 const featuredResidentialHeroSlides = (page: SitePage, allSlides = homeHeroSlides(page)): HomeHeroSlide[] => {

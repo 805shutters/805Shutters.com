@@ -1937,6 +1937,33 @@ body:has(.home-editorial).site-header-solid .category-dot {
   background-size: cover;
 }
 
+@media (min-width: 621px) {
+  .home-hero-slide--wide {
+    overflow: hidden;
+    background: #111111;
+  }
+
+  .home-hero-slide--wide::before {
+    position: absolute;
+    inset: -22px;
+    content: "";
+    background-image: var(--home-hero-slide-image);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    filter: blur(14px);
+    opacity: 0.56;
+    transform: scale(1.04);
+  }
+
+  .home-hero-slide--wide .home-hero-image {
+    position: relative;
+    z-index: 1;
+    background-position: center top;
+    background-size: min(100vw, 2560px) auto;
+  }
+}
+
 .home-hero-slide video {
   object-fit: cover;
   object-position: center;
