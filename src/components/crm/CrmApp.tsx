@@ -48,6 +48,7 @@ import {
   CrmInstallationInvoiceEmail,
   CrmJob,
   CrmJobStatus,
+  CrmKenBuyoutLedger,
   CrmKenPayment,
   CrmKenPayoffSummary,
   CrmOrderCogsEmail,
@@ -9669,6 +9670,69 @@ function ZellePaymentPanel({ person, amountDue }: { person: CrmPaymentPerson; am
   );
 }
 
+function KenBuyoutLedgerBox({ ledger }: { ledger: CrmKenBuyoutLedger }) {
+  return (
+    <section className="crm-ken-buyout-ledger" aria-label="Ken business buyout ledger">
+      <div className="crm-ken-buyout-head">
+        <div>
+          <p className="eyebrow">Business Buyout</p>
+          <h3>805 Owes Ken</h3>
+        </div>
+        <strong>{toLedgerCurrency(ledger.remainingBalance)}</strong>
+      </div>
+      <div className="crm-ken-buyout-bar" aria-hidden="true">
+        <div style={{ width: `${ledger.paidPct}%` }} />
+      </div>
+      <div className="crm-ken-buyout-stats">
+        <p>
+          <span>Original Ledger</span>
+          <strong>{toLedgerCurrency(ledger.target)}</strong>
+        </p>
+        <p>
+          <span>Payments Applied</span>
+          <strong>{toLedgerCurrency(ledger.totalPaid)}</strong>
+        </p>
+        <p>
+          <span>Remaining</span>
+          <strong>{toLedgerCurrency(ledger.remainingBalance)}</strong>
+        </p>
+        <p>
+          <span>Percent Paid</span>
+          <strong>{ledger.paidPct.toFixed(1)}%</strong>
+        </p>
+      </div>
+      <div className="crm-ken-buyout-history">
+        <h4>500K Payment History</h4>
+        <div className="crm-bookkeeping-table-wrap">
+          <table className="crm-bookkeeping-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Payment</th>
+                <th>Applied</th>
+                <th>Remaining</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ledger.payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td>{formatShortDate(payment.paidOn)}</td>
+                  <td>{toLedgerCurrency(payment.amount)}</td>
+                  <td>{toLedgerCurrency(payment.runningPaid)}</td>
+                  <td>{toLedgerCurrency(payment.remainingBalance)}</td>
+                  <td>{payment.note || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!ledger.payments.length ? <p className="crm-empty">No Ken payments applied yet.</p> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function PartnerPaymentsView({
   ledger,
   activePerson,
@@ -9808,6 +9872,8 @@ function PartnerPaymentsView({
         </div>
 
         <ZellePaymentPanel person={activePerson} amountDue={activePersonLedger?.owed || 0} />
+
+        {activePerson === "ken" && ledger?.kenBuyout ? <KenBuyoutLedgerBox ledger={ledger.kenBuyout} /> : null}
 
         <CollapsiblePanel title="Custom Group Payment">
           <form className="crm-form" onSubmit={submitManualPayment} key={activePerson}>

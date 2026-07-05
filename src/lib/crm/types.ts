@@ -675,6 +675,25 @@ export type CrmPartnerPaymentHistoryBatch = {
   allocations: CrmPartnerPaymentHistoryAllocation[];
 };
 
+export type CrmKenBuyoutLedgerPayment = {
+  id: string;
+  paidOn: string | null;
+  amount: number;
+  note: string | null;
+  createdByEmail: string | null;
+  runningPaid: number;
+  remainingBalance: number;
+};
+
+export type CrmKenBuyoutLedger = {
+  target: number;
+  totalPaid: number;
+  remainingBalance: number;
+  paidPct: number;
+  paymentCount: number;
+  payments: CrmKenBuyoutLedgerPayment[];
+};
+
 export type CrmPartnerPaymentLedgerPerson = {
   person: CrmPaymentPerson;
   label: string;
@@ -693,6 +712,7 @@ export type CrmPartnerPaymentLedger = {
   people: Record<CrmPaymentPerson, CrmPartnerPaymentLedgerPerson>;
   activeItems: CrmPartnerPaymentLedgerItem[];
   history: CrmPartnerPaymentHistoryBatch[];
+  kenBuyout: CrmKenBuyoutLedger;
 };
 
 export type CrmCommissionMonthlySummary = {

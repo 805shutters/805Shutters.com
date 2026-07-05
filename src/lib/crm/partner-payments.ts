@@ -1,4 +1,5 @@
 import {
+  BUSINESS_PAYOFF_TARGET,
   effectiveBookkeepingStatus,
   isPaidInFullBookkeepingRow
 } from "@/lib/crm/bookkeeping";
@@ -9,6 +10,7 @@ import {
   CrmCommissionPaymentAllocation,
   CrmKenPayment,
   CrmKenPaymentAllocation,
+  CrmKenBuyoutLedger,
   CrmPartnerPaymentHistoryAllocation,
   CrmPartnerPaymentHistoryBatch,
   CrmPartnerPaymentLedger,
@@ -364,6 +366,35 @@ function itemVirtualHistory(paymentId: string, item: WorkingItem, amount: number
   };
 }
 
+function buildKenBuyoutLedger(history: CrmPartnerPaymentHistoryBatch[]): CrmKenBuyoutLedger {
+  let runningPaid = 0;
+  const payments = history
+    .filter((batch) => batch.person === "ken" && roundCents(batch.amount) > 0)
+    .map((batch) => {
+      const amount = roundCents(batch.amount);
+      runningPaid = roundCents(runningPaid + amount);
+      return {
+        id: batch.id,
+        paidOn: batch.paidOn,
+        amount,
+        note: batch.note,
+        createdByEmail: batch.createdByEmail,
+        runningPaid,
+        remainingBalance: roundCents(Math.max(BUSINESS_PAYOFF_TARGET - runningPaid, 0))
+      };
+    });
+  const totalPaid = roundCents(runningPaid);
+
+  return {
+    target: BUSINESS_PAYOFF_TARGET,
+    totalPaid,
+    remainingBalance: roundCents(Math.max(BUSINESS_PAYOFF_TARGET - totalPaid, 0)),
+    paidPct: BUSINESS_PAYOFF_TARGET > 0 ? Math.min(100, Math.round((totalPaid / BUSINESS_PAYOFF_TARGET) * 1000) / 10) : 0,
+    paymentCount: payments.length,
+    payments
+  };
+}
+
 export function buildPartnerPaymentLedger({
   rows,
   kenPayments,
@@ -477,6 +508,7 @@ export function buildPartnerPaymentLedger({
       return left.customerName.localeCompare(right.customerName);
     });
   }
+  const kenBuyout = buildKenBuyoutLedger(sortedHistory);
 
   const ledgerItems = earnedItems.map((item) => {
     const working = workingByKey.get(item.itemKey);
@@ -524,7 +556,8 @@ export function buildPartnerPaymentLedger({
   return {
     people,
     activeItems,
-    history: sortedHistory.sort((left, right) => paymentSortValue(right.paidOn || right.createdAt) - paymentSortValue(left.paidOn || left.createdAt))
+    history: sortedHistory.sort((left, right) => paymentSortValue(right.paidOn || right.createdAt) - paymentSortValue(left.paidOn || left.createdAt)),
+    kenBuyout
   };
 }
 

@@ -11825,6 +11825,90 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   text-decoration: none;
 }
 
+.crm-ken-buyout-ledger {
+  display: grid;
+  gap: 0;
+  padding: 18px 24px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.crm-ken-buyout-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.crm-ken-buyout-head h3 {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.crm-ken-buyout-head > strong {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1;
+  text-align: right;
+}
+
+.crm-ken-buyout-bar {
+  height: 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.crm-ken-buyout-bar > div {
+  height: 100%;
+  min-width: 2px;
+  background: #3a3a36;
+  transition: width 0.4s ease;
+}
+
+.crm-ken-buyout-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin-bottom: 18px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.crm-ken-buyout-stats p {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  background: var(--white);
+}
+
+.crm-ken-buyout-stats span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-ken-buyout-stats strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.crm-ken-buyout-history h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .crm-payment-ledger-head {
   display: flex;
   align-items: center;
@@ -11917,6 +12001,23 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 
   .crm-zelle-actions {
     justify-content: start;
+  }
+
+  .crm-ken-buyout-ledger {
+    padding-inline: 16px;
+  }
+
+  .crm-ken-buyout-head {
+    display: grid;
+    align-items: start;
+  }
+
+  .crm-ken-buyout-head > strong {
+    text-align: left;
+  }
+
+  .crm-ken-buyout-stats {
+    grid-template-columns: 1fr;
   }
 
   .crm-payment-details p,
