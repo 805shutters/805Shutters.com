@@ -57,8 +57,9 @@ export function QuoteStatsBar({
   const quoteAppointments = quotes.filter((quote) => !calendarQuoteIds.has(quote.id));
 
   const todayCount =
-    quoteAppointments.filter((q) => q.appointment_date === today && q.status !== "archived")
-      .length +
+    quoteAppointments.filter(
+      (q) => q.appointment_date === today && getQuoteStatsStatus(q) !== "archived"
+    ).length +
     activeCalendarAppointments.filter((appointment) => appointment.appointment_date === today)
       .length;
   const upcomingCount =

@@ -36,6 +36,7 @@ import {
   getQuoteColor,
 } from "@mts/lib/quoteConstants";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
+import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 import {
   buildCopiedDesignRows,
   buildCopiedLineItemPatch,
@@ -995,6 +996,7 @@ export function QuoteBuilder() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isSavingQuote]);
 
+  const quoteStatsStatus = quote ? getQuoteStatsStatus(quote) : null;
   const stackedLineItemIdSet = new Set(stackedLineItemIds);
   const stackedLineItems = lineItems.filter((item) => stackedLineItemIdSet.has(item.id));
   const editableLineItems = lineItems.filter((item) => !stackedLineItemIdSet.has(item.id));
@@ -1119,7 +1121,7 @@ export function QuoteBuilder() {
                     Send Payment Link
                   </Button>
                 )}
-                {quote && (quote.status === "sold" || quote.status === "ordered") && (
+                {quote && (quoteStatsStatus === "sold" || quoteStatsStatus === "ordered") && (
                   <Button
                     size="sm"
                     variant="outline"
@@ -1131,7 +1133,7 @@ export function QuoteBuilder() {
                     Deposit
                   </Button>
                 )}
-                {quote && quote.status === "received" && (
+                {quote && quoteStatsStatus === "received" && (
                   <Button
                     size="sm"
                     onClick={() => setShowPaymentDialog("balance")}
@@ -1142,8 +1144,8 @@ export function QuoteBuilder() {
                     Collect COD
                   </Button>
                 )}
-                {quote && (
-                  <QuoteStatusPill status={quote.status} quoteId={quote.id} showAdvance size="md" />
+                {quote && quoteStatsStatus && (
+                  <QuoteStatusPill status={quoteStatsStatus} quoteId={quote.id} showAdvance size="md" />
                 )}
               </div>
               <div className="flex items-center gap-2">

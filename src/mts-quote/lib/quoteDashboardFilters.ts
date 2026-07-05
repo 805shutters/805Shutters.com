@@ -10,12 +10,25 @@ export type CalendarAppointmentForStats = {
 };
 
 export function getQuoteStatsStatus(
-  quote: Pick<SalesQuote, "status" | "signed_at" | "customer_signature">
+  quote: Pick<
+    SalesQuote,
+    | "status"
+    | "sent_at"
+    | "signed_at"
+    | "ordered_at"
+    | "received_at"
+    | "installed_at"
+    | "archived_at"
+    | "customer_signature"
+  >
 ): QuoteStatus {
-  if ((quote.status === "draft" || quote.status === "sent") && (quote.signed_at || quote.customer_signature)) {
-    return "sold";
-  }
-  return quote.status;
+  if (quote.status === "archived" || quote.archived_at) return "archived";
+  if (quote.status === "installed" || quote.installed_at) return "installed";
+  if (quote.status === "received" || quote.received_at) return "received";
+  if (quote.status === "ordered" || quote.ordered_at) return "ordered";
+  if (quote.status === "sold" || quote.signed_at || quote.customer_signature) return "sold";
+  if (quote.status === "sent" || quote.sent_at) return "sent";
+  return "draft";
 }
 
 function isActiveCalendarAppointment(appointment: CalendarAppointmentForStats): boolean {
@@ -58,7 +71,7 @@ export function filterQuotesForStatsTile(
       return quotes.filter(
         (q) =>
           (q.appointment_date === today || matchingCalendarQuoteIds.has(q.id)) &&
-          q.status !== "archived"
+          getQuoteStatsStatus(q) !== "archived"
       );
     case "upcoming":
       return quotes.filter(

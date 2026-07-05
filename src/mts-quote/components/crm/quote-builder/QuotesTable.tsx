@@ -12,6 +12,7 @@ import { Copy, Images, Trash2 } from "lucide-react";
 import type { SalesQuote } from "@mts/types/quote";
 import { format } from "date-fns";
 import { QuoteStatusPill } from "./QuoteStatusPill";
+import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 
 interface QuotesTableProps {
   quotes: SalesQuote[];
@@ -72,6 +73,7 @@ export function QuotesTable({
         <TableBody>
           {quotes.map((quote) => {
             const isHovered = hoveredId === quote.id;
+            const status = getQuoteStatsStatus(quote);
             return (
               <TableRow
                 key={quote.id}
@@ -101,7 +103,7 @@ export function QuotesTable({
                 </TableCell>
                 <TableCell>
                   <QuoteStatusPill
-                    status={quote.status}
+                    status={status}
                     quoteId={quote.id}
                     showAdvance={isHovered}
                   />

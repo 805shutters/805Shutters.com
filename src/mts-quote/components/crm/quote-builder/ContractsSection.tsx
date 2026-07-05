@@ -5,6 +5,8 @@ import { Button } from "@mts/components/ui/button";
 import { cn } from "@mts/lib/utils";
 import { format } from "date-fns";
 import type { SalesQuote } from "@mts/types/quote";
+import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
+import { getStatusColor, getStatusLabel } from "@mts/lib/quoteStatus";
 
 interface ContractsSectionProps {
   quotes: SalesQuote[];
@@ -14,11 +16,15 @@ interface ContractsSectionProps {
 export function ContractsSection({ quotes, onOpenContract }: ContractsSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Unsold = draft + sent (quotes not yet signed)
-  const unsoldContracts = quotes.filter((q) => q.status === "draft" || q.status === "sent");
+  const unsoldContracts = quotes.filter((q) => {
+    const status = getQuoteStatsStatus(q);
+    return status === "draft" || status === "sent";
+  });
 
-  // Sold = sold + installed (signed contracts)
-  const soldContracts = quotes.filter((q) => q.status === "sold" || q.status === "installed");
+  const soldContracts = quotes.filter((q) => {
+    const status = getQuoteStatsStatus(q);
+    return status === "sold" || status === "ordered" || status === "received" || status === "installed";
+  });
 
   const totalContracts = unsoldContracts.length + soldContracts.length;
 
@@ -101,12 +107,7 @@ function ContractRow({
   onOpen: () => void;
   variant: "unsold" | "sold";
 }) {
-  const statusColors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-700",
-    sent: "bg-blue-100 text-blue-700",
-    sold: "bg-emerald-100 text-emerald-700",
-    installed: "bg-purple-100 text-purple-700",
-  };
+  const status = getQuoteStatsStatus(quote);
 
   return (
     <div
@@ -138,9 +139,12 @@ function ContractRow({
             : "—"}
         </span>
         <span
-          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${statusColors[quote.status] || ""}`}
+          className={cn(
+            "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+            getStatusColor(status)
+          )}
         >
-          {quote.status}
+          {getStatusLabel(status)}
         </span>
         <Button
           variant="ghost"

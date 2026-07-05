@@ -40,6 +40,40 @@ describe("quote dashboard stats filters", () => {
     ).toBe("archived");
   });
 
+  it("uses lifecycle timestamps when the stored status is stale", () => {
+    expect(
+      getQuoteStatsStatus(
+        quote({ id: "sent-at", status: "draft", sent_at: "2026-07-01T18:00:00.000Z" })
+      )
+    ).toBe("sent");
+    expect(
+      getQuoteStatsStatus(
+        quote({ id: "ordered-at", status: "sent", ordered_at: "2026-07-03T18:00:00.000Z" })
+      )
+    ).toBe("ordered");
+    expect(
+      getQuoteStatsStatus(
+        quote({
+          id: "received-at",
+          status: "sold",
+          signed_at: "2026-07-02T18:00:00.000Z",
+          received_at: "2026-07-04T18:00:00.000Z",
+        })
+      )
+    ).toBe("received");
+    expect(
+      getQuoteStatsStatus(
+        quote({
+          id: "installed-at",
+          status: "sold",
+          signed_at: "2026-07-02T18:00:00.000Z",
+          ordered_at: "2026-07-03T18:00:00.000Z",
+          installed_at: "2026-07-05T18:00:00.000Z",
+        })
+      )
+    ).toBe("installed");
+  });
+
   it("includes signed sent quotes when the Sold tile is clicked", () => {
     const signedSent = quote({
       id: "signed-sent",
@@ -71,6 +105,38 @@ describe("quote dashboard stats filters", () => {
 
     expect(filterQuotesForStatsTile([signedFuture, unsignedFuture], "upcoming").map((item) => item.id)).toEqual([
       "unsigned-future",
+    ]);
+  });
+
+  it("keeps timestamp-archived quotes out of date tiles", () => {
+    const today = new Date().toISOString().split("T")[0];
+    const archivedToday = quote({
+      id: "archived-today",
+      status: "sent",
+      appointment_date: today,
+      archived_at: "2026-07-05T18:00:00.000Z",
+    });
+
+    expect(filterQuotesForStatsTile([archivedToday], "today")).toEqual([]);
+  });
+
+  it("filters timestamp-derived lifecycle rows into the matching status tile", () => {
+    const staleOrdered = quote({
+      id: "stale-ordered",
+      status: "sent",
+      ordered_at: "2026-07-03T18:00:00.000Z",
+    });
+    const staleInstalled = quote({
+      id: "stale-installed",
+      status: "sold",
+      installed_at: "2026-07-05T18:00:00.000Z",
+    });
+
+    expect(filterQuotesForStatsTile([staleOrdered, staleInstalled], "ordered").map((item) => item.id)).toEqual([
+      "stale-ordered",
+    ]);
+    expect(filterQuotesForStatsTile([staleOrdered, staleInstalled], "installed").map((item) => item.id)).toEqual([
+      "stale-installed",
     ]);
   });
 });
