@@ -17,6 +17,10 @@ import {
   buildUnpaidPartnerPaymentItemForRow,
   paymentPersonLabel
 } from "@/lib/crm/partner-payments";
+import {
+  partnerPaymentReceiptAllocationFromRow,
+  sendPartnerPaymentReceiptEmail
+} from "@/lib/crm/partner-payment-receipts";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -1568,6 +1572,7 @@ export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<
   if (error || !data) throw new CrmAuthError(502, "CRM job could not be created.");
 
   await syncCustomerFromJob(supabase, data);
+
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: data.id,
@@ -3895,6 +3900,16 @@ export async function createPartnerPaymentBatch(
     payment = rpcPayment;
   }
 
+  const receiptEmail = await sendPartnerPaymentReceiptEmail({
+    paymentId: String(payment.id),
+    person,
+    paidOn,
+    amount,
+    note,
+    createdByEmail: actor.email,
+    allocations: allocations.map(partnerPaymentReceiptAllocationFromRow)
+  });
+
   await recordCrmActivity(supabase, actor, {
     entityType: person === "ken" ? "ken_payment" : "commission_payment",
     entityId: String(payment.id),
@@ -3903,13 +3918,15 @@ export async function createPartnerPaymentBatch(
     metadata: {
       person,
       allocationCount: allocations.length,
-      allocatedAmount: amount
+      allocatedAmount: amount,
+      receiptEmail
     }
   });
 
   return {
     payment,
     allocations,
+    receiptEmail,
     dashboard: await loadCrmDashboardData(supabase)
   };
 }

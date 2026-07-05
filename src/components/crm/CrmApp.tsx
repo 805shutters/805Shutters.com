@@ -73,6 +73,14 @@ type PartnerPaymentRequest = {
   amount?: number;
   item_ids?: string[];
 };
+type PartnerPaymentReceiptResponse = {
+  sent: boolean;
+  skipped?: string;
+  error?: string;
+  id?: string;
+  to: string;
+  filename: string;
+};
 type BookkeepingEditableField =
   | "customer"
   | "soldDate"
@@ -1843,13 +1851,18 @@ export function CrmApp({
     setMessage(null);
 
     try {
-      const result = await crmFetch<{ dashboard: CrmDashboardData }>(session, "/api/crm/payments/batch", {
+      const result = await crmFetch<{ dashboard: CrmDashboardData; receiptEmail?: PartnerPaymentReceiptResponse }>(session, "/api/crm/payments/batch", {
         method: "POST",
         body: JSON.stringify(payload)
       });
       setData(result.dashboard);
       setLastSyncedAt(Date.now());
-      setMessage(`${paymentPersonDisplayName(payload.person)} payment recorded.`);
+      const receiptMessage = result.receiptEmail?.sent
+        ? ` Receipt PDF emailed to ${result.receiptEmail.to}.`
+        : result.receiptEmail
+          ? ` Receipt email not sent: ${result.receiptEmail.skipped || result.receiptEmail.error || "unknown error"}.`
+          : "";
+      setMessage(`${paymentPersonDisplayName(payload.person)} grouped payment recorded.${receiptMessage}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Payment could not be recorded.");
       throw error;
@@ -1881,7 +1894,7 @@ export function CrmApp({
     setMessage(null);
 
     try {
-      const result = await crmFetch<{ dashboard: CrmDashboardData }>(session, "/api/crm/payments/batch", {
+      const result = await crmFetch<{ dashboard: CrmDashboardData; receiptEmail?: PartnerPaymentReceiptResponse }>(session, "/api/crm/payments/batch", {
         method: "POST",
         body: JSON.stringify({
           person,
@@ -1893,7 +1906,12 @@ export function CrmApp({
       });
       setData(result.dashboard);
       setLastSyncedAt(Date.now());
-      setMessage(`${personName} marked paid for ${row.customerName}.`);
+      const receiptMessage = result.receiptEmail?.sent
+        ? ` Receipt PDF emailed to ${result.receiptEmail.to}.`
+        : result.receiptEmail
+          ? ` Receipt email not sent: ${result.receiptEmail.skipped || result.receiptEmail.error || "unknown error"}.`
+          : "";
+      setMessage(`${personName} marked paid for ${row.customerName}.${receiptMessage}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : `${personName} payment could not be marked paid.`);
       await refresh();
@@ -9700,10 +9718,11 @@ function PartnerPaymentsView({
 
   const openReview = () => {
     if (!activeItems.length) return;
+    const reviewItems = selectedItems.length ? selectedItems : activeItems;
     setReview({
-      itemKeys: activeItems.map((item) => item.itemKey),
-      amount: sumPartnerRemaining(activeItems),
-      count: activeItems.length
+      itemKeys: reviewItems.map((item) => item.itemKey),
+      amount: sumPartnerRemaining(reviewItems),
+      count: reviewItems.length
     });
     setReviewDate(todayInputValue());
     setReviewNote("");
@@ -9730,16 +9749,16 @@ function PartnerPaymentsView({
     event.preventDefault();
     const form = event.currentTarget;
     const formData = new FormData(form);
-    const person = (formString(formData, "person") || activePerson) as CrmPaymentPerson;
-    const manualSelectedItems = person === activePerson ? selectedItems : [];
+    const manualSelectedItems = selectedItems.length ? selectedItems : activeItems;
+    if (!manualSelectedItems.length) return;
 
     try {
       await onPay({
-        person,
-        amount: Number(formString(formData, "amount") || 0),
+        person: activePerson,
+        amount: sumPartnerRemaining(manualSelectedItems),
         paid_on: formString(formData, "paid_on") || null,
         note: formString(formData, "note"),
-        item_ids: manualSelectedItems.length ? manualSelectedItems.map((item) => item.itemKey) : undefined
+        item_ids: manualSelectedItems.map((item) => item.itemKey)
       });
       form.reset();
       setSelectedItemKeys(new Set());
@@ -9757,7 +9776,7 @@ function PartnerPaymentsView({
             <h2>Payables</h2>
           </div>
           <button type="button" disabled={busy || !activeItems.length} onClick={openReview}>
-            Pay {paymentPersonDisplayName(activePerson)}
+            Process {paymentPersonDisplayName(activePerson)} Payment
           </button>
         </div>
 
@@ -9790,28 +9809,15 @@ function PartnerPaymentsView({
 
         <ZellePaymentPanel person={activePerson} amountDue={activePersonLedger?.owed || 0} />
 
-        <CollapsiblePanel title="Manual / Partial Payment">
+        <CollapsiblePanel title="Custom Group Payment">
           <form className="crm-form" onSubmit={submitManualPayment} key={activePerson}>
             <label>
               Person
-              <select name="person" defaultValue={activePerson}>
-                {paymentPeople.map((person) => (
-                  <option value={person} key={person}>
-                    {paymentPersonDisplayName(person)}
-                  </option>
-                ))}
-              </select>
+              <input value={paymentPersonDisplayName(activePerson)} readOnly />
             </label>
             <label>
               Amount
-              <input
-                name="amount"
-                type="number"
-                min="0"
-                step="0.01"
-                required
-                defaultValue={selectedTotal > 0 ? selectedTotal : ""}
-              />
+              <input value={toLedgerCurrency(selectedTotal > 0 ? selectedTotal : activePersonLedger?.owed || 0)} readOnly />
             </label>
             <div className="crm-field-row">
               <label>
@@ -9820,7 +9826,7 @@ function PartnerPaymentsView({
               </label>
               <label>
                 Selected Jobs
-                <input value={selectedItems.length ? `${selectedItems.length} selected` : "Oldest active jobs"} readOnly />
+                <input value={selectedItems.length ? `${selectedItems.length} selected` : "All active jobs"} readOnly />
               </label>
             </div>
             <label>
@@ -9828,7 +9834,7 @@ function PartnerPaymentsView({
               <textarea name="note" rows={3} placeholder="Check #, Zelle, adjustment..." />
             </label>
             <button type="submit" disabled={busy}>
-              Record Manual Payment
+              Save Group Payment & Email PDF
             </button>
           </form>
         </CollapsiblePanel>
@@ -9921,7 +9927,7 @@ function PartnerPaymentsView({
             <div className="crm-slot-form-head">
               <div>
                 <p className="eyebrow">Review Payment</p>
-                <h2 id="crm-payment-review-title">Pay {paymentPersonDisplayName(activePerson)}</h2>
+                <h2 id="crm-payment-review-title">Process Group Payment</h2>
               </div>
               <button type="button" className="crm-slot-close" aria-label="Close payment review" onClick={() => setReview(null)}>
                 ×
@@ -9951,7 +9957,7 @@ function PartnerPaymentsView({
                   Cancel
                 </button>
                 <button type="submit" disabled={busy}>
-                  Confirm Payment
+                  Save Payment & Send PDF
                 </button>
               </div>
             </form>
@@ -9978,7 +9984,7 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
               {batch.allocations.map((allocation) => (
                 <p key={allocation.id}>
                   <strong>{allocation.customerName}</strong>
-                  <span>{formatShortDate(allocation.closedAt)}</span>
+                  <span>{[allocation.quoteNumber, formatShortDate(allocation.closedAt)].filter(Boolean).join(" / ")}</span>
                   <em>{toLedgerCurrency(allocation.amount)}{allocation.virtual ? " legacy" : ""}</em>
                 </p>
               ))}

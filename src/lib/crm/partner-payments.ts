@@ -280,6 +280,11 @@ function optionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function optionalNumber(value: unknown) {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? roundCents(amount) : null;
+}
+
 function metadataAllocationSource(value: unknown): CrmBookkeepingRow["source"] {
   return value === "crm_quote" || value === "legacy_sheet" || value === "manual" ? value : "manual";
 }
@@ -296,6 +301,7 @@ function paymentMetadataAllocations(
     .map((value, index): CrmPartnerPaymentHistoryAllocation | null => {
       if (!value || typeof value !== "object") return null;
       const record = value as Record<string, unknown>;
+      const meta = record.meta && typeof record.meta === "object" ? (record.meta as Record<string, unknown>) : {};
       const allocationPerson = optionalString(record.person) || optionalString(record.recipient);
       if (allocationPerson && allocationPerson !== person) return null;
 
@@ -307,7 +313,9 @@ function paymentMetadataAllocations(
         id: `meta-${paymentId}-${itemKey}-${index}`,
         itemKey,
         customerName: optionalString(record.customer_name) || optionalString(record.customerName) || itemKey,
+        quoteNumber: optionalString(meta.quoteNumber),
         closedAt: optionalString(record.closed_at) || optionalString(record.closedAt),
+        total: optionalNumber(meta.total),
         amount,
         source: metadataAllocationSource(record.source),
         quoteId: optionalString(record.quote_id) || optionalString(record.quoteId),
@@ -322,11 +330,14 @@ function paymentMetadataAllocations(
 function explicitAllocationHistory(
   allocation: CrmKenPaymentAllocation | CrmCommissionPaymentAllocation
 ): CrmPartnerPaymentHistoryAllocation {
+  const meta = allocation.meta && typeof allocation.meta === "object" ? allocation.meta : {};
   return {
     id: allocation.id,
     itemKey: allocation.item_key,
     customerName: allocation.customer_name,
+    quoteNumber: optionalString(meta.quoteNumber),
     closedAt: allocation.closed_at,
+    total: optionalNumber(meta.total),
     amount: roundCents(allocation.amount),
     source: allocation.source,
     quoteId: allocation.quote_id,
@@ -341,7 +352,9 @@ function itemVirtualHistory(paymentId: string, item: WorkingItem, amount: number
     id: `legacy-${paymentId}-${item.itemKey}`,
     itemKey: item.itemKey,
     customerName: item.customerName,
+    quoteNumber: item.quoteNumber,
     closedAt: item.closedAt,
+    total: item.total,
     amount: roundCents(amount),
     source: item.source,
     quoteId: item.quoteId,

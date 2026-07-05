@@ -649,7 +649,9 @@ export type CrmPartnerPaymentHistoryAllocation = {
   id: string;
   itemKey: string;
   customerName: string;
+  quoteNumber: string | null;
   closedAt: string | null;
+  total: number | null;
   amount: number;
   source: CrmBookkeepingRow["source"];
   quoteId: string | null;

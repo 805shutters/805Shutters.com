@@ -4,6 +4,11 @@
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
+export type EmailAttachment = {
+  filename: string;
+  content: string;
+  contentType?: string;
+};
 
 const DEFAULT_EMAIL_FROM = "805 Shutters <805@805shutters.com>";
 
@@ -20,6 +25,7 @@ export async function sendEmail(input: {
   subject: string;
   html: string;
   text: string;
+  attachments?: EmailAttachment[];
 }): Promise<EmailResult> {
   const to = (input.to || "").trim();
   if (!to) return { sent: false, skipped: "no recipient email" };
@@ -38,6 +44,15 @@ export async function sendEmail(input: {
         subject: input.subject,
         html: input.html,
         text: input.text,
+        ...(input.attachments?.length
+          ? {
+              attachments: input.attachments.map((attachment) => ({
+                filename: attachment.filename,
+                content: attachment.content,
+                ...(attachment.contentType ? { content_type: attachment.contentType } : {})
+              }))
+            }
+          : {})
       }),
     });
     const data = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
