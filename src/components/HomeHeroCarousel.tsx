@@ -12,6 +12,7 @@ export type HomeHeroSlide = {
 
 type HomeHeroCarouselProps = {
   slides: HomeHeroSlide[];
+  rotationIntervalMs?: number;
 };
 
 type PreviewLayer = {
@@ -24,12 +25,13 @@ type PreviewState = {
   active: boolean;
 };
 
-export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
+export function HomeHeroCarousel({ slides, rotationIntervalMs = 0 }: HomeHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [freezeOnFirstSlide, setFreezeOnFirstSlide] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ layers: [], active: false });
   const previewKeyRef = useRef(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const activeSlideCount = freezeOnFirstSlide ? Math.min(slides.length, 1) : slides.length;
 
   useEffect(() => {
     const staticHeroQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -65,6 +67,22 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
       }
     });
   }, [activeIndex, freezeOnFirstSlide]);
+
+  useEffect(() => {
+    setActiveIndex((current) => (activeSlideCount > 0 && current >= activeSlideCount ? 0 : current));
+  }, [activeSlideCount]);
+
+  useEffect(() => {
+    if (rotationIntervalMs <= 0 || freezeOnFirstSlide || preview.active || activeSlideCount <= 1) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % activeSlideCount);
+    }, rotationIntervalMs);
+
+    return () => window.clearInterval(interval);
+  }, [activeSlideCount, freezeOnFirstSlide, preview.active, rotationIntervalMs]);
 
   useEffect(() => {
     const showPreview = (event: Event) => {
@@ -134,7 +152,7 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   const previousIndex = renderedSlides.length > 1 ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length : activeIndex;
   const nextIndex = renderedSlides.length > 1 ? (activeIndex + 1) % renderedSlides.length : activeIndex;
   const shouldLoadSlide = (index: number) =>
-    renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex;
+    rotationIntervalMs > 0 || renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex;
 
   return (
     <div className="home-hero-media home-hero-carousel" aria-hidden="true" ref={carouselRef}>

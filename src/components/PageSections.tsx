@@ -357,6 +357,34 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   }
 ];
 
+const featuredHomeShutterSlide: HomeHeroSlide = {
+  label: "Custom Shutters",
+  tagline: "Clean white shutters, custom fit to the room.",
+  image: "/images/shutters-portfolio/style-contemporary-flat.jpg",
+  imageAlt: "Bright living room with custom white plantation shutters, a sofa, and olive tree"
+};
+
+const featuredResidentialHeroSlides = (page: SitePage, allSlides = homeHeroSlides(page)): HomeHeroSlide[] => {
+  const findSlide = (label: string) => allSlides.find((slide) => slide.label === label);
+
+  return [
+    featuredHomeShutterSlide,
+    findSlide("Layered Shades"),
+    findSlide("Original Home Photo"),
+    findSlide("Shutters"),
+    findSlide("Honeycomb Shades")
+  ].filter((slide): slide is HomeHeroSlide => Boolean(slide));
+};
+
+const appendUnusedHeroSlides = (featuredSlides: HomeHeroSlide[], allSlides: HomeHeroSlide[]) => {
+  const featuredImages = new Set(featuredSlides.map((slide) => slide.image));
+
+  return [
+    ...featuredSlides,
+    ...allSlides.filter((slide) => !featuredImages.has(slide.image))
+  ];
+};
+
 const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
   {
     label: "Commercial Hero",
@@ -1256,8 +1284,9 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : residentialRecentWorkPhotos;
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
-  const heroMediaSlides = commercialMode ? heroSlides : heroSlides.slice(0, 1);
-  const residentialPhotoFlowSlides = commercialMode ? [] : heroSlides.slice(1);
+  const residentialFeaturedHeroSlides = commercialMode ? [] : featuredResidentialHeroSlides(page, heroSlides);
+  const heroMediaSlides = commercialMode ? heroSlides : residentialFeaturedHeroSlides;
+  const residentialPhotoFlowSlides = commercialMode ? [] : appendUnusedHeroSlides(residentialFeaturedHeroSlides, heroSlides);
   const heroTitle = commercialMode
     ? "Commercial shade systems for every workspace"
     : "Custom Shutters, Shades & Blinds — Proudly Serving Ventura County for 30 Years";
@@ -1268,7 +1297,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={heroMediaSlides} />
+          <HomeHeroCarousel slides={heroMediaSlides} rotationIntervalMs={commercialMode ? 0 : 7000} />
           <div className="home-hero-overlay">
             <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">
