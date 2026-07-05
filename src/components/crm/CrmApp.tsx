@@ -10663,12 +10663,6 @@ function ReadOnlyBookkeepingSpreadsheet({
 
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
-      <div className="crm-section-head">
-        <div>
-          <p className="eyebrow">Bookkeeping Spreadsheet</p>
-          <h2>Quote Job Ledger</h2>
-        </div>
-      </div>
       <div className="crm-bookkeeping-summary-grid">
         {summaryCards.map((card) =>
           card.action ? (
@@ -10978,12 +10972,6 @@ function BookkeepingSpreadsheet({
 
   return (
     <section className="crm-ledger crm-bookkeeping-ledger">
-      <div className="crm-section-head">
-        <div>
-          <p className="eyebrow">Bookkeeping</p>
-          <h2>Quote Job Ledger</h2>
-        </div>
-      </div>
       <div className="crm-bookkeeping-summary-grid">
         {summaryCards.map((card) =>
           card.action ? (
