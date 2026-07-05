@@ -25,6 +25,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         financed_total: Number(payload.financed_total),
         installment_count: Number(payload.installment_count),
         method,
+        card_fee_percent: payload.card_fee_percent != null ? Number(payload.card_fee_percent) : undefined,
         notes: typeof payload.notes === "string" && payload.notes.trim() ? payload.notes.trim() : null
       },
       { email, userId: user.id }

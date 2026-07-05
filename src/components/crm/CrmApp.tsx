@@ -38,6 +38,7 @@ import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/
 import {
   PAYMENT_PLAN_METHOD_LABELS,
   getPaymentPlanMeta,
+  installmentChargeAmount,
   type CrmPaymentPlanMethod
 } from "@/lib/crm/payment-plan-shared";
 import {
@@ -3168,7 +3169,13 @@ type LedgerLineAction = {
 type PaymentPlanUiAction =
   | {
       op: "create";
-      payload: { financed_total: number; installment_count: number; method: string; notes?: string | null };
+      payload: {
+        financed_total: number;
+        installment_count: number;
+        method: string;
+        card_fee_percent?: number;
+        notes?: string | null;
+      };
     }
   | { op: "mark_paid"; seq: number; payment_type?: string }
   | { op: "cancel"; reason?: string };
@@ -12935,6 +12942,10 @@ function PaymentPlanSection({
   const [amount, setAmount] = useState<string>(defaultTotal ? String(defaultTotal) : "");
   const [count, setCount] = useState<string>("6");
   const [method, setMethod] = useState<CrmPaymentPlanMethod>("square_autopay");
+  const [passCardFee, setPassCardFee] = useState(true);
+  const cardFeeActive = method === "square_autopay" && passCardFee;
+  const perMonthBase = Number(amount) > 0 && Number(count) > 0 ? Number(amount) / Number(count) : 0;
+  const perMonthCharge = cardFeeActive ? perMonthBase * 1.03 : perMonthBase;
 
   const paidCount = openPlan ? openPlan.installments.filter((inst) => inst.paid_at).length : 0;
   const summaryLabel = openPlan
@@ -12958,6 +12969,7 @@ function PaymentPlanSection({
               <strong>
                 {toLedgerCurrency(openPlan.financed_total)} over {openPlan.installment_count} monthly payment
                 {openPlan.installment_count === 1 ? "" : "s"} - 0% interest
+                {openPlan.card_fee_percent ? ` + ${openPlan.card_fee_percent}% card fee (customer pays)` : ""}
               </strong>
               <span>
                 {PAYMENT_PLAN_METHOD_LABELS[openPlan.method] || openPlan.method}
@@ -12972,7 +12984,8 @@ function PaymentPlanSection({
                   Payment {inst.seq}/{openPlan.installment_count}
                 </strong>
                 <span>
-                  {toLedgerCurrency(inst.amount)}
+                  {toLedgerCurrency(installmentChargeAmount(inst))}
+                  {inst.card_fee ? ` (${toLedgerCurrency(inst.amount)} + ${toLedgerCurrency(inst.card_fee)} card fee)` : ""}
                   {inst.due_date ? ` / due ${formatShortDate(inst.due_date)}` : " / due date set at install"}
                   {inst.paid_at ? ` / PAID ${formatShortDate(inst.paid_at)}${inst.payment_type ? ` (${titleCase(inst.payment_type)})` : ""}` : ""}
                 </span>
@@ -12982,7 +12995,7 @@ function PaymentPlanSection({
                     className="crm-ghost-button"
                     disabled={busy}
                     onClick={() => {
-                      if (window.confirm(`Mark payment ${inst.seq} of ${openPlan.installment_count} (${toLedgerCurrency(inst.amount)}) as paid?\n\nIt will also be recorded in the bookkeeping ledger.`)) {
+                      if (window.confirm(`Mark payment ${inst.seq} of ${openPlan.installment_count} (${toLedgerCurrency(installmentChargeAmount(inst))}) as paid?\n\nIt will also be recorded in the bookkeeping ledger.`)) {
                         void onPaymentPlanAction(job.id, { op: "mark_paid", seq: inst.seq });
                       }
                     }}
@@ -13045,6 +13058,16 @@ function PaymentPlanSection({
                 <option value="other">Other</option>
               </select>
             </label>
+            {method === "square_autopay" ? (
+              <label className="crm-payment-plan-fee-toggle">
+                <input
+                  type="checkbox"
+                  checked={passCardFee}
+                  onChange={(event) => setPassCardFee(event.target.checked)}
+                />
+                Customer pays the 3% card processing fee (credit cards only - waive it if they use a debit card)
+              </label>
+            ) : null}
             <button
               type="button"
               className="crm-ghost-button"
@@ -13055,16 +13078,18 @@ function PaymentPlanSection({
                   payload: {
                     financed_total: Number(amount),
                     installment_count: Number(count),
-                    method
+                    method,
+                    card_fee_percent: cardFeeActive ? 3 : 0
                   }
                 })
               }
             >
               Create payment plan
             </button>
-            {Number(amount) > 0 && Number(count) > 0 ? (
+            {perMonthBase > 0 ? (
               <p className="crm-payment-plan-hint">
-                = {toLedgerCurrency(Number(amount) / Number(count))} per month for {count} months
+                = {toLedgerCurrency(perMonthCharge)} per month for {count} months
+                {cardFeeActive ? ` (${toLedgerCurrency(perMonthBase)} + 3% card fee)` : ""}
               </p>
             ) : null}
           </div>

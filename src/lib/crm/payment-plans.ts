@@ -17,6 +17,7 @@ import {
   getPaymentPlanMeta,
   hasOpenPaymentPlan,
   formatMoney,
+  installmentChargeAmount,
   type CrmPaymentPlanMeta,
   type CrmPaymentPlanMethod
 } from "@/lib/crm/payment-plan-shared";
@@ -132,6 +133,7 @@ export async function createPaymentPlanForJob(
     financed_total: number;
     installment_count: number;
     method?: CrmPaymentPlanMethod;
+    card_fee_percent?: number;
     notes?: string | null;
   },
   actor: CrmActor
@@ -144,6 +146,11 @@ export async function createPaymentPlanForJob(
   if (!Number.isFinite(count) || count < 1 || count > 12) {
     throw new Error("Installment count must be between 1 and 12.");
   }
+
+  const method = input.method || "square_autopay";
+  // Card-network rules cap credit-card surcharges at 3%; only card plans carry a fee.
+  const rawFeePercent = input.card_fee_percent ?? (method === "square_autopay" ? 3 : 0);
+  const cardFeePercent = method === "square_autopay" ? Math.min(3, Math.max(0, Number(rawFeePercent) || 0)) : 0;
 
   const job = await fetchJob(supabase, jobId);
   if (hasOpenPaymentPlan(job.meta)) {
@@ -160,10 +167,12 @@ export async function createPaymentPlanForJob(
     status: jobInstalled ? "active" : "pending_install",
     financed_total: financedTotal,
     installment_count: count,
-    method: input.method || "square_autopay",
+    card_fee_percent: cardFeePercent,
+    method,
     installments: amounts.map((amount, i) => ({
       seq: i + 1,
       amount,
+      card_fee: cardFeePercent > 0 ? round2((amount * cardFeePercent) / 100) : null,
       due_date: dueDates ? dueDates[i] : null,
       paid_at: null,
       paid_amount: null,
@@ -182,6 +191,7 @@ export async function createPaymentPlanForJob(
     financed_total: financedTotal,
     installment_count: count,
     method: plan.method,
+    card_fee_percent: cardFeePercent,
     status: plan.status
   });
 
@@ -218,11 +228,12 @@ export async function activatePaymentPlanForJob(
 
     if (job.phone) {
       const first = activated.installments[0];
+      const feeNote = first.card_fee ? ` (includes ${plan.card_fee_percent || 3}% card processing fee)` : "";
       await sendSms({
         to: job.phone,
         body:
           `Hi ${String(job.customer_name || "").trim().split(/\s+/)[0] || "there"}, your 805 Shutters installation is complete - thank you! ` +
-          `Your payment plan starts today: ${activated.installments.length} monthly payments of ${formatMoney(first.amount)}, first one due today (${first.due_date}). ` +
+          `Your payment plan starts today: ${activated.installments.length} monthly payments of ${formatMoney(installmentChargeAmount(first))}${feeNote}, first one due today (${first.due_date}). ` +
           `Questions? Call or text 805-806-9344.`
       });
     }
@@ -251,7 +262,9 @@ export async function markInstallmentPaid(
   if (installment.paid_at) throw new Error("This installment is already marked paid.");
 
   const paidAt = input.paid_at || todayIso();
-  const paidAmount = round2(Number(input.amount ?? installment.amount));
+  // Customer pays base + card fee; the ledger below books only the base so
+  // the sale balance stays correct.
+  const paidAmount = round2(Number(input.amount ?? installmentChargeAmount(installment)));
   const paymentType = input.payment_type || (plan.method === "zelle" ? "zelle" : "credit_card");
 
   const installments = plan.installments.map((inst) =>
@@ -280,11 +293,13 @@ export async function markInstallmentPaid(
         bookkeeping_entry_id: entry.id,
         payment_label: `Payment plan ${seq}/${plan.installment_count}`,
         payment_type: ["zelle", "cash", "check", "credit_card", "venmo"].includes(paymentType) ? paymentType : "other",
-        amount: paidAmount,
+        amount: installment.amount,
         paid_at: paidAt,
         source: "manual",
-        notes: "In-house payment plan installment",
-        meta: { createdBy: actor.email, paymentPlanSeq: seq }
+        notes: installment.card_fee
+          ? `In-house payment plan installment (customer paid ${formatMoney(paidAmount)} including ${formatMoney(installment.card_fee)} card processing fee)`
+          : "In-house payment plan installment",
+        meta: { createdBy: actor.email, paymentPlanSeq: seq, cardFee: installment.card_fee || 0 }
       });
       if (paymentError) console.error("payment-plan ledger mirror failed", paymentError.message);
     }
@@ -368,7 +383,7 @@ export async function runPaymentPlanReminders(supabase: CrmSupabaseClient, now: 
           to: jobRow.phone,
           body:
             `Hi ${firstName}, a friendly reminder from 805 Shutters: payment ${inst.seq} of ${plan.installment_count} ` +
-            `(${formatMoney(inst.amount)}) is due ${when}. Questions? Call or text 805-806-9344. Thank you!`
+            `(${formatMoney(installmentChargeAmount(inst))}) is due ${when}. Questions? Call or text 805-806-9344. Thank you!`
         });
         if (sms.sent) {
           installments[i] = { ...inst, reminder_sent_at: new Date().toISOString() };
@@ -381,11 +396,11 @@ export async function runPaymentPlanReminders(supabase: CrmSupabaseClient, now: 
             to: jobRow.phone,
             body:
               `Hi ${firstName}, this is 805 Shutters - payment ${inst.seq} of ${plan.installment_count} ` +
-              `(${formatMoney(inst.amount)}, due ${inst.due_date}) hasn't come through yet. ` +
+              `(${formatMoney(installmentChargeAmount(inst))}, due ${inst.due_date}) hasn't come through yet. ` +
               `Please call or text 805-806-9344 so we can get it sorted. Thank you!`
           });
         }
-        const alertBody = `805 Shutters: payment plan OVERDUE — ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${plan.installment_count} (${formatMoney(inst.amount)}) was due ${inst.due_date}.`;
+        const alertBody = `805 Shutters: payment plan OVERDUE — ${jobRow.customer_name || "customer"}, payment ${inst.seq}/${plan.installment_count} (${formatMoney(installmentChargeAmount(inst))}) was due ${inst.due_date}.`;
         for (const num of shopNumbers) {
           await sendSms({ to: num, body: alertBody });
         }

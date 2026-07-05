@@ -52,8 +52,10 @@ describe("buildQuoteEmail", () => {
 
     expect(html).toContain("Living Room");
     expect(html).toContain("Honeycomb Shades");
-    expect(html).not.toContain("<img");
-    expect(html).not.toContain("/images/");
+    // No product thumbnails inside the line-item table (the only images in the
+    // email are the header logo and the financing-section logos).
+    const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("Two Financing Options"));
+    expect(lineItemTable).not.toContain("<img");
     expect(text).toContain("Quote items:");
     expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
   });
@@ -69,6 +71,44 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("MTS");
     expect(html).not.toContain("source");
     expect(html).not.toContain("internal");
+  });
+});
+
+describe("financing options section", () => {
+  it("appears in the quote email with both options and the customer's monthly example", () => {
+    const mail = buildQuoteEmail("Susan Milani", "https://example.com/q/abc", 6174, {
+      quoteNumber: "Q-1042",
+      depositDue: 3087,
+      balanceDue: 3087,
+      logoUrl: "https://www.805shutters.com/brand/805-shutters-logo-exact-transparent.png"
+    });
+    expect(mail.html).toContain("Two Financing Options Available!");
+    expect(mail.html).toContain("Wisetack Financing");
+    expect(mail.html).toContain("805 In-House Plan");
+    // 3087 / 6 * 1.03 = 529.935 -> $529.94/mo
+    expect(mail.html).toContain("$529.94");
+    expect(mail.html).toContain("/images/wisetack-logo.png");
+    expect(mail.html).toContain("/brand/805-shutters-logo-exact-transparent.png");
+    expect(mail.html).toContain("sms:+18058069344");
+    expect(mail.html).toContain("Q-1042");
+    expect(mail.html).toContain("subject to credit approval");
+    expect(mail.text).toContain("TWO FINANCING OPTIONS AVAILABLE!");
+    expect(mail.text).toContain("$529.94");
+  });
+
+  it("appears in the payment-link email and omits the monthly figure when no amounts are known", () => {
+    const withAmounts = buildPaymentLinkEmail("Susan", "https://example.com/pay", {
+      quoteNumber: "Q-1042",
+      total: 6174,
+      depositDue: 3087
+    });
+    expect(withAmounts.html).toContain("Two Financing Options Available!");
+    expect(withAmounts.html).toContain("$529.94");
+
+    const noAmounts = buildQuoteEmail("Susan", "https://example.com/q/abc", 0, {});
+    expect(noAmounts.html).toContain("Two Financing Options Available!");
+    expect(noAmounts.html).toContain("0% Interest");
+    expect(noAmounts.html).not.toContain("/mo</span>");
   });
 });
 

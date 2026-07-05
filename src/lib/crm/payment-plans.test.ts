@@ -111,6 +111,55 @@ describe("schedule math", () => {
   });
 });
 
+describe("card fee pass-through", () => {
+  it("adds a 3% card fee to square_autopay plans by default", async () => {
+    const { supabase } = makeSupabase(baseJob());
+    const { plan } = await createPaymentPlanForJob(
+      supabase,
+      "job-1",
+      { financed_total: 3000, installment_count: 6, method: "square_autopay" },
+      actor
+    );
+    expect(plan.card_fee_percent).toBe(3);
+    expect(plan.installments[0].amount).toBe(500);
+    expect(plan.installments[0].card_fee).toBe(15);
+  });
+
+  it("never adds a fee to zelle plans and clamps the fee at 3%", async () => {
+    const { supabase } = makeSupabase(baseJob());
+    const { plan } = await createPaymentPlanForJob(
+      supabase,
+      "job-1",
+      { financed_total: 3000, installment_count: 6, method: "zelle", card_fee_percent: 3 },
+      actor
+    );
+    expect(plan.card_fee_percent).toBe(0);
+    expect(plan.installments[0].card_fee).toBeNull();
+
+    const { supabase: s2 } = makeSupabase(baseJob());
+    const { plan: p2 } = await createPaymentPlanForJob(
+      s2,
+      "job-1",
+      { financed_total: 1000, installment_count: 2, method: "square_autopay", card_fee_percent: 10 },
+      actor
+    );
+    expect(p2.card_fee_percent).toBe(3);
+  });
+
+  it("books only the base amount into the ledger while the customer pays base + fee", async () => {
+    const plan = activePlan();
+    plan.card_fee_percent = 3;
+    plan.installments = plan.installments.map((inst) => ({ ...inst, card_fee: 30 }));
+    const { supabase, state } = makeSupabase(baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } }), {
+      entry: { id: "entry-1" }
+    });
+    const { plan: updated } = await markInstallmentPaid(supabase, "job-1", 1, {}, actor);
+    expect(updated.installments[0].paid_amount).toBe(1030);
+    expect(state.payments[0]).toMatchObject({ amount: 1000 });
+    expect(String(state.payments[0].notes)).toContain("$30.00 card processing fee");
+  });
+});
+
 describe("createPaymentPlanForJob", () => {
   it("creates a pending plan (no due dates) before install", async () => {
     const { supabase, state } = makeSupabase(baseJob());
