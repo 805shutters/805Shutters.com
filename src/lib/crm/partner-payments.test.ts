@@ -470,7 +470,12 @@ describe("buildPartnerPaymentLedger", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [],
       kenPayments: [
-        kenPayment({ id: "legacy-ken-payment", paid_on: "2026-06-30", amount: 3778 }),
+        kenPayment({
+          id: "legacy-ken-payment",
+          paid_on: "2026-06-30",
+          amount: 3778,
+          meta: { batchSource: "unified_payment_ledger" }
+        }),
         kenPayment({
           id: "ken-payment-1",
           paid_on: "2026-07-04",

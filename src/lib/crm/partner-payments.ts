@@ -47,6 +47,8 @@ const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
   "manual"
 ]);
 
+const INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT = 3714.7;
+
 function roundCents(value: number) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
@@ -245,7 +247,9 @@ function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
 function kenPaymentAppliesToBuyout(payment: CrmKenPayment, person: CrmPaymentPerson) {
   const meta = payment.meta || {};
   if (person !== "ken") return false;
-  return meta.kenBuyoutApplied === true || meta.batchSource === "unified_payment_ledger";
+  if (meta.kenBuyoutApplied === true) return true;
+  if (meta.kenBuyoutApplied === false) return false;
+  return meta.batchSource === "unified_payment_ledger" && roundCents(payment.amount) === INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT;
 }
 
 function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
