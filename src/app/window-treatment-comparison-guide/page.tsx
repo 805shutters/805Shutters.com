@@ -94,7 +94,7 @@ const guideJsonLd = {
         url: site.baseUrl
       },
       about: comparisonRows.map((row) => ({
-        "@type": ["Product", "Service"],
+        "@type": "Service",
         name: row.option,
         category: "Window treatment",
         provider: {
@@ -115,7 +115,7 @@ const guideJsonLd = {
         position: index + 1,
         url: `${site.baseUrl}${row.nextStep}`,
         item: {
-          "@type": ["Product", "Service"],
+          "@type": "Service",
           name: row.option,
           description: `${row.bestFor}. Consider another option when ${row.avoidWhen.toLowerCase()}.`,
           provider: {

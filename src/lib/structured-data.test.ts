@@ -84,7 +84,8 @@ describe("structured data", () => {
       }
     });
     expect((offerCatalog?.itemListElement as JsonLdNode[] | undefined)?.length).toBe(page.serviceTypes.length);
-    expect(nodeTypes(firstItemOffered ?? {})).toEqual(expect.arrayContaining(["Product", "Service"]));
+    expect(nodeTypes(firstItemOffered ?? {})).toEqual(expect.arrayContaining(["Service"]));
+    expect(nodeTypes(firstItemOffered ?? {})).not.toContain("Product");
     expect(firstItemOffered).toMatchObject({
       provider: {
         "@id": `${site.baseUrl}#local-business`

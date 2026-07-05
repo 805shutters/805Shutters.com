@@ -166,7 +166,7 @@ const consultationJsonLd = {
         name: product.title,
         url: `${site.baseUrl}${product.href}`,
         itemOffered: {
-          "@type": ["Product", "Service"],
+          "@type": "Service",
           name: product.title,
           description: product.body,
           category: "Window treatment",

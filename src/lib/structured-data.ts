@@ -316,7 +316,7 @@ export function answerPageJsonLd(page: AnswerPage) {
           "@id": `${pageUrl}#breadcrumb`
         },
         about: page.serviceTypes.map((serviceType) => ({
-          "@type": ["Service", "Product"],
+          "@type": "Service",
           "@id": `${pageUrl}#${slugifySchemaId(serviceType)}`,
           name: serviceType,
           category: "Window treatment",
@@ -379,7 +379,7 @@ export function answerPageJsonLd(page: AnswerPage) {
           areaServed: site.serviceArea,
           url: pageUrl,
           itemOffered: {
-            "@type": ["Service", "Product"],
+            "@type": "Service",
             "@id": `${pageUrl}#${slugifySchemaId(serviceType)}`,
             name: serviceType,
             category: "Window treatment",
@@ -403,7 +403,7 @@ export function answerPageJsonLd(page: AnswerPage) {
           "@type": "ListItem",
           position: index + 1,
           item: {
-            "@type": ["Product", "Service"],
+            "@type": "Service",
             "@id": `${pageUrl}#${slugifySchemaId(serviceType)}`,
             name: serviceType,
             category: "Window treatment",
