@@ -14554,3 +14554,13 @@ body:has(.financing-banner) .site-header-shell {
 .crm-payment-plan-actions {
   padding: 8px 0 2px;
 }
+
+.crm-payment-plan-fee-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 600 !important;
+}
