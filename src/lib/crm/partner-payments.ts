@@ -48,6 +48,15 @@ const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
 ]);
 
 const INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT = 3714.7;
+const INITIAL_KEN_BUYOUT_ADJUSTMENTS = [
+  {
+    id: "initial-ken-buyout-elizabeth-mathieu",
+    paidOn: "2026-07-04",
+    amount: 63.3,
+    note: "Elizabeth Mathieu paid job adjustment",
+    createdByEmail: null
+  }
+];
 
 function roundCents(value: number) {
   return Math.round((Number(value) || 0) * 100) / 100;
@@ -380,21 +389,39 @@ function itemVirtualHistory(paymentId: string, item: WorkingItem, amount: number
 
 function buildKenBuyoutLedger(history: CrmPartnerPaymentHistoryBatch[]): CrmKenBuyoutLedger {
   let runningPaid = 0;
-  const payments = history
-    .filter((batch) => batch.appliesToKenBuyout && roundCents(batch.amount) > 0)
-    .map((batch) => {
-      const amount = roundCents(batch.amount);
-      runningPaid = roundCents(runningPaid + amount);
-      return {
+  const buyoutEvents = [
+    ...history
+      .filter((batch) => batch.appliesToKenBuyout && roundCents(batch.amount) > 0)
+      .map((batch, sortOrder) => ({
         id: batch.id,
         paidOn: batch.paidOn,
-        amount,
+        amount: roundCents(batch.amount),
         note: batch.note,
         createdByEmail: batch.createdByEmail,
-        runningPaid,
-        remainingBalance: roundCents(Math.max(BUSINESS_PAYOFF_TARGET - runningPaid, 0))
-      };
-    });
+        sortOrder
+      })),
+    ...INITIAL_KEN_BUYOUT_ADJUSTMENTS.map((adjustment, index) => ({
+      ...adjustment,
+      sortOrder: history.length + index
+    }))
+  ].sort((left, right) => {
+    const paid = paymentSortValue(left.paidOn) - paymentSortValue(right.paidOn);
+    if (paid) return paid;
+    return left.sortOrder - right.sortOrder;
+  });
+  const payments = buyoutEvents.map((event) => {
+    const amount = roundCents(event.amount);
+    runningPaid = roundCents(runningPaid + amount);
+    return {
+      id: event.id,
+      paidOn: event.paidOn,
+      amount,
+      note: event.note,
+      createdByEmail: event.createdByEmail,
+      runningPaid,
+      remainingBalance: roundCents(Math.max(BUSINESS_PAYOFF_TARGET - runningPaid, 0))
+    };
+  });
   const totalPaid = roundCents(runningPaid);
 
   return {

@@ -491,16 +491,22 @@ describe("buildPartnerPaymentLedger", () => {
 
     expect(ledger.kenBuyout).toMatchObject({
       target: 500000,
-      totalPaid: 3714.7,
-      remainingBalance: 496285.3,
-      paidPct: 0.7,
-      paymentCount: 1
+      totalPaid: 3778,
+      remainingBalance: 496222,
+      paidPct: 0.8,
+      paymentCount: 2
     });
     expect(ledger.kenBuyout.payments[0]).toMatchObject({
       id: "ken-payment-1",
       amount: 3714.7,
       runningPaid: 3714.7,
       remainingBalance: 496285.3
+    });
+    expect(ledger.kenBuyout.payments[1]).toMatchObject({
+      id: "initial-ken-buyout-elizabeth-mathieu",
+      amount: 63.3,
+      runningPaid: 3778,
+      remainingBalance: 496222
     });
   });
 });
