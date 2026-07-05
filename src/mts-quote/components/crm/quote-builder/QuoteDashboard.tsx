@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from "react";
-import { cn } from "@mts/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -301,44 +300,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
 
   return (
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
-      {/* Header */}
-      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-        <div className="min-w-0">
-          <h1 className="text-3xl font-bold">Quote Builder</h1>
-          <p className="text-muted-foreground">Create and manage window treatment quotes</p>
-        </div>
-        <Button
-          onClick={() => setShowNewQuoteDialog(true)}
-          className="w-full bg-sky-500 text-white shadow-lg shadow-sky-500/25 hover:bg-sky-600 sm:w-auto"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          New Quote
-        </Button>
-      </div>
-
-      {/* Account Switcher */}
-      <div className="flex flex-wrap gap-2">
-        {visibleAccounts.map((account) => (
-          <button
-            key={account.id}
-            onClick={() => {
-              setAccountId(account.id);
-              setActiveFilter("all");
-            }}
-            className={cn(
-              "min-w-[min(160px,100%)] flex-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-all sm:flex-none",
-              activeAccountId === account.id
-                ? account.prefix === "805"
-                  ? "bg-black text-white border-2 border-black shadow-lg shadow-black/15"
-                  : "bg-[#67645e] text-white border-2 border-[#4c4b46] shadow-lg shadow-[#67645e]/20"
-                : "bg-white border border-[#d6d5cf] text-[#1c1c1a] hover:border-[#0b0b0b] hover:shadow-md"
-            )}
-          >
-            {account.name}
-          </button>
-        ))}
-      </div>
-
       {/* Stats Bar — status filter tabs */}
       <QuoteStatsBar
         quotes={quotes}
@@ -373,6 +334,16 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
         onCopy={(id) => copyQuote.mutate(id)}
         onDelete={(id) => deleteQuote.mutate(id)}
         title={FILTER_LABELS[activeFilter]}
+        headerAction={
+          <Button
+            onClick={() => setShowNewQuoteDialog(true)}
+            className="bg-black text-white shadow-sm hover:bg-neutral-800"
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            New Quote
+          </Button>
+        }
       />
 
       {/* Contracts Section */}
