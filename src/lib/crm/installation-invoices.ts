@@ -1232,7 +1232,10 @@ async function triggerReviewRequestForWorkflowPatch(
   try {
     const { isReviewRequestTransition, maybeSendReviewRequestForJob } = await import("@/lib/crm/review-request");
     if (!isReviewRequestTransition(previousStatus, jobPatch.status)) return;
-    await maybeSendReviewRequestForJob(supabase, jobId, { email: actorEmail || "installation-email-puller" }, source);
+    const actor = { email: actorEmail || "installation-email-puller" };
+    const { activatePaymentPlanForJob } = await import("@/lib/crm/payment-plans");
+    await activatePaymentPlanForJob(supabase, jobId, actor);
+    await maybeSendReviewRequestForJob(supabase, jobId, actor, source);
   } catch (error) {
     console.error("review-request automation failed", error);
   }

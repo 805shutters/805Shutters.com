@@ -1644,6 +1644,8 @@ export async function updateCrmJob(
     try {
       const { isReviewRequestTransition, maybeSendReviewRequestForJob } = await import("@/lib/crm/review-request");
       if (isReviewRequestTransition(existing.status, updatedJob.status)) {
+        const { activatePaymentPlanForJob } = await import("@/lib/crm/payment-plans");
+        await activatePaymentPlanForJob(supabase, id, actor);
         await maybeSendReviewRequestForJob(supabase, id, actor, "job_update");
       }
     } catch (error) {

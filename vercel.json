@@ -21,6 +21,10 @@
       "schedule": "27 17 * * *"
     },
     {
+      "path": "/api/cron/payment-plan-reminders",
+      "schedule": "35 17 * * *"
+    },
+    {
       "path": "/api/cron/indexnow",
       "schedule": "45 18 * * 1"
     }

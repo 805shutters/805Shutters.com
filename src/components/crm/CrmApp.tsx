@@ -36,6 +36,11 @@ import {
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import {
+  PAYMENT_PLAN_METHOD_LABELS,
+  getPaymentPlanMeta,
+  type CrmPaymentPlanMethod
+} from "@/lib/crm/payment-plan-shared";
+import {
   CrmAccountabilityItem,
   CrmAvailabilitySlot,
   CrmBookkeepingPaymentType,
@@ -1490,6 +1495,61 @@ export function CrmApp({
     }
   }
 
+  async function applyPaymentPlanAction(jobId: string, action: PaymentPlanUiAction) {
+    if (!session) return false;
+
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      if (action.op === "create") {
+        await crmFetch(session, `/api/crm/jobs/${jobId}/payment-plan`, {
+          method: "POST",
+          body: JSON.stringify(action.payload)
+        });
+      } else if (action.op === "mark_paid") {
+        await crmFetch(session, `/api/crm/jobs/${jobId}/payment-plan`, {
+          method: "PATCH",
+          body: JSON.stringify({ action: "mark_paid", seq: action.seq, payment_type: action.payment_type })
+        });
+      } else {
+        await crmFetch(session, `/api/crm/jobs/${jobId}/payment-plan`, {
+          method: "PATCH",
+          body: JSON.stringify({ action: "cancel", reason: action.reason })
+        });
+      }
+
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill) {
+        setDrill(
+          rebuildDrillPayload(
+            drill,
+            dashboardResult.jobs,
+            dashboardResult.quotes,
+            dashboardResult.bookkeepingRows,
+            dashboardResult.customerFiles,
+            dashboardResult.installationInvoiceEmails,
+            dashboardResult.orderCogsEmails
+          )
+        );
+      }
+      setMessage(
+        action.op === "create"
+          ? "Payment plan created."
+          : action.op === "mark_paid"
+            ? "Installment marked paid. Balances recalculated."
+            : "Payment plan canceled."
+      );
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Payment plan action failed.");
+      await refresh();
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function createQuote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!session) return;
@@ -2405,6 +2465,7 @@ export function CrmApp({
             onMeasureNeededAction={updateMeasureNeededEntry}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
+            onPaymentPlanAction={applyPaymentPlanAction}
           />
         </div>
       ) : null}
@@ -2460,6 +2521,7 @@ export function CrmApp({
             onMeasureNeededAction={updateMeasureNeededEntry}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
+            onPaymentPlanAction={applyPaymentPlanAction}
           />
           <section className="crm-command-grid">
             <AccountabilityBoard items={accountability} />
@@ -3103,6 +3165,13 @@ type LedgerLineAction = {
   payload?: Record<string, unknown>;
   message?: string;
 };
+type PaymentPlanUiAction =
+  | {
+      op: "create";
+      payload: { financed_total: number; installment_count: number; method: string; notes?: string | null };
+    }
+  | { op: "mark_paid"; seq: number; payment_type?: string }
+  | { op: "cancel"; reason?: string };
 type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "calendar";
 type CustomerSearchPage = {
   target: CustomerSearchPageTarget;
@@ -4901,7 +4970,8 @@ function CommandDashboard({
   onReassignSale,
   onMeasureNeededAction,
   onSaveField,
-  onLedgerLineAction
+  onLedgerLineAction,
+  onPaymentPlanAction
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -4919,6 +4989,7 @@ function CommandDashboard({
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
+  onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 }) {
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
@@ -5032,6 +5103,7 @@ function CommandDashboard({
         onMeasureNeededAction={onMeasureNeededAction}
         onSaveField={onSaveField}
         onLedgerLineAction={onLedgerLineAction}
+        onPaymentPlanAction={onPaymentPlanAction}
       />
     ) : null;
 
@@ -5055,6 +5127,7 @@ function CommandDashboard({
           onMeasureNeededAction={onMeasureNeededAction}
           onSaveField={onSaveField}
           onLedgerLineAction={onLedgerLineAction}
+        onPaymentPlanAction={onPaymentPlanAction}
         />
         <strong>{jobs.length} jobs</strong>
       </div>
@@ -5403,6 +5476,7 @@ type DrillPanelProps = {
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
+  onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 };
 
 function DrillSearchResultsPanel({
@@ -5416,7 +5490,8 @@ function DrillSearchResultsPanel({
   onReassignSale,
   onMeasureNeededAction,
   onSaveField,
-  onLedgerLineAction
+  onLedgerLineAction,
+  onPaymentPlanAction
 }: DrillPanelProps & {
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
@@ -5514,6 +5589,7 @@ function DrillSearchResultsPanel({
                 onMeasureNeededAction={onMeasureNeededAction}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
+        onPaymentPlanAction={onPaymentPlanAction}
               />
             </div>
           ) : null}
@@ -5840,7 +5916,8 @@ function GlobalCustomerSearchPanel({
   onReassignSale,
   onMeasureNeededAction,
   onSaveField,
-  onLedgerLineAction
+  onLedgerLineAction,
+  onPaymentPlanAction
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -5854,6 +5931,7 @@ function GlobalCustomerSearchPanel({
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
+  onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 }) {
   const [query, setQuery] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
@@ -6001,6 +6079,7 @@ function GlobalCustomerSearchPanel({
                 onMeasureNeededAction={onMeasureNeededAction}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
+        onPaymentPlanAction={onPaymentPlanAction}
               />
             </div>
           ) : null}
@@ -6042,7 +6121,8 @@ function DrillDetailPanel({
   onReassignSale,
   onMeasureNeededAction,
   onSaveField,
-  onLedgerLineAction
+  onLedgerLineAction,
+  onPaymentPlanAction
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -6072,6 +6152,7 @@ function DrillDetailPanel({
             onMeasureNeededAction={onMeasureNeededAction}
             onSaveField={onSaveField}
             onLedgerLineAction={onLedgerLineAction}
+        onPaymentPlanAction={onPaymentPlanAction}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -6088,7 +6169,8 @@ function DrillDetailCard({
   onReassignSale,
   onMeasureNeededAction,
   onSaveField,
-  onLedgerLineAction
+  onLedgerLineAction,
+  onPaymentPlanAction
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
@@ -6098,6 +6180,7 @@ function DrillDetailCard({
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
+  onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 }) {
   const row = entry.row;
   const job = entry.job;
@@ -6919,8 +7002,16 @@ function DrillDetailCard({
           </section>
         </div>
 
-        {products.length || hasActivity || hasDocumentsOrNotes ? (
+        {products.length || hasActivity || hasDocumentsOrNotes || job ? (
           <div className="crm-drill-detail-strip">
+            {job ? (
+              <PaymentPlanSection
+                job={job}
+                suggestedTotal={row ? Number(row.balance) || 0 : 0}
+                busy={busy}
+                onPaymentPlanAction={onPaymentPlanAction}
+              />
+            ) : null}
             {products.length ? (
               <details className="crm-drill-line-section">
                 <summary>
@@ -12824,5 +12915,163 @@ function CalendarCancelModal({
         </div>
       </section>
     </div>
+  );
+}
+
+function PaymentPlanSection({
+  job,
+  suggestedTotal,
+  busy,
+  onPaymentPlanAction
+}: {
+  job: CrmJob;
+  suggestedTotal: number;
+  busy: boolean;
+  onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
+}) {
+  const plan = getPaymentPlanMeta(job.meta);
+  const openPlan = plan && (plan.status === "pending_install" || plan.status === "active") ? plan : null;
+  const defaultTotal = suggestedTotal > 0 ? suggestedTotal : Math.round(((Number(job.estimated_total) || 0) / 2) * 100) / 100;
+  const [amount, setAmount] = useState<string>(defaultTotal ? String(defaultTotal) : "");
+  const [count, setCount] = useState<string>("6");
+  const [method, setMethod] = useState<CrmPaymentPlanMethod>("square_autopay");
+
+  const paidCount = openPlan ? openPlan.installments.filter((inst) => inst.paid_at).length : 0;
+  const summaryLabel = openPlan
+    ? openPlan.status === "pending_install"
+      ? "Waiting for install"
+      : `${paidCount}/${openPlan.installment_count} paid`
+    : plan
+      ? titleCase(plan.status)
+      : "None";
+
+  return (
+    <details className="crm-drill-line-section crm-payment-plan-section">
+      <summary>
+        <span>Payment Plan</span>
+        <em>{summaryLabel}</em>
+      </summary>
+      <div className="crm-drill-line-list">
+        {openPlan ? (
+          <>
+            <div className="crm-drill-line-item">
+              <strong>
+                {toLedgerCurrency(openPlan.financed_total)} over {openPlan.installment_count} monthly payment
+                {openPlan.installment_count === 1 ? "" : "s"} - 0% interest
+              </strong>
+              <span>
+                {PAYMENT_PLAN_METHOD_LABELS[openPlan.method] || openPlan.method}
+                {openPlan.status === "pending_install"
+                  ? " / Schedule starts the day of installation (first payment due that day)"
+                  : ` / Started ${formatShortDate(openPlan.activated_at)}`}
+              </span>
+            </div>
+            {openPlan.installments.map((inst) => (
+              <div className="crm-drill-line-item crm-payment-plan-installment" key={inst.seq}>
+                <strong>
+                  Payment {inst.seq}/{openPlan.installment_count}
+                </strong>
+                <span>
+                  {toLedgerCurrency(inst.amount)}
+                  {inst.due_date ? ` / due ${formatShortDate(inst.due_date)}` : " / due date set at install"}
+                  {inst.paid_at ? ` / PAID ${formatShortDate(inst.paid_at)}${inst.payment_type ? ` (${titleCase(inst.payment_type)})` : ""}` : ""}
+                </span>
+                {!inst.paid_at && onPaymentPlanAction ? (
+                  <button
+                    type="button"
+                    className="crm-ghost-button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (window.confirm(`Mark payment ${inst.seq} of ${openPlan.installment_count} (${toLedgerCurrency(inst.amount)}) as paid?\n\nIt will also be recorded in the bookkeeping ledger.`)) {
+                        void onPaymentPlanAction(job.id, { op: "mark_paid", seq: inst.seq });
+                      }
+                    }}
+                  >
+                    Mark paid
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            {onPaymentPlanAction ? (
+              <div className="crm-payment-plan-actions">
+                <button
+                  type="button"
+                  className="crm-ghost-button"
+                  disabled={busy}
+                  onClick={() => {
+                    const reason = window.prompt("Cancel this payment plan? Add a short reason:");
+                    if (reason !== null) {
+                      void onPaymentPlanAction(job.id, { op: "cancel", reason: reason || undefined });
+                    }
+                  }}
+                >
+                  Cancel plan
+                </button>
+              </div>
+            ) : null}
+          </>
+        ) : onPaymentPlanAction ? (
+          <div className="crm-payment-plan-form">
+            <p className="crm-payment-plan-hint">
+              In-house plan: 0% interest, 50% deposit already collected up front, first payment due the day of
+              installation, then monthly.
+            </p>
+            <label>
+              Amount to finance
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Remaining balance"
+              />
+            </label>
+            <label>
+              Monthly payments
+              <select value={count} onChange={(event) => setCount(event.target.value)}>
+                {["2", "3", "4", "5", "6"].map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Collected by
+              <select value={method} onChange={(event) => setMethod(event.target.value as CrmPaymentPlanMethod)}>
+                <option value="square_autopay">Square autopay (card on file)</option>
+                <option value="zelle">Zelle</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              className="crm-ghost-button"
+              disabled={busy || !Number(amount)}
+              onClick={() =>
+                void onPaymentPlanAction(job.id, {
+                  op: "create",
+                  payload: {
+                    financed_total: Number(amount),
+                    installment_count: Number(count),
+                    method
+                  }
+                })
+              }
+            >
+              Create payment plan
+            </button>
+            {Number(amount) > 0 && Number(count) > 0 ? (
+              <p className="crm-payment-plan-hint">
+                = {toLedgerCurrency(Number(amount) / Number(count))} per month for {count} months
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <p className="crm-empty">No payment plan on this job.</p>
+        )}
+      </div>
+    </details>
   );
 }
