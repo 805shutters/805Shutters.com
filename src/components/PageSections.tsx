@@ -360,8 +360,8 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
 const featuredHomeShutterSlide: HomeHeroSlide = {
   label: "Custom Shutters",
   tagline: "Clean white shutters, custom fit to the room.",
-  image: "/images/shutters-portfolio/style-contemporary-flat.jpg",
-  imageAlt: "Bright living room with custom white plantation shutters, a sofa, and olive tree"
+  image: "/images/homepage-flow/white-shutters-living-room.jpg",
+  imageAlt: "Bright living room with a cream sofa and custom white plantation shutters"
 };
 
 const featuredResidentialHeroSlides = (page: SitePage, allSlides = homeHeroSlides(page)): HomeHeroSlide[] => {
