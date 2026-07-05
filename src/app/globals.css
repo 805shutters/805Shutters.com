@@ -14338,3 +14338,43 @@ html.mobile-menu-open {
     gap: 3px;
   }
 }
+
+/* Financing announcement banner (above the sticky header; residential mode only) */
+.financing-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 9px 16px;
+  background: #111;
+  color: #fbfbfa;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.financing-banner:hover .financing-banner-cta,
+.financing-banner:focus-visible .financing-banner-cta {
+  color: #fbfbfa;
+  border-color: #fbfbfa;
+}
+
+.financing-banner-cta {
+  color: #b8b8b3;
+  border-bottom: 1px solid #b8b8b3;
+  padding-bottom: 1px;
+  white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+@media (max-width: 620px) {
+  .financing-banner {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    gap: 8px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
+  }
+}
