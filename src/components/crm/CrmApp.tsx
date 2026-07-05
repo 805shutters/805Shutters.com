@@ -2820,6 +2820,7 @@ export function CrmApp({
       {activeTab === "payoff" ? (
         <KenPayoffView
           payoff={data?.kenPayoff}
+          buyoutLedger={data?.partnerPaymentLedger?.kenBuyout}
           payments={kenPayments}
           onRecord={recordKenPayment}
           onEdit={updateKenPaymentRow}
@@ -2920,7 +2921,7 @@ function KenPortalView({
       ) : null}
 
       {activeTab === "payoff" ? (
-        <KenPayoffView payoff={data?.kenPayoff} payments={payments} busy={busy} readOnly />
+        <KenPayoffView payoff={data?.kenPayoff} buyoutLedger={data?.partnerPaymentLedger?.kenBuyout} payments={payments} busy={busy} readOnly />
       ) : null}
     </div>
   );
@@ -10648,7 +10649,9 @@ function ReadOnlyBookkeepingSpreadsheet({
   const paymentPeople = partnerPaymentLedger?.people;
   const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
   const statusGroups = useMemo(() => groupBookkeepingRowsByStatus(rows), [rows]);
-  const buyoutRemaining = payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const buyoutLedger = partnerPaymentLedger?.kenBuyout;
+  const buyoutRemaining = buyoutLedger?.remainingBalance ?? payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const buyoutPaid = buyoutLedger?.totalPaid ?? payoff?.kenPaid;
   const summaryCards: Array<{ label: string; value: string; detail?: string; action?: () => void }> = [
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
@@ -10660,7 +10663,7 @@ function ReadOnlyBookkeepingSpreadsheet({
     {
       label: "Buyout Ledger",
       value: toLedgerCurrency(buyoutRemaining),
-      detail: `${toLedgerCurrency(payoff?.kenPaid)} paid to Ken Hill`,
+      detail: `${toLedgerCurrency(buyoutPaid)} paid to Ken Hill`,
       action: onOpenPayoff
     },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), action: onOpenPayoff },
@@ -10955,7 +10958,9 @@ function BookkeepingSpreadsheet({
   const commissionTotals = commissionSummary?.totals;
   const paymentPeople = partnerPaymentLedger?.people;
   const paymentItemsByKey = useMemo(() => partnerPaymentItemMap(partnerPaymentLedger), [partnerPaymentLedger]);
-  const buyoutRemaining = payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const buyoutLedger = partnerPaymentLedger?.kenBuyout;
+  const buyoutRemaining = buyoutLedger?.remainingBalance ?? payoff?.payoffRemaining ?? payoff?.payoffTarget ?? 0;
+  const buyoutPaid = buyoutLedger?.totalPaid ?? payoff?.kenPaid;
   const summaryCards: Array<{
     label: string;
     value: string;
@@ -10973,7 +10978,7 @@ function BookkeepingSpreadsheet({
     {
       label: "Buyout Ledger",
       value: toLedgerCurrency(buyoutRemaining),
-      detail: `${toLedgerCurrency(payoff?.kenPaid)} paid to Ken Hill`,
+      detail: `${toLedgerCurrency(buyoutPaid)} paid to Ken Hill`,
       action: onOpenPayoff
     },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), person: "ken" as const },
@@ -12427,6 +12432,7 @@ function KenPaymentRow({
 
 function KenPayoffView({
   payoff,
+  buyoutLedger,
   payments,
   onRecord,
   onEdit,
@@ -12436,6 +12442,7 @@ function KenPayoffView({
   readOnly = false
 }: {
   payoff: CrmKenPayoffSummary | undefined;
+  buyoutLedger?: CrmDashboardData["partnerPaymentLedger"]["kenBuyout"];
   payments: CrmKenPayment[];
   onRecord?: (event: FormEvent<HTMLFormElement>) => void;
   onEdit?: (event: FormEvent<HTMLFormElement>, payment: CrmKenPayment) => void;
@@ -12444,11 +12451,12 @@ function KenPayoffView({
   busy: boolean;
   readOnly?: boolean;
 }) {
-  const target = payoff?.payoffTarget || 500000;
-  const remaining = payoff?.payoffRemaining ?? target;
-  const paid = payoff?.kenPaid || 0;
-  const pct = payoff?.payoffPct || 0;
+  const target = buyoutLedger?.target || payoff?.payoffTarget || 500000;
+  const remaining = buyoutLedger?.remainingBalance ?? payoff?.payoffRemaining ?? target;
+  const paid = buyoutLedger?.totalPaid ?? payoff?.kenPaid ?? 0;
+  const pct = buyoutLedger?.paidPct ?? payoff?.payoffPct ?? 0;
   const owed = payoff?.kenOwed || 0;
+  const isPaidOff = buyoutLedger ? buyoutLedger.remainingBalance <= 0 : payoff?.isPaidOff;
 
   return (
     <section className="crm-workspace crm-workspace-wide">
@@ -12499,7 +12507,7 @@ function KenPayoffView({
             <p className="eyebrow">Business Payoff</p>
             <h2>Buying 805 From Ken</h2>
           </div>
-          {payoff?.isPaidOff ? <strong className="crm-paidoff">PAID OFF</strong> : null}
+          {isPaidOff ? <strong className="crm-paidoff">PAID OFF</strong> : null}
         </div>
 
         <div className="crm-payoff-hero">
@@ -12537,37 +12545,66 @@ function KenPayoffView({
           <div>
             <span>Ken paid to date</span>
             <strong>{toCurrency(paid)}</strong>
-            <em>opening + checks</em>
+            <em>500K ledger payments</em>
           </div>
         </div>
 
         <div className="crm-payoff-payments">
-          <h3>Payment History</h3>
+          <h3>{buyoutLedger ? "500K Payment History" : "Payment History"}</h3>
           <table className="crm-bookkeeping-table">
-            <thead>
-              <tr>
-                <th>Check Date</th>
-                <th>For Month</th>
-                <th>Amount</th>
-                <th>Note</th>
-                {readOnly ? null : <th aria-label="Actions" />}
-              </tr>
-            </thead>
-            <tbody>
-              {payments.map((payment) => (
-                <KenPaymentRow
-                  key={payment.id}
-                  payment={payment}
-                  busy={busy}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  readOnly={readOnly}
-                />
-              ))}
-            </tbody>
+            {buyoutLedger ? (
+              <>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Payment</th>
+                    <th>Applied</th>
+                    <th>Remaining</th>
+                    <th>Note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {buyoutLedger.payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>{formatShortDate(payment.paidOn)}</td>
+                      <td>{toLedgerCurrency(payment.amount)}</td>
+                      <td>{toLedgerCurrency(payment.runningPaid)}</td>
+                      <td>{toLedgerCurrency(payment.remainingBalance)}</td>
+                      <td>{payment.note || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </>
+            ) : (
+              <>
+                <thead>
+                  <tr>
+                    <th>Check Date</th>
+                    <th>For Month</th>
+                    <th>Amount</th>
+                    <th>Note</th>
+                    {readOnly ? null : <th aria-label="Actions" />}
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => (
+                    <KenPaymentRow
+                      key={payment.id}
+                      payment={payment}
+                      busy={busy}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      readOnly={readOnly}
+                    />
+                  ))}
+                </tbody>
+              </>
+            )}
           </table>
-          {!payments.length ? (
-            <p className="crm-empty">No Ken checks recorded yet. The opening balance above seeds the payoff.</p>
+          {buyoutLedger && !buyoutLedger.payments.length ? (
+            <p className="crm-empty">No 500K ledger payments applied yet.</p>
+          ) : !buyoutLedger && !payments.length ? (
+            <p className="crm-empty">No Ken checks recorded yet.</p>
           ) : null}
         </div>
       </div>
