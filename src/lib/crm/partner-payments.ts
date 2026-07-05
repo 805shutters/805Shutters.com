@@ -242,6 +242,12 @@ function paymentPersonFromKenPayment(payment: CrmKenPayment): CrmPaymentPerson {
   );
 }
 
+function kenPaymentAppliesToBuyout(payment: CrmKenPayment, person: CrmPaymentPerson) {
+  const meta = payment.meta || {};
+  if (person !== "ken") return false;
+  return meta.kenBuyoutApplied === true || meta.batchSource === "unified_payment_ledger";
+}
+
 function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistoryBatch {
   const person = paymentPersonFromKenPayment(payment);
 
@@ -257,6 +263,7 @@ function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistory
     createdAt: payment.created_at,
     updatedAt: payment.updated_at,
     isLegacy: false,
+    appliesToKenBuyout: kenPaymentAppliesToBuyout(payment, person),
     allocations: []
   };
 }
@@ -274,6 +281,7 @@ function historyFromCommissionPayment(payment: CrmCommissionPayment): CrmPartner
     createdAt: payment.created_at,
     updatedAt: payment.updated_at,
     isLegacy: false,
+    appliesToKenBuyout: false,
     allocations: []
   };
 }
@@ -369,7 +377,7 @@ function itemVirtualHistory(paymentId: string, item: WorkingItem, amount: number
 function buildKenBuyoutLedger(history: CrmPartnerPaymentHistoryBatch[]): CrmKenBuyoutLedger {
   let runningPaid = 0;
   const payments = history
-    .filter((batch) => batch.person === "ken" && roundCents(batch.amount) > 0)
+    .filter((batch) => batch.appliesToKenBuyout && roundCents(batch.amount) > 0)
     .map((batch) => {
       const amount = roundCents(batch.amount);
       runningPaid = roundCents(runningPaid + amount);

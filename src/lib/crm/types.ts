@@ -672,6 +672,7 @@ export type CrmPartnerPaymentHistoryBatch = {
   createdAt: string;
   updatedAt: string;
   isLegacy: boolean;
+  appliesToKenBuyout: boolean;
   allocations: CrmPartnerPaymentHistoryAllocation[];
 };
 

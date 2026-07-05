@@ -466,34 +466,36 @@ describe("buildPartnerPaymentLedger", () => {
     expect(reopenedLedger.people.ken.activeItems).toHaveLength(1);
   });
 
-  it("applies Ken payments to the 500k business buyout ledger in payment order", () => {
+  it("applies only Payables-button Ken payments to the 500k business buyout ledger", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [],
       kenPayments: [
-        kenPayment({ id: "ken-payment-2", paid_on: "2026-07-10", amount: 500 }),
-        kenPayment({ id: "ken-payment-1", paid_on: "2026-07-04", amount: 3714.7 })
+        kenPayment({ id: "legacy-ken-payment", paid_on: "2026-06-30", amount: 3778 }),
+        kenPayment({
+          id: "ken-payment-1",
+          paid_on: "2026-07-04",
+          amount: 3714.7,
+          meta: {
+            batchSource: "unified_payment_ledger",
+            selectedItemAllocations: [{ item_key: "ken:manual:row-1", amount: 3714.7 }]
+          }
+        })
       ],
       commissionPayments: []
     });
 
     expect(ledger.kenBuyout).toMatchObject({
       target: 500000,
-      totalPaid: 4214.7,
-      remainingBalance: 495785.3,
-      paidPct: 0.8,
-      paymentCount: 2
+      totalPaid: 3714.7,
+      remainingBalance: 496285.3,
+      paidPct: 0.7,
+      paymentCount: 1
     });
     expect(ledger.kenBuyout.payments[0]).toMatchObject({
       id: "ken-payment-1",
       amount: 3714.7,
       runningPaid: 3714.7,
       remainingBalance: 496285.3
-    });
-    expect(ledger.kenBuyout.payments[1]).toMatchObject({
-      id: "ken-payment-2",
-      amount: 500,
-      runningPaid: 4214.7,
-      remainingBalance: 495785.3
     });
   });
 });

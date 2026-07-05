@@ -3844,6 +3844,7 @@ export async function createPartnerPaymentBatch(
   const meta = {
     createdBy: actor.email,
     batchSource: "unified_payment_ledger",
+    kenBuyoutApplied: person === "ken",
     selectedItemCount: selectedItems.length,
     selectedItemKeys: selectedItems.map((item) => item.itemKey),
     selectedItemAllocations: paymentAllocationMetadata(allocations)
