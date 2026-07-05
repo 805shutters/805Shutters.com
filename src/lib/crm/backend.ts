@@ -1640,6 +1640,17 @@ export async function updateCrmJob(
     }
   }
 
+  if (Object.prototype.hasOwnProperty.call(patch, "status")) {
+    try {
+      const { isReviewRequestTransition, maybeSendReviewRequestForJob } = await import("@/lib/crm/review-request");
+      if (isReviewRequestTransition(existing.status, updatedJob.status)) {
+        await maybeSendReviewRequestForJob(supabase, id, actor, "job_update");
+      }
+    } catch (error) {
+      console.error("review-request automation failed", error);
+    }
+  }
+
   await syncCustomerFromJob(supabase, updatedJob);
   await recordCrmActivity(supabase, actor, {
     entityType: "job",

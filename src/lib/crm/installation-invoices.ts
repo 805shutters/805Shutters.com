@@ -1217,6 +1217,24 @@ async function advanceInstallationInvoiceWorkflow(
     if (error) {
       throw new CrmAuthError(502, "Installation invoice matched, but the job could not be moved to payment collection.");
     }
+    await triggerReviewRequestForWorkflowPatch(supabase, candidate.jobId, currentJob?.status, jobPatch, actorEmail, "installation_invoice");
+  }
+}
+
+async function triggerReviewRequestForWorkflowPatch(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  previousStatus: string | null | undefined,
+  jobPatch: Record<string, unknown>,
+  actorEmail: string | undefined,
+  source: string
+) {
+  try {
+    const { isReviewRequestTransition, maybeSendReviewRequestForJob } = await import("@/lib/crm/review-request");
+    if (!isReviewRequestTransition(previousStatus, jobPatch.status)) return;
+    await maybeSendReviewRequestForJob(supabase, jobId, { email: actorEmail || "installation-email-puller" }, source);
+  } catch (error) {
+    console.error("review-request automation failed", error);
   }
 }
 
@@ -1277,6 +1295,7 @@ async function advanceCompletedServiceReportWorkflow(
     if (error) {
       throw new CrmAuthError(502, "Completed service report matched, but the job could not be moved to Balance Needed.");
     }
+    await triggerReviewRequestForWorkflowPatch(supabase, candidate.jobId, currentJob?.status, jobPatch, actorEmail, "completed_service_report");
   }
 }
 
