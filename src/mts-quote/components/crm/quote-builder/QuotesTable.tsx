@@ -8,17 +8,29 @@ import {
   TableRow,
 } from "@mts/components/ui/table";
 import { Button } from "@mts/components/ui/button";
-import { Copy, Images, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Images, Trash2 } from "lucide-react";
 import type { SalesQuote } from "@mts/types/quote";
 import { format } from "date-fns";
 import { QuoteStatusPill } from "./QuoteStatusPill";
-import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
+import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashboardFilters";
+
+export type QuoteTableRow = QuoteStatsSource & {
+  quote_number?: string | null;
+  customer_name?: string | null;
+  customer_address?: string | null;
+  total_amount?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  source?: "sales" | "crm";
+  sourceQuoteId?: string | null;
+  salesQuote?: SalesQuote;
+};
 
 interface QuotesTableProps {
-  quotes: SalesQuote[];
+  quotes: QuoteTableRow[];
   isLoading: boolean;
-  onOpen: (quote: SalesQuote) => void;
-  onPortfolio: (quote: SalesQuote) => void;
+  onOpen: (quote: QuoteTableRow) => void;
+  onPortfolio: (quote: QuoteTableRow) => void;
   onCopy: (id: string) => void;
   onDelete: (id: string) => void;
   title?: string;
@@ -73,6 +85,9 @@ export function QuotesTable({
         <TableBody>
           {quotes.map((quote) => {
             const isHovered = hoveredId === quote.id;
+            const isCrmQuote = quote.source === "crm";
+            const salesQuoteId = quote.sourceQuoteId || quote.id;
+            const totalAmount = Number(quote.total_amount) || 0;
             const status = getQuoteStatsStatus(quote);
             return (
               <TableRow
@@ -97,58 +112,75 @@ export function QuotesTable({
                     : "—"}
                 </TableCell>
                 <TableCell className="font-medium tabular-nums">
-                  {quote.total_amount > 0
-                    ? `$${quote.total_amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                  {totalAmount > 0
+                    ? `$${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                     : "—"}
                 </TableCell>
                 <TableCell>
                   <QuoteStatusPill
                     status={status}
-                    quoteId={quote.id}
-                    showAdvance={isHovered}
+                    quoteId={salesQuoteId}
+                    showAdvance={!isCrmQuote && isHovered}
                   />
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPortfolio(quote);
-                      }}
-                      title="Open portfolio"
-                    >
-                      <Images className="mr-1.5 h-4 w-4" />
-                      Portfolio
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCopy(quote.id);
-                      }}
-                      title="Copy quote"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const label = quote.quote_number || quote.customer_name || "this quote";
-                        if (!window.confirm(`Delete quote ${label}? This cannot be undone.`)) {
-                          return;
-                        }
-                        onDelete(quote.id);
-                      }}
-                      title="Delete quote"
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {isCrmQuote ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpen(quote);
+                        }}
+                        title="Open quote"
+                      >
+                        <ExternalLink className="mr-1.5 h-4 w-4" />
+                        Open
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPortfolio(quote);
+                          }}
+                          title="Open portfolio"
+                        >
+                          <Images className="mr-1.5 h-4 w-4" />
+                          Portfolio
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onCopy(salesQuoteId);
+                          }}
+                          title="Copy quote"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const label = quote.quote_number || quote.customer_name || "this quote";
+                            if (!window.confirm(`Delete quote ${label}? This cannot be undone.`)) {
+                              return;
+                            }
+                            onDelete(salesQuoteId);
+                          }}
+                          title="Delete quote"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

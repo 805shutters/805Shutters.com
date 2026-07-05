@@ -1,5 +1,5 @@
 import { STATUS_ORDER } from "@mts/lib/quoteStatus";
-import type { QuoteStatus, SalesQuote } from "@mts/types/quote";
+import type { QuoteStatus } from "@mts/types/quote";
 import type { StatsFilter } from "@mts/components/crm/quote-builder/QuoteStatsBar";
 
 export type CalendarAppointmentForStats = {
@@ -9,26 +9,60 @@ export type CalendarAppointmentForStats = {
   status: string | null;
 };
 
-export function getQuoteStatsStatus(
-  quote: Pick<
-    SalesQuote,
-    | "status"
-    | "sent_at"
-    | "signed_at"
-    | "ordered_at"
-    | "received_at"
-    | "installed_at"
-    | "archived_at"
-    | "customer_signature"
-  >
-): QuoteStatus {
-  if (quote.status === "archived" || quote.archived_at) return "archived";
-  if (quote.status === "installed" || quote.installed_at) return "installed";
-  if (quote.status === "received" || quote.received_at) return "received";
-  if (quote.status === "ordered" || quote.ordered_at) return "ordered";
-  if (quote.status === "sold" || quote.signed_at || quote.customer_signature) return "sold";
-  if (quote.status === "sent" || quote.sent_at) return "sent";
+export type QuoteStatsSource = {
+  id: string;
+  sourceQuoteId?: string | null;
+  status?: string | null;
+  live_status?: string | null;
+  appointment_date?: string | null;
+  sent_at?: string | null;
+  approved_at?: string | null;
+  sold_at?: string | null;
+  signed_at?: string | null;
+  ordered_at?: string | null;
+  received_at?: string | null;
+  installed_at?: string | null;
+  archived_at?: string | null;
+  customer_signature?: string | null;
+};
+
+export function getQuoteStatsStatus(quote: QuoteStatsSource): QuoteStatus {
+  const rawStatus = `${quote.live_status || quote.status || ""}`.toLowerCase();
+
+  if (rawStatus === "archived" || rawStatus === "lost" || quote.archived_at) return "archived";
+  if (
+    rawStatus === "installed" ||
+    rawStatus === "invoiced" ||
+    rawStatus === "paid" ||
+    rawStatus === "closed" ||
+    quote.installed_at
+  ) {
+    return "installed";
+  }
+  if (rawStatus === "received" || quote.received_at) return "received";
+  if (rawStatus === "ordered" || quote.ordered_at) return "ordered";
+  if (
+    rawStatus === "sold" ||
+    rawStatus === "approved" ||
+    quote.signed_at ||
+    quote.sold_at ||
+    quote.approved_at ||
+    quote.customer_signature
+  ) {
+    return "sold";
+  }
+  if (rawStatus === "sent" || quote.sent_at) return "sent";
   return "draft";
+}
+
+function quoteMatchesCalendarQuoteId(
+  quote: QuoteStatsSource,
+  calendarQuoteIds: Set<string>
+): boolean {
+  return (
+    calendarQuoteIds.has(quote.id) ||
+    Boolean(quote.sourceQuoteId && calendarQuoteIds.has(quote.sourceQuoteId))
+  );
 }
 
 function isActiveCalendarAppointment(appointment: CalendarAppointmentForStats): boolean {
@@ -53,11 +87,11 @@ function appointmentMatchesDateFilter(
   return false;
 }
 
-export function filterQuotesForStatsTile(
-  quotes: SalesQuote[],
+export function filterQuotesForStatsTile<T extends QuoteStatsSource>(
+  quotes: T[],
   filter: StatsFilter,
   calendarAppointments: CalendarAppointmentForStats[] = []
-): SalesQuote[] {
+): T[] {
   const today = new Date().toISOString().split("T")[0];
   const matchingCalendarQuoteIds = new Set(
     calendarAppointments
@@ -70,7 +104,8 @@ export function filterQuotesForStatsTile(
     case "today":
       return quotes.filter(
         (q) =>
-          (q.appointment_date === today || matchingCalendarQuoteIds.has(q.id)) &&
+          (q.appointment_date === today ||
+            quoteMatchesCalendarQuoteId(q, matchingCalendarQuoteIds)) &&
           getQuoteStatsStatus(q) !== "archived"
       );
     case "upcoming":
@@ -78,7 +113,7 @@ export function filterQuotesForStatsTile(
         (q) => {
           const status = getQuoteStatsStatus(q);
           return (
-            (matchingCalendarQuoteIds.has(q.id) ||
+            (quoteMatchesCalendarQuoteId(q, matchingCalendarQuoteIds) ||
               (q.appointment_date &&
                 q.appointment_date >= today &&
                 status !== "sold" &&

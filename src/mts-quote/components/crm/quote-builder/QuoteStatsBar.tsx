@@ -1,7 +1,7 @@
 import { cn } from "@mts/lib/utils";
 import { STATUS_ORDER, STATUS_LABELS } from "@mts/lib/quoteStatus";
-import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
-import type { SalesQuote, QuoteStatus } from "@mts/types/quote";
+import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashboardFilters";
+import type { QuoteStatus } from "@mts/types/quote";
 
 export type StatsFilter = "all" | "today" | "upcoming" | QuoteStatus;
 
@@ -15,7 +15,7 @@ export type QuoteStatsCalendarAppointment = {
 };
 
 interface QuoteStatsBarProps {
-  quotes: SalesQuote[];
+  quotes: QuoteStatsSource[];
   calendarAppointments?: QuoteStatsCalendarAppointment[];
   activeFilter: StatsFilter;
   onFilterChange: (filter: StatsFilter) => void;
@@ -54,7 +54,11 @@ export function QuoteStatsBar({
       .map((appointment) => appointment.quote_id)
       .filter((quoteId): quoteId is string => Boolean(quoteId))
   );
-  const quoteAppointments = quotes.filter((quote) => !calendarQuoteIds.has(quote.id));
+  const quoteAppointments = quotes.filter(
+    (quote) =>
+      !calendarQuoteIds.has(quote.id) &&
+      !(quote.sourceQuoteId && calendarQuoteIds.has(quote.sourceQuoteId))
+  );
 
   const todayCount =
     quoteAppointments.filter(

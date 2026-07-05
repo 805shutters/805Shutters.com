@@ -22,6 +22,7 @@ import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
 import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
 import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
+import type { CrmJob, CrmQuote } from "@/lib/crm/types";
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
@@ -30,7 +31,17 @@ const tabs = [
   { value: "contract", label: "Contract", icon: FileSignature, requiresQuote: true },
 ] as const;
 
-export function QuoteWorkspace() {
+type QuoteWorkspaceProps = {
+  crmJobs?: CrmJob[];
+  crmQuotes?: CrmQuote[];
+  onOpenCrmQuote?: (quoteId: string) => void;
+};
+
+export function QuoteWorkspace({
+  crmJobs = [],
+  crmQuotes = [],
+  onOpenCrmQuote,
+}: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
   const [newQuoteRequest, setNewQuoteRequest] = useState(0);
@@ -100,7 +111,13 @@ export function QuoteWorkspace() {
           {/* Tab content */}
           <div>
             {effectiveTab === "dashboard" && (
-              <QuoteDashboard quoteOperatorMode={false} newQuoteRequest={newQuoteRequest} />
+              <QuoteDashboard
+                quoteOperatorMode={false}
+                newQuoteRequest={newQuoteRequest}
+                crmJobs={crmJobs}
+                crmQuotes={crmQuotes}
+                onOpenCrmQuote={onOpenCrmQuote}
+              />
             )}
             {effectiveTab === "builder" && <QuoteBuilder />}
             {effectiveTab === "pricing" && <PricingGrids />}

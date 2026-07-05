@@ -4,13 +4,13 @@ import { Badge } from "@mts/components/ui/badge";
 import { Button } from "@mts/components/ui/button";
 import { cn } from "@mts/lib/utils";
 import { format } from "date-fns";
-import type { SalesQuote } from "@mts/types/quote";
 import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 import { getStatusColor, getStatusLabel } from "@mts/lib/quoteStatus";
+import type { QuoteTableRow } from "./QuotesTable";
 
 interface ContractsSectionProps {
-  quotes: SalesQuote[];
-  onOpenContract: (quote: SalesQuote) => void;
+  quotes: QuoteTableRow[];
+  onOpenContract: (quote: QuoteTableRow) => void;
 }
 
 export function ContractsSection({ quotes, onOpenContract }: ContractsSectionProps) {
@@ -103,11 +103,12 @@ function ContractRow({
   onOpen,
   variant,
 }: {
-  quote: SalesQuote;
+  quote: QuoteTableRow;
   onOpen: () => void;
   variant: "unsold" | "sold";
 }) {
   const status = getQuoteStatsStatus(quote);
+  const totalAmount = Number(quote.total_amount) || 0;
 
   return (
     <div
@@ -134,8 +135,8 @@ function ContractRow({
           </span>
         )}
         <span className="text-sm font-semibold">
-          {quote.total_amount > 0
-            ? `$${quote.total_amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+          {totalAmount > 0
+            ? `$${totalAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
             : "—"}
         </span>
         <span

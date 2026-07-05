@@ -6,7 +6,7 @@ import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
 import { QuoteStatsBar, type StatsFilter } from "./QuoteStatsBar";
-import { QuotesTable } from "./QuotesTable";
+import { QuotesTable, type QuoteTableRow } from "./QuotesTable";
 import { NewQuoteDialog, type NewQuoteData } from "./NewQuoteDialog";
 import { ContractsSection } from "./ContractsSection";
 import { QuotePortfolioDialog } from "./QuotePortfolioDialog";
@@ -22,10 +22,14 @@ import {
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
+import type { CrmJob, CrmQuote } from "@/lib/crm/types";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
   newQuoteRequest?: number;
+  crmJobs?: CrmJob[];
+  crmQuotes?: CrmQuote[];
+  onOpenCrmQuote?: (quoteId: string) => void;
 }
 
 const FILTER_LABELS: Record<StatsFilter, string> = {
@@ -45,9 +49,27 @@ const SALES_805_DASHBOARD_APPOINTMENTS_QUERY_KEY = [
   ACCOUNT_IDS.SHUTTERS_805,
 ] as const;
 
+function dateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.split("T")[0] || null;
+}
+
+function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
+  const meta = quote.meta || {};
+  const value = meta.mts_quote_id || meta.sales_quote_id;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function crmQuoteCustomerName(quote: CrmQuote, job?: CrmJob): string {
+  return quote.customer_name || job?.customer_name || "—";
+}
+
 export function QuoteDashboard({
   quoteOperatorMode = false,
   newQuoteRequest = 0,
+  crmJobs = [],
+  crmQuotes = [],
+  onOpenCrmQuote,
 }: QuoteDashboardProps) {
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
@@ -97,12 +119,74 @@ export function QuoteDashboard({
     },
   });
 
+  const dashboardQuotes = useMemo<QuoteTableRow[]>(() => {
+    const jobsById = new Map(crmJobs.map((job) => [job.id, job]));
+    const sourceSalesQuoteIds = new Set(
+      crmQuotes
+        .map(crmQuoteSourceSalesQuoteId)
+        .filter((quoteId): quoteId is string => Boolean(quoteId))
+    );
+
+    const crmRows: QuoteTableRow[] = crmQuotes.map((quote) => {
+      const job = jobsById.get(quote.job_id);
+      const sourceQuoteId = crmQuoteSourceSalesQuoteId(quote);
+
+      return {
+        id: quote.id,
+        status: quote.status,
+        live_status: quote.live_status ?? null,
+        quote_number: quote.quote_number || quote.quote_label || quote.id.slice(0, 8),
+        customer_name: crmQuoteCustomerName(quote, job),
+        customer_address: quote.customer_address || job?.address || null,
+        appointment_date: dateOnly(job?.appointment_start),
+        total_amount: quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
+        sent_at: quote.sent_at,
+        approved_at: quote.approved_at,
+        sold_at: quote.sold_at,
+        signed_at: quote.signed_at,
+        ordered_at: quote.ordered_at,
+        received_at: quote.received_at,
+        installed_at: quote.installed_at,
+        archived_at: quote.archived_at,
+        customer_signature: quote.customer_signature,
+        created_at: quote.created_at,
+        updated_at: quote.updated_at,
+        source: "crm",
+        sourceQuoteId,
+      };
+    });
+
+    const salesRows: QuoteTableRow[] = quotes
+      .filter((quote) => !sourceSalesQuoteIds.has(quote.id))
+      .map((quote) => ({
+        ...quote,
+        source: "sales" as const,
+        sourceQuoteId: quote.id,
+        salesQuote: quote,
+      }));
+
+    return [...crmRows, ...salesRows].sort((a, b) => {
+      const aTime = new Date(
+        a.updated_at || a.created_at || "1970-01-01T00:00:00.000Z"
+      ).getTime();
+      const bTime = new Date(
+        b.updated_at || b.created_at || "1970-01-01T00:00:00.000Z"
+      ).getTime();
+      return bTime - aTime;
+    });
+  }, [crmJobs, crmQuotes, quotes]);
+
   const filteredQuotes = useMemo(
-    () => filterQuotesForStatsTile(quotes, activeFilter, sales805Appointments),
-    [quotes, activeFilter, sales805Appointments]
+    () => filterQuotesForStatsTile(dashboardQuotes, activeFilter, sales805Appointments),
+    [dashboardQuotes, activeFilter, sales805Appointments]
   );
   const filteredQuoteIds = useMemo(
-    () => new Set(filteredQuotes.map((quote) => quote.id)),
+    () =>
+      new Set(
+        filteredQuotes.flatMap((quote) =>
+          quote.sourceQuoteId ? [quote.id, quote.sourceQuoteId] : [quote.id]
+        )
+      ),
     [filteredQuotes]
   );
   const filteredSales805Appointments = useMemo(
@@ -302,7 +386,11 @@ export function QuoteDashboard({
     },
   });
 
-  const handleOpenQuote = (quote: SalesQuote) => {
+  const handleOpenQuote = (quote: QuoteTableRow) => {
+    if (quote.source === "crm") {
+      onOpenCrmQuote?.(quote.id);
+      return;
+    }
     setActiveQuote(quote.id);
     setActiveTab("builder");
   };
@@ -311,7 +399,7 @@ export function QuoteDashboard({
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 p-4 sm:space-y-5 sm:p-5 xl:space-y-6 xl:p-6">
       {/* Stats Bar — status filter tabs */}
       <QuoteStatsBar
-        quotes={quotes}
+        quotes={dashboardQuotes}
         calendarAppointments={
           activeAccountId === ACCOUNT_IDS.SHUTTERS_805 ? sales805Appointments : []
         }
@@ -339,7 +427,9 @@ export function QuoteDashboard({
         quotes={filteredQuotes}
         isLoading={isLoading}
         onOpen={handleOpenQuote}
-        onPortfolio={setPortfolioQuote}
+        onPortfolio={(quote) => {
+          if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
+        }}
         onCopy={(id) => copyQuote.mutate(id)}
         onDelete={(id) => deleteQuote.mutate(id)}
         title={FILTER_LABELS[activeFilter]}
@@ -349,6 +439,10 @@ export function QuoteDashboard({
       <ContractsSection
         quotes={filteredQuotes}
         onOpenContract={(quote) => {
+          if (quote.source === "crm") {
+            onOpenCrmQuote?.(quote.id);
+            return;
+          }
           setActiveQuote(quote.id);
           setActiveTab("contract");
         }}

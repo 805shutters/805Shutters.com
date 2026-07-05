@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { filterQuotesForStatsTile, getQuoteStatsStatus } from "./quoteDashboardFilters";
+import {
+  filterQuotesForStatsTile,
+  getQuoteStatsStatus,
+  type QuoteStatsSource,
+} from "./quoteDashboardFilters";
 import type { SalesQuote } from "@mts/types/quote";
 
 function quote(overrides: Partial<SalesQuote>): SalesQuote {
@@ -138,5 +142,46 @@ describe("quote dashboard stats filters", () => {
     expect(filterQuotesForStatsTile([staleOrdered, staleInstalled], "installed").map((item) => item.id)).toEqual([
       "stale-installed",
     ]);
+  });
+
+  it("maps CRM quote statuses into quote builder lifecycle tiles", () => {
+    expect(getQuoteStatsStatus({ id: "approved", status: "approved" })).toBe("sold");
+    expect(getQuoteStatsStatus({ id: "ordered", live_status: "ordered" })).toBe("ordered");
+    expect(getQuoteStatsStatus({ id: "invoiced", status: "invoiced" })).toBe("installed");
+    expect(getQuoteStatsStatus({ id: "paid", status: "paid" })).toBe("installed");
+    expect(getQuoteStatsStatus({ id: "closed", live_status: "closed" })).toBe("installed");
+  });
+
+  it("filters CRM-derived rows into their normalized lifecycle tiles", () => {
+    const rows: QuoteStatsSource[] = [
+      { id: "crm-approved", status: "approved" },
+      { id: "crm-ordered", live_status: "ordered" },
+      { id: "crm-paid", status: "paid" },
+    ];
+
+    expect(filterQuotesForStatsTile(rows, "sold").map((item) => item.id)).toEqual([
+      "crm-approved",
+    ]);
+    expect(filterQuotesForStatsTile(rows, "ordered").map((item) => item.id)).toEqual([
+      "crm-ordered",
+    ]);
+    expect(filterQuotesForStatsTile(rows, "installed").map((item) => item.id)).toEqual([
+      "crm-paid",
+    ]);
+  });
+
+  it("matches calendar appointments through source sales quote ids", () => {
+    const today = new Date().toISOString().split("T")[0];
+    const row: QuoteStatsSource = {
+      id: "crm-row",
+      sourceQuoteId: "sales-row",
+      status: "sent",
+    };
+
+    expect(
+      filterQuotesForStatsTile([row], "today", [
+        { id: "appointment", quote_id: "sales-row", appointment_date: today, status: "scheduled" },
+      ]).map((item) => item.id)
+    ).toEqual(["crm-row"]);
   });
 });

@@ -2410,7 +2410,13 @@ export function CrmApp({
       ) : null}
 
       {activeTab === "quotes" && session ? (
-        <QuotesWorkspace session={session} jobs={jobs} quotes={quotes} onChanged={refresh} />
+        <QuotesWorkspace
+          session={session}
+          jobs={jobs}
+          quotes={quotes}
+          onChanged={refresh}
+          onOpenCrmQuote={setBuilderQuoteId}
+        />
       ) : null}
 
       {activeTab === "tracking" ? (
