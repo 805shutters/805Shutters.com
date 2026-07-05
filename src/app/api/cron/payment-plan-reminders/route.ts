@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
-import { runPaymentPlanReminders } from "@/lib/crm/payment-plans";
+import { runPaymentPlanCharges, runPaymentPlanReminders } from "@/lib/crm/payment-plans";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -18,8 +18,11 @@ async function run() {
   try {
     const supabase = getSupabaseServiceClient();
     if (!supabase) throw new CrmAuthError(503, "Database is not configured.");
-    const result = await runPaymentPlanReminders(supabase);
-    return NextResponse.json(result);
+    // Charge saved cards first so today's due installments are already paid
+    // when the reminder sweep runs (no reminder for a payment just collected).
+    const charges = await runPaymentPlanCharges(supabase);
+    const reminders = await runPaymentPlanReminders(supabase);
+    return NextResponse.json({ charges, reminders });
   } catch (error) {
     return crmAuthErrorResponse(error);
   }

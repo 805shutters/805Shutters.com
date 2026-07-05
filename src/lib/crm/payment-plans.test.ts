@@ -35,7 +35,10 @@ function makeSupabase(job: Row | null, options: { entry?: Row | null; jobs?: Row
         return {
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              maybeSingle: vi.fn(async () => ({ data: state.job, error: null }))
+              maybeSingle: vi.fn(async () => ({ data: state.job, error: null })),
+              limit: vi.fn(() => ({
+                maybeSingle: vi.fn(async () => ({ data: state.job, error: null }))
+              }))
             })),
             not: vi.fn(() => ({
               limit: vi.fn(async () => ({ data: options.jobs ?? (state.job ? [state.job] : []), error: null }))
@@ -349,5 +352,170 @@ describe("runPaymentPlanReminders", () => {
     const summary = await runPaymentPlanReminders(supabase, new Date("2026-07-05T17:00:00Z"));
     expect(summary.remindersSent).toBe(0);
     expect(sendSmsMock).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Square autopay
+// ---------------------------------------------------------------------------
+
+vi.mock("@/lib/finance/square", () => ({
+  isSquareConfigured: vi.fn(() => true),
+  dollarsToCents: (d: number) => Math.round(d * 100),
+  chargeSquareCardOnFile: vi.fn(),
+  createSquareCustomer: vi.fn(),
+  createSquareCardOnFile: vi.fn()
+}));
+
+import {
+  chargeSquareCardOnFile,
+  createSquareCardOnFile,
+  createSquareCustomer,
+  isSquareConfigured
+} from "@/lib/finance/square";
+import { autopaySetupUrl, linkAutopayCard, runPaymentPlanCharges } from "./payment-plans";
+import type { CrmPaymentPlanAutopay } from "./payment-plan-shared";
+
+const chargeMock = vi.mocked(chargeSquareCardOnFile);
+const createCustomerMock = vi.mocked(createSquareCustomer);
+const createCardMock = vi.mocked(createSquareCardOnFile);
+const configuredMock = vi.mocked(isSquareConfigured);
+
+function autopayPlan(overrides: Partial<CrmPaymentPlanAutopay> = {}) {
+  const plan = activePlan();
+  plan.method = "square_autopay";
+  plan.autopay = {
+    token: "11111111-2222-3333-4444-555555555555",
+    status: "linked",
+    square_customer_id: "CUST1",
+    square_card_id: "CARD1",
+    card_brand: "VISA",
+    card_last4: "1111",
+    ...overrides
+  };
+  return plan;
+}
+
+describe("autopaySetupUrl", () => {
+  it("builds the public setup link for square_autopay plans only", () => {
+    expect(autopaySetupUrl({ method: "square_autopay", autopay: { token: "abc", status: "not_linked" } })).toContain(
+      "/autopay/abc"
+    );
+    expect(autopaySetupUrl({ method: "zelle", autopay: { token: "abc", status: "not_linked" } })).toBeNull();
+  });
+});
+
+describe("createPaymentPlanForJob autopay token", () => {
+  it("mints a setup token for square_autopay plans and none for zelle", async () => {
+    const { supabase } = makeSupabase(baseJob());
+    const { plan } = await createPaymentPlanForJob(
+      supabase,
+      "job-1",
+      { financed_total: 3000, installment_count: 6, method: "square_autopay" },
+      actor
+    );
+    expect(plan.autopay?.status).toBe("not_linked");
+    expect(plan.autopay?.token).toMatch(/^[0-9a-f-]{36}$/i);
+
+    const { supabase: s2 } = makeSupabase(baseJob());
+    const { plan: p2 } = await createPaymentPlanForJob(
+      s2,
+      "job-1",
+      { financed_total: 3000, installment_count: 6, method: "zelle" },
+      actor
+    );
+    expect(p2.autopay).toBeNull();
+  });
+});
+
+describe("runPaymentPlanCharges", () => {
+  beforeEach(() => {
+    chargeMock.mockReset();
+    configuredMock.mockReturnValue(true);
+    sendSmsMock.mockClear();
+  });
+
+  it("charges a due installment and marks it paid with the Square payment id", async () => {
+    chargeMock.mockResolvedValue({ ok: true, paymentId: "PAY123", receiptUrl: null });
+    const plan = autopayPlan();
+    plan.installments[0].due_date = "2026-07-05";
+    plan.installments[0].card_fee = 30;
+    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
+    const { supabase, state } = makeSupabase(job, { jobs: [job], entry: { id: "entry-1" } });
+
+    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
+    expect(summary).toMatchObject({ plansChecked: 1, charged: 1, failed: 0 });
+    expect(chargeMock).toHaveBeenCalledOnce();
+    expect(chargeMock.mock.calls[0][0]).toMatchObject({ customerId: "CUST1", cardId: "CARD1", amountCents: 103000 });
+    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
+    expect(saved.installments[0].paid_at).toBe("2026-07-05");
+    expect(saved.installments[0].square_payment_id).toBe("PAY123");
+    expect(state.payments[0]).toMatchObject({ amount: 1000 });
+  });
+
+  it("stamps the failure, alerts the shop, and only attempts once per day", async () => {
+    process.env.MIKE_805_SALES_SMS_NUMBER = "8055550000";
+    chargeMock.mockResolvedValue({ ok: false, error: "CARD_DECLINED: Card was declined." });
+    const plan = autopayPlan();
+    plan.installments[0].due_date = "2026-07-01";
+    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
+    const { supabase, state } = makeSupabase(job, { jobs: [job] });
+
+    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
+    expect(summary.failed).toBe(1);
+    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
+    expect(saved.installments[0].charge_attempted_at).toBe("2026-07-05");
+    expect(saved.installments[0].charge_error).toContain("CARD_DECLINED");
+    expect(sendSmsMock.mock.calls.some((c) => String(c[0].body).includes("FAILED"))).toBe(true);
+
+    // same-day rerun: no second attempt
+    chargeMock.mockClear();
+    const rerunJob = { ...(state.job as Record<string, unknown>) };
+    const { supabase: s2 } = makeSupabase(rerunJob, { jobs: [rerunJob] });
+    await runPaymentPlanCharges(s2, new Date("2026-07-05T18:00:00Z"));
+    expect(chargeMock).not.toHaveBeenCalled();
+    delete process.env.MIKE_805_SALES_SMS_NUMBER;
+  });
+
+  it("skips unlinked plans, future installments, and unconfigured Square", async () => {
+    const plan = autopayPlan({ status: "not_linked" });
+    plan.installments[0].due_date = "2026-07-01";
+    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
+    const { supabase } = makeSupabase(job, { jobs: [job] });
+    const summary = await runPaymentPlanCharges(supabase, new Date("2026-07-05T17:00:00Z"));
+    expect(summary.plansChecked).toBe(0);
+    expect(chargeMock).not.toHaveBeenCalled();
+
+    configuredMock.mockReturnValue(false);
+    const s3 = makeSupabase(job, { jobs: [job] }).supabase;
+    const off = await runPaymentPlanCharges(s3, new Date("2026-07-05T17:00:00Z"));
+    expect(off.skippedNotConfigured).toBe(true);
+  });
+});
+
+describe("linkAutopayCard", () => {
+  beforeEach(() => {
+    createCustomerMock.mockReset().mockResolvedValue({ customerId: "CUST9" });
+    createCardMock.mockReset().mockResolvedValue({ cardId: "CARD9", brand: "MASTERCARD", last4: "4444" });
+    sendSmsMock.mockClear();
+  });
+
+  it("creates the Square customer + card and marks autopay linked", async () => {
+    const plan = autopayPlan({ status: "not_linked", square_customer_id: null, square_card_id: null });
+    const job = baseJob({ meta: { [PAYMENT_PLAN_META_KEY]: plan } });
+    const { supabase, state } = makeSupabase(job, { jobs: [job] });
+    const result = await linkAutopayCard(supabase, plan.autopay!.token, { sourceId: "cnon:abc" });
+    expect(result.ok).toBe(true);
+    const saved = getPaymentPlanMeta((state.job as Record<string, unknown>).meta)!;
+    expect(saved.autopay).toMatchObject({ status: "linked", square_customer_id: "CUST9", square_card_id: "CARD9", card_last4: "4444" });
+    expect(createCustomerMock).toHaveBeenCalledOnce();
+    expect(createCardMock).toHaveBeenCalledOnce();
+  });
+
+  it("rejects bad tokens without calling Square", async () => {
+    const { supabase } = makeSupabase(null, { jobs: [] });
+    const result = await linkAutopayCard(supabase, "not-a-token", { sourceId: "cnon:abc" });
+    expect(result.ok).toBe(false);
+    expect(createCustomerMock).not.toHaveBeenCalled();
   });
 });

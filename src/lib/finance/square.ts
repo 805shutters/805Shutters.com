@@ -228,6 +228,152 @@ export async function fetchSquareOrderFacts(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Card-on-file autopay (in-house payment plans): Customers + Cards + Payments.
+// ---------------------------------------------------------------------------
+
+export function squareApiBase(env: "sandbox" | "production" = squareEnvironment()): string {
+  return env === "production" ? SQUARE_PRODUCTION_API_BASE : SQUARE_SANDBOX_API_BASE;
+}
+
+/** Square application id for the Web Payments SDK card form (safe to expose to the browser). */
+export function squareApplicationId(): string {
+  return squareEnvValue("SQUARE_APPLICATION_ID") || squareEnvValue("NEXT_PUBLIC_SQUARE_APPLICATION_ID");
+}
+
+export function squareWebSdkUrl(env: "sandbox" | "production" = squareEnvironment()): string {
+  return env === "production" ? "https://web.squarecdn.com/v1/square.js" : "https://sandbox.web.squarecdn.com/v1/square.js";
+}
+
+async function squareApiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const accessToken = squareAccessToken();
+  if (!accessToken) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN).");
+  return fetch(`${squareApiBase()}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Square-Version": SQUARE_VERSION,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(init.headers || {})
+    }
+  });
+}
+
+async function squareJson<T>(res: Response, label: string): Promise<T> {
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(`${label} failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
+  return (await res.json()) as T;
+}
+
+export async function createSquareCustomer(input: {
+  givenName?: string | null;
+  familyName?: string | null;
+  emailAddress?: string | null;
+  phoneNumber?: string | null;
+  referenceId?: string | null;
+  note?: string | null;
+}): Promise<{ customerId: string }> {
+  const res = await squareApiFetch("/v2/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      idempotency_key: `805-cust-${input.referenceId || ""}-${Date.now()}`,
+      given_name: input.givenName || undefined,
+      family_name: input.familyName || undefined,
+      email_address: input.emailAddress || undefined,
+      phone_number: input.phoneNumber || undefined,
+      reference_id: input.referenceId || undefined,
+      note: input.note || undefined
+    })
+  });
+  const data = await squareJson<{ customer?: { id?: string } }>(res, "Square customer create");
+  if (!data.customer?.id) throw new Error("Square did not return a customer id.");
+  return { customerId: data.customer.id };
+}
+
+export async function createSquareCardOnFile(input: {
+  customerId: string;
+  /** One-time payment token (cnon) from the Web Payments SDK card form. */
+  sourceId: string;
+  cardholderName?: string | null;
+  referenceId?: string | null;
+  idempotencyKey: string;
+}): Promise<{ cardId: string; brand: string | null; last4: string | null }> {
+  const res = await squareApiFetch("/v2/cards", {
+    method: "POST",
+    body: JSON.stringify({
+      idempotency_key: input.idempotencyKey,
+      source_id: input.sourceId,
+      card: {
+        customer_id: input.customerId,
+        cardholder_name: input.cardholderName || undefined,
+        reference_id: input.referenceId || undefined
+      }
+    })
+  });
+  const data = await squareJson<{ card?: { id?: string; card_brand?: string; last_4?: string } }>(res, "Square card save");
+  if (!data.card?.id) throw new Error("Square did not return a card id.");
+  return { cardId: data.card.id, brand: data.card.card_brand || null, last4: data.card.last_4 || null };
+}
+
+export type SquareChargeResult =
+  | { ok: true; paymentId: string; receiptUrl: string | null }
+  | { ok: false; error: string };
+
+/** Merchant-initiated card-on-file charge for a payment-plan installment.
+ *  Returns a result object instead of throwing on decline so the cron can
+ *  record the failure and alert the shop. */
+export async function chargeSquareCardOnFile(input: {
+  customerId: string;
+  cardId: string;
+  amountCents: number;
+  note: string;
+  referenceId?: string | null;
+  idempotencyKey: string;
+}): Promise<SquareChargeResult> {
+  const locationId = squareLocationId();
+  if (!locationId) return { ok: false, error: "Square is not configured (SQUARE_LOCATION_ID)." };
+  try {
+    const res = await squareApiFetch("/v2/payments", {
+      method: "POST",
+      body: JSON.stringify({
+        idempotency_key: input.idempotencyKey,
+        source_id: input.cardId,
+        customer_id: input.customerId,
+        location_id: locationId,
+        amount_money: { amount: input.amountCents, currency: "USD" },
+        note: input.note.slice(0, 500),
+        reference_id: input.referenceId ? input.referenceId.slice(0, 40) : undefined,
+        autocomplete: true
+      })
+    });
+    if (!res.ok) {
+      const detail = await res.text();
+      let message = `Square charge failed (${res.status})`;
+      try {
+        const parsed = JSON.parse(detail) as { errors?: Array<{ code?: string; detail?: string }> };
+        const first = parsed.errors?.[0];
+        if (first) message = `${first.code || "SQUARE_ERROR"}: ${first.detail || message}`;
+      } catch {
+        message = `${message}: ${detail.slice(0, 200)}`;
+      }
+      return { ok: false, error: message };
+    }
+    const data = (await res.json()) as { payment?: { id?: string; status?: string; receipt_url?: string } };
+    const payment = data.payment;
+    if (!payment?.id) return { ok: false, error: "Square did not return a payment id." };
+    const status = String(payment.status || "").toUpperCase();
+    if (status && !["COMPLETED", "APPROVED", "CAPTURED"].includes(status)) {
+      return { ok: false, error: `Square payment status ${status}.` };
+    }
+    return { ok: true, paymentId: payment.id, receiptUrl: payment.receipt_url || null };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Square charge threw." };
+  }
+}
+
 /** Is this a Square event we should record a payment for? */
 export function isSquarePaidPaymentEvent(event: unknown): boolean {
   const e = event as { type?: string; data?: { object?: Record<string, unknown> | null } };

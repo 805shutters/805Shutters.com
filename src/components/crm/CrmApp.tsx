@@ -12978,6 +12978,33 @@ function PaymentPlanSection({
                   : ` / Started ${formatShortDate(openPlan.activated_at)}`}
               </span>
             </div>
+            {openPlan.method === "square_autopay" ? (
+              <div className="crm-drill-line-item crm-payment-plan-autopay">
+                <strong>
+                  {openPlan.autopay?.status === "linked"
+                    ? `Autopay ON - ${(openPlan.autopay.card_brand || "card").toUpperCase()} ending ${openPlan.autopay.card_last4 || "????"}`
+                    : "Autopay: customer has not saved a card yet"}
+                </strong>
+                {openPlan.autopay?.status === "linked" ? (
+                  <span>Each due installment is charged automatically by the daily sweep.</span>
+                ) : (
+                  <span>Send them the secure card setup link (it is also texted automatically on install day).</span>
+                )}
+                {openPlan.autopay?.token ? (
+                  <button
+                    type="button"
+                    className="crm-ghost-button"
+                    onClick={() => {
+                      const link = `${window.location.origin}/autopay/${openPlan.autopay?.token}`;
+                      void navigator.clipboard?.writeText(link);
+                      window.alert(`Card setup link copied:\n${link}`);
+                    }}
+                  >
+                    Copy card setup link
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             {openPlan.installments.map((inst) => (
               <div className="crm-drill-line-item crm-payment-plan-installment" key={inst.seq}>
                 <strong>

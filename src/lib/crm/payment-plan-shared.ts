@@ -18,6 +18,23 @@ export type CrmPaymentPlanInstallment = {
   payment_type: string | null;
   reminder_sent_at: string | null;
   overdue_notice_sent_at: string | null;
+  /** Square payment id when the installment was collected by autopay. */
+  square_payment_id?: string | null;
+  /** Date (YYYY-MM-DD) of the most recent autopay charge attempt (success or failure). */
+  charge_attempted_at?: string | null;
+  /** Last autopay charge error, cleared on success. */
+  charge_error?: string | null;
+};
+
+export type CrmPaymentPlanAutopay = {
+  /** Public token for the card-setup page (/autopay/[token]). */
+  token: string;
+  status: "not_linked" | "linked";
+  square_customer_id?: string | null;
+  square_card_id?: string | null;
+  card_brand?: string | null;
+  card_last4?: string | null;
+  linked_at?: string | null;
 };
 
 export type CrmPaymentPlanMeta = {
@@ -27,6 +44,8 @@ export type CrmPaymentPlanMeta = {
   /** Percent card fee passed through to the customer on card-collected plans (0 = none). */
   card_fee_percent?: number;
   method: CrmPaymentPlanMethod;
+  /** Square card-on-file autopay state (square_autopay plans). */
+  autopay?: CrmPaymentPlanAutopay | null;
   installments: CrmPaymentPlanInstallment[];
   created_at: string;
   created_by: string;
