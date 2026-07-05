@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -22,7 +22,6 @@ interface QuotesTableProps {
   onCopy: (id: string) => void;
   onDelete: (id: string) => void;
   title?: string;
-  headerAction?: ReactNode;
 }
 
 export function QuotesTable({
@@ -33,7 +32,6 @@ export function QuotesTable({
   onCopy,
   onDelete,
   title = "Quotes",
-  headerAction,
 }: QuotesTableProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -55,14 +53,11 @@ export function QuotesTable({
 
   return (
     <div className="bg-card border rounded-xl overflow-hidden">
-      <div className="p-4 border-b flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="p-4 border-b flex items-center justify-between">
         <h2 className="text-xl font-semibold">{title}</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-muted-foreground">
-            {quotes.length} quote{quotes.length === 1 ? "" : "s"}
-          </span>
-          {headerAction}
-        </div>
+        <span className="text-xs text-muted-foreground">
+          {quotes.length} quote{quotes.length === 1 ? "" : "s"}
+        </span>
       </div>
       <Table className="min-w-[760px]">
         <TableHeader>

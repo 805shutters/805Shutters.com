@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -11,7 +11,7 @@ import { NewQuoteDialog, type NewQuoteData } from "./NewQuoteDialog";
 import { ContractsSection } from "./ContractsSection";
 import { QuotePortfolioDialog } from "./QuotePortfolioDialog";
 import { Button } from "@mts/components/ui/button";
-import { CalendarDays, Clock, ExternalLink, Plus, UserRound } from "lucide-react";
+import { CalendarDays, Clock, ExternalLink, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
@@ -25,6 +25,7 @@ import type { SalesQuote } from "@mts/types/quote";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
+  newQuoteRequest?: number;
 }
 
 const FILTER_LABELS: Record<StatsFilter, string> = {
@@ -44,7 +45,10 @@ const SALES_805_DASHBOARD_APPOINTMENTS_QUERY_KEY = [
   ACCOUNT_IDS.SHUTTERS_805,
 ] as const;
 
-export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProps) {
+export function QuoteDashboard({
+  quoteOperatorMode = false,
+  newQuoteRequest = 0,
+}: QuoteDashboardProps) {
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
@@ -55,6 +59,11 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
     ? QUOTE_ACCOUNTS.filter((account) => account.id === ACCOUNT_IDS.SHUTTERS_805)
     : QUOTE_ACCOUNTS;
   const activeAccount = visibleAccounts.find((a) => a.id === activeAccountId) || visibleAccounts[0];
+
+  useEffect(() => {
+    if (!newQuoteRequest) return;
+    setShowNewQuoteDialog(true);
+  }, [newQuoteRequest]);
 
   // Fetch quotes for active account
   const { data: quotes = [], isLoading } = useQuery({
@@ -334,16 +343,6 @@ export function QuoteDashboard({ quoteOperatorMode = false }: QuoteDashboardProp
         onCopy={(id) => copyQuote.mutate(id)}
         onDelete={(id) => deleteQuote.mutate(id)}
         title={FILTER_LABELS[activeFilter]}
-        headerAction={
-          <Button
-            onClick={() => setShowNewQuoteDialog(true)}
-            className="bg-black text-white shadow-sm hover:bg-neutral-800"
-            size="sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            New Quote
-          </Button>
-        }
       />
 
       {/* Contracts Section */}

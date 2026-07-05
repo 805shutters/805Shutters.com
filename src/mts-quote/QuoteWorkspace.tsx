@@ -11,10 +11,10 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { LayoutDashboard, Hammer, FileSignature, TableProperties } from "lucide-react";
+import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
@@ -33,6 +33,7 @@ const tabs = [
 export function QuoteWorkspace() {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
+  const [newQuoteRequest, setNewQuoteRequest] = useState(0);
   const { activeTab, setActiveTab, activeQuoteId } = useQuoteBuilderStore();
 
   // dashboard/builder/pricing/contract only; anything else falls back to dashboard
@@ -40,6 +41,11 @@ export function QuoteWorkspace() {
     activeTab === "builder" || activeTab === "pricing" || activeTab === "contract"
       ? activeTab
       : "dashboard";
+
+  const handleNewQuoteClick = () => {
+    setActiveTab("dashboard");
+    setNewQuoteRequest((request) => request + 1);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -51,38 +57,51 @@ export function QuoteWorkspace() {
         >
           {/* Tab buttons (hidden in the full-screen builder — its slim bar carries the toggle + X) */}
           {effectiveTab !== "builder" && (
-          <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
-            <div className="flex flex-wrap gap-2">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = effectiveTab === tab.value;
-                const isDisabled = tab.requiresQuote && !activeQuoteId;
+            <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
+              <div className="flex flex-wrap items-center gap-2">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = effectiveTab === tab.value;
+                  const isDisabled = tab.requiresQuote && !activeQuoteId;
 
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => !isDisabled && setActiveTab(tab.value)}
-                    disabled={isDisabled}
-                    className={cn(
-                      "flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-all",
-                      isDisabled && "opacity-40 cursor-not-allowed",
-                      isActive
-                        ? "bg-[#0b0b0b] text-white border-[#0b0b0b] shadow-md"
-                        : "bg-white border-[#0b0b0b]/30 text-[#1c1c1a] hover:border-[#0b0b0b] hover:shadow-sm"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.label}
-                  </button>
-                );
-              })}
+                  return (
+                    <Fragment key={tab.value}>
+                      <button
+                        onClick={() => !isDisabled && setActiveTab(tab.value)}
+                        disabled={isDisabled}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-all",
+                          isDisabled && "opacity-40 cursor-not-allowed",
+                          isActive
+                            ? "bg-[#0b0b0b] text-white border-[#0b0b0b] shadow-md"
+                            : "bg-white border-[#0b0b0b]/30 text-[#1c1c1a] hover:border-[#0b0b0b] hover:shadow-sm"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.label}
+                      </button>
+                      {tab.value === "dashboard" && (
+                        <button
+                          type="button"
+                          onClick={handleNewQuoteClick}
+                          className="flex items-center gap-2 rounded-md border border-[#0b0b0b] bg-[#0b0b0b] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#232320]"
+                        >
+                          <Plus className="h-4 w-4" />
+                          New Quote
+                        </button>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </div>
             </div>
-          </div>
           )}
 
           {/* Tab content */}
           <div>
-            {effectiveTab === "dashboard" && <QuoteDashboard quoteOperatorMode={false} />}
+            {effectiveTab === "dashboard" && (
+              <QuoteDashboard quoteOperatorMode={false} newQuoteRequest={newQuoteRequest} />
+            )}
             {effectiveTab === "builder" && <QuoteBuilder />}
             {effectiveTab === "pricing" && <PricingGrids />}
             {effectiveTab === "contract" && <QuoteContract />}
