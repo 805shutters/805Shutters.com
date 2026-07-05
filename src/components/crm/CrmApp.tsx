@@ -775,7 +775,6 @@ export function CrmApp({
   const busyRef = useRef(false);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
   const [calendarView, setCalendarView] = useState<CalendarView>("week");
   const [calendarManagementMode, setCalendarManagementMode] = useState<CalendarManagementMode>("appointments");
@@ -922,14 +921,12 @@ export function CrmApp({
     setUser(sessionResult);
     setData(dashboardResult);
     crmLoadedRef.current = true;
-    setLastSyncedAt(Date.now());
   }
 
   async function refresh() {
     if (!session) return null;
     const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
     setData(dashboardResult);
-    setLastSyncedAt(Date.now());
     return dashboardResult;
   }
 
@@ -1173,7 +1170,6 @@ export function CrmApp({
         const dashboardResult = await crmFetch<CrmDashboardData>(session, "/api/crm/jobs");
         if (cancelled) return;
         setData(dashboardResult);
-        setLastSyncedAt(Date.now());
       } catch {
         // Background refresh is best-effort; the next tick will retry.
       }
@@ -1857,7 +1853,6 @@ export function CrmApp({
         body: JSON.stringify(payload)
       });
       setData(result.dashboard);
-      setLastSyncedAt(Date.now());
       const receiptMessage = result.receiptEmail?.sent
         ? ` Receipt PDF emailed to ${result.receiptEmail.to}.`
         : result.receiptEmail
@@ -1906,7 +1901,6 @@ export function CrmApp({
         } satisfies PartnerPaymentRequest)
       });
       setData(result.dashboard);
-      setLastSyncedAt(Date.now());
       const receiptMessage = result.receiptEmail?.sent
         ? ` Receipt PDF emailed to ${result.receiptEmail.to}.`
         : result.receiptEmail
@@ -2327,7 +2321,6 @@ export function CrmApp({
         data={data}
         payments={kenPayments}
         busy={busy}
-        lastSyncedAt={lastSyncedAt}
         onTabChange={openTab}
       />
     );
@@ -2624,7 +2617,6 @@ export function CrmApp({
               commissionSummary={data?.commissionSummary}
               partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
-              lastSyncedAt={lastSyncedAt}
               canMarkPartnerPaid={isMikePaymentAdminEmail(user?.email)}
               onOpenPayments={openPaymentLedger}
               onSave={saveBookkeepingCell}
@@ -2866,7 +2858,6 @@ function KenPortalView({
   data,
   payments,
   busy,
-  lastSyncedAt,
   onTabChange
 }: {
   activeTab: "bookkeeping" | "payoff";
@@ -2874,7 +2865,6 @@ function KenPortalView({
   data: CrmDashboardData | null;
   payments: CrmKenPayment[];
   busy: boolean;
-  lastSyncedAt: number | null;
   onTabChange: (tab: CrmTab) => void;
 }) {
   return (
@@ -2913,7 +2903,6 @@ function KenPortalView({
               payoff={data?.kenPayoff}
               partnerPaymentLedger={data?.partnerPaymentLedger}
               busy={busy}
-              lastSyncedAt={lastSyncedAt}
               onOpenPayoff={() => onTabChange("payoff")}
             />
           </div>
@@ -10625,7 +10614,6 @@ function ReadOnlyBookkeepingSpreadsheet({
   payoff,
   partnerPaymentLedger,
   busy,
-  lastSyncedAt,
   onOpenPayoff
 }: {
   rows: CrmBookkeepingRow[];
@@ -10633,7 +10621,6 @@ function ReadOnlyBookkeepingSpreadsheet({
   payoff?: CrmDashboardData["kenPayoff"];
   partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
-  lastSyncedAt: number | null;
   onOpenPayoff: () => void;
 }) {
   const totalProfit = roundCurrency(
@@ -10680,16 +10667,6 @@ function ReadOnlyBookkeepingSpreadsheet({
         <div>
           <p className="eyebrow">Bookkeeping Spreadsheet</p>
           <h2>Quote Job Ledger</h2>
-        </div>
-        <div className="crm-bookkeeping-counts" aria-label="Bookkeeping row counts">
-          <span>Rows: {totals?.rows || 0}</span>
-          <span
-            className="crm-bookkeeping-live"
-            title={lastSyncedAt ? `Last updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : "Waiting for first sync"}
-          >
-            <span className="crm-bookkeeping-live-dot" aria-hidden="true" />
-            Live{lastSyncedAt ? ` · updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : ""}
-          </span>
         </div>
       </div>
       <div className="crm-bookkeeping-summary-grid">
@@ -10920,7 +10897,6 @@ function BookkeepingSpreadsheet({
   commissionSummary,
   partnerPaymentLedger,
   busy,
-  lastSyncedAt,
   canMarkPartnerPaid,
   onOpenPayments,
   onSave,
@@ -10935,7 +10911,6 @@ function BookkeepingSpreadsheet({
   commissionSummary: CrmCommissionSummary | undefined;
   partnerPaymentLedger: CrmDashboardData["partnerPaymentLedger"] | undefined;
   busy: boolean;
-  lastSyncedAt: number | null;
   canMarkPartnerPaid: boolean;
   onOpenPayments: (person: CrmPaymentPerson) => void;
   onSave: (row: CrmBookkeepingRow, patch: Record<string, unknown>) => Promise<void>;
@@ -11007,16 +10982,6 @@ function BookkeepingSpreadsheet({
         <div>
           <p className="eyebrow">Bookkeeping</p>
           <h2>Quote Job Ledger</h2>
-        </div>
-        <div className="crm-bookkeeping-counts" aria-label="Bookkeeping row counts">
-          <span>Rows: {totals?.rows || 0}</span>
-          <span
-            className="crm-bookkeeping-live"
-            title={lastSyncedAt ? `Last updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : "Waiting for first sync"}
-          >
-            <span className="crm-bookkeeping-live-dot" aria-hidden="true" />
-            Live{lastSyncedAt ? ` · updated ${new Date(lastSyncedAt).toLocaleTimeString()}` : ""}
-          </span>
         </div>
       </div>
       <div className="crm-bookkeeping-summary-grid">

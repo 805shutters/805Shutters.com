@@ -6867,47 +6867,6 @@ button.crm-calendar-month-event:focus-visible {
   text-transform: uppercase;
 }
 
-/* "Live" badge — the auto-refresh heartbeat for the ledger */
-.crm-bookkeeping-counts .crm-bookkeeping-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #e7f5ec;
-  border-color: #8fcfa6;
-  color: #1c6b3a;
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-
-.crm-bookkeeping-counts .crm-bookkeeping-live-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: #2f9e57;
-  animation: crm-bookkeeping-live-pulse 2s ease-out infinite;
-}
-
-@keyframes crm-bookkeeping-live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(47, 158, 87, 0.55);
-  }
-  70% {
-    box-shadow: 0 0 0 7px rgba(47, 158, 87, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(47, 158, 87, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .crm-bookkeeping-counts .crm-bookkeeping-live-dot {
-    animation: none;
-  }
-}
-
 .crm-bookkeeping-summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
