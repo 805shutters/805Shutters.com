@@ -2185,6 +2185,35 @@ body.commercial-mode .home-hero-actions .button.primary {
   color: rgba(255, 255, 255, 0.88);
 }
 
+.home-photo-flow-intro {
+  padding: clamp(46px, 6vw, 82px) 0 clamp(22px, 3.5vw, 40px);
+  background: #0b0b0b;
+  color: var(--white);
+}
+
+.home-photo-flow-intro-inner {
+  display: grid;
+  justify-items: center;
+  gap: clamp(10px, 1.5vw, 16px);
+  text-align: center;
+}
+
+.home-photo-flow-intro .eyebrow {
+  margin: 0;
+  color: var(--platinum-deep);
+}
+
+.home-photo-flow-intro h2 {
+  max-width: 14ch;
+  margin: 0;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: clamp(36px, 5vw, 68px);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.98;
+}
+
 .home-photo-flow {
   display: grid;
   background: #0b0b0b;
@@ -2426,6 +2455,31 @@ body.commercial-mode .home-hero-actions .button.primary {
   color: var(--ink);
   font-size: 15px;
   line-height: 1.25;
+}
+
+.installed-portfolio--recent {
+  padding: clamp(38px, 5vw, 66px) 0 clamp(44px, 6vw, 78px);
+}
+
+.installed-portfolio--recent .installed-portfolio-head {
+  margin-bottom: clamp(18px, 2.8vw, 30px);
+}
+
+.installed-portfolio--recent .installed-portfolio-head h2 {
+  max-width: 620px;
+}
+
+.installed-portfolio--recent .installed-portfolio-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(8px, 1.2vw, 16px);
+}
+
+.installed-portfolio--recent .installed-portfolio-card {
+  background: var(--soft);
+}
+
+.installed-portfolio--recent .installed-portfolio-card figcaption {
+  display: none;
 }
 
 .content-wrap {

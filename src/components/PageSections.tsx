@@ -528,6 +528,13 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   }
 ];
 
+const residentialRecentWorkPhotos = [
+  installedPortfolioPhotos.find((photo) => photo.title === "Office Plantation Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Layered Bedroom Shades"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Arched Window Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Motorized Roller Shades")
+].filter((photo): photo is InstalledPortfolioPhoto => Boolean(photo));
+
 const commercialInstalledPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
     category: "Office Shades",
@@ -1246,7 +1253,7 @@ function CommercialSeoPage({ page }: { page: SitePage }) {
 
 function HomePageSections({ page, commercialMode }: { page: SitePage; commercialMode: boolean }) {
   const stories = commercialMode ? commercialPortfolioStories : portfolioStories;
-  const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : installedPortfolioPhotos;
+  const installedPhotos = commercialMode ? commercialInstalledPortfolioPhotos : residentialRecentWorkPhotos;
   const sections = commercialMode ? commercialHomeSections : page.sections;
   const heroSlides = commercialMode ? commercialHomeHeroSlides() : homeHeroSlides(page);
   const heroMediaSlides = commercialMode ? heroSlides : heroSlides.slice(0, 1);
@@ -1303,21 +1310,29 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
             </article>
           ))}
         </section>
-      ) : (
-        <section className="home-photo-flow" aria-label="805 Shutters homepage photo flow">
-          {residentialPhotoFlowSlides.map((slide) => (
-            <figure className="home-photo-flow-item" key={slide.label || slide.image}>
-              <img src={slide.image} alt={slide.imageAlt} loading="lazy" decoding="async" />
-              {slide.tagline ? (
-                <figcaption>
-                  <span>{slide.label}</span>
-                  <strong>{slide.tagline}</strong>
-                </figcaption>
-              ) : null}
+      ) : null}
+
+      <section className={`installed-portfolio${commercialMode ? "" : " installed-portfolio--recent"}`}>
+        <div className="content-wrap installed-portfolio-head">
+          <p className="eyebrow">{commercialMode ? "Commercial Portfolio" : "Recent Work"}</p>
+          <h2>{commercialMode ? "Commercial window covering applications for business spaces" : "Recent shutters and shades from Ventura County homes"}</h2>
+        </div>
+        <div className="content-wrap installed-portfolio-grid">
+          {installedPhotos.map((photo) => (
+            <figure className="installed-portfolio-card" key={photo.title}>
+              {photo.video ? (
+                <LazyVideo aria-label={photo.imageAlt} poster={photo.image} src={photo.video} />
+              ) : (
+                <img src={photo.image} alt={photo.imageAlt} loading="lazy" decoding="async" />
+              )}
+              <figcaption>
+                <span>{photo.category}</span>
+                <strong>{photo.title}</strong>
+              </figcaption>
             </figure>
           ))}
-        </section>
-      )}
+        </div>
+      </section>
 
       <section className="home-about" id="about" aria-label="About 805 Shutters">
         <div className="content-wrap home-about-inner">
@@ -1348,28 +1363,6 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
               More about 805 Shutters &rarr;
             </Link>
           </div>
-        </div>
-      </section>
-
-      <section className="installed-portfolio">
-        <div className="content-wrap installed-portfolio-head">
-          <p className="eyebrow">{commercialMode ? "Commercial Portfolio" : "Installed Portfolio"}</p>
-          <h2>{commercialMode ? "Commercial window covering applications for business spaces" : "Shutters and shades from recent Ventura County projects"}</h2>
-        </div>
-        <div className="content-wrap installed-portfolio-grid">
-          {installedPhotos.map((photo) => (
-            <figure className="installed-portfolio-card" key={photo.title}>
-              {photo.video ? (
-                <LazyVideo aria-label={photo.imageAlt} poster={photo.image} src={photo.video} />
-              ) : (
-                <img src={photo.image} alt={photo.imageAlt} loading="lazy" decoding="async" />
-              )}
-              <figcaption>
-                <span>{photo.category}</span>
-                <strong>{photo.title}</strong>
-              </figcaption>
-            </figure>
-          ))}
         </div>
       </section>
 
@@ -1409,6 +1402,31 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
           </div>
         </div>
       </section>
+
+      {!commercialMode && residentialPhotoFlowSlides.length ? (
+        <>
+          <section className="home-photo-flow-intro" aria-label="More window treatment inspiration">
+            <div className="content-wrap home-photo-flow-intro-inner">
+              <p className="eyebrow">More Inspiration</p>
+              <h2>Keep browsing shutters, shades, blinds, and drapery styles.</h2>
+            </div>
+          </section>
+
+          <section className="home-photo-flow home-photo-flow--after-content" aria-label="More 805 Shutters homepage photos">
+            {residentialPhotoFlowSlides.map((slide) => (
+              <figure className="home-photo-flow-item" key={slide.label || slide.image}>
+                <img src={slide.image} alt={slide.imageAlt} loading="lazy" decoding="async" />
+                {slide.tagline ? (
+                  <figcaption>
+                    <span>{slide.label}</span>
+                    <strong>{slide.tagline}</strong>
+                  </figcaption>
+                ) : null}
+              </figure>
+            ))}
+          </section>
+        </>
+      ) : null}
 
       <CrmHomeLogin />
     </>
