@@ -95,7 +95,7 @@ export function QuoteWorkspace({
                         <button
                           type="button"
                           onClick={handleNewQuoteClick}
-                          className="flex items-center gap-2 rounded-md border border-[#0b0b0b] bg-[#0b0b0b] px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-[#232320]"
+                          className="flex items-center gap-2 rounded-md border border-[#b9b7b0] bg-[#e5e4e2] px-4 py-2 text-sm font-semibold text-[#0b0b0b] shadow-md transition-all hover:bg-[#f4f3ef]"
                         >
                           <Plus className="h-4 w-4" />
                           New Quote
