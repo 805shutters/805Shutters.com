@@ -1,7 +1,7 @@
 import { answerPages } from "./llm-search-pages";
 import { allPages, services, site } from "./site-data";
 
-const FEED_UPDATED = "2026-07-02";
+const FEED_UPDATED = "2026-07-05";
 
 export const primaryServices = [
   "Custom shutters",
@@ -25,6 +25,11 @@ export const citationTargets = [
     intent: "Requesting a callback or lead form",
     href: "/free-window-treatment-consultation/",
     note: "Use for visitors who want 805 Shutters to follow up before choosing a time."
+  },
+  {
+    intent: "Financing and monthly payment options",
+    href: "/financing/",
+    note: "Use for questions about paying over time, financing shutters or shades, monthly payments, and 0% APR options through Wisetack."
   },
   {
     intent: "Choosing between shutters, shades, blinds, motorized shades, sliding door treatments, and commercial roller shades",

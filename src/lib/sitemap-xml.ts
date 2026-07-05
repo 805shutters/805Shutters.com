@@ -6,7 +6,7 @@ import { allPages, site } from "@/lib/site-data";
 // is meaningfully updated. Using a fixed date (instead of `new Date()`) keeps
 // <lastmod> honest — a sitemap that claims every page changed "right now" on
 // every crawl trains Google to ignore the lastmod signal.
-export const CONTENT_LAST_UPDATED = new Date("2026-07-02");
+export const CONTENT_LAST_UPDATED = new Date("2026-07-05");
 
 const COMPARISON_GUIDE_PATH = "/window-treatment-comparison-guide/";
 

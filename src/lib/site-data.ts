@@ -1081,6 +1081,7 @@ const supportPages: SitePage[] = [
           "Over 30 years of local experience",
           "Custom measuring and professional installation",
           "Shutters, shades, blinds, and commercial coverings in one place",
+          "Monthly payment options through Wisetack, including 0% APR plans for qualified customers",
           "Service across Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, and nearby cities"
         ]
       },
@@ -1090,6 +1091,71 @@ const supportPages: SitePage[] = [
           "We review the rooms, windows, privacy needs, light control goals, product options, materials, colors, and installation details before you buy."
       }
     ]
+  },
+  {
+    path: "/financing/",
+    title: "Window Treatment Financing in Ventura County | 0% APR Options | 805 Shutters",
+    description:
+      "Finance custom shutters, shades, blinds, and drapery in Ventura County with monthly payment options through Wisetack, including 0% APR plans for qualified customers.",
+    h1: "Flexible Financing For Shutters, Shades & Blinds",
+    eyebrow: "Pay over time",
+    intro:
+      "Get the custom window treatments your home needs now and pay over time with monthly payment options through Wisetack, including 0% APR plans for qualified customers.",
+    image: images.hero,
+    imageAlt: "Custom plantation shutters in a bright Ventura County living room",
+    sections: [
+      {
+        heading: "Monthly Payments Through Wisetack",
+        body:
+          "805 Shutters partners with Wisetack, a consumer financing platform built for home services, so Ventura County homeowners can split a window treatment project into predictable monthly payments instead of paying everything up front.",
+        bullets: [
+          "Check your options in about a minute from your phone",
+          "Checking eligibility does not impact your credit score",
+          "Choose from multiple monthly payment plans",
+          "No prepayment penalties, origination fees, or late fees",
+          "0% APR plans available for qualified customers"
+        ]
+      },
+      {
+        heading: "How Financing Works",
+        body:
+          "Request a free in-home consultation and we will measure your windows and build your custom quote. If you want to pay over time, we text or email you a secure Wisetack link for your project. You pick the monthly plan that fits your budget, and we get to work - Wisetack pays us directly, and you simply make your monthly payments.",
+        links: [{ label: "Book a free in-home consultation", href: "/book-consultation/" }]
+      },
+      {
+        heading: "Why Homeowners Like Paying Over Time",
+        body:
+          "Custom shutters, shades, and drapery are a long-term upgrade to your home. Financing lets you do the whole project at once - every room, matching treatments, motorization if you want it - instead of phasing it over years. Ask about financing during your consultation and we will walk you through the options with no pressure and no obligation."
+      },
+      {
+        heading: "Financing Disclosure",
+        body:
+          "All financing is subject to credit approval. Your terms may vary. Payment options through Wisetack are provided by Wisetack's lending partners. For example, a $5,500 purchase could cost $253.54 per month for 24 months, based on a 9.9% APR, or $1,833.33 per month for 3 months, based on a 0% APR. Offers range from 0 to 35.9% APR based on amount requested and creditworthiness. Not all merchants and lending partners participate in 0% interest programs. Terms range from 3 to 120 months and may vary based on merchant, lending partner, or transaction size. State interest rate caps may apply. No prepaid finance charges or participation fees. See additional terms at wisetack.com/faqs."
+      }
+    ],
+    faqs: [
+      {
+        question: "Can I finance shutters, shades, or blinds in Ventura County?",
+        answer:
+          "Yes. 805 Shutters offers monthly payment options through Wisetack on custom shutters, shades, blinds, and drapery projects, including 0% APR plans for qualified customers. Ask about financing during your free in-home consultation."
+      },
+      {
+        question: "Does checking my financing options affect my credit score?",
+        answer:
+          "No. Checking your options through Wisetack is a soft credit inquiry and does not impact your credit score. A quick application from your phone shows the monthly payment plans you qualify for."
+      },
+      {
+        question: "Is there a fee or penalty for paying off financing early?",
+        answer:
+          "No. Wisetack financing has no prepayment penalties, no origination fees, and no late fees. You can pay off your plan early at any time."
+      },
+      {
+        question: "How do I apply for window treatment financing?",
+        answer:
+          "Schedule a free in-home consultation with 805 Shutters. After we build your custom quote, we send you a secure Wisetack link by text or email. You check your options in about a minute and pick the monthly plan that works for you."
+      }
+    ],
+    cta: "Request a free consultation"
   },
   {
     path: "/thank-you/",
@@ -1189,6 +1255,12 @@ const supportPages: SitePage[] = [
         heading: "Do you handle commercial projects?",
         body:
           "Yes. 805 Shutters installs commercial roller shades and window coverings for offices, retail spaces, restaurants, schools, medical spaces, and shared facilities."
+      },
+      {
+        heading: "Do you offer financing?",
+        body:
+          "Yes. 805 Shutters offers monthly payment options through Wisetack, including 0% APR plans for qualified customers. Checking your options takes about a minute from your phone and does not impact your credit score.",
+        links: [{ label: "Learn about financing", href: "/financing/" }]
       },
       {
         heading: "What are your business hours?",
@@ -2397,6 +2469,7 @@ function searchDepthSections(page: SitePage): PageSection[] {
   if (
     page.noIndex ||
     isCommercialCityPage ||
+    page.path === "/financing/" ||
     (page.path.startsWith("/recent-projects/") && page.path !== "/recent-projects/")
   ) {
     return page.sections;
@@ -2554,6 +2627,12 @@ export const homePage: SitePage = withSearchDepth({
       heading: "Local Window Treatment Installation",
         body:
         "Our local team measures, recommends, and installs plantation shutters, roller shades, honeycomb shades, wood and faux wood blinds, drapery, vertical blinds, and commercial window coverings across Ventura County."
+    },
+    {
+      heading: "Flexible Monthly Payments",
+      body:
+        "Pay over time with monthly payment options through Wisetack, including 0% APR plans for qualified customers. Checking your options takes about a minute and does not impact your credit score.",
+      links: [{ label: "Learn about financing", href: "/financing/" }]
     },
     {
       heading: "Popular Service Areas",
