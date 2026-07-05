@@ -14375,7 +14375,81 @@ body .site-footer .social-links a:focus-visible {
   border-bottom: 1px solid rgba(17, 17, 17, 0.13);
 }
 
-/* Masthead financing link mirrors the About Us link treatment. */
-.masthead-financing-link {
+
+/* Dedicated financing banner: fixed strip across the very top of the screen.
+   The header (sticky on interior pages, fixed on the editorial homepage) and
+   the page body are pushed down by its height so it owns its own room. */
+:root {
+  --financing-banner-height: 37px;
+}
+
+.financing-banner {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: var(--financing-banner-height);
+  padding: 0 16px;
+  background: #111;
+  color: #fbfbfa;
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.financing-banner-cta {
+  color: #b8b8b3;
+  border-bottom: 1px solid #b8b8b3;
+  padding-bottom: 1px;
   white-space: nowrap;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.financing-banner:hover .financing-banner-cta,
+.financing-banner:focus-visible .financing-banner-cta {
+  color: #fbfbfa;
+  border-color: #fbfbfa;
+}
+
+body:has(.financing-banner) {
+  padding-top: var(--financing-banner-height);
+}
+
+/* Sticky interior header and the fixed homepage header both start below the banner. */
+body:has(.financing-banner) .site-header-shell {
+  top: var(--financing-banner-height);
+}
+
+@media (max-width: 620px) {
+  :root {
+    --financing-banner-height: 44px;
+  }
+
+  .financing-banner {
+    flex-wrap: wrap;
+    row-gap: 0;
+    gap: 8px;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    padding: 0 12px;
+  }
+}
+
+/* Mobile: interior pages render the header in-flow (position: relative), so the
+   body padding alone reserves the banner strip - zero out the sticky offset.
+   The mobile homepage header is sticky/fixed, so it keeps the banner offset. */
+@media (max-width: 620px) {
+  body:has(.financing-banner) .site-header-shell {
+    top: 0;
+  }
+
+  body:has(.financing-banner):has(.home-editorial) .site-header-shell,
+  body.home-page-active:has(.financing-banner) .site-header-shell {
+    top: var(--financing-banner-height);
+  }
 }

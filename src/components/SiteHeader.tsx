@@ -92,6 +92,12 @@ export function SiteHeader() {
 
   return (
     <>
+      {!isCommercialMode ? (
+        <Link className="financing-banner" href="/financing/">
+          <span className="financing-banner-text">0% APR financing for qualified customers</span>
+          <span className="financing-banner-cta">Learn more</span>
+        </Link>
+      ) : null}
       <header className="site-header-shell">
       <HeaderScrollState />
       <div className="site-masthead">
@@ -113,11 +119,6 @@ export function SiteHeader() {
             <CalendarRouteLink className="header-calendar-link--with-commercial" />
           </div>
           <div className="masthead-social-row">
-            {!isCommercialMode ? (
-              <Link className="masthead-link masthead-about-link masthead-financing-link" href="/financing/">
-                Financing Available
-              </Link>
-            ) : null}
             <Link
               className="masthead-link masthead-about-link"
               href="/#about"
