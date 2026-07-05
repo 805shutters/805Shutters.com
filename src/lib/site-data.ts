@@ -81,6 +81,11 @@ export const ogDefaults = {
   locale: "en_US"
 } as const;
 
+// First hero-carousel slide on the residential homepage. It renders as a CSS
+// background-image, which browsers discover late — the homepage preloads it
+// so the LCP image starts downloading with the document.
+export const homeHeroImage = "/images/homepage-flow/main-homepage-photo.jpg";
+
 export const images = {
   hero: "/images/805-hero-window-treatments.jpg",
   shutters:
@@ -105,7 +110,7 @@ const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
     image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
     imageAlt: "Motorized roller shades installed across living room patio-view windows",
-    video: "/videos/motorized-roller-shades-living-room-view.m4v"
+    video: "/videos/motorized-roller-shades-living-room-view.mp4"
   },
   {
     image: "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-card.jpg",

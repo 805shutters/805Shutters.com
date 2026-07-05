@@ -144,7 +144,7 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
         return (
           <div className={`home-hero-slide${index === activeIndex ? " is-active" : ""}`} key={slide.label || slide.video || slide.image}>
             {slide.video && loadSlide ? (
-              <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "metadata"}>
+              <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "none"}>
                 <source src={slide.video} type="video/mp4" />
               </video>
             ) : (

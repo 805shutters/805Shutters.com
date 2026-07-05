@@ -12,7 +12,7 @@ export function ServiceGrid({ commercialMode = false }: { commercialMode?: boole
       <div className="service-grid">
         {activeServices.map((service) => (
           <article className="service-card" key={`${service.slug}-${service.title}`}>
-            <img src={service.image} alt={service.imageAlt} />
+            <img src={service.image} alt={service.imageAlt} loading="lazy" decoding="async" />
             <div>
               <h3>{service.title}</h3>
               <p>{service.description}</p>

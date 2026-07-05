@@ -8,7 +8,8 @@ import { TrackedPhoneLink } from "./TrackedPhoneLink";
 import { AppointmentBooking } from "./booking/AppointmentBooking";
 import { CrmHomeLogin } from "./crm/CrmHomeLogin";
 import { HomeHeroCarousel, type HomeHeroSlide } from "./HomeHeroCarousel";
-import { SitePage, site } from "@/lib/site-data";
+import { LazyVideo } from "./LazyVideo";
+import { SitePage, homeHeroImage, site } from "@/lib/site-data";
 import {
   commercialApplications,
   commercialFaqs,
@@ -261,7 +262,7 @@ const commercialPortfolioStories: PortfolioStory[] = [
 const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   {
     label: "Original Home Photo",
-    image: "/images/homepage-flow/main-homepage-photo.jpg",
+    image: homeHeroImage,
     imageAlt: page.imageAlt
   },
   {
@@ -438,14 +439,14 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
     title: "Motorized Roller Shades",
     image: "/images/video-posters/motorized-roller-shades-patio-view.jpg",
     imageAlt: "Motorized roller shades installed over patio-view windows",
-    video: "/videos/motorized-roller-shades-patio-view-loop.m4v"
+    video: "/videos/motorized-roller-shades-patio-view-loop.mp4"
   },
   {
     category: "Shades",
     title: "Motorized Living Room Shades",
     image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
     imageAlt: "Motorized roller shades installed across living room patio-view windows",
-    video: "/videos/motorized-roller-shades-living-room-view.m4v"
+    video: "/videos/motorized-roller-shades-living-room-view.mp4"
   },
   {
     category: "Shades",
@@ -889,17 +890,7 @@ export function PageSections({ page }: { page: SitePage }) {
           {activePage.gallery.map((item) => (
             <figure className="page-gallery-item" key={item.video ?? item.image}>
               {item.video ? (
-                <video
-                  aria-label={item.imageAlt}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster={item.image}
-                  preload="metadata"
-                >
-                  <source src={item.video} type="video/mp4" />
-                </video>
+                <LazyVideo aria-label={item.imageAlt} poster={item.image} src={item.video} />
               ) : (
                 <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
               )}
@@ -1291,17 +1282,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
             >
               <div className="portfolio-story-media">
                 {story.video ? (
-                  <video
-                    aria-label={story.imageAlt}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    poster={story.image}
-                    preload={index === 0 ? "auto" : "metadata"}
-                  >
-                    <source src={story.video} type="video/mp4" />
-                  </video>
+                  <LazyVideo aria-label={story.imageAlt} poster={story.image} src={story.video} />
                 ) : (
                   <img
                     src={story.image}
@@ -1324,14 +1305,9 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
         </section>
       ) : (
         <section className="home-photo-flow" aria-label="805 Shutters homepage photo flow">
-          {residentialPhotoFlowSlides.map((slide, index) => (
+          {residentialPhotoFlowSlides.map((slide) => (
             <figure className="home-photo-flow-item" key={slide.label || slide.image}>
-              <img
-                src={slide.image}
-                alt={slide.imageAlt}
-                loading={index < 2 ? "eager" : "lazy"}
-                decoding="async"
-              />
+              <img src={slide.image} alt={slide.imageAlt} loading="lazy" decoding="async" />
               {slide.tagline ? (
                 <figcaption>
                   <span>{slide.label}</span>
@@ -1384,17 +1360,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
           {installedPhotos.map((photo) => (
             <figure className="installed-portfolio-card" key={photo.title}>
               {photo.video ? (
-                <video
-                  aria-label={photo.imageAlt}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  poster={photo.image}
-                  preload="auto"
-                >
-                  <source src={photo.video} type="video/mp4" />
-                </video>
+                <LazyVideo aria-label={photo.imageAlt} poster={photo.image} src={photo.video} />
               ) : (
                 <img src={photo.image} alt={photo.imageAlt} loading="lazy" decoding="async" />
               )}

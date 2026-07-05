@@ -64,6 +64,8 @@ export function SiteFooter() {
             alt="805 Shutters"
             width={262}
             height={209}
+            loading="lazy"
+            decoding="async"
           />
         )}
         <p>
