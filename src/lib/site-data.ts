@@ -106,7 +106,61 @@ export const images = {
     "https://i0.wp.com/www.805shutters.com/wp-content/uploads/2024/04/window-coverings-ventura-california-windows-covering-store-installation-1.jpg?w=900&ssl=1"
 };
 
+const recentJobGallery: NonNullable<SitePage["gallery"]> = [
+  {
+    image: "/images/portfolio-enhanced/recent-patterned-roller-shades-card.jpg",
+    imageAlt: "Patterned roller shades installed in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-tall-window-blinds-card.jpg",
+    imageAlt: "Tall window blinds installed in a Ventura County room"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-woven-shade-sliding-door-card.jpg",
+    imageAlt: "Woven shade installed above a sliding glass door"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-bedroom-plantation-shutters-card.jpg",
+    imageAlt: "White plantation shutters installed on bedroom windows"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-bay-window-plantation-shutters-card.jpg",
+    imageAlt: "White plantation shutters installed across a bay window"
+  },
+  {
+    image: "/images/video-posters/recent-living-room-roller-shades.jpg",
+    imageAlt: "Roller shades installed around a Ventura County living room",
+    video: "/videos/recent-living-room-roller-shades.mp4"
+  },
+  {
+    image: "/images/video-posters/recent-bedroom-roller-shades-patio-view.jpg",
+    imageAlt: "Roller shades installed across a bedroom patio view",
+    video: "/videos/recent-bedroom-roller-shades-patio-view.mp4"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg",
+    imageAlt: "Plantation shutters installed around patio doors"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-arched-window-plantation-shutters-card.jpg",
+    imageAlt: "Arched plantation shutters installed in a Ventura County home"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-two-story-arch-plantation-shutters-card.jpg",
+    imageAlt: "Two-story arched plantation shutters installed in a living room"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-solar-roller-shade-detail-card.jpg",
+    imageAlt: "Solar roller shade detail over a patio view"
+  },
+  {
+    image: "/images/portfolio-enhanced/recent-dining-room-plantation-shutters-card.jpg",
+    imageAlt: "Plantation shutters installed in a dining room"
+  }
+];
+
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
+  ...recentJobGallery,
   {
     image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
     imageAlt: "Motorized roller shades installed across living room patio-view windows",
@@ -1325,6 +1379,7 @@ const supportPages: SitePage[] = [
     image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
     imageAlt: "White plantation shutters installed in a Ventura County dining room",
     gallery: [
+      ...recentJobGallery,
       {
         image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
         imageAlt: "White plantation shutters installed in a Ventura County dining room"

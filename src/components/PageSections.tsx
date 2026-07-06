@@ -410,6 +410,80 @@ const commercialHomeHeroSlides = (): HomeHeroSlide[] => [
 const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
   {
     category: "Shades",
+    title: "Patterned Roller Shades",
+    image: "/images/portfolio-enhanced/recent-patterned-roller-shades-card.jpg",
+    imageAlt: "Patterned roller shades installed in a Ventura County home"
+  },
+  {
+    category: "Blinds",
+    title: "Tall Window Blinds",
+    image: "/images/portfolio-enhanced/recent-tall-window-blinds-card.jpg",
+    imageAlt: "Tall window blinds installed in a Ventura County room"
+  },
+  {
+    category: "Shades",
+    title: "Woven Sliding Door Shade",
+    image: "/images/portfolio-enhanced/recent-woven-shade-sliding-door-card.jpg",
+    imageAlt: "Woven shade installed above a sliding glass door"
+  },
+  {
+    category: "Shutters",
+    title: "Recent Bedroom Plantation Shutters",
+    image: "/images/portfolio-enhanced/recent-bedroom-plantation-shutters-card.jpg",
+    imageAlt: "White plantation shutters installed on bedroom windows"
+  },
+  {
+    category: "Shutters",
+    title: "Bay Window Shutters",
+    image: "/images/portfolio-enhanced/recent-bay-window-plantation-shutters-card.jpg",
+    imageAlt: "White plantation shutters installed across a bay window"
+  },
+  {
+    category: "Shades",
+    title: "Living Room Roller Shades",
+    image: "/images/video-posters/recent-living-room-roller-shades.jpg",
+    imageAlt: "Roller shades installed around a Ventura County living room",
+    video: "/videos/recent-living-room-roller-shades.mp4"
+  },
+  {
+    category: "Shades",
+    title: "Bedroom Roller Shades",
+    image: "/images/video-posters/recent-bedroom-roller-shades-patio-view.jpg",
+    imageAlt: "Roller shades installed across a bedroom patio view",
+    video: "/videos/recent-bedroom-roller-shades-patio-view.mp4"
+  },
+  {
+    category: "Shutters",
+    title: "Patio Door Plantation Shutters",
+    image: "/images/portfolio-enhanced/recent-patio-door-plantation-shutters-card.jpg",
+    imageAlt: "Plantation shutters installed around patio doors"
+  },
+  {
+    category: "Shutters",
+    title: "Recent Arched Window Shutters",
+    image: "/images/portfolio-enhanced/recent-arched-window-plantation-shutters-card.jpg",
+    imageAlt: "Arched plantation shutters installed in a Ventura County home"
+  },
+  {
+    category: "Shutters",
+    title: "Two-Story Arch Shutters",
+    image: "/images/portfolio-enhanced/recent-two-story-arch-plantation-shutters-card.jpg",
+    imageAlt: "Two-story arched plantation shutters installed in a living room"
+  },
+  {
+    category: "Shades",
+    title: "Solar Roller Shade Detail",
+    image: "/images/portfolio-enhanced/recent-solar-roller-shade-detail-card.jpg",
+    imageAlt: "Solar roller shade detail over a patio view"
+  },
+  {
+    category: "Shutters",
+    title: "Recent Dining Room Plantation Shutters",
+    image: "/images/portfolio-enhanced/recent-dining-room-plantation-shutters-card.jpg",
+    imageAlt: "Plantation shutters installed in a dining room"
+  },
+  {
+    category: "Shades",
     title: "Fabric Roller Shade Detail",
     image: "/images/portfolio-enhanced/fabric-roller-shade-valance-detail-card.jpg",
     imageAlt: "Fabric roller shade with a matching valance installed over a Ventura County window"
@@ -551,6 +625,18 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
 ];
 
 const residentialRecentWorkPhotos = [
+  installedPortfolioPhotos.find((photo) => photo.title === "Patterned Roller Shades"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Tall Window Blinds"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Woven Sliding Door Shade"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Recent Bedroom Plantation Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Bay Window Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Living Room Roller Shades"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Bedroom Roller Shades"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Patio Door Plantation Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Recent Arched Window Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Two-Story Arch Shutters"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Solar Roller Shade Detail"),
+  installedPortfolioPhotos.find((photo) => photo.title === "Recent Dining Room Plantation Shutters"),
   installedPortfolioPhotos.find((photo) => photo.title === "Office Plantation Shutters"),
   installedPortfolioPhotos.find((photo) => photo.title === "Layered Bedroom Shades"),
   installedPortfolioPhotos.find((photo) => photo.title === "Arched Window Shutters"),
