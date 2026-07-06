@@ -1420,12 +1420,18 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
           <h2>{commercialMode ? "Commercial window covering applications for business spaces" : "Recent shutters and shades from Ventura County homes"}</h2>
         </div>
         <div className="content-wrap installed-portfolio-grid">
-          {installedPhotos.map((photo) => (
+          {installedPhotos.map((photo, index) => (
             <figure className="installed-portfolio-card" key={photo.title}>
               {photo.video ? (
                 <LazyVideo aria-label={photo.imageAlt} poster={photo.image} src={photo.video} />
               ) : (
-                <img src={photo.image} alt={photo.imageAlt} loading="lazy" decoding="async" />
+                <img
+                  src={photo.image}
+                  alt={photo.imageAlt}
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : undefined}
+                  decoding="async"
+                />
               )}
               <figcaption>
                 <span>{photo.category}</span>
