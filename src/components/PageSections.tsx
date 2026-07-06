@@ -41,6 +41,8 @@ type InstalledPortfolioPhoto = {
   video?: string;
 };
 
+const HOME_PHOTO_FLOW_PRIORITY_COUNT = 4;
+
 const portfolioStories: PortfolioStory[] = [
   {
     eyebrow: "Exterior Shades",
@@ -1434,17 +1436,27 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
           </section>
 
           <section className="home-photo-flow home-photo-flow--after-content" aria-label="More 805 Shutters homepage photos">
-            {residentialPhotoFlowSlides.map((slide) => (
-              <figure className="home-photo-flow-item" key={slide.label || slide.image}>
-                <img src={slide.image} alt={slide.imageAlt} loading="lazy" decoding="async" />
-                {slide.tagline ? (
-                  <figcaption>
-                    <span>{slide.label}</span>
-                    <strong>{slide.tagline}</strong>
-                  </figcaption>
-                ) : null}
-              </figure>
-            ))}
+            {residentialPhotoFlowSlides.map((slide, index) => {
+              const prioritizePhoto = index < HOME_PHOTO_FLOW_PRIORITY_COUNT;
+
+              return (
+                <figure className="home-photo-flow-item" key={slide.label || slide.image}>
+                  <img
+                    src={slide.image}
+                    alt={slide.imageAlt}
+                    loading={prioritizePhoto ? "eager" : "lazy"}
+                    fetchPriority={prioritizePhoto ? "high" : "auto"}
+                    decoding="async"
+                  />
+                  {slide.tagline ? (
+                    <figcaption>
+                      <span>{slide.label}</span>
+                      <strong>{slide.tagline}</strong>
+                    </figcaption>
+                  ) : null}
+                </figure>
+              );
+            })}
           </section>
         </>
       ) : null}
