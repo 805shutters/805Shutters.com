@@ -443,6 +443,7 @@ function legacyProductSections(product: keyof typeof productFit, city: string, l
 const parentPages: SitePage[] = [
   {
     path: "/shutters/",
+    form: true,
     title: "Custom Shutters Ventura County | Plantation Shutters | 805 Shutters",
     description:
       "Custom shutters and plantation shutters for Ventura County homes. Local measuring, installation, and free in-home consultations from 805 Shutters.",
@@ -517,6 +518,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/shades/",
+    form: true,
     title: "Custom Window Shades Ventura County | 805 Shutters",
     description:
       "Custom roller shades, honeycomb shades, woven wood shades, Roman shades, and motorized shades for Ventura County homes and businesses.",
@@ -580,6 +582,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/blinds/",
+    form: true,
     title: "Custom Blinds Ventura County | Wood, Faux Wood and Vertical Blinds",
     description:
       "Shop custom blinds in Ventura County including wood, faux wood, aluminum, and vertical blinds. Free local consultation and professional installation.",
@@ -642,6 +645,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/drapery/",
+    form: true,
     title: "Custom Drapery Ventura County | 805 Shutters",
     description:
       "Custom drapery and fabric window treatment planning for Ventura County homes. Compare soft treatments, privacy, light control, and room style.",
@@ -699,6 +703,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/exterior-shades/",
+    form: true,
     title: "Exterior Shades Ventura County | Outdoor Shades | 805 Shutters",
     description:
       "Exterior shades and outdoor shade planning for Ventura County patios, sun exposure, glare control, privacy, and outdoor living spaces.",
@@ -756,6 +761,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/window-treatments/",
+    form: true,
     title: "Window Treatments Ventura County | Shutters, Shades and Blinds",
     description:
       "Compare custom shutters, shades, blinds, and window coverings from a local Ventura County installer. Free in-home consultation from 805 Shutters.",
@@ -818,6 +824,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/window-coverings/",
+    form: true,
     title: "Window Coverings Ventura County | 805 Shutters",
     description:
       "Custom window coverings for Ventura County homes and businesses including shutters, shades, blinds, and commercial roller shades.",
@@ -886,6 +893,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/commercial-window-coverings/",
+    form: true,
     title: "Commercial Window Coverings Ventura County | 805 Shutters",
     description:
       "Commercial window coverings in Ventura County for schools, office buildings, warehouses, storefronts, retail spaces, and property managers. Free shade audit.",
@@ -955,6 +963,7 @@ const parentPages: SitePage[] = [
   },
   {
     path: "/commercial-roller-shades/",
+    form: true,
     title: "Commercial Roller Shades Ventura County | Office & Storefront Solar Shades | 805 Shutters",
     description:
       "Commercial roller shades and solar shades for Ventura County offices, storefronts, schools, medical spaces, and warehouses. Glare, heat, and privacy control with a free shade audit.",

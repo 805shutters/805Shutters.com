@@ -14712,3 +14712,53 @@ body:has(.financing-banner) .site-header-shell {
   justify-self: start;
   margin-top: 4px;
 }
+
+/* Mobile sticky call/book action bar (rendered from SiteFooter) */
+.mobile-action-bar {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .mobile-action-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1190;
+    display: grid;
+    grid-template-columns: 1fr 1.7fr;
+    background: #111;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-action-bar a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+  }
+
+  .mobile-action-bar__call {
+    background: #111;
+    color: #fff;
+  }
+
+  .mobile-action-bar__book {
+    background: #fff;
+    color: #111;
+  }
+
+  /* Keep page content and the chat widget clear of the fixed bar */
+  body:has(.mobile-action-bar) {
+    padding-bottom: calc(52px + env(safe-area-inset-bottom));
+  }
+
+  body:has(.mobile-action-bar) .assistant-widget {
+    bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+}

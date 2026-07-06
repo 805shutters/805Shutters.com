@@ -5,6 +5,7 @@ import Link from "next/link";
 import { commercialBrand } from "@/lib/commercial-mode-data";
 import { site } from "@/lib/site-data";
 import { useCommercialMode } from "./CommercialModeProvider";
+import { MobileActionBar } from "./MobileActionBar";
 import { TrackedPhoneLink } from "./TrackedPhoneLink";
 
 type YelpReview = {
@@ -133,6 +134,7 @@ export function SiteFooter() {
         <Link href="/privacy-policy/">Privacy Policy</Link>
         <TrackedPhoneLink location="footer">{site.phone}</TrackedPhoneLink>
       </div>
+      <MobileActionBar />
     </footer>
   );
 }

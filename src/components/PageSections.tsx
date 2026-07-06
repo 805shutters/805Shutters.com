@@ -953,6 +953,14 @@ const shutterOptionGroups: ShutterOptionGroup[] = [
   }
 ];
 
+function leadInterestForPath(path: string): "consultation" | "shutters" | "shades" | "blinds" | "commercial" {
+  if (path.startsWith("/commercial")) return "commercial";
+  if (path.startsWith("/shutters")) return "shutters";
+  if (path.startsWith("/shades") || path.startsWith("/exterior-shades")) return "shades";
+  if (path.startsWith("/blinds")) return "blinds";
+  return "consultation";
+}
+
 export function PageSections({ page }: { page: SitePage }) {
   const { isCommercialMode } = useCommercialMode();
 
@@ -1039,7 +1047,7 @@ export function PageSections({ page }: { page: SitePage }) {
                 <TrackedPhoneLink location={`${activePage.path} form copy`}>Call {site.phone}</TrackedPhoneLink>.
               </p>
             </div>
-            <LeadForm />
+            <LeadForm defaultInterest={leadInterestForPath(activePage.path)} />
           </div>
         </section>
       ) : (
@@ -1185,20 +1193,17 @@ function ShuttersCategoryPage({ page }: { page: SitePage }) {
 
       <PageFaqSection faqs={page.faqs} heading="Common shutter questions" />
 
-      <section className="cta-band">
-        <div className="content-wrap cta-layout">
+      <section className="form-band">
+        <div className="content-wrap form-layout">
           <div>
-            <p className="eyebrow">Next step</p>
+            <p className="eyebrow">Start here</p>
             <h2>Compare shutter materials, louvers, styles, doors, and shapes in one visit.</h2>
+            <p>
+              Send the project details and 805 Shutters will follow up. Prefer to talk now?{" "}
+              <TrackedPhoneLink location="shutters form copy">Call {site.phone}</TrackedPhoneLink>.
+            </p>
           </div>
-          <div className="hero-actions">
-            <Link className="button primary" href="/free-window-treatment-consultation/">
-              Free Consultation
-            </Link>
-            <TrackedPhoneLink className="button secondary" location="shutters cta">
-              Call {site.phone}
-            </TrackedPhoneLink>
-          </div>
+          <LeadForm defaultInterest="shutters" />
         </div>
       </section>
     </>
