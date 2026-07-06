@@ -848,8 +848,7 @@ export function CrmApp({
     }
 
     if (page.target === "quotes") {
-      setActiveTab("quotes");
-      if (page.quoteId) setBuilderQuoteId(page.quoteId);
+      if (page.quoteId) void openQuoteContract(page.quoteId);
       return;
     }
 
@@ -4067,7 +4066,7 @@ function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], even
   if (quote) {
     pages.push({
       target: "quotes",
-      label: entry.file && entry.file.quotes.length > 1 ? `Quotes (${entry.file.quotes.length})` : "Quote",
+      label: entry.file && entry.file.quotes.length > 1 ? `Contracts (${entry.file.quotes.length})` : "Contract",
       quoteId: quote.id,
       detail: quote.quote_number || quote.quote_label || undefined
     });
