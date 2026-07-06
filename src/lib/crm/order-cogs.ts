@@ -53,6 +53,9 @@ type OrderCogsCandidate = {
   totalAmount: number;
   cogsAmount: number;
   soldDate: string | null;
+  manufacturerName: string | null;
+  manufacturerOrderRef: string | null;
+  manufacturerOrderUrl: string | null;
 };
 
 export type ExtractedOrderCogs = {
@@ -391,8 +394,23 @@ function nameScore(extracted: string | null, candidateName: string) {
   return matched / Math.max(extractedTokens.length, candidateTokens.length);
 }
 
-function isSameMoney(left: number, right: number) {
-  return Math.abs((Number(left) || 0) - (Number(right) || 0)) < 0.01;
+function roundMoney(value: number) {
+  return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function addMoney(left: number, right: number) {
+  return roundMoney((Number(left) || 0) + (Number(right) || 0));
+}
+
+function mergeOrderRefs(existing: string | null, next: string | null) {
+  const refs = new Set(
+    (existing || "")
+      .split(/[,\n]+/)
+      .map((ref) => ref.trim())
+      .filter(Boolean)
+  );
+  if (next?.trim()) refs.add(next.trim());
+  return refs.size ? Array.from(refs).join(", ") : null;
 }
 
 function matchOrderCogs(extraction: ExtractedOrderCogs, candidates: OrderCogsCandidate[]): OrderCogsMatch {
@@ -428,15 +446,6 @@ function matchOrderCogs(extraction: ExtractedOrderCogs, candidates: OrderCogsCan
     };
   }
 
-  if (top.candidate.cogsAmount > 0 && extraction.orderAmount && !isSameMoney(top.candidate.cogsAmount, extraction.orderAmount)) {
-    return {
-      candidate: top.candidate,
-      status: "needs_review",
-      confidence: top.confidence,
-      reason: `${top.candidate.customerName} already has COGS entered.`
-    };
-  }
-
   return {
     candidate: top.candidate,
     status: "matched",
@@ -449,12 +458,12 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
   const [entriesResult, quotesResult, jobsResult] = await Promise.all([
     supabase
       .from("crm_quote_bookkeeping_entries")
-      .select("id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount")
+      .select("id,quote_id,job_id,customer_name,sold_date,total_amount,cogs_amount,manufacturer_name,manufacturer_order_ref,manufacturer_order_url")
       .in("source", ["crm_quote", "legacy_sheet", "manual"])
       .limit(1000),
     supabase
       .from("crm_quotes")
-      .select("id,job_id,status,quote_total,materials_cost,sold_at,approved_at,ordered_at")
+      .select("id,job_id,status,quote_total,materials_cost,sold_at,approved_at,ordered_at,manufacturer_name,manufacturer_order_ref,manufacturer_order_url")
       .in("status", ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"])
       .limit(500),
     supabase
@@ -476,6 +485,9 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     sold_date: string | null;
     total_amount: number;
     cogs_amount: number;
+    manufacturer_name: string | null;
+    manufacturer_order_ref: string | null;
+    manufacturer_order_url: string | null;
   }>;
   const quotes = (quotesResult.data || []) as Array<{
     id: string;
@@ -485,6 +497,9 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     sold_at: string | null;
     approved_at: string | null;
     ordered_at: string | null;
+    manufacturer_name: string | null;
+    manufacturer_order_ref: string | null;
+    manufacturer_order_url: string | null;
   }>;
   const jobs = (jobsResult.data || []) as Array<{ id: string; customer_name: string; estimated_total: number }>;
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
@@ -502,7 +517,10 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
       entryId: entry.id,
       totalAmount: Number(entry.total_amount) || 0,
       cogsAmount: Number(entry.cogs_amount) || 0,
-      soldDate: entry.sold_date
+      soldDate: entry.sold_date,
+      manufacturerName: entry.manufacturer_name || null,
+      manufacturerOrderRef: entry.manufacturer_order_ref || null,
+      manufacturerOrderUrl: entry.manufacturer_order_url || null
     });
   }
 
@@ -518,7 +536,10 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
       entryId: null,
       totalAmount: Number(quote.quote_total) || 0,
       cogsAmount: Number(quote.materials_cost) || 0,
-      soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || null
+      soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || null,
+      manufacturerName: quote.manufacturer_name || null,
+      manufacturerOrderRef: quote.manufacturer_order_ref || null,
+      manufacturerOrderUrl: quote.manufacturer_order_url || null
     });
   }
 
@@ -532,7 +553,10 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
       entryId: null,
       totalAmount: Number(job.estimated_total) || 0,
       cogsAmount: 0,
-      soldDate: null
+      soldDate: null,
+      manufacturerName: null,
+      manufacturerOrderRef: null,
+      manufacturerOrderUrl: null
     });
   }
 
@@ -607,17 +631,29 @@ async function applyOrderCogs(
 ): Promise<{ cogsApplied: boolean }> {
   const amount = extraction.orderAmount;
   if (!amount) throw new CrmAuthError(400, "Order COGS amount is required.");
+  const previousCogsAmount = roundMoney(candidate.cogsAmount);
+  const nextCogsAmount = addMoney(previousCogsAmount, amount);
+  const manufacturerOrderRef = mergeOrderRefs(candidate.manufacturerOrderRef, extraction.orderNumber);
+  const manufacturerName = extraction.manufacturer || candidate.manufacturerName;
+  const manufacturerOrderUrl = gmailUrl(message) || candidate.manufacturerOrderUrl;
   const patch = {
-    cogs_amount: amount,
-    ...(extraction.orderNumber ? { manufacturer_order_ref: extraction.orderNumber } : {}),
-    ...(extraction.manufacturer ? { manufacturer_name: extraction.manufacturer } : {}),
-    manufacturer_order_url: gmailUrl(message)
+    cogs_amount: nextCogsAmount,
+    ...(manufacturerOrderRef ? { manufacturer_order_ref: manufacturerOrderRef } : {}),
+    ...(manufacturerName ? { manufacturer_name: manufacturerName } : {}),
+    ...(manufacturerOrderUrl ? { manufacturer_order_url: manufacturerOrderUrl } : {})
+  };
+  const rememberAppliedCogs = () => {
+    candidate.cogsAmount = nextCogsAmount;
+    candidate.manufacturerName = manufacturerName || null;
+    candidate.manufacturerOrderRef = manufacturerOrderRef;
+    candidate.manufacturerOrderUrl = manufacturerOrderUrl || null;
   };
 
   if (candidate.entryId) {
     const { error } = await supabase.from("crm_quote_bookkeeping_entries").update(patch).eq("id", candidate.entryId);
     if (error) throw new CrmAuthError(502, "Order email matched, but COGS could not be updated.");
     await markCandidateOrdered(supabase, candidate, actor);
+    rememberAppliedCogs();
     return { cogsApplied: true };
   }
 
@@ -626,10 +662,10 @@ async function applyOrderCogs(
     const { error: quoteError } = await supabase
       .from("crm_quotes")
       .update({
-        materials_cost: amount,
-        ...(extraction.orderNumber ? { manufacturer_order_ref: extraction.orderNumber } : {}),
-        ...(extraction.manufacturer ? { manufacturer_name: extraction.manufacturer } : {}),
-        manufacturer_order_url: gmailUrl(message)
+        materials_cost: nextCogsAmount,
+        ...(manufacturerOrderRef ? { manufacturer_order_ref: manufacturerOrderRef } : {}),
+        ...(manufacturerName ? { manufacturer_name: manufacturerName } : {}),
+        ...(manufacturerOrderUrl ? { manufacturer_order_url: manufacturerOrderUrl } : {})
       })
       .eq("id", candidate.quoteId);
     if (quoteError) throw new CrmAuthError(502, "Order email matched, but quote COGS could not be updated.");
@@ -646,13 +682,17 @@ async function applyOrderCogs(
         meta: {
           orderCogsSource: "gmail",
           orderCogsMessageId: message.id,
-          orderCogsAppliedAt: now
+          orderCogsAppliedAt: now,
+          orderCogsPreviousAmount: previousCogsAmount,
+          orderCogsAddedAmount: amount,
+          orderCogsTotalAmount: nextCogsAmount
         }
       },
       { onConflict: "quote_id" }
     );
     if (error) throw new CrmAuthError(502, "Order email matched, but quote bookkeeping COGS could not be saved.");
     await markCandidateOrdered(supabase, candidate, actor);
+    rememberAppliedCogs();
     return { cogsApplied: true };
   }
 
@@ -660,6 +700,17 @@ async function applyOrderCogs(
   // has nowhere to land — surface it for manual entry instead of dropping the email.
   await markCandidateOrdered(supabase, candidate, actor);
   return { cogsApplied: false };
+}
+
+async function alreadyAppliedOrderCogsRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
+  const { data, error } = await supabase
+    .from("crm_order_cogs_emails")
+    .select("id,applied_at,match_status")
+    .eq("gmail_message_id", gmailMessageId)
+    .maybeSingle();
+  if (error) return false;
+  const record = data as { applied_at?: string | null; match_status?: CrmOrderCogsEmailStatus } | null;
+  return Boolean(record?.applied_at && record.match_status === "matched");
 }
 
 async function insertOrderCogsRecord(
@@ -729,6 +780,21 @@ export async function processOrderCogsInbox(
 
   for (const listed of messages) {
     try {
+      const alreadyApplied = await alreadyAppliedOrderCogsRecord(supabase, listed.id);
+      if (alreadyApplied) {
+        result.processed += 1;
+        result.skipped += 1;
+        if (archiveEnabled && accessToken) {
+          try {
+            await archiveGmailMessage(accessToken, listed.id);
+            result.archived += 1;
+          } catch {
+            result.archiveErrors += 1;
+          }
+        }
+        continue;
+      }
+
       const message = accessToken ? await getGmailMessage(accessToken, listed.id) : ({ id: listed.id } as GmailMessage);
       const headers = message.payload?.headers;
       const text = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
