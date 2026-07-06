@@ -123,12 +123,12 @@ describe("describeDesign (customer-readable, no internal data leaked)", () => {
 });
 
 describe("signed SMS copy", () => {
-  it("quote share message uses the requested 805 Shutters copy", () => {
+  it("contract share message uses the requested 805 Shutters copy", () => {
     const msg = buildQuoteShareSms("https://www.805shutters.com/quote/test-token");
     expect(msg).toBe(
-      "Thank you for the opportunity to cover your windows with 805 Shutters! Please see the attached quote:\n\nQuote: https://www.805shutters.com/quote/test-token"
+      "Thank you for the opportunity to cover your windows with 805 Shutters! Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token"
     );
-    expect(msg).not.toContain("Review & approve");
+    expect(msg).not.toContain("attached quote");
   });
 
   it("payment link message names card, Venmo, Zelle, amount due, and link", () => {

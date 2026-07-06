@@ -9,7 +9,7 @@ import { PrintButton } from "./PrintButton";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const metadata = privatePageMetadata("Quote | 805 Shutters");
+export const metadata = privatePageMetadata("Contract | 805 Shutters");
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -37,7 +37,7 @@ export default async function PublicQuotePage({
   if (!supabase) {
     return (
       <main style={wrap}>
-        <p>This quote is temporarily unavailable. Please try again shortly.</p>
+        <p>This contract is temporarily unavailable. Please try again shortly.</p>
       </main>
     );
   }
@@ -61,10 +61,10 @@ export default async function PublicQuotePage({
         <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
           {quote.business.name}
         </p>
-        <h1 style={{ margin: "4px 0" }}>Your Quote</h1>
+        <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
         <p style={{ margin: 0 }}>
           Prepared for <strong>{quote.customerName}</strong>
-          {quote.quoteNumber ? ` · Quote ${quote.quoteNumber}` : ""}
+          {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
         </p>
       </header>
 
@@ -93,7 +93,7 @@ export default async function PublicQuotePage({
 
       {quote.signed ? (
         <div style={{ background: "#f4f4f2", border: "1px solid #b8b6ae", borderRadius: 10, padding: 16, marginBottom: 20 }}>
-          <strong>This quote has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
+          <strong>This contract has been approved and signed.</strong> Thank you! We&apos;ll be in touch to schedule.
         </div>
       ) : null}
 

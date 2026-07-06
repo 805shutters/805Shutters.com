@@ -212,11 +212,11 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
 } {
   const amount = money(total);
   const name = customerName && customerName !== "Valued customer" ? customerName : "there";
-  const quoteLabel = details.quoteNumber ? `Quote ${details.quoteNumber}` : "Your Quote";
-  const subject = `Your 805 Shutters quote${total > 0 ? ` - ${amount}` : ""}`;
+  const quoteLabel = details.quoteNumber ? `Contract ${details.quoteNumber}` : "Your Contract";
+  const subject = `Your 805 Shutters contract${total > 0 ? ` - ${amount}` : ""}`;
   const personalNote = details.personalNote?.trim();
   const personalNoteText = personalNote ? `\n\n${personalNote}` : "";
-  const itemText = details.lines?.length ? `\n\nQuote items:\n${details.lines.map((line, index) => textLine(line, index)).join("\n")}` : "";
+  const itemText = details.lines?.length ? `\n\nContract items:\n${details.lines.map((line, index) => textLine(line, index)).join("\n")}` : "";
   const financing = buildFinancingOptionsSection({
     quoteNumber: details.quoteNumber,
     total,
@@ -224,7 +224,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hi ${name},${personalNoteText}\n\nYour quote from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters`;
+  const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -233,14 +233,14 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
       ${details.logoUrl ? `<div style="display:inline-block;background:#ffffff!important;background-color:#ffffff!important;margin:0 0 16px 0"><img src="${escapeAttr(details.logoUrl)}" alt="805 Shutters" width="176" style="display:block;width:176px;max-width:100%;height:auto;margin:0;border:0"></div>` : `<div style="font-size:18px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;color:#0b0b0b">805 SHUTTERS</div>`}
       <div style="font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#0b0b0b">${escapeHtml(quoteLabel)}</div>
       <h1 style="margin:6px 0 0 0;font-size:26px;line-height:1.18;font-weight:700;color:#0b0b0b">Ready for review</h1>
-      <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hi ${escapeHtml(name)}, your quote${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
+      <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hi ${escapeHtml(name)}, your contract${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
     </div>
     ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#ffffff;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#0b0b0b">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
     <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#0b0b0b">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
     <div style="margin:26px 0 18px 0">
-      <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve quote</a>
+      <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
     </div>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${financing.html}
@@ -379,7 +379,7 @@ function quoteSummary(details: QuoteEmailDetails, total: number): string {
     ...(details.fees ?? []).map((fee) => summaryRow(fee.name, fee.amount)),
     details.discount && details.discount > 0 ? summaryRow("Discount", -details.discount) : "",
     details.tax && details.tax > 0 ? summaryRow("Tax", details.tax) : "",
-    details.sourceTotalAdjustment ? summaryRow("Quote adjustment", details.sourceTotalAdjustment) : "",
+    details.sourceTotalAdjustment ? summaryRow("Contract adjustment", details.sourceTotalAdjustment) : "",
     `<tr><td style="padding:10px 0 0 0;border-top:2px solid #0b0b0b;font-size:16px;font-weight:700;color:#0b0b0b">Total</td><td align="right" style="padding:10px 0 0 0;border-top:2px solid #0b0b0b;font-size:18px;font-weight:700;color:#0b0b0b">${money(total)}</td></tr>`,
     details.depositDue && details.depositDue > 0 ? summaryRow("Deposit due", details.depositDue) : "",
     details.balanceDue && details.balanceDue > 0 ? summaryRow("Balance", details.balanceDue) : "",

@@ -5,8 +5,10 @@ describe("buildQuoteEmail", () => {
   it("includes the amount, link, and customer name", () => {
     const { subject, html, text } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4250);
     expect(subject).toContain("$4,250");
+    expect(subject).toContain("contract");
     expect(html).toContain("https://x/quote/abc");
     expect(text).toContain("Jane Smith");
+    expect(text).toContain("Your contract from 805 Shutters");
     expect(html).toContain("Jane Smith");
   });
   it("falls back to a generic greeting and omits amount when zero", () => {
@@ -56,17 +58,17 @@ describe("buildQuoteEmail", () => {
     // email are the header logo and the financing-section logos).
     const lineItemTable = html.slice(html.indexOf("Living Room"), html.indexOf("Two Financing Options"));
     expect(lineItemTable).not.toContain("<img");
-    expect(text).toContain("Quote items:");
+    expect(text).toContain("Contract items:");
     expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
   });
 
-  it("renders legacy/source total deltas as a generic quote adjustment", () => {
+  it("renders legacy/source total deltas as a generic contract adjustment", () => {
     const { html } = buildQuoteEmail("Jane Smith", "https://x/quote/abc", 4350, {
       subtotal: 4250,
       sourceTotalAdjustment: 100,
     });
 
-    expect(html).toContain("Quote adjustment");
+    expect(html).toContain("Contract adjustment");
     expect(html).toContain("$100.00");
     expect(html).not.toContain("MTS");
     expect(html).not.toContain("source");

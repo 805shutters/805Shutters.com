@@ -527,7 +527,7 @@ export async function computeSelectionTotal(
   balanceDue: number;
 }> {
   const pub = await loadPublicQuoteByToken(supabase, token);
-  if (!pub) throw new CrmAuthError(404, "This quote link is no longer valid.");
+  if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
   const sel = selectedLineIds && selectedLineIds.length ? new Set(selectedLineIds) : null;
   const lines = (sel ? pub.lines.filter((l) => sel.has(l.id)) : pub.lines).map((l) => ({
     id: l.id,
@@ -584,7 +584,7 @@ export function buildSignedCustomerSms(customerName: string): string {
 }
 
 export function buildQuoteShareSms(url: string): string {
-  return `Thank you for the opportunity to cover your windows with 805 Shutters! Please see the attached quote:\n\nQuote: ${url}`;
+  return `Thank you for the opportunity to cover your windows with 805 Shutters! Your contract is ready to review and approve:\n\nContract: ${url}`;
 }
 
 function publicQuoteUrl(token: string): string {
@@ -720,7 +720,7 @@ export async function acceptPublicQuote(
   input: { printedName: string; signature?: string; acknowledgedTotal?: number; selectedLineIds?: string[]; notify?: boolean },
 ): Promise<{ ok: true; alreadySigned: boolean }> {
   const quote = await fetchByToken(supabase, token);
-  if (!quote) throw new CrmAuthError(404, "This quote link is no longer valid.");
+  if (!quote) throw new CrmAuthError(404, "This contract link is no longer valid.");
   if (quote.signed_at) {
     const pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
@@ -748,7 +748,7 @@ export async function acceptPublicQuote(
   // Guard: never let a customer sign an unfinished / unpriced / $0 quote.
   const pub = await loadPublicQuoteByToken(supabase, token);
   if (!pub || pub.lines.length === 0 || !pub.allPriced || pub.total <= 0) {
-    throw new CrmAuthError(409, "This quote isn't finalized yet — please contact us before signing.");
+    throw new CrmAuthError(409, "This contract isn't finalized yet — please contact us before signing.");
   }
   // Customer may purchase a subset ("Purchase some"); the sold total reflects
   // only the chosen items, recomputed with the same engine as the full quote.
@@ -791,7 +791,7 @@ export async function acceptPublicQuote(
     input.acknowledgedTotal != null &&
     Math.round(Number(input.acknowledgedTotal) * 100) !== Math.round(soldTotal * 100)
   ) {
-    throw new CrmAuthError(409, "This quote was updated since you opened it. Please refresh to review the new total before signing.");
+    throw new CrmAuthError(409, "This contract was updated since you opened it. Please refresh to review the new total before signing.");
   }
 
   // Atomic claim: only the first request that flips signed_at from null wins

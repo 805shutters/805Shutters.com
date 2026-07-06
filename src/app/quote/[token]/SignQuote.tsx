@@ -52,7 +52,7 @@ export function SignQuote({ token, customerName, total, selectedLineIds }: { tok
     <div style={{ border: "1px solid #d8d8d2", borderRadius: 10, padding: 20, marginTop: 20 }}>
       <h3 style={{ marginTop: 0 }}>Approve &amp; sign</h3>
       <p style={{ fontSize: 14, opacity: 0.8 }}>
-        Type your full legal name to electronically sign and approve this quote. This authorizes the order at the total shown above.
+        Type your full legal name to electronically sign and approve this contract. This authorizes the order at the total shown above.
       </p>
       {error ? <p style={{ color: "#4d4d49" }}>{error}</p> : null}
       <label style={{ display: "block", marginBottom: 12 }}>

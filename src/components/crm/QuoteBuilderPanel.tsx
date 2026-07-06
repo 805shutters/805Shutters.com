@@ -514,7 +514,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
       const parts: string[] = [];
       if (sendChannel !== "email") parts.push(res.sms.sent ? "texted" : `SMS ${res.sms.skipped ?? "skipped"}`);
       if (sendChannel !== "sms") parts.push(res.email.sent ? "emailed" : `email ${res.email.skipped ?? "skipped"}`);
-      setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Quote is now "${res.status}".`);
+      setSendMsg(`${parts.length ? parts.join(", ") : "done"}. Contract link sent; status is "${res.status}".`);
       setShareUrl(res.url);
       const q = await api<{ quote: CrmQuoteWithItems }>(session, `/api/crm/quotes/${quoteId}/builder`);
       quoteRef.current = q.quote;
@@ -673,7 +673,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               disabled={isSaving}
               style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}
             >
-              Send to customer
+              Send contract
             </button>
             <button type="button" onClick={() => sendPaymentLink("email")} disabled={isSaving} style={closeBtn}>
               Email payment link
@@ -688,7 +688,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
               Open contract
             </button>
             <button type="button" onClick={shareLink} style={closeBtn}>
-              {shareUrl ? "Link copied ✓" : "Customer link"}
+              {shareUrl ? "Link copied ✓" : "Contract link"}
             </button>
             <button type="button" onClick={onClose} aria-label="Close quote builder" style={xBtn} title="Exit to CRM">
               ✕
@@ -707,7 +707,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
         {error ? <p style={errorStyle}>{error}</p> : null}
         {shareUrl ? (
           <p style={{ padding: "6px 16px", margin: 0, fontSize: 12, wordBreak: "break-all" }}>
-            Customer link:{" "}
+            Contract link:{" "}
             <a href={shareUrl} target="_blank" rel="noreferrer">
               {shareUrl}
             </a>
@@ -1198,7 +1198,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     ))}
                   </div>
                   <button type="button" onClick={sendToCustomer} disabled={isSaving} style={{ ...closeBtn, background: "#111111", color: "#ffffff", borderColor: "#111111" }}>
-                    Send
+                    Send contract
                   </button>
                   <button type="button" onClick={() => sendPaymentLink("email")} disabled={isSaving} style={closeBtn}>
                     Email pay link
@@ -1213,7 +1213,7 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
                     Contract
                   </button>
                   <button type="button" onClick={shareLink} style={closeBtn}>
-                    {shareUrl ? "Link ✓" : "Link"}
+                    {shareUrl ? "Link ✓" : "Contract link"}
                   </button>
                 </div>
               </div>

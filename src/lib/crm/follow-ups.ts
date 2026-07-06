@@ -176,9 +176,9 @@ export async function runStaleQuoteNudges(supabase: SupabaseClient, now: Date = 
 
     const name = quote.customer_name || "there";
     const link = url(quote.share_token);
-    const text = `Hi ${name}, your 805 Shutters quote is still waiting for your approval. Review + approve here: ${link}`;
-    const html = `<p>Hi ${name},</p><p>Your 805 Shutters quote is still waiting for your approval.</p><p><a href="${link}">Review and approve your quote</a></p>`;
-    if (quote.customer_email) await sendEmail({ to: quote.customer_email, subject: "Your 805 Shutters quote is waiting", html, text });
+    const text = `Hi ${name}, your 805 Shutters contract is still waiting for your approval. Review + approve here: ${link}`;
+    const html = `<p>Hi ${name},</p><p>Your 805 Shutters contract is still waiting for your approval.</p><p><a href="${link}">Review and approve your contract</a></p>`;
+    if (quote.customer_email) await sendEmail({ to: quote.customer_email, subject: "Your 805 Shutters contract is waiting", html, text });
     if (quote.customer_phone) await sendSms({ to: quote.customer_phone, body: text });
 
     await supabase

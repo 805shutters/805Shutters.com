@@ -184,7 +184,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
           {quote.lines.length === 0 ? (
             <tr>
               <td style={td} colSpan={mode === "some" ? 5 : 4}>
-                <em style={{ opacity: 0.6 }}>This quote is still being prepared.</em>
+                <em style={{ opacity: 0.6 }}>This contract is still being prepared.</em>
               </td>
             </tr>
           ) : null}
@@ -199,7 +199,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         {live.discount > 0 ? <Row label="Discount" value={`- ${money(live.discount)}`} /> : null}
         {live.tax > 0 ? <Row label="Tax" value={money(live.tax)} /> : null}
         {quote.sourceTotalAdjustment ? (
-          <Row label="Quote adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} />
+          <Row label="Contract adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} />
         ) : null}
         <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(live.total)} strong />
@@ -316,7 +316,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       ) : null}
       {!quote.signed && !quote.allPriced ? (
         <p style={{ marginTop: 20, opacity: 0.7 }}>
-          A few items are still being finalized. We&apos;ll notify you the moment this quote is ready to approve.
+          A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.
         </p>
       ) : null}
     </>

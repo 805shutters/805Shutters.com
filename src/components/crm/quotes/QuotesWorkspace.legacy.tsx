@@ -618,12 +618,12 @@ function ContractView({
           {quote.signed_at ? (
             <span>✓ Signed by <strong>{quote.customer_printed_name || "customer"}</strong> on {when(quote.signed_at)}</span>
           ) : (
-            <span style={{ opacity: 0.75 }}>Not signed yet. Send the quote so the customer can review and e-sign.</span>
+            <span style={{ opacity: 0.75 }}>Not signed yet. Send the contract so the customer can review and e-sign.</span>
           )}
         </div>
 
         <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-          <button type="button" disabled={busy} onClick={onSend} style={primaryBtn}>Send to customer</button>
+          <button type="button" disabled={busy} onClick={onSend} style={primaryBtn}>Send contract</button>
           <button type="button" disabled={busy} onClick={onOpenContract} style={ghostBtn}>Open customer contract</button>
           {next ? (
             <button type="button" disabled={busy} onClick={() => onAdvance(quote.id, next)} style={ghostBtn}>
