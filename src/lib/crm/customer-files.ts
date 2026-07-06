@@ -5,9 +5,17 @@ import {
   CrmCustomerFile,
   CrmCustomerProduct,
   CrmJob,
+  CrmJobStatus,
   CrmQuote
 } from "@/lib/crm/types";
 import { effectiveBookkeepingStatus } from "@/lib/crm/bookkeeping";
+
+// Jobs the customer actually bought — quoted/lost jobs must not count as money
+// owed or lifetime value.
+const soldLifecycleJobStatuses = new Set<CrmJobStatus>(["sold", "ordered", "installed", "invoiced", "closed"]);
+// Closed jobs are settled; an estimated_total minus deposit on them is not a
+// collectible balance.
+const openBalanceJobStatuses = new Set<CrmJobStatus>(["sold", "ordered", "installed", "invoiced"]);
 
 export function buildCustomerFiles({
   customers,
@@ -32,9 +40,14 @@ export function buildCustomerFiles({
   const jobById = new Map(activeJobs.map((job) => [job.id, job]));
   const quoteById = new Map(activeQuotes.map((quote) => [quote.id, quote]));
   const fileMap = new Map<string, CrmCustomerFile>();
+  // Imported crm_customers totals are point-in-time snapshots. They only apply
+  // when a file has no live ledger rows or sold jobs — otherwise they would
+  // double-count the same sales (and miss payments recorded since the import).
+  const snapshotTotals = new Map<CrmCustomerFile, { lifetimeValue: number; openBalance: number }>();
+  const filesWithSoldJobFinancials = new Set<CrmCustomerFile>();
 
   for (const customer of activeCustomers) {
-    fileMap.set(customerKey(customer.normalized_name || customer.display_name), {
+    const file: CrmCustomerFile = {
       id: customer.id,
       customer,
       customerName: customer.display_name,
@@ -44,15 +57,20 @@ export function buildCustomerFiles({
       city: customer.city,
       latestStatus: customer.latest_status,
       latestSoldDate: customer.latest_sold_date,
-      lifetimeValue: Number(customer.lifetime_value) || 0,
-      openBalance: Number(customer.open_balance) || 0,
+      lifetimeValue: 0,
+      openBalance: 0,
       jobs: [],
       quotes: [],
       bookkeepingRows: [],
       products: [],
       contracts: [],
       notes: customer.notes ? [customer.notes] : []
+    };
+    snapshotTotals.set(file, {
+      lifetimeValue: Number(customer.lifetime_value) || 0,
+      openBalance: Number(customer.open_balance) || 0
     });
+    fileMap.set(customerKey(customer.normalized_name || customer.display_name), file);
   }
 
   for (const row of bookkeepingRows) {
@@ -107,9 +125,12 @@ export function buildCustomerFiles({
     file.city ||= job.city;
     file.latestStatus ||= job.status;
     const hasLedgerRowForJob = file.bookkeepingRows.some((row) => row.jobId === job.id);
-    if (!hasLedgerRowForJob) {
-      file.openBalance += Math.max(0, Number(job.estimated_total || 0) - Number(job.deposit_paid || 0));
+    if (!hasLedgerRowForJob && soldLifecycleJobStatuses.has(job.status)) {
+      if (openBalanceJobStatuses.has(job.status)) {
+        file.openBalance += Math.max(0, Number(job.estimated_total || 0) - Number(job.deposit_paid || 0));
+      }
       file.lifetimeValue += Number(job.estimated_total) || 0;
+      filesWithSoldJobFinancials.add(file);
     }
     file.latestSoldDate = newestDate(file.latestSoldDate, job.appointment_start || job.created_at);
     if (job.notes) file.notes.push(job.notes);
@@ -147,6 +168,12 @@ export function buildCustomerFiles({
   }
 
   for (const file of fileMap.values()) {
+    const snapshot = snapshotTotals.get(file);
+    if (snapshot && !file.bookkeepingRows.length && !filesWithSoldJobFinancials.has(file)) {
+      file.lifetimeValue = snapshot.lifetimeValue;
+      file.openBalance = snapshot.openBalance;
+    }
+
     if (!file.products.length) {
       for (const job of file.jobs) {
         pushUnique(file.products, `job-product-${job.id}`, {
