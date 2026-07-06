@@ -24,6 +24,7 @@ import {
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
@@ -32,7 +33,7 @@ interface QuoteDashboardProps {
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
   onOpenCrmCalendarDate?: (date: string) => void;
-  onOpenCrmQuote?: (quoteId: string) => void;
+  onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
 
 type DashboardCalendarAppointment = {
@@ -78,6 +79,11 @@ function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
   const meta = quote.meta || {};
   const value = meta.mts_quote_id || meta.sales_quote_id;
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+function quoteBuilderTargetId(quote: QuoteTableRow): string | null {
+  if (quote.source === "crm") return quote.sourceQuoteId || null;
+  return quote.id;
 }
 
 function crmQuoteCustomerName(quote: CrmQuote, job?: CrmJob): string {
@@ -485,13 +491,18 @@ export function QuoteDashboard({
     },
   });
 
-  const handleOpenQuote = (quote: QuoteTableRow) => {
-    if (quote.source === "crm") {
-      onOpenCrmQuote?.(quote.id);
+  const openQuoteRow = (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
+    const targetId = quoteBuilderTargetId(quote);
+    if (!targetId) {
+      onOpenCrmQuote?.(quote.id, tab);
       return;
     }
-    setActiveQuote(quote.id);
-    setActiveTab("builder");
+    setActiveQuote(targetId);
+    setActiveTab(tab);
+  };
+
+  const handleOpenQuote = (quote: QuoteTableRow) => {
+    openQuoteRow(quote, "builder");
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
@@ -501,7 +512,7 @@ export function QuoteDashboard({
     }
 
     if (appointment.crm_quote_id) {
-      onOpenCrmQuote?.(appointment.crm_quote_id);
+      onOpenCrmQuote?.(appointment.crm_quote_id, "builder");
       return;
     }
 
@@ -556,12 +567,7 @@ export function QuoteDashboard({
       <ContractsSection
         quotes={filteredQuotes}
         onOpenContract={(quote) => {
-          if (quote.source === "crm") {
-            onOpenCrmQuote?.(quote.id);
-            return;
-          }
-          setActiveQuote(quote.id);
-          setActiveTab("contract");
+          openQuoteRow(quote, "contract");
         }}
       />
 

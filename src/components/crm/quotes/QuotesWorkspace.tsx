@@ -2,7 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuoteWorkspace } from "@mts/QuoteWorkspace";
+import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 // The Quotes workspace (Dashboard / Builder / Contract) renders the ported
 // quote builder from src/mts-quote against the dedicated 805 Supabase project,
@@ -16,17 +16,19 @@ type Props = {
   jobs: CrmJob[];
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
-  onOpenCrmQuote?: (quoteId: string) => void;
+  openRequest?: QuoteWorkspaceOpenRequest | null;
+  onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
   onOpenCalendarDate?: (date: string) => void;
   onChanged: () => void;
 };
 
-export function QuotesWorkspace({ jobs, quotes, events, onOpenCalendarDate, onOpenCrmQuote }: Props) {
+export function QuotesWorkspace({ jobs, quotes, events, openRequest, onOpenCalendarDate, onOpenCrmQuote }: Props) {
   return (
     <QuoteWorkspace
       crmJobs={jobs}
       crmQuotes={quotes}
       crmCalendarEvents={events}
+      openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}
       onOpenCrmQuote={onOpenCrmQuote}
     />

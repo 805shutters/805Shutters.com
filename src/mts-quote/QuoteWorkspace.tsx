@@ -11,11 +11,12 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
 import { cn } from "@mts/lib/utils";
+import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
 import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
@@ -35,21 +36,37 @@ type QuoteWorkspaceProps = {
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
+  openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmCalendarDate?: (date: string) => void;
-  onOpenCrmQuote?: (quoteId: string) => void;
+  onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
+};
+
+export type QuoteWorkspaceOpenTab = "builder" | "contract";
+export type QuoteWorkspaceOpenRequest = {
+  quoteId: string;
+  tab: QuoteWorkspaceOpenTab;
+  requestId: number;
 };
 
 export function QuoteWorkspace({
   crmJobs = [],
   crmQuotes = [],
   crmCalendarEvents = [],
+  openRequest,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
   const [newQuoteRequest, setNewQuoteRequest] = useState(0);
-  const { activeTab, setActiveTab, activeQuoteId } = useQuoteBuilderStore();
+  const { activeTab, setActiveTab, activeQuoteId, setActiveQuote, setAccountId } = useQuoteBuilderStore();
+
+  useEffect(() => {
+    if (!openRequest?.quoteId) return;
+    setAccountId(ACCOUNT_IDS.SHUTTERS_805);
+    setActiveQuote(openRequest.quoteId);
+    setActiveTab(openRequest.tab);
+  }, [openRequest?.quoteId, openRequest?.requestId, openRequest?.tab, setAccountId, setActiveQuote, setActiveTab]);
 
   // dashboard/builder/pricing/contract only; anything else falls back to dashboard
   const effectiveTab =

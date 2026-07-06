@@ -72,6 +72,12 @@ type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 type PaymentLinkChannel = "email" | "sms";
+type QuoteWorkspaceOpenTab = "builder" | "contract";
+type QuoteWorkspaceOpenRequest = {
+  quoteId: string;
+  tab: QuoteWorkspaceOpenTab;
+  requestId: number;
+};
 type PartnerPaymentRequest = {
   person: CrmPaymentPerson;
   paid_on?: string | null;
@@ -789,6 +795,7 @@ export function CrmApp({
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [cancelingCalendarEvent, setCancelingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
+  const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
   const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
@@ -825,6 +832,30 @@ export function CrmApp({
     setDrill(null);
   }
 
+  function linkedSalesQuoteId(quote: CrmQuote | null | undefined) {
+    const value = quote?.meta?.mts_quote_id || quote?.meta?.sales_quote_id;
+    return typeof value === "string" && value.trim() ? value : null;
+  }
+
+  function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
+    const quote = quotes.find((item) => item.id === quoteId);
+    const targetQuoteId = linkedSalesQuoteId(quote) || (!quote ? quoteId : null);
+
+    if (!targetQuoteId) {
+      if (tab === "contract") void openQuoteContract(quoteId);
+      else setBuilderQuoteId(quoteId);
+      return;
+    }
+
+    setBuilderQuoteId(null);
+    setActiveTab("quotes");
+    setQuoteWorkspaceOpenRequest((request) => ({
+      quoteId: targetQuoteId,
+      tab,
+      requestId: (request?.requestId || 0) + 1
+    }));
+  }
+
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {
     const customerName = entry.customerName || entry.name;
     setDrill(null);
@@ -848,7 +879,7 @@ export function CrmApp({
     }
 
     if (page.target === "quotes") {
-      if (page.quoteId) void openQuoteContract(page.quoteId);
+      if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "contract");
       return;
     }
 
@@ -2483,7 +2514,8 @@ export function CrmApp({
             setCalendarManagementMode("appointments");
             setActiveTab("calendar");
           }}
-          onOpenCrmQuote={setBuilderQuoteId}
+          openRequest={quoteWorkspaceOpenRequest}
+          onOpenCrmQuote={openQuoteWorkspaceQuote}
         />
       ) : null}
 
