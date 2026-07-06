@@ -597,6 +597,81 @@ function publicAssetUrl(path: string): string | undefined {
   return base ? `${base}${path}` : undefined;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const LINKED_SALES_QUOTE_ADVANCED_STATUSES = new Set(["ordered", "received", "installed", "archived"]);
+
+export type LinkedSalesQuoteSignaturePatch = {
+  status: string;
+  customer_signature: string;
+  customer_printed_name: string;
+  signed_at: string;
+  total_amount: number;
+};
+
+export function linkedSalesQuoteIdForPublicQuote(quote: { external_id?: unknown; meta?: unknown }): string | null {
+  const externalId = typeof quote.external_id === "string" ? quote.external_id.trim() : "";
+  const externalMatch = externalId.match(/^quote:([0-9a-f-]+)$/i);
+  if (externalMatch?.[1] && UUID_PATTERN.test(externalMatch[1])) return externalMatch[1];
+
+  const mtsQuoteId = record(quote.meta).mts_quote_id;
+  if (typeof mtsQuoteId === "string") {
+    const trimmed = mtsQuoteId.trim();
+    if (UUID_PATTERN.test(trimmed)) return trimmed;
+  }
+  return null;
+}
+
+export function buildLinkedSalesQuoteSignaturePatch(input: {
+  currentStatus?: string | null;
+  signature: string;
+  printedName: string;
+  signedAt: string;
+  soldTotal: number;
+}): LinkedSalesQuoteSignaturePatch {
+  const currentStatus = (input.currentStatus || "").trim();
+  return {
+    status: LINKED_SALES_QUOTE_ADVANCED_STATUSES.has(currentStatus) ? currentStatus : "sold",
+    customer_signature: input.signature,
+    customer_printed_name: input.printedName,
+    signed_at: input.signedAt,
+    total_amount: round2(input.soldTotal),
+  };
+}
+
+async function syncLinkedSalesQuoteSignature(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  input: { signedAt: string; printedName: string; signature: string; soldTotal: number },
+) {
+  const salesQuoteId = linkedSalesQuoteIdForPublicQuote(quote);
+  if (!salesQuoteId) return;
+
+  const { data: sourceQuote, error: readError } = await supabase
+    .from("sales_quotes")
+    .select("id,status")
+    .eq("id", salesQuoteId)
+    .maybeSingle();
+  if (readError) throw new CrmAuthError(502, "Quote was signed, but the source quote ledger could not be checked.");
+  if (!sourceQuote) return;
+
+  const patch = buildLinkedSalesQuoteSignaturePatch({
+    currentStatus: (sourceQuote as { status?: string | null }).status,
+    signature: input.signature,
+    printedName: input.printedName,
+    signedAt: input.signedAt,
+    soldTotal: input.soldTotal,
+  });
+  const { data: updated, error: updateError } = await supabase
+    .from("sales_quotes")
+    .update(patch)
+    .eq("id", salesQuoteId)
+    .select("id")
+    .maybeSingle();
+  if (updateError || !updated) {
+    throw new CrmAuthError(502, "Quote was signed, but the source quote ledger could not be updated.");
+  }
+}
+
 async function syncSignedQuoteArtifacts(
   supabase: CrmSupabaseClient,
   quote: CrmQuote,
@@ -682,7 +757,7 @@ async function syncSoldBookkeeping(
   if (quote.job_id) {
     const { data: job, error } = await supabase
       .from("crm_jobs")
-      .update({ status: "sold" })
+      .update({ status: "sold", next_action: "Order product", estimated_total: soldTotal })
       .eq("id", quote.job_id)
       .select("*")
       .maybeSingle();
@@ -724,8 +799,11 @@ export async function acceptPublicQuote(
   if (quote.signed_at) {
     const pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
+      const printedName = quote.customer_printed_name || input.printedName || pub.customerName || "Customer";
+      const signature = quote.customer_signature || printedName;
       // Convergence: a retry after a transient downstream failure must still bring
-      // the sold job + bookkeeping entry to the correct state (idempotent ops).
+      // the sold job, bookkeeping entry, contract artifact, and source quote
+      // ledger to the correct state (idempotent ops).
       const soldSync = await syncSoldBookkeeping(supabase, quote, pub.total);
       await syncSignedQuoteArtifacts(
         supabase,
@@ -733,8 +811,14 @@ export async function acceptPublicQuote(
         token,
         pub,
         quote.signed_at,
-        quote.customer_printed_name || input.printedName || pub.customerName || "Customer",
+        printedName,
       );
+      await syncLinkedSalesQuoteSignature(supabase, quote, {
+        signedAt: quote.signed_at,
+        printedName,
+        signature,
+        soldTotal: pub.total,
+      });
       await requestMeasureForSoldJessicaJob(supabase, quote, soldSync.job, "quote_signed_retry");
     }
     return { ok: true, alreadySigned: true };
@@ -857,8 +941,19 @@ export async function acceptPublicQuote(
       .is("signed_at", null);
   }
 
+  const signedQuote: CrmQuote = {
+    ...quote,
+    status: "sold",
+    signed_at: now,
+    sold_at: now,
+    customer_signature: signature,
+    customer_printed_name: printedName,
+    quote_total: soldTotal,
+    ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
+  };
+
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
-  const soldSync = await syncSoldBookkeeping(supabase, quote, soldTotal);
+  const soldSync = await syncSoldBookkeeping(supabase, signedQuote, soldTotal);
   const customerPhone = soldSync.customerPhone;
   const shopSmsContact: SignedShopSmsContact = {
     customerPhone: quote.customer_phone || customerPhone,
@@ -867,12 +962,18 @@ export async function acceptPublicQuote(
 
   await syncSignedQuoteArtifacts(
     supabase,
-    { ...quote, signed_at: now, sold_at: now, customer_signature: signature, customer_printed_name: printedName },
+    signedQuote,
     token,
     signedPub,
     now,
     printedName,
   );
+  await syncLinkedSalesQuoteSignature(supabase, signedQuote, {
+    signedAt: now,
+    printedName,
+    signature,
+    soldTotal,
+  });
 
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",
@@ -883,7 +984,7 @@ export async function acceptPublicQuote(
 
   await requestMeasureForSoldJessicaJob(
     supabase,
-    { ...quote, signed_at: now, sold_at: now, customer_printed_name: printedName },
+    signedQuote,
     soldSync.job,
     "quote_signed"
   );

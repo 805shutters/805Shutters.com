@@ -7,9 +7,11 @@ import {
   buildSignedShopSms,
   buildSignedShopSmsForRecipient,
   buildSignedCustomerSms,
+  buildLinkedSalesQuoteSignaturePatch,
   REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS,
   SOLD_QUOTE_CONTACT_SMS_RECIPIENT,
   soldQuoteShopSmsRecipients,
+  linkedSalesQuoteIdForPublicQuote,
   formatDimensions,
   expandPublicQuoteLine,
   projectLine,
@@ -180,6 +182,50 @@ describe("signed SMS copy", () => {
   });
   it("customer message thanks them by name", () => {
     expect(buildSignedCustomerSms("Jane")).toContain("Jane");
+  });
+});
+
+describe("linked sales quote signature sync helpers", () => {
+  const sourceQuoteId = "806f6943-7fc8-4c55-a956-8e0608d7930d";
+  const signedAt = "2026-07-06T22:06:59.263Z";
+
+  it("resolves the source sales quote id from a CRM quote external id", () => {
+    expect(linkedSalesQuoteIdForPublicQuote({ external_id: `quote:${sourceQuoteId}`, meta: {} })).toBe(sourceQuoteId);
+  });
+
+  it("falls back to meta.mts_quote_id when external_id is missing", () => {
+    expect(linkedSalesQuoteIdForPublicQuote({ meta: { mts_quote_id: sourceQuoteId } })).toBe(sourceQuoteId);
+  });
+
+  it("ignores non-quote and non-uuid source identifiers", () => {
+    expect(linkedSalesQuoteIdForPublicQuote({ external_id: "contract:quote-1", meta: {} })).toBeNull();
+    expect(linkedSalesQuoteIdForPublicQuote({ external_id: "quote:not-a-uuid", meta: { mts_quote_id: "also-not-a-uuid" } })).toBeNull();
+  });
+
+  it("marks draft/sent source quotes sold with the customer signature", () => {
+    expect(buildLinkedSalesQuoteSignaturePatch({
+      currentStatus: "sent",
+      signature: "Katie Kushner",
+      printedName: "Katie Kushner",
+      signedAt,
+      soldTotal: 1410.304,
+    })).toEqual({
+      status: "sold",
+      customer_signature: "Katie Kushner",
+      customer_printed_name: "Katie Kushner",
+      signed_at: signedAt,
+      total_amount: 1410.3,
+    });
+  });
+
+  it("does not downgrade source quotes that already moved past sold", () => {
+    expect(buildLinkedSalesQuoteSignaturePatch({
+      currentStatus: "ordered",
+      signature: "Katie Kushner",
+      printedName: "Katie Kushner",
+      signedAt,
+      soldTotal: 1410.3,
+    }).status).toBe("ordered");
   });
 });
 
