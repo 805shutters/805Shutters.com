@@ -1,13 +1,12 @@
 "use client";
 
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
   label?: string;
   tagline?: string;
   image: string;
   imageAlt: string;
-  fit?: "wide";
   video?: string;
 };
 
@@ -159,17 +158,9 @@ export function HomeHeroCarousel({ slides, rotationIntervalMs = 0 }: HomeHeroCar
     <div className="home-hero-media home-hero-carousel" aria-hidden="true" ref={carouselRef}>
       {renderedSlides.map((slide, index) => {
         const loadSlide = shouldLoadSlide(index);
-        const slideClassName = [
-          "home-hero-slide",
-          slide.fit === "wide" ? "home-hero-slide--wide" : "",
-          index === activeIndex ? "is-active" : ""
-        ].filter(Boolean).join(" ");
-        const slideStyle = loadSlide && slide.fit === "wide"
-          ? ({ "--home-hero-slide-image": `url(${slide.image})` } as CSSProperties)
-          : undefined;
 
         return (
-          <div className={slideClassName} key={slide.label || slide.video || slide.image} style={slideStyle}>
+          <div className={`home-hero-slide${index === activeIndex ? " is-active" : ""}`} key={slide.label || slide.video || slide.image}>
             {slide.video && loadSlide ? (
               <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "none"}>
                 <source src={slide.video} type="video/mp4" />
