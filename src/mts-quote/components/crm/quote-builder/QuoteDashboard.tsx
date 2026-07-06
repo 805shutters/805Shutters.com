@@ -38,12 +38,15 @@ interface QuoteDashboardProps {
 
 type DashboardCalendarAppointment = {
   id: string;
+  sourceId: string;
   sourceType: "sales_805" | "crm_calendar";
   salesAppointment?: Sales805Appointment;
+  crmEventMeta?: Record<string, unknown> | null;
   quote_id: string | null;
   crm_quote_id?: string | null;
   customer_name: string;
   customer_phone: string | null;
+  customer_email: string | null;
   customer_address: string | null;
   appointment_date: string | null;
   start_time: string | null;
@@ -96,6 +99,10 @@ function metaString(value: unknown, key: string): string | null {
   return typeof item === "string" && item ? item : null;
 }
 
+function calendarEventSourceQuoteId(event: CrmCalendarEvent): string | null {
+  return metaString(event.meta, "mts_quote_id") || metaString(event.meta, "sales_quote_id");
+}
+
 function isDashboardCrmCalendarEvent(event: CrmCalendarEvent): boolean {
   return event.event_type !== "block" && (event.status === "scheduled" || event.status === "rescheduled");
 }
@@ -128,6 +135,7 @@ export function QuoteDashboard({
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [portfolioQuote, setPortfolioQuote] = useState<SalesQuote | null>(null);
+  const [appointmentQuoteIds, setAppointmentQuoteIds] = useState<Record<string, string>>({});
 
   const visibleAccounts = quoteOperatorMode
     ? QUOTE_ACCOUNTS.filter((account) => account.id === ACCOUNT_IDS.SHUTTERS_805)
@@ -246,12 +254,15 @@ export function QuoteDashboard({
         const crmQuoteId = event.job_id ? crmQuoteIdsByJobId.get(event.job_id) || null : null;
         return {
           id: `crm:${event.id}`,
+          sourceId: event.id,
           sourceType: "crm_calendar",
-          quote_id: crmQuoteId || metaString(event.meta, "mts_quote_id"),
+          quote_id: appointmentQuoteIds[`crm:${event.id}`] || crmQuoteId || calendarEventSourceQuoteId(event),
           crm_quote_id: crmQuoteId,
+          crmEventMeta: event.meta || null,
           customer_name:
             event.customer_name || metaString(event.meta, "customer_name") || event.title || "Calendar appointment",
           customer_phone: event.customer_phone || metaString(event.meta, "customer_phone"),
+          customer_email: event.customer_email || metaString(event.meta, "customer_email"),
           customer_address: event.customer_address || event.location,
           appointment_date: crmCalendarAppointmentDate(event),
           start_time: crmCalendarAppointmentTime(event),
@@ -264,11 +275,13 @@ export function QuoteDashboard({
       .filter((appointment) => !importedSalesAppointmentIds.has(appointment.id))
       .map((appointment): DashboardCalendarAppointment => ({
         id: `sales:${appointment.id}`,
+        sourceId: appointment.id,
         sourceType: "sales_805",
         salesAppointment: appointment,
-        quote_id: appointment.quote_id,
+        quote_id: appointmentQuoteIds[`sales:${appointment.id}`] || appointment.quote_id,
         customer_name: appointment.customer_name,
         customer_phone: appointment.customer_phone,
+        customer_email: null,
         customer_address: appointment.customer_address,
         appointment_date: appointment.appointment_date,
         start_time: appointment.start_time,
@@ -279,7 +292,7 @@ export function QuoteDashboard({
     return [...crmAppointments, ...salesAppointments].sort((left, right) =>
       appointmentSortKey(left).localeCompare(appointmentSortKey(right))
     );
-  }, [crmCalendarEvents, crmQuotes, sales805Appointments]);
+  }, [appointmentQuoteIds, crmCalendarEvents, crmQuotes, sales805Appointments]);
 
   const filteredQuotes = useMemo(
     () => filterQuotesForStatsTile(dashboardQuotes, activeFilter, dashboardCalendarAppointments),
@@ -354,7 +367,7 @@ export function QuoteDashboard({
   });
 
   const createQuoteFromAppointment = useMutation({
-    mutationFn: async (appointment: Sales805Appointment) => {
+    mutationFn: async (appointment: DashboardCalendarAppointment) => {
       if (appointment.quote_id) {
         return { quoteId: appointment.quote_id, created: false };
       }
@@ -378,6 +391,7 @@ export function QuoteDashboard({
           status: "draft",
           customer_name: appointment.customer_name,
           customer_phone: appointment.customer_phone || null,
+          customer_email: appointment.customer_email || null,
           customer_address: appointment.customer_address || null,
           appointment_date: appointment.appointment_date,
           created_by: session?.session?.user?.id || null,
@@ -387,15 +401,30 @@ export function QuoteDashboard({
         .single();
       if (quoteError) throw quoteError;
 
-      const { error: appointmentError } = await (supabase as any)
-        .from("sales_805_appointments")
-        .update({ quote_id: quote.id })
-        .eq("id", appointment.id);
+      const updateBuilder =
+        appointment.sourceType === "sales_805"
+          ? (supabase as any)
+              .from("sales_805_appointments")
+              .update({ quote_id: quote.id })
+              .eq("id", appointment.sourceId)
+          : (supabase as any)
+              .from("crm_calendar_events")
+              .update({
+                meta: {
+                  ...(appointment.crmEventMeta || {}),
+                  mts_quote_id: quote.id,
+                  sales_quote_id: quote.id,
+                },
+              })
+              .eq("id", appointment.sourceId);
+
+      const { error: appointmentError } = await updateBuilder;
       if (appointmentError) throw appointmentError;
 
       return { quoteId: quote.id as string, created: true };
     },
-    onSuccess: ({ quoteId, created }) => {
+    onSuccess: ({ quoteId, created }, appointment) => {
+      setAppointmentQuoteIds((current) => ({ ...current, [appointment.id]: quoteId }));
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
       queryClient.invalidateQueries({ queryKey: SALES_805_DASHBOARD_APPOINTMENTS_QUERY_KEY });
       setAccountId(ACCOUNT_IDS.SHUTTERS_805);
@@ -506,8 +535,10 @@ export function QuoteDashboard({
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
-    if (appointment.sourceType === "sales_805" && appointment.salesAppointment) {
-      createQuoteFromAppointment.mutate(appointment.salesAppointment);
+    if (appointment.quote_id) {
+      setAccountId(ACCOUNT_IDS.SHUTTERS_805);
+      setActiveQuote(appointment.quote_id);
+      setActiveTab("builder");
       return;
     }
 
@@ -516,9 +547,7 @@ export function QuoteDashboard({
       return;
     }
 
-    if (appointment.appointment_date) {
-      onOpenCrmCalendarDate?.(appointment.appointment_date);
-    }
+    createQuoteFromAppointment.mutate(appointment);
   };
 
   return (
@@ -616,15 +645,11 @@ function Sales805AppointmentMatches({
         {appointments.map((appointment) => {
           const isPending = isOpening && openingAppointmentId === appointment.id;
           const actionLabel =
-            appointment.sourceType === "sales_805"
-              ? appointment.quote_id
-                ? "Open Quote"
-                : isPending
-                  ? "Creating..."
-                  : "Create Quote"
-              : appointment.crm_quote_id
-                ? "Open Quote"
-                : "Open Calendar";
+            appointment.quote_id || appointment.crm_quote_id
+              ? "Open Quote"
+              : isPending
+                ? "Creating..."
+                : "Create Quote";
           return (
             <div
               key={appointment.id}
