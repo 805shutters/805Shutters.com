@@ -3078,6 +3078,7 @@ body:has(.crm-app-shell) {
 }
 
 body:has(.public-quote-contract-embed) .site-header-shell,
+body:has(.public-quote-contract-embed) .financing-banner,
 body:has(.public-quote-contract-embed) .site-footer {
   display: none;
 }

@@ -3428,6 +3428,11 @@ function contractUrl(contract: CrmCustomerFile["contracts"][number]) {
   return null;
 }
 
+function salesQuoteIdForCrmQuote(quote: CrmQuote | null | undefined) {
+  const value = quote?.meta?.mts_quote_id || quote?.meta?.sales_quote_id;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 function mtsContractQuoteId(contract: CrmCustomerFile["contracts"][number], file?: CrmCustomerFile) {
   const contractValue = contract.meta?.mts_quote_id;
   if (typeof contractValue === "string" && contractValue.trim()) return contractValue;
@@ -3450,8 +3455,10 @@ function crmContractPreviewUrl(url: string) {
 }
 
 function documentPreviewUrl(document: DrillDocument) {
-  if (document.quoteId) return `/crm/quote/${document.quoteId}/contract-preview`;
-  return crmContractPreviewUrl(document.url);
+  // Prefer the document's own contract copy (share-token page) over the
+  // interactive builder preview so panes show the literal customer contract.
+  if (document.url) return crmContractPreviewUrl(document.url);
+  return document.quoteId ? `/crm/quote/${document.quoteId}/contract-preview` : document.url;
 }
 
 function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
@@ -5994,17 +6001,25 @@ function GlobalCustomerSearchPanel({
   const selectedContractDocument =
     selectedResult?.entry.documents?.find((document) => document.kind === "Contract copy" && Boolean(document.url)) || null;
   const selectedQuotePage = selectedResult?.pages.find((page) => page.target === "quotes" && Boolean(page.quoteId)) || null;
-  const selectedPreviewDocument =
-    selectedContractDocument ||
-    (selectedQuotePage?.quoteId
+  const selectedQuote = selectedQuotePage?.quoteId
+    ? quotes.find((quote) => quote.id === selectedQuotePage.quoteId) || null
+    : null;
+  const selectedQuoteSalesId = salesQuoteIdForCrmQuote(selectedQuote);
+  const selectedQuoteDocument =
+    selectedQuotePage && selectedQuote && (selectedQuoteSalesId || selectedQuote.share_token)
       ? {
-          id: `quote-preview-${selectedQuotePage.quoteId}`,
+          id: `quote-preview-${selectedQuote.id}`,
           title: selectedQuotePage.detail ? `Quote ${selectedQuotePage.detail}` : "Quote contract preview",
-          url: `/crm/quote/${selectedQuotePage.quoteId}/contract-preview`,
-          quoteId: selectedQuotePage.quoteId,
+          // Prefer the customer-facing contract page; the interactive builder
+          // preview is only a fallback for quotes that were never shared.
+          url: selectedQuote.share_token
+            ? `/quote/${selectedQuote.share_token}`
+            : `/crm/quote/${selectedQuoteSalesId}/contract-preview`,
+          quoteId: selectedQuote.share_token ? null : selectedQuoteSalesId,
           kind: "Contract copy" as const
         }
-      : null);
+      : null;
+  const selectedPreviewDocument = selectedQuoteDocument || selectedContractDocument;
   const payload: DrillPayload | null = selectedResult
     ? {
         title: "Customer Search",
