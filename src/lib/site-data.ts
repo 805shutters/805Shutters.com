@@ -116,10 +116,6 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
     imageAlt: "Tall window blinds installed in a Ventura County room"
   },
   {
-    image: "/images/portfolio-enhanced/recent-woven-shade-sliding-door-card.jpg",
-    imageAlt: "Woven shade installed above a sliding glass door"
-  },
-  {
     image: "/images/portfolio-enhanced/recent-bedroom-plantation-shutters-card.jpg",
     imageAlt: "White plantation shutters installed on bedroom windows"
   },

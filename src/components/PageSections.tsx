@@ -421,12 +421,6 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
     imageAlt: "Tall window blinds installed in a Ventura County room"
   },
   {
-    category: "Shades",
-    title: "Woven Sliding Door Shade",
-    image: "/images/portfolio-enhanced/recent-woven-shade-sliding-door-card.jpg",
-    imageAlt: "Woven shade installed above a sliding glass door"
-  },
-  {
     category: "Shutters",
     title: "Recent Bedroom Plantation Shutters",
     image: "/images/portfolio-enhanced/recent-bedroom-plantation-shutters-card.jpg",
@@ -627,7 +621,6 @@ const installedPortfolioPhotos: InstalledPortfolioPhoto[] = [
 const residentialRecentWorkPhotos = [
   installedPortfolioPhotos.find((photo) => photo.title === "Patterned Roller Shades"),
   installedPortfolioPhotos.find((photo) => photo.title === "Tall Window Blinds"),
-  installedPortfolioPhotos.find((photo) => photo.title === "Woven Sliding Door Shade"),
   installedPortfolioPhotos.find((photo) => photo.title === "Recent Bedroom Plantation Shutters"),
   installedPortfolioPhotos.find((photo) => photo.title === "Bay Window Shutters"),
   installedPortfolioPhotos.find((photo) => photo.title === "Living Room Roller Shades"),
