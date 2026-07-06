@@ -2470,8 +2470,8 @@ body.commercial-mode .home-hero-actions .button.primary {
 }
 
 .installed-portfolio--recent .installed-portfolio-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(8px, 1.2vw, 16px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(18px, 2.4vw, 34px);
 }
 
 .installed-portfolio--recent .installed-portfolio-card {
@@ -2480,6 +2480,12 @@ body.commercial-mode .home-hero-actions .button.primary {
 
 .installed-portfolio--recent .installed-portfolio-card figcaption {
   display: none;
+}
+
+@media (max-width: 760px) {
+  .installed-portfolio--recent .installed-portfolio-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .content-wrap {
