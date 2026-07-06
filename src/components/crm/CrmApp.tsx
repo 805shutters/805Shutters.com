@@ -3455,10 +3455,10 @@ function crmContractPreviewUrl(url: string) {
 }
 
 function documentPreviewUrl(document: DrillDocument) {
-  // Prefer the document's own contract copy (share-token page) over the
-  // interactive builder preview so panes show the literal customer contract.
-  if (document.url) return crmContractPreviewUrl(document.url);
-  return document.quoteId ? `/crm/quote/${document.quoteId}/contract-preview` : document.url;
+  // Owner wants the Quote Summary style builder view in preview panes; ids
+  // that no longer resolve redirect server-side to the share-token contract.
+  if (document.quoteId) return `/crm/quote/${document.quoteId}/contract-preview`;
+  return crmContractPreviewUrl(document.url);
 }
 
 function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
@@ -6010,12 +6010,13 @@ function GlobalCustomerSearchPanel({
       ? {
           id: `quote-preview-${selectedQuote.id}`,
           title: selectedQuotePage.detail ? `Quote ${selectedQuotePage.detail}` : "Quote contract preview",
-          // Prefer the customer-facing contract page; the interactive builder
-          // preview is only a fallback for quotes that were never shared.
-          url: selectedQuote.share_token
-            ? `/quote/${selectedQuote.share_token}`
-            : `/crm/quote/${selectedQuoteSalesId}/contract-preview`,
-          quoteId: selectedQuote.share_token ? null : selectedQuoteSalesId,
+          // Owner wants the Quote Summary style view (per-window option specs)
+          // in the pane; the share-token contract page is only the fallback for
+          // quotes with no builder record.
+          url: selectedQuoteSalesId
+            ? `/crm/quote/${selectedQuoteSalesId}/contract-preview`
+            : `/quote/${selectedQuote.share_token}`,
+          quoteId: selectedQuoteSalesId,
           kind: "Contract copy" as const
         }
       : null;
