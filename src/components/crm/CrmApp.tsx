@@ -4,7 +4,7 @@ import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, 
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
-import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
+import { KEN_CRM_EMAIL, isAllowedCrmEmail, isCrmOwnerAdminEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
@@ -2908,6 +2908,7 @@ export function CrmApp({
                 events={events}
                 anchorDate={calendarDate}
                 view={calendarView}
+                canOverrideAvailability={isCrmOwnerAdminEmail(user?.email)}
                 onDateChange={setCalendarDate}
                 onViewChange={setCalendarView}
                 onSelectSlot={setSelectedCalendarSlot}
@@ -12103,6 +12104,7 @@ function CalendarPlanner({
   events,
   anchorDate,
   view,
+  canOverrideAvailability,
   onDateChange,
   onViewChange,
   onSelectSlot,
@@ -12113,6 +12115,7 @@ function CalendarPlanner({
   events: CrmCalendarEvent[];
   anchorDate: string;
   view: CalendarView;
+  canOverrideAvailability: boolean;
   onDateChange: (date: string) => void;
   onViewChange: (view: CalendarView) => void;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
@@ -12257,6 +12260,7 @@ function CalendarPlanner({
           events={visibleEvents}
           availabilitySlots={availabilitySlots}
           availabilityLoading={availabilityLoading}
+          canOverrideAvailability={canOverrideAvailability}
           onSelectSlot={onSelectSlot}
           onRescheduleEvent={onRescheduleEvent}
           onOpenEvent={onOpenEvent}
@@ -12272,6 +12276,7 @@ function CalendarTimelineGrid({
   events,
   availabilitySlots,
   availabilityLoading,
+  canOverrideAvailability,
   onSelectSlot,
   onRescheduleEvent,
   onOpenEvent,
@@ -12281,6 +12286,7 @@ function CalendarTimelineGrid({
   events: CrmCalendarEvent[];
   availabilitySlots: AvailabilitySlotRow[];
   availabilityLoading: boolean;
+  canOverrideAvailability: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
   onRescheduleEvent: (event: CrmCalendarEvent, slot: CalendarSlotSelection) => void;
   onOpenEvent: (event: CrmCalendarEvent) => void;
@@ -12325,7 +12331,8 @@ function CalendarTimelineGrid({
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
     const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
-    if (!slot || isPastCalendarSlot(slot.date, slot.time) || !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
+    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+    if (!canOverrideAvailability && !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
 
     dragEvent.preventDefault();
     dragEvent.dataTransfer.dropEffect = "move";
@@ -12336,7 +12343,8 @@ function CalendarTimelineGrid({
     if (!calendarEvent) return;
     const slot = slotFromGridPointer(dragEvent, calendarEvent);
     const openOwners = slot ? availabilityOwnersForSlot(slot.date, slot.time) : [];
-    if (!slot || isPastCalendarSlot(slot.date, slot.time) || !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
+    if (!slot || isPastCalendarSlot(slot.date, slot.time)) return;
+    if (!canOverrideAvailability && !isSlotOpenForCalendarEvent(openOwners, calendarEvent)) return;
 
     dragEvent.preventDefault();
     onRescheduleEvent(calendarEvent, slot);
@@ -12383,7 +12391,8 @@ function CalendarTimelineGrid({
               const available = openOwners.length > 0;
               const pending = availabilityLoading && !available;
               const slot = calendarSlotSelection(day, time);
-              const selectable = !event && !past && available && !availabilityLoading;
+              const overridable = canOverrideAvailability && !event && !past && !pending && !available && !availabilityLoading;
+              const selectable = (!event && !past && available && !availabilityLoading) || overridable;
               const slotLabel = event ? "Booked" : past ? "Past" : pending ? "Checking" : available ? "Available" : "Blocked";
               const slotDetail = event
                 ? "Scheduled"
@@ -12393,7 +12402,9 @@ function CalendarTimelineGrid({
                     ? "Open times"
                     : available
                       ? availabilityOwnersLabel(openOwners)
-                      : "No open time";
+                      : overridable
+                        ? "Admin: book anyway"
+                        : "No open time";
 
               return (
                 <button
@@ -12402,8 +12413,8 @@ function CalendarTimelineGrid({
                   className={`crm-calendar-slot${event ? " crm-calendar-slot--taken" : ""}${past ? " crm-calendar-slot--past" : ""}${
                     !event && !past && !pending && available ? " crm-calendar-slot--available" : ""
                   }${!event && !past && !pending && !available ? " crm-calendar-slot--blocked" : ""}${
-                    pending ? " crm-calendar-slot--pending" : ""
-                  }`}
+                    overridable ? " crm-calendar-slot--override" : ""
+                  }${pending ? " crm-calendar-slot--pending" : ""}`}
                   disabled={!selectable}
                   key={`${day}-${time}`}
                   onClick={() => onSelectSlot({ ...slot, availableOwners: openOwners })}
@@ -12823,6 +12834,9 @@ function CalendarAppointmentModal({
           </button>
         </div>
         <p className="crm-slot-time-summary">{formatCalendarSlotRange(selectedSlot)}</p>
+        {!selectedSlot.availableOwners?.length ? (
+          <p className="crm-slot-override-note">Admin override: this time is outside the open availability windows.</p>
+        ) : null}
         <form className="crm-form" onSubmit={onSubmit}>
           <div className="crm-field-row">
             <label>

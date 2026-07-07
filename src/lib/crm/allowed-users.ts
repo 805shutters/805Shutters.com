@@ -19,6 +19,10 @@ export function isMikePaymentAdminEmail(email: string | null | undefined) {
   return Boolean(email && normalizeCrmEmail(email) === MIKE_PAYMENT_ADMIN_EMAIL);
 }
 
+export function isCrmOwnerAdminEmail(email: string | null | undefined) {
+  return isMikePaymentAdminEmail(email);
+}
+
 export function isKenCrmEmail(email: string | null | undefined) {
   return Boolean(email && normalizeCrmEmail(email) === KEN_CRM_EMAIL);
 }

@@ -6185,6 +6185,20 @@ button.crm-customer-action-link {
   color: #8a8780;
 }
 
+.crm-calendar-slot--override {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px #d8d5cd;
+}
+
+.crm-calendar-slot--override small {
+  color: #8c6d1f;
+}
+
+.crm-calendar-slot--override:hover,
+.crm-calendar-slot--override:focus-visible {
+  background: #faf6ec;
+}
+
 .crm-calendar-slot--pending {
   background: #fbfbfa;
   color: #77746d;
@@ -6773,6 +6787,17 @@ button.crm-calendar-month-event:focus-visible {
   font-weight: 900;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.crm-slot-override-note {
+  margin: 0;
+  padding: 8px 10px;
+  background: #faf6ec;
+  border: 1px solid #e3d9bd;
+  border-radius: 6px;
+  color: #8c6d1f;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .crm-appointment-detail-lines {
