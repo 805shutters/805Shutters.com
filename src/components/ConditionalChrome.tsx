@@ -13,7 +13,8 @@ import { SiteHeader } from "./SiteHeader";
 export function ConditionalChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isCrmRoute = pathname === "/crm" || Boolean(pathname?.startsWith("/crm/"));
-  const showAssistantWidget = pathname === "/";
+  const isQuoteRoute = pathname === "/quote" || Boolean(pathname?.startsWith("/quote/"));
+  const showAssistantWidget = !isCrmRoute && !isQuoteRoute;
 
   // Dedicated CRM app routes — no site header, footer, or chat widget.
   if (isCrmRoute) {

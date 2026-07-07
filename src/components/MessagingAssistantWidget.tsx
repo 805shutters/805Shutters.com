@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { getLeadAttribution } from "@/lib/client-tracking";
 
 type WidgetMessage = {
   id: string;
@@ -21,7 +22,7 @@ type AssistantResponse = {
   message?: string;
 };
 
-type AssistantView = "closed" | "choices" | "chat";
+type AssistantView = "closed" | "choices" | "chat" | "text" | "text-sent";
 
 const textQuestionHref = `sms:+18058069344?&body=${encodeURIComponent(
   "Hi 805 Shutters, I have a question: "
@@ -53,9 +54,19 @@ export function MessagingAssistantWidget() {
         "Hi, I can help compare products, explain service areas, and answer scheduling questions."
     }
   ]);
+  const [isMobile, setIsMobile] = useState(false);
+  const [textName, setTextName] = useState("");
+  const [textPhone, setTextPhone] = useState("");
+  const [textBody, setTextBody] = useState("");
+  const [textPending, setTextPending] = useState(false);
+  const [textError, setTextError] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const open = view !== "closed";
+
+  useEffect(() => {
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(window.navigator.userAgent));
+  }, []);
 
   useEffect(() => {
     if (view === "chat") {
@@ -128,6 +139,45 @@ export function MessagingAssistantWidget() {
     void submitQuestion(input);
   }
 
+  async function submitTextRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (textPending) return;
+
+    setTextError("");
+    setTextPending(true);
+
+    try {
+      const response = await fetch("/api/assistant/text-request/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: textName,
+          phone: textPhone,
+          message: textBody,
+          pagePath: window.location.pathname,
+          company: "",
+          ...getLeadAttribution()
+        })
+      });
+      const body = (await response.json()) as { message?: string };
+
+      if (!response.ok) {
+        throw new Error(body.message || "We could not send your message right now.");
+      }
+
+      setView("text-sent");
+      setTextBody("");
+    } catch (submitError) {
+      setTextError(
+        submitError instanceof Error ? submitError.message : "We could not send your message right now."
+      );
+    } finally {
+      setTextPending(false);
+    }
+  }
+
   function handleInputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -156,16 +206,29 @@ export function MessagingAssistantWidget() {
 
           <div className="assistant-choice-panel__body">
             <div className="assistant-choice-list" aria-label="Ask 805 options">
-              <a className="assistant-choice assistant-choice--text" href={textQuestionHref}>
-                <span className="assistant-choice__icon" aria-hidden="true">
-                  <PhoneIcon />
-                </span>
-                <span className="assistant-choice__copy">
-                  <strong>Text us a question</strong>
-                  <small>Opens a text message to 805 Shutters.</small>
-                </span>
-                <ArrowIcon />
-              </a>
+              {isMobile ? (
+                <a className="assistant-choice assistant-choice--text" href={textQuestionHref}>
+                  <span className="assistant-choice__icon" aria-hidden="true">
+                    <PhoneIcon />
+                  </span>
+                  <span className="assistant-choice__copy">
+                    <strong>Text us a question</strong>
+                    <small>Opens a text message to 805 Shutters.</small>
+                  </span>
+                  <ArrowIcon />
+                </a>
+              ) : (
+                <button type="button" className="assistant-choice assistant-choice--text" onClick={() => setView("text")}>
+                  <span className="assistant-choice__icon" aria-hidden="true">
+                    <PhoneIcon />
+                  </span>
+                  <span className="assistant-choice__copy">
+                    <strong>Text us a question</strong>
+                    <small>Send a text from here — we reply to your phone.</small>
+                  </span>
+                  <ArrowIcon />
+                </button>
+              )}
 
               <button type="button" className="assistant-choice" onClick={() => setView("chat")}>
                 <span className="assistant-choice__icon" aria-hidden="true">
@@ -178,6 +241,90 @@ export function MessagingAssistantWidget() {
                 <ArrowIcon />
               </button>
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {view === "text" ? (
+        <section className="assistant-panel" role="dialog" aria-modal="false" aria-labelledby="assistant-text-title">
+          <div className="assistant-panel__head">
+            <div>
+              <p>Ask 805</p>
+              <h2 id="assistant-text-title">Text us a question</h2>
+            </div>
+            <button type="button" className="assistant-icon-button" onClick={() => setView("closed")} aria-label="Close text form">
+              <CloseIcon />
+            </button>
+          </div>
+
+          <div className="assistant-privacy-note">
+            We reply by text to the number you enter. Prefer your own messaging app? Text us at (805) 806-9344.
+          </div>
+
+          <form className="assistant-form assistant-form--text" onSubmit={submitTextRequest}>
+            <label htmlFor="assistant-text-name">Name (optional)</label>
+            <input
+              id="assistant-text-name"
+              type="text"
+              value={textName}
+              onChange={(event) => setTextName(event.target.value)}
+              placeholder="Your name"
+              autoComplete="name"
+              disabled={textPending}
+            />
+
+            <label htmlFor="assistant-text-phone">Mobile number</label>
+            <input
+              id="assistant-text-phone"
+              type="tel"
+              value={textPhone}
+              onChange={(event) => setTextPhone(event.target.value)}
+              placeholder="(805) 555-0123"
+              autoComplete="tel"
+              required
+              disabled={textPending}
+            />
+
+            <label htmlFor="assistant-text-message">Your question</label>
+            <textarea
+              id="assistant-text-message"
+              value={textBody}
+              onChange={(event) => setTextBody(event.target.value)}
+              rows={3}
+              placeholder="Ask about products, pricing visits, or scheduling"
+              required
+              disabled={textPending}
+            />
+
+            <button type="submit" className="assistant-text-submit" disabled={textPending || !textPhone.trim() || !textBody.trim()}>
+              {textPending ? "Sending..." : "Send text"}
+            </button>
+            {textError ? <p className="assistant-error">{textError}</p> : null}
+          </form>
+        </section>
+      ) : null}
+
+      {view === "text-sent" ? (
+        <section className="assistant-panel" role="dialog" aria-modal="false" aria-labelledby="assistant-text-sent-title">
+          <div className="assistant-panel__head">
+            <div>
+              <p>Ask 805</p>
+              <h2 id="assistant-text-sent-title">Message sent</h2>
+            </div>
+            <button type="button" className="assistant-icon-button" onClick={() => setView("closed")} aria-label="Close confirmation">
+              <CloseIcon />
+            </button>
+          </div>
+
+          <div className="assistant-text-sent">
+            <p>
+              Thanks{textName.trim() ? `, ${textName.trim()}` : ""}! Your question is on its way to our team. We will
+              text you back at {textPhone.trim()} shortly.
+            </p>
+            <p>Need us sooner? Call or text (805) 806-9344.</p>
+            <button type="button" className="assistant-text-submit" onClick={() => setView("chat")}>
+              Ask the AI assistant while you wait
+            </button>
           </div>
         </section>
       ) : null}
