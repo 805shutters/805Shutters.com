@@ -24,6 +24,26 @@ async function run(request: NextRequest) {
     const result = await processOrderCogsInbox(supabase, {
       actorEmail: "order-cogs-cron"
     });
+    const summary = {
+      scanned: result.scanned,
+      processed: result.processed,
+      matched: result.matched,
+      needsReview: result.needsReview,
+      unmatched: result.unmatched,
+      skipped: result.skipped,
+      applied: result.applied || 0,
+      archived: result.archived,
+      errors: result.errors,
+      recordErrors: result.recordErrors || 0,
+      archiveErrors: result.archiveErrors,
+      lastError: result.lastError || null,
+      lastInsertError: result.lastInsertError || null
+    };
+    if (result.errors || result.recordErrors || result.archiveErrors) {
+      console.warn("Order COGS cron completed with warnings.", summary);
+    } else {
+      console.info("Order COGS cron completed.", summary);
+    }
 
     return NextResponse.json(result);
   } catch (error) {

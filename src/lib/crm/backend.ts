@@ -59,6 +59,7 @@ import {
   CrmKenPaymentAllocation,
   CrmKenPayment,
   CrmOrderCogsEmail,
+  CrmOrderCogsEmailStatus,
   CrmPartnerPaymentLedgerItem,
   CrmPaymentPerson,
   CrmQuote,
@@ -651,6 +652,89 @@ function activityAvailabilityRowsToSlots(rows: Record<string, unknown>[], range:
   return Array.from(latestByWindow.values())
     .filter((slot) => slot.status === "available")
     .sort((left, right) => left.start_at.localeCompare(right.start_at));
+}
+
+function jsonRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function nullableText(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function nullableMoney(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? Math.round(amount * 100) / 100 : null;
+}
+
+const orderCogsEmailStatuses: CrmOrderCogsEmailStatus[] = ["matched", "needs_review", "unmatched", "skipped", "error"];
+
+function orderCogsEmailStatus(value: unknown): CrmOrderCogsEmailStatus {
+  const status = nullableText(value);
+  return orderCogsEmailStatuses.includes(status as CrmOrderCogsEmailStatus)
+    ? (status as CrmOrderCogsEmailStatus)
+    : "needs_review";
+}
+
+function orderCogsEmailFromActivity(row: Record<string, unknown>): CrmOrderCogsEmail | null {
+  const metadata = jsonRecord(row.metadata);
+  const afterData = jsonRecord(row.after_data);
+  const source = Object.keys(jsonRecord(metadata.orderCogsEmail)).length
+    ? jsonRecord(metadata.orderCogsEmail)
+    : afterData;
+  const createdAt = nullableText(row.created_at) || new Date().toISOString();
+  const gmailMessageId = nullableText(source.gmail_message_id);
+
+  if (!gmailMessageId) return null;
+
+  return {
+    id: nullableText(row.id) || `activity:${gmailMessageId}`,
+    created_at: createdAt,
+    updated_at: createdAt,
+    mailbox_email: nullableText(source.mailbox_email) || "805shutters@gmail.com",
+    gmail_message_id: gmailMessageId,
+    gmail_thread_id: nullableText(source.gmail_thread_id),
+    gmail_history_id: nullableText(source.gmail_history_id),
+    from_email: nullableText(source.from_email),
+    to_email: nullableText(source.to_email),
+    subject: nullableText(source.subject),
+    sent_at: nullableText(source.sent_at),
+    snippet: nullableText(source.snippet),
+    attachment_names: Array.isArray(source.attachment_names)
+      ? source.attachment_names.map((item) => String(item || "")).filter(Boolean)
+      : [],
+    email_url: nullableText(source.email_url),
+    extracted_customer_name: nullableText(source.extracted_customer_name),
+    extracted_order_amount: nullableMoney(source.extracted_order_amount),
+    extracted_order_number: nullableText(source.extracted_order_number),
+    extraction_confidence: Number(source.extraction_confidence) || 0,
+    matched_job_id: nullableText(source.matched_job_id),
+    matched_quote_id: nullableText(source.matched_quote_id),
+    matched_bookkeeping_entry_id: nullableText(source.matched_bookkeeping_entry_id),
+    match_status: orderCogsEmailStatus(source.match_status),
+    match_confidence: Number(source.match_confidence) || 0,
+    match_reason: nullableText(source.match_reason) || nullableText(metadata.auditError),
+    processed_at: nullableText(source.processed_at),
+    applied_at: nullableText(source.applied_at),
+    error_message: nullableText(source.error_message),
+    raw: {
+      ...jsonRecord(source.raw),
+      fallbackStore: "crm_activity_events",
+      auditError: nullableText(metadata.auditError)
+    }
+  } satisfies CrmOrderCogsEmail;
+}
+
+function mergeOrderCogsEmails(primary: CrmOrderCogsEmail[], fallback: CrmOrderCogsEmail[]) {
+  const byMessage = new Map<string, CrmOrderCogsEmail>();
+  for (const email of fallback) byMessage.set(email.gmail_message_id, email);
+  for (const email of primary) byMessage.set(email.gmail_message_id, email);
+  return Array.from(byMessage.values()).sort((left, right) => {
+    const leftTime = Date.parse(left.created_at || left.processed_at || "");
+    const rightTime = Date.parse(right.created_at || right.processed_at || "");
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
 }
 
 export async function listCrmAvailabilityFallbackSlots(supabase: CrmSupabaseClient, month: string) {
@@ -1369,6 +1453,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     kenPaymentsResult,
     kenPaymentAllocationsResult,
     orderCogsEmailsResult,
+    orderCogsEmailFallbackEventsResult,
     commissionPaymentsResult,
     commissionPaymentAllocationsResult,
     settingsResult
@@ -1417,6 +1502,13 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     supabase
       .from("crm_order_cogs_emails")
       .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("crm_activity_events")
+      .select("id,created_at,after_data,metadata")
+      .eq("entity_type", "order_cogs_email")
+      .eq("action", "order_cogs_email_audit_fallback")
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
@@ -1511,7 +1603,13 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const kenPaymentAllocations = (
     kenPaymentAllocationsResult.error ? [] : kenPaymentAllocationsResult.data || []
   ) as CrmKenPaymentAllocation[];
-  const orderCogsEmails = (orderCogsEmailsResult.error ? [] : orderCogsEmailsResult.data || []) as CrmOrderCogsEmail[];
+  const orderCogsTableEmails = (orderCogsEmailsResult.error ? [] : orderCogsEmailsResult.data || []) as CrmOrderCogsEmail[];
+  const orderCogsFallbackEmails = (orderCogsEmailFallbackEventsResult.error
+    ? []
+    : ((orderCogsEmailFallbackEventsResult.data || []) as Record<string, unknown>[])
+        .map(orderCogsEmailFromActivity)
+        .filter((email): email is CrmOrderCogsEmail => Boolean(email)));
+  const orderCogsEmails = mergeOrderCogsEmails(orderCogsTableEmails, orderCogsFallbackEmails);
   const commissionPayments = (
     commissionPaymentsResult.error ? [] : commissionPaymentsResult.data || []
   ) as CrmCommissionPayment[];
