@@ -14,6 +14,7 @@ import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { syncAppointmentToGoogleCalendars, GoogleCalendarSyncResult } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
@@ -36,6 +37,9 @@ type BookingPayload = {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  gclid?: string;
+  referrer?: string;
+  landingPath?: string;
 };
 
 type BookingAutomationDetails = {
@@ -445,6 +449,14 @@ export async function POST(request: NextRequest) {
     utm_content: cleanAttributionValue(payload.utm_content),
     utm_term: cleanAttributionValue(payload.utm_term)
   };
+  const gclid = cleanAttributionValue(payload.gclid);
+  const landingReferrer = cleanAttributionValue(payload.referrer);
+  const leadSource = classifyLeadSource({
+    utmSource: attribution.utm_source,
+    utmMedium: attribution.utm_medium,
+    gclid,
+    referrer: landingReferrer
+  });
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
     return NextResponse.json({ message: "Choose an appointment date and time." }, { status: 400 });
@@ -553,72 +565,78 @@ export async function POST(request: NextRequest) {
     }
   };
 
-  const { data: lead, error: leadError } = await supabase
-    .from("leads")
-    .insert({
-      source: "self_booking",
-      status: "booked",
-      name,
-      phone,
-      email: email || null,
-      interest: productInterest,
-      notes: bookingNotes,
-      page_path: pagePath,
-      ...attribution,
-      meta: {
-        address,
-        windowCount: windowCount || null,
-        ...bookingGeoMeta,
-        productTypes,
-        followUpRequested,
-        pagePath,
-        attribution,
-        appointmentDate: date,
-        appointmentTime: time,
-        userAgent: request.headers.get("user-agent"),
-        referrer: request.headers.get("referer"),
-        receivedAt: new Date().toISOString()
-      }
-    })
-    .select("id")
-    .single();
+  const leadRecord = {
+    source: "self_booking",
+    lead_source: leadSource,
+    status: "booked",
+    name,
+    phone,
+    email: email || null,
+    interest: productInterest,
+    notes: bookingNotes,
+    page_path: pagePath,
+    ...attribution,
+    meta: {
+      address,
+      windowCount: windowCount || null,
+      ...bookingGeoMeta,
+      productTypes,
+      followUpRequested,
+      pagePath,
+      attribution,
+      gclid,
+      landingReferrer,
+      appointmentDate: date,
+      appointmentTime: time,
+      userAgent: request.headers.get("user-agent"),
+      referrer: request.headers.get("referer"),
+      receivedAt: new Date().toISOString()
+    }
+  };
+  let { data: lead, error: leadError } = await supabase.from("leads").insert(leadRecord).select("id").single();
+  if (leadError && isMissingLeadSourceColumnError(leadError)) {
+    const { lead_source: _leadSource, ...leadWithoutSource } = leadRecord;
+    ({ data: lead, error: leadError } = await supabase.from("leads").insert(leadWithoutSource).select("id").single());
+  }
 
-  if (leadError) {
+  if (leadError || !lead) {
     return NextResponse.json({ message: "Booking lead could not be saved." }, { status: 502 });
   }
 
-  const { data: job, error: jobError } = await supabase
-    .from("crm_jobs")
-    .insert({
-      source: "self_booking",
-      lead_id: lead.id,
-      status: "scheduled",
-      priority: "high",
-      customer_name: name,
-      phone,
-      email: email || null,
-      address,
-      product_interest: productInterest,
-      sales_owner: assignedRep,
-      next_action: "Review self-booking and prepare appointment",
-      next_action_due: date,
-      appointment_start: startAt,
-      appointment_end: endAt,
-      notes: bookingNotes,
-      meta: {
-        windowCount: windowCount || null,
-        ...bookingGeoMeta,
-        productTypes,
-        followUpRequested,
-        pagePath,
-        attribution,
-        bookingSource: "website"
-      }
-    })
-    .select("id")
-    .single();
+  const jobRecord = {
+    source: "self_booking",
+    lead_id: lead.id,
+    lead_source: leadSource,
+    status: "scheduled",
+    priority: "high",
+    customer_name: name,
+    phone,
+    email: email || null,
+    address,
+    product_interest: productInterest,
+    sales_owner: assignedRep,
+    next_action: "Review self-booking and prepare appointment",
+    next_action_due: date,
+    appointment_start: startAt,
+    appointment_end: endAt,
+    notes: bookingNotes,
+    meta: {
+      windowCount: windowCount || null,
+      ...bookingGeoMeta,
+      productTypes,
+      followUpRequested,
+      pagePath,
+      attribution,
+      bookingSource: "website"
+    }
+  };
+  let { data: job, error: jobError } = await supabase.from("crm_jobs").insert(jobRecord).select("id").single();
+  if (jobError && isMissingLeadSourceColumnError(jobError)) {
+    const { lead_source: _jobLeadSource, ...jobWithoutSource } = jobRecord;
+    ({ data: job, error: jobError } = await supabase.from("crm_jobs").insert(jobWithoutSource).select("id").single());
+  }
 
-  if (jobError) {
+  if (jobError || !job) {
     return NextResponse.json({ message: "CRM job could not be saved." }, { status: 502 });
   }
 

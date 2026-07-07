@@ -10,6 +10,7 @@ import {
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
 import { productInterestOptions } from "@/lib/product-interest-options";
+import { leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   bookingSlotDurationMinutes,
@@ -129,6 +130,38 @@ const jobColumns: Array<{ status: CrmJobStatus; label: string }> = crmJobStatuse
 }));
 
 const productOptions = [...productInterestOptions, "Mixed"];
+
+function leadSourceSelectOptions(current?: string | null) {
+  const options: string[] = [...leadSourceOptions];
+  if (current && !options.includes(current)) options.unshift(current);
+  return options;
+}
+
+function LeadSourceSelect({ defaultValue, disabled }: { defaultValue?: string | null; disabled?: boolean }) {
+  return (
+    <select name="lead_source" defaultValue={defaultValue || ""} disabled={disabled}>
+      <option value="">Unknown</option>
+      {leadSourceSelectOptions(defaultValue).map((item) => (
+        <option value={item} key={item}>
+          {item}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function summarizeLeadSources(jobs: CrmJob[]) {
+  const counts = new Map<string, number>();
+  for (const job of jobs) {
+    const key = job.lead_source || "Unknown";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return Array.from(counts.entries()).sort((a, b) => {
+    if (a[0] === "Unknown") return 1;
+    if (b[0] === "Unknown") return -1;
+    return b[1] - a[1] || a[0].localeCompare(b[0]);
+  });
+}
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const ownerSelectOptions = ownerOptions.map((owner) => ({
   value: owner,
@@ -1242,6 +1275,7 @@ export function CrmApp({
           city: formString(formData, "city"),
           address: formString(formData, "address"),
           product_interest: formString(formData, "product_interest"),
+          lead_source: formString(formData, "lead_source"),
           sales_owner: formString(formData, "sales_owner"),
           priority: formString(formData, "priority") || "normal",
           next_action: formString(formData, "next_action") || "Call customer",
@@ -1758,6 +1792,7 @@ export function CrmApp({
           city,
           address,
           product_interest: productInterest,
+          lead_source: formString(formData, "lead_source"),
           sales_owner: assignedTo,
           priority: "normal",
           next_action: "Prepare for appointment",
@@ -2262,6 +2297,7 @@ export function CrmApp({
           address: formString(formData, "address"),
           sales_owner: formString(formData, "sales_owner"),
           product_interest: formString(formData, "product_interest"),
+          lead_source: formString(formData, "lead_source"),
           next_action: formString(formData, "next_action"),
           next_action_due: formString(formData, "next_action_due") || null,
           estimated_total: Number(formString(formData, "estimated_total") || 0),
@@ -2604,6 +2640,11 @@ export function CrmApp({
                 </span>
               </div>
               <JobStatusTabs jobs={jobs} activeStatus={activeJobStatus} onChange={setActiveJobStatus} />
+              <p className="crm-lead-source-summary">
+                {summarizeLeadSources(jobs)
+                  .map(([label, count]) => `${label} ${count}`)
+                  .join(" · ")}
+              </p>
               <CollapsiblePanel title="New Sales Job">
                 <form className="crm-form" onSubmit={createJob}>
                   <label>
@@ -2659,6 +2700,10 @@ export function CrmApp({
                       <input name="next_action_due" type="date" defaultValue={todayInputValue()} />
                     </label>
                   </div>
+                  <label>
+                    Lead Source
+                    <LeadSourceSelect />
+                  </label>
                   <label>
                     Next Action
                     <input name="next_action" defaultValue="Call customer" />
@@ -6432,6 +6477,20 @@ function DrillDetailCard({
           onSave: (value) => saveRow({ quote_number: value.trim() }, "Quote number updated.")
         }
       : undefined;
+  const leadSourceEditor: DrillInlineEditor | undefined =
+    canEditJob && job
+      ? {
+          type: "select",
+          value: job.lead_source || "",
+          options: [
+            { value: "", label: "Unknown" },
+            ...leadSourceSelectOptions(job.lead_source).map((item) => ({ value: item, label: item }))
+          ],
+          disabled: busy,
+          ariaLabel: "Edit lead source",
+          onSave: (value) => saveJob({ lead_source: value || null }, "Lead source updated.")
+        }
+      : undefined;
   const totalEditor: DrillInlineEditor | undefined = row
     ? {
         type: "number",
@@ -6978,6 +7037,7 @@ function DrillDetailCard({
             <div className="crm-drill-fact-column-list">
               <DrillFact label="Sold" value={formatShortDate(row?.soldDate || file?.latestSoldDate || job?.appointment_start)} editor={soldDateEditor} />
               <DrillFact label="Quote / Job" value={row?.quoteNumber || row?.source?.replace("_", " ") || job?.id || "Not linked"} editor={quoteNumberEditor} />
+              <DrillFact label="Lead Source" value={job?.lead_source || "Unknown"} editor={leadSourceEditor} />
               <DrillFact label="Sold By" value={saleOwnerDetailLabel(soldByOwner)} editor={soldByEditor} />
               <DrillFact label="Belongs To" value={saleOwnerDetailLabel(belongsToOwner)} editor={belongsToEditor} />
               <DrillFact label="Due" value={formatShortDate(job?.next_action_due)} editor={dueEditor} />
@@ -7605,6 +7665,7 @@ function buildDrillFieldPatch(event: FormEvent<HTMLFormElement>, entry: DrillEnt
       city: formString(formData, "city"),
       address: formString(formData, "address"),
       product_interest: formString(formData, "product_interest"),
+      lead_source: formString(formData, "lead_source"),
       next_action: formString(formData, "next_action"),
       next_action_due: formString(formData, "next_action_due") || null,
       estimated_total: Number(formString(formData, "estimated_total") || 0),
@@ -7774,6 +7835,10 @@ function DrillDetailEditForm({
               </select>
             </label>
           </div>
+          <label>
+            Lead Source
+            <LeadSourceSelect defaultValue={job?.lead_source} disabled={!job} />
+          </label>
           <div className="crm-field-row">
             <label>
               Sold By
@@ -9424,6 +9489,10 @@ function JobCard({
             Product
             <input name="product_interest" defaultValue={job.product_interest} />
           </label>
+          <label>
+            Lead Source
+            <LeadSourceSelect defaultValue={job.lead_source} />
+          </label>
           <div className="crm-field-row">
             <label>
               Next Action
@@ -9479,6 +9548,10 @@ function JobCard({
         <div>
           <dt>Owner</dt>
           <dd>{job.sales_owner}</dd>
+        </div>
+        <div>
+          <dt>Source</dt>
+          <dd>{job.lead_source || "Unknown"}</dd>
         </div>
         <div>
           <dt>Next</dt>
@@ -12793,6 +12866,10 @@ function CalendarAppointmentModal({
               </select>
             </label>
           </div>
+          <label>
+            Lead Source
+            <LeadSourceSelect />
+          </label>
           <label>
             Job Notes
             <textarea name="notes" rows={4} placeholder="Gate code, rooms, samples to bring..." />

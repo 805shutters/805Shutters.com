@@ -83,6 +83,63 @@ export function getCurrentAttributionParams(): AttributionParams {
   }, {});
 }
 
+type LeadAttribution = AttributionParams & {
+  gclid?: string;
+  referrer?: string;
+  landingPath?: string;
+};
+
+const firstTouchStorageKey = "805.attribution.firstTouch";
+
+function externalReferrer() {
+  const referrer = document.referrer;
+  if (!referrer) return undefined;
+  try {
+    return new URL(referrer).hostname === window.location.hostname ? undefined : referrer;
+  } catch {
+    return undefined;
+  }
+}
+
+// UTMs and gclid only exist on the landing URL and document.referrer resets on
+// the first internal navigation, so snapshot them once per session.
+export function captureFirstTouchAttribution() {
+  if (typeof window === "undefined") return;
+  try {
+    if (window.sessionStorage.getItem(firstTouchStorageKey)) return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const firstTouch: LeadAttribution = {
+      ...getCurrentAttributionParams(),
+      landingPath: window.location.pathname
+    };
+    const gclid = urlParams.get("gclid");
+    if (gclid) firstTouch.gclid = gclid;
+    const referrer = externalReferrer();
+    if (referrer) firstTouch.referrer = referrer;
+    window.sessionStorage.setItem(firstTouchStorageKey, JSON.stringify(firstTouch));
+  } catch {
+    // sessionStorage unavailable — attribution falls back to the current URL
+  }
+}
+
+export function getLeadAttribution(): LeadAttribution {
+  const current: LeadAttribution = { ...getCurrentAttributionParams() };
+  if (typeof window === "undefined") {
+    return current;
+  }
+  const gclid = new URLSearchParams(window.location.search).get("gclid");
+  if (gclid) current.gclid = gclid;
+  const referrer = externalReferrer();
+  if (referrer) current.referrer = referrer;
+  try {
+    const stored = window.sessionStorage.getItem(firstTouchStorageKey);
+    const firstTouch = stored ? (JSON.parse(stored) as LeadAttribution) : {};
+    return { ...current, ...firstTouch };
+  } catch {
+    return current;
+  }
+}
+
 export function trackLeadEvent(params: LeadEventParams = {}) {
   if (typeof window === "undefined") {
     return;

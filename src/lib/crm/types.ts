@@ -41,6 +41,7 @@ export type CrmJob = {
   updated_at: string;
   source: string;
   lead_id: string | null;
+  lead_source?: string | null;
   status: CrmJobStatus;
   priority: "low" | "normal" | "high" | "urgent";
   customer_name: string;

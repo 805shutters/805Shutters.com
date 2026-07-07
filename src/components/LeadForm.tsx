@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { getCurrentAttributionParams, trackLeadEvent } from "@/lib/client-tracking";
+import { getLeadAttribution, trackLeadEvent } from "@/lib/client-tracking";
 
 type FormState = "idle" | "submitting" | "sent" | "error";
 
@@ -25,7 +25,7 @@ export function LeadForm({
     setMessage("");
 
     const formData = new FormData(event.currentTarget);
-    const attribution = getCurrentAttributionParams();
+    const attribution = getLeadAttribution();
     const payload = {
       ...Object.fromEntries(formData.entries()),
       pagePath: window.location.pathname,

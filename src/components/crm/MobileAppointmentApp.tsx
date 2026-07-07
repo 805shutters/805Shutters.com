@@ -21,6 +21,7 @@ import {
 import { bookingSlotDurationMinutes, zonedTimeToUtc } from "@/lib/booking/availability";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { productInterestOptions } from "@/lib/product-interest-options";
+import { leadSourceOptions } from "@/lib/lead-source";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 
 type CalendarView = "month" | "week" | "day";
@@ -551,6 +552,17 @@ function AddAppointmentSheet({
             </select>
           </label>
           <label>
+            Lead Source
+            <select name="lead_source" defaultValue="">
+              <option value="">Unknown</option>
+              {leadSourceOptions.map((item) => (
+                <option value={item} key={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             Notes
             <textarea name="notes" rows={3} placeholder="Gate code, rooms, samples to bring..." />
           </label>
@@ -664,6 +676,7 @@ export function MobileAppointmentApp() {
           city,
           address,
           product_interest: productInterest,
+          lead_source: formString(formData, "lead_source"),
           sales_owner: assignedTo,
           priority: "normal",
           next_action: "Prepare for appointment",

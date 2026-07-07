@@ -9,6 +9,7 @@
 --   * 20260621000000_create_order_cogs_and_commission_payments.sql
 --   * 20260621010000_create_partner_payment_allocations.sql
 --   * 20260621020000_allow_remake_job_expenses.sql (Remake expense category)
+--   * 20260706160000_add_lead_source.sql (lead_source on crm_jobs + leads)
 --
 -- Safe to run anytime: every statement is idempotent (IF NOT EXISTS / IF EXISTS
 -- / ON CONFLICT DO NOTHING), so re-running causes no harm if already applied.
@@ -557,3 +558,11 @@ alter table public.crm_quote_line_items
 alter table public.crm_quote_line_items
   add constraint crm_quote_line_items_discount_percent_check
   check (discount_percent >= 0 and discount_percent <= 100);
+
+-- ---- Lead-source attribution (where the customer came from) ----------------
+-- 20260706160000_add_lead_source.sql
+alter table public.crm_jobs
+  add column if not exists lead_source text;
+
+alter table public.leads
+  add column if not exists lead_source text;

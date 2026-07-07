@@ -22,6 +22,7 @@ import {
   sendPartnerPaymentReceiptEmail
 } from "@/lib/crm/partner-payment-receipts";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { isMissingLeadSourceColumnError } from "@/lib/lead-source";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
@@ -106,6 +107,7 @@ const allowedJobPatchFields = new Set([
   "address",
   "city",
   "product_interest",
+  "lead_source",
   "sales_owner",
   "next_action",
   "next_action_due",
@@ -1658,6 +1660,7 @@ export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<
     address: optionalText(payload.address),
     city: optionalText(payload.city),
     product_interest: optionalText(payload.product_interest) || "shutters",
+    lead_source: optionalText(payload.lead_source),
     sales_owner: optionalText(payload.sales_owner) || "Unassigned",
     next_action: optionalText(payload.next_action) || "Call customer",
     next_action_due: payload.next_action_due || null,
@@ -1666,7 +1669,11 @@ export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<
     meta: metadataWithActor(payload, actor, "createdBy")
   };
 
-  const { data, error } = await supabase.from("crm_jobs").insert(record).select("*").single();
+  let { data, error } = await supabase.from("crm_jobs").insert(record).select("*").single();
+  if (error && isMissingLeadSourceColumnError(error)) {
+    const { lead_source: _leadSource, ...withoutLeadSource } = record;
+    ({ data, error } = await supabase.from("crm_jobs").insert(withoutLeadSource).select("*").single());
+  }
   if (error || !data) throw new CrmAuthError(502, "CRM job could not be created.");
 
   await syncCustomerFromJob(supabase, data);

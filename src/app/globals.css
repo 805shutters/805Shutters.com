@@ -5596,6 +5596,13 @@ button.crm-customer-action-link {
   margin: 0;
 }
 
+.crm-lead-source-summary {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 .crm-job-list {
   display: grid;
   grid-template-columns: 1fr;

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type MutableRefObject } from "react";
+import { captureFirstTouchAttribution } from "@/lib/client-tracking";
 
 type VisitorSession = {
   id: string;
@@ -21,6 +22,12 @@ const lastDepartureKey = "805.visitorAlert.lastDeparture";
 export function VisitorTelegramTracking() {
   const pathname = usePathname();
   const activeStartedAt = useRef<number | null>(null);
+
+  // Runs regardless of the Telegram-alert flag: lead-source attribution
+  // (utm/gclid/referrer first touch) is captured for every visitor.
+  useEffect(() => {
+    captureFirstTouchAttribution();
+  }, []);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;

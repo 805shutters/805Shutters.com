@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
-import { getCurrentAttributionParams, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
+import { getLeadAttribution, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
@@ -211,7 +211,7 @@ export function BookingCalendar({
   function bookingTrackingContext() {
     return {
       pagePath: window.location.pathname,
-      ...getCurrentAttributionParams()
+      ...getLeadAttribution()
     };
   }
 

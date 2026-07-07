@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
 import { sendMetaLeadEvent } from "@/lib/meta-capi";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -17,6 +18,9 @@ type LeadPayload = {
   utm_campaign?: string;
   utm_content?: string;
   utm_term?: string;
+  gclid?: string;
+  referrer?: string;
+  landingPath?: string;
   company?: string;
 };
 
@@ -44,6 +48,12 @@ export async function POST(request: NextRequest) {
 
   const leadRecord = {
     source: "website",
+    lead_source: classifyLeadSource({
+      utmSource: payload.utm_source,
+      utmMedium: payload.utm_medium,
+      gclid: payload.gclid,
+      referrer: payload.referrer
+    }),
     name: payload.name.trim(),
     phone: payload.phone.trim(),
     email: payload.email?.trim() || null,
@@ -59,18 +69,26 @@ export async function POST(request: NextRequest) {
     meta: {
       userAgent: request.headers.get("user-agent"),
       referrer: request.headers.get("referer"),
+      landingReferrer: payload.referrer || null,
+      landingPath: payload.landingPath || null,
+      gclid: payload.gclid || null,
       source: "805shutters.com",
       receivedAt: new Date().toISOString()
     }
   };
 
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("leads")
     .insert(leadRecord)
     .select("id")
     .single();
 
-  if (error) {
+  if (error && isMissingLeadSourceColumnError(error)) {
+    const { lead_source: _leadSource, ...withoutLeadSource } = leadRecord;
+    ({ data, error } = await supabase.from("leads").insert(withoutLeadSource).select("id").single());
+  }
+
+  if (error || !data) {
     return NextResponse.json(
       { message: "Lead storage failed." },
       { status: 502 }
