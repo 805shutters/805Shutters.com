@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
+import { classifyLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { isTwilioConfigured, sendSms, toE164 } from "@/lib/notify/twilio";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
   let leadStored = false;
   const supabase = getSupabaseServiceClient();
   if (supabase) {
-    const leadRecord = {
+    const leadRecord = withLeadSourceMeta({
       source: "ask-805-text",
       lead_source: classifyLeadSource({
         utmSource: payload.utm_source,
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         source: "805shutters.com ask-805 widget",
         receivedAt: new Date().toISOString()
       }
-    };
+    });
     let { error } = await supabase.from("leads").insert(leadRecord);
     if (error && isMissingLeadSourceColumnError(error)) {
       const { lead_source: _leadSource, ...withoutLeadSource } = leadRecord;

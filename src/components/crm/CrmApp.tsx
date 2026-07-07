@@ -10,7 +10,7 @@ import {
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
 import { productInterestOptions } from "@/lib/product-interest-options";
-import { leadSourceOptions } from "@/lib/lead-source";
+import { getLeadSourceFromRecord, leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import {
   bookingSlotDurationMinutes,
@@ -153,7 +153,7 @@ function LeadSourceSelect({ defaultValue, disabled }: { defaultValue?: string | 
 function summarizeLeadSources(jobs: CrmJob[]) {
   const counts = new Map<string, number>();
   for (const job of jobs) {
-    const key = job.lead_source || "Unknown";
+    const key = getLeadSourceFromRecord(job) || "Unknown";
     counts.set(key, (counts.get(key) || 0) + 1);
   }
   return Array.from(counts.entries()).sort((a, b) => {

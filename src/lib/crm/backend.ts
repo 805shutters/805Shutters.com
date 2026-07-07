@@ -22,7 +22,7 @@ import {
   sendPartnerPaymentReceiptEmail
 } from "@/lib/crm/partner-payment-receipts";
 import { CrmAuthError } from "@/lib/crm/auth";
-import { isMissingLeadSourceColumnError } from "@/lib/lead-source";
+import { hydrateLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import {
@@ -1578,7 +1578,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   // the job list, the quote/order dropdowns, and the bookkeeping job-name
   // lookups all read from this array. The row stays in the table so a delete
   // is recoverable and never destroys a linked quote or sale.
-  const jobs = ((jobsResult.data || []) as CrmJob[]).filter(
+  const jobs = ((jobsResult.data || []) as CrmJob[]).map(hydrateLeadSource).filter(
     (job) => !hasDeleteTombstone((job as { meta?: unknown }).meta)
   );
   const quotes = ((quotesResult.data || []) as CrmQuote[]).filter(
@@ -1650,7 +1650,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
 }
 
 export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<string, unknown>, actor: CrmActor) {
-  const record = {
+  const record = withLeadSourceMeta({
     source: "crm",
     status: normalizeEnum<CrmJobStatus>(payload.status, jobStatusSet, "new", "Invalid CRM job status."),
     priority: normalizeEnum(payload.priority, prioritySet, "normal", "Invalid CRM job priority."),
@@ -1667,7 +1667,7 @@ export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<
     estimated_total: toMoney(payload.estimated_total),
     notes: optionalText(payload.notes),
     meta: metadataWithActor(payload, actor, "createdBy")
-  };
+  });
 
   let { data, error } = await supabase.from("crm_jobs").insert(record).select("*").single();
   if (error && isMissingLeadSourceColumnError(error)) {
@@ -1675,6 +1675,8 @@ export async function createCrmJob(supabase: CrmSupabaseClient, payload: Record<
     ({ data, error } = await supabase.from("crm_jobs").insert(withoutLeadSource).select("*").single());
   }
   if (error || !data) throw new CrmAuthError(502, "CRM job could not be created.");
+
+  data = hydrateLeadSource(data as CrmJob);
 
   await syncCustomerFromJob(supabase, data);
 
@@ -1721,9 +1723,23 @@ export async function updateCrmJob(
     lastUpdatedBy: actor.email,
     lastUpdatedAt: new Date().toISOString()
   };
+  if (Object.prototype.hasOwnProperty.call(patch, "lead_source")) {
+    const leadSource = typeof patch.lead_source === "string" && patch.lead_source.trim() ? patch.lead_source.trim() : null;
+    const meta = patch.meta && typeof patch.meta === "object" && !Array.isArray(patch.meta) ? patch.meta : {};
+    patch.meta = {
+      ...meta,
+      lead_source: leadSource,
+      leadSource
+    };
+  }
 
-  const { data, error } = await supabase.from("crm_jobs").update(patch).eq("id", id).select("*").single();
+  let { data, error } = await supabase.from("crm_jobs").update(patch).eq("id", id).select("*").single();
+  if (error && isMissingLeadSourceColumnError(error)) {
+    const { lead_source: _leadSource, ...withoutLeadSource } = patch;
+    ({ data, error } = await supabase.from("crm_jobs").update(withoutLeadSource).eq("id", id).select("*").single());
+  }
   if (error || !data) throw new CrmAuthError(502, "CRM job could not be updated.");
+  data = hydrateLeadSource(data as CrmJob);
 
   if (Object.prototype.hasOwnProperty.call(patch, "sales_owner") && shouldSyncSaleOwnerForJob(data.status)) {
     await syncSaleOwnerForJob(supabase, id, patch.sales_owner, actor);

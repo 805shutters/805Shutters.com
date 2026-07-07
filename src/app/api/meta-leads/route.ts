@@ -12,7 +12,7 @@
 
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
+import { classifyLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { sendSms, toE164 } from "@/lib/notify/twilio";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const leadRecord = {
+      const leadRecord = withLeadSourceMeta({
         source: "facebook_lead_form",
         lead_source: classifyLeadSource({ utmSource: "facebook", utmMedium: "paid" }),
         name: mapped.name || "Facebook Lead",
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
           fb_created_time: detail.created_time || null,
           receivedAt: new Date().toISOString()
         }
-      };
+      });
 
       let { data, error } = await supabase.from("leads").insert(leadRecord).select("id").single();
       if (error && isMissingLeadSourceColumnError(error)) {

@@ -23,6 +23,11 @@ export type LeadAttributionSignals = {
   referrer?: string | null;
 };
 
+type LeadSourceRecord = {
+  lead_source?: unknown;
+  meta?: Record<string, unknown> | null;
+};
+
 const paidMediums = new Set(["cpc", "ppc", "paid", "paidsearch", "paid_search", "sem"]);
 
 const aiHosts = [
@@ -80,6 +85,38 @@ export function isMissingLeadSourceColumnError(error: { code?: string; message?:
   if (!error) return false;
   const message = error.message || "";
   return message.includes("lead_source") && (error.code === "42703" || /column|schema cache/i.test(message));
+}
+
+function cleanLeadSourceValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+export function getLeadSourceFromRecord(record: LeadSourceRecord | null | undefined) {
+  if (!record) return null;
+  return (
+    cleanLeadSourceValue(record.lead_source) ||
+    cleanLeadSourceValue(record.meta?.lead_source) ||
+    cleanLeadSourceValue(record.meta?.leadSource)
+  );
+}
+
+export function withLeadSourceMeta<T extends LeadSourceRecord>(record: T): T {
+  const leadSource = getLeadSourceFromRecord(record);
+  if (!leadSource) return record;
+  return {
+    ...record,
+    meta: {
+      ...(record.meta || {}),
+      lead_source: leadSource,
+      leadSource
+    }
+  };
+}
+
+export function hydrateLeadSource<T extends LeadSourceRecord>(record: T): T {
+  const leadSource = getLeadSourceFromRecord(record);
+  if (!leadSource || record.lead_source === leadSource) return record;
+  return { ...record, lead_source: leadSource };
 }
 
 /**

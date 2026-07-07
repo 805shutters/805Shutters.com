@@ -14,7 +14,7 @@ import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { syncAppointmentToGoogleCalendars, GoogleCalendarSyncResult } from "@/lib/google/calendar";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
+import { classifyLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
@@ -565,7 +565,7 @@ export async function POST(request: NextRequest) {
     }
   };
 
-  const leadRecord = {
+  const leadRecord = withLeadSourceMeta({
     source: "self_booking",
     lead_source: leadSource,
     status: "booked",
@@ -592,7 +592,7 @@ export async function POST(request: NextRequest) {
       referrer: request.headers.get("referer"),
       receivedAt: new Date().toISOString()
     }
-  };
+  });
   let { data: lead, error: leadError } = await supabase.from("leads").insert(leadRecord).select("id").single();
   if (leadError && isMissingLeadSourceColumnError(leadError)) {
     const { lead_source: _leadSource, ...leadWithoutSource } = leadRecord;
@@ -603,7 +603,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "Booking lead could not be saved." }, { status: 502 });
   }
 
-  const jobRecord = {
+  const jobRecord = withLeadSourceMeta({
     source: "self_booking",
     lead_id: lead.id,
     lead_source: leadSource,
@@ -629,7 +629,7 @@ export async function POST(request: NextRequest) {
       attribution,
       bookingSource: "website"
     }
-  };
+  });
   let { data: job, error: jobError } = await supabase.from("crm_jobs").insert(jobRecord).select("id").single();
   if (jobError && isMissingLeadSourceColumnError(jobError)) {
     const { lead_source: _jobLeadSource, ...jobWithoutSource } = jobRecord;

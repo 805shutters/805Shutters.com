@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyLeadSource } from "@/lib/lead-source";
+import { classifyLeadSource, getLeadSourceFromRecord, hydrateLeadSource, withLeadSourceMeta } from "@/lib/lead-source";
 
 describe("classifyLeadSource", () => {
   it("prefers gclid as a Google Ads signal", () => {
@@ -32,5 +32,13 @@ describe("classifyLeadSource", () => {
     expect(classifyLeadSource({ referrer: "not a url" })).toBeNull();
     expect(classifyLeadSource({ referrer: "https://805shutters.com/shutters/" })).toBeNull();
     expect(classifyLeadSource({ utmSource: "newsletter" })).toBeNull();
+  });
+
+  it("stores and hydrates lead source from metadata as a schema fallback", () => {
+    const record = withLeadSourceMeta({ lead_source: "Facebook", meta: { source: "website" } });
+
+    expect(record.meta).toMatchObject({ lead_source: "Facebook", leadSource: "Facebook" });
+    expect(getLeadSourceFromRecord({ meta: record.meta })).toBe("Facebook");
+    expect(hydrateLeadSource({ meta: record.meta })).toMatchObject({ lead_source: "Facebook" });
   });
 });

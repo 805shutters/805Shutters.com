@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { classifyLeadSource, isMissingLeadSourceColumnError } from "@/lib/lead-source";
+import { classifyLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { sendMetaLeadEvent } from "@/lib/meta-capi";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const leadRecord = {
+  const leadRecord = withLeadSourceMeta({
     source: "website",
     lead_source: classifyLeadSource({
       utmSource: payload.utm_source,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       source: "805shutters.com",
       receivedAt: new Date().toISOString()
     }
-  };
+  });
 
   let { data, error } = await supabase
     .from("leads")
