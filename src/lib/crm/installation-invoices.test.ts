@@ -9,6 +9,7 @@ import {
   extractInstallationInvoiceDetails,
   hasInstallationInvoiceGmailAuth,
   matchInstallationInvoiceToCandidate,
+  matchInstallationInvoiceToTargetCandidate,
   normalizeInstallationInvoiceMailbox,
   resolveInstallationInvoiceGmailQuery,
   normalizeCustomerName
@@ -246,6 +247,55 @@ describe("installation invoice customer matching", () => {
 
     expect(match.status).toBe("needs_review");
     expect(match.reason).toContain("Ambiguous");
+  });
+
+  it("uses selected customer context for trusted QuickBooks invoices when the install amount matches", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      body: "Your invoice is ready! BALANCE DUE$90.00 Dear Ken Hill, Here's your invoice!"
+    });
+    const match = matchInstallationInvoiceToTargetCandidate({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      from: "MTS Installations Inc <quickbooks@notification.intuit.com>",
+      extraction: extracted,
+      target: { customerName: "Kristen Tranquada", quoteId: "quote-kristen", existingInstallationAmount: 90 },
+      candidates: [
+        candidate({
+          customerName: "Kristen Tranquada",
+          entryId: "entry-kristen",
+          quoteId: "quote-kristen",
+          existingInstallationAmount: 90
+        }),
+        candidate({ customerName: "Ken Hill", entryId: "entry-ken", quoteId: "quote-ken", existingInstallationAmount: 90 })
+      ]
+    });
+
+    expect(match?.status).toBe("matched");
+    expect(match?.candidate?.entryId).toBe("entry-kristen");
+    expect(match?.confidence).toBeGreaterThan(0.9);
+  });
+
+  it("does not use selected customer context when the selected install amount does not match", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      body: "Your invoice is ready! BALANCE DUE$90.00 Dear Ken Hill, Here's your invoice!"
+    });
+    const match = matchInstallationInvoiceToTargetCandidate({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      from: "MTS Installations Inc <quickbooks@notification.intuit.com>",
+      extraction: extracted,
+      target: { customerName: "Kristen Tranquada", quoteId: "quote-kristen", existingInstallationAmount: 120 },
+      candidates: [
+        candidate({
+          customerName: "Kristen Tranquada",
+          entryId: "entry-kristen",
+          quoteId: "quote-kristen",
+          existingInstallationAmount: 120
+        })
+      ]
+    });
+
+    expect(match).toBeNull();
   });
 });
 

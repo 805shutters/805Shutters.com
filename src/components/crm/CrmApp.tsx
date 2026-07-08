@@ -1055,12 +1055,25 @@ export function CrmApp({
     }
   }
 
-  async function processEmails() {
+  function processEmailTargetForEntry(entry?: DrillEntry | null) {
+    if (!entry) return null;
+
+    const row = entry.row;
+    return {
+      customerName: entry.customerName || entry.name || row?.customerName || entry.job?.customer_name || null,
+      jobId: row?.jobId || entry.job?.id || entry.jobId || null,
+      quoteId: row?.quoteId || null,
+      existingInstallationAmount: row?.installationInvoiceAmount ?? null
+    };
+  }
+
+  async function processEmails(target?: DrillEntry | null) {
     if (!session) return;
     setBusy(true);
     setMessage(null);
 
     try {
+      const installationTarget = processEmailTargetForEntry(target);
       const result = await crmFetch<{
         installationInvoices: {
           ok: boolean;
@@ -1089,7 +1102,7 @@ export function CrmApp({
         };
       }>(session, "/api/crm/process-emails", {
         method: "POST",
-        body: JSON.stringify({})
+        body: JSON.stringify(installationTarget ? { installationTarget } : {})
       });
       await refresh();
 
@@ -1104,7 +1117,8 @@ export function CrmApp({
           ? `Orders: ${order.result.matched} matched, ${order.result.applied || 0} applied, ${order.result.needsReview} review, ${order.result.unmatched} unmatched, ${order.result.skipped} skipped, ${order.result.errors} errors, ${order.result.archived} archived.`
           : `Orders failed: ${order.error || "unknown error"}.`;
 
-      setMessage(`Process emails complete. ${installMessage} ${orderMessage}`);
+      const targetMessage = installationTarget?.customerName ? ` for ${installationTarget.customerName}` : "";
+      setMessage(`Process emails complete${targetMessage}. ${installMessage} ${orderMessage}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Emails could not be processed.");
     } finally {
@@ -2621,7 +2635,7 @@ export function CrmApp({
           orderCogsEmails={orderCogsEmails}
           installationInvoiceEmails={installationInvoiceEmails}
           busy={busy}
-          onProcessEmails={processEmails}
+          onProcessEmails={() => processEmails()}
           onPullOrderEmails={pullOrderCogs}
           onPullInstallInvoices={pullInstallationInvoices}
           onDrill={setDrill}
@@ -2639,7 +2653,7 @@ export function CrmApp({
             installationInvoiceEmails={installationInvoiceEmails}
             activeDrill={commandDrill}
             busy={busy}
-            onProcessEmails={processEmails}
+            onProcessEmails={(target) => processEmails(target)}
             onOpenPage={openCustomerSearchPage}
             onDrill={setDrill}
             onCloseDrill={() => setDrill(null)}
@@ -5154,7 +5168,7 @@ function CommandDashboard({
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   activeDrill: DrillPayload | null;
   busy: boolean;
-  onProcessEmails: () => void;
+  onProcessEmails: (target?: DrillEntry | null) => void;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
@@ -6101,7 +6115,7 @@ function GlobalCustomerSearchPanel({
   files: CrmCustomerFile[];
   events: CrmCalendarEvent[];
   busy: boolean;
-  onProcessEmails: () => void;
+  onProcessEmails: (target?: DrillEntry | null) => void;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
@@ -6243,7 +6257,12 @@ function GlobalCustomerSearchPanel({
               <div className="crm-global-search-route-panel" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
                 <span>Routes</span>
                 <div className="crm-global-search-links">
-                  <button type="button" className="crm-global-search-process-button" onClick={onProcessEmails} disabled={busy}>
+                  <button
+                    type="button"
+                    className="crm-global-search-process-button"
+                    onClick={() => onProcessEmails(selectedResult.entry)}
+                    disabled={busy}
+                  >
                     Process Emails
                   </button>
                   {selectedResult.pages.map((page) => (

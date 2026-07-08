@@ -107,7 +107,15 @@ export type ProcessInstallationInvoiceOptions = {
   query?: string;
   maxResults?: number;
   messageIds?: string[];
+  target?: InstallationInvoiceTarget | null;
   actorEmail?: string;
+};
+
+export type InstallationInvoiceTarget = {
+  customerName?: string | null;
+  jobId?: string | null;
+  quoteId?: string | null;
+  existingInstallationAmount?: number | null;
 };
 
 export type ProcessInstallationInvoiceResult = {
@@ -804,6 +812,83 @@ export function matchInstallationInvoiceToCandidate(input: {
   };
 }
 
+function candidateIdentity(candidate: InstallationInvoiceCandidate) {
+  return candidate.entryId || candidate.quoteId || candidate.jobId || normalizeCustomerName(candidate.customerName);
+}
+
+function targetCandidateMatches(candidate: InstallationInvoiceCandidate, target: InstallationInvoiceTarget) {
+  if (target.quoteId && candidate.quoteId === target.quoteId) return true;
+  if (target.jobId && candidate.jobId === target.jobId) return true;
+
+  const targetName = normalizeCustomerName(target.customerName);
+  return Boolean(targetName && normalizeCustomerName(candidate.customerName) === targetName);
+}
+
+function installationTargetCandidates(candidates: InstallationInvoiceCandidate[], target?: InstallationInvoiceTarget | null) {
+  if (!target) return [];
+
+  const matches = candidates.filter((candidate) => targetCandidateMatches(candidate, target));
+  const byId = new Map<string, InstallationInvoiceCandidate>();
+  for (const candidate of matches) byId.set(candidateIdentity(candidate), candidate);
+  return [...byId.values()];
+}
+
+function isTrustedMtsInvoiceSource(subject: string | null | undefined, from: string | null | undefined) {
+  const subjectText = String(subject || "").toLowerCase();
+  const fromText = String(from || "").toLowerCase();
+  return (
+    subjectText.includes("from mts installations inc") ||
+    fromText.includes("quickbooks@notification.intuit.com") ||
+    fromText.includes("mtsinstallations")
+  );
+}
+
+export function matchInstallationInvoiceToTargetCandidate(input: {
+  subject?: string | null;
+  from?: string | null;
+  extraction: ExtractedInstallationInvoice;
+  candidates: InstallationInvoiceCandidate[];
+  target?: InstallationInvoiceTarget | null;
+}): InstallationInvoiceMatch | null {
+  if (!input.extraction.invoiceAmount) return null;
+  if (!isTrustedMtsInvoiceSource(input.subject, input.from)) return null;
+
+  const targetCandidates = installationTargetCandidates(input.candidates, input.target).filter(
+    (candidate) => candidate.source !== "job"
+  );
+  if (!targetCandidates.length) return null;
+
+  const amountMatches = targetCandidates.filter((candidate) => {
+    const existingAmount = roundMoney(candidate.existingInstallationAmount);
+    return existingAmount > 0 && isSameMoney(existingAmount, input.extraction.invoiceAmount || 0);
+  });
+
+  if (amountMatches.length === 1) {
+    const candidate = amountMatches[0];
+    return {
+      candidate,
+      status: "matched",
+      confidence: 0.98,
+      reason: `Selected customer ${candidate.customerName} matched trusted MTS invoice amount ${roundMoney(
+        input.extraction.invoiceAmount
+      ).toFixed(2)}.`
+    };
+  }
+
+  if (amountMatches.length > 1) {
+    return {
+      candidate: amountMatches[0],
+      status: "needs_review",
+      confidence: 0.8,
+      reason: `Selected customer context found multiple matching install amounts for ${roundMoney(
+        input.extraction.invoiceAmount
+      ).toFixed(2)}.`
+    };
+  }
+
+  return null;
+}
+
 async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
   const [entriesResult, quotesResult, jobsResult] = await Promise.all([
     supabase
@@ -1455,6 +1540,7 @@ export async function processInstallationInvoiceInbox(
     ? new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)))
     : new Set<string>();
   const candidates = await loadInvoiceCandidates(supabase);
+  const appliedCandidateKeys = new Set<string>();
 
   for (const messageId of messageIds) {
     if (existingIds.has(messageId)) {
@@ -1522,11 +1608,31 @@ export async function processInstallationInvoiceInbox(
             });
           }
         }
+        const selectedTargetMatch =
+          match.status !== "matched"
+            ? matchInstallationInvoiceToTargetCandidate({
+                subject,
+                from,
+                extraction,
+                candidates,
+                target: options.target
+              })
+            : null;
+        if (selectedTargetMatch) match = selectedTargetMatch;
         decision = autoApplyDecision(match, extraction);
       }
 
       const candidate = match.candidate;
+      const candidateKey = candidate ? candidateIdentity(candidate) : null;
       let appliedAt: string | null = null;
+
+      if (!isCompletedServiceReport && decision.canApply && candidateKey && appliedCandidateKeys.has(candidateKey)) {
+        decision = {
+          status: "skipped",
+          reason: "Selected customer already had an installation invoice applied during this run.",
+          canApply: false
+        };
+      }
 
       if (decision.canApply && candidate) {
         if (isCompletedServiceReport) {
@@ -1534,6 +1640,7 @@ export async function processInstallationInvoiceInbox(
         } else if (extraction) {
           await applyInstallationInvoice(supabase, candidate, extraction, message, options.actorEmail);
         }
+        if (!isCompletedServiceReport && candidateKey) appliedCandidateKeys.add(candidateKey);
         appliedAt = new Date().toISOString();
       }
 
