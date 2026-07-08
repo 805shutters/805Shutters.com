@@ -1351,6 +1351,18 @@ const supportPages: SitePage[] = [
           "Yes. The consultation is designed to compare product types, materials, privacy, light control, room style, cleaning needs, and budget."
       },
       {
+        heading: "Do you make custom drapery and curtains?",
+        body:
+          "Yes. 805 Shutters plans, measures, and installs custom drapery and curtains across Ventura County — on their own or layered over shutters, shades, or blinds.",
+        links: [{ label: "Custom drapery and curtains", href: "/drapery/" }]
+      },
+      {
+        heading: "Do you install motorized shades?",
+        body:
+          "Yes. Motorized roller, honeycomb, and Roman shades are quoted during the same free consultation, including options compatible with common smart home systems.",
+        links: [{ label: "Motorized window shades", href: "/motorized-window-shades-ventura-county/" }]
+      },
+      {
         heading: "Do you handle commercial projects?",
         body:
           "Yes. 805 Shutters installs commercial roller shades and window coverings for offices, retail spaces, restaurants, schools, medical spaces, and shared facilities."
