@@ -24,7 +24,7 @@ function areaServed() {
 function providerReference() {
   return {
     "@id": localBusinessId(),
-    name: site.name,
+    name: site.legalName,
     telephone: site.phone,
     url: site.baseUrl
   };
@@ -62,6 +62,7 @@ export function localBusinessJsonLd() {
       site.social.facebook,
       site.social.instagram,
       site.social.yelp,
+      site.googleMaps.url,
       "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
       "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378",
       "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738",
@@ -77,7 +78,7 @@ export function localBusinessJsonLd() {
       {
         "@type": ["HomeAndConstructionBusiness", "LocalBusiness"],
         "@id": localBusinessId(),
-        name: site.name,
+        name: site.legalName,
         legalName: site.legalName,
         alternateName: site.shortName,
         url: site.baseUrl,
@@ -85,9 +86,15 @@ export function localBusinessJsonLd() {
         email: site.email,
         image: `${site.baseUrl}/images/805-hero-window-treatments.jpg`,
         logo: `${site.baseUrl}/brand/805-shutters-logo-exact-transparent.png`,
+        hasMap: site.googleMaps.url,
+        identifier: {
+          "@type": "PropertyValue",
+          propertyID: "Google Maps CID",
+          value: site.googleMaps.cid
+        },
         sameAs,
         description:
-          "805 Shutters, Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
+          "805 Shutters Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
         foundingDate: "1995",
         founder: {
           "@type": "Person",
@@ -174,7 +181,7 @@ export function localBusinessJsonLd() {
         "@type": "WebSite",
         "@id": websiteId(),
         name: site.name,
-        alternateName: "805 Shutters, Shades & Blinds",
+        alternateName: "805 Shutters Shades & Blinds",
         url: site.baseUrl,
         inLanguage: "en-US",
         publisher: {

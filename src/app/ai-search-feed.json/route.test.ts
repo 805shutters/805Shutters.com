@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { site } from "@/lib/site-data";
 import { GET } from "./route";
 
 describe("/ai-search-feed.json", () => {
@@ -10,7 +11,7 @@ describe("/ai-search-feed.json", () => {
     expect(payload).toMatchObject({
       schemaVersion: "805-ai-search-feed/v1",
       entity: {
-        name: "805 Shutters",
+        name: site.legalName,
         serviceArea: "Ventura County"
       }
     });

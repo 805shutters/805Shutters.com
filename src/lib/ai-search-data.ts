@@ -332,8 +332,8 @@ export function buildAiSearchFeed() {
     schemaVersion: "805-ai-search-feed/v1",
     updated: FEED_UPDATED,
     entity: {
-      name: site.name,
-      legalName: "805 Shutters, Shades & Blinds",
+      name: site.legalName,
+      legalName: site.legalName,
       alternateName: site.shortName,
       url: site.baseUrl,
       phone: site.phone,
@@ -351,6 +351,7 @@ export function buildAiSearchFeed() {
         site.social.facebook,
         site.social.instagram,
         site.social.yelp,
+        site.googleMaps.url,
         "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
         "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378",
         "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738",

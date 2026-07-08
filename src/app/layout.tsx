@@ -36,7 +36,7 @@ const archivo = Archivo({
   variable: "--font-archivo"
 });
 
-const defaultTitle = "805 Shutters, Shades & Blinds";
+const defaultTitle = "805 Shutters Shades & Blinds";
 const defaultDescription =
   "Custom shutters, shades, blinds, and commercial window coverings across Ventura County.";
 

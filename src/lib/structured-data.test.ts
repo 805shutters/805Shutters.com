@@ -32,7 +32,15 @@ describe("structured data", () => {
 
     expect(business?.["@id"]).toBe(`${site.baseUrl}#local-business`);
     expect(nodeTypes(business ?? {})).toContain("HomeAndConstructionBusiness");
+    expect(business?.name).toBe(site.legalName);
+    expect(business?.hasMap).toBe(site.googleMaps.url);
+    expect(business?.identifier).toMatchObject({
+      "@type": "PropertyValue",
+      propertyID: "Google Maps CID",
+      value: site.googleMaps.cid
+    });
     expect(business?.sameAs).toContain(site.social.yelp);
+    expect(business?.sameAs).toContain(site.googleMaps.url);
     expect(business?.contactPoint).toMatchObject({
       "@type": "ContactPoint",
       telephone: site.phone,
