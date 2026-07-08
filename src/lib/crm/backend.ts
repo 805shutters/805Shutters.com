@@ -3340,6 +3340,13 @@ export async function updateCrmBookkeepingEntry(
     await closeBookkeepingJobAfterBalancePaid(supabase, String(entry.job_id), actor);
   }
 
+  const totalAmountChanged =
+    hasPayloadKey(payload, "total_amount") &&
+    Math.abs(toMoney(entry.total_amount) - toMoney(existing.total_amount)) >= 0.01;
+  if (totalAmountChanged && entry.job_id && !entry.quote_id) {
+    await updateCrmJob(supabase, String(entry.job_id), { estimated_total: toMoney(entry.total_amount) }, actor);
+  }
+
   await syncCustomerFromBookkeepingEntry(supabase, entry);
   await recordCrmActivity(supabase, actor, {
     entityType: "bookkeeping_entry",

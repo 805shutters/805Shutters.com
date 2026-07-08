@@ -866,6 +866,33 @@ describe("quote bookkeeping notes", () => {
       status: "closed"
     });
   });
+
+  it("syncs manual bookkeeping total edits onto the linked job estimate", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1", estimated_total: 1000 }),
+      existingEntry: bookkeepingEntry({ id: "entry-1", job_id: "job-1", total_amount: 1000 })
+    });
+
+    await updateCrmBookkeepingEntry(
+      supabase,
+      "entry-1",
+      {
+        total_amount: 5170.41
+      },
+      actor
+    );
+
+    const jobTotalUpdate = calls.find(
+      (call) =>
+        call.table === "crm_jobs" &&
+        call.action === "update" &&
+        (call.payload as Record<string, unknown>).estimated_total === 5170.41
+    );
+
+    expect(jobTotalUpdate?.payload).toMatchObject({
+      estimated_total: 5170.41
+    });
+  });
 });
 
 describe("partner payment write rules", () => {
