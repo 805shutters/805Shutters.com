@@ -143,6 +143,7 @@ describe("signed SMS copy", () => {
     expect(msg).toContain("Venmo @");
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");
+    expect(msg).toContain("3 monthly payments");
   });
 
   it("shop message has the requested sale fields", () => {

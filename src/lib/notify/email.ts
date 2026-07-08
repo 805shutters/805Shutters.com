@@ -142,7 +142,7 @@ export function buildFinancingOptionsSection(details: {
   const balanceDue = Number(details.balanceDue) || 0;
   const financeAmount =
     balanceDue > 0 ? balanceDue : total > 0 && depositDue > 0 ? Math.max(0, total - depositDue) : total > 0 ? total / 2 : 0;
-  const monthly = financeAmount > 0 ? Math.round((financeAmount / 6) * 1.03 * 100) / 100 : 0;
+  const monthly = financeAmount > 0 ? Math.round((financeAmount / 3) * 1.03 * 100) / 100 : 0;
   const quoteRef = details.quoteNumber ? ` for quote ${details.quoteNumber}` : "";
   const origin = siteOriginFromLogo(details.logoUrl);
   const wisetackSms = smsHref(`Hi! I'd like the Wisetack financing application link${quoteRef}.`);
@@ -186,10 +186,10 @@ export function buildFinancingOptionsSection(details: {
       bar: "Option 2 &middot; 805 In-House Plan",
       logo: `<img src="${escapeAttr(`${origin}/brand/805-shutters-logo-exact-transparent.png`)}" alt="805 Shutters" height="78" style="height:78px;width:auto;vertical-align:middle;border:0">`,
       big: monthly > 0 ? `${money(monthly)}<span style="font-size:13px;font-weight:400">/mo</span>` : "0% Interest",
-      bigsub: monthly > 0 ? "on this quote &middot; 6 payments &middot; 0% interest" : "up to 6 monthly payments",
+      bigsub: monthly > 0 ? "on this quote &middot; 3 payments &middot; 0% interest" : "up to 3 monthly payments",
       checks: [
         "No credit application &mdash; ever",
-        "50% deposit today, the rest over 6 months",
+        "50% deposit today, the rest over 3 monthly payments",
         "Auto-charged to your card, starting install day",
         "Set it up once &mdash; nothing to remember"
       ],
@@ -197,10 +197,10 @@ export function buildFinancingOptionsSection(details: {
       ctaHref: housePlanSms
     })}
   </div>
-  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">*All financing is subject to credit approval. Your terms may vary. Payment options through Wisetack are provided by Wisetack's lending partners. Offers range from 0&ndash;35.9% APR based on amount requested and creditworthiness. Not all merchants and lending partners participate in 0% interest programs. See additional terms at wisetack.com/faqs. In-house plan collected by automatic card payment through Square; monthly amount shown includes a 3% card processing fee (credit cards).</p>
+  <p style="font-size:10.5px;line-height:1.5;color:#6b6b66;margin:8px 0 0 0">*All financing is subject to credit approval. Your terms may vary. Payment options through Wisetack are provided by Wisetack's lending partners. Offers range from 0&ndash;35.9% APR based on amount requested and creditworthiness. Not all merchants and lending partners participate in 0% interest programs. See additional terms at wisetack.com/faqs. In-house plan collected by automatic card payment through Square; 3 monthly payments shown include a 3% card processing fee (credit cards).</p>
 </div>`;
 
-  const text = `\n\nTWO FINANCING OPTIONS AVAILABLE!\n\nOption 1 - Wisetack Financing: 0% APR available for qualified customers*. Apply from your phone in about a minute; checking options won't affect your credit score. Text ${FINANCING_SMS_NUMBER} for your application link.\n\nOption 2 - 805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 6 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 6 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\n*Financing subject to credit approval; terms vary. Provided by Wisetack's lending partners. See wisetack.com/faqs. In-house monthly amount includes a 3% card processing fee.`;
+  const text = `\n\nTWO FINANCING OPTIONS AVAILABLE!\n\nOption 1 - Wisetack Financing: 0% APR available for qualified customers*. Apply from your phone in about a minute; checking options won't affect your credit score. Text ${FINANCING_SMS_NUMBER} for your application link.\n\nOption 2 - 805 In-House Plan: 0% interest, no credit application.${monthly > 0 ? ` On this quote: 50% deposit, then 3 monthly payments of ${money(monthly)} auto-charged to your card, starting the day of installation.` : " 50% deposit, then up to 3 monthly card payments starting the day of installation."} Reply or text 805-806-9344 to set it up.\n\n*Financing subject to credit approval; terms vary. Provided by Wisetack's lending partners. See wisetack.com/faqs. In-house monthly amount includes a 3% card processing fee.`;
 
   return { html, text };
 }

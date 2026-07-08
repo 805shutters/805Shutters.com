@@ -303,6 +303,11 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
           correction, service, or manufacturer warranty process, but the balance for installed
           products remains due.
         </p>
+        <p style={{ margin: "10px 0 0" }}>
+          Approved in-house payment plans split the remaining balance into 3 monthly payments,
+          with the first payment due at installation. An in-house plan must be approved by
+          805 Shutters in writing before it applies.
+        </p>
       </div>
 
       {!quote.signed && quote.allPriced ? (
@@ -426,7 +431,7 @@ function financingSmsHref(body: string) {
 }
 
 function FinancingOptions({ quoteNumber, financeAmount }: { quoteNumber: string | null; financeAmount: number }) {
-  const monthly = financeAmount > 0 ? Math.round((financeAmount / 6) * 1.03 * 100) / 100 : 0;
+  const monthly = financeAmount > 0 ? Math.round((financeAmount / 3) * 1.03 * 100) / 100 : 0;
   const quoteRef = quoteNumber ? ` for quote ${quoteNumber}` : "";
 
   const card = {
@@ -528,7 +533,7 @@ function FinancingOptions({ quoteNumber, financeAmount }: { quoteNumber: string 
                 "0% Interest"
               )}
             </div>
-            <div style={bigSub}>{monthly > 0 ? "6 payments · 0% interest · no credit application" : "up to 6 monthly payments · no credit application"}</div>
+            <div style={bigSub}>{monthly > 0 ? "3 payments · 0% interest · no credit application" : "up to 3 monthly payments · no credit application"}</div>
             <div style={checkLine}>&#10003;&nbsp; 50% deposit today, the rest auto-charged monthly</div>
             <div style={checkLine}>&#10003;&nbsp; Starts the day of installation</div>
             <div style={{ height: 12 }} />
@@ -540,7 +545,7 @@ function FinancingOptions({ quoteNumber, financeAmount }: { quoteNumber: string 
       </div>
       <p style={{ fontSize: 10.5, lineHeight: 1.5, color: "#6b6b66", margin: "10px 0 0" }}>
         *Financing subject to credit approval; terms vary. Provided by Wisetack&rsquo;s lending partners. See
-        wisetack.com/faqs. In-house plan collected by automatic card payment through Square; monthly amount shown
+        wisetack.com/faqs. In-house plan collected by automatic card payment through Square; 3 monthly payments shown
         includes a 3% card processing fee.
       </p>
     </div>

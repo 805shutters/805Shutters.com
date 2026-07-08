@@ -1159,7 +1159,7 @@ export function buildQuotePaymentLinkSms(
         ? Number(details.total)
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
-  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}.`;
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments.`;
 }
 
 export async function sendQuotePaymentLinkToCustomer(

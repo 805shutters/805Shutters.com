@@ -87,15 +87,19 @@ describe("financing options section", () => {
     expect(mail.html).toContain("Two Financing Options Available!");
     expect(mail.html).toContain("Wisetack Financing");
     expect(mail.html).toContain("805 In-House Plan");
-    // 3087 / 6 * 1.03 = 529.935 -> $529.94/mo
-    expect(mail.html).toContain("$529.94");
+    // 3087 / 3 * 1.03 = 1059.87 -> $1,059.87/mo
+    expect(mail.html).toContain("$1,059.87");
+    expect(mail.html).toContain("3 payments");
+    expect(mail.html).not.toContain("6 payments");
+    expect(mail.html).not.toContain("6 monthly");
     expect(mail.html).toContain("/images/wisetack-logo.png");
     expect(mail.html).toContain("/brand/805-shutters-logo-exact-transparent.png");
     expect(mail.html).toContain("sms:+18058069344");
     expect(mail.html).toContain("Q-1042");
     expect(mail.html).toContain("subject to credit approval");
     expect(mail.text).toContain("TWO FINANCING OPTIONS AVAILABLE!");
-    expect(mail.text).toContain("$529.94");
+    expect(mail.text).toContain("$1,059.87");
+    expect(mail.text).toContain("3 monthly payments");
   });
 
   it("appears in the payment-link email and omits the monthly figure when no amounts are known", () => {
@@ -105,11 +109,13 @@ describe("financing options section", () => {
       depositDue: 3087
     });
     expect(withAmounts.html).toContain("Two Financing Options Available!");
-    expect(withAmounts.html).toContain("$529.94");
+    expect(withAmounts.html).toContain("$1,059.87");
+    expect(withAmounts.html).toContain("3 payments");
 
     const noAmounts = buildQuoteEmail("Susan", "https://example.com/q/abc", 0, {});
     expect(noAmounts.html).toContain("Two Financing Options Available!");
     expect(noAmounts.html).toContain("0% Interest");
+    expect(noAmounts.html).toContain("up to 3 monthly payments");
     expect(noAmounts.html).not.toContain("/mo</span>");
   });
 });
