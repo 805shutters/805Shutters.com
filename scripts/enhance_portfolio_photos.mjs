@@ -35,6 +35,24 @@ const photos = [
     grade: "bright"
   },
   {
+    base: "kitchen-roman-shade-lowered",
+    source: "2026-07-08-kitchen-roman-shade-lowered.jpg",
+    category: "Shades",
+    title: "Kitchen Roman Shade Lowered",
+    alt: "Textured Roman shade lowered over a Ventura County kitchen sink window",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "kitchen-roman-shade-raised",
+    source: "2026-07-08-kitchen-roman-shade-raised.jpg",
+    category: "Shades",
+    title: "Kitchen Roman Shade Raised",
+    alt: "Textured Roman shade raised above a Ventura County kitchen sink window",
+    position: "center",
+    grade: "phone"
+  },
+  {
     base: "specialty-arch-window-shutters",
     source: "ventura-county-specialty-arch-window-shutters-jpg.jpg",
     category: "Shutters",

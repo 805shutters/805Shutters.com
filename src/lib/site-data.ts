@@ -169,6 +169,14 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 ];
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
+  {
+    image: "/images/portfolio-enhanced/kitchen-roman-shade-lowered-card.jpg",
+    imageAlt: "Textured Roman shade lowered over a Ventura County kitchen sink window"
+  },
+  {
+    image: "/images/portfolio-enhanced/kitchen-roman-shade-raised-card.jpg",
+    imageAlt: "Textured Roman shade raised above a Ventura County kitchen sink window"
+  },
   ...recentJobGallery,
   {
     image: "/images/video-posters/motorized-roller-shades-living-room-view.jpg",
