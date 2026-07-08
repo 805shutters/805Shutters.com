@@ -60,6 +60,7 @@ import {
   CrmKenPayoffSummary,
   CrmOrderCogsEmail,
   CrmPartnerPaymentHistoryBatch,
+  CrmPartnerPaymentLedger,
   CrmPartnerPaymentLedgerItem,
   CrmPaymentPerson,
   CrmQuote,
@@ -2651,6 +2652,7 @@ export function CrmApp({
             files={customerFiles}
             events={events}
             installationInvoiceEmails={installationInvoiceEmails}
+            partnerPaymentLedger={data?.partnerPaymentLedger}
             activeDrill={commandDrill}
             busy={busy}
             onProcessEmails={(target) => processEmails(target)}
@@ -4416,6 +4418,56 @@ function reviewEmailsToEntries({
   return entries;
 }
 
+function hasJessicaNet(row: CrmBookkeepingRow) {
+  return (row.jessicaCommission || 0) > 0;
+}
+
+function jessicaNetReviewReasons(row: CrmBookkeepingRow) {
+  const reasons: string[] = [];
+  if ((row.cogs || 0) <= 0) reasons.push("COGS missing");
+  if (!row.isPaidInFull || row.balance > 0) reasons.push("balance open");
+  if (!row.isInstallationComplete) reasons.push("install cost not finalized");
+  return reasons;
+}
+
+function isFinalJessicaNetRow(row: CrmBookkeepingRow) {
+  return hasJessicaNet(row) && jessicaNetReviewReasons(row).length === 0;
+}
+
+function jessicaNetDrillEntries(rows: CrmBookkeepingRow[], jobs: CrmJob[], files: CrmCustomerFile[]) {
+  const reviewEntries = rowsToEntries(
+    rows.filter((row) => hasJessicaNet(row) && !isFinalJessicaNetRow(row)),
+    (row) => row.jessicaCommission,
+    { jobs, files }
+  ).map((entry) => {
+    const reasons = entry.row ? jessicaNetReviewReasons(entry.row) : [];
+    return {
+      ...entry,
+      tone: "warn" as const,
+      meta: [entry.meta, reasons.join(", ")].filter(Boolean).join(" · "),
+      notes: Array.from(new Set([...(entry.notes || []), `Jessica estimate is not final: ${reasons.join(", ")}`].filter(Boolean)))
+    };
+  });
+  const finalEntries = rowsToEntries(
+    rows.filter(isFinalJessicaNetRow),
+    (row) => row.jessicaCommission,
+    { jobs, files }
+  );
+  return [...reviewEntries, ...finalEntries];
+}
+
+function partnerRemainingForRows(
+  rows: CrmBookkeepingRow[],
+  person: CrmPaymentPerson,
+  ledger: CrmPartnerPaymentLedger | undefined
+) {
+  if (!ledger) return null;
+  const itemKeys = new Set(rows.map((row) => partnerPaymentItemKeyForRow(person, row)));
+  return ledger.people[person].activeItems
+    .filter((item) => itemKeys.has(item.itemKey))
+    .reduce((sum, item) => sum + item.remainingAmount, 0);
+}
+
 // Builds the drill payloads for the global summary band, mirroring backend.ts summary logic.
 function buildSummaryDrill(
   metric: string,
@@ -4517,16 +4569,14 @@ function buildSummaryDrill(
         entries: jobsToEntries(measureNeededJobs(jobs), rows, { files })
       };
     case "jessicaNet":
+      const finalRows = rows.filter(isFinalJessicaNetRow);
+      const reviewRows = rows.filter((row) => hasJessicaNet(row) && !isFinalJessicaNetRow(row));
       return {
-        title: "Jessica Net",
-        subtitle: "Jessica net per job",
+        title: "Jessica Net Review",
+        subtitle: `${finalRows.length} final / ${reviewRows.length} need review`,
         metric,
         placement: "numbers",
-        entries: rowsToEntries(
-          rows.filter((row) => row.jessicaCommission > 0),
-          (row) => row.jessicaCommission,
-          { jobs, files }
-        )
+        entries: jessicaNetDrillEntries(rows, jobs, files)
       };
     default:
       return null;
@@ -5147,6 +5197,7 @@ function CommandDashboard({
   files,
   events,
   installationInvoiceEmails,
+  partnerPaymentLedger,
   activeDrill,
   busy,
   onProcessEmails,
@@ -5166,6 +5217,7 @@ function CommandDashboard({
   files: CrmCustomerFile[];
   events: CrmCalendarEvent[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
+  partnerPaymentLedger?: CrmPartnerPaymentLedger;
   activeDrill: DrillPayload | null;
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
@@ -5186,11 +5238,26 @@ function CommandDashboard({
     const outstandingRows = rows.filter((row) => row.balance > 0);
     const outstanding = outstandingRows.reduce((sum, row) => sum + row.balance, 0);
     const mikeNet = rows.reduce((sum, row) => sum + (row.mikeProfit || 0), 0);
-    const jessicaNetRows = rows.filter((row) => (row.jessicaCommission || 0) > 0);
-    const jessicaNet = jessicaNetRows.reduce((sum, row) => sum + (row.jessicaCommission || 0), 0);
+    const jessicaNetRows = rows.filter(hasJessicaNet);
+    const jessicaFinalRows = jessicaNetRows.filter(isFinalJessicaNetRow);
+    const jessicaReviewRows = jessicaNetRows.filter((row) => !isFinalJessicaNetRow(row));
+    const jessicaDueFromLedger = partnerRemainingForRows(jessicaFinalRows, "jessica", partnerPaymentLedger);
+    const jessicaDue = jessicaDueFromLedger ?? jessicaFinalRows.reduce((sum, row) => sum + (row.jessicaCommissionOwed || 0), 0);
     const installationLedger = buildInstallationInvoiceLedger(rows, installationInvoiceEmails);
-    return { bookedRevenue, collected, collectedRows, outstanding, outstandingRows, mikeNet, jessicaNet, jessicaNetRows, installationLedger };
-  }, [rows, installationInvoiceEmails]);
+    return {
+      bookedRevenue,
+      collected,
+      collectedRows,
+      outstanding,
+      outstandingRows,
+      mikeNet,
+      jessicaNetRows,
+      jessicaFinalRows,
+      jessicaReviewRows,
+      jessicaDue,
+      installationLedger
+    };
+  }, [rows, installationInvoiceEmails, partnerPaymentLedger]);
 
   const productMixReport = useMemo(() => {
     const map = new Map<string, CrmJob[]>();
@@ -5390,17 +5457,24 @@ function CommandDashboard({
           }
         />
         <StatTile
-          label="Profit"
-          value={toCurrency(numbers.jessicaNet)}
-          sub="Jessica net"
+          label="Jessica Due"
+          value={toCurrency(numbers.jessicaDue)}
+          sub={
+            numbers.jessicaReviewRows.length
+              ? `${numbers.jessicaReviewRows.length} need review`
+              : `${numbers.jessicaFinalRows.length} final`
+          }
+          tone={numbers.jessicaReviewRows.length ? "warn" : undefined}
           onClick={() =>
-            onDrill({
-              title: "Jessica Net",
-              subtitle: "Jessica net per job",
-              metric: "jessicaNet",
-              placement: "numbers",
-              entries: rowsToEntries(numbers.jessicaNetRows, (row) => row.jessicaCommission, { jobs, files })
-            })
+            onDrill(
+              buildSummaryDrill("jessicaNet", jobs, quotes, rows, files, installationInvoiceEmails) || {
+                title: "Jessica Net Review",
+                subtitle: `${numbers.jessicaFinalRows.length} final / ${numbers.jessicaReviewRows.length} need review`,
+                metric: "jessicaNet",
+                placement: "numbers",
+                entries: jessicaNetDrillEntries(numbers.jessicaNetRows, jobs, files)
+              }
+            )
           }
         />
       </div>
