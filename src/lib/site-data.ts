@@ -1396,16 +1396,59 @@ const supportPages: SitePage[] = [
     h1: "805 Shutters Reviews",
     eyebrow: "Customer proof",
     intro:
-      "Reviews and referrals are central to how local customers choose 805 Shutters for window treatment projects.",
+      "805 Shutters is a family-owned Ventura County company that has grown for more than 30 years on referrals and repeat customers. Reviews from real local projects are the best way to judge the work.",
     image: images.shutters,
     imageAlt: "Finished plantation shutters in a Ventura County home",
     sections: [
       {
-        heading: "Local Service Matters",
+        heading: "Where To Read Our Reviews",
         body:
-          "The new site should keep review proof close to consultation calls, service pages, and product comparison pages so visitors do not have to hunt for trust signals."
+          "805 Shutters reviews are published on independent platforms where every review comes from a real customer account.",
+        links: [
+          { label: "805 Shutters on Yelp", href: site.social.yelp },
+          { label: "Recent local projects with photos", href: "/recent-projects/" }
+        ]
+      },
+      {
+        heading: "What Local Customers Hire Us For",
+        body:
+          "Most reviews come from projects across Camarillo, Thousand Oaks, Moorpark, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, and nearby communities: plantation shutters in living areas, roller and honeycomb shades in bedrooms, motorized shades on tall glass, blinds for offices and rentals, and drapery that finishes the room.",
+        links: [
+          { label: "Custom shutters", href: "/shutters/" },
+          { label: "Custom shades", href: "/shades/" },
+          { label: "Custom blinds", href: "/blinds/" },
+          { label: "Custom drapery and curtains", href: "/drapery/" }
+        ]
+      },
+      {
+        heading: "How The Work Earns The Review",
+        body:
+          "Every project starts with a free in-home consultation, real product samples, and a written quote that includes measuring and professional installation. The same local family team handles the project from first visit to final fit, and the finished windows are what customers describe in their reviews."
+      },
+      {
+        heading: "Recently Completed A Project With Us?",
+        body:
+          "If 805 Shutters installed your shutters, shades, blinds, or drapery, a short review on Google or Yelp helps other Ventura County homeowners find local work they can trust. It takes about a minute, and every review is read by the family."
       }
-    ]
+    ],
+    faqs: [
+      {
+        question: "Where can I read reviews of 805 Shutters?",
+        answer:
+          "805 Shutters reviews are published on Google and Yelp under '805 Shutters, Shades & Blinds'. The recent projects page on this site also shows completed local installations with photos."
+      },
+      {
+        question: "Does 805 Shutters serve my city?",
+        answer:
+          "805 Shutters serves all of Ventura County and the Conejo Valley, including Camarillo, Thousand Oaks, Moorpark, Simi Valley, Newbury Park, Westlake Village, Oak Park, Oxnard, Ventura, Port Hueneme, Ojai, Santa Paula, Santa Rosa Valley, and Fillmore."
+      },
+      {
+        question: "How do I leave a review?",
+        answer:
+          "Search for '805 Shutters, Shades & Blinds' on Google or Yelp and tap the review button. Customers also receive a direct review link by text after installation."
+      }
+    ],
+    cta: "Schedule a free in-home consultation"
   },
   {
     path: "/recent-projects/",

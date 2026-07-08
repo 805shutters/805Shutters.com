@@ -1,8 +1,11 @@
 // Post-install Google-review request automation. When a job first reaches a
-// completed-install status ("installed" or "invoiced"), text the customer a
-// review link once. One-shot per job: the outcome (sent or skipped) is stamped
-// into job.meta so a customer can never be asked twice, even if multiple
-// callers fire on the same transition.
+// completed-install status ("installed", "invoiced", or "closed"), text the
+// customer a review link once. "closed" is included because in practice jobs
+// often move straight from "ordered" to "closed" without passing through the
+// install statuses, which left completed customers never asked. One-shot per
+// job: the outcome (sent or skipped) is stamped into job.meta so a customer
+// can never be asked twice, even if multiple callers fire on the same
+// transition.
 //
 // The feature is enabled by setting GOOGLE_REVIEW_LINK (e.g. a g.page/r/...
 // short link from the Google Business Profile dashboard). While it is unset,
@@ -33,7 +36,7 @@ export type ReviewRequestResult = {
   message?: string;
 };
 
-const COMPLETED_INSTALL_STATUSES = new Set<CrmJobStatus>(["installed", "invoiced"]);
+const COMPLETED_INSTALL_STATUSES = new Set<CrmJobStatus>(["installed", "invoiced", "closed"]);
 
 export function getReviewRequestMeta(meta: unknown): CrmReviewRequestMeta {
   return objectMeta(objectMeta(meta)[REVIEW_REQUEST_META_KEY]) as CrmReviewRequestMeta;

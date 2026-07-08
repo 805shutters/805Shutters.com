@@ -783,6 +783,203 @@ export const answerPages: AnswerPage[] = [
       { label: "Free consultation", href: "/free-window-treatment-consultation/" },
       { label: "Book a consultation time", href: "/book-consultation/" }
     ]
+  },
+  {
+    slug: "blinds-near-me-ventura-county",
+    path: "/blinds-near-me-ventura-county/",
+    title: "Blinds Near Me | Custom Blinds for Moorpark, Thousand Oaks & Ventura County | 805 Shutters",
+    description:
+      "Looking for custom blinds near you? 805 Shutters measures and installs wood, faux wood, aluminum, and vertical blinds in Moorpark, Thousand Oaks, Camarillo, Simi Valley, and across Ventura County with free in-home consultations.",
+    h1: "Blinds Near Me: Custom Blinds Installed Across Ventura County",
+    eyebrow: "Local service area",
+    answer:
+      "If you are searching for blinds near you in Ventura County, 805 Shutters is a local, family-owned company that measures and installs custom wood, faux wood, aluminum, vertical, and softwood blinds in Moorpark, Thousand Oaks, Camarillo, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, Ojai, and surrounding communities. The free in-home consultation brings samples to your windows and the written quote includes professional installation.",
+    image: "/images/805-portfolio-blinds-office.jpg",
+    imageAlt: "Warm wood blinds filtering light in a Ventura County home office",
+    updated: "2026-07-07",
+    serviceTypes: ["Custom blinds", "Wood blinds", "Faux wood blinds", "Vertical blinds"],
+    sections: [
+      {
+        heading: "Measured At Your Windows, Not Bought Off A Shelf",
+        body:
+          "Ready-made blinds rarely fit real windows well. 805 Shutters measures each opening during a free in-home visit, compares materials and control options with real samples, and orders blinds built to those exact sizes.",
+        bullets: [
+          "Wood and faux wood blinds for bedrooms, offices, and living rooms",
+          "Vertical blinds for sliding doors and wide openings",
+          "Aluminum and softwood options for practical rooms and rentals",
+          "Cordless and easy-control options for homes with kids and pets"
+        ]
+      },
+      {
+        heading: "Cities We Serve",
+        body:
+          "805 Shutters installs custom blinds throughout Ventura County and the Conejo Valley, including Moorpark, Thousand Oaks, Newbury Park, Camarillo, Santa Rosa Valley, Simi Valley, Oak Park, Westlake Village, Oxnard, Ventura, Port Hueneme, Ojai, Santa Paula, and Fillmore."
+      },
+      {
+        heading: "Blind Replacement Made Simple",
+        body:
+          "Replacing old, damaged, or discolored blinds is one of the most common local requests. The same visit can measure every window, match products across rooms, and schedule installation so the whole home is consistent."
+      }
+    ],
+    faqs: [
+      {
+        question: "Who installs custom blinds near Moorpark and Thousand Oaks?",
+        answer:
+          "805 Shutters is a family-owned Ventura County company that measures and installs custom blinds in Moorpark, Thousand Oaks, and the surrounding Conejo Valley, with free in-home consultations."
+      },
+      {
+        question: "Are custom blinds worth it compared to store-bought?",
+        answer:
+          "Custom blinds are made to the measured size of each window, so they fit cleanly, operate smoothly, and look consistent across the home — without the gaps, cut-down slats, and returns that come with off-the-shelf sizes."
+      },
+      {
+        question: "How do I get a blinds quote near me?",
+        answer:
+          "Book a free in-home consultation online or by phone. Windows are measured during the visit and the written quote — product plus professional installation — is provided with no obligation."
+      }
+    ],
+    relatedLinks: [
+      { label: "Custom blinds", href: "/blinds/" },
+      { label: "Blinds in Moorpark", href: "/blinds/moorpark-ca/" },
+      { label: "Blinds in Thousand Oaks", href: "/blinds/thousand-oaks-ca/" },
+      { label: "Blinds in Camarillo", href: "/blinds/camarillo-ca/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" }
+    ]
+  },
+  {
+    slug: "window-shades-near-me-ventura-county",
+    path: "/window-shades-near-me-ventura-county/",
+    title: "Window Shades Near Me | Roller, Roman & Motorized Shades for Ventura County | 805 Shutters",
+    description:
+      "Looking for window shades near you? 805 Shutters measures and installs roller, honeycomb, Roman, woven wood, and motorized shades in Moorpark, Thousand Oaks, Camarillo, Simi Valley, and across Ventura County.",
+    h1: "Window Shades Near Me: Custom Shades Installed Across Ventura County",
+    eyebrow: "Local service area",
+    answer:
+      "If you are searching for window shades near you in Ventura County, 805 Shutters is a local, family-owned company that measures and installs custom roller shades, honeycomb shades, Roman shades, woven wood shades, and motorized shades in Moorpark, Thousand Oaks, Camarillo, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, Ojai, and surrounding communities. The free in-home consultation compares fabrics and lift systems at your own windows.",
+    image: "/images/805-portfolio-shades-bedroom.jpg",
+    imageAlt: "Relaxed Roman shades over a wide bedroom window in a Ventura County home",
+    updated: "2026-07-07",
+    serviceTypes: ["Window shades", "Roller shades", "Roman shades", "Motorized shades"],
+    sections: [
+      {
+        heading: "Shade Styles Compared In Your Home",
+        body:
+          "The right shade depends on the room: glare control, room darkening, insulation, texture, or automation. The free consultation brings fabric samples and lift-system options to your windows.",
+        bullets: [
+          "Roller and solar shades for glare control and clean lines",
+          "Honeycomb shades for insulation and bedrooms",
+          "Roman and woven wood shades for softness and texture",
+          "Motorized shades for tall, wide, or hard-to-reach glass"
+        ]
+      },
+      {
+        heading: "Cities We Serve",
+        body:
+          "805 Shutters installs custom window shades throughout Ventura County and the Conejo Valley, including Moorpark, Thousand Oaks, Newbury Park, Camarillo, Santa Rosa Valley, Simi Valley, Oak Park, Westlake Village, Oxnard, Ventura, Port Hueneme, Ojai, Santa Paula, and Fillmore."
+      },
+      {
+        heading: "Motorization Without The Guesswork",
+        body:
+          "Motorized and smart-home-compatible shades are quoted during the same visit, so power options, remotes, and app or voice control are planned around the actual windows instead of added later."
+      }
+    ],
+    faqs: [
+      {
+        question: "Who installs window shades near Moorpark and Thousand Oaks?",
+        answer:
+          "805 Shutters is a family-owned Ventura County company that measures and installs custom window shades in Moorpark, Thousand Oaks, and the surrounding Conejo Valley, with free in-home consultations."
+      },
+      {
+        question: "Can I get motorized shades near me?",
+        answer:
+          "Yes. 805 Shutters installs motorized roller, honeycomb, and Roman shades across Ventura County, including options compatible with common smart home systems."
+      },
+      {
+        question: "How do I get a shade quote near me?",
+        answer:
+          "Book a free in-home consultation online or by phone. Windows are measured during the visit and the written quote — product plus professional installation — is provided with no obligation."
+      }
+    ],
+    relatedLinks: [
+      { label: "Custom shades", href: "/shades/" },
+      { label: "Motorized window shades", href: "/motorized-window-shades-ventura-county/" },
+      { label: "Shades in Moorpark", href: "/shades/moorpark-ca/" },
+      { label: "Shades in Thousand Oaks", href: "/shades/thousand-oaks-ca/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" }
+    ]
+  },
+  {
+    slug: "window-treatment-company-near-me-ventura-county",
+    path: "/window-treatment-company-near-me-ventura-county/",
+    title: "Window Treatment Company Near Me | Local Ventura County Experts | 805 Shutters",
+    description:
+      "Looking for a window treatment company near you? 805 Shutters is a family-owned Ventura County company installing custom shutters, shades, blinds, and drapery in Moorpark, Thousand Oaks, Camarillo, Simi Valley, and nearby cities.",
+    h1: "A Local Window Treatment Company Serving Ventura County",
+    eyebrow: "Local service area",
+    answer:
+      "805 Shutters is a local, family-owned window treatment company serving all of Ventura County — Moorpark, Thousand Oaks, Camarillo, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, Ojai, and surrounding communities. One free in-home consultation can compare custom plantation shutters, roller and honeycomb shades, motorized shades, wood and faux wood blinds, and custom drapery and curtains, with measuring and professional installation included.",
+    image: "/images/805-hero-window-treatments.jpg",
+    imageAlt: "Custom window treatments in a bright Ventura County living room",
+    updated: "2026-07-07",
+    serviceTypes: [
+      "Custom shutters",
+      "Window shades",
+      "Custom blinds",
+      "Custom drapery",
+      "Commercial window coverings"
+    ],
+    sections: [
+      {
+        heading: "One Local Company For Every Window",
+        body:
+          "Because 805 Shutters carries shutters, shades, blinds, drapery, and exterior and commercial shades, the recommendation fits each room instead of forcing one product everywhere.",
+        bullets: [
+          "Plantation shutters for living areas and durability",
+          "Roller, honeycomb, Roman, and motorized shades",
+          "Wood, faux wood, aluminum, and vertical blinds",
+          "Custom drapery and curtains, alone or layered",
+          "Exterior shades and commercial roller shades"
+        ]
+      },
+      {
+        heading: "Why Local Matters",
+        body:
+          "805 Shutters is family-owned and based in Ventura County with more than 30 years of local experience. The people who measure your windows are the same local team that installs and stands behind the finished project — not a national call center or a rotating franchise crew."
+      },
+      {
+        heading: "Cities We Serve",
+        body:
+          "Moorpark, Thousand Oaks, Newbury Park, Camarillo, Santa Rosa Valley, Simi Valley, Oak Park, Westlake Village, Oxnard, Ventura, Port Hueneme, Ojai, Santa Paula, and Fillmore."
+      }
+    ],
+    faqs: [
+      {
+        question: "What window treatment company serves Moorpark and Thousand Oaks?",
+        answer:
+          "805 Shutters is a family-owned Ventura County window treatment company serving Moorpark, Thousand Oaks, and the surrounding Conejo Valley with custom shutters, shades, blinds, and drapery, and free in-home consultations."
+      },
+      {
+        question: "Do you charge for the in-home consultation?",
+        answer:
+          "No. The in-home consultation, measuring, and the written quote are free, with no obligation."
+      },
+      {
+        question: "Do you handle commercial projects?",
+        answer:
+          "Yes. 805 Shutters installs commercial roller shades and window coverings for offices, storefronts, schools, and medical spaces across Ventura County."
+      }
+    ],
+    relatedLinks: [
+      { label: "Shutters near me", href: "/shutters-near-me-ventura-county/" },
+      { label: "Window shades near me", href: "/window-shades-near-me-ventura-county/" },
+      { label: "Blinds near me", href: "/blinds-near-me-ventura-county/" },
+      { label: "Custom drapery and curtains", href: "/custom-drapery-curtains-ventura-county/" },
+      { label: "Customer reviews", href: "/reviews/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" }
+    ]
   }
 ];
 

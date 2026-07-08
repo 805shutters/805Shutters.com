@@ -52,16 +52,19 @@ const baseJob: JobRow = {
 };
 
 describe("isReviewRequestTransition", () => {
-  it("fires when entering installed or invoiced from an earlier stage", () => {
+  it("fires when entering installed, invoiced, or closed from an earlier stage", () => {
     expect(isReviewRequestTransition("ordered", "installed")).toBe(true);
     expect(isReviewRequestTransition("sold", "invoiced")).toBe(true);
+    expect(isReviewRequestTransition("ordered", "closed")).toBe(true);
   });
   it("does not fire when moving between completed-install statuses", () => {
     expect(isReviewRequestTransition("installed", "invoiced")).toBe(false);
+    expect(isReviewRequestTransition("invoiced", "closed")).toBe(false);
+    expect(isReviewRequestTransition("installed", "closed")).toBe(false);
   });
   it("does not fire for non-install statuses", () => {
-    expect(isReviewRequestTransition("ordered", "closed")).toBe(false);
     expect(isReviewRequestTransition("new", "scheduled")).toBe(false);
+    expect(isReviewRequestTransition("scheduled", "quoted")).toBe(false);
   });
 });
 
