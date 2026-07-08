@@ -639,6 +639,150 @@ export const answerPages: AnswerPage[] = [
       { label: "Best window treatments", href: "/best-window-treatments-ventura-county/" },
       { label: "Installation timeline", href: "/window-treatment-installation-timeline-ventura-county/" }
     ]
+  },
+  {
+    slug: "custom-drapery-curtains-ventura-county",
+    path: "/custom-drapery-curtains-ventura-county/",
+    title: "Custom Drapery and Curtains Near Moorpark & Thousand Oaks | 805 Shutters",
+    description:
+      "Custom drapery and curtains for Ventura County homes, including Moorpark, Thousand Oaks, Camarillo, and Simi Valley. Compare drapery panels, curtain styles, sheers, blackout linings, and hardware with a free in-home consultation.",
+    h1: "Custom Drapery and Curtains in Ventura County",
+    eyebrow: "Soft window treatments",
+    answer:
+      "805 Shutters designs and installs custom drapery and curtains for homes across Ventura County, including Moorpark, Thousand Oaks, Camarillo, Simi Valley, Newbury Park, and Westlake Village. A free in-home consultation compares drapery panel styles, curtain fabrics, sheers, room-darkening and blackout linings, fullness, and hardware — on their own or layered over shutters, shades, or blinds — with measuring and professional installation included.",
+    image: "/images/805-portfolio-drapery-living-room.jpg",
+    imageAlt: "Custom drapery panels layered with shades in a Ventura County living room",
+    updated: "2026-07-07",
+    serviceTypes: ["Custom drapery", "Custom curtains", "Window shades", "Custom shutters"],
+    sections: [
+      {
+        heading: "Drapery And Curtain Styles To Compare",
+        body:
+          "Custom drapery is built around the room, so the consultation starts by comparing panel styles and how the fabric should hang, stack, and frame the window.",
+        bullets: [
+          "Pleated drapery panels for a tailored, structured look",
+          "Relaxed curtain panels for softer, more casual rooms",
+          "Sheers for daytime light with privacy",
+          "Room-darkening and blackout linings for bedrooms and media rooms",
+          "Stationary side panels that add height and warmth around large windows and sliders"
+        ]
+      },
+      {
+        heading: "Drapery Alone Or Layered With Shutters And Shades",
+        body:
+          "Many Ventura County projects combine soft and hard treatments: drapery panels layered over roller or Roman shades for privacy plus softness, or stationary curtain panels framing plantation shutters to finish the room. Because 805 Shutters carries shutters, shades, blinds, and drapery, one consultation can plan the whole window instead of treating each product separately."
+      },
+      {
+        heading: "Local In-Home Service",
+        body:
+          "805 Shutters is a family-owned Ventura County company. The free consultation brings fabric direction, hardware options, and measuring to your home in Moorpark, Thousand Oaks, Camarillo, Simi Valley, Oxnard, Ventura, Ojai, Newbury Park, Westlake Village, and nearby communities, and the written quote includes professional installation."
+      }
+    ],
+    faqs: [
+      {
+        question: "Who makes custom drapery and curtains near Moorpark and Thousand Oaks?",
+        answer:
+          "805 Shutters plans, measures, and installs custom drapery and curtains for homes in Moorpark, Thousand Oaks, and across Ventura County, with a free in-home design consultation."
+      },
+      {
+        question: "What is the difference between drapery and curtains?",
+        answer:
+          "In practice the terms overlap: drapery usually refers to heavier, often lined, floor-length panels, while curtains are typically lighter, unlined fabric panels. A consultation compares both approaches for the room's privacy, light control, and style goals."
+      },
+      {
+        question: "Can drapery and curtains be combined with shades or shutters?",
+        answer:
+          "Yes. Layering drapery panels over shades, or framing shutters with stationary panels, is one of the most requested looks — it adds softness and height while keeping the practical light control of the hard treatment."
+      },
+      {
+        question: "Do you bring fabric samples to the consultation?",
+        answer:
+          "Yes. The in-home consultation reviews fabric direction, lining, fullness, hardware, and measurements at your windows, so the finished panels fit the room exactly."
+      }
+    ],
+    relatedLinks: [
+      { label: "Custom drapery and curtains", href: "/drapery/" },
+      { label: "Custom shades", href: "/shades/" },
+      { label: "Custom shutters", href: "/shutters/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" },
+      { label: "Best window treatments", href: "/best-window-treatments-ventura-county/" }
+    ]
+  },
+  {
+    slug: "shutters-near-me-ventura-county",
+    path: "/shutters-near-me-ventura-county/",
+    title: "Shutters Near Me | Local Shutter Company for Moorpark, Thousand Oaks & Ventura County | 805 Shutters",
+    description:
+      "Looking for shutters near you in Ventura County? 805 Shutters is a local, family-owned shutter company installing custom plantation shutters in Moorpark, Thousand Oaks, Camarillo, Simi Valley, and nearby cities with free in-home consultations.",
+    h1: "Shutters Near Me: A Local Ventura County Shutter Company",
+    eyebrow: "Local service area",
+    answer:
+      "If you are searching for shutters near you in Ventura County, 805 Shutters is a local, family-owned shutter company that measures, builds, and installs custom plantation shutters in Moorpark, Thousand Oaks, Camarillo, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, Ojai, and surrounding communities. There is no showroom trip required — the free consultation brings samples and measuring to your home, and the written quote includes professional installation.",
+    image: "/images/portfolio-enhanced/uploaded-stacked-arch-shutters-wide.jpg",
+    imageAlt: "Custom plantation shutters installed on tall Ventura County living room windows",
+    updated: "2026-07-07",
+    serviceTypes: ["Custom shutters", "Plantation shutters", "Shutter installation"],
+    sections: [
+      {
+        heading: "The Showroom Comes To You",
+        body:
+          "Because every shutter is made to the measured size of each window, the useful first step is an in-home visit, not a store. 805 Shutters brings material samples, colors, louver sizes, and frame styles to your home, measures each opening, and writes the quote on the spot with no obligation.",
+        bullets: [
+          "Free in-home consultation with real samples",
+          "Wood, composite, and specialty-shape plantation shutters",
+          "Sliding door, arched, and two-story window solutions",
+          "Professional installation included in the written quote"
+        ]
+      },
+      {
+        heading: "Cities We Serve",
+        body:
+          "805 Shutters installs custom shutters throughout Ventura County and the Conejo Valley. Each city page below covers local service details.",
+        bullets: [
+          "Moorpark, Thousand Oaks, and Newbury Park",
+          "Camarillo and Santa Rosa Valley",
+          "Simi Valley, Oak Park, and Westlake Village",
+          "Oxnard, Ventura, Port Hueneme, Ojai, Santa Paula, and Fillmore"
+        ]
+      },
+      {
+        heading: "Why Choose A Local Shutter Company",
+        body:
+          "805 Shutters is family-owned and based in Ventura County, with more than 30 years of local experience. The people who measure your windows are the same local team that stands behind the installation — not a national call center. Recent local projects and customer reviews are published on the site."
+      }
+    ],
+    faqs: [
+      {
+        question: "Who installs plantation shutters near Moorpark and Thousand Oaks?",
+        answer:
+          "805 Shutters is a family-owned Ventura County company that measures and installs custom plantation shutters in Moorpark, Thousand Oaks, and the surrounding Conejo Valley, with free in-home consultations."
+      },
+      {
+        question: "Is there a shutter showroom near me?",
+        answer:
+          "805 Shutters brings the showroom to you: the free consultation includes material samples, colors, louver sizes, and frame styles at your own windows, which is more accurate than judging products under showroom lighting."
+      },
+      {
+        question: "How do I get a shutter quote near me?",
+        answer:
+          "Book a free in-home consultation online or by phone. Windows are measured during the visit and the written quote — product plus professional installation — is provided with no obligation."
+      },
+      {
+        question: "Do you also install shades, blinds, and drapery?",
+        answer:
+          "Yes. The same consultation can compare plantation shutters, roller and honeycomb shades, motorized shades, wood and faux wood blinds, and custom drapery and curtains, room by room."
+      }
+    ],
+    relatedLinks: [
+      { label: "Custom shutters", href: "/shutters/" },
+      { label: "Shutters in Moorpark", href: "/shutters/moorpark/" },
+      { label: "Shutters in Thousand Oaks", href: "/shutters/thousand-oaks/" },
+      { label: "Shutters in Camarillo", href: "/shutters/camarillo/" },
+      { label: "Customer reviews", href: "/reviews/" },
+      { label: "Free consultation", href: "/free-window-treatment-consultation/" },
+      { label: "Book a consultation time", href: "/book-consultation/" }
+    ]
   }
 ];
 

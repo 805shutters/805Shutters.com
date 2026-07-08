@@ -6,7 +6,7 @@ export function GET() {
   const lines = [
     "# 805 Shutters",
     "",
-    "> 805 Shutters is a family-owned Ventura County window covering company offering custom shutters, shades, blinds, drapery, exterior shades, and commercial window coverings.",
+    "> 805 Shutters is a family-owned Ventura County window covering company offering custom shutters, motorized shades, blinds, custom drapery and curtains, exterior shades, and commercial window coverings near Camarillo, Thousand Oaks, Moorpark, Simi Valley, and surrounding cities.",
     "",
     "## Entity facts",
     "Legal name: 805 Shutters, Shades & Blinds",

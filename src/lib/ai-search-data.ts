@@ -1,7 +1,7 @@
 import { answerPages } from "./llm-search-pages";
 import { allPages, services, site } from "./site-data";
 
-const FEED_UPDATED = "2026-07-05";
+const FEED_UPDATED = "2026-07-07";
 
 export const primaryServices = [
   "Custom shutters",
@@ -9,7 +9,7 @@ export const primaryServices = [
   "Window shades",
   "Motorized shades",
   "Custom blinds",
-  "Drapery",
+  "Custom drapery and curtains",
   "Exterior shades",
   "Commercial roller shades",
   "Commercial window coverings"

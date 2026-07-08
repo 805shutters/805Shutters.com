@@ -133,6 +133,8 @@ export function localBusinessJsonLd() {
           "Window shades",
           "Custom blinds",
           "Drapery",
+          "Custom curtains",
+          "Curtain and drapery panels",
           "Exterior shades",
           "Commercial roller shades",
           "Window coverings",
@@ -143,7 +145,7 @@ export function localBusinessJsonLd() {
           "Custom shutters",
           "Custom window shades",
           "Custom blinds",
-          "Custom drapery",
+          "Custom drapery and curtains",
           "Commercial window coverings"
         ],
         hasOfferCatalog: {

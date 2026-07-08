@@ -310,11 +310,11 @@ export const services: Service[] = [
     imageAlt: "Warm wood blinds filtering light in a Ventura County home office"
   },
   {
-    title: "Custom Drapery",
+    title: "Custom Drapery & Curtains",
     shortTitle: "Drapery",
     slug: "drapery",
     description:
-      "Soft drapery and fabric window treatment planning for rooms that need warmth, privacy, light control, and a finished designer look.",
+      "Custom drapery, curtains, and fabric window treatment planning for rooms that need warmth, privacy, light control, and a finished designer look.",
     image: images.drapery,
     imageAlt: "Soft fabric window treatments in a Ventura County living room"
   },
@@ -362,6 +362,8 @@ const productFit = {
     "Window shades work well when the priority is glare control, privacy, softness, motorization, or a lighter look than shutters or blinds.",
   blinds:
     "Custom blinds are practical for bedrooms, offices, rentals, and everyday spaces where adjustable light control and budget flexibility are important.",
+  drapery:
+    "Custom drapery and curtains add softness, warmth, privacy, and a finished designer look, either on their own or layered over shutters, shades, or blinds.",
   "window-coverings":
     "Window coverings include shutters, shades, blinds, and commercial treatments, so the recommendation can fit the room instead of forcing one product type.",
   "window-treatments":
@@ -655,13 +657,13 @@ const parentPages: SitePage[] = [
   {
     path: "/drapery/",
     form: true,
-    title: "Custom Drapery Ventura County | 805 Shutters",
+    title: "Custom Drapery & Curtains Ventura County | 805 Shutters",
     description:
-      "Custom drapery and fabric window treatment planning for Ventura County homes. Compare soft treatments, privacy, light control, and room style.",
-    h1: "Custom Drapery in Ventura County",
+      "Custom drapery, curtains, and fabric window treatment planning for Ventura County homes. Compare drapery panels, curtain styles, privacy, light control, and room style.",
+    h1: "Custom Drapery and Curtains in Ventura County",
     eyebrow: "Soft window treatments",
     intro:
-      "805 Shutters helps Ventura County customers plan custom drapery and fabric window treatments that soften rooms, add privacy, and complete the design around shutters, shades, or blinds.",
+      "805 Shutters helps Ventura County customers plan custom drapery, curtains, and fabric window treatments that soften rooms, add privacy, and complete the design around shutters, shades, or blinds.",
     image: images.drapery,
     imageAlt: "Custom drapery and shades in a Ventura County living room",
     sections: [
@@ -676,9 +678,9 @@ const parentPages: SitePage[] = [
         ]
       },
       {
-        heading: "When Drapery Completes The Room",
+        heading: "When Drapery And Curtains Complete The Room",
         body:
-          "Custom drapery is often strongest when the window needs softness, a taller visual line, better room-darkening support, or a more finished design around existing shutters, shades, or blinds. The consultation can cover fabric direction, fullness, hardware, stacking space, and how the treatment should frame the room.",
+          "Custom drapery and curtains are often strongest when the window needs softness, a taller visual line, better room-darkening support, or a more finished design around existing shutters, shades, or blinds. The consultation can cover curtain and drapery panel styles, fabric direction, fullness, hardware, stacking space, and how the treatment should frame the room.",
         bullets: [
           "Layer drapery over shades for privacy and a softer finished look",
           "Use fabric panels to add height and warmth around large openings",
@@ -690,6 +692,15 @@ const parentPages: SitePage[] = [
         heading: "Local Planning",
         body:
           "The consultation covers room goals, fabric direction, privacy, light control, hardware, measurements, and how drapery fits with the rest of the home."
+      },
+      {
+        heading: "Drapery And Curtains By City",
+        body:
+          "805 Shutters plans and installs custom drapery and curtains across Ventura County. Start with the page for your city for local service details and a free in-home consultation.",
+        links: cityPages.map(([, caSlug, city]) => ({
+          label: `Drapery and curtains in ${city}`,
+          href: `/drapery/${caSlug}/`
+        }))
       }
     ],
     faqs: [
@@ -697,6 +708,16 @@ const parentPages: SitePage[] = [
         question: "Can drapery be layered with shutters, shades, or blinds?",
         answer:
           "Yes. Drapery can be layered with shades, shutters, or blinds when a room needs more softness, a finished designer look, extra privacy, or stronger room-darkening support."
+      },
+      {
+        question: "Do you offer custom curtains as well as drapery?",
+        answer:
+          "Yes. 805 Shutters plans custom curtains and drapery panels together during the same consultation, comparing fabric, lining, fullness, hardware, and how the panels should hang and stack for the room."
+      },
+      {
+        question: "Where do you install custom drapery and curtains?",
+        answer:
+          "805 Shutters installs custom drapery and curtains across Ventura County, including Camarillo, Thousand Oaks, Moorpark, Simi Valley, Newbury Park, Westlake Village, Oxnard, Ventura, Ojai, and nearby communities."
       },
       {
         question: "What is reviewed during a custom drapery consultation?",
@@ -2340,6 +2361,14 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       title: `Blinds near ${city} CA - 805 Shutters Shades & Blinds`,
       h1: `Custom Blinds in ${city}`,
       image: images.blinds
+    }),
+    cityProductPage({
+      path: `/drapery/${caSlug}/`,
+      city,
+      product: "drapery",
+      title: `Custom Drapery & Curtains near ${city} CA - 805 Shutters Shades & Blinds`,
+      h1: `Custom Drapery and Curtains in ${city}`,
+      image: images.drapery
     }),
     cityProductPage({
       path: `/window-coverings/${caSlug}/`,
