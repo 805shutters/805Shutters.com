@@ -11,6 +11,8 @@ export type EmailAttachment = {
 };
 
 const DEFAULT_EMAIL_FROM = "805 Shutters <805@805shutters.com>";
+const HEADER_LOGO_PATH = "/brand/805-shutters-logo-header.png";
+const EMAIL_LOGO_PATH = "/brand/805-shutters-logo-email-white.png";
 
 function resendFromAddress(): string {
   return process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || DEFAULT_EMAIL_FROM;
@@ -42,7 +44,7 @@ export async function sendEmail(input: {
         from: resendFromAddress(),
         to: [to],
         subject: input.subject,
-        html: input.html,
+        html: applyEmailLogoContrast(input.html),
         text: input.text,
         ...(input.attachments?.length
           ? {
@@ -65,6 +67,10 @@ export async function sendEmail(input: {
     console.warn("Resend send threw:", e);
     return { sent: false, error: e instanceof Error ? e.message : "send failed" };
   }
+}
+
+function applyEmailLogoContrast(html: string): string {
+  return html.replaceAll(HEADER_LOGO_PATH, EMAIL_LOGO_PATH);
 }
 
 export type QuoteEmailLine = {
