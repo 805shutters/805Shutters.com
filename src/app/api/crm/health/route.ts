@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
   if (supabase) {
     for (const table of requiredTables) {
-      const { error } = await supabase.from(table).select("*", { count: "exact", head: true });
+      const { error } = await supabase.from(table).select("*").limit(1);
       tableChecks.push({
         table,
         ready: !error,
