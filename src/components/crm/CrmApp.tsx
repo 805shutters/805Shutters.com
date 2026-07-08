@@ -2639,6 +2639,7 @@ export function CrmApp({
             installationInvoiceEmails={installationInvoiceEmails}
             activeDrill={commandDrill}
             busy={busy}
+            onProcessEmails={processEmails}
             onOpenPage={openCustomerSearchPage}
             onDrill={setDrill}
             onCloseDrill={() => setDrill(null)}
@@ -5134,6 +5135,7 @@ function CommandDashboard({
   installationInvoiceEmails,
   activeDrill,
   busy,
+  onProcessEmails,
   onOpenPage,
   onDrill,
   onCloseDrill,
@@ -5152,6 +5154,7 @@ function CommandDashboard({
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   activeDrill: DrillPayload | null;
   busy: boolean;
+  onProcessEmails: () => void;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
@@ -5292,6 +5295,7 @@ function CommandDashboard({
           files={files}
           events={events}
           busy={busy}
+          onProcessEmails={onProcessEmails}
           onOpenPage={onOpenPage}
           onOpenCustomer={onOpenCustomer}
           onReassignSale={onReassignSale}
@@ -6082,6 +6086,7 @@ function GlobalCustomerSearchPanel({
   files,
   events,
   busy,
+  onProcessEmails,
   onOpenPage,
   onOpenCustomer,
   onReassignSale,
@@ -6096,6 +6101,7 @@ function GlobalCustomerSearchPanel({
   files: CrmCustomerFile[];
   events: CrmCalendarEvent[];
   busy: boolean;
+  onProcessEmails: () => void;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
@@ -6237,6 +6243,9 @@ function GlobalCustomerSearchPanel({
               <div className="crm-global-search-route-panel" aria-label={`Pages for ${selectedResult.entry.customerName}`}>
                 <span>Routes</span>
                 <div className="crm-global-search-links">
+                  <button type="button" className="crm-global-search-process-button" onClick={onProcessEmails} disabled={busy}>
+                    Process Emails
+                  </button>
                   {selectedResult.pages.map((page) => (
                     <button
                       type="button"
