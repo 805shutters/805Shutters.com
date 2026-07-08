@@ -1055,6 +1055,63 @@ export function CrmApp({
     }
   }
 
+  async function processEmails() {
+    if (!session) return;
+    setBusy(true);
+    setMessage(null);
+
+    try {
+      const result = await crmFetch<{
+        installationInvoices: {
+          ok: boolean;
+          result?: {
+            matched: number;
+            serviceReports?: number;
+            needsReview: number;
+            unmatched: number;
+            skipped: number;
+            errors: number;
+          };
+          error?: string;
+        };
+        orderCogs: {
+          ok: boolean;
+          result?: {
+            matched: number;
+            needsReview: number;
+            unmatched: number;
+            skipped: number;
+            errors: number;
+            archived: number;
+            applied?: number;
+          };
+          error?: string;
+        };
+      }>(session, "/api/crm/process-emails", {
+        method: "POST",
+        body: JSON.stringify({})
+      });
+      await refresh();
+
+      const install = result.installationInvoices;
+      const order = result.orderCogs;
+      const installMessage =
+        install.ok && install.result
+          ? `Install: ${install.result.matched} matched, ${install.result.serviceReports || 0} completed reports, ${install.result.needsReview} review, ${install.result.unmatched} unmatched, ${install.result.skipped} skipped, ${install.result.errors} errors.`
+          : `Install failed: ${install.error || "unknown error"}.`;
+      const orderMessage =
+        order.ok && order.result
+          ? `Orders: ${order.result.matched} matched, ${order.result.applied || 0} applied, ${order.result.needsReview} review, ${order.result.unmatched} unmatched, ${order.result.skipped} skipped, ${order.result.errors} errors, ${order.result.archived} archived.`
+          : `Orders failed: ${order.error || "unknown error"}.`;
+
+      setMessage(`Process emails complete. ${installMessage} ${orderMessage}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Emails could not be processed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function sendEmailLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase) return;
@@ -2564,6 +2621,7 @@ export function CrmApp({
           orderCogsEmails={orderCogsEmails}
           installationInvoiceEmails={installationInvoiceEmails}
           busy={busy}
+          onProcessEmails={processEmails}
           onPullOrderEmails={pullOrderCogs}
           onPullInstallInvoices={pullInstallationInvoices}
           onDrill={setDrill}
@@ -4915,6 +4973,7 @@ function JobTrackingView({
   orderCogsEmails,
   installationInvoiceEmails,
   busy,
+  onProcessEmails,
   onPullOrderEmails,
   onPullInstallInvoices,
   onDrill
@@ -4926,6 +4985,7 @@ function JobTrackingView({
   orderCogsEmails: CrmOrderCogsEmail[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   busy: boolean;
+  onProcessEmails: () => void;
   onPullOrderEmails: () => void;
   onPullInstallInvoices: () => void;
   onDrill: (payload: DrillPayload) => void;
@@ -4977,6 +5037,9 @@ function JobTrackingView({
           <h2>Workflow By Status</h2>
         </div>
         <div className="crm-job-tracking-actions">
+          <button type="button" onClick={onProcessEmails} disabled={busy}>
+            Process Emails
+          </button>
           <button type="button" className="crm-ghost-button" onClick={onPullOrderEmails} disabled={busy}>
             Pull Order Emails
           </button>
