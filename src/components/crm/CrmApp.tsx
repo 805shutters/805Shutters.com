@@ -3501,10 +3501,12 @@ function crmContractPreviewUrl(url: string) {
 }
 
 function documentPreviewUrl(document: DrillDocument) {
-  // Owner wants the Quote Summary style builder view in preview panes; ids
-  // that no longer resolve redirect server-side to the share-token contract.
+  // The search pane must show the literal customer-facing contract that was
+  // emailed (share-token page); the builder view is only a fallback for quotes
+  // that never had a shared contract copy.
+  if (document.url) return crmContractPreviewUrl(document.url);
   if (document.quoteId) return `/crm/quote/${document.quoteId}/contract-preview`;
-  return crmContractPreviewUrl(document.url);
+  return document.url;
 }
 
 function relatedContracts(file: CrmCustomerFile | undefined, row?: CrmBookkeepingRow, job?: CrmJob) {
@@ -4073,6 +4075,11 @@ function customerSearchScore(entry: DrillEntry, query: string, sourceRank: numbe
 }
 
 function primaryQuoteForEntry(entry: DrillEntry, quotes: CrmQuote[]) {
+  // The quote the selected record itself points at wins outright — never show a
+  // sibling quote's contract for a sale that has its own.
+  const directQuote = entry.row?.quoteId ? quotes.find((quote) => quote.id === entry.row?.quoteId) : null;
+  if (directQuote) return directQuote;
+
   const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
   const quoteIds = uniqueCustomerFileIds([
     entry.row?.quoteId,
@@ -4085,11 +4092,21 @@ function primaryQuoteForEntry(entry: DrillEntry, quotes: CrmQuote[]) {
       normalizeCustomerName(quote.customer_name || "") === normalizeCustomerName(entry.customerName)
   );
 
-  return [...candidates].sort(
-    (a, b) =>
+  // Quotes on the entry's own job beat sibling jobs' quotes that merely share
+  // the customer.
+  const jobMatches = jobId ? candidates.filter((quote) => quote.job_id === jobId) : [];
+  const pool = jobMatches.length ? jobMatches : candidates;
+
+  return [...pool].sort((a, b) => {
+    // A signed/sold quote is the contract the customer was actually emailed;
+    // prefer it over more recently touched drafts.
+    const signedDiff = Number(Boolean(b.signed_at || b.sold_at)) - Number(Boolean(a.signed_at || a.sold_at));
+    if (signedDiff) return signedDiff;
+    return (
       dateSortValue(b.sold_at || b.approved_at || b.ordered_at || b.received_at || b.installed_at || b.created_at) -
       dateSortValue(a.sold_at || a.approved_at || a.ordered_at || a.received_at || a.installed_at || a.created_at)
-  )[0];
+    );
+  })[0];
 }
 
 function calendarEventForEntry(entry: DrillEntry, events: CrmCalendarEvent[]) {
@@ -6056,13 +6073,13 @@ function GlobalCustomerSearchPanel({
       ? {
           id: `quote-preview-${selectedQuote.id}`,
           title: selectedQuotePage.detail ? `Quote ${selectedQuotePage.detail}` : "Quote contract preview",
-          // Owner wants the Quote Summary style view (per-window option specs)
-          // in the pane; the share-token contract page is only the fallback for
-          // quotes with no builder record.
-          url: selectedQuoteSalesId
-            ? `/crm/quote/${selectedQuoteSalesId}/contract-preview`
-            : `/quote/${selectedQuote.share_token}`,
-          quoteId: selectedQuoteSalesId,
+          // Show the actual customer-facing contract that was emailed (the
+          // share-token page); the builder view only covers quotes that never
+          // had a shared contract copy.
+          url: selectedQuote.share_token
+            ? `/quote/${selectedQuote.share_token}`
+            : `/crm/quote/${selectedQuoteSalesId}/contract-preview`,
+          quoteId: selectedQuote.share_token ? null : selectedQuoteSalesId,
           kind: "Contract copy" as const
         }
       : null;
