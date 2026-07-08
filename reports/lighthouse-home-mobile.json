@@ -4112,7 +4112,7 @@
                       "width": 193,
                       "height": 48
                     },
-                    "snippet": "<a h-use-smooth-scroll=\"true\" href=\"https://www.yelp.com/biz/805-shutters-camarillo-2?osq=805+shutters\" data-colibri-id=\"1423-c48\" class=\"d-flex w-100 align-items-center h-button justify-content-lg-center justify…\" target=\"_blank\" rel=\"noopener\">",
+                    "snippet": "<a h-use-smooth-scroll=\"true\" href=\"https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2?osq=805+shutters\" data-colibri-id=\"1423-c48\" class=\"d-flex w-100 align-items-center h-button justify-content-lg-center justify…\" target=\"_blank\" rel=\"noopener\">",
                     "nodeLabel": "SEE ALL REVIEWS"
                   }
                 }
@@ -5094,7 +5094,7 @@
                 "width": 32,
                 "height": 32
               },
-              "snippet": "<a href=\"https://www.yelp.com/biz/805-shutters-camarillo-2?start=10\" h-use-smooth-scroll=\"true\">",
+              "snippet": "<a href=\"https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2?start=10\" h-use-smooth-scroll=\"true\">",
               "nodeLabel": "div.style-356 > div.d-flex > div.social-icon-container > a",
               "explanation": "Fix all of the following:\n  Element is in tab order and does not have accessible text\n\nFix any of the following:\n  Element does not have text that is visible to screen readers\n  aria-label attribute does not exist or is empty\n  aria-labelledby attribute does not exist, references elements that do not exist or references elements that are empty\n  Element has no title attribute"
             }

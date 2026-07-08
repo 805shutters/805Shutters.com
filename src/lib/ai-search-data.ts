@@ -352,8 +352,11 @@ export function buildAiSearchFeed() {
         site.social.instagram,
         site.social.yelp,
         "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2",
-        "https://www.bbb.org/us/ca/camarillo/profile/shutters/805-shutters-shades-blinds-1236-92080266",
-        "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738"
+        "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378",
+        "https://www.mapquest.com/us/california/805-shutters-shades-blinds-378112738",
+        "https://local.yahoo.com/info-225163327-805-shutters",
+        "https://www.chamberofcommerce.com/business-directory/california/santa-rosa-valley/window-treatment-store/2026058550-805-shutters-shades-blinds",
+        "https://www.2findlocal.com/b/15023840/805-shutters-shades-blinds-santa-rosa-valley-ca"
       ]
     },
     machineReadableFeeds: machineReadableFeeds.map((feed) => ({

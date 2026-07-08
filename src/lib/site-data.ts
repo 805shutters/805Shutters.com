@@ -52,7 +52,7 @@ export const site = {
   social: {
     facebook: "https://www.facebook.com/805shutters",
     instagram: "https://www.instagram.com/805shutters/",
-    yelp: "https://www.yelp.com/biz/805-shutters-camarillo-2"
+    yelp: "https://www.yelp.com/biz/805-shutters-shades-blinds-camarillo-2"
   },
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com",
   locality: "Santa Rosa Valley",
@@ -1112,7 +1112,7 @@ const supportPages: SitePage[] = [
           },
           {
             label: "BBB profile",
-            href: "https://www.bbb.org/us/ca/camarillo/profile/shutters/805-shutters-shades-blinds-1236-92080266"
+            href: "https://www.bbb.org/us/ca/camarillo/profile/window-coverings/805-shutters-shades-blinds-1236-3001378"
           },
           {
             label: "MapQuest listing",

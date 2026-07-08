@@ -31,7 +31,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 export async function GET() {
   const apiKey = process.env.YELP_API_KEY;
-  const businessAlias = process.env.YELP_BUSINESS_ALIAS || "805-shutters-camarillo-2";
+  const businessAlias = process.env.YELP_BUSINESS_ALIAS || "805-shutters-shades-blinds-camarillo-2";
 
   if (!apiKey) {
     return jsonResponse({
