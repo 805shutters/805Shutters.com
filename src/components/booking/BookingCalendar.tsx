@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "re
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
 import { getLeadAttribution, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
+import type { ResolvedAddress } from "@/lib/places/types";
 import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
 
 type AvailabilitySlot = {
@@ -257,20 +258,33 @@ export function BookingCalendar({
     resetAvailabilitySelection();
   }
 
-  function showAvailability() {
-    if (!projectDetailsReady) return;
+  function confirmProjectDetails(addressOverride?: string) {
+    const nextAddress = (addressOverride ?? serviceAddress).trim();
+    if (!selectedWindowCount || !nextAddress) return;
     trackBookingStep({
       step: "availability_request",
       productTypes: selectedProductTypes,
       windowCount: selectedWindowCount,
       ...bookingTrackingContext()
     });
+    if (nextAddress !== serviceAddress) {
+      setServiceAddress(nextAddress);
+    }
     setAvailability(null);
     setSelectedDate(null);
     setSelectedTime(null);
     setComplete(false);
     setMessage(null);
     setProjectConfirmed(true);
+  }
+
+  function handleAddressResolved(address: ResolvedAddress) {
+    confirmProjectDetails(address.fullAddress);
+  }
+
+  function showAvailability() {
+    if (!projectDetailsReady) return;
+    confirmProjectDetails();
   }
 
   function confirmationMessage(body: {
@@ -412,6 +426,7 @@ export function BookingCalendar({
                 name="projectAddress"
                 value={serviceAddress}
                 onChange={handleAddressChange}
+                onResolved={handleAddressResolved}
                 required
               />
             </label>
