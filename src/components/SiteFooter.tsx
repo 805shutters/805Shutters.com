@@ -74,6 +74,18 @@ export function SiteFooter() {
             ? "Commercial roller shades, solar shades, blackout shades, and window coverings for offices, storefronts, schools, medical spaces, and property managers."
             : "Custom shutters, blinds, shades, drapery, and commercial window coverings across Ventura County."}
         </p>
+        <address className="footer-nap" aria-label="805 Shutters local business information">
+          <strong>{site.legalName}</strong>
+          <span>
+            Based in {site.locality}, {site.address.addressRegion}
+          </span>
+          <span>Serving {site.serviceArea}</span>
+          <span>
+            <TrackedPhoneLink location="footer local business information">{site.phone}</TrackedPhoneLink>
+            <span aria-hidden="true"> • </span>
+            <a href={site.emailHref}>{site.email}</a>
+          </span>
+        </address>
         <div className="social-links footer-social" aria-label="Social links">
           <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
             <FacebookIcon />

@@ -3006,6 +3006,31 @@ textarea {
   letter-spacing: 0.2em;
 }
 
+.footer-nap {
+  display: grid;
+  gap: 5px;
+  max-width: 360px;
+  font-style: normal;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.footer-nap strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.footer-nap a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.footer-nap a:hover {
+  text-decoration: underline;
+}
+
 .footer-links {
   display: flex;
   flex-wrap: wrap;

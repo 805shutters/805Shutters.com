@@ -75,7 +75,7 @@ export function localBusinessJsonLd() {
         "@type": ["HomeAndConstructionBusiness", "LocalBusiness"],
         "@id": localBusinessId(),
         name: site.name,
-        legalName: "805 Shutters, Shades & Blinds",
+        legalName: site.legalName,
         alternateName: site.shortName,
         url: site.baseUrl,
         telephone: site.phone,
@@ -125,11 +125,7 @@ export function localBusinessJsonLd() {
         },
         address: {
           "@type": "PostalAddress",
-          streetAddress: "2209 Barbara Dr",
-          addressLocality: "Santa Rosa Valley",
-          addressRegion: "CA",
-          postalCode: "93012",
-          addressCountry: "US"
+          ...site.address
         },
         knowsAbout: [
           "Plantation shutters",
