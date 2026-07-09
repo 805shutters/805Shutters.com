@@ -26,8 +26,8 @@ export function getMeasureNeededMeta(meta: unknown): CrmMeasureNeededMeta {
   return objectMeta(objectMeta(meta)[MEASURE_NEEDED_META_KEY]) as CrmMeasureNeededMeta;
 }
 
-export function isMeasureNeededJob(job: Pick<CrmJob, "meta">) {
-  return getMeasureNeededMeta(job.meta).status === "needed";
+export function isMeasureNeededJob(job: Pick<CrmJob, "meta" | "status">) {
+  return job.status === "sold" && getMeasureNeededMeta(job.meta).status === "needed";
 }
 
 export function measureNeededLabel(job: Pick<CrmJob, "meta">) {

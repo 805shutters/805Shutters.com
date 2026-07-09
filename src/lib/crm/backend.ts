@@ -11,7 +11,7 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
-import { getMeasureNeededMeta, shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
+import { MEASURE_NEEDED_META_KEY, getMeasureNeededMeta, shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
   buildUnpaidPartnerPaymentItemForRow,
@@ -1717,12 +1717,28 @@ export async function updateCrmJob(
     throw new CrmAuthError(400, "No supported CRM job fields provided.");
   }
 
+  const updatedAt = new Date().toISOString();
   patch.meta = {
     ...(existing.meta || {}),
     ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
     lastUpdatedBy: actor.email,
-    lastUpdatedAt: new Date().toISOString()
+    lastUpdatedAt: updatedAt
   };
+  const measure = getMeasureNeededMeta(patch.meta);
+  if (Object.prototype.hasOwnProperty.call(patch, "status") && patch.status === "ordered" && measure.status === "needed") {
+    patch.meta = {
+      ...(patch.meta as Record<string, unknown>),
+      [MEASURE_NEEDED_META_KEY]: {
+        ...measure,
+        status: "measured",
+        measured_at: measure.measured_at || updatedAt,
+        measured_by: measure.measured_by || actor.email
+      }
+    };
+    if (!Object.prototype.hasOwnProperty.call(patch, "next_action")) {
+      patch.next_action = "Measurement complete";
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(patch, "lead_source")) {
     const leadSource = typeof patch.lead_source === "string" && patch.lead_source.trim() ? patch.lead_source.trim() : null;
     const meta = patch.meta && typeof patch.meta === "object" && !Array.isArray(patch.meta) ? patch.meta : {};

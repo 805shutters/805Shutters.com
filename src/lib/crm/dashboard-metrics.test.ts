@@ -198,10 +198,11 @@ describe("dashboard summary metrics", () => {
     expect(summary).not.toHaveProperty("payoffLeft");
   });
 
-  it("counts only active measure-needed jobs", () => {
+  it("counts only active sold measure-needed jobs", () => {
     const summary = buildDashboardSummaryMetrics({
       jobs: [
         job({ id: "needs-measure", meta: { measure_needed: { status: "needed" } } }),
+        job({ id: "ordered-measure", status: "ordered", meta: { measure_needed: { status: "needed" } } }),
         job({ id: "measured", meta: { measure_needed: { status: "measured" } } }),
         job({ id: "unflagged", meta: {} })
       ],
