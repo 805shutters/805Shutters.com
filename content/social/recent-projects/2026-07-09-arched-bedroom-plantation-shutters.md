@@ -23,11 +23,11 @@
   - public/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-wide.jpg
   - public/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-natural.jpg
 - Website status: deployed and verified on `https://805-one.vercel.app/gallery/` and `https://www.805shutters.com/gallery/`
-- Facebook status: blocked; Facebook Page ID is configured, but the Page publishing token with Page photo publishing permissions is missing
+- Facebook status: posted; public post `https://www.facebook.com/805shutters/posts/1644047657728535` (post ID `1644047657728535`)
 - Instagram status: blocked; missing Instagram business account ID and Instagram content publishing access token
 - Google Business Profile status: blocked; missing Business Profile account ID, location ID, and OAuth credentials with Business Profile API access
 
-## Facebook Post Draft
+## Facebook Post Published
 
 Recent plantation shutter project by 805 Shutters in Ventura County, featuring custom white shutters for a bedroom window grouping with an arched center window. Clean privacy, light control, and a finished look built around the shape of the room.
 
@@ -58,6 +58,6 @@ CTA: BOOK
 ## Platform Results
 
 - Website: deployed and verified on `https://805-one.vercel.app/gallery/`; primary image verified at `https://www.805shutters.com/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-natural.jpg`
-- Facebook: blocked; no post URL or media ID returned
+- Facebook: posted at `https://www.facebook.com/805shutters/posts/1644047657728535`; post ID `1644047657728535`; photo IDs `1644046087728692`, `1644046127728688`, and `1644046097728691`
 - Instagram: blocked; no media ID returned
 - Google Business Profile: blocked; no local post or media resource returned
