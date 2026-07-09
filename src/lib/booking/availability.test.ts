@@ -117,13 +117,14 @@ describe("buildBookingAvailability", () => {
 
   it("requires four hours of lead time for same-day fallback slots", () => {
     const availability = buildBookingAvailability("2030-06", [], undefined, {
-      now: zonedTimeToUtc("2030-06-03", "09:30")
+      now: zonedTimeToUtc("2030-06-03", "08:00")
     });
     const monday = availability.days.find((day) => day.date === "2030-06-03");
     const tuesday = availability.days.find((day) => day.date === "2030-06-04");
 
-    expect(monday?.slots.find((slot) => slot.time === "13:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "13:30")?.available).toBe(true);
+    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "11:30")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
     expect(tuesday?.slots.find((slot) => slot.time === "08:00")?.available).toBe(true);
   });
 
@@ -131,13 +132,21 @@ describe("buildBookingAvailability", () => {
     const availability = buildBookingAvailability(
       "2030-06",
       [],
-      [publishedSlot("2030-06-03", "13:00"), publishedSlot("2030-06-03", "13:30")],
-      { now: zonedTimeToUtc("2030-06-03", "09:30") }
+      [publishedSlot("2030-06-03", "10:00"), publishedSlot("2030-06-03", "12:00")],
+      { now: zonedTimeToUtc("2030-06-03", "08:00") }
     );
     const monday = availability.days.find((day) => day.date === "2030-06-03");
 
-    expect(monday?.slots.find((slot) => slot.time === "13:00")?.available).toBe(false);
-    expect(monday?.slots.find((slot) => slot.time === "13:30")?.available).toBe(true);
+    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
+  });
+
+  it("treats the four-hour cutoff at customer-visible minute precision", () => {
+    const now = new Date(zonedTimeToUtc("2030-06-03", "08:00").getTime() + 59_000);
+    const availability = buildBookingAvailability("2030-06", [], undefined, { now });
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "12:00")?.available).toBe(true);
   });
 
   it("requires a continuous open window for longer appointments", () => {
@@ -259,11 +268,11 @@ describe("freeRepsForSlot", () => {
   });
 
   it("does not return reps for same-day slots inside the four-hour lead time", () => {
-    const now = zonedTimeToUtc("2030-06-03", "09:30");
-    const slots = [publishedSlot("2030-06-03", "13:00"), publishedSlot("2030-06-03", "13:30")];
+    const now = zonedTimeToUtc("2030-06-03", "08:00");
+    const slots = [publishedSlot("2030-06-03", "10:00"), publishedSlot("2030-06-03", "12:00")];
 
-    expect(freeRepsForSlot("2030-06-03", "13:00", slots, [], { now })).toEqual([]);
-    expect(freeRepsForSlot("2030-06-03", "13:30", slots, [], { now })).toEqual(["Jessica"]);
+    expect(freeRepsForSlot("2030-06-03", "10:00", slots, [], { now })).toEqual([]);
+    expect(freeRepsForSlot("2030-06-03", "12:00", slots, [], { now })).toEqual(["Jessica"]);
   });
 
   it("does not return reps after the public self-booking daily cap is reached", () => {

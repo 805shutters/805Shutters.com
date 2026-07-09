@@ -123,10 +123,17 @@ function currentBookingTime(options: BookingAvailabilityOptions = {}) {
   return options.now instanceof Date && Number.isFinite(options.now.getTime()) ? options.now : new Date();
 }
 
+function truncateToMinute(date: Date) {
+  const truncated = new Date(date.getTime());
+  truncated.setUTCSeconds(0, 0);
+  return truncated;
+}
+
 function meetsSameDayLeadTime(date: string, slotStart: Date, options: BookingAvailabilityOptions = {}) {
   const now = currentBookingTime(options);
   if (date !== losAngelesDateString(now)) return true;
-  return slotStart.getTime() - now.getTime() >= sameDayBookingLeadTimeMinutes * 60 * 1000;
+  const cutoff = addMinutes(truncateToMinute(now), sameDayBookingLeadTimeMinutes);
+  return slotStart.getTime() >= cutoff.getTime();
 }
 
 export function isAvailabilitySlotsMissing(error: SupabaseQueryError) {
