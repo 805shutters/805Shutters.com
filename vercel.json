@@ -17,10 +17,6 @@
       "schedule": "19 17 * * *"
     },
     {
-      "path": "/api/cron/order-cogs",
-      "schedule": "0 21 * * *"
-    },
-    {
       "path": "/api/cron/payment-plan-reminders",
       "schedule": "35 17 * * *"
     },

@@ -1033,34 +1033,6 @@ export function CrmApp({
     }
   }
 
-  async function pullOrderCogs() {
-    if (!session) return;
-    setBusy(true);
-    setMessage(null);
-
-    try {
-      const result = await crmFetch<{
-        matched: number;
-        needsReview: number;
-        unmatched: number;
-        skipped: number;
-        errors: number;
-        archived: number;
-      }>(session, "/api/crm/order-cogs/pull", {
-        method: "POST",
-        body: JSON.stringify({})
-      });
-      await refresh();
-      setMessage(
-        `Order COGS pull: ${result.matched} matched, ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped, ${result.errors} errors, ${result.archived} archived.`
-      );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Order COGS emails could not be pulled.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function processEmailTargetForEntry(entry?: DrillEntry | null) {
     if (!entry) return null;
 
@@ -1093,19 +1065,6 @@ export function CrmApp({
           };
           error?: string;
         };
-        orderCogs: {
-          ok: boolean;
-          result?: {
-            matched: number;
-            needsReview: number;
-            unmatched: number;
-            skipped: number;
-            errors: number;
-            archived: number;
-            applied?: number;
-          };
-          error?: string;
-        };
       }>(session, "/api/crm/process-emails", {
         method: "POST",
         body: JSON.stringify(installationTarget ? { installationTarget } : {})
@@ -1113,18 +1072,13 @@ export function CrmApp({
       await refresh();
 
       const install = result.installationInvoices;
-      const order = result.orderCogs;
       const installMessage =
         install.ok && install.result
           ? `Install: ${install.result.matched} matched, ${install.result.serviceReports || 0} completed reports, ${install.result.needsReview} review, ${install.result.unmatched} unmatched, ${install.result.skipped} skipped, ${install.result.errors} errors.`
           : `Install failed: ${install.error || "unknown error"}.`;
-      const orderMessage =
-        order.ok && order.result
-          ? `Orders: ${order.result.matched} matched, ${order.result.applied || 0} applied, ${order.result.needsReview} review, ${order.result.unmatched} unmatched, ${order.result.skipped} skipped, ${order.result.errors} errors, ${order.result.archived} archived.`
-          : `Orders failed: ${order.error || "unknown error"}.`;
 
       const targetMessage = installationTarget?.customerName ? ` for ${installationTarget.customerName}` : "";
-      setMessage(`Process emails complete${targetMessage}. ${installMessage} ${orderMessage}`);
+      setMessage(`Install email pull complete${targetMessage}. ${installMessage}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Emails could not be processed.");
     } finally {
@@ -2641,8 +2595,6 @@ export function CrmApp({
           orderCogsEmails={orderCogsEmails}
           installationInvoiceEmails={installationInvoiceEmails}
           busy={busy}
-          onProcessEmails={() => processEmails()}
-          onPullOrderEmails={pullOrderCogs}
           onPullInstallInvoices={pullInstallationInvoices}
           onDrill={setDrill}
         />
@@ -2857,7 +2809,13 @@ export function CrmApp({
               onDelete={deleteBookkeepingRow}
               onOpenPayoff={() => openTab("payoff")}
             />
-            <OrderCogsInbox emails={orderCogsEmails} onPull={pullOrderCogs} busy={busy} />
+            <OrderCogsInbox
+              emails={orderCogsEmails}
+              rows={rows}
+              jobs={jobs}
+              files={customerFiles}
+              onDrill={setDrill}
+            />
             <InstallationInvoiceInbox
               invoices={installationInvoiceEmails}
               rows={rows}
@@ -5063,8 +5021,6 @@ function JobTrackingView({
   orderCogsEmails,
   installationInvoiceEmails,
   busy,
-  onProcessEmails,
-  onPullOrderEmails,
   onPullInstallInvoices,
   onDrill
 }: {
@@ -5075,8 +5031,6 @@ function JobTrackingView({
   orderCogsEmails: CrmOrderCogsEmail[];
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   busy: boolean;
-  onProcessEmails: () => void;
-  onPullOrderEmails: () => void;
   onPullInstallInvoices: () => void;
   onDrill: (payload: DrillPayload) => void;
 }) {
@@ -5127,12 +5081,6 @@ function JobTrackingView({
           <h2>Workflow By Status</h2>
         </div>
         <div className="crm-job-tracking-actions">
-          <button type="button" onClick={onProcessEmails} disabled={busy}>
-            Process Emails
-          </button>
-          <button type="button" className="crm-ghost-button" onClick={onPullOrderEmails} disabled={busy}>
-            Pull Order Emails
-          </button>
           <button type="button" className="crm-ghost-button" onClick={onPullInstallInvoices} disabled={busy}>
             Pull Install Emails
           </button>
@@ -6362,7 +6310,7 @@ function GlobalCustomerSearchPanel({
                     onClick={() => onProcessEmails(selectedResult.entry)}
                     disabled={busy}
                   >
-                    Process Emails
+                    Pull Install Emails
                   </button>
                   {selectedResult.pages.map((page) => (
                     <button
@@ -9936,12 +9884,16 @@ function InstallationInvoiceInbox({
 
 function OrderCogsInbox({
   emails,
-  onPull,
-  busy
+  rows,
+  jobs,
+  files,
+  onDrill
 }: {
   emails: CrmOrderCogsEmail[];
-  onPull: () => void;
-  busy: boolean;
+  rows: CrmBookkeepingRow[];
+  jobs: CrmJob[];
+  files: CrmCustomerFile[];
+  onDrill: (payload: DrillPayload) => void;
 }) {
   const counts = emails.reduce(
     (current, email) => {
@@ -9951,19 +9903,73 @@ function OrderCogsInbox({
     { matched: 0, needs_review: 0, unmatched: 0, skipped: 0, error: 0 }
   );
   const recent = emails.slice(0, 12);
+  const allMissingRows = missingCogsRows(rows);
+  const missingRows = allMissingRows.slice(0, 12);
+  const cogsTotal = rows.reduce((sum, row) => sum + (row.cogs || 0), 0);
+  const openMissingRow = (row: CrmBookkeepingRow) =>
+    onDrill({
+      title: "Missing COGS",
+      subtitle: "Cost of goods not yet entered",
+      metric: "missingCogs",
+      placement: "summary",
+      entries: rowsToEntries([row], (item) => item.total, { jobs, files })
+    });
 
   return (
     <section className="crm-ledger crm-order-cogs-inbox">
       <div className="crm-section-head">
         <div>
           <p className="eyebrow">Order COGS</p>
-          <h2>805 Gmail Reconciliation</h2>
+          <h2>805 CRM COGS History</h2>
         </div>
-        <button type="button" onClick={onPull} disabled={busy}>
-          Pull Order COGS
-        </button>
       </div>
-      <div className="crm-bookkeeping-counts" aria-label="Order COGS pull counts">
+      <div className="crm-bookkeeping-summary-grid crm-installation-ledger-summary">
+        <article className="crm-bookkeeping-summary-card">
+          <span>Missing COGS</span>
+          <strong>{allMissingRows.length}</strong>
+          <em>CRM rows</em>
+        </article>
+        <article className="crm-bookkeeping-summary-card">
+          <span>COGS Recorded</span>
+          <strong>{toLedgerCurrency(cogsTotal)}</strong>
+          <em>{rows.filter((row) => row.cogs > 0).length} rows</em>
+        </article>
+      </div>
+      <div className="crm-bookkeeping-table-wrap">
+        <table className="crm-bookkeeping-table">
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Sale</th>
+              <th>Order</th>
+              <th>COGS</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {missingRows.map((row) => (
+              <tr key={bookkeepingRowKey(row)}>
+                <td>
+                  <strong>{row.customerName}</strong>
+                  <span>{row.quoteNumber || row.source.replace("_", " ")}</span>
+                </td>
+                <td>{toLedgerCurrency(row.total)}</td>
+                <td>{row.manufacturerOrderRef || row.manufacturerName || "Not recorded"}</td>
+                <td>
+                  <span className="crm-bookkeeping-pill">Missing</span>
+                </td>
+                <td>
+                  <button type="button" className="crm-ledger-action-link" onClick={() => openMissingRow(row)}>
+                    Write COGS
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!missingRows.length ? <p className="crm-empty">No CRM rows are missing COGS.</p> : null}
+      </div>
+      <div className="crm-bookkeeping-counts" aria-label="Order COGS history counts">
         <span>Matched: {counts.matched}</span>
         <span>Review: {counts.needs_review}</span>
         <span>Unmatched: {counts.unmatched}</span>

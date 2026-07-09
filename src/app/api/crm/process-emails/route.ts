@@ -5,7 +5,6 @@ import {
   type ProcessInstallationInvoiceResult,
   processInstallationInvoiceInbox
 } from "@/lib/crm/installation-invoices";
-import { ProcessOrderCogsResult, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 export const runtime = "nodejs";
 
@@ -73,24 +72,19 @@ export async function POST(request: NextRequest) {
     const maxResults = typeof payload.maxResults === "number" ? payload.maxResults : undefined;
     const target = installationTargetFromPayload(payload);
 
-    const [installationInvoices, orderCogs] = await Promise.allSettled([
+    const [installationInvoices] = await Promise.allSettled([
       processInstallationInvoiceInbox(supabase, {
         actorEmail: email,
         maxResults,
         target
-      }),
-      processOrderCogsInbox(supabase, {
-        actorEmail: email,
-        maxResults
       })
     ]);
 
     const response = {
-      installationInvoices: processorRun<ProcessInstallationInvoiceResult>(installationInvoices),
-      orderCogs: processorRun<ProcessOrderCogsResult>(orderCogs)
+      installationInvoices: processorRun<ProcessInstallationInvoiceResult>(installationInvoices)
     };
 
-    const status = response.installationInvoices.ok || response.orderCogs.ok ? 200 : 502;
+    const status = response.installationInvoices.ok ? 200 : 502;
     return NextResponse.json(response, { status });
   } catch (error) {
     return crmAuthErrorResponse(error);
