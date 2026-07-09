@@ -22,10 +22,10 @@
   - public/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-card.jpg
   - public/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-wide.jpg
   - public/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-natural.jpg
-- Website status: verified locally on `/gallery/`; not deployed
-- Facebook status: blocked; Facebook Page ID is configured, but the Page publishing token and deployed public HTTPS image URL are missing
-- Instagram status: blocked; missing Instagram business account publishing credentials and deployed public HTTPS image URL
-- Google Business Profile status: blocked; missing Business Profile OAuth/account/location access and deployed public HTTPS image URL
+- Website status: deployed and verified on `https://805-one.vercel.app/gallery/` and `https://www.805shutters.com/gallery/`
+- Facebook status: blocked; Facebook Page ID is configured, but the Page publishing token with Page photo publishing permissions is missing
+- Instagram status: blocked; missing Instagram business account ID and Instagram content publishing access token
+- Google Business Profile status: blocked; missing Business Profile account ID, location ID, and OAuth credentials with Business Profile API access
 
 ## Facebook Post Draft
 
@@ -52,12 +52,12 @@ CTA: BOOK
 
 ## Google Business Profile Photo Entry Draft
 
-- Photo source after deploy: `/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-natural.jpg`
+- Photo source after deploy: `https://www.805shutters.com/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-natural.jpg`
 - Caption: White plantation shutters with an arched center bedroom window by 805 Shutters in Ventura County.
 
 ## Platform Results
 
-- Website: verified locally on `http://127.0.0.1:3000/gallery/`; no deployed URL yet
+- Website: deployed and verified on `https://805-one.vercel.app/gallery/`; primary image verified at `https://www.805shutters.com/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-natural.jpg`
 - Facebook: blocked; no post URL or media ID returned
 - Instagram: blocked; no media ID returned
 - Google Business Profile: blocked; no local post or media resource returned
