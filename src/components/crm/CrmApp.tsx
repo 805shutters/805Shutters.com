@@ -917,6 +917,11 @@ export function CrmApp({
       return;
     }
 
+    if (page.target === "contract") {
+      if (page.url) window.open(page.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
     if (page.target === "calendar") {
       setActiveTab("calendar");
       setCalendarManagementMode("appointments");
@@ -3331,13 +3336,14 @@ type PaymentPlanUiAction =
     }
   | { op: "mark_paid"; seq: number; payment_type?: string }
   | { op: "cancel"; reason?: string };
-type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "calendar";
+type CustomerSearchPageTarget = "customers" | "jobs" | "bookkeeping" | "quotes" | "contract" | "calendar";
 type CustomerSearchPage = {
   target: CustomerSearchPageTarget;
   label: string;
   detail?: string;
   quoteId?: string | null;
   eventId?: string | null;
+  url?: string | null;
 };
 type CustomerSearchResult = {
   id: string;
@@ -4233,6 +4239,23 @@ function rowMissingInstallInvoice(row: CrmBookkeepingRow | null | undefined) {
   return Boolean(row?.isMissingInstallerInvoice || (row && effectiveBookkeepingStatus(row) === "installed" && row.installationInvoiceAmount <= 0));
 }
 
+function customerContractPageForEntry(entry: DrillEntry, quote?: CrmQuote): CustomerSearchPage | null {
+  const contractDocument =
+    entry.documents?.find(
+      (document) => document.kind === "Contract copy" && Boolean(document.url) && !String(document.url).startsWith("/crm/quote/")
+    ) || null;
+  const url = quote?.share_token ? `/quote/${quote.share_token}` : contractDocument?.url || null;
+
+  if (!url) return null;
+
+  return {
+    target: "contract",
+    label: "Customer Contract",
+    detail: contractDocument?.title || quote?.quote_number || quote?.quote_label || undefined,
+    url
+  };
+}
+
 function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], events: CrmCalendarEvent[]): CustomerSearchPage[] {
   const pages: CustomerSearchPage[] = [{ target: "customers", label: "Customer File" }];
   const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
@@ -4241,9 +4264,11 @@ function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], even
 
   const quote = primaryQuoteForEntry(entry, quotes);
   if (quote) {
+    const customerContractPage = customerContractPageForEntry(entry, quote);
+    if (customerContractPage) pages.push(customerContractPage);
     pages.push({
       target: "quotes",
-      label: entry.file && entry.file.quotes.length > 1 ? `Contracts (${entry.file.quotes.length})` : "Contract",
+      label: customerContractPage ? "Quote Workspace" : entry.file && entry.file.quotes.length > 1 ? `Contracts (${entry.file.quotes.length})` : "Contract",
       quoteId: quote.id,
       detail: quote.quote_number || quote.quote_label || undefined
     });
@@ -5834,7 +5859,7 @@ function DrillSearchResultsPanel({
                     <button
                       type="button"
                       className="crm-ghost-button"
-                      key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
+                      key={`${page.target}-${page.url || page.quoteId || page.eventId || page.label}`}
                       onClick={() => onOpenPage(page, selectedResult.entry)}
                     >
                       {page.label}
@@ -6343,7 +6368,7 @@ function GlobalCustomerSearchPanel({
                     <button
                       type="button"
                       className="crm-ghost-button"
-                      key={`${page.target}-${page.quoteId || page.eventId || page.label}`}
+                      key={`${page.target}-${page.url || page.quoteId || page.eventId || page.label}`}
                       onClick={() => onOpenPage(page, selectedResult.entry)}
                     >
                       {page.label}
