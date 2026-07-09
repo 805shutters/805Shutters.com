@@ -192,6 +192,7 @@ import {
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
+import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
 import {
   calculateDiscountedPrice,
@@ -2802,6 +2803,23 @@ export function DesignCard({
     shadeType: currentDesign?.shade_type,
     liftSystem: currentDesign?.lift_system,
   });
+  const honeycombShadeSpecWarnings = getHoneycombShadeSpecWarnings({
+    productType: lineItem.product_type,
+    widthInches: widthIn,
+    heightInches: heightIn,
+    fabric: currentDesign?.fabric,
+    fabricCollection: stringOption(currentOptions, PRODUCT_COLOR_COLLECTION_DETAIL),
+    fabricColorCode: stringOption(currentOptions, PRODUCT_COLOR_CODE_DETAIL),
+    fabricType: stringOption(currentOptions, PRODUCT_COLOR_TYPE_DETAIL),
+    fabricProgramId: stringOption(currentOptions, PRODUCT_COLOR_PROGRAM_DETAIL),
+    cellSize: stringOption(currentOptions, "cell_size"),
+    shadeType: currentDesign?.shade_type,
+    liftSystem: currentDesign?.lift_system,
+  });
+  const manufacturerSpecWarnings = [
+    ...rollerShadeSpecWarnings,
+    ...honeycombShadeSpecWarnings,
+  ];
 
   const currentRetailPerSqft =
     isShutters && currentDesign?.supplier
@@ -3438,7 +3456,7 @@ export function DesignCard({
           />
         )}
 
-        {rollerShadeSpecWarnings.length > 0 && (
+        {manufacturerSpecWarnings.length > 0 && (
           <div
             role="alert"
             className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
@@ -3448,7 +3466,7 @@ export function DesignCard({
               <span>Manufacturer size warning</span>
             </div>
             <ul className="space-y-1 pl-6">
-              {rollerShadeSpecWarnings.map((warning) => (
+              {manufacturerSpecWarnings.map((warning) => (
                 <li key={warning.id} className="list-disc">
                   {warning.message}
                 </li>
