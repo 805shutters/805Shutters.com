@@ -108,6 +108,7 @@ export type ProcessInstallationInvoiceOptions = {
   maxResults?: number;
   messageIds?: string[];
   target?: InstallationInvoiceTarget | null;
+  allowTargetBlankAmountMatch?: boolean;
   actorEmail?: string;
 };
 
@@ -849,6 +850,7 @@ export function matchInstallationInvoiceToTargetCandidate(input: {
   extraction: ExtractedInstallationInvoice;
   candidates: InstallationInvoiceCandidate[];
   target?: InstallationInvoiceTarget | null;
+  allowBlankInstallationAmount?: boolean;
 }): InstallationInvoiceMatch | null {
   if (!input.extraction.invoiceAmount) return null;
   if (!isTrustedMtsInvoiceSource(input.subject, input.from)) return null;
@@ -884,6 +886,31 @@ export function matchInstallationInvoiceToTargetCandidate(input: {
         input.extraction.invoiceAmount
       ).toFixed(2)}.`
     };
+  }
+
+  if (input.allowBlankInstallationAmount) {
+    const blankAmountMatches = targetCandidates.filter(
+      (candidate) => roundMoney(candidate.existingInstallationAmount) <= 0
+    );
+
+    if (blankAmountMatches.length === 1) {
+      const candidate = blankAmountMatches[0];
+      return {
+        candidate,
+        status: "matched",
+        confidence: 0.92,
+        reason: `Selected customer ${candidate.customerName} matched a trusted MTS invoice from the CRM pull button.`
+      };
+    }
+
+    if (blankAmountMatches.length > 1) {
+      return {
+        candidate: blankAmountMatches[0],
+        status: "needs_review",
+        confidence: 0.72,
+        reason: "Selected customer context found multiple CRM rows with no install amount."
+      };
+    }
   }
 
   return null;
@@ -1530,20 +1557,32 @@ export async function processInstallationInvoiceInbox(
 
   const existingResult = await supabase
     .from("crm_installation_invoice_emails")
-    .select("gmail_message_id")
+    .select("gmail_message_id,match_status,applied_at")
     .in("gmail_message_id", messageIds);
   if (existingResult.error) {
     result.auditTableAvailable = false;
     result.auditError = existingResult.error.message;
   }
-  const existingIds = result.auditTableAvailable
-    ? new Set((existingResult.data || []).map((row) => String(row.gmail_message_id)))
-    : new Set<string>();
+  const existingRecords = result.auditTableAvailable
+    ? new Map(
+        (existingResult.data || []).map((row) => [
+          String(row.gmail_message_id),
+          {
+            matchStatus: String(row.match_status || ""),
+            appliedAt: row.applied_at ? String(row.applied_at) : null
+          }
+        ])
+      )
+    : new Map<string, { matchStatus: string; appliedAt: string | null }>();
   const candidates = await loadInvoiceCandidates(supabase);
   const appliedCandidateKeys = new Set<string>();
 
   for (const messageId of messageIds) {
-    if (existingIds.has(messageId)) {
+    const existingRecord = existingRecords.get(messageId);
+    if (
+      existingRecord &&
+      (!options.target || existingRecord.appliedAt || existingRecord.matchStatus === "matched" || existingRecord.matchStatus === "skipped")
+    ) {
       result.skipped += 1;
       continue;
     }
@@ -1615,7 +1654,8 @@ export async function processInstallationInvoiceInbox(
                 from,
                 extraction,
                 candidates,
-                target: options.target
+                target: options.target,
+                allowBlankInstallationAmount: options.allowTargetBlankAmountMatch
               })
             : null;
         if (selectedTargetMatch) match = selectedTargetMatch;

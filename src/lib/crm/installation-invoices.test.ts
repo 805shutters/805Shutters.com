@@ -297,6 +297,32 @@ describe("installation invoice customer matching", () => {
 
     expect(match).toBeNull();
   });
+
+  it("uses selected customer context for a trusted invoice when the install amount is blank and explicitly allowed", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      body: "Your invoice is ready! BALANCE DUE$90.00 Dear Ken Hill, Here's your invoice!"
+    });
+    const match = matchInstallationInvoiceToTargetCandidate({
+      subject: "Invoice 177662906 from MTS Installations Inc",
+      from: "MTS Installations Inc <quickbooks@notification.intuit.com>",
+      extraction: extracted,
+      target: { customerName: "Kristen Tranquada", quoteId: "quote-kristen", existingInstallationAmount: 0 },
+      candidates: [
+        candidate({
+          customerName: "Kristen Tranquada",
+          entryId: "entry-kristen",
+          quoteId: "quote-kristen",
+          existingInstallationAmount: 0
+        }),
+        candidate({ customerName: "Ken Hill", entryId: "entry-ken", quoteId: "quote-ken", existingInstallationAmount: 90 })
+      ],
+      allowBlankInstallationAmount: true
+    });
+
+    expect(match?.status).toBe("matched");
+    expect(match?.candidate?.entryId).toBe("entry-kristen");
+  });
 });
 
 describe("installation invoice workflow updates", () => {
