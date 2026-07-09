@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Archivo, Bodoni_Moda } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ConditionalChrome } from "@/components/ConditionalChrome";
-import { RouteTracking } from "@/components/RouteTracking";
-import { TrackingScripts } from "@/components/TrackingScripts";
-import { VisitorTelegramTracking } from "@/components/VisitorTelegramTracking";
+import { PublicActivityTracking } from "@/components/PublicActivityTracking";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";
 import { absoluteUrl, machineReadableFeeds } from "@/lib/ai-search-data";
 import { site } from "@/lib/site-data";
@@ -90,9 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="ai-search-feeds" content={machineReadableFeeds.map((feed) => absoluteUrl(feed.href)).join(",")} />
       </head>
       <body>
-        <TrackingScripts />
-        <RouteTracking />
-        <VisitorTelegramTracking />
+        <PublicActivityTracking />
         <CrmAuthRedirect />
         <script
           type="application/ld+json"
@@ -101,8 +95,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
         <ConditionalChrome>{children}</ConditionalChrome>
-        <Analytics />
-        <SpeedInsights />
       </body>
     </html>
   );

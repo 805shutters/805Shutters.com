@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type MutableRefObject } from "react";
+import { isPublicFacingPath } from "@/lib/public-activity";
 import { captureFirstTouchAttribution } from "@/lib/client-tracking";
 
 type VisitorSession = {
@@ -31,6 +32,7 @@ export function VisitorTelegramTracking() {
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
+    if (!isPublicFacingPath(currentPathWithSearch())) return;
 
     const session = ensureSession();
     if (!session.startSentAt) {
@@ -64,6 +66,7 @@ export function VisitorTelegramTracking() {
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
+    if (!isPublicFacingPath(currentPathWithSearch())) return;
     const session = ensureSession();
     const currentPath = currentPathWithSearch();
     if (session.lastPath !== currentPath) {
@@ -170,6 +173,9 @@ function saveLastDeparture(value: { sentAt: number; durationMs: number }) {
 }
 
 function sendAlert(event: "start" | "end", session: VisitorSession, reason?: "inactive" | "pagehide") {
+  if (!isPublicFacingPath(currentPathWithSearch())) return;
+  if (!isPublicFacingPath(session.entryPath) || !isPublicFacingPath(session.lastPath)) return;
+
   const now = Date.now();
   const payload = {
     event,

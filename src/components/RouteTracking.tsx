@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { isPublicFacingPath } from "@/lib/public-activity";
 import { getGa4Ids, getGoogleAdsId } from "@/lib/tracking-config";
 
 export function RouteTracking() {
@@ -9,6 +10,8 @@ export function RouteTracking() {
   const didMount = useRef(false);
 
   useEffect(() => {
+    if (!isPublicFacingPath(pathname)) return;
+
     if (!didMount.current) {
       didMount.current = true;
       return;

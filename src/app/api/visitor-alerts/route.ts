@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTelegramMessage } from "@/lib/notify/telegram";
+import { isPublicFacingPath } from "@/lib/public-activity";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,17 @@ export async function POST(request: NextRequest) {
   const event = normalizeEvent(payload.event);
   if (!event) {
     return NextResponse.json({ message: "Invalid visitor alert event" }, { status: 400 });
+  }
+
+  const alertPath = cleanString(payload.path, 300) || cleanPathFromHref(payload.href) || "/";
+  const entryPath = cleanString(payload.entryPath, 300);
+  const lastPath = cleanString(payload.lastPath, 300);
+  if (
+    !isPublicFacingPath(alertPath) ||
+    (entryPath && !isPublicFacingPath(entryPath)) ||
+    (lastPath && !isPublicFacingPath(lastPath))
+  ) {
+    return NextResponse.json({ sent: false, skipped: "non_public_path" });
   }
 
   const userAgent = request.headers.get("user-agent") || "";
