@@ -191,8 +191,26 @@ function isLegacyMtsQuote(quote: CrmQuote): boolean {
   return meta.legacy_quote_system === "mts_sales_quote" || typeof meta.mts_quote_id === "string";
 }
 
-function legacySourceTotalAdjustment(quote: CrmQuote, calculatedTotal: number): number {
+async function legacySourceTotalAdjustment(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  calculatedTotal: number,
+): Promise<number> {
   const meta = record(quote.meta);
+  const sourceQuoteId = typeof meta.mts_quote_id === "string" ? meta.mts_quote_id : null;
+  if (sourceQuoteId) {
+    const { data } = await supabase
+      .from("sales_quotes")
+      .select("total_amount")
+      .eq("id", sourceQuoteId)
+      .maybeSingle();
+    const currentSourceTotal = Number((data as { total_amount?: unknown } | null)?.total_amount);
+    if (Number.isFinite(currentSourceTotal) && currentSourceTotal > 0) {
+      const delta = round2(currentSourceTotal - calculatedTotal);
+      return Math.abs(delta) >= 0.01 ? delta : 0;
+    }
+  }
+
   const storedAdjustment = Number(meta.legacy_source_total_adjustment);
   if (Number.isFinite(storedAdjustment) && Math.abs(storedAdjustment) >= 0.01) return round2(storedAdjustment);
   const sourceTotal = Number(meta.legacy_source_total ?? quote.quote_total);
@@ -437,7 +455,7 @@ export async function loadPublicQuoteByToken(
   // also self-heals a stale stored quote_total.
   const adj = parseAdjustments(quote.meta);
   const money = computeQuoteMoney(subtotal, adj);
-  const sourceTotalAdjustment = legacyMts ? legacySourceTotalAdjustment(quote, money.total) : 0;
+  const sourceTotalAdjustment = legacyMts ? await legacySourceTotalAdjustment(supabase, quote, money.total) : 0;
   const total = sourceTotalAdjustment ? round2(money.total + sourceTotalAdjustment) : money.total;
   const depositPercent = adj.depositPercent || 0;
   const depositDue = depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;

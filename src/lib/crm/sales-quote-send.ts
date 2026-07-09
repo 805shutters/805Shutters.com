@@ -119,6 +119,16 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
   if (designError) throw new CrmAuthError(502, "Quote design options could not be loaded.");
 
   const designsByLineItemId = groupBy((designs || []) as AnyRow[], "line_item_id");
+  const pricing = calculateSalesQuoteMirrorPricing(quote, lineRows, designsByLineItemId);
+  const quoteForMirror: AnyRow = { ...quote, total_amount: pricing.total };
+  if (pricing.shouldSyncSourceTotal) {
+    const { error } = await supabase
+      .from("sales_quotes")
+      .update({ total_amount: pricing.total })
+      .eq("id", quote.id);
+    if (error) throw new CrmAuthError(502, "Quote total could not be reconciled before sending.");
+  }
+
   const accountId = quote.account_id || DEFAULT_805_ACCOUNT_ID;
   const job = await upsertOne(supabase, "crm_jobs", {
     external_source: IMPORT_SOURCE,
@@ -137,26 +147,25 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     next_action_due: null,
     appointment_start: quote.appointment_date || null,
     appointment_end: null,
-    estimated_total: money(quote.total_amount),
+    estimated_total: money(quoteForMirror.total_amount),
     deposit_paid: money(quote.deposit_paid),
     notes: quote.installer_notes || null,
     meta: { mts_quote_id: quote.id, account_id: accountId, source: "sales_quote_send" },
   });
 
-  const legacySubtotal = legacyQuoteSubtotal(lineRows, designsByLineItemId);
   const importedQuote = await upsertOne(supabase, "crm_quotes", {
     external_source: IMPORT_SOURCE,
     external_id: `quote:${quote.id}`,
     job_id: job.id,
     quote_number: quote.quote_number || null,
     status: mapQuoteStatus(quote.status),
-    quote_total: money(quote.total_amount),
+    quote_total: money(quoteForMirror.total_amount),
     materials_cost: money(quote.manufacturer_cost),
     labor_cost: 0,
     discount: 0,
     tax: 0,
-    deposit_required: legacyContractDepositDue(quote),
-    balance_due: legacyContractBalanceDue(quote),
+    deposit_required: legacyContractDepositDue(quoteForMirror),
+    balance_due: legacyContractBalanceDue(quoteForMirror),
     sold_by: titleOwner(quote.sales_owner),
     sent_at: quote.sent_at || null,
     approved_at: quote.signed_at || null,
@@ -177,7 +186,7 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     quote_group_id: quote.quote_group_id || null,
     quote_label: quote.quote_letter || null,
     notes: quote.installer_notes || null,
-    meta: buildImportedQuoteMeta(quote, legacySubtotal, accountId),
+    meta: buildImportedQuoteMeta(quoteForMirror, pricing.subtotal, accountId),
   });
 
   await upsertImportedQuoteStructure(supabase, importedQuote.id, lineRows, designsByLineItemId);
@@ -332,6 +341,25 @@ function buildImportedQuoteMeta(quote: AnyRow, legacySubtotal: number, accountId
     legacy_contract_deposit_due: legacyContractDepositDue(quote),
     legacy_contract_balance_due: legacyContractBalanceDue(quote),
     adjustments,
+  };
+}
+
+export function calculateSalesQuoteMirrorPricing(
+  quote: AnyRow,
+  quoteLineItems: AnyRow[],
+  designsByLineItemId: Map<string, AnyRow[]>,
+) {
+  const subtotal = legacyQuoteSubtotal(quoteLineItems, designsByLineItemId);
+  const adjustments = legacyQuoteAdjustments(quote.installer_notes);
+  const calculatedTotal = computeLegacyTotal(subtotal, adjustments);
+  const storedTotal = money(quote.total_amount);
+  const hasLineItemTotal = quoteLineItems.length > 0 && subtotal > 0;
+  const total = hasLineItemTotal ? calculatedTotal : storedTotal;
+
+  return {
+    subtotal,
+    total,
+    shouldSyncSourceTotal: hasLineItemTotal && Math.abs(storedTotal - total) >= 0.01,
   };
 }
 
