@@ -22,6 +22,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@mts/components/ui/tabs";
 import { Checkbox } from "@mts/components/ui/checkbox";
 import {
+  AlertTriangle,
   Archive,
   ChevronDown,
   Copy,
@@ -191,6 +192,7 @@ import {
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
+import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
 import {
   calculateDiscountedPrice,
   removeQuoteDesignDiscount,
@@ -2790,6 +2792,16 @@ export function DesignCard({
     isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, true) : null;
   const rawSqft =
     isShutters && widthIn > 0 && heightIn > 0 ? calculateSqft(widthIn, heightIn, false) : null;
+  const rollerShadeSpecWarnings = getRollerShadeSpecWarnings({
+    productType: lineItem.product_type,
+    widthInches: widthIn,
+    heightInches: heightIn,
+    fabricCollection:
+      stringOption(currentOptions, ROLLER_FABRIC_COLOR_COLLECTION_DETAIL) || currentDesign?.fabric,
+    fabricColorCode: stringOption(currentOptions, ROLLER_FABRIC_COLOR_CODE_DETAIL),
+    shadeType: currentDesign?.shade_type,
+    liftSystem: currentDesign?.lift_system,
+  });
 
   const currentRetailPerSqft =
     isShutters && currentDesign?.supplier
@@ -3424,6 +3436,25 @@ export function DesignCard({
             onUpdateFields={updateFields}
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
           />
+        )}
+
+        {rollerShadeSpecWarnings.length > 0 && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
+          >
+            <div className="mb-1 flex items-center gap-2 font-bold">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Manufacturer size warning</span>
+            </div>
+            <ul className="space-y-1 pl-6">
+              {rollerShadeSpecWarnings.map((warning) => (
+                <li key={warning.id} className="list-disc">
+                  {warning.message}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         <PriceExplanation
