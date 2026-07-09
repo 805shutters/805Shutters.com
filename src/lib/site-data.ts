@@ -170,6 +170,18 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
+    image: "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-card.jpg",
+    imageAlt: "White plantation shutters with an arched center bedroom window in Ventura County"
+  },
+  {
+    image: "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-card.jpg",
+    imageAlt: "Custom arched plantation shutters with side bedroom shutters in Ventura County"
+  },
+  {
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-single-window-card.jpg",
+    imageAlt: "White plantation shutters installed on a Ventura County bedroom window"
+  },
+  {
     image: "/images/portfolio-enhanced/kitchen-roman-shade-lowered-card.jpg",
     imageAlt: "Textured Roman shade lowered over a Ventura County kitchen sink window"
   },

@@ -53,6 +53,33 @@ const photos = [
     grade: "phone"
   },
   {
+    base: "arched-bedroom-plantation-shutters-room",
+    source: "2026-07-09-arched-bedroom-plantation-shutters-room.jpg",
+    category: "Shutters",
+    title: "Arched Bedroom Plantation Shutters",
+    alt: "White plantation shutters with an arched center bedroom window in Ventura County",
+    position: "attention",
+    grade: "phone"
+  },
+  {
+    base: "arched-bedroom-plantation-shutters-detail",
+    source: "2026-07-09-arched-bedroom-plantation-shutters-detail.jpg",
+    category: "Shutters",
+    title: "Arched Shutter Detail",
+    alt: "Custom arched plantation shutters with side bedroom shutters in Ventura County",
+    position: "center",
+    grade: "phone"
+  },
+  {
+    base: "bedroom-plantation-shutters-single-window",
+    source: "2026-07-09-bedroom-plantation-shutters-single-window.jpg",
+    category: "Shutters",
+    title: "Bedroom Plantation Shutters",
+    alt: "White plantation shutters installed on a Ventura County bedroom window",
+    position: "attention",
+    grade: "phone"
+  },
+  {
     base: "specialty-arch-window-shutters",
     source: "ventura-county-specialty-arch-window-shutters-jpg.jpg",
     category: "Shutters",

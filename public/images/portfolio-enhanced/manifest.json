@@ -60,6 +60,42 @@
     "natural": "/images/portfolio-enhanced/kitchen-roman-shade-raised-natural.jpg"
   },
   {
+    "base": "arched-bedroom-plantation-shutters-room",
+    "source": "2026-07-09-arched-bedroom-plantation-shutters-room.jpg",
+    "category": "Shutters",
+    "title": "Arched Bedroom Plantation Shutters",
+    "alt": "White plantation shutters with an arched center bedroom window in Ventura County",
+    "position": "attention",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-wide.jpg",
+    "card": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-card.jpg",
+    "natural": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-natural.jpg"
+  },
+  {
+    "base": "arched-bedroom-plantation-shutters-detail",
+    "source": "2026-07-09-arched-bedroom-plantation-shutters-detail.jpg",
+    "category": "Shutters",
+    "title": "Arched Shutter Detail",
+    "alt": "Custom arched plantation shutters with side bedroom shutters in Ventura County",
+    "position": "center",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-wide.jpg",
+    "card": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-card.jpg",
+    "natural": "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-detail-natural.jpg"
+  },
+  {
+    "base": "bedroom-plantation-shutters-single-window",
+    "source": "2026-07-09-bedroom-plantation-shutters-single-window.jpg",
+    "category": "Shutters",
+    "title": "Bedroom Plantation Shutters",
+    "alt": "White plantation shutters installed on a Ventura County bedroom window",
+    "position": "attention",
+    "grade": "phone",
+    "wide": "/images/portfolio-enhanced/bedroom-plantation-shutters-single-window-wide.jpg",
+    "card": "/images/portfolio-enhanced/bedroom-plantation-shutters-single-window-card.jpg",
+    "natural": "/images/portfolio-enhanced/bedroom-plantation-shutters-single-window-natural.jpg"
+  },
+  {
     "base": "specialty-arch-window-shutters",
     "source": "ventura-county-specialty-arch-window-shutters-jpg.jpg",
     "category": "Shutters",
