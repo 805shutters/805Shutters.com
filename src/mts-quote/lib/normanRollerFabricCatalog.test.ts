@@ -14,8 +14,8 @@ import { getProductPriceBreakdown } from "./pricingEngine";
 
 describe("MTS Norman roller fabric catalog", () => {
   it("loads the full verified roller color catalog", () => {
-    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(343);
-    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(342);
+    expect(MTS_ROLLER_FABRIC_COLORS).toHaveLength(350);
+    expect(MTS_ROLLER_FABRIC_COLORS.filter((row) => row.available)).toHaveLength(350);
     expect(new Set(MTS_ROLLER_FABRIC_COLORS.map((row) => row.collection))).toHaveLength(73);
     expect(
       MTS_ROLLER_FABRIC_COLORS.every(
@@ -42,9 +42,14 @@ describe("MTS Norman roller fabric catalog", () => {
         colorName: "Ecru",
       }),
     ]);
-    expect(searchMtsRollerFabricColors("F0818", { includeUnavailable: true })).toEqual([
-      expect.objectContaining({ collection: "Luxe", available: false, programId: null }),
+    expect(searchMtsRollerFabricColors("F0407")).toEqual([
+      expect.objectContaining({ collection: "NA820 (3%)", colorName: "Oyster/Pewter" }),
     ]);
+    expect(searchMtsRollerFabricColors("F1714")).toEqual([
+      expect.objectContaining({ collection: "Cove", colorName: "Jet Black" }),
+    ]);
+    expect(searchMtsRollerFabricColors("F11714", { includeUnavailable: true })).toEqual([]);
+    expect(searchMtsRollerFabricColors("F0818", { includeUnavailable: true })).toEqual([]);
   });
 
   it("finds selected colors by stored collection and color code", () => {
@@ -80,6 +85,7 @@ describe("MTS Norman roller pricing routes", () => {
     expect(getRollerFabricPriceGroup("Jamaica (Room Darkening)")).toBe("group2");
     expect(getRollerFabricPriceGroup("Garden")).toBe("group3");
     expect(getRollerFabricPriceGroup("Serene 7%")).toBe("solarCordlessGroup1");
+    expect(getRollerFabricPriceGroup("NA820 (3%)")).toBe("solarCordlessGroup2");
   });
 
   it("does not silently price unknown roller fabrics at group 1", () => {
@@ -109,6 +115,18 @@ describe("MTS Norman roller pricing routes", () => {
     ).toMatchObject({
       price: expect.any(Number),
       gridKey: "group3",
+      pricingMethod: "grid",
+    });
+    expect(
+      getProductPriceBreakdown({
+        productType: "Roller Shades",
+        width: 30,
+        height: 48,
+        fabric: "NA820 (3%)",
+      })
+    ).toMatchObject({
+      price: expect.any(Number),
+      gridKey: "solarCordlessGroup2",
       pricingMethod: "grid",
     });
   });

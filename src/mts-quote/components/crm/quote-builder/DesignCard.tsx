@@ -2365,7 +2365,7 @@ function RollerFabricAutocomplete({
   }, [hasDraft, selectedLabel]);
 
   const results = useMemo(
-    () => searchMtsRollerFabricColors(query, { includeUnavailable: true, limit: 60 }),
+    () => searchMtsRollerFabricColors(query, { limit: 400 }),
     [query]
   );
 

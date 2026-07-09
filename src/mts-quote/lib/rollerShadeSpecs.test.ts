@@ -66,6 +66,13 @@ describe("roller shade manufacturer spec warnings", () => {
     expect(getRollerFabricMaxWidth("Dazzle", "F1538")).toBe(110);
     expect(getRollerFabricMaxWidth("Cove", "F1714")).toBe(110);
     expect(getRollerFabricMaxWidth("Garden", "F1515")).toBe(118);
+    expect(
+      warningMessages({
+        widthInches: 112,
+        fabricCollection: "Cove",
+        fabricColorCode: "F1714",
+      }).join(" ")
+    ).toContain('to 110"');
   });
 
   it("uses PDF lift-system minimums rather than a hardcoded 10 inches", () => {

@@ -15,8 +15,8 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1231);
-    expect(getProductColorOptions("roller")).toHaveLength(343);
+    expect(productColorOptions).toHaveLength(1238);
+    expect(getProductColorOptions("roller")).toHaveLength(350);
     expect(getProductColorOptions("roman")).toHaveLength(202);
     expect(getProductColorOptions("honeycomb")).toHaveLength(213);
     expect(getProductColorOptions("vertical_honeycomb")).toHaveLength(213);
@@ -109,13 +109,16 @@ describe("Norman product color options", () => {
     });
   });
 
-  it("keeps unverified roller public-page colors unavailable and out of default search", () => {
-    expect(findColor("roller", (row) => row.collection === "Luxe" && row.colorCode === "F0818")).toMatchObject({
-      available: false,
-      programId: null,
+  it("exposes current roller guide colors and removes stale public-page-only rows", () => {
+    expect(findColor("roller", (row) => row.collection === "NA820 (3%)" && row.colorCode === "F0407")).toMatchObject({
+      colorName: "Oyster/Pewter",
+      available: true,
+      programId: "roller_cordless_solar_screen_price_group_2_pg2",
     });
+    expect(searchProductColorOptions("roller", "F0407")).toHaveLength(1);
     expect(searchProductColorOptions("roller", "F0818")).toHaveLength(0);
-    expect(searchProductColorOptions("roller", "F0818", { includeUnavailable: true })).toHaveLength(1);
+    expect(searchProductColorOptions("roller", "F0818", { includeUnavailable: true })).toHaveLength(0);
+    expect(searchProductColorOptions("roller", "F11714", { includeUnavailable: true })).toHaveLength(0);
   });
 
   it("searches every product by code, name, collection, and type", () => {
