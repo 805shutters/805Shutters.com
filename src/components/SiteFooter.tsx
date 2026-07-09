@@ -86,6 +86,10 @@ export function SiteFooter() {
             <a href={site.emailHref}>{site.email}</a>
           </span>
         </address>
+        <p className="footer-verification-note">
+          <Link href={site.officialPath}>Verify official contact information</Link>
+          <span>{site.nonAffiliationStatement}</span>
+        </p>
         <div className="social-links footer-social" aria-label="Social links">
           <a href={site.social.facebook} aria-label="805 Shutters on Facebook" target="_blank" rel="noreferrer">
             <FacebookIcon />
@@ -138,6 +142,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="footer-links">
+        <Link href={site.officialPath}>Official contact</Link>
         <Link href="/free-window-treatment-consultation/">Free consultation</Link>
         <Link href="/financing/">Financing</Link>
         <Link href="/best-window-treatments-ventura-county/">Window treatment guide</Link>

@@ -1452,7 +1452,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
           <p className="eyebrow">About Us</p>
           <h2>Locally owned and family operated, right here in Ventura County.</h2>
           <p>
-            805 Shutters, Shades &amp; Blinds is a family-owned company led by owner Ken Hill.
+            805 Shutters is a family-owned company led by owner Ken Hill.
             For more than 30 years, homeowners and businesses across Ventura County have trusted
             us for custom shutters, shades, and blinds &mdash; measured, sold, and installed by a
             local team, never a national call center.

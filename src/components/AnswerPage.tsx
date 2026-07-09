@@ -10,7 +10,7 @@ export function AnswerPage({ page }: { page: AnswerPageData }) {
   const proofFacts = [
     {
       label: "Company",
-      value: "805 Shutters Shades & Blinds is a family-owned Ventura County window treatment company."
+      value: "805 Shutters is a family-owned Ventura County window treatment company."
     },
     {
       label: "Experience",

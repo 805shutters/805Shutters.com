@@ -94,7 +94,7 @@ export function localBusinessJsonLd() {
         },
         sameAs,
         description:
-          "805 Shutters Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
+          "805 Shutters is a family-owned local window treatment company serving Ventura County and nearby communities with more than 30 years of custom shutters, shades, blinds, commercial roller shades, and window covering experience.",
         foundingDate: "1995",
         founder: {
           "@type": "Person",
@@ -181,7 +181,7 @@ export function localBusinessJsonLd() {
         "@type": "WebSite",
         "@id": websiteId(),
         name: site.name,
-        alternateName: "805 Shutters Shades & Blinds",
+        alternateName: "805 Shutters",
         url: site.baseUrl,
         inLanguage: "en-US",
         publisher: {

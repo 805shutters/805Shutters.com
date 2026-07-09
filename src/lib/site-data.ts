@@ -1,3 +1,5 @@
+import { brandIdentity } from "./brand-identity";
+
 export type Service = {
   title: string;
   shortTitle: string;
@@ -41,14 +43,19 @@ export type SitePage = {
 };
 
 export const site = {
-  name: "805 Shutters",
-  shortName: "805 Shutters",
-  legalName: "805 Shutters Shades & Blinds",
-  phone: "805-806-9344",
-  phoneHref: "tel:+18058069344",
-  smsHref: "sms:+18058069344",
-  email: "805@805shutters.com",
-  emailHref: "mailto:805@805shutters.com",
+  name: brandIdentity.name,
+  shortName: brandIdentity.name,
+  legalName: brandIdentity.name,
+  phone: brandIdentity.phone,
+  phoneHref: brandIdentity.phoneHref,
+  smsHref: brandIdentity.smsHref,
+  email: brandIdentity.email,
+  emailHref: brandIdentity.emailHref,
+  domain: brandIdentity.domain,
+  website: brandIdentity.website,
+  officialPath: brandIdentity.officialPath,
+  serviceDescription: brandIdentity.serviceDescription,
+  nonAffiliationStatement: brandIdentity.nonAffiliationStatement,
   social: {
     facebook: "https://www.facebook.com/805shutters",
     instagram: "https://www.instagram.com/805shutters/",
@@ -67,7 +74,7 @@ export const site = {
     postalCode: "93012",
     addressCountry: "US"
   },
-  serviceArea: "Ventura County",
+  serviceArea: brandIdentity.serviceArea,
   areas: [
     "Camarillo",
     "Thousand Oaks",
@@ -1088,11 +1095,11 @@ const supportPages: SitePage[] = [
     path: "/about/",
     title: "About 805 Shutters | Family-Owned Ventura County Window Treatments",
     description:
-      "Learn about 805 Shutters Shades & Blinds, a family-owned Ventura County window treatment company with over 30 years of local experience and 5-star Yelp reviews.",
-    h1: "About 805 Shutters Shades & Blinds",
+      "Learn about 805 Shutters, a family-owned Ventura County window treatment company with over 30 years of local experience and 5-star Yelp reviews.",
+    h1: "About 805 Shutters",
     eyebrow: "Family-owned by Ken Hill",
     intro:
-      "805 Shutters Shades & Blinds is a family-owned local window treatment company serving Ventura County and nearby communities. For more than 30 years, homeowners and businesses have trusted us for custom shutters, shades, blinds, commercial roller shades, and window coverings installed with personal service.",
+      "805 Shutters is a family-owned local window treatment company serving Ventura County and nearby communities. For more than 30 years, homeowners and businesses have trusted us for custom shutters, shades, blinds, commercial roller shades, and window coverings installed with personal service.",
     image: images.aboutLegacy,
     imageAlt: "Legacy 805 Shutters blue blinds photo from the previous About page",
     gallery: [
@@ -1179,7 +1186,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Local Ventura County Service",
         body:
-          "805 Shutters Shades & Blinds is based in Santa Rosa Valley and serves Ventura County communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Fillmore, and Oak Park."
+          "805 Shutters is based in Santa Rosa Valley and serves Ventura County communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Fillmore, and Oak Park."
       }
     ]
   },
@@ -1428,7 +1435,7 @@ const supportPages: SitePage[] = [
     path: "/reviews/",
     title: "805 Shutters Reviews | Ventura County Window Treatments",
     description:
-      "Read reviews for 805 Shutters Shades & Blinds serving Ventura County with custom shutters, shades, blinds, and professional installation.",
+      "Read reviews for 805 Shutters serving Ventura County with custom shutters, shades, blinds, and professional installation.",
     h1: "805 Shutters Reviews",
     eyebrow: "Customer proof",
     intro:
@@ -1471,7 +1478,7 @@ const supportPages: SitePage[] = [
       {
         question: "Where can I read reviews of 805 Shutters?",
         answer:
-          "805 Shutters reviews are published on Google and Yelp under '805 Shutters Shades & Blinds'. The recent projects page on this site also shows completed local installations with photos."
+          "805 Shutters reviews are published on Google and Yelp under '805 Shutters'. The recent projects page on this site also shows completed local installations with photos."
       },
       {
         question: "Does 805 Shutters serve my city?",
@@ -1481,7 +1488,7 @@ const supportPages: SitePage[] = [
       {
         question: "How do I leave a review?",
         answer:
-          "Search for '805 Shutters Shades & Blinds' on Google or Yelp and tap the review button. Customers also receive a direct review link by text after installation."
+          "Search for '805 Shutters' on Google or Yelp and tap the review button. Customers also receive a direct review link by text after installation."
       }
     ],
     cta: "Schedule a free in-home consultation"
@@ -1535,10 +1542,10 @@ const supportPages: SitePage[] = [
 ];
 
 const projectServiceArea =
-  "805 Shutters Shades & Blinds serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities.";
+  "805 Shutters serves Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Santa Rosa Valley, Port Hueneme, Santa Paula, Fillmore, Oak Park, and nearby Ventura County communities.";
 
 const projectCompanyProof =
-  "805 Shutters Shades & Blinds is a family-owned local business with over 30 years of experience measuring and installing custom shutters, shades, blinds, commercial roller shades, and window coverings across Ventura County and nearby communities.";
+  "805 Shutters is a family-owned local business with over 30 years of experience measuring and installing custom shutters, shades, blinds, commercial roller shades, and window coverings across Ventura County and nearby communities.";
 
 const recentProjectPages: SitePage[] = [
   {
@@ -1551,11 +1558,11 @@ const recentProjectPages: SitePage[] = [
     intro:
       "A recent local shutter project showing shutters used on a sliding door opening for privacy, light control, and a finished bedroom look.",
     image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-wide.jpg",
-    imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/bedroom-sliding-door-shutters-card.jpg",
-        imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Custom shutters for a Ventura County bedroom sliding door installed by 805 Shutters."
       }
     ],
     sections: [
@@ -1582,7 +1589,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Who installs sliding door shutters in Ventura County?",
         body:
-          "805 Shutters Shades & Blinds installs custom shutters and window coverings for sliding doors throughout Ventura County."
+          "805 Shutters installs custom shutters and window coverings for sliding doors throughout Ventura County."
       },
       {
         heading: "Can you help compare shutters, shades, and blinds for a sliding door?",
@@ -1601,11 +1608,11 @@ const recentProjectPages: SitePage[] = [
     intro:
       "A recent roller shade project showing a clean shade solution for a wide window opening with privacy and glare control.",
     image: "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg",
-    imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/roller-shade-large-window-card.jpg",
-        imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Roller shade covering a large Ventura County window installed by 805 Shutters."
       }
     ],
     sections: [
@@ -1632,12 +1639,12 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Does 805 Shutters install roller shades in Ventura County?",
         body:
-          "Yes. 805 Shutters Shades & Blinds installs roller shades for homes and businesses throughout Ventura County."
+          "Yes. 805 Shutters installs roller shades for homes and businesses throughout Ventura County."
       },
       {
         heading: "Do you install commercial roller shades?",
         body:
-          "Yes. 805 Shutters Shades & Blinds also installs commercial roller shades and commercial window coverings."
+          "Yes. 805 Shutters also installs commercial roller shades and commercial window coverings."
       }
     ]
   },
@@ -1651,11 +1658,11 @@ const recentProjectPages: SitePage[] = [
     intro:
       "A recent local shade project showing layered shades selected for a clean look, privacy, and softened natural light.",
     image: "/images/portfolio-enhanced/layered-shades-bedroom-window-wide.jpg",
-    imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/layered-shades-bedroom-window-card.jpg",
-        imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Layered window shades on a Ventura County bedroom window installed by 805 Shutters."
       }
     ],
     sections: [
@@ -1692,7 +1699,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Does 805 Shutters install custom shades in Ventura County?",
         body:
-          "Yes. 805 Shutters Shades & Blinds installs custom shades throughout Ventura County and nearby communities."
+          "Yes. 805 Shutters installs custom shades throughout Ventura County and nearby communities."
       },
       {
         heading: "Can I compare shades and shutters during one visit?",
@@ -1711,15 +1718,15 @@ const recentProjectPages: SitePage[] = [
     intro:
       "A recent specialty-window project showing custom arched plantation shutters measured to fit curved window openings.",
     image: "/images/portfolio-enhanced/arched-window-custom-shutters-wide.jpg",
-    imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/arched-window-custom-shutters-card.jpg",
-        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters."
       },
       {
         image: "/images/portfolio-enhanced/specialty-arch-window-shutters-card.jpg",
-        imageAlt: "Specialty arch window shutters with custom fit in Ventura County by 805 Shutters Shades and Blinds."
+        imageAlt: "Specialty arch window shutters with custom fit in Ventura County by 805 Shutters."
       }
     ],
     sections: [
@@ -1746,7 +1753,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Who installs arched shutters in Ventura County?",
         body:
-          "805 Shutters Shades & Blinds installs custom shutters for arched and specialty windows throughout Ventura County and nearby communities."
+          "805 Shutters installs custom shutters for arched and specialty windows throughout Ventura County and nearby communities."
       },
       {
         heading: "Do specialty shutters require an in-home measurement?",
@@ -1765,15 +1772,15 @@ const recentProjectPages: SitePage[] = [
     intro:
       "A recent local plantation shutter project showing dark wood shutters used for privacy, light control, and a warmer finished-room look.",
     image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-wide.jpg",
-    imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-reading-room-card.jpg",
-        imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Dark wood plantation shutters in a Ventura County reading room installed by 805 Shutters."
       },
       {
         image: "/images/portfolio-enhanced/dark-wood-plantation-shutters-living-room-card.jpg",
-        imageAlt: "Dark wood plantation shutters across living room windows in Ventura County by 805 Shutters Shades and Blinds."
+        imageAlt: "Dark wood plantation shutters across living room windows in Ventura County by 805 Shutters."
       }
     ],
     sections: [
@@ -1795,7 +1802,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Can 805 Shutters install dark wood plantation shutters in Ventura County?",
         body:
-          "Yes. 805 Shutters Shades & Blinds installs custom plantation shutters for Ventura County homes, including dark wood looks and other finish options."
+          "Yes. 805 Shutters installs custom plantation shutters for Ventura County homes, including dark wood looks and other finish options."
       },
       {
         heading: "Why choose dark wood shutters?",
@@ -1805,7 +1812,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Do you offer free in-home consultations?",
         body:
-          "Yes. 805 Shutters Shades & Blinds offers free in-home consultations for shutters, shades, blinds, and window coverings."
+          "Yes. 805 Shutters offers free in-home consultations for shutters, shades, blinds, and window coverings."
       }
     ]
   },
@@ -1817,17 +1824,17 @@ const recentProjectPages: SitePage[] = [
     h1: "Plantation Shutters Installed in a Ventura County Home",
     eyebrow: "Recent project",
     intro:
-      "This local project shows white plantation shutters installed for a Ventura County home by 805 Shutters Shades & Blinds. The goal was a clean, finished look with better privacy, flexible light control, and a custom fit for multiple window shapes.",
+      "This local project shows white plantation shutters installed for a Ventura County home by 805 Shutters. The goal was a clean, finished look with better privacy, flexible light control, and a custom fit for multiple window shapes.",
     image: "/images/portfolio-enhanced/plantation-shutters-dining-room-wide.jpg",
-    imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters Shades and Blinds.",
+    imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters.",
     gallery: [
       {
         image: "/images/portfolio-enhanced/plantation-shutters-dining-room-card.jpg",
-        imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters Shades and Blinds."
+        imageAlt: "White plantation shutters in a Ventura County dining room installed by 805 Shutters."
       },
       {
         image: "/images/portfolio-enhanced/arched-plantation-shutters-living-room-card.jpg",
-        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters Shades and Blinds."
+        imageAlt: "Custom arched plantation shutters in a Ventura County living room installed by 805 Shutters."
       }
     ],
     sections: [
@@ -1851,7 +1858,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Custom shutters for standard and arched windows",
         body:
-          "Homes throughout Ventura County often have a mix of standard rectangular windows and specialty shapes. 805 Shutters Shades & Blinds measures each opening carefully so the finished shutters fit the architecture instead of looking like an afterthought."
+          "Homes throughout Ventura County often have a mix of standard rectangular windows and specialty shapes. 805 Shutters measures each opening carefully so the finished shutters fit the architecture instead of looking like an afterthought."
       },
       {
         heading: "Measured before ordering",
@@ -1865,7 +1872,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Who installs plantation shutters in Ventura County?",
         body:
-          "805 Shutters Shades & Blinds installs custom plantation shutters for homeowners throughout Ventura County and nearby communities."
+          "805 Shutters installs custom plantation shutters for homeowners throughout Ventura County and nearby communities."
       },
       {
         heading: "Can plantation shutters be made for arched windows?",
@@ -1875,7 +1882,7 @@ const recentProjectPages: SitePage[] = [
       {
         heading: "Do you offer free in-home consultations?",
         body:
-          "Yes. 805 Shutters Shades & Blinds offers free in-home consultations for shutters, shades, blinds, commercial roller shades, and other window coverings."
+          "Yes. 805 Shutters offers free in-home consultations for shutters, shades, blinds, commercial roller shades, and other window coverings."
       }
     ]
   }
@@ -2429,7 +2436,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/shades/${caSlug}/`,
       city,
       product: "shades",
-      title: `Shades near ${city} CA - 805 Shutters Shades & Blinds`,
+      title: `Shades near ${city} CA - 805 Shutters`,
       h1: `Custom Window Shades in ${city}`,
       image: images.shades
     }),
@@ -2437,7 +2444,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/blinds/${caSlug}/`,
       city,
       product: "blinds",
-      title: `Blinds near ${city} CA - 805 Shutters Shades & Blinds`,
+      title: `Blinds near ${city} CA - 805 Shutters`,
       h1: `Custom Blinds in ${city}`,
       image: images.blinds
     }),
@@ -2445,7 +2452,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/drapery/${caSlug}/`,
       city,
       product: "drapery",
-      title: `Custom Drapery & Curtains near ${city} CA - 805 Shutters Shades & Blinds`,
+      title: `Custom Drapery & Curtains near ${city} CA - 805 Shutters`,
       h1: `Custom Drapery and Curtains in ${city}`,
       image: images.drapery
     }),
@@ -2453,7 +2460,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: `/window-coverings/${caSlug}/`,
       city,
       product: "window-coverings",
-      title: `Window Coverings near ${city} CA - 805 Shutters Shades & Blinds`,
+      title: `Window Coverings near ${city} CA - 805 Shutters`,
       h1: `Window Coverings in ${city}`,
       image: images.hero
     }),
@@ -2461,7 +2468,7 @@ const generatedCityPages: SitePage[] = cityPages.flatMap(([shutterSlug, caSlug, 
       path: windowTreatmentPath,
       city,
       product: "window-treatments",
-      title: `Window Treatments near ${city} CA - 805 Shutters Shades & Blinds`,
+      title: `Window Treatments near ${city} CA - 805 Shutters`,
       h1: `Window Treatments in ${city}`,
       image: images.hero
     })
@@ -2487,7 +2494,7 @@ function cityProductPage({
   const page: SitePage = {
     path,
     title,
-    description: `${h1} measured and installed by 805 Shutters Shades & Blinds. Compare privacy, light control, colors, materials, controls, and local installation.`,
+    description: `${h1} measured and installed by 805 Shutters. Compare privacy, light control, colors, materials, controls, and local installation.`,
     h1,
     eyebrow: `${city} service area`,
     intro: `805 Shutters helps ${city} homeowners and businesses compare custom ${label} options for privacy, light control, room style, and budget.`,

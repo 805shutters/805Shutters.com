@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { bookingDurationLabelForWindowCount } from "@/lib/booking/duration";
+import { brandIdentity } from "@/lib/brand-identity";
 import { getLeadAttribution, trackBookingEvent, trackBookingStep } from "@/lib/client-tracking";
 import type { ResolvedAddress } from "@/lib/places/types";
 import { commercialProjectTypeOptions, productInterestOptions } from "@/lib/product-interest-options";
@@ -376,6 +377,11 @@ export function BookingCalendar({
         <div className="booking-complete">
           <h3>Appointment booked.</h3>
           <p>{message}</p>
+          <p className="booking-complete__official-contact">
+            Official 805 Shutters contact:{" "}
+            <a href={brandIdentity.website}>{brandIdentity.domain}</a> ·{" "}
+            <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
+          </p>
           <button type="button" onClick={handleDone}>
             {onDone ? "Done" : "Book another appointment"}
           </button>

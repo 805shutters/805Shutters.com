@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BadgeCheck } from "lucide-react";
 import { commercialBrand } from "@/lib/commercial-mode-data";
 import { commercialCategoryItems, residentialCategoryItems } from "@/lib/product-preview-data";
 import { site } from "@/lib/site-data";
@@ -100,6 +101,14 @@ export function SiteHeader() {
       ) : null}
       <header className="site-header-shell">
       <HeaderScrollState />
+      <div className="official-identity-bar" aria-label="Official 805 Shutters contact information">
+        <Link href={site.officialPath}>
+          <BadgeCheck aria-hidden="true" />
+          <strong>Official 805 Shutters</strong>
+        </Link>
+        <span>{site.domain}</span>
+        <TrackedPhoneLink location="official identity bar">{site.phone}</TrackedPhoneLink>
+      </div>
       <div className="site-masthead">
         <div className="mobile-header-tools mobile-header-tools--left" aria-label="Mobile navigation">
           <button
@@ -271,6 +280,9 @@ export function SiteHeader() {
             <Link href="/contact/" onClick={() => setMenuOpen(false)}>
               Contact
             </Link>
+            <Link href={site.officialPath} onClick={() => setMenuOpen(false)}>
+              Official Contact
+            </Link>
           </nav>
 
           <div className="mobile-menu-foot">
@@ -285,6 +297,9 @@ export function SiteHeader() {
             <TrackedPhoneLink className="mobile-menu-phone" location="mobile menu">
               {site.phone}
             </TrackedPhoneLink>
+            <a className="mobile-menu-email" href={site.emailHref}>
+              {site.email}
+            </a>
           </div>
         </div>
       </div>
@@ -343,4 +358,3 @@ function PhoneIcon() {
     </svg>
   );
 }
-

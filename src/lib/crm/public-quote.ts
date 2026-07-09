@@ -29,11 +29,12 @@ import { sendSms } from "@/lib/notify/twilio";
 import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
+import { brandIdentity } from "@/lib/brand-identity";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 
-const BUSINESS_NAME = "805 Shutters";
+const BUSINESS_NAME = brandIdentity.name;
 export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
 export const SOLD_QUOTE_CONTACT_SMS_RECIPIENT = "805-298-5555" as const;
 
@@ -95,7 +96,7 @@ export type PublicQuote = {
   /** Quote-level adjustments (discount/tax/deposit/fees) so a customer subset
    *  selection can recompute its total with the same engine. */
   adjustments: QuoteAdjustments;
-  business: { name: string; phone: string };
+  business: { name: string; phone: string; website: string; email: string };
   versions: { token: string; label: string; total: number; signed: boolean; current: boolean }[];
 };
 
@@ -494,7 +495,12 @@ export async function loadPublicQuoteByToken(
     allPriced: lines.length > 0 && lines.every((l) => l.priceReady),
     hasOnyxShutters,
     adjustments: adj,
-    business: { name: BUSINESS_NAME, phone: process.env.NEXT_PUBLIC_BUSINESS_PHONE || "" },
+    business: {
+      name: BUSINESS_NAME,
+      phone: brandIdentity.phone,
+      website: brandIdentity.domain,
+      email: brandIdentity.email,
+    },
     versions,
   };
 }
@@ -598,21 +604,21 @@ export function buildSignedShopSmsForRecipient(
   );
 }
 export function buildSignedCustomerSms(customerName: string): string {
-  return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Reply with any questions.`;
+  return `${BUSINESS_NAME}: Thank you, ${customerName}! Your order is confirmed. We'll be in touch to schedule. Official contact: ${brandIdentity.domain} | ${brandIdentity.phone}.`;
 }
 
 export function buildQuoteShareSms(url: string): string {
-  return `Thank you for the opportunity to cover your windows with 805 Shutters! Your contract is ready to review and approve:\n\nContract: ${url}`;
+  return `805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: ${url}\n\nOfficial contact: ${brandIdentity.domain} | ${brandIdentity.phone}`;
 }
 
 function publicQuoteUrl(token: string): string {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
-  return base ? `${base}/quote/${token}` : `/quote/${token}`;
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || brandIdentity.website).replace(/\/+$/, "");
+  return `${base}/quote/${token}`;
 }
 
 function publicAssetUrl(path: string): string | undefined {
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
-  return base ? `${base}${path}` : undefined;
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || brandIdentity.website).replace(/\/+$/, "");
+  return `${base}${path}`;
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1177,7 +1183,7 @@ export function buildQuotePaymentLinkSms(
         ? Number(details.total)
         : 0;
   const amountText = amountDue > 0 ? ` ${hasDepositDue ? "Deposit due" : "Amount due"}: ${money(amountDue)}.` : "";
-  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments.`;
+  return `805 Shutters ${hasDepositDue ? "deposit " : ""}payment link.${amountText} Square card: ${url}. Venmo @${VENMO_HANDLE}. Zelle ${ZELLE_DESTINATION}. In-house plan: approved projects can split the remaining balance into 3 monthly payments. Verify this request at ${brandIdentity.domain} or ${brandIdentity.phone}.`;
 }
 
 export async function sendQuotePaymentLinkToCustomer(

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingCalendar } from "@/components/booking/BookingCalendar";
+import { brandIdentity } from "@/lib/brand-identity";
 import { ogDefaults, site } from "@/lib/site-data";
 
 const bookingTitle = "Book a Free In-Home Consultation | 805 Shutters";
@@ -168,6 +169,11 @@ export default function BookConsultationPage() {
           width={262}
           height={209}
         />
+        <div className="booking-page__official-contact">
+          <strong>Official 805 Shutters</strong>
+          <a href={brandIdentity.website}>{brandIdentity.domain}</a>
+          <a href={brandIdentity.phoneHref}>{brandIdentity.phone}</a>
+        </div>
       </header>
       <p className="booking-page__calendar-help">
         Don't see a time that works? Text us at{" "}

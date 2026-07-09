@@ -10,6 +10,7 @@ import { sendEmail } from "@/lib/notify/email";
 import type { CrmBookkeepingEntry, CrmBookkeepingPayment, CrmQuote } from "@/lib/crm/types";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 
 const DAY = 24 * 60 * 60 * 1000;
 const SOLD_LIKE = new Set(["sold", "approved"]);
@@ -158,8 +159,8 @@ export async function runStaleQuoteNudges(supabase: SupabaseClient, now: Date = 
   const nowMs = now.getTime();
   const { data: rows } = await supabase.from("crm_quotes").select("*").eq("status", "sent");
   const quotes = (rows as CrmQuote[]) ?? [];
-  const base = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/+$/, "");
-  const url = (token: string) => (base ? `${base}/quote/${token}` : `/quote/${token}`);
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || brandIdentity.website).replace(/\/+$/, "");
+  const url = (token: string) => `${base}/quote/${token}`;
   let nudged = 0;
 
   for (const quote of quotes) {
@@ -176,8 +177,8 @@ export async function runStaleQuoteNudges(supabase: SupabaseClient, now: Date = 
 
     const name = quote.customer_name || "there";
     const link = url(quote.share_token);
-    const text = `Hi ${name}, your 805 Shutters contract is still waiting for your approval. Review + approve here: ${link}`;
-    const html = `<p>Hi ${name},</p><p>Your 805 Shutters contract is still waiting for your approval.</p><p><a href="${link}">Review and approve your contract</a></p>`;
+    const text = `Hi ${name}, your 805 Shutters contract is still waiting for your approval. Review + approve here: ${link}\n\n${officialContactLine}`;
+    const html = `<p>Hi ${name},</p><p>Your 805 Shutters contract is still waiting for your approval.</p><p><a href="${link}">Review and approve your contract</a></p><p><strong>Official 805 Shutters contact</strong><br><a href="${brandIdentity.website}">${brandIdentity.domain}</a> &middot; ${brandIdentity.phone} &middot; <a href="${brandIdentity.emailHref}">${brandIdentity.email}</a></p>`;
     if (quote.customer_email) await sendEmail({ to: quote.customer_email, subject: "Your 805 Shutters contract is waiting", html, text });
     if (quote.customer_phone) await sendSms({ to: quote.customer_phone, body: text });
 

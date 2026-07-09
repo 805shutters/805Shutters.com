@@ -128,7 +128,7 @@ describe("signed SMS copy", () => {
   it("contract share message uses the requested 805 Shutters copy", () => {
     const msg = buildQuoteShareSms("https://www.805shutters.com/quote/test-token");
     expect(msg).toBe(
-      "Thank you for the opportunity to cover your windows with 805 Shutters! Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token"
+      "805 Shutters: Thank you for the opportunity to cover your windows. Your contract is ready to review and approve:\n\nContract: https://www.805shutters.com/quote/test-token\n\nOfficial contact: 805Shutters.com | 805-806-9344"
     );
     expect(msg).not.toContain("attached quote");
   });
@@ -144,6 +144,7 @@ describe("signed SMS copy", () => {
     expect(msg).toContain("Zelle");
     expect(msg).toContain("#payment");
     expect(msg).toContain("3 monthly payments");
+    expect(msg).toContain("Verify this request at 805Shutters.com or 805-806-9344");
   });
 
   it("shop message has the requested sale fields", () => {
@@ -182,7 +183,9 @@ describe("signed SMS copy", () => {
     expect(soldQuoteShopSmsRecipients()).toEqual([...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS]);
   });
   it("customer message thanks them by name", () => {
-    expect(buildSignedCustomerSms("Jane")).toContain("Jane");
+    const message = buildSignedCustomerSms("Jane");
+    expect(message).toContain("Jane");
+    expect(message).toContain("805Shutters.com | 805-806-9344");
   });
 });
 
@@ -363,7 +366,12 @@ describe("buildSignedContractSnapshot", () => {
       allPriced: true,
       hasOnyxShutters: true,
       adjustments: DEFAULT_ADJUSTMENTS,
-      business: { name: "805 Shutters", phone: "805-555-1212" },
+      business: {
+        name: "805 Shutters",
+        phone: "805-555-1212",
+        website: "805Shutters.com",
+        email: "805@805shutters.com",
+      },
       versions: [],
     };
 

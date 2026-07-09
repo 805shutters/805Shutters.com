@@ -10,6 +10,8 @@ describe("buildQuoteEmail", () => {
     expect(text).toContain("Jane Smith");
     expect(text).toContain("Your contract from 805 Shutters");
     expect(html).toContain("Jane Smith");
+    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
+    expect(html).toContain("805@805shutters.com");
   });
   it("falls back to a generic greeting and omits amount when zero", () => {
     const { subject, text } = buildQuoteEmail("Valued customer", "https://x/quote/abc", 0);
@@ -139,6 +141,8 @@ describe("buildPaymentLinkEmail", () => {
     expect(text).toContain("Square card payment: https://x/quote/abc#payment");
     expect(text).toContain("Venmo: @");
     expect(text).toContain("Zelle");
+    expect(text).toContain("Official 805 Shutters contact: 805Shutters.com | 805-806-9344");
+    expect(html).toContain("805@805shutters.com");
   });
 });
 

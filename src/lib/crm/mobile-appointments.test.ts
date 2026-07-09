@@ -83,10 +83,10 @@ describe("805 mobile appointment helpers", () => {
 
   it("builds exact in-route SMS copy", () => {
     expect(buildMobileEtaSms({ customerName: "Pat Smith", etaMinutes: 24 })).toBe(
-      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters"
+      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters\nOfficial 805 Shutters contact: 805Shutters.com | 805-806-9344 | 805@805shutters.com"
     );
     expect(buildMobileEtaSms({ customerName: "Pat Smith", etaMinutes: null })).toBe(
-      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters"
+      "Hi Pat, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters\nOfficial 805 Shutters contact: 805Shutters.com | 805-806-9344 | 805@805shutters.com"
     );
   });
 

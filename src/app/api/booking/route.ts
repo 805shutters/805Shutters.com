@@ -10,6 +10,7 @@ import {
 } from "@/lib/booking/availability";
 import { addGeoPointsToEvents, geocodeBookingAddress, maxBookingTravelMiles } from "@/lib/booking/geo";
 import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
+import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { syncAppointmentToGoogleCalendars, GoogleCalendarSyncResult } from "@/lib/google/calendar";
@@ -60,8 +61,8 @@ type BookingAutomationDetails = {
   endAt: string;
 };
 
-const defaultStaffEmail = "805@805shutters.com";
-const defaultStaffSmsNumbers = ["805-806-9344"];
+const defaultStaffEmail = brandIdentity.email;
+const defaultStaffSmsNumbers = [brandIdentity.phone];
 // When more than one rep is free for a slot, assign in this order (primary first).
 const repPriority = ["Jessica", "Mike"];
 
@@ -214,10 +215,11 @@ async function sendSmsConfirmation({
   productTypes: string[];
 }) {
   const body = [
-    "Thank you for your inquiry and interest in 805 Shutters.",
+    "805 Shutters appointment confirmation.",
     `Your free in-home consultation is confirmed for ${formatAppointmentForSms(startAt)}.`,
     productTypes.length ? `Product interest: ${productInterest}.` : null,
-    "We look forward to meeting you."
+    "We look forward to meeting you.",
+    officialContactLine
   ]
     .filter(Boolean)
     .join(" ");
@@ -290,7 +292,9 @@ function bookingPlainText(details: BookingAutomationDetails, customerFacing: boo
       "",
       "Our designer will bring samples, measure your windows, and put together an honest quote — no pressure.",
       "",
-      "Need to reschedule or have a question? Just reply to this email or call/text 805-806-9344.",
+      `Need to reschedule or have a question? Just reply to this email or call/text ${brandIdentity.phone}.`,
+      "",
+      officialContactLine,
       "",
       "See you soon,",
       "805 Shutters"
@@ -340,8 +344,11 @@ function bookingHtml(details: BookingAutomationDetails, customerFacing: boolean)
     ${interest}
   </div>
   <p style="margin:0 0 22px">Our designer will bring samples, measure your windows, and put together an honest quote — no pressure, just ideas.</p>
-  <p style="margin:0;color:#666">Need to reschedule or have a question? Reply to this email or call/text <a href="tel:+18058069344" style="color:#1a1a1a;font-weight:600">805-806-9344</a>.</p>
-  <p style="margin:26px 0 0;font-size:13px;color:#aaa">805 Shutters</p>
+  <p style="margin:0;color:#666">Need to reschedule or have a question? Reply to this email or call/text <a href="${brandIdentity.phoneHref}" style="color:#1a1a1a;font-weight:600">${brandIdentity.phone}</a>.</p>
+  <div style="border-top:1px solid #d8d8d2;margin:24px 0 0;padding-top:16px;font-size:13px;line-height:1.6;color:#666">
+    <strong style="color:#1a1a1a">Official 805 Shutters contact</strong><br>
+    <a href="${brandIdentity.website}" style="color:#1a1a1a;font-weight:600">${brandIdentity.domain}</a> &middot; ${brandIdentity.phone} &middot; <a href="${brandIdentity.emailHref}" style="color:#1a1a1a">${brandIdentity.email}</a>
+  </div>
 </div>`;
   }
 

@@ -63,6 +63,43 @@ img {
   backdrop-filter: blur(12px);
 }
 
+.official-identity-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 6px 18px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.official-identity-bar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.official-identity-bar a:hover,
+.official-identity-bar a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.official-identity-bar svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
 .masthead-link,
 .category-nav a {
   text-decoration: none;
@@ -14835,5 +14872,417 @@ body:has(.financing-banner) .site-header-shell {
 
   body:has(.mobile-action-bar) .assistant-widget {
     bottom: calc(62px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Official identity and customer verification surfaces */
+.footer-verification-note {
+  display: grid;
+  gap: 5px;
+  max-width: 520px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.footer-verification-note a {
+  width: fit-content;
+  color: var(--ink);
+  font-weight: 800;
+  text-underline-offset: 3px;
+}
+
+.mobile-menu-email {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.official-page {
+  background: var(--paper);
+}
+
+.official-hero {
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+
+.official-hero__inner {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+  align-items: center;
+  gap: 64px;
+  width: min(1180px, calc(100% - 48px));
+  min-height: 560px;
+  margin: 0 auto;
+  padding: 70px 0;
+}
+
+.official-hero__brand {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.official-hero__brand img {
+  width: 286px;
+  height: auto;
+}
+
+.official-hero__brand p {
+  max-width: 300px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.official-hero__copy {
+  max-width: 680px;
+}
+
+.official-hero__copy .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.official-hero__copy .eyebrow svg {
+  width: 18px;
+  height: 18px;
+}
+
+.official-hero__copy h1 {
+  max-width: 680px;
+  margin: 12px 0 20px;
+  font-family: var(--font-display);
+  font-size: 56px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.02;
+}
+
+.official-hero__copy > p:not(.eyebrow) {
+  max-width: 620px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.official-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.official-actions a {
+  display: inline-flex;
+  min-width: 120px;
+  min-height: 46px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-decoration: none;
+}
+
+.official-actions a:hover,
+.official-actions a:focus-visible {
+  background: var(--white);
+  color: var(--ink);
+}
+
+.official-actions svg {
+  width: 18px;
+  height: 18px;
+}
+
+.official-contact-band {
+  border-bottom: 1px solid var(--line);
+  background: var(--platinum-soft);
+}
+
+.official-contact-band__inner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.official-contact-band__inner > div {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 4px 12px;
+  min-width: 0;
+  padding: 34px 28px;
+  border-right: 1px solid var(--line);
+}
+
+.official-contact-band__inner > div:first-child {
+  border-left: 1px solid var(--line);
+}
+
+.official-contact-band svg {
+  grid-row: 1 / 3;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+.official-contact-band span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.official-contact-band a {
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.official-contact-band a:hover,
+.official-contact-band a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.official-verification-band__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+  gap: 70px;
+  width: min(1060px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 80px 0;
+}
+
+.official-verification-band h2 {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.official-verification-band ul {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.official-verification-band li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.official-verification-band li:first-child {
+  border-top: 1px solid var(--line);
+}
+
+.official-verification-band li svg {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+}
+
+.official-disclosure-band {
+  padding: 34px 24px;
+  background: var(--ink);
+  color: var(--white);
+}
+
+.official-disclosure-band > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  width: min(1060px, 100%);
+  margin: 0 auto;
+}
+
+.official-disclosure-band strong {
+  font-size: 20px;
+}
+
+.official-disclosure-band p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.booking-page__official-contact {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+.booking-page__official-contact strong,
+.booking-page__official-contact a {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.booking-page__official-contact a {
+  text-decoration: none;
+}
+
+.booking-page__official-contact a:hover,
+.booking-page__official-contact a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.booking-complete .booking-complete__official-contact {
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.booking-complete__official-contact a {
+  color: inherit;
+  font-weight: 800;
+}
+
+@media (max-width: 920px) {
+  .official-hero__inner,
+  .official-verification-band__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .official-hero__inner {
+    gap: 34px;
+    min-height: auto;
+  }
+
+  .official-hero__brand {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .official-hero__brand img {
+    width: 190px;
+  }
+
+  .official-contact-band__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .official-contact-band__inner > div,
+  .official-contact-band__inner > div:first-child {
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    border-left: 1px solid var(--line);
+  }
+
+  .official-contact-band__inner > div:last-child {
+    border-bottom: 0;
+  }
+
+  .official-disclosure-band > div {
+    display: grid;
+  }
+
+  .official-disclosure-band p {
+    text-align: left;
+  }
+}
+
+@media (max-width: 620px) {
+  .official-identity-bar {
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 12px;
+    font-size: 11px;
+  }
+
+  .official-identity-bar > span {
+    display: none;
+  }
+
+  .official-identity-bar strong {
+    white-space: nowrap;
+  }
+
+  .official-hero__inner,
+  .official-contact-band__inner,
+  .official-verification-band__inner {
+    width: min(100% - 28px, 1180px);
+  }
+
+  .official-hero__inner {
+    padding: 44px 0;
+  }
+
+  .official-hero__brand img {
+    width: 150px;
+  }
+
+  .official-hero__copy h1 {
+    font-size: 38px;
+  }
+
+  .official-hero__copy > p:not(.eyebrow) {
+    font-size: 16px;
+  }
+
+  .official-actions a {
+    min-width: 0;
+    flex: 1 1 90px;
+  }
+
+  .official-contact-band__inner > div {
+    padding: 24px 18px;
+  }
+
+  .official-contact-band a {
+    font-size: 16px;
+  }
+
+  .official-verification-band__inner {
+    gap: 30px;
+    padding: 54px 0;
+  }
+
+  .official-verification-band h2 {
+    font-size: 34px;
+  }
+
+  .official-verification-band li {
+    font-size: 15px;
   }
 }

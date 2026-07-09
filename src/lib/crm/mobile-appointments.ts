@@ -4,6 +4,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 import { sendSms, type SmsResult } from "@/lib/notify/twilio";
 import { zonedTimeToUtc } from "@/lib/booking/availability";
+import { officialContactLine } from "@/lib/brand-identity";
 
 export type MobileAppointmentScope = "my" | "all";
 
@@ -146,7 +147,7 @@ export function customerFirstName(customerName: string | null | undefined) {
 
 export function buildMobileEtaSms(input: { customerName?: string | null; etaMinutes?: number | null }) {
   const firstName = customerFirstName(input.customerName);
-  return `Hi ${firstName}, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters`;
+  return `Hi ${firstName}, we're in route for your window covering consultation. See you shortly!\n\n805 Shutters\n${officialContactLine}`;
 }
 
 export async function calculateMobileDriveEta(input: {

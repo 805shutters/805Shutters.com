@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
+import { brandIdentity } from "@/lib/brand-identity";
 import { VENMO_HANDLE, ZELLE_DESTINATION, venmoProfileUrl } from "@/lib/finance/payment-options";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
 import { QuoteSelection } from "./QuoteSelection";
@@ -57,6 +58,11 @@ export default async function PublicQuotePage({
       <div className="no-print" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         <PrintButton />
       </div>
+      <div style={officialContractBar}>
+        <strong>Official 805 Shutters contract</strong>
+        <a href={brandIdentity.website}>{quote.business.website}</a>
+        <a href={brandIdentity.phoneHref}>{quote.business.phone}</a>
+      </div>
       <header style={{ borderBottom: "2px solid #0b0b0b", paddingBottom: 16, marginBottom: 20 }}>
         <p style={{ margin: 0, letterSpacing: 1, textTransform: "uppercase", fontSize: 12, opacity: 0.7 }}>
           {quote.business.name}
@@ -101,6 +107,14 @@ export default async function PublicQuotePage({
         quote={quote}
         paymentOptions={{ venmoHandle: VENMO_HANDLE, venmoQrSvg, zelleDestination: ZELLE_DESTINATION }}
       />
+      <footer style={contractFooter}>
+        <strong>{quote.business.name}</strong>
+        <span>
+          Official contact: <a href={brandIdentity.website}>{quote.business.website}</a> ·{" "}
+          <a href={brandIdentity.phoneHref}>{quote.business.phone}</a> ·{" "}
+          <a href={brandIdentity.emailHref}>{quote.business.email}</a>
+        </span>
+      </footer>
     </main>
   );
 }
@@ -112,4 +126,25 @@ const contractPreviewWrap = {
   padding: "18px 20px 32px",
   fontFamily: "system-ui, sans-serif",
   color: "#0b0b0b"
+} as const;
+const officialContractBar = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "6px 14px",
+  marginBottom: 18,
+  padding: "10px 12px",
+  border: "1px solid #d8d8d2",
+  background: "#f4f4f2",
+  fontSize: 12,
+  lineHeight: 1.4,
+} as const;
+const contractFooter = {
+  display: "grid",
+  gap: 6,
+  marginTop: 30,
+  paddingTop: 18,
+  borderTop: "2px solid #0b0b0b",
+  fontSize: 12,
+  lineHeight: 1.5,
 } as const;

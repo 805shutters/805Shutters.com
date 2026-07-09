@@ -87,15 +87,17 @@ const CONTRACT_HEADERS: Record<
     title: string;
     phone: string;
     website: string;
+    email: string;
     logoUrl: string;
     logoAlt: string;
     logoPanelClass: string;
   }
 > = {
   [ACCOUNT_IDS.SHUTTERS_805]: {
-    title: "805 SHUTTERS-SHADES-BLINDS",
-    phone: "(805) 908-1688",
+    title: "805 SHUTTERS",
+    phone: "(805) 806-9344",
     website: "805shutters.com",
+    email: "805@805shutters.com",
     logoUrl: "/brand/805-shutters-logo-header.png",
     logoAlt: "805 Shutters logo",
     logoPanelClass: "bg-white",
@@ -683,6 +685,8 @@ export function QuoteContract() {
                   <LinkIcon className="h-3.5 w-3.5" />
                   {headerInfo.website}
                 </span>
+                <span className="hidden text-gray-300 sm:inline">|</span>
+                <span className="flex items-center gap-1.5">{headerInfo.email}</span>
               </div>
             </div>
           </div>

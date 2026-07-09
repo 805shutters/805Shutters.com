@@ -2,6 +2,7 @@
 // Env: RESEND_API_KEY + optional RESEND_FROM / BOOKING_EMAIL_FROM.
 
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
+import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 
 export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
 export type EmailAttachment = {
@@ -230,7 +231,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters`;
+  const text = `Hi ${name},${personalNoteText}\n\nYour contract from 805 Shutters is ready${total > 0 ? ` (${amount})` : ""}.${itemText}\n\nPay your deposit: Venmo @${VENMO_HANDLE} or Zelle ${ZELLE_DESTINATION}.\n\nReview and approve it here:\n${url}${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -250,7 +251,7 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
     </div>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${financing.html}
-    <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#0b0b0b">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
+    ${officialContactFooterHtml()}
   </div>
     </td>
   </tr>
@@ -291,7 +292,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
     balanceDue: details.balanceDue,
     logoUrl: details.logoUrl
   });
-  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Venmo: @${VENMO_HANDLE}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Venmo or Zelle.${financing.text}\n\nThank you,\n805 Shutters`;
+  const text = `Hello ${name},${personalNoteText}\n\n${intro}${dueText}\n\nPayment options:\n- Square card payment: ${url}\n- Venmo: @${VENMO_HANDLE}\n- Zelle: ${ZELLE_DESTINATION}\n\nPlease reference your name when paying by Venmo or Zelle.${financing.text}\n\nThank you,\n805 Shutters\n\n${officialContactLine}`;
   const html = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="border-collapse:collapse;margin:0;padding:0;background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important;font-family:Arial,Helvetica,sans-serif">
   <tr>
     <td bgcolor="#ffffff" style="background:#ffffff!important;background-color:#ffffff!important;color:#0b0b0b!important">
@@ -322,7 +323,7 @@ export function buildPaymentLinkEmail(customerName: string, url: string, details
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Please reference your name when paying by Venmo or Zelle.</p>
     ${financing.html}
-    <p style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.5;color:#0b0b0b">Thank you,<br><strong style="color:#0b0b0b">805 Shutters</strong>${details.businessPhone ? `<br>${escapeHtml(details.businessPhone)}` : ""}</p>
+    ${officialContactFooterHtml()}
   </div>
     </td>
   </tr>
@@ -377,6 +378,14 @@ function quoteLinesTable(lines: QuoteEmailLine[]): string {
     </thead>
     <tbody>${rows}</tbody>
   </table>`;
+}
+
+function officialContactFooterHtml(): string {
+  return `<div style="border-top:1px solid #d8d8d2;margin:22px 0 0 0;padding-top:16px;font-size:13px;line-height:1.6;color:#0b0b0b">
+    Thank you,<br><strong style="color:#0b0b0b">${brandIdentity.name}</strong><br>
+    Official contact: <a href="${brandIdentity.website}" style="color:#0b0b0b;font-weight:700">${brandIdentity.domain}</a> &middot; <a href="${brandIdentity.phoneHref}" style="color:#0b0b0b;font-weight:700">${brandIdentity.phone}</a><br>
+    <a href="${brandIdentity.emailHref}" style="color:#0b0b0b">${brandIdentity.email}</a>
+  </div>`;
 }
 
 function quoteSummary(details: QuoteEmailDetails, total: number): string {

@@ -30,6 +30,13 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
     priority: 0.9
   };
 
+  const officialIdentityEntry: MetadataRoute.Sitemap[number] = {
+    url: `${site.baseUrl}${site.officialPath}`,
+    lastModified: CONTENT_LAST_UPDATED,
+    changeFrequency: "monthly",
+    priority: 0.8
+  };
+
   const comparisonGuideEntry: MetadataRoute.Sitemap[number] = {
     url: `${site.baseUrl}${COMPARISON_GUIDE_PATH}`,
     lastModified: CONTENT_LAST_UPDATED,
@@ -44,7 +51,7 @@ export function buildSitemapEntries(): MetadataRoute.Sitemap {
     priority: 0.82
   }));
 
-  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry];
+  return [...pageEntries, ...answerEntries, comparisonGuideEntry, bookingEntry, officialIdentityEntry];
 }
 
 function escapeXml(value: string): string {

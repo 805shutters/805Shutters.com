@@ -260,7 +260,7 @@ export default function WindowTreatmentComparisonGuidePage() {
         </div>
         <div className={styles.localFacts}>
           <p>
-            805 Shutters Shades & Blinds is a family-owned local company with more than 30 years of experience across
+            805 Shutters is a family-owned local company with more than 30 years of experience across
             {` ${site.serviceArea}`}. Service includes {site.areas.slice(0, 8).join(", ")}, and nearby communities.
           </p>
           <p>
