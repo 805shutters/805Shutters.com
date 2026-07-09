@@ -26,10 +26,10 @@ export function PublicActivityTracking() {
           <TrackingScripts />
           <RouteTracking />
           <VisitorTelegramTracking />
+          <Analytics beforeSend={onlyPublicAnalytics} />
+          <SpeedInsights beforeSend={onlyPublicSpeedInsights} />
         </>
       ) : null}
-      <Analytics beforeSend={onlyPublicAnalytics} />
-      <SpeedInsights beforeSend={onlyPublicSpeedInsights} />
     </>
   );
 }
