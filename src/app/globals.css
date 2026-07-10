@@ -1024,6 +1024,11 @@ body:has(.home-editorial) .category-nav {
 }
 
 body:has(.home-editorial):not(.site-header-solid) .category-nav {
+  color: rgba(255, 255, 255, 0.98);
+  font-weight: 500;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.68),
+    0 6px 18px rgba(0, 0, 0, 0.34);
   transform: translateY(-16px);
 }
 
