@@ -32,10 +32,10 @@
   - public/images/portfolio-enhanced/bedroom-plantation-shutters-after-front-social-square.jpg
   - public/images/portfolio-enhanced/bedroom-plantation-shutters-after-room-social-square.jpg
 - Presentation: full-frame cards and 1080 x 1080 social images with softly blurred backgrounds; no part of the original photo is cropped
-- Website status: prepared; not deployed
-- Facebook status: ready for logged-in Chrome publishing
-- Instagram status: ready for logged-in Chrome publishing
-- Google Business Profile status: ready for logged-in Chrome publishing
+- Website status: deployed and verified live
+- Facebook status: published and verified live
+- Instagram status: published and verified live
+- Google Business Profile status: published and verified live as a three-photo update; Google discarded the description and Book button after both the initial submission and one edit attempt
 
 ## Facebook and Instagram Copy
 
@@ -61,7 +61,22 @@ URL: https://www.805shutters.com/book-consultation/
 
 ## Platform Results
 
-- Website: pending deploy and live verification
-- Facebook: pending; no public post URL or post ID returned yet
-- Instagram: pending; no permalink or media ID returned yet
-- Google Business Profile: pending; no public post ID returned yet
+- Website:
+  - Gallery: https://www.805shutters.com/gallery/
+  - Deployment: https://805-p5pegvppv-805-shutters.vercel.app
+  - Verified commit: `4c1b1898fb722fdb1d784ffc1aed3a8da9e29c95`
+  - Live privacy check: all three public 5712 x 4284 originals contain zero EXIF and zero GPS tags
+- Facebook:
+  - Post ID: `1644885950978039`
+  - Public post: https://www.facebook.com/805shutters/posts/1644885950978039
+  - Photo IDs: `1644885570978077`, `1644885560978078`, `1644885590978075`
+  - Verified: public three-photo post, full caption, hashtags, and booking URL
+- Instagram:
+  - Shortcode: `DaoHxcrAWEd`
+  - Public carousel: https://www.instagram.com/p/DaoHxcrAWEd/
+  - Verified: three-photo carousel with the full caption and hashtags
+- Google Business Profile:
+  - Public post ID: `3834997014336596360`
+  - Public update: https://www.google.com/search?q=805+Shutters+Shades+%26+Blinds#lpstate=pid:3834997014336596360
+  - Verified: public three-photo update (`1/3` shown in Google Search)
+  - Limitation: Google accepted the description and Book URL in the editor, then stored neither field. A native-keyboard edit was submitted and approved, but Google again returned the post as image-only. The live photo carousel was retained to avoid creating a duplicate.
