@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="805 Shutters">
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <rect x="34" y="34" width="444" height="444" rx="74" fill="none" stroke="#111111" stroke-width="28"/>
+  <text
+    x="256"
+    y="305"
+    fill="#111111"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="184"
+    font-weight="700"
+    text-anchor="middle"
+    letter-spacing="-8"
+  >805</text>
+  <path d="M146 356h220" stroke="#111111" stroke-width="18" stroke-linecap="round"/>
+</svg>
