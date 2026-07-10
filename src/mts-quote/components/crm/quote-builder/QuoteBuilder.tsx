@@ -21,7 +21,9 @@ import {
   Send,
   CreditCard,
   DollarSign,
+  MapPin,
   Percent,
+  Phone,
   X,
 } from "lucide-react";
 import { SendQuoteDialog } from "./SendQuoteDialog";
@@ -204,6 +206,21 @@ function appendLineNumbers(
 
 function formatStackMoney(value: number) {
   return value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+}
+
+function formatCustomerPhone(phone: string | null | undefined) {
+  const value = phone?.trim();
+  if (!value) return "No phone number";
+
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+
+  return value;
 }
 
 function formatStackKey(key: string) {
@@ -1148,17 +1165,17 @@ export function QuoteBuilder() {
                   <QuoteStatusPill status={quoteStatsStatus} quoteId={quote.id} showAdvance size="md" />
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 {editingName ? (
-                  <div className="flex items-center gap-2">
+                  <div className="grid w-72 gap-1.5 rounded-xl border border-slate-300 bg-white p-2 shadow-sm">
                     <Input
                       defaultValue={quote?.customer_name || ""}
                       placeholder="Customer Name"
-                      className="w-48"
+                      aria-label="Customer name"
+                      className="h-8"
                       autoFocus
                       onBlur={(e) => {
                         updateQuote.mutate({ customer_name: e.target.value });
-                        setEditingName(false);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
@@ -1169,34 +1186,75 @@ export function QuoteBuilder() {
                         }
                       }}
                     />
+                    <Input
+                      type="tel"
+                      defaultValue={quote?.customer_phone || ""}
+                      placeholder="Phone Number"
+                      aria-label="Customer phone number"
+                      className="h-8"
+                      onBlur={(e) =>
+                        updateQuote.mutate({ customer_phone: e.target.value.trim() || null })
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          updateQuote.mutate({
+                            customer_phone: (e.target as HTMLInputElement).value.trim() || null,
+                          });
+                          setEditingName(false);
+                        }
+                      }}
+                    />
                     <AddressAutocomplete
                       inputAs={Input}
                       defaultValue={quote?.customer_address || ""}
                       placeholder="City / Address"
-                      className="w-48"
-                      onBlur={(e) => updateQuote.mutate({ customer_address: e.target.value })}
+                      aria-label="Customer address"
+                      className="h-8"
+                      onBlur={(e) =>
+                        updateQuote.mutate({ customer_address: e.target.value.trim() || null })
+                      }
                       onResolved={(address) =>
                         updateQuote.mutate({ customer_address: address.fullAddress })
                       }
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           updateQuote.mutate({
-                            customer_address: (e.target as HTMLInputElement).value,
+                            customer_address:
+                              (e.target as HTMLInputElement).value.trim() || null,
                           });
                         }
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setEditingName(false)}
+                      className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-slate-700"
+                    >
+                      Done
+                    </button>
                   </div>
                 ) : (
                   <button
-                    className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 text-lg font-bold shadow-sm transition hover:border-[#67645e] hover:text-[#343330]"
+                    type="button"
+                    className="group grid w-72 grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-left shadow-sm transition hover:border-slate-500 hover:shadow-md"
                     onClick={() => setEditingName(true)}
+                    aria-label={`Customer ${quote?.customer_name || "not named"}. Phone ${
+                      quote?.customer_phone || "not provided"
+                    }. Address ${quote?.customer_address || "not provided"}. Click to edit.`}
+                    title="Customer details — click to edit"
                   >
-                    {quote?.customer_name || "Add Customer"}{" "}
-                    {quote?.customer_address && (
-                      <span className="text-muted-foreground text-sm">· {quote.customer_address}</span>
-                    )}
-                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                    <span className="min-w-0 truncate text-sm font-black text-slate-950">
+                      {quote?.customer_name || "Add Customer"}
+                    </span>
+                    <Pencil className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-slate-700" />
+                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs font-semibold text-slate-600">
+                      <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{formatCustomerPhone(quote?.customer_phone)}</span>
+                    </span>
+                    <span className="col-span-2 flex min-w-0 items-center gap-1.5 text-xs text-slate-500">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      <span className="truncate">{quote?.customer_address || "No address"}</span>
+                    </span>
                   </button>
                 )}
                 {/* Builder / Pricing Grids / Contract toggle */}
