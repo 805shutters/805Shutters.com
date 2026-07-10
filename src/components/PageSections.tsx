@@ -1010,6 +1010,7 @@ export function PageSections({ page }: { page: SitePage }) {
               ) : (
                 <img src={item.image} alt={item.imageAlt} loading="lazy" decoding="async" />
               )}
+              {item.label ? <figcaption className="page-gallery-label">{item.label}</figcaption> : null}
             </figure>
           ))}
         </section>

@@ -1233,6 +1233,7 @@ body:has(.home-editorial).site-header-solid .category-dot {
 }
 
 .page-gallery-item {
+  position: relative;
   margin: 0;
   overflow: hidden;
   background: var(--white);
@@ -1244,6 +1245,22 @@ body:has(.home-editorial).site-header-solid .category-dot {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.page-gallery-label {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  padding: 8px 11px;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.84);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
 }
 
 .shutters-hero {

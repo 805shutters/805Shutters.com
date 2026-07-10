@@ -35,6 +35,39 @@ const photos = [
     grade: "bright"
   },
   {
+    base: "bedroom-horizontal-blinds-before",
+    source: "2026-07-10-bedroom-horizontal-blinds-before.jpg",
+    category: "Blinds",
+    title: "Bedroom Blinds Before",
+    alt: "Before view of horizontal blinds on a Ventura County bedroom window",
+    position: "center",
+    grade: "phone",
+    fullFrame: true,
+    socialLabel: "BEFORE"
+  },
+  {
+    base: "bedroom-plantation-shutters-after-front",
+    source: "2026-07-10-bedroom-plantation-shutters-after-front.jpg",
+    category: "Shutters",
+    title: "Bedroom Plantation Shutters After",
+    alt: "After view of white plantation shutters on a Ventura County bedroom window",
+    position: "center",
+    grade: "phone",
+    fullFrame: true,
+    socialLabel: "AFTER"
+  },
+  {
+    base: "bedroom-plantation-shutters-after-room",
+    source: "2026-07-10-bedroom-plantation-shutters-after-room.jpg",
+    category: "Shutters",
+    title: "Bedroom Plantation Shutters Room View",
+    alt: "Room-angle after view of white plantation shutters in a Ventura County bedroom",
+    position: "attention",
+    grade: "phone",
+    fullFrame: true,
+    socialLabel: "AFTER"
+  },
+  {
     base: "kitchen-roman-shade-lowered",
     source: "2026-07-08-kitchen-roman-shade-lowered.jpg",
     category: "Shades",
@@ -371,6 +404,64 @@ const tune = (pipeline, photo) => {
   return (grade.median ? graded.median(grade.median) : graded).sharpen(grade.sharpen);
 };
 
+const renderFullFrame = async ({ sourcePath, photo, width, height, outputPath, label }) => {
+  const background = await tune(sharp(sourcePath), photo)
+    .resize({ width, height, fit: "cover", position: photo.position })
+    .blur(30)
+    .modulate({ brightness: 0.72, saturation: 0.78 })
+    .jpeg({ quality: 89, mozjpeg: true })
+    .toBuffer();
+
+  const foreground = await tune(sharp(sourcePath), photo)
+    .resize({
+      width: width - 48,
+      height: height - 48,
+      fit: "inside",
+      withoutEnlargement: true
+    })
+    .extend({ top: 7, bottom: 7, left: 7, right: 7, background: "#ffffff" })
+    .jpeg({ quality: 91, mozjpeg: true })
+    .toBuffer();
+
+  const foregroundMetadata = await sharp(foreground).metadata();
+
+  const composites = [
+    {
+      input: {
+        create: {
+          width,
+          height,
+          channels: 4,
+          background: { r: 255, g: 255, b: 255, alpha: 0.1 }
+        }
+      }
+    },
+    {
+      input: foreground,
+      left: Math.round((width - foregroundMetadata.width) / 2),
+      top: Math.round((height - foregroundMetadata.height) / 2)
+    }
+  ];
+
+  if (label) {
+    composites.push({
+      input: Buffer.from(`
+        <svg width="220" height="68" xmlns="http://www.w3.org/2000/svg">
+          <rect x="0" y="0" width="220" height="68" rx="34" fill="rgba(17,17,17,0.88)"/>
+          <text x="110" y="43" fill="#ffffff" font-family="Arial, sans-serif" font-size="25" font-weight="700" text-anchor="middle" letter-spacing="3">${label}</text>
+        </svg>
+      `),
+      left: 36,
+      top: 36
+    });
+  }
+
+  await sharp(background)
+    .composite(composites)
+    .jpeg({ quality: 90, mozjpeg: true })
+    .toFile(outputPath);
+};
+
 await fs.mkdir(outputDir, { recursive: true });
 
 const manifest = [];
@@ -380,16 +471,30 @@ for (const photo of photos) {
   const widePath = path.join(outputDir, `${photo.base}-wide.jpg`);
   const cardPath = path.join(outputDir, `${photo.base}-card.jpg`);
   const naturalPath = path.join(outputDir, `${photo.base}-natural.jpg`);
+  const socialPath = path.join(outputDir, `${photo.base}-social-square.jpg`);
 
-  await tune(sharp(sourcePath), photo)
-    .resize({ width: 1600, height: 900, fit: "cover", position: photo.position })
-    .jpeg({ quality: 90, mozjpeg: true })
-    .toFile(widePath);
+  if (photo.fullFrame) {
+    await renderFullFrame({ sourcePath, photo, width: 1600, height: 900, outputPath: widePath });
+    await renderFullFrame({ sourcePath, photo, width: 900, height: 1125, outputPath: cardPath });
+    await renderFullFrame({
+      sourcePath,
+      photo,
+      width: 1080,
+      height: 1080,
+      outputPath: socialPath,
+      label: photo.socialLabel
+    });
+  } else {
+    await tune(sharp(sourcePath), photo)
+      .resize({ width: 1600, height: 900, fit: "cover", position: photo.position })
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toFile(widePath);
 
-  await tune(sharp(sourcePath), photo)
-    .resize({ width: 900, height: 1125, fit: "cover", position: photo.position })
-    .jpeg({ quality: 90, mozjpeg: true })
-    .toFile(cardPath);
+    await tune(sharp(sourcePath), photo)
+      .resize({ width: 900, height: 1125, fit: "cover", position: photo.position })
+      .jpeg({ quality: 90, mozjpeg: true })
+      .toFile(cardPath);
+  }
 
   await tune(sharp(sourcePath), photo)
     .resize({ width: 1600, withoutEnlargement: true })
@@ -400,10 +505,13 @@ for (const photo of photos) {
     ...photo,
     wide: `/images/portfolio-enhanced/${photo.base}-wide.jpg`,
     card: `/images/portfolio-enhanced/${photo.base}-card.jpg`,
-    natural: `/images/portfolio-enhanced/${photo.base}-natural.jpg`
+    natural: `/images/portfolio-enhanced/${photo.base}-natural.jpg`,
+    ...(photo.fullFrame
+      ? { social: `/images/portfolio-enhanced/${photo.base}-social-square.jpg` }
+      : {})
   });
 }
 
-await fs.writeFile(path.join(outputDir, "manifest.json"), JSON.stringify(manifest, null, 2));
+await fs.writeFile(path.join(outputDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
 console.log(`Enhanced ${manifest.length} portfolio photos into ${path.relative(root, outputDir)}`);

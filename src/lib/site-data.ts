@@ -34,6 +34,7 @@ export type SitePage = {
     image: string;
     imageAlt: string;
     video?: string;
+    label?: string;
   }[];
   sections: PageSection[];
   faqs?: PageFaq[];
@@ -175,6 +176,21 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 ];
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
+  {
+    image: "/images/portfolio-enhanced/bedroom-horizontal-blinds-before-card.jpg",
+    imageAlt: "Before view of horizontal blinds on a Ventura County bedroom window",
+    label: "Before"
+  },
+  {
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-after-front-card.jpg",
+    imageAlt: "After view of white plantation shutters on a Ventura County bedroom window",
+    label: "After"
+  },
+  {
+    image: "/images/portfolio-enhanced/bedroom-plantation-shutters-after-room-card.jpg",
+    imageAlt: "Room-angle after view of white plantation shutters in a Ventura County bedroom",
+    label: "After"
+  },
   {
     image: "/images/portfolio-enhanced/arched-bedroom-plantation-shutters-room-card.jpg",
     imageAlt: "White plantation shutters with an arched center bedroom window in Ventura County"
