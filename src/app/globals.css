@@ -1948,6 +1948,8 @@ body:has(.home-editorial).site-header-solid .category-dot {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .home-hero-preview {
@@ -1966,12 +1968,6 @@ body:has(.home-editorial).site-header-solid .category-dot {
 .home-hero-preview.is-active {
   opacity: 1;
   animation: home-hero-preview-fade 360ms ease-out both;
-}
-
-.home-hero-image {
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
 }
 
 .home-hero-slide video {
@@ -10959,7 +10955,7 @@ body:has(.booking-page--focused) .assistant-widget {
   }
 
   .home-hero-image {
-    background-position: 44% center;
+    object-position: 44% center;
   }
 
   .home-hero-slide video {
@@ -12605,10 +12601,11 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
     width: clamp(74px, 20vw, 86px) !important;
   }
 
-  /* --- Hero: 16:9 photo block, consistent with .home-photo-flow-item --- */
+  /* Keep the primary installation photo large enough to lead the mobile page
+     while leaving the next section visible below it. */
   body:has(.home-editorial) .home-editorial-panel {
     min-height: 0;
-    aspect-ratio: 1672 / 941;
+    aspect-ratio: 4 / 3;
   }
 
   body:has(.home-editorial) .home-editorial-panel::after {
@@ -15063,6 +15060,73 @@ body:has(.financing-banner) .site-header-shell {
   text-underline-offset: 3px;
 }
 
+.official-record-band {
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+}
+
+.official-record-band__inner {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+  gap: 70px;
+  width: min(1060px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 76px 0;
+}
+
+.official-record-band__heading h2 {
+  margin: 10px 0 16px;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.08;
+}
+
+.official-record-band__heading > p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.official-record-band__items {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.official-record-band__items article {
+  min-width: 0;
+  padding: 24px 22px;
+  border-right: 1px solid var(--line);
+}
+
+.official-record-band__items article:last-child {
+  border-right: 0;
+}
+
+.official-record-band__items svg {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 26px;
+}
+
+.official-record-band__items h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.official-record-band__items p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
 .official-verification-band__inner {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
@@ -15180,6 +15244,7 @@ body:has(.financing-banner) .site-header-shell {
 
 @media (max-width: 920px) {
   .official-hero__inner,
+  .official-record-band__inner,
   .official-verification-band__inner {
     grid-template-columns: 1fr;
   }
@@ -15200,6 +15265,20 @@ body:has(.financing-banner) .site-header-shell {
 
   .official-contact-band__inner {
     grid-template-columns: 1fr;
+  }
+
+  .official-record-band__items {
+    grid-template-columns: 1fr;
+  }
+
+  .official-record-band__items article,
+  .official-record-band__items article:last-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .official-record-band__items article:last-child {
+    border-bottom: 0;
   }
 
   .official-contact-band__inner > div,
@@ -15240,6 +15319,7 @@ body:has(.financing-banner) .site-header-shell {
 
   .official-hero__inner,
   .official-contact-band__inner,
+  .official-record-band__inner,
   .official-verification-band__inner {
     width: min(100% - 28px, 1180px);
   }
@@ -15276,6 +15356,23 @@ body:has(.financing-banner) .site-header-shell {
   .official-verification-band__inner {
     gap: 30px;
     padding: 54px 0;
+  }
+
+  .official-record-band__inner {
+    gap: 30px;
+    padding: 54px 0;
+  }
+
+  .official-record-band__heading h2 {
+    font-size: 34px;
+  }
+
+  .official-record-band__items article {
+    padding: 22px 0;
+  }
+
+  .official-record-band__items svg {
+    margin-bottom: 16px;
   }
 
   .official-verification-band h2 {

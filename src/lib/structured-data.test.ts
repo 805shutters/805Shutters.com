@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { getAnswerPage } from "@/lib/llm-search-pages";
-import { site } from "@/lib/site-data";
-import { answerPageJsonLd, localBusinessJsonLd } from "@/lib/structured-data";
+import { getPageByPath, site } from "@/lib/site-data";
+import {
+  answerPageJsonLd,
+  commercialSubPageJsonLd,
+  localBusinessJsonLd,
+  servicePageJsonLd
+} from "@/lib/structured-data";
 
 type JsonLdNode = Record<string, unknown>;
 
@@ -105,5 +110,34 @@ describe("structured data", () => {
     });
     expect(faq?.mainEntity).toHaveLength(page.faqs.length);
     expect(howTo?.step).toHaveLength(3);
+  });
+
+  it("connects service pages to their crawlable primary image", () => {
+    const page = getPageByPath("/shutters/camarillo/");
+    expect(page).toBeDefined();
+    if (!page) return;
+
+    const graph = graphFrom(servicePageJsonLd(page));
+    const webpage = findNode(graph, "WebPage");
+    const service = findNode(graph, "Service");
+
+    expect(webpage?.primaryImageOfPage).toMatchObject({
+      "@type": "ImageObject",
+      contentUrl: `${site.baseUrl}${page.image}`,
+      caption: page.imageAlt
+    });
+    expect(webpage?.mainEntity).toEqual({ "@id": service?.["@id"] });
+  });
+
+  it("adds the same image relationship to commercial location pages", () => {
+    const page = getPageByPath("/commercial-window-coverings/camarillo-ca/");
+    expect(page).toBeDefined();
+    if (!page) return;
+
+    const graph = graphFrom(commercialSubPageJsonLd(page, "Camarillo"));
+    expect(findNode(graph, "WebPage")?.primaryImageOfPage).toMatchObject({
+      contentUrl: `${site.baseUrl}${page.image}`,
+      caption: page.imageAlt
+    });
   });
 });

@@ -1,5 +1,15 @@
 import type { Metadata } from "next";
-import { BadgeCheck, Globe2, Mail, MessageSquareText, Phone, ShieldCheck } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarCheck,
+  CircleDollarSign,
+  FileCheck2,
+  Globe2,
+  Mail,
+  MessageSquareText,
+  Phone,
+  ShieldCheck
+} from "lucide-react";
 import { brandIdentity } from "@/lib/brand-identity";
 import { ogDefaults, site } from "@/lib/site-data";
 
@@ -101,6 +111,47 @@ export default function OfficialContactPage() {
             <Mail aria-hidden="true" />
             <span>Official email</span>
             <a href={brandIdentity.emailHref}>{brandIdentity.email}</a>
+          </div>
+        </div>
+      </section>
+
+      <section className="official-record-band" aria-labelledby="official-record-title">
+        <div className="official-record-band__inner">
+          <div className="official-record-band__heading">
+            <p className="eyebrow">Customer records</p>
+            <h2 id="official-record-title">Where the official details appear.</h2>
+            <p>
+              Communications about an 805 Shutters project should connect back to the website,
+              phone number, or email address shown on this page.
+            </p>
+          </div>
+          <div className="official-record-band__items">
+            <article>
+              <CalendarCheck aria-hidden="true" />
+              <h3>Appointments</h3>
+              <p>
+                Booking confirmations identify 805 Shutters, include the consultation date and
+                service address, and provide the primary number for scheduling questions.
+              </p>
+            </article>
+            <article>
+              <FileCheck2 aria-hidden="true" />
+              <h3>Contracts</h3>
+              <p>
+                Customer contracts display 805 Shutters with {brandIdentity.domain},{" "}
+                {brandIdentity.phone}, and {brandIdentity.email} so the sender can be checked
+                before approval.
+              </p>
+            </article>
+            <article>
+              <CircleDollarSign aria-hidden="true" />
+              <h3>Payment Requests</h3>
+              <p>
+                Before paying, compare the request with the official contact details above. Call
+                {" "}{brandIdentity.phoneDisplay} when a payment link, recipient, or message is
+                unexpected.
+              </p>
+            </article>
           </div>
         </div>
       </section>

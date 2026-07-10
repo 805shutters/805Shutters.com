@@ -7,7 +7,9 @@ describe("/page-sitemap.xml", () => {
     const body = await response.text();
 
     expect(response.headers.get("content-type")).toContain("application/xml");
-    expect(body).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    expect(body).toContain('xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"');
+    expect(body).toContain('xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"');
+    expect(body).toContain("<image:image><image:loc>https://www.805shutters.com/images/");
     expect(body).toContain("<loc>https://www.805shutters.com/</loc>");
     expect(body).toContain("<loc>https://www.805shutters.com/window-treatment-comparison-guide/</loc>");
     expect(body).toContain("<loc>https://www.805shutters.com/commercial-window-coverings/</loc>");

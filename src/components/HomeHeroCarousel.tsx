@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 export type HomeHeroSlide = {
@@ -165,9 +166,17 @@ export function HomeHeroCarousel({ slides, rotationIntervalMs = 0 }: HomeHeroCar
               <video autoPlay={index === activeIndex} loop muted playsInline poster={slide.image} preload={index === activeIndex ? "auto" : "none"}>
                 <source src={slide.video} type="video/mp4" />
               </video>
-            ) : (
-              <div className="home-hero-image" style={loadSlide ? { backgroundImage: `url(${slide.image})` } : undefined} />
-            )}
+            ) : loadSlide ? (
+              <Image
+                className="home-hero-image"
+                src={slide.image}
+                alt={slide.imageAlt}
+                fill
+                sizes="100vw"
+                preload={index === 0}
+                quality={85}
+              />
+            ) : null}
           </div>
         );
       })}

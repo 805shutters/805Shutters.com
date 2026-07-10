@@ -101,9 +101,8 @@ export const ogDefaults = {
   locale: "en_US"
 } as const;
 
-// First hero-carousel slide on the residential homepage. It renders as a CSS
-// background-image, which browsers discover late — the homepage preloads it
-// so the LCP image starts downloading with the document.
+// First hero-carousel slide on the residential homepage. The carousel renders
+// it with next/image so crawlers can discover it and the browser can preload it.
 export const homeHeroImage = "/images/homepage-flow/main-homepage-photo.jpg";
 
 export const images = {
@@ -2657,12 +2656,17 @@ export function commercialCityName(path: string): string | null {
   return commercialCityNamesByPath.get(normalizePath(path)) ?? null;
 }
 
+function isResidentialLocationPage(path: string) {
+  return /^\/(shutters|shades|blinds|drapery|window-coverings|window-treatments)\/[^/]+\/$/.test(path);
+}
+
 function searchDepthSections(page: SitePage): PageSection[] {
   const isCommercialCityPage =
     page.path.startsWith("/commercial-window-coverings/") && page.path !== "/commercial-window-coverings/";
   if (
     page.noIndex ||
     isCommercialCityPage ||
+    isResidentialLocationPage(page.path) ||
     page.path === "/financing/" ||
     (page.path.startsWith("/recent-projects/") && page.path !== "/recent-projects/")
   ) {

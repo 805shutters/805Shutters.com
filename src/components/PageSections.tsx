@@ -1375,7 +1375,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={heroMediaSlides} rotationIntervalMs={commercialMode ? 0 : 7000} />
+          <HomeHeroCarousel slides={heroMediaSlides} />
           <div className="home-hero-overlay">
             <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">

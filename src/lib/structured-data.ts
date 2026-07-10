@@ -56,6 +56,37 @@ function freeConsultationAction(pageUrl: string, name: string) {
   };
 }
 
+function pageImageObject(page: Pick<SitePage, "image" | "imageAlt">) {
+  const url = /^https?:\/\//i.test(page.image) ? page.image : `${site.baseUrl}${page.image}`;
+  return {
+    "@type": "ImageObject",
+    url,
+    contentUrl: url,
+    caption: page.imageAlt
+  };
+}
+
+function serviceWebPageNode(page: SitePage, mainEntityId: string) {
+  const pageUrl = `${site.baseUrl}${page.path}`;
+  return {
+    "@type": "WebPage",
+    "@id": `${pageUrl}#webpage`,
+    url: pageUrl,
+    name: page.title,
+    description: page.description,
+    isPartOf: {
+      "@id": websiteId()
+    },
+    mainEntity: {
+      "@id": mainEntityId
+    },
+    breadcrumb: {
+      "@id": `${pageUrl}#breadcrumb`
+    },
+    primaryImageOfPage: pageImageObject(page)
+  };
+}
+
 export function localBusinessJsonLd() {
   const sameAs = Array.from(
     new Set([
@@ -236,13 +267,16 @@ export function faqPageJsonLd(page: SitePage) {
 
 export function servicePageJsonLd(page: SitePage) {
   const pageUrl = `${site.baseUrl}${page.path}`;
+  const serviceId = `${pageUrl}#service`;
   const graph: JsonLdNode[] = [
+    serviceWebPageNode(page, serviceId),
     {
       "@type": "Service",
-      "@id": `${pageUrl}#service`,
+      "@id": serviceId,
       name: page.h1,
       description: page.description,
       url: pageUrl,
+      image: pageImageObject(page),
       serviceType: page.eyebrow,
       provider: {
         "@id": localBusinessId(),
@@ -488,6 +522,7 @@ export function answerPageJsonLd(page: AnswerPage) {
 export function commercialSubPageJsonLd(page: SitePage, cityName?: string | null) {
   const pageUrl = `${site.baseUrl}${page.path}`;
   const flagshipUrl = `${site.baseUrl}/commercial-window-coverings/`;
+  const serviceId = `${pageUrl}#commercial-service`;
   const areaServed = cityName
     ? [{ "@type": "City", name: cityName }]
     : site.areas.map((area) => ({ "@type": "City", name: area }));
@@ -495,12 +530,14 @@ export function commercialSubPageJsonLd(page: SitePage, cityName?: string | null
   return {
     "@context": "https://schema.org",
     "@graph": [
+      serviceWebPageNode(page, serviceId),
       {
         "@type": "Service",
-        "@id": `${pageUrl}#commercial-service`,
+        "@id": serviceId,
         name: page.h1,
         description: page.description,
         url: pageUrl,
+        image: pageImageObject(page),
         provider: {
           "@type": "LocalBusiness",
           "@id": `${site.baseUrl}#local-business`,
@@ -548,16 +585,19 @@ export function commercialSubPageJsonLd(page: SitePage, cityName?: string | null
 
 export function commercialWindowCoveringsJsonLd(page: SitePage) {
   const pageUrl = `${site.baseUrl}${page.path}`;
+  const serviceId = `${pageUrl}#commercial-window-coverings-service`;
 
   return {
     "@context": "https://schema.org",
     "@graph": [
+      serviceWebPageNode(page, serviceId),
       {
         "@type": "Service",
-        "@id": `${pageUrl}#commercial-window-coverings-service`,
+        "@id": serviceId,
         name: "Commercial Window Coverings in Ventura County",
         description: page.description,
         url: pageUrl,
+        image: pageImageObject(page),
         provider: {
           "@type": "LocalBusiness",
           "@id": `${site.baseUrl}#local-business`,
