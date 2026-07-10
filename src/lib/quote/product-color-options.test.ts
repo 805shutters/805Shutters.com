@@ -15,11 +15,11 @@ function findColor(productId: string, predicate: (row: ProductColorOption) => bo
 
 describe("Norman product color options", () => {
   it("combines roller and all non-roller Norman public color rows", () => {
-    expect(productColorOptions).toHaveLength(1238);
+    expect(productColorOptions).toHaveLength(1194);
     expect(getProductColorOptions("roller")).toHaveLength(350);
     expect(getProductColorOptions("roman")).toHaveLength(202);
-    expect(getProductColorOptions("honeycomb")).toHaveLength(213);
-    expect(getProductColorOptions("vertical_honeycomb")).toHaveLength(213);
+    expect(getProductColorOptions("honeycomb")).toHaveLength(191);
+    expect(getProductColorOptions("vertical_honeycomb")).toHaveLength(191);
     expect(getProductColorOptions("smartdrape")).toHaveLength(74);
     expect(getProductColorOptions("perfectsheer")).toHaveLength(32);
     expect(getProductColorOptions("smartfold")).toHaveLength(21);
@@ -55,22 +55,34 @@ describe("Norman product color options", () => {
   });
 
   it("routes Honeycomb colors only when the color row identifies the grid", () => {
-    expect(findColor("honeycomb", (row) => row.colorCode === "F1527" && row.collection === "Windsong")).toMatchObject({
-      colorName: "Toasted Wheat",
+    expect(findColor("honeycomb", (row) => row.colorCode === "F1527K" && row.collection === "Windsong")).toMatchObject({
+      colorName: "F1527 Toasted Wheat",
       programId: "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
       selectionMode: "fabric",
-    });
-    expect(findColor("honeycomb", (row) => row.colorCode === "C7015K" && row.fabricType === 'Light Filtering / 9/16" Cell')).toMatchObject({
-      colorName: "Brilliant White",
-      programId: "honeycomb_9_16in_cordless_single_cell",
-      selectionMode: "program",
-      requiresProgram: false,
     });
     expect(findColor("honeycomb", (row) => row.colorCode === "C7015K" && row.fabricType === "Light Filtering")).toMatchObject({
       colorName: "Brilliant White",
       programId: null,
       requiresProgram: true,
     });
+  });
+
+  it("uses the dealer honeycomb order-form colors instead of stale public-page rows", () => {
+    expect(findColor("honeycomb", (row) => row.colorCode === "C4135T")).toMatchObject({
+      colorName: "Reflections RD",
+      fabricType: "Room Darkening",
+    });
+    expect(findColor("honeycomb", (row) => row.colorCode === "C7019K")).toMatchObject({
+      colorName: "White Dawn",
+      collection: "Designer Fabric",
+    });
+    expect(findColor("honeycomb", (row) => row.colorCode === "F1301")).toMatchObject({
+      colorName: "Sand",
+      collection: "Breeze",
+    });
+    for (const staleCode of ["C1403", "C2114", "C2115", "C2410", "C4153T"]) {
+      expect(getProductColorOptions("honeycomb").find((row) => row.colorCode === staleCode)).toBeUndefined();
+    }
   });
 
   it("assigns program-priced product colors to their base price programs", () => {

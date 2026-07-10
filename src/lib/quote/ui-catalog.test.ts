@@ -41,8 +41,8 @@ describe("buildUiCatalog", () => {
 
   it("exposes searchable Norman colors for every supported product category", () => {
     expect(ui.products.find((p) => p.id === "roman")!.fabricColors).toHaveLength(202);
-    expect(ui.products.find((p) => p.id === "honeycomb")!.fabricColors).toHaveLength(213);
-    expect(ui.products.find((p) => p.id === "vertical_honeycomb")!.fabricColors).toHaveLength(213);
+    expect(ui.products.find((p) => p.id === "honeycomb")!.fabricColors).toHaveLength(191);
+    expect(ui.products.find((p) => p.id === "vertical_honeycomb")!.fabricColors).toHaveLength(191);
     expect(ui.products.find((p) => p.id === "smartdrape")!.fabricColors).toHaveLength(74);
     expect(ui.products.find((p) => p.id === "perfectsheer")!.fabricColors).toHaveLength(32);
     expect(ui.products.find((p) => p.id === "smartfold")!.fabricColors).toHaveLength(21);

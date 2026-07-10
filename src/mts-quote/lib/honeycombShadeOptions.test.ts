@@ -327,7 +327,7 @@ describe("Honeycomb Shades dealer fabric availability", () => {
     const legacy = getMtsProductColorRows("Honeycomb Shades", { cell_size: '3/4"' });
     expect(legacy.length).toBeGreaterThan(0);
 
-    // No cell size selected → full catalog (permissive).
-    expect(getMtsProductColorRows("Honeycomb Shades", {}).length).toBe(213);
+    // No cell size selected → full dealer order-form catalog (permissive).
+    expect(getMtsProductColorRows("Honeycomb Shades", {}).length).toBe(191);
   });
 });

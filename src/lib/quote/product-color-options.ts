@@ -5,6 +5,10 @@ import {
   NORMAN_ROLLER_PRODUCT_ID,
   normanRollerFabricColors,
 } from "./norman-roller-fabrics";
+import {
+  normanHoneycombDealerFabricRows,
+  type NormanHoneycombDealerFabricRow,
+} from "./norman-honeycomb-dealer-fabrics.generated";
 import { normanProductColorRows } from "./norman-product-colors.generated";
 import { normanRomanDealerFabricRows } from "./norman-roman-dealer-fabrics.generated";
 
@@ -131,6 +135,70 @@ function automaticDetails(productId: string, collection: string, fabricType: str
   return surchargeId ? { [PRODUCT_COLOR_SURCHARGE_DETAIL]: surchargeId } : {};
 }
 
+function normalizeHoneycombCode(code: string): string {
+  return code.trim().toUpperCase().replace(/[KTB]$/, "");
+}
+
+function honeycombDealerFabricDisplay(row: NormanHoneycombDealerFabricRow): Pick<ProductColorOption, "collection" | "fabricType"> {
+  const label = row.fabricType
+    .replace('3/4" Single Cell Sheer', "Sheer")
+    .replace('1 1/4" Single Cell Sheer', "Sheer");
+
+  if (label === "Woven Breeze") return { collection: "Breeze", fabricType: "Woven" };
+  if (label === "Woven Windsong") return { collection: "Windsong", fabricType: "Woven" };
+  if (label === "Designer Fabric Ashton (LF)") {
+    return { collection: "Ashton", fabricType: "Light Filtering / Designer" };
+  }
+  if (label === "Designer Fabric Ashton (RD)") {
+    return { collection: "Ashton", fabricType: "Room Darkening / Designer" };
+  }
+  if (label === "Designer Fabric (LF)") {
+    return { collection: "Designer Fabric", fabricType: "Light Filtering / Designer" };
+  }
+  if (label === "Designer Fabric (RD)") {
+    return { collection: "Designer Fabric", fabricType: "Room Darkening / Designer" };
+  }
+  if (label === "Flame Resistant (LF)") {
+    return { collection: "Flame Resistant", fabricType: "Light Filtering" };
+  }
+  if (label === "Flame Resistant (RD)") {
+    return { collection: "Flame Resistant", fabricType: "Room Darkening" };
+  }
+  if (label === "FR Essentials") return { collection: "FR Essentials", fabricType: "Light Filtering" };
+  if (label === "Solus") return { collection: "Solus", fabricType: "Light Filtering / Designer" };
+  return { collection: "", fabricType: label };
+}
+
+function honeycombDealerProgram(productId: string, collection: string, fabricType: string): string | null {
+  const value = normalized(`${collection} ${fabricType}`);
+  if (productId === "vertical_honeycomb") {
+    if (value.includes("flame resistant") || value.includes("fr essentials")) {
+      return "vertical_honeycomb_flame_resistant_fabrics_3_4in_single_only";
+    }
+    return "vertical_honeycomb_3_4in_single_and_1_1_4in_single_vertical";
+  }
+
+  if (value.includes("flame resistant") || value.includes("fr essentials")) {
+    return "honeycomb_flame_resistant_fabrics";
+  }
+  if (value.includes("windsong")) return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1";
+  if (value.includes("breeze") || value.includes("ashton")) {
+    return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2";
+  }
+  return null;
+}
+
+function honeycombDealerSelectionMode(
+  productId: string,
+  collection: string,
+  programId: string | null,
+): ProductColorSelectionMode {
+  if (productId === "honeycomb" && programId && ["Windsong", "Breeze", "Ashton"].includes(collection)) {
+    return "fabric";
+  }
+  return "program";
+}
+
 function resolveGeneratedRow(
   row: (typeof normanProductColorRows)[number],
 ): Pick<ProductColorOption, "programId" | "selectionMode" | "requiresProgram" | "available"> {
@@ -160,9 +228,11 @@ function resolveGeneratedRow(
   };
 }
 
-// Roman rows come from the dealer order-form catalog below, which is complete
-// (the public product pages only show a subset of colors).
-const generatedSourceRows = normanProductColorRows.filter((row) => row.productId !== "roman");
+// Roman and honeycomb rows come from dealer order-form captures, which are
+// complete. Public product pages can lag or retain stale colors.
+const generatedSourceRows = normanProductColorRows.filter(
+  (row) => !["roman", "honeycomb", "vertical_honeycomb"].includes(row.productId)
+);
 
 const ROMAN_PROGRAM_BY_PRICE_GROUP: Record<string, string> = {
   group1: "roman_cordless_usa_price_group_1_pg1",
@@ -210,6 +280,66 @@ const romanDealerColorOptions: ProductColorOption[] = normanRomanDealerFabricRow
     };
   }
 );
+
+const honeycombPublicImageByCode = new Map<string, string>();
+for (const row of normanProductColorRows) {
+  if (row.productId !== "honeycomb" || !row.colorCode || !row.imageUrl) continue;
+  honeycombPublicImageByCode.set(normalizeHoneycombCode(row.colorCode), row.imageUrl);
+}
+
+function buildHoneycombDealerColorOptions(productId: "honeycomb" | "vertical_honeycomb"): ProductColorOption[] {
+  const unique = new Map<string, NormanHoneycombDealerFabricRow>();
+  for (const row of normanHoneycombDealerFabricRows) {
+    const display = honeycombDealerFabricDisplay(row);
+    const key = [normalizeHoneycombCode(row.colorCode), display.collection, display.fabricType].join("\u0000");
+    if (!unique.has(key)) unique.set(key, row);
+  }
+
+  return [...unique.values()].map((row, index) => {
+    const { collection, fabricType } = honeycombDealerFabricDisplay(row);
+    const programId = honeycombDealerProgram(productId, collection, fabricType);
+    const selectionMode = honeycombDealerSelectionMode(productId, collection, programId);
+    const imageUrl = honeycombPublicImageByCode.get(normalizeHoneycombCode(row.colorCode)) ?? "";
+    const searchText = [
+      productId,
+      collection,
+      fabricType,
+      row.clothCode,
+      row.colorCode,
+      normalizeHoneycombCode(row.colorCode),
+      row.colorName,
+      programId ?? "",
+      "norman dealer honeycomb",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return {
+      id: optionId({ productId, collection, fabricType, colorCode: row.colorCode, colorName: row.colorName }, index),
+      productId,
+      collection,
+      publicCollection: collection,
+      fabricType,
+      colorCode: row.colorCode,
+      colorName: row.colorName,
+      publicColorName: row.colorName,
+      frStatus: "",
+      imageUrl,
+      sourcePage: "https://www.normanwindowcoverings.com/Login/Order/QB_Order.asp",
+      sourcePageModified: null,
+      sourceNote: "Norman dealer Portrait Honeycomb order form catalog",
+      programId,
+      selectionMode,
+      requiresProgram: !programId,
+      available: true,
+      automaticDetails: automaticDetails(productId, collection, fabricType),
+      searchText,
+    };
+  });
+}
+
+const honeycombDealerColorOptions = buildHoneycombDealerColorOptions("honeycomb");
+const verticalHoneycombDealerColorOptions = buildHoneycombDealerColorOptions("vertical_honeycomb");
 
 const generatedProductColorOptions: ProductColorOption[] = generatedSourceRows.map((row, index) => {
   const resolved = resolveGeneratedRow(row);
@@ -267,6 +397,8 @@ const rollerProductColorOptions: ProductColorOption[] = normanRollerFabricColors
 
 export const productColorOptions = [
   ...rollerProductColorOptions,
+  ...honeycombDealerColorOptions,
+  ...verticalHoneycombDealerColorOptions,
   ...generatedProductColorOptions,
   ...romanDealerColorOptions,
 ] as const;

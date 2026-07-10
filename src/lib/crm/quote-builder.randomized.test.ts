@@ -217,7 +217,7 @@ function stratifiedRandomColorRows(): ProductColorOption[] {
 describe("quote builder randomized fabric/color pricing", () => {
   it("normalizes and prices every available searchable color row", () => {
     const rows = productColorOptions.filter((row) => row.available);
-    expect(rows.length).toBe(1238);
+    expect(rows.length).toBe(1194);
 
     for (const row of rows) {
       const { product, selectedProgramId } = productProgramForRow(row);

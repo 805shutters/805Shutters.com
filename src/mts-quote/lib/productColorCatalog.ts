@@ -133,7 +133,9 @@ export function getMtsProductColorRows(
 ): ProductColorOption[] {
   const productIds = getMtsProductColorProductIds(productType, optionsJson);
   const rows = productIds.flatMap((productId) => getProductColorOptions(productId));
-  return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions);
+  return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions).map((row) =>
+    contextualizeMtsProductColorRow(productType, optionsJson, row)
+  );
 }
 
 export function searchMtsProductColors(
@@ -150,7 +152,9 @@ export function searchMtsProductColors(
       limit: 500,
     }),
   );
-  return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions).slice(0, limit);
+  return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions)
+    .map((row) => contextualizeMtsProductColorRow(productType, optionsJson, row))
+    .slice(0, limit);
 }
 
 export function findMtsProductColorById(
@@ -163,7 +167,7 @@ export function findMtsProductColorById(
   const productIds = explicitProductId ? [explicitProductId] : getMtsProductColorProductIds(productType, optionsJson);
   for (const productId of productIds) {
     const row = findProductColorOption(productId, id);
-    if (row) return row;
+    if (row) return contextualizeMtsProductColorRow(productType, optionsJson, row);
   }
   return null;
 }
@@ -180,7 +184,7 @@ export function findMtsProductColorBySelection(
   const productIds = explicitProductId ? [explicitProductId] : getMtsProductColorProductIds(productType, optionsJson);
   for (const productId of productIds) {
     const row = findProductColorOptionBySelection(productId, collection, colorCode, colorName);
-    if (row) return row;
+    if (row) return contextualizeMtsProductColorRow(productType, optionsJson, row);
   }
   return null;
 }
@@ -395,6 +399,66 @@ function honeycombProgramMatchesCellSize(programId: string | null | undefined, c
   const allowed = key ? HONEYCOMB_PROGRAMS_BY_CELL_SIZE[key] : undefined;
   if (!allowed) return true;
   return allowed.includes(programId);
+}
+
+function contextualizeMtsProductColorRow(
+  productType: string | null | undefined,
+  optionsJson: Record<string, unknown>,
+  row: ProductColorOption,
+): ProductColorOption {
+  if (productType !== "Honeycomb Shades") return row;
+  const selectedCellSize = stringOption(optionsJson, "cell_size");
+  const programId = getHoneycombContextProgram(row, selectedCellSize);
+  if (!programId || programId === row.programId) return row;
+  return {
+    ...row,
+    programId,
+    requiresProgram: false,
+    searchText: `${row.searchText} ${programId} ${getMtsGridKeyForCatalogProgram(productType, programId) ?? ""}`,
+  };
+}
+
+function getHoneycombContextProgram(
+  row: ProductColorOption,
+  selectedCellSize: string | null,
+): string | null {
+  const selected = selectedCellSize ? normalize(selectedCellSize) : "";
+  const value = normalize(`${row.collection} ${row.fabricType}`);
+
+  if (selected.includes("smartfit") || selected.includes("decoflex")) {
+    return value.includes("flame resistant") || value.includes("fr essentials")
+      ? "honeycomb_flame_resistant_fabrics"
+      : "honeycomb_3_8in_cordless_single_and_3_4in_single";
+  }
+
+  const key = selectedCellSize ? honeycombCellSizeProgramKey(selectedCellSize) : null;
+  if (key === "9/16") return "honeycomb_9_16in_cordless_single_cell";
+  if (key === "1/2") return "honeycomb_1_2in_cordless_double";
+  if (key === "3/8") {
+    return value.includes("flame resistant") || value.includes("fr essentials")
+      ? "honeycomb_flame_resistant_fabrics"
+      : "honeycomb_3_8in_cordless_single_and_3_4in_single";
+  }
+  if (key === "3/4 single") {
+    if (value.includes("flame resistant") || value.includes("fr essentials")) {
+      return "honeycomb_flame_resistant_fabrics";
+    }
+    if (value.includes("windsong")) return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1";
+    if (value.includes("breeze") || value.includes("ashton")) {
+      return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2";
+    }
+    return "honeycomb_3_8in_cordless_single_and_3_4in_single";
+  }
+  if (key === "3/4 double") return "honeycomb_3_4in_cordless_double_and_1_1_4in_single";
+  if (key === "1 1/4") {
+    if (value.includes("windsong")) return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1";
+    if (value.includes("breeze") || value.includes("ashton")) {
+      return "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2";
+    }
+    return "honeycomb_3_4in_cordless_double_and_1_1_4in_single";
+  }
+
+  return row.programId;
 }
 
 function matchesLightControl(row: ProductColorOption, lightControl: string | null): boolean {

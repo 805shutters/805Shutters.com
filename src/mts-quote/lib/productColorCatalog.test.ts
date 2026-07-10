@@ -11,7 +11,7 @@ import { getProductPriceBreakdown } from "./pricingEngine";
 describe("MTS Norman product color catalog adapter", () => {
   it("exposes the verified Norman color rows for every MTS fabric/color product", () => {
     expect(getMtsProductColorRows("Roman Shades")).toHaveLength(202);
-    expect(getMtsProductColorRows("Honeycomb Shades")).toHaveLength(213);
+    expect(getMtsProductColorRows("Honeycomb Shades")).toHaveLength(191);
     expect(getMtsProductColorRows("Sheer Shades")).toHaveLength(32);
     expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(74);
     expect(getMtsProductColorRows("Vertical Blinds")).toHaveLength(42);
@@ -41,6 +41,13 @@ describe("MTS Norman product color catalog adapter", () => {
     ).toMatchObject({
       collection: "Windsong",
       programId: "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
+    });
+    expect(
+      searchMtsProductColors("Honeycomb Shades", { cell_size: '3/4" Single Cell' }, "C4135T")[0]
+    ).toMatchObject({
+      colorCode: "C4135T",
+      programId: "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      automaticDetails: { fabric_surcharge_id: "room_darkening" },
     });
 
     expect(searchMtsProductColors("Sheer Shades", { light_control: "Room Darkening" }, "F1201")[0]).toMatchObject({
@@ -143,7 +150,7 @@ describe("MTS Norman product color pricing routes", () => {
         productType: "Honeycomb Shades",
         width: 24,
         height: 36,
-        fabric: 'C7015K - Brilliant White | Light Filtering / 9/16" Cell',
+        fabric: "C7015K - Brilliant White | Light Filtering",
         catalogProgramId: "honeycomb_9_16in_cordless_single_cell",
       })
     ).toMatchObject({
