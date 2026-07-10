@@ -22,7 +22,7 @@
 - Website status: live at `https://www.805shutters.com/gallery/`
 - Facebook status: live with the corrected full-frame images; post URL `https://www.facebook.com/805shutters/posts/1644225961044038`
 - Instagram status: live with the corrected full-frame images; permalink `https://www.instagram.com/805shutters/p/DamXVIyFjia/`
-- Google Business Profile status: public post ID `3207728361975261458`; corrected full-frame media submitted and pending Google review
+- Google Business Profile status: live with corrected full-frame media; public post ID `3207728361975261458`
 
 ## Published Facebook and Instagram Copy
 
@@ -56,5 +56,6 @@ Note: Google published the two-photo update but its embedded editor dropped the 
   - `https://www.805shutters.com/images/portfolio-enhanced/kitchen-roman-shade-raised-natural.jpg`
 - Facebook: live at `https://www.facebook.com/805shutters/posts/1644225961044038`; post ID `1644225961044038`; photo IDs `1644225674377400` and `1644225684377399`
 - Instagram: live at `https://www.instagram.com/805shutters/p/DamXVIyFjia/`; shortcode `DamXVIyFjia`
-- Google Business Profile: public Search post ID `3207728361975261458`; public view `https://www.google.com/search?q=805+Shutters+Shades+%26+Blinds#lpstate=pid:3207728361975261458`; full-frame media correction pending Google review
+- Google Business Profile: live with corrected full-frame media at public Search post ID `3207728361975261458`; public view `https://www.google.com/search?q=805+Shutters+Shades+%26+Blinds#lpstate=pid:3207728361975261458`; visually verified with the whole window and sink visible
 - Replaced cropped Meta publications: Facebook post `1644218874378080` and Instagram shortcode `DamWCY5loik` were deleted after the crop issue was reported
+- Google duplicate cleanup: a temporary replacement post was deleted after the original post's corrected media was approved; only post ID `3207728361975261458` remains live
