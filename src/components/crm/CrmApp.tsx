@@ -914,12 +914,13 @@ export function CrmApp({
     }
 
     if (page.target === "quotes") {
-      if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "contract");
+      if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder");
       return;
     }
 
     if (page.target === "contract") {
-      if (page.url) window.open(page.url, "_blank", "noopener,noreferrer");
+      if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "contract");
+      else if (page.url) window.open(page.url, "_blank", "noopener,noreferrer");
       return;
     }
 
@@ -4214,6 +4215,7 @@ function customerContractPageForEntry(entry: DrillEntry, quote?: CrmQuote): Cust
     target: "contract",
     label: "Customer Contract",
     detail: contractDocument?.title || quote?.quote_number || quote?.quote_label || undefined,
+    quoteId: quote?.id || null,
     url
   };
 }
