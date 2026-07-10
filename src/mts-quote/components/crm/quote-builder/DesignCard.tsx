@@ -194,6 +194,7 @@ import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
+import { getRomanShadeSpecWarnings } from "@mts/lib/romanShadeSpecs";
 import {
   calculateDiscountedPrice,
   removeQuoteDesignDiscount,
@@ -2816,9 +2817,26 @@ export function DesignCard({
     shadeType: currentDesign?.shade_type,
     liftSystem: currentDesign?.lift_system,
   });
+  const romanShadeSpecWarnings = getRomanShadeSpecWarnings({
+    productType: lineItem.product_type,
+    widthInches: widthIn,
+    heightInches: heightIn,
+    fabric: currentDesign?.fabric,
+    fabricCollection:
+      stringOption(currentOptions, PRODUCT_COLOR_COLLECTION_DETAIL) ||
+      stringOption(currentOptions, "roman_fabric_category"),
+    fabricColorCode: stringOption(currentOptions, PRODUCT_COLOR_CODE_DETAIL),
+    fabricColorName: stringOption(currentOptions, PRODUCT_COLOR_NAME_DETAIL),
+    foldStyle: stringOption(currentOptions, "fold_style"),
+    shadeType: currentDesign?.shade_type,
+    liftSystem: currentDesign?.lift_system,
+    mountType: currentDesign?.mount_type,
+    lining: stringOption(currentOptions, "lining"),
+  });
   const manufacturerSpecWarnings = [
     ...rollerShadeSpecWarnings,
     ...honeycombShadeSpecWarnings,
+    ...romanShadeSpecWarnings,
   ];
 
   const currentRetailPerSqft =
