@@ -22,6 +22,7 @@ import {
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
+import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import {
   awaitingProductRows,
   balanceDueCompletedRows,
@@ -69,7 +70,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "tracking" | "quotes" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2532,6 +2533,7 @@ export function CrmApp({
           ["command", "Command Center"],
           ["tracking", "Job Tracking"],
           ["quotes", "Quotes"],
+          ["commercial", "Commercial and Referrals"],
           ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
@@ -2585,6 +2587,8 @@ export function CrmApp({
           onOpenCrmQuote={openQuoteWorkspaceQuote}
         />
       ) : null}
+
+      {activeTab === "commercial" && session ? <CommercialWorkspace session={session} /> : null}
 
       {activeTab === "tracking" ? (
         <JobTrackingView

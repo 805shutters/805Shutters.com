@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Bodoni_Moda } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
+import "@/components/crm/commercial-workspace.css";
 import { ConditionalChrome } from "@/components/ConditionalChrome";
 import { PublicActivityTracking } from "@/components/PublicActivityTracking";
 import { CrmAuthRedirect } from "@/components/crm/CrmAuthRedirect";

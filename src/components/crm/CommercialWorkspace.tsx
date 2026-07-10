@@ -17,7 +17,6 @@ import {
   commercialTypeLabels
 } from "@/lib/crm/commercial-types";
 import { commercialOutreachTemplates } from "@/lib/crm/commercial-outreach";
-import "./commercial-workspace.css";
 
 type CommercialView = "pipeline" | "find" | "outreach" | "playbook";
 type OutreachPreview = {
