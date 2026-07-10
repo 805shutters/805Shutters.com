@@ -19,15 +19,14 @@ export const commercialOutreachTemplates: CommercialOutreachTemplate[] = [
     subject: "Ventura County window-covering bids for {{company_name}}",
     body: `Hi {{first_name}},
 
-I’m Jessica with 805 Shutters. We supply and install commercial roller shades, solar shades, blinds, and shutters across Ventura County.
+I’m with 805 Shutters. We supply and install commercial roller shades, solar shades, blinds, and shutters across Ventura County.
 
 I’d like to learn how {{company_name}} handles Division 12 window-covering bids and get added to the right subcontractor or vendor list. We can support site walks, takeoffs, product alternates, clear proposals, and local installation.
 
 Are you the right person for this scope, or is there an estimator or project manager I should coordinate with?
 
 Thank you,
-Jessica
-805 Commercial`
+805 Shutters Commercial Team`
   },
   {
     id: "facilities-audit",
@@ -35,15 +34,14 @@ Jessica
     subject: "Local shade replacement support for {{company_name}}",
     body: `Hi {{first_name}},
 
-I’m Jessica with 805 Shutters in Ventura County. We help schools and facility teams plan classroom and office shade replacements for glare, heat, privacy, safe operation, and damaged coverings.
+I’m with 805 Shutters in Ventura County. We help schools and facility teams plan classroom and office shade replacements for glare, heat, privacy, safe operation, and damaged coverings.
 
 We can walk a site, organize the scope by room or phase, recommend durable commercial products, and provide budget direction before a formal bid is needed.
 
 Could you point me to the person who manages window-covering maintenance, purchasing, or upcoming facility projects for {{company_name}}?
 
 Thank you,
-Jessica
-805 Commercial`
+805 Shutters Commercial Team`
   },
   {
     id: "property-program",
@@ -51,15 +49,14 @@ Jessica
     subject: "Window-covering replacement program for {{company_name}}",
     body: `Hi {{first_name}},
 
-I’m Jessica with 805 Shutters. We work with Ventura County properties that need repeatable pricing and local installation for tenant turns, damaged blinds, glare complaints, common areas, and phased shade replacements.
+I’m with 805 Shutters. We work with Ventura County properties that need repeatable pricing and local installation for tenant turns, damaged blinds, glare complaints, common areas, and phased shade replacements.
 
 I’d like to offer {{company_name}} a no-cost shade audit on one property and build a simple replacement standard your team can reuse across future work orders.
 
 Would a short introduction next week be useful?
 
 Thank you,
-Jessica
-805 Commercial`
+805 Shutters Commercial Team`
   },
   {
     id: "architect-spec",
@@ -67,15 +64,14 @@ Jessica
     subject: "Division 12 shade specification support for {{company_name}}",
     body: `Hi {{first_name}},
 
-I’m Jessica with 805 Shutters. We provide local product, budget, and installation support for commercial roller shades, solar shades, blackout shades, blinds, and motorized systems in Ventura County.
+I’m with 805 Shutters. We provide local product, budget, and installation support for commercial roller shades, solar shades, blackout shades, blinds, and motorized systems in Ventura County.
 
 If {{company_name}} has a project with a Division 12 window-treatment scope, I can help with samples, alternates, site verification, budget pricing, and installer coordination before the package goes out to bid.
 
 May I send you a short commercial capability sheet and product binder?
 
 Thank you,
-Jessica
-805 Commercial`
+805 Shutters Commercial Team`
   }
 ];
 

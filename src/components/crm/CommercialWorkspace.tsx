@@ -132,7 +132,7 @@ function parseDelimited(text: string) {
       account_type: accountType,
       status: pick(record, ["status"]) || "new",
       priority: pick(record, ["priority"]) || "normal",
-      assigned_to: pick(record, ["assigned to", "owner"]) || "Jessica",
+      assigned_to: pick(record, ["assigned to", "owner"]) || "Unassigned",
       contact_name: pick(record, ["contact name", "contact", "administrator", "chief business official"]),
       contact_title: pick(record, ["contact title", "title"]),
       email: pick(record, ["email", "email address"]),
@@ -220,7 +220,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
       setData(result);
       if (!selectedId && result.accounts[0]) setSelectedId(result.accounts[0].id);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Commercial workspace could not be loaded.");
+      setMessage(error instanceof Error ? error.message : "Commercial and Referrals could not be loaded.");
     } finally {
       if (!options.quiet) setLoading(false);
     }
@@ -353,10 +353,10 @@ export function CommercialWorkspace({ session }: { session: Session }) {
           ...manualDraft,
           status: manualDraft.email ? "ready" : "researching",
           priority: "normal",
-          assigned_to: "Jessica",
+          assigned_to: "Unassigned",
           license_status: manualDraft.license_number ? "unverified" : "not_applicable",
           source_type: "manual_research",
-          source_name: manualDraft.website ? "Prospect website confirmed by Jessica" : "Manual research",
+          source_name: manualDraft.website ? "Prospect website confirmed by 805 Shutters" : "Manual research",
           source_checked_at: new Date().toISOString(),
           tags: "commercial"
         })
@@ -364,7 +364,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
       await refresh({ quiet: true });
       setSelectedId(result.account.id);
       setView("pipeline");
-      setMessage(`${result.account.company_name} added to Jessica’s ledger.`);
+      setMessage(`${result.account.company_name} added to the Commercial and Referrals ledger.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Prospect could not be added.");
     } finally {
@@ -486,8 +486,8 @@ export function CommercialWorkspace({ session }: { session: Session }) {
     }
   }
 
-  if (loading) return <section className="commercial-crm-loading">Loading Jessica’s commercial workspace…</section>;
-  if (!data) return <section className="commercial-crm-loading">{message || "Commercial workspace is unavailable."}</section>;
+  if (loading) return <section className="commercial-crm-loading">Loading Commercial and Referrals…</section>;
+  if (!data) return <section className="commercial-crm-loading">{message || "Commercial and Referrals is unavailable."}</section>;
 
   return (
     <section className="commercial-crm">
@@ -517,12 +517,12 @@ export function CommercialWorkspace({ session }: { session: Session }) {
         <ScoreCard label="Overdue" value={data.summary.overdue} tone={data.summary.overdue ? "warning" : undefined} />
       </div>
 
-      <nav className="commercial-crm-nav" aria-label="Commercial workspace sections">
+      <nav className="commercial-crm-nav" aria-label="Commercial and Referrals sections">
         {([
           ["pipeline", "Pipeline"],
           ["find", "Find prospects"],
           ["outreach", `Outreach${selectedAccountIds.length ? ` (${selectedAccountIds.length})` : ""}`],
-          ["playbook", "Jessica’s playbook"]
+          ["playbook", "Commercial playbook"]
         ] as Array<[CommercialView, string]>).map(([id, label]) => (
           <button type="button" className={view === id ? "active" : ""} key={id} onClick={() => setView(id)}>
             {label}
@@ -709,7 +709,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
 
           <aside className="commercial-add-card" id="commercial-add-prospect">
             <span>Confirmed prospect</span>
-            <h3>Add to Jessica’s ledger</h3>
+            <h3>Add to the commercial ledger</h3>
             <form onSubmit={createManualAccount}>
               <label>Company<input required value={manualDraft.company_name} onChange={(event) => setManualDraft({ ...manualDraft, company_name: event.target.value })} /></label>
               <label>Type<select value={manualDraft.account_type} onChange={(event) => setManualDraft({ ...manualDraft, account_type: event.target.value })}>{commercialAccountTypes.map((type) => <option key={type} value={type}>{commercialTypeLabels[type]}</option>)}</select></label>
@@ -803,7 +803,7 @@ function CommercialPlaybook({ data }: { data: CommercialWorkspaceData }) {
 
       <div className="commercial-playbook-grid">
         <section>
-          <span>Jessica’s weekly rhythm</span>
+          <span>Team weekly rhythm</span>
           <h3>What “good” looks like every week</h3>
           <ol>
             <li><strong>Monday · Build the list</strong><p>Run one city/category search, import one official directory update, and select the 25 best-fit accounts for the week.</p></li>
@@ -817,7 +817,7 @@ function CommercialPlaybook({ data }: { data: CommercialWorkspaceData }) {
         <section>
           <span>First-call script</span>
           <h3>Ask for access, not a sale</h3>
-          <blockquote>“Hi, this is Jessica with 805 Shutters. We supply and install commercial shades, blinds, and shutters across Ventura County. I’m calling to find the person who handles Division 12 window-covering scopes, facility replacements, or vendor registration. Who is the best person for me to introduce myself to?”</blockquote>
+          <blockquote>“Hi, this is [Your Name] with 805 Shutters. We supply and install commercial shades, blinds, and shutters across Ventura County. I’m calling to find the person who handles Division 12 window-covering scopes, facility replacements, or vendor registration. Who is the best person for me to introduce myself to?”</blockquote>
           <p>If transferred: ask how projects are bid, which portal they use, insurance/licensing requirements, typical project types, and whether a short capability sheet or product binder would be useful.</p>
         </section>
 
@@ -843,7 +843,7 @@ function CommercialPlaybook({ data }: { data: CommercialWorkspaceData }) {
 
         <section className="wide">
           <span>Capability package checklist</span>
-          <h3>What Jessica should be able to send in under two minutes</h3>
+          <h3>What the team should be able to send in under two minutes</h3>
           <div className="commercial-check-grid"><p>Company overview and Ventura County service area</p><p>Commercial products and Division 12 capabilities</p><p>License, insurance, DIR, W-9, and safety documents</p><p>School, office, retail, medical, hospitality, and property examples</p><p>Product samples, data sheets, colors, openness factors, and motor options</p><p>Three references and clear estimating/contact information</p></div>
         </section>
       </div>

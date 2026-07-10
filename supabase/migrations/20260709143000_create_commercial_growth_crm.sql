@@ -6,7 +6,7 @@ create table if not exists public.crm_commercial_accounts (
   account_type text not null default 'other',
   status text not null default 'new',
   priority text not null default 'normal',
-  assigned_to text not null default 'Jessica',
+  assigned_to text not null default 'Unassigned',
   contact_name text,
   contact_title text,
   email text,
@@ -54,6 +54,9 @@ create table if not exists public.crm_commercial_accounts (
     license_status in ('not_applicable', 'unverified', 'active', 'inactive', 'expired', 'suspended')
   )
 );
+
+alter table public.crm_commercial_accounts
+alter column assigned_to set default 'Unassigned';
 
 create table if not exists public.crm_commercial_activities (
   id uuid primary key default gen_random_uuid(),

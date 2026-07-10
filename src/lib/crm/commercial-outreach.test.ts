@@ -10,7 +10,7 @@ const account: CommercialAccount = {
   account_type: "general_contractor",
   status: "ready",
   priority: "high",
-  assigned_to: "Jessica",
+  assigned_to: "Unassigned",
   contact_name: "Taylor Smith",
   contact_title: "Estimator",
   email: "taylor@example.com",

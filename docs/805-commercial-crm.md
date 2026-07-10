@@ -1,6 +1,6 @@
 # 805 Commercial CRM
 
-The Commercial tab is a separate relationship and bid pipeline for Jessica. It does not mix commercial prospecting with residential customer jobs.
+Commercial and Referrals is a company-wide relationship, referral, and bid pipeline. It does not mix commercial prospecting with residential customer jobs.
 
 ## What is included
 
@@ -24,7 +24,7 @@ The Commercial tab is a separate relationship and bid pipeline for Jessica. It d
 
 Sending remains locked until a postal address is configured. This is intentional: federal CAN-SPAM rules apply to B2B commercial email as well as consumer email.
 
-## Jessica's operating rule
+## Operating rule
 
 Every prospect must always have one next action and one due date. A company only moves to `Ready` after the correct decision-maker and a confirmed business email are known. Every call, meeting, reply, bid invitation, and submitted bid is recorded in the relationship history.
 
