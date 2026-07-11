@@ -7054,6 +7054,16 @@ button.crm-calendar-month-event:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
 }
 
+.crm-installation-payables-workspace .crm-installation-ledger { width: 100%; }
+.crm-installation-company-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.crm-installation-company-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 16px; border: 1px solid var(--line); background: #f7f7f5; }
+.crm-installation-company-card span,
+.crm-installation-company-card dt { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.crm-installation-company-card h3 { margin: 4px 0 0; font-size: 17px; }
+.crm-installation-company-card > strong { font-family: var(--font-display); font-size: 28px; font-weight: 400; }
+.crm-installation-company-card dl { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line); }
+.crm-installation-company-card dd { margin: 3px 0 0; font-size: 12px; font-weight: 800; }
+
 .crm-bookkeeping-summary-card {
   display: grid;
   align-content: center;

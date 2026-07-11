@@ -70,7 +70,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "availability" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2538,6 +2538,7 @@ export function CrmApp({
           ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
+          ["installation", "Installation"],
           ["calendar", "Calendar"],
           ["availability", "Open Times"]
         ].map(([tab, label]) => (
@@ -2840,6 +2841,18 @@ export function CrmApp({
           busy={busy}
           onPay={recordPartnerPaymentBatch}
         />
+      ) : null}
+
+      {activeTab === "installation" ? (
+        <section className="crm-workspace crm-workspace-wide crm-installation-payables-workspace">
+          <InstallationInvoiceInbox
+            invoices={installationInvoiceEmails}
+            rows={rows}
+            onPull={pullInstallationInvoices}
+            onSaveInvoice={saveInstallationInvoiceLedgerItem}
+            busy={busy}
+          />
+        </section>
       ) : null}
 
       {activeTab === "orders" ? (
@@ -3240,6 +3253,7 @@ type InstallationInvoiceLedgerStatus = "open" | "paid" | "partial" | "review";
 type InstallationInvoiceLedgerItem = {
   id: string;
   source: "email" | "bookkeeping";
+  companyName: string;
   customerName: string;
   invoiceNumber: string | null;
   invoiceUrl: string | null;
@@ -3740,6 +3754,8 @@ function rowForInstallationInvoice(invoice: CrmInstallationInvoiceEmail, rows: C
   return rows.find((row) => installationInvoiceMatchesRow(invoice, row));
 }
 
+const CURRENT_INSTALLATION_COMPANY = "MTS Installations";
+
 function installationInvoicePaymentState(amount: number, paidAt: string | null | undefined, rawPaidAmount: unknown) {
   const parsedPaidAmount = Number(rawPaidAmount);
   const paidAmount = roundCurrency(
@@ -3787,6 +3803,7 @@ function buildInstallationInvoiceLedger(rows: CrmBookkeepingRow[], invoices: Crm
     items.push({
       id: `email-${invoice.id}`,
       source: "email",
+      companyName: CURRENT_INSTALLATION_COMPANY,
       customerName,
       invoiceNumber: invoice.extracted_invoice_number || row?.installationInvoiceNumber || null,
       invoiceUrl: invoice.email_url || row?.installationInvoiceUrl || null,
@@ -3828,6 +3845,7 @@ function buildInstallationInvoiceLedger(rows: CrmBookkeepingRow[], invoices: Crm
     items.push({
       id: `bookkeeping-${bookkeepingRowKey(row)}`,
       source: "bookkeeping",
+      companyName: CURRENT_INSTALLATION_COMPANY,
       customerName: row.customerName,
       invoiceNumber: row.installationInvoiceNumber,
       invoiceUrl: row.installationInvoiceUrl,
@@ -9766,6 +9784,21 @@ function InstallationInvoiceInbox({
   busy: boolean;
 }) {
   const ledger = useMemo(() => buildInstallationInvoiceLedger(rows, invoices), [rows, invoices]);
+  const companyLedgers = useMemo(() => {
+    const companies = new Map<string, InstallationInvoiceLedgerItem[]>();
+    for (const item of ledger.items) {
+      const current = companies.get(item.companyName) || [];
+      current.push(item);
+      companies.set(item.companyName, current);
+    }
+    return [...companies.entries()].map(([companyName, items]) => ({
+      companyName,
+      billed: roundCurrency(items.reduce((sum, item) => sum + item.amount, 0)),
+      paid: roundCurrency(items.reduce((sum, item) => sum + item.paidAmount, 0)),
+      open: roundCurrency(items.reduce((sum, item) => sum + item.openAmount, 0)),
+      openCount: items.filter((item) => item.openAmount > 0).length
+    }));
+  }, [ledger.items]);
   const counts = invoices.reduce(
     (current, invoice) => {
       current[invoice.match_status] += 1;
@@ -9813,6 +9846,22 @@ function InstallationInvoiceInbox({
           </article>
         ))}
       </div>
+      <div className="crm-installation-company-grid">
+        {companyLedgers.map((company) => (
+          <article className="crm-installation-company-card" key={company.companyName}>
+            <div>
+              <span>Installation Company</span>
+              <h3>{company.companyName}</h3>
+            </div>
+            <strong>{toLedgerCurrency(company.open)}</strong>
+            <dl>
+              <div><dt>Open</dt><dd>{company.openCount} invoices</dd></div>
+              <div><dt>Paid</dt><dd>{toLedgerCurrency(company.paid)}</dd></div>
+              <div><dt>Lifetime billed</dt><dd>{toLedgerCurrency(company.billed)}</dd></div>
+            </dl>
+          </article>
+        ))}
+      </div>
       <div className="crm-bookkeeping-counts" aria-label="Installation email pull counts">
         <span>Matched: {counts.matched}</span>
         <span>Review: {counts.needs_review}</span>
@@ -9824,6 +9873,7 @@ function InstallationInvoiceInbox({
           <thead>
             <tr>
               <th>Invoice</th>
+              <th>Installation Company</th>
               <th>Customer</th>
               <th>Received</th>
               <th>Amount</th>
@@ -9847,6 +9897,7 @@ function InstallationInvoiceInbox({
                   )}
                   <span>{item.source === "email" ? "Gmail" : "Customer file"}</span>
                 </td>
+                <td><strong>{item.companyName}</strong></td>
                 <td>{item.customerName || "Needs review"}</td>
                 <td>{formatShortDate(item.receivedAt)}</td>
                 <td>{item.amount ? toLedgerCurrency(item.amount) : "-"}</td>
