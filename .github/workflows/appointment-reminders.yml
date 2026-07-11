@@ -1,0 +1,22 @@
+name: Day-before appointment reminders
+
+on:
+  schedule:
+    # 7 p.m. Pacific is 02:00 UTC during daylight time and 03:00 UTC during standard time.
+    - cron: "0 2 * * *"
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send day-before appointment reminders
+        env:
+          APPOINTMENT_REMINDER_CRON_SECRET: ${{ secrets.APPOINTMENT_REMINDER_CRON_SECRET }}
+        run: |
+          curl --fail --silent --show-error \
+            --retry 2 \
+            --request POST \
+            --header "Authorization: Bearer ${APPOINTMENT_REMINDER_CRON_SECRET}" \
+            https://805-one.vercel.app/api/cron/appointment-reminders

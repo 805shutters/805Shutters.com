@@ -27,10 +27,6 @@
     {
       "path": "/api/cron/indexnow",
       "schedule": "45 18 * * 1"
-    },
-    {
-      "path": "/api/cron/appointment-reminders",
-      "schedule": "0 2,3 * * *"
     }
   ]
 }
