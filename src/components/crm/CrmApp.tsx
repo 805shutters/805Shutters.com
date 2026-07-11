@@ -841,6 +841,7 @@ export function CrmApp({
   const jobs = useMemo(() => data?.jobs || [], [data]);
   const quotes = useMemo(() => data?.quotes || [], [data]);
   const events = useMemo(() => data?.events || [], [data]);
+  const customers = useMemo(() => data?.customers || [], [data]);
   const rows = useMemo(() => data?.bookkeepingRows || [], [data]);
   const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
   const orderCogsEmails = useMemo(() => data?.orderCogsEmails || [], [data]);
@@ -2582,6 +2583,7 @@ export function CrmApp({
           jobs={jobs}
           quotes={quotes}
           events={events}
+          customers={customers}
           onChanged={refresh}
           onOpenCalendarDate={(date) => {
             setCalendarDate(date);

@@ -23,7 +23,7 @@ import {
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
-import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
@@ -32,6 +32,7 @@ interface QuoteDashboardProps {
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
+  crmCustomers?: CrmCustomer[];
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
@@ -127,6 +128,7 @@ export function QuoteDashboard({
   crmJobs = [],
   crmQuotes = [],
   crmCalendarEvents = [],
+  crmCustomers = [],
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
@@ -607,6 +609,7 @@ export function QuoteDashboard({
         onSubmit={(data) => createQuote.mutate(data)}
         isPending={createQuote.isPending}
         accountOptions={visibleAccounts}
+        customers={crmCustomers}
       />
 
       <QuotePortfolioDialog

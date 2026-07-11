@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
+import type { CrmCustomer } from "@/lib/crm/types";
 
 type QuoteAccountOption = (typeof QUOTE_ACCOUNTS)[number];
 
@@ -13,6 +14,7 @@ interface NewQuoteDialogProps {
   onSubmit: (data: NewQuoteData) => void;
   isPending?: boolean;
   accountOptions?: readonly QuoteAccountOption[];
+  customers?: CrmCustomer[];
 }
 
 export interface NewQuoteData {
@@ -29,12 +31,27 @@ export function NewQuoteDialog({
   onSubmit,
   isPending,
   accountOptions = QUOTE_ACCOUNTS,
+  customers = [],
 }: NewQuoteDialogProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
+  const matchingCustomers = useMemo(() => {
+    const query = customerSearch.trim().toLocaleLowerCase();
+    if (query.length < 2) return [];
+    return customers
+      .filter((customer) =>
+        [customer.display_name, customer.phone, customer.email, customer.address, customer.city]
+          .filter(Boolean)
+          .some((value) => String(value).toLocaleLowerCase().includes(query))
+      )
+      .slice(0, 8);
+  }, [customerSearch, customers]);
 
   useEffect(() => setMounted(true), []);
 
@@ -43,7 +60,18 @@ export function NewQuoteDialog({
     setCustomerPhone("");
     setCustomerAddress("");
     setCustomerEmail("");
+    setCustomerSearch("");
+    setSelectedCustomerId(null);
     onClose();
+  };
+
+  const selectCustomer = (customer: CrmCustomer) => {
+    setCustomerName(customer.display_name || "");
+    setCustomerPhone(customer.phone || "");
+    setCustomerEmail(customer.email || "");
+    setCustomerAddress(customer.address || "");
+    setCustomerSearch(customer.display_name || "");
+    setSelectedCustomerId(customer.id);
   };
 
   // Esc to close + lock background scroll while the modal is open.
@@ -107,6 +135,39 @@ export function NewQuoteDialog({
         </div>
         <p className="crm-slot-time-summary">Choose an account to create the quote</p>
         <form className="crm-form" onSubmit={(e) => e.preventDefault()}>
+          <div className="crm-customer-lookup">
+            <label htmlFor="new-quote-customer-search">Find an existing customer</label>
+            <input
+              id="new-quote-customer-search"
+              type="search"
+              placeholder="Search by name, phone, email, or address"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value);
+                setSelectedCustomerId(null);
+              }}
+              autoComplete="off"
+              autoFocus
+            />
+            {customerSearch.trim().length >= 2 && !selectedCustomerId ? (
+              <div className="crm-customer-lookup__results" role="listbox" aria-label="Matching customers">
+                {matchingCustomers.length ? matchingCustomers.map((customer) => (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    onClick={() => selectCustomer(customer)}
+                  >
+                    <strong>{customer.display_name}</strong>
+                    <span>{[customer.phone, customer.email, customer.address].filter(Boolean).join(" • ")}</span>
+                  </button>
+                )) : <p>No existing customers found. Enter new customer details below.</p>}
+              </div>
+            ) : null}
+            {selectedCustomerId ? <p className="crm-customer-lookup__selected">Existing customer selected — their saved information is filled in below.</p> : null}
+          </div>
+          <p className="crm-customer-lookup__divider"><span>Customer details</span></p>
           <div className="crm-field-row">
             <label>
               Customer
@@ -114,7 +175,6 @@ export function NewQuoteDialog({
                 placeholder="Customer name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                autoFocus
               />
             </label>
             <label>
