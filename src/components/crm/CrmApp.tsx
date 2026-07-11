@@ -1093,7 +1093,8 @@ export function CrmApp({
     event.preventDefault();
     if (!supabase) return;
 
-    const email = formString(new FormData(event.currentTarget), "email").toLowerCase();
+    const form = event.currentTarget;
+    const email = formString(new FormData(form), "email").toLowerCase();
     if (!email) {
       setEmailLoginMessage(isKenMode ? `Enter Ken's approved email: ${KEN_CRM_EMAIL}.` : "Enter an approved 805 Shutters email.");
       return;
@@ -1127,7 +1128,7 @@ export function CrmApp({
       }
 
       setEmailLoginMessage(`Login link sent to ${email}.`);
-      event.currentTarget.reset();
+      form.reset();
     } catch (error) {
       setEmailLoginMessage(error instanceof Error ? error.message : "Email login link could not be sent.");
     } finally {
