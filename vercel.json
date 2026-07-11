@@ -21,6 +21,10 @@
       "schedule": "35 17 * * *"
     },
     {
+      "path": "/api/cron/commercial-campaigns",
+      "schedule": "5 18 * * 1-5"
+    },
+    {
       "path": "/api/cron/indexnow",
       "schedule": "45 18 * * 1"
     }

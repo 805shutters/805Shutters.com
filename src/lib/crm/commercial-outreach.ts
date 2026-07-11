@@ -126,7 +126,7 @@ export function buildCommercialOutreachMessage(
   return { subject, text, html };
 }
 
-async function sendWithResend(input: { to: string; subject: string; text: string; html: string }) {
+export async function sendCommercialOutreachMessage(input: { to: string; subject: string; text: string; html: string }) {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM;
   if (!apiKey || !from) throw new CrmAuthError(503, "Commercial outbound email is not configured.");
@@ -205,7 +205,7 @@ export async function sendCommercialOutreach(
     }
 
     try {
-      const resendId = await sendWithResend({ to: preview.to, subject: preview.subject, text: preview.text, html: preview.html });
+      const resendId = await sendCommercialOutreachMessage({ to: preview.to, subject: preview.subject, text: preview.text, html: preview.html });
       const now = new Date().toISOString();
       const { error: activityError } = await supabase.from("crm_commercial_activities").insert({
         account_id: preview.accountId,

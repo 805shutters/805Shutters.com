@@ -123,6 +123,42 @@ export type CommercialWorkspaceData = {
   };
 };
 
+export type CommercialCampaignStatus = "draft" | "active" | "paused" | "completed";
+export type CommercialCampaignEnrollmentStatus = "queued" | "sent" | "replied" | "opted_out" | "completed" | "skipped" | "failed";
+
+export type CommercialCampaign = {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  account_type: CommercialAccountType;
+  audience_statuses: CommercialStatus[];
+  status: CommercialCampaignStatus;
+  intro_subject: string;
+  intro_body: string;
+  follow_up_subject: string;
+  follow_up_body: string;
+  follow_up_delay_days: number;
+  daily_limit: number;
+  created_by: string | null;
+  launched_at: string | null;
+  paused_at: string | null;
+  last_run_at: string | null;
+};
+
+export type CommercialCampaignStats = {
+  total: number;
+  queued: number;
+  sent: number;
+  replied: number;
+  optedOut: number;
+  completed: number;
+  skipped: number;
+  failed: number;
+};
+
+export type CommercialCampaignWithStats = CommercialCampaign & { stats: CommercialCampaignStats };
+
 export const commercialTypeLabels: Record<CommercialAccountType, string> = {
   general_contractor: "General contractor",
   developer: "Developer",

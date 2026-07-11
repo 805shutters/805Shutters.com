@@ -17,8 +17,9 @@ import {
   commercialTypeLabels
 } from "@/lib/crm/commercial-types";
 import { commercialOutreachTemplates } from "@/lib/crm/commercial-outreach";
+import { CommercialCampaigns } from "@/components/crm/CommercialCampaigns";
 
-type CommercialView = "pipeline" | "find" | "outreach" | "playbook";
+type CommercialView = "pipeline" | "find" | "campaigns" | "outreach" | "playbook";
 type OutreachPreview = {
   accountId: string;
   companyName: string;
@@ -521,7 +522,8 @@ export function CommercialWorkspace({ session }: { session: Session }) {
         {([
           ["pipeline", "Pipeline"],
           ["find", "Find prospects"],
-          ["outreach", `Outreach${selectedAccountIds.length ? ` (${selectedAccountIds.length})` : ""}`],
+          ["campaigns", "Campaigns"],
+          ["outreach", `Email selected${selectedAccountIds.length ? ` (${selectedAccountIds.length})` : ""}`],
           ["playbook", "Commercial playbook"]
         ] as Array<[CommercialView, string]>).map(([id, label]) => (
           <button type="button" className={view === id ? "active" : ""} key={id} onClick={() => setView(id)}>
@@ -768,6 +770,8 @@ export function CommercialWorkspace({ session }: { session: Session }) {
           </section>
         </div>
       ) : null}
+
+      {view === "campaigns" ? <CommercialCampaigns session={session} configuration={data.configuration} /> : null}
 
       {view === "playbook" ? <CommercialPlaybook data={data} /> : null}
     </section>

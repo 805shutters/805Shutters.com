@@ -200,7 +200,7 @@ function commercialSummary(accounts: CommercialAccount[]) {
   );
 }
 
-function commercialConfiguration() {
+export function commercialConfiguration() {
   return {
     outboundEmail: Boolean(process.env.RESEND_API_KEY && (process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM)),
     replySync: Boolean(
