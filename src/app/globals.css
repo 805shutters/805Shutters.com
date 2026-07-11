@@ -12625,6 +12625,11 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
     line-height: 1.02;
     letter-spacing: 0.03em;
     text-align: left;
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 1),
+      0 3px 7px rgba(0, 0, 0, 0.98),
+      0 7px 16px rgba(0, 0, 0, 0.94),
+      0 14px 34px rgba(0, 0, 0, 0.88);
   }
 
   body:has(.home-editorial) .home-hero-actions {
