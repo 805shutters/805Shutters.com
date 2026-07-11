@@ -1368,7 +1368,7 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
   const residentialPhotoFlowSlides = commercialMode ? [] : appendUnusedHeroSlides(residentialFeaturedHeroSlides, heroSlides);
   const heroTitle = commercialMode
     ? "Commercial shade systems for every workspace"
-    : "Custom Shutters, Shades & Blinds — Proudly Serving Ventura County for 30 Years";
+    : "Proudly serving Ventura County for 30 years";
   const heroCta = commercialMode ? "Schedule a Meeting" : "Book your Free In-home Consultation";
   const heroHref = commercialMode ? "/commercial-window-coverings/" : "/book-consultation/";
 
