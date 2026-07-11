@@ -277,6 +277,8 @@ function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistory
     updatedAt: payment.updated_at,
     isLegacy: false,
     appliesToKenBuyout: kenPaymentAppliesToBuyout(payment, person),
+    isAdvance: payment.meta?.advancePayment === true,
+    unappliedAmount: 0,
     allocations: []
   };
 }
@@ -295,6 +297,8 @@ function historyFromCommissionPayment(payment: CrmCommissionPayment): CrmPartner
     updatedAt: payment.updated_at,
     isLegacy: false,
     appliesToKenBuyout: false,
+    isAdvance: payment.meta?.advancePayment === true,
+    unappliedAmount: 0,
     allocations: []
   };
 }
@@ -531,6 +535,7 @@ export function buildPartnerPaymentLedger({
       remaining = roundCents(remaining - applied);
       if (remaining <= 0) break;
     }
+    batch.unappliedAmount = roundCents(Math.max(remaining, 0));
   };
 
   const sortedHistory = [...history.values()].sort((left, right) => {
@@ -574,12 +579,18 @@ export function buildPartnerPaymentLedger({
       const earned = roundCents(personItems.reduce((sum, item) => sum + item.owedAmount, 0));
       const paid = roundCents(personItems.reduce((sum, item) => sum + item.paidAmount, 0));
       const owed = roundCents(personActive.reduce((sum, item) => sum + item.remainingAmount, 0));
+      const advanceBalance = roundCents(
+        sortedHistory
+          .filter((batch) => batch.person === person && batch.isAdvance)
+          .reduce((sum, batch) => sum + batch.unappliedAmount, 0)
+      );
       record[person] = {
         person,
         label: partnerLabels[person],
         earned,
         paid,
-        owed,
+        owed: roundCents(owed - advanceBalance),
+        advanceBalance,
         soldEarned: soldEarningsByPerson[person].earned,
         soldJobCount: soldEarningsByPerson[person].jobCount,
         jobCount: personItems.length,

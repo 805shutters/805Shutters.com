@@ -3947,6 +3947,32 @@ export async function createPartnerPaymentBatch(
   assertMikePaymentAdmin(actor);
 
   const person = normalizePaymentPerson(payload.person);
+  if (payload.advance === true) {
+    if (person === "ken") throw new CrmAuthError(400, "Advances are only available for Mike or Jessica.");
+    const amount = toMoney(payload.amount);
+    if (amount <= 0) throw new CrmAuthError(400, "Advance amount must be greater than zero.");
+    const paidOn = optionalText(payload.paid_on) || new Date().toISOString().slice(0, 10);
+    const note = optionalText(payload.note) || "Payment advance";
+    const meta = { createdBy: actor.email, batchSource: "unified_payment_ledger", advancePayment: true };
+    const { data: payment, error } = await supabase.from("crm_commission_payments").insert({
+      recipient: person,
+      amount,
+      paid_on: paidOn,
+      period_month: monthStartDate(paidOn),
+      note,
+      created_by_email: actor.email,
+      meta
+    }).select("*").single();
+    if (error || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} advance could not be saved.`);
+    await recordCrmActivity(supabase, actor, {
+      entityType: "commission_payment",
+      entityId: String(payment.id),
+      action: "create_advance",
+      after: payment,
+      metadata: { person, amount }
+    });
+    return { payment, allocations: [], dashboard: await loadCrmDashboardData(supabase) };
+  }
   const dashboard = await loadCrmDashboardData(supabase);
   const selectedKeys = selectedPaymentItemKeys(payload);
   const personLedger = dashboard.partnerPaymentLedger.people[person];

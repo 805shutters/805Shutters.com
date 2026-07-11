@@ -88,6 +88,7 @@ type PartnerPaymentRequest = {
   note?: string | null;
   amount?: number;
   item_ids?: string[];
+  advance?: boolean;
 };
 type PartnerPaymentReceiptResponse = {
   sent: boolean;
@@ -2017,7 +2018,9 @@ export function CrmApp({
         : result.receiptEmail
           ? ` Receipt email not sent: ${result.receiptEmail.skipped || result.receiptEmail.error || "unknown error"}.`
           : "";
-      setMessage(`${paymentPersonDisplayName(payload.person)} grouped payment recorded.${receiptMessage}`);
+      setMessage(
+        `${paymentPersonDisplayName(payload.person)} ${payload.advance ? "advance" : "grouped payment"} recorded.${receiptMessage}`
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Payment could not be recorded.");
       throw error;
@@ -10319,6 +10322,20 @@ function PartnerPaymentsView({
     }
   };
 
+  const submitAdvance = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    await onPay({
+      person: activePerson,
+      advance: true,
+      amount: Number(formString(formData, "amount") || 0),
+      paid_on: formString(formData, "paid_on") || null,
+      note: formString(formData, "note") || "Payment advance"
+    });
+    form.reset();
+  };
+
   return (
     <section className="crm-workspace crm-workspace-wide crm-payments-workspace">
       <div className="crm-ledger">
@@ -10354,10 +10371,25 @@ function PartnerPaymentsView({
                   {personLedger?.activeJobCount || 0} active / {toLedgerCurrency(personLedger?.earned)} earned
                 </em>
                 {soldEarningDetail ? <em className="crm-payment-person-sold-earning">{soldEarningDetail}</em> : null}
+                {personLedger?.advanceBalance ? <em>{toLedgerCurrency(personLedger.advanceBalance)} advance credit</em> : null}
               </button>
             );
           })}
         </div>
+
+        {activePerson === "mike" || activePerson === "jessica" ? (
+          <CollapsiblePanel title="Record Payment Advance">
+            <form className="crm-form" onSubmit={submitAdvance}>
+              <label>Person<input value={paymentPersonDisplayName(activePerson)} readOnly /></label>
+              <div className="crm-field-row">
+                <label>Advance Amount<input name="amount" type="number" min="0.01" step="0.01" required /></label>
+                <label>Paid Date<input name="paid_on" type="date" defaultValue={todayInputValue()} /></label>
+              </div>
+              <label>Note<textarea name="note" rows={3} placeholder="Advance payment, check number, Zelle..." /></label>
+              <button type="submit" disabled={busy}>Record Advance</button>
+            </form>
+          </CollapsiblePanel>
+        ) : null}
 
         <ZellePaymentPanel person={activePerson} amountDue={activePersonLedger?.owed || 0} />
 
@@ -10528,7 +10560,7 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
       <td>{formatShortDate(batch.paidOn)}</td>
       <td>{toLedgerCurrency(batch.amount)}</td>
       <td>{batch.allocations.length || "-"}</td>
-      <td>{batch.note || (batch.isLegacy ? "Legacy unallocated payment" : "")}</td>
+      <td>{batch.note || (batch.isAdvance ? "Payment advance" : batch.isLegacy ? "Legacy unallocated payment" : "")}</td>
       <td>{batch.createdByEmail || "-"}</td>
       <td>
         {batch.allocations.length ? (
@@ -10545,7 +10577,7 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
             </div>
           </details>
         ) : (
-          "-"
+          batch.isAdvance ? `${toLedgerCurrency(batch.unappliedAmount)} credit remaining` : "-"
         )}
       </td>
     </tr>

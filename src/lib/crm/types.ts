@@ -674,6 +674,8 @@ export type CrmPartnerPaymentHistoryBatch = {
   updatedAt: string;
   isLegacy: boolean;
   appliesToKenBuyout: boolean;
+  isAdvance: boolean;
+  unappliedAmount: number;
   allocations: CrmPartnerPaymentHistoryAllocation[];
 };
 
@@ -702,6 +704,7 @@ export type CrmPartnerPaymentLedgerPerson = {
   earned: number;
   paid: number;
   owed: number;
+  advanceBalance: number;
   soldEarned: number;
   soldJobCount: number;
   jobCount: number;

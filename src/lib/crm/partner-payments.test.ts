@@ -208,6 +208,21 @@ describe("partner payment row helpers", () => {
 });
 
 describe("buildPartnerPaymentLedger", () => {
+  it("carries an overpaid Jessica advance forward as a negative amount due", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row({ salesOwner: "jessica", mikeProfit: 0, jessicaCommission: 2020.86 })],
+      kenPayments: [],
+      commissionPayments: [
+        commissionPayment({ recipient: "jessica", amount: 8000, meta: { advancePayment: true } })
+      ]
+    });
+
+    expect(ledger.people.jessica.advanceBalance).toBe(5979.14);
+    expect(ledger.people.jessica.owed).toBe(-5979.14);
+    expect(ledger.people.jessica.activeItems).toHaveLength(0);
+    expect(ledger.history[0]).toMatchObject({ isAdvance: true, unappliedAmount: 5979.14 });
+  });
+
   it("creates active payable rows only for paid-in-full jobs", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [
