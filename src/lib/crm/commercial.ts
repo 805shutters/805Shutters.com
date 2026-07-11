@@ -13,6 +13,20 @@ import {
 
 type CrmSupabaseClient = SupabaseClient;
 type CommercialActor = { email: string; userId?: string };
+type QueryResult<T> = { data: T[] | null; error: { message: string } | null };
+
+const COMMERCIAL_PAGE_SIZE = 1000;
+
+async function loadAllRows<T>(loadPage: (from: number, to: number) => Promise<QueryResult<T>>) {
+  const rows: T[] = [];
+  for (let from = 0; ; from += COMMERCIAL_PAGE_SIZE) {
+    const result = await loadPage(from, from + COMMERCIAL_PAGE_SIZE - 1);
+    if (result.error) throw result.error;
+    const page = result.data || [];
+    rows.push(...page);
+    if (page.length < COMMERCIAL_PAGE_SIZE) return rows;
+  }
+}
 
 const accountTypeSet = new Set<string>(commercialAccountTypes);
 const statusSet = new Set<string>(commercialStatuses);
@@ -213,15 +227,16 @@ export function commercialConfiguration() {
 }
 
 export async function loadCommercialWorkspace(supabase: CrmSupabaseClient): Promise<CommercialWorkspaceData> {
-  const [{ data: accountRows, error: accountError }, { data: activityRows, error: activityError }] = await Promise.all([
-    supabase.from("crm_commercial_accounts").select("*").order("updated_at", { ascending: false }),
-    supabase.from("crm_commercial_activities").select("*").order("occurred_at", { ascending: false }).limit(400)
-  ]);
+  let accounts: CommercialAccount[];
+  try {
+    accounts = await loadAllRows<CommercialAccount>((from, to) => supabase.from("crm_commercial_accounts").select("*").order("updated_at", { ascending: false }).range(from, to) as unknown as Promise<QueryResult<CommercialAccount>>);
+  } catch {
+    throw new CrmAuthError(502, "Commercial accounts could not be loaded. Run the commercial CRM migration.");
+  }
+  const { data: activityRows, error: activityError } = await supabase.from("crm_commercial_activities").select("*").order("occurred_at", { ascending: false }).limit(400);
 
-  if (accountError) throw new CrmAuthError(502, "Commercial accounts could not be loaded. Run the commercial CRM migration.");
   if (activityError) throw new CrmAuthError(502, "Commercial activity could not be loaded. Run the commercial CRM migration.");
 
-  const accounts = (accountRows || []) as CommercialAccount[];
   return {
     accounts,
     activities: (activityRows || []) as CommercialActivity[],

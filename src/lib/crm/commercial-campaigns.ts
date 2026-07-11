@@ -15,6 +15,7 @@ import {
 } from "@/lib/crm/commercial-types";
 
 type CrmSupabaseClient = SupabaseClient;
+type PageResult<T> = { data: T[] | null; error: { message: string } | null };
 
 type CampaignEnrollment = {
   id: string;
@@ -46,6 +47,18 @@ const campaignStatusSet = new Set(["draft", "active", "paused", "completed"]);
 const campaignAccountTypeSet = new Set<string>(commercialAccountTypes);
 const campaignAudienceStatusSet = new Set<string>(commercialStatuses);
 const DAY = 24 * 60 * 60 * 1000;
+const PAGE_SIZE = 1000;
+
+async function loadAllRows<T>(loadPage: (from: number, to: number) => Promise<PageResult<T>>) {
+  const rows: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const result = await loadPage(from, from + PAGE_SIZE - 1);
+    if (result.error) throw new CrmAuthError(502, result.error.message);
+    const page = result.data || [];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) return rows;
+  }
+}
 
 function asCampaign(row: unknown): CommercialCampaign {
   return row as CommercialCampaign;
@@ -87,7 +100,7 @@ export function campaignInput(payload: Record<string, unknown>): CampaignInput {
     follow_up_subject: requiredText(payload.follow_up_subject, "Follow-up subject", 240),
     follow_up_body: requiredText(payload.follow_up_body, "Follow-up message", 10000),
     follow_up_delay_days: boundedInteger(payload.follow_up_delay_days, 5, 1, 30),
-    daily_limit: boundedInteger(payload.daily_limit, 25, 1, 100)
+    daily_limit: boundedInteger(payload.daily_limit, 1000, 1, 5000)
   };
 }
 
@@ -117,13 +130,18 @@ async function requireCampaign(supabase: CrmSupabaseClient, campaignId: string) 
 }
 
 async function audienceForCampaign(supabase: CrmSupabaseClient, campaign: CommercialCampaign) {
-  const { data, error } = await supabase
-    .from("crm_commercial_accounts")
-    .select("*")
-    .eq("account_type", campaign.account_type)
-    .in("status", campaign.audience_statuses);
-  if (error) throw new CrmAuthError(502, "Campaign audience could not be loaded.");
-  return (data || []) as CommercialAccount[];
+  try {
+    return await loadAllRows<CommercialAccount>((from, to) =>
+      supabase
+        .from("crm_commercial_accounts")
+        .select("*")
+        .eq("account_type", campaign.account_type)
+        .in("status", campaign.audience_statuses)
+        .range(from, to) as unknown as Promise<PageResult<CommercialAccount>>
+    );
+  } catch {
+    throw new CrmAuthError(502, "Campaign audience could not be loaded.");
+  }
 }
 
 function canReceiveCampaign(account: CommercialAccount) {
@@ -155,14 +173,17 @@ function enrollmentStatusForStop(reason: ReturnType<typeof campaignStopReason>):
 }
 
 export async function loadCommercialCampaigns(supabase: CrmSupabaseClient): Promise<CommercialCampaignWithStats[]> {
-  const [{ data: campaignRows, error: campaignError }, { data: enrollmentRows, error: enrollmentError }] = await Promise.all([
-    supabase.from("crm_commercial_campaigns").select("*").order("updated_at", { ascending: false }),
-    supabase.from("crm_commercial_campaign_enrollments").select("campaign_id,status")
-  ]);
-  if (campaignError || enrollmentError) throw new CrmAuthError(502, "Commercial campaigns could not be loaded. Run the campaign migration.");
+  const { data: campaignRows, error: campaignError } = await supabase.from("crm_commercial_campaigns").select("*").order("updated_at", { ascending: false });
+  if (campaignError) throw new CrmAuthError(502, "Commercial campaigns could not be loaded. Run the campaign migration.");
+  let enrollmentRows: Array<Pick<CampaignEnrollment, "campaign_id" | "status">>;
+  try {
+    enrollmentRows = await loadAllRows<Pick<CampaignEnrollment, "campaign_id" | "status">>((from, to) => supabase.from("crm_commercial_campaign_enrollments").select("campaign_id,status").range(from, to) as unknown as Promise<PageResult<Pick<CampaignEnrollment, "campaign_id" | "status">>>);
+  } catch {
+    throw new CrmAuthError(502, "Commercial campaigns could not be loaded. Run the campaign migration.");
+  }
 
   const statsByCampaign = new Map<string, CommercialCampaignStats>();
-  for (const row of (enrollmentRows || []) as Array<Pick<CampaignEnrollment, "campaign_id" | "status">>) {
+  for (const row of enrollmentRows) {
     const stats = statsByCampaign.get(row.campaign_id) || emptyStats();
     stats.total += 1;
     if (row.status === "queued") stats.queued += 1;
@@ -205,12 +226,11 @@ export async function updateCommercialCampaign(supabase: CrmSupabaseClient, camp
 
 export async function previewCommercialCampaign(supabase: CrmSupabaseClient, campaignId: string) {
   const campaign = await requireCampaign(supabase, campaignId);
-  const [audience, enrollmentResult] = await Promise.all([
+  const [audience, enrollmentRows] = await Promise.all([
     audienceForCampaign(supabase, campaign),
-    supabase.from("crm_commercial_campaign_enrollments").select("account_id").eq("campaign_id", campaign.id)
-  ]);
-  if (enrollmentResult.error) throw new CrmAuthError(502, "Campaign enrollment history could not be loaded.");
-  const enrolled = new Set((enrollmentResult.data || []).map((row) => String(row.account_id)));
+    loadAllRows<Pick<CampaignEnrollment, "account_id">>((from, to) => supabase.from("crm_commercial_campaign_enrollments").select("account_id").eq("campaign_id", campaign.id).range(from, to) as unknown as Promise<PageResult<Pick<CampaignEnrollment, "account_id">>>)
+  ]).catch(() => { throw new CrmAuthError(502, "Campaign enrollment history could not be loaded."); });
+  const enrolled = new Set(enrollmentRows.map((row) => String(row.account_id)));
   const deliverable = audience.filter(canReceiveCampaign);
   const postalAddress = process.env.COMMERCIAL_OUTREACH_POSTAL_ADDRESS?.trim() || "[A valid 805 Shutters postal address is required before sending]";
   const samples = deliverable.slice(0, 3).map((account) => ({
@@ -240,9 +260,9 @@ export async function activateCommercialCampaign(supabase: CrmSupabaseClient, ca
   const deliverable = audience.filter(canReceiveCampaign);
   const now = new Date().toISOString();
 
-  if (deliverable.length) {
+  for (let from = 0; from < deliverable.length; from += 500) {
     const { error: enrollmentError } = await supabase.from("crm_commercial_campaign_enrollments").upsert(
-      deliverable.map((account) => ({ campaign_id: campaign.id, account_id: account.id, status: "queued", next_send_at: now })),
+      deliverable.slice(from, from + 500).map((account) => ({ campaign_id: campaign.id, account_id: account.id, status: "queued", next_send_at: now })),
       { onConflict: "campaign_id,account_id", ignoreDuplicates: true }
     );
     if (enrollmentError) throw new CrmAuthError(502, "Campaign audience could not be enrolled.");
@@ -270,13 +290,14 @@ export async function pauseCommercialCampaign(supabase: CrmSupabaseClient, campa
 }
 
 async function sentToday(supabase: CrmSupabaseClient, campaignId: string, now: Date) {
-  const { data, error } = await supabase
-    .from("crm_commercial_campaign_enrollments")
-    .select("intro_sent_at,follow_up_sent_at")
-    .eq("campaign_id", campaignId);
-  if (error) throw new CrmAuthError(502, "Campaign sending history could not be loaded.");
+  let rows: Array<Pick<CampaignEnrollment, "intro_sent_at" | "follow_up_sent_at">>;
+  try {
+    rows = await loadAllRows<Pick<CampaignEnrollment, "intro_sent_at" | "follow_up_sent_at">>((from, to) => supabase.from("crm_commercial_campaign_enrollments").select("intro_sent_at,follow_up_sent_at").eq("campaign_id", campaignId).range(from, to) as unknown as Promise<PageResult<Pick<CampaignEnrollment, "intro_sent_at" | "follow_up_sent_at">>>);
+  } catch {
+    throw new CrmAuthError(502, "Campaign sending history could not be loaded.");
+  }
   const start = startOfToday(now);
-  return (data || []).reduce((count, row) => count + Number(Boolean(row.intro_sent_at && row.intro_sent_at >= start)) + Number(Boolean(row.follow_up_sent_at && row.follow_up_sent_at >= start)), 0);
+  return rows.reduce((count, row) => count + Number(Boolean(row.intro_sent_at && row.intro_sent_at >= start)) + Number(Boolean(row.follow_up_sent_at && row.follow_up_sent_at >= start)), 0);
 }
 
 async function recordCampaignSend(
@@ -344,17 +365,20 @@ export async function runCommercialCampaigns(
     const remaining = campaign.daily_limit - (await sentToday(supabase, campaign.id, now));
     if (remaining <= 0) continue;
 
-    const { data: dueRows, error: dueError } = await supabase
-      .from("crm_commercial_campaign_enrollments")
-      .select("*")
-      .eq("campaign_id", campaign.id)
-      .in("status", ["queued", "sent"])
-      .lte("next_send_at", now.toISOString())
-      .order("next_send_at", { ascending: true })
-      .limit(remaining);
-    if (dueError) throw new CrmAuthError(502, "Commercial campaign due messages could not be loaded.");
+    const sentBeforeCampaign = result.sent;
+    while (result.sent - sentBeforeCampaign < remaining) {
+      const { data: dueRows, error: dueError } = await supabase
+        .from("crm_commercial_campaign_enrollments")
+        .select("*")
+        .eq("campaign_id", campaign.id)
+        .in("status", options.allowFollowUps === false ? ["queued"] : ["queued", "sent"])
+        .lte("next_send_at", now.toISOString())
+        .order("next_send_at", { ascending: true })
+        .limit(Math.min(remaining - (result.sent - sentBeforeCampaign), PAGE_SIZE));
+      if (dueError) throw new CrmAuthError(502, "Commercial campaign due messages could not be loaded.");
+      if (!dueRows?.length) break;
 
-    for (const enrollmentRow of dueRows || []) {
+      for (const enrollmentRow of dueRows) {
       const enrollment = enrollmentRow as CampaignEnrollment;
       const isFollowUp = enrollment.status === "sent";
       if (isFollowUp && options.allowFollowUps === false) continue;
@@ -394,6 +418,7 @@ export async function runCommercialCampaigns(
           .eq("id", enrollment.id);
         result.failed += 1;
       }
+      }
     }
     await supabase.from("crm_commercial_campaigns").update({ last_run_at: now.toISOString() }).eq("id", campaign.id);
   }
@@ -401,7 +426,9 @@ export async function runCommercialCampaigns(
 }
 
 export async function campaignEnrollmentStats(supabase: CrmSupabaseClient, campaignId: string) {
-  const { data, error } = await supabase.from("crm_commercial_campaign_enrollments").select("*").eq("campaign_id", campaignId);
-  if (error) throw new CrmAuthError(502, "Campaign enrollments could not be loaded.");
-  return statsForEnrollments((data || []) as CampaignEnrollment[]);
+  try {
+    return statsForEnrollments(await loadAllRows<CampaignEnrollment>((from, to) => supabase.from("crm_commercial_campaign_enrollments").select("*").eq("campaign_id", campaignId).range(from, to) as unknown as Promise<PageResult<CampaignEnrollment>>));
+  } catch {
+    throw new CrmAuthError(502, "Campaign enrollments could not be loaded.");
+  }
 }

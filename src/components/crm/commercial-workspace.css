@@ -1288,6 +1288,25 @@
   padding: 0;
 }
 
+.commercial-bulk-category-callout {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #b8cbd5;
+  background: #eef5f7;
+}
+
+.commercial-bulk-category-callout strong {
+  color: var(--commercial-navy);
+  font-size: 13px;
+}
+
+.commercial-bulk-category-callout span {
+  color: #365360;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .commercial-campaign-actions {
   flex-wrap: wrap;
   justify-content: flex-start;
@@ -1335,6 +1354,13 @@
 .commercial-campaign-preview > p,
 .commercial-campaign-preview details {
   grid-column: 1 / -1;
+}
+
+.commercial-campaign-preview > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: 0;
+  background: #fff;
 }
 
 .commercial-campaign-preview summary {

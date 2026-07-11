@@ -522,7 +522,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
         {([
           ["pipeline", "Pipeline"],
           ["find", "Find prospects"],
-          ["campaigns", "Campaigns"],
+          ["campaigns", "Bulk email"],
           ["outreach", `Email selected${selectedAccountIds.length ? ` (${selectedAccountIds.length})` : ""}`],
           ["playbook", "Commercial playbook"]
         ] as Array<[CommercialView, string]>).map(([id, label]) => (

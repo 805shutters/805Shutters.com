@@ -71,7 +71,7 @@ If someone else owns the vendor list, estimating, facilities, or Division 12 sco
 Thank you,
 805 Shutters Commercial Team`,
     follow_up_delay_days: 5,
-    daily_limit: 25
+    daily_limit: 1000
   };
 }
 
@@ -258,6 +258,28 @@ export function CommercialCampaigns({ session, configuration }: { session: Sessi
     }
   }
 
+  async function sendCategoryNow() {
+    const id = selectedId || await saveCampaign();
+    if (!id) return;
+    const recipientLabel = commercialTypeLabels[draft.account_type].toLowerCase();
+    if (!window.confirm(`Send this message now to every eligible ${recipientLabel} contact in this category? Contacts without an email address or with an opt-out will be skipped.`)) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const activation = await campaignFetch<{ enrolled: number }>(session, { method: "POST", body: JSON.stringify({ action: "activate", id }) });
+      const result = await campaignFetch<{ sent: number; introSent: number; followUpsSent: number; skipped: number; failed: number }>(session, {
+        method: "POST",
+        body: JSON.stringify({ action: "run", id, confirmSend: true })
+      });
+      await refresh();
+      setMessage(`Bulk send complete: ${result.sent} emails sent to the ${recipientLabel} category (${result.skipped} skipped, ${result.failed} failed). ${activation.enrolled} eligible contacts are enrolled for reply-aware follow-up.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Bulk email could not be sent.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="commercial-campaign-layout">
       <aside className="commercial-campaign-list">
@@ -276,7 +298,7 @@ export function CommercialCampaigns({ session, configuration }: { session: Sessi
 
       <section className="commercial-campaign-builder">
         <div className="commercial-section-heading">
-          <div><span>Campaign automation</span><h3>Write the message once. Let the system run the follow-up.</h3></div>
+          <div><span>Bulk email by category</span><h3>Write once. Send to every eligible contact in the category.</h3></div>
           {selected ? <span className={`commercial-campaign-status ${selected.status}`}>{campaignLabel(selected)}</span> : <span className="commercial-campaign-status draft">Draft — not sending</span>}
         </div>
         <div className="commercial-automation-safety">
@@ -287,16 +309,20 @@ export function CommercialCampaigns({ session, configuration }: { session: Sessi
         {message ? <p className="commercial-crm-message">{message}</p> : null}
 
         <div className="commercial-campaign-form">
-          <div className="commercial-campaign-step"><span>1</span><div><h4>Choose who receives it</h4><p>Campaigns only queue contacts with an email address. The preview shows every missing or excluded record first.</p></div></div>
+          <div className="commercial-campaign-step"><span>1</span><div><h4>Select the entire category</h4><p>This is the select-all workflow: choose a type such as Property management, then every eligible contact in that category becomes the audience. Records without email addresses or with an opt-out stay excluded.</p></div></div>
           <div className="commercial-campaign-fields">
             <label>Campaign name<input value={draft.name} onChange={(event) => { setDraft({ ...draft, name: event.target.value }); setPreview(null); }} placeholder="Ventura general contractors — introduction" /></label>
             <label>Recipient type<select value={draft.account_type} onChange={(event) => applyRecommendedWords(event.target.value as CommercialAccountType)}>{commercialAccountTypes.map((type) => <option key={type} value={type}>{commercialTypeLabels[type]}</option>)}</select></label>
-            <label>Messages per day<input type="number" min="1" max="100" value={draft.daily_limit} onChange={(event) => setDraft({ ...draft, daily_limit: Number(event.target.value) })} /></label>
+            <label>Maximum emails this send<input type="number" min="1" max="5000" value={draft.daily_limit} onChange={(event) => setDraft({ ...draft, daily_limit: Number(event.target.value) })} /></label>
             <label>Follow up after<input type="number" min="1" max="30" value={draft.follow_up_delay_days} onChange={(event) => setDraft({ ...draft, follow_up_delay_days: Number(event.target.value) })} /><span className="commercial-field-suffix">days</span></label>
           </div>
           <div className="commercial-audience-stages">
             <span>Include records currently marked:</span>
             {commercialStatuses.filter((status) => !["won", "not_fit", "do_not_contact"].includes(status)).map((status) => <label key={status}><input type="checkbox" checked={draft.audience_statuses.includes(status)} onChange={() => updateAudience(status)} /> {commercialStatusLabels[status]}</label>)}
+          </div>
+          <div className="commercial-bulk-category-callout">
+            <strong>Bulk action: all eligible {commercialTypeLabels[draft.account_type].toLowerCase()} contacts</strong>
+            <span>One message is personalized for each contact. Preview shows exactly who will receive it before you send.</span>
           </div>
 
           <div className="commercial-campaign-step"><span>2</span><div><h4>Write the first message</h4><p>Use the recommended version for this recipient type as a starting point, then make it sound like 805.</p></div></div>
@@ -310,9 +336,10 @@ export function CommercialCampaigns({ session, configuration }: { session: Sessi
 
           <div className="commercial-campaign-actions">
             <button type="button" className="crm-ghost-button" onClick={() => void saveCampaign()} disabled={busy}>Save draft</button>
-            <button type="button" className="crm-ghost-button" onClick={() => void previewAudience()} disabled={busy || !draft.audience_statuses.length}>Preview audience</button>
+            <button type="button" className="crm-ghost-button" onClick={() => void previewAudience()} disabled={busy || !draft.audience_statuses.length}>Preview entire category</button>
             {selected?.status === "active" ? <button type="button" className="crm-ghost-button" onClick={() => void pause()} disabled={busy}>Pause automation</button> : <button type="button" onClick={() => void activate()} disabled={busy || !configuration.outboundEmail || !configuration.postalAddress}>Activate automation</button>}
             {selected?.status === "active" ? <button type="button" onClick={() => void runNow()} disabled={busy}>Run due messages now</button> : null}
+            <button type="button" onClick={() => void sendCategoryNow()} disabled={busy || !configuration.outboundEmail || !configuration.postalAddress || !draft.audience_statuses.length}>Send entire category now</button>
           </div>
         </div>
 
@@ -321,7 +348,8 @@ export function CommercialCampaigns({ session, configuration }: { session: Sessi
           <div><strong>{preview.readyToEnroll}</strong><span>ready to enroll and email</span></div>
           <div><strong>{preview.missingEmail}</strong><span>need an email first</span></div>
           <div><strong>{preview.optedOut}</strong><span>protected from outreach</span></div>
-          <p>{preview.alreadyEnrolled ? `${preview.alreadyEnrolled} eligible contacts are already enrolled and will not be duplicated.` : "No one is enrolled until you activate automation."}</p>
+          <p>{preview.alreadyEnrolled ? `${preview.alreadyEnrolled} eligible contacts are already enrolled and will not be duplicated.` : "No one is enrolled until you activate automation or use Send entire category now."}</p>
+          {preview.readyToEnroll ? <button type="button" className="crm-ghost-button" onClick={() => setDraft((current) => ({ ...current, daily_limit: Math.min(Math.max(preview.readyToEnroll + preview.alreadyEnrolled, 1), 5000) }))}>Use all {preview.readyToEnroll + preview.alreadyEnrolled} eligible contacts for this send</button> : null}
           {preview.samples.map((sample) => <details key={sample.accountId}><summary>{sample.companyName} <em>{sample.to}</em></summary><div><strong>{sample.subject}</strong><pre>{sample.text}</pre></div></details>)}
         </div> : null}
       </section>

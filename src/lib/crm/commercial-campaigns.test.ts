@@ -51,11 +51,11 @@ describe("commercial campaign audience safeguards", () => {
       follow_up_subject: "Following up",
       follow_up_body: "Hi again {{first_name}}",
       follow_up_delay_days: 5,
-      daily_limit: 250
+      daily_limit: 6500
     });
 
     expect(campaign.audience_statuses).toEqual(["researching", "ready"]);
-    expect(campaign.daily_limit).toBe(100);
+    expect(campaign.daily_limit).toBe(5000);
     expect(campaign.follow_up_delay_days).toBe(5);
   });
 
