@@ -3954,16 +3954,14 @@ export async function createPartnerPaymentBatch(
     const paidOn = optionalText(payload.paid_on) || new Date().toISOString().slice(0, 10);
     const note = optionalText(payload.note) || "Payment advance";
     const meta = { createdBy: actor.email, batchSource: "unified_payment_ledger", advancePayment: true };
-    const { data: payment, error } = await supabase.from("crm_commission_payments").insert({
-      recipient: person,
+    const payment = await createPartnerPaymentBatchDirect(supabase, person, {
       amount,
       paid_on: paidOn,
       period_month: monthStartDate(paidOn),
       note,
       created_by_email: actor.email,
       meta
-    }).select("*").single();
-    if (error || !payment) throw new CrmAuthError(502, `${paymentPersonLabel(person)} advance could not be saved.`);
+    }, []);
     await recordCrmActivity(supabase, actor, {
       entityType: "commission_payment",
       entityId: String(payment.id),
