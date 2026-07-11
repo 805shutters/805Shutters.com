@@ -13411,6 +13411,18 @@ html.mobile-menu-open {
   text-transform: uppercase;
 }
 
+.crm-closeout-groups { display: grid; gap: 18px; }
+.crm-closeout-group { display: grid; gap: 8px; min-width: 0; }
+.crm-closeout-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; }
+.crm-closeout-heading button { min-height: 0; padding: 4px 7px; border: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.crm-closeout-list { display: grid; border-top: 1px solid var(--line); }
+.crm-closeout-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; min-height: 0; padding: 9px 2px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--ink); text-align: left; }
+.crm-closeout-item:hover { transform: none; background: #f7f7f5; }
+.crm-closeout-customer { overflow: hidden; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.crm-closeout-meta { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: 0.04em; }
+.crm-closeout-status { grid-column: 2; grid-row: 1 / span 2; align-self: center; padding: 4px 6px; background: var(--soft); color: var(--muted); font-size: 9px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.crm-closeout-status.closed { background: var(--ink); color: var(--white); }
+
 .crm-bars {
   display: grid;
   gap: 10px;

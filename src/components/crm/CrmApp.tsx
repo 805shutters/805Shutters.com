@@ -5272,19 +5272,15 @@ function CommandDashboard({
     return { slices, needsDetails };
   }, [jobs, files]);
 
-  const closing = useMemo(() => {
-    function bucketize(list: CrmJob[]) {
-      const won = list.filter((job) => WON_JOB_STATUSES.includes(job.status));
-      const lost = list.filter((job) => job.status === "lost");
-      const open = list.filter((job) => OPEN_JOB_STATUSES.includes(job.status));
-      const decided = won.length + lost.length;
-      return { won, lost, open, total: list.length, rate: decided ? won.length / decided : 0 };
-    }
-    const byOwner = ["Mike", "Jessica"].map((owner) => ({
-      owner,
-      ...bucketize(jobs.filter((job) => (job.sales_owner || "Unassigned") === owner))
-    }));
-    return { overall: bucketize(jobs), byOwner };
+  const closeout = useMemo(() => {
+    const newestFirst = (left: CrmJob, right: CrmJob) =>
+      Date.parse(right.updated_at || right.created_at) - Date.parse(left.updated_at || left.created_at);
+    const oldestFirst = (left: CrmJob, right: CrmJob) =>
+      Date.parse(left.created_at) - Date.parse(right.created_at);
+    return {
+      recentlyClosed: jobs.filter((job) => job.status === "closed").sort(newestFirst),
+      readySoon: jobs.filter((job) => job.status === "installed" || job.status === "invoiced").sort(oldestFirst)
+    };
   }, [jobs]);
 
   const response = useMemo(() => {
@@ -5526,17 +5522,19 @@ function CommandDashboard({
         <section className="crm-ledger crm-chart-card">
           <div className="crm-section-head">
             <div>
-              <p className="eyebrow">Closing Rate</p>
-              <h2>Won vs Lost</h2>
+              <p className="eyebrow">Job Closeout</p>
+              <h2>Recently Closed &amp; Up Next</h2>
             </div>
-            <strong>{Math.round(closing.overall.rate * 100)}%</strong>
+            <strong>{closeout.readySoon.length} pending</strong>
           </div>
-          <div className="crm-close-list">
-            <CloseRow label="Everyone" bucket={closing.overall} rows={rows} files={files} onDrill={onDrill} />
-            {closing.byOwner.map((owner) => (
-              <CloseRow key={owner.owner} label={owner.owner} bucket={owner} rows={rows} files={files} onDrill={onDrill} />
-            ))}
-          </div>
+          <CloseoutList
+            recentlyClosed={closeout.recentlyClosed}
+            readySoon={closeout.readySoon}
+            rows={rows}
+            files={files}
+            onDrill={onDrill}
+            onOpenCustomer={onOpenCustomer}
+          />
         </section>
       </div>
 
@@ -5654,57 +5652,55 @@ function Donut({
   );
 }
 
-function CloseRow({
-  label,
-  bucket,
+function CloseoutList({
+  recentlyClosed,
+  readySoon,
   rows,
   files,
-  onDrill
+  onDrill,
+  onOpenCustomer
 }: {
-  label: string;
-  bucket: { won: CrmJob[]; lost: CrmJob[]; open: CrmJob[]; rate: number; total: number };
+  recentlyClosed: CrmJob[];
+  readySoon: CrmJob[];
   rows: CrmBookkeepingRow[];
   files: CrmCustomerFile[];
   onDrill: (payload: DrillPayload) => void;
+  onOpenCustomer: (customerName: string) => void;
 }) {
-  const total = Math.max(1, bucket.won.length + bucket.lost.length + bucket.open.length);
-  const segments: Array<{ key: "won" | "lost" | "open"; label: string; list: CrmJob[] }> = [
-    { key: "won", label: "Won", list: bucket.won },
-    { key: "lost", label: "Lost", list: bucket.lost },
-    { key: "open", label: "Open", list: bucket.open }
+  const groups = [
+    { key: "closed", label: "Latest closed", jobs: recentlyClosed, empty: "No closed jobs yet." },
+    { key: "soon", label: "Oldest to close soon", jobs: readySoon, empty: "No installed or invoiced jobs waiting." }
   ];
   return (
-    <div className="crm-close-row">
-      <div className="crm-close-head">
-        <span className="crm-close-name">{label}</span>
-        <strong className="crm-close-rate">{Math.round(bucket.rate * 100)}%</strong>
-      </div>
-      <div className="crm-close-bar">
-        {segments.map((segment) =>
-          segment.list.length ? (
-            <button
-              type="button"
-              key={segment.key}
-              className={`crm-close-seg ${segment.key}`}
-              style={{ width: `${(segment.list.length / total) * 100}%` }}
-              title={`${segment.label}: ${segment.list.length}`}
-              onClick={() =>
-                onDrill({
-                  title: `${label} · ${segment.label}`,
-                  subtitle: `${segment.list.length} jobs`,
-                  placement: "closing",
-                  entries: jobsToEntries(segment.list, rows, { files })
-                })
-              }
-            />
-          ) : null
-        )}
-      </div>
-      <div className="crm-close-key">
-        <span>{bucket.won.length} won</span>
-        <span>{bucket.lost.length} lost</span>
-        <span>{bucket.open.length} open</span>
-      </div>
+    <div className="crm-closeout-groups">
+      {groups.map((group) => (
+        <section className="crm-closeout-group" key={group.key}>
+          <div className="crm-closeout-heading">
+            <span>{group.label}</span>
+            <button type="button" disabled={!group.jobs.length} onClick={() => onDrill({
+              title: group.label,
+              subtitle: `${group.jobs.length} jobs`,
+              placement: "closing",
+              entries: jobsToEntries(group.jobs, rows, { files })
+            })}>
+              {group.jobs.length} total
+            </button>
+          </div>
+          {group.jobs.length ? (
+            <div className="crm-closeout-list">
+              {group.jobs.slice(0, 5).map((job) => (
+                <button type="button" className="crm-closeout-item" key={job.id} onClick={() => onOpenCustomer(job.customer_name)}>
+                  <span className="crm-closeout-customer">{job.customer_name}</span>
+                  <span className="crm-closeout-meta">
+                    {job.sales_owner || "Unassigned"} · {group.key === "closed" ? formatShortDate(job.updated_at) : formatShortDate(job.created_at)}
+                  </span>
+                  <span className={`crm-closeout-status ${group.key}`}>{group.key === "closed" ? "Closed" : job.status}</span>
+                </button>
+              ))}
+            </div>
+          ) : <p className="crm-empty">{group.empty}</p>}
+        </section>
+      ))}
     </div>
   );
 }
