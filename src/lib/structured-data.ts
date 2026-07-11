@@ -116,7 +116,7 @@ export function localBusinessJsonLd() {
         telephone: site.phone,
         email: site.email,
         image: `${site.baseUrl}/images/805-hero-window-treatments.jpg`,
-        logo: `${site.baseUrl}/brand/805-shutters-logo-exact-transparent.png`,
+        logo: `${site.baseUrl}/brand/805-shutters-logo.png`,
         hasMap: site.googleMaps.url,
         identifier: {
           "@type": "PropertyValue",
