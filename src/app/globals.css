@@ -6854,23 +6854,28 @@ button.crm-calendar-month-event:focus-visible {
   text-transform: uppercase;
 }
 
-.crm-customer-lookup {
+.crm-customer-name-field {
   position: relative;
   display: grid;
   gap: 7px;
 }
 
-.crm-customer-lookup > label {
+.crm-customer-name-field > label {
   color: var(--ink);
   font-size: 14px;
   font-weight: 900;
 }
 
-.crm-customer-lookup > input {
+.crm-customer-name-field > input {
   width: 100%;
 }
 
-.crm-customer-lookup__results {
+.crm-customer-name-field__results {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  right: 0;
+  left: 0;
   display: grid;
   max-height: 250px;
   overflow-y: auto;
@@ -6879,7 +6884,7 @@ button.crm-calendar-month-event:focus-visible {
   box-shadow: 0 12px 30px rgba(17, 17, 17, 0.12);
 }
 
-.crm-customer-lookup__results button {
+.crm-customer-name-field__results button {
   display: grid;
   gap: 3px;
   min-height: 0;
@@ -6891,47 +6896,17 @@ button.crm-calendar-month-event:focus-visible {
   text-align: left;
 }
 
-.crm-customer-lookup__results button:hover,
-.crm-customer-lookup__results button:focus-visible {
+.crm-customer-name-field__results button:hover,
+.crm-customer-name-field__results button:focus-visible {
   background: #f4f3ef;
   transform: none;
 }
 
-.crm-customer-lookup__results span,
-.crm-customer-lookup__results p,
-.crm-customer-lookup__selected {
+.crm-customer-name-field__results span {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.4;
-}
-
-.crm-customer-lookup__results p {
-  padding: 12px 14px;
-}
-
-.crm-customer-lookup__selected {
-  color: #27623b;
-  font-weight: 800;
-}
-
-.crm-customer-lookup__divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.crm-customer-lookup__divider::before,
-.crm-customer-lookup__divider::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--line);
 }
 
 .crm-slot-override-note {
