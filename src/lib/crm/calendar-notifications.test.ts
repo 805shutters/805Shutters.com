@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   assignmentRecipientReps,
+  buildAppointmentReplyForward,
+  buildDayBeforeAppointmentReminder,
   buildCalendarAssignmentSms,
+  formatCustomerReminderTime,
   formatCalendarSmsWindow,
+  isPacificReminderHour,
+  isTomorrowInPacific,
   salesRepSmsNumberForName,
   sendCalendarAssignmentSms
 } from "./calendar-notifications";
@@ -115,5 +120,45 @@ describe("calendar assignment SMS formatting", () => {
     expect(message).toContain("Address: 340 Green Moor Place, Thousand Oaks.");
     expect(message).toContain("Phone: 8043589594.");
     expect(message).toContain("Product: Shutters.");
+  });
+});
+
+describe("day-before customer reminders", () => {
+  it("formats an exact 30-minute Pacific arrival window", () => {
+    expect(formatCustomerReminderTime("2026-07-12T17:00:00.000Z")).toBe("10:00 AM and 10:30 AM");
+    expect(buildDayBeforeAppointmentReminder("2026-07-12T17:00:00.000Z")).toBe(
+      "Hi, just a reminder that we have a window covering consultation scheduled for tomorrow between 10:00 AM and 10:30 AM. - 805 Shutters"
+    );
+  });
+
+  it("recognizes 7 p.m. in Los Angeles across daylight-saving time", () => {
+    expect(isPacificReminderHour(new Date("2026-07-12T02:00:00.000Z"))).toBe(true);
+    expect(isPacificReminderHour(new Date("2026-01-12T03:00:00.000Z"))).toBe(true);
+    expect(isPacificReminderHour(new Date("2026-07-12T03:00:00.000Z"))).toBe(false);
+  });
+
+  it("selects only appointments on the following Pacific calendar day", () => {
+    const now = new Date("2026-07-12T02:00:00.000Z"); // July 11 at 7 p.m. PDT
+    expect(isTomorrowInPacific("2026-07-12T17:00:00.000Z", now)).toBe(true);
+    expect(isTomorrowInPacific("2026-07-13T17:00:00.000Z", now)).toBe(false);
+    expect(isTomorrowInPacific("2026-07-12T06:30:00.000Z", now)).toBe(false); // still July 11 PDT
+  });
+
+  it("forwards a reply with all requested customer and appointment details", () => {
+    expect(buildAppointmentReplyForward({
+      customerName: "Jane Customer",
+      customerPhone: "805-555-1212",
+      address: "123 Main Street",
+      city: "Camarillo",
+      appointmentStart: "2026-07-12T17:00:00.000Z",
+      response: "Please confirm that time still works."
+    })).toBe([
+      "805 Shutters appointment reply",
+      "Name: Jane Customer",
+      "Date/time: Sun, Jul 12, 2026, 10:00 AM",
+      "Address: 123 Main Street, Camarillo",
+      "Phone: 805-555-1212",
+      "Response: Please confirm that time still works."
+    ].join("\n"));
   });
 });

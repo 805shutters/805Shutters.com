@@ -1,4 +1,5 @@
 import { sendSms, SmsResult } from "@/lib/notify/twilio";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type EnvMap = Record<string, string | undefined>;
 
@@ -125,4 +126,229 @@ export async function sendCalendarAssignmentSms(
   );
 
   return { sent: deliveries.some((delivery) => delivery.result.sent), deliveries };
+}
+
+const PACIFIC_TIME_ZONE = "America/Los_Angeles";
+const ACTIVE_APPOINTMENT_STATUSES = ["scheduled", "rescheduled"];
+
+type ReminderEvent = {
+  id: string;
+  job_id: string | null;
+  title: string;
+  start_at: string;
+  status: string;
+  event_type: string;
+  meta?: Record<string, unknown> | null;
+};
+
+type ReminderJob = {
+  id: string;
+  customer_name: string;
+  phone: string;
+  address?: string | null;
+  city?: string | null;
+};
+
+export type AppointmentReplyContext = {
+  customerName: string;
+  customerPhone: string;
+  address: string | null;
+  city: string | null;
+  appointmentStart: string;
+  response: string;
+};
+
+function pacificDateParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: PACIFIC_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+export function isPacificReminderHour(now: Date): boolean {
+  return pacificDateParts(now).hour === "19";
+}
+
+export function isTomorrowInPacific(startAt: string, now: Date): boolean {
+  const start = new Date(startAt);
+  if (!Number.isFinite(start.getTime())) return false;
+  const today = pacificDateParts(now);
+  const tomorrowAnchor = new Date(`${today.year}-${today.month}-${today.day}T12:00:00-08:00`);
+  tomorrowAnchor.setUTCDate(tomorrowAnchor.getUTCDate() + 1);
+  const tomorrow = pacificDateParts(tomorrowAnchor);
+  const appointment = pacificDateParts(start);
+  return appointment.year === tomorrow.year && appointment.month === tomorrow.month && appointment.day === tomorrow.day;
+}
+
+export function formatCustomerReminderTime(startAt: string): string {
+  const start = new Date(startAt);
+  if (!Number.isFinite(start.getTime())) return "";
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: PACIFIC_TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit"
+  });
+  return `${formatter.format(start)} and ${formatter.format(end)}`;
+}
+
+export function buildDayBeforeAppointmentReminder(startAt: string): string {
+  return `Hi, just a reminder that we have a window covering consultation scheduled for tomorrow between ${formatCustomerReminderTime(startAt)}. - 805 Shutters`;
+}
+
+function normalizePhone(value: string | null | undefined): string {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+}
+
+export function formatReplyAppointmentDateTime(startAt: string): string {
+  const start = new Date(startAt);
+  if (!Number.isFinite(start.getTime())) return "Unknown";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: PACIFIC_TIME_ZONE,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(start);
+}
+
+export function buildAppointmentReplyForward(input: AppointmentReplyContext): string {
+  const address = [input.address, input.city].filter(Boolean).join(", ") || "Not provided";
+  return [
+    "805 Shutters appointment reply",
+    `Name: ${input.customerName || "Unknown"}`,
+    `Date/time: ${formatReplyAppointmentDateTime(input.appointmentStart)}`,
+    `Address: ${address}`,
+    `Phone: ${input.customerPhone}`,
+    `Response: ${input.response}`
+  ].join("\n");
+}
+
+export async function forwardCustomerAppointmentReply(
+  supabase: SupabaseClient,
+  fromPhone: string,
+  response: string,
+  smsSender: typeof sendSms = sendSms
+) {
+  const cleanResponse = response.trim();
+  const normalizedFrom = normalizePhone(fromPhone);
+  if (!normalizedFrom || !cleanResponse) return { forwarded: false, matched: false, skipped: "missing sender or response" };
+
+  const { data: eventRows, error: eventError } = await supabase
+    .from("crm_calendar_events")
+    .select("id,job_id,start_at,meta")
+    .not("meta->>dayBeforeReminderSentAt", "is", null)
+    .order("start_at", { ascending: false })
+    .limit(100);
+  if (eventError) throw eventError;
+
+  const events = (eventRows || []) as ReminderEvent[];
+  const jobIds = [...new Set(events.map((event) => event.job_id).filter((id): id is string => Boolean(id)))];
+  const jobsById = new Map<string, ReminderJob>();
+  if (jobIds.length) {
+    const { data: jobRows, error: jobError } = await supabase
+      .from("crm_jobs")
+      .select("id,customer_name,phone,address,city")
+      .in("id", jobIds);
+    if (jobError) throw jobError;
+    for (const job of (jobRows || []) as ReminderJob[]) jobsById.set(job.id, job);
+  }
+
+  const matchingEvent = events.find((event) => {
+    const job = event.job_id ? jobsById.get(event.job_id) : null;
+    return normalizePhone(job?.phone) === normalizedFrom;
+  });
+  const job = matchingEvent?.job_id ? jobsById.get(matchingEvent.job_id) : null;
+  const destination = process.env.APPOINTMENT_REPLY_FORWARD_PHONE || "8058069344";
+  const body = matchingEvent && job
+    ? buildAppointmentReplyForward({
+        customerName: job.customer_name,
+        customerPhone: job.phone,
+        address: job.address || null,
+        city: job.city || null,
+        appointmentStart: matchingEvent.start_at,
+        response: cleanResponse
+      })
+    : [
+        "805 Shutters unmatched appointment reply",
+        `Phone: ${fromPhone}`,
+        `Response: ${cleanResponse}`
+      ].join("\n");
+  const result = await smsSender({ to: destination, body });
+  return { forwarded: result.sent, matched: Boolean(matchingEvent && job), sms: result };
+}
+
+export async function runDayBeforeAppointmentReminders(
+  supabase: SupabaseClient,
+  now: Date = new Date(),
+  smsSender: typeof sendSms = sendSms
+) {
+  if (!isPacificReminderHour(now)) {
+    return { sent: 0, skipped: 0, failed: 0, outsideReminderHour: true };
+  }
+
+  const { data: eventRows, error: eventError } = await supabase
+    .from("crm_calendar_events")
+    .select("id,job_id,title,start_at,status,event_type,meta")
+    .in("status", ACTIVE_APPOINTMENT_STATUSES)
+    .neq("event_type", "block");
+  if (eventError) throw eventError;
+
+  const events = ((eventRows || []) as ReminderEvent[]).filter((event) => isTomorrowInPacific(event.start_at, now));
+  const jobIds = [...new Set(events.map((event) => event.job_id).filter((id): id is string => Boolean(id)))];
+  const jobsById = new Map<string, ReminderJob>();
+
+  if (jobIds.length) {
+    const { data: jobRows, error: jobError } = await supabase
+      .from("crm_jobs")
+      .select("id,customer_name,phone")
+      .in("id", jobIds);
+    if (jobError) throw jobError;
+    for (const job of (jobRows || []) as ReminderJob[]) jobsById.set(job.id, job);
+  }
+
+  let sent = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (const event of events) {
+    const meta = event.meta || {};
+    if (meta.dayBeforeReminderAppointmentStart === event.start_at && meta.dayBeforeReminderSentAt) {
+      skipped += 1;
+      continue;
+    }
+    const job = event.job_id ? jobsById.get(event.job_id) : null;
+    if (!job?.phone) {
+      skipped += 1;
+      continue;
+    }
+
+    const result = await smsSender({ to: job.phone, body: buildDayBeforeAppointmentReminder(event.start_at) });
+    if (!result.sent) {
+      failed += 1;
+      continue;
+    }
+
+    const { error: updateError } = await supabase
+      .from("crm_calendar_events")
+      .update({
+        meta: {
+          ...meta,
+          dayBeforeReminderSentAt: now.toISOString(),
+          dayBeforeReminderAppointmentStart: event.start_at
+        }
+      })
+      .eq("id", event.id);
+    if (updateError) throw updateError;
+    sent += 1;
+  }
+
+  return { sent, skipped, failed, outsideReminderHour: false };
 }
