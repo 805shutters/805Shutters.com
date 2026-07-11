@@ -1131,7 +1131,12 @@ export function CrmApp({
       setEmailLoginMessage(`Login link sent to ${email}.`);
       form.reset();
     } catch (error) {
-      setEmailLoginMessage(error instanceof Error ? error.message : "Email login link could not be sent.");
+      const errorMessage = error instanceof Error ? error.message : "";
+      setEmailLoginMessage(
+        errorMessage.toLowerCase().includes("rate limit")
+          ? "A login email was already requested. Check Ken's inbox for the newest link, or wait a few minutes before requesting another."
+          : errorMessage || "Email login link could not be sent."
+      );
     } finally {
       setEmailLoginBusy(false);
     }
