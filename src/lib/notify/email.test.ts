@@ -95,6 +95,9 @@ describe("buildQuoteEmail", () => {
     expect(html).toContain('padding:7px 0 7px 12px');
     expect(html).not.toContain('display:flex;justify-content:space-between;gap:16px');
     expect(html).toContain("large tabs at the top");
+    expect(html.match(/Review and approve contract/g)).toHaveLength(2);
+    expect(html.indexOf("Review and approve contract")).toBeLessThan(html.indexOf("3 quotes included"));
+    expect(html.lastIndexOf("Review and approve contract")).toBeGreaterThan(html.indexOf("3 quotes included"));
   });
 });
 

@@ -248,13 +248,12 @@ export function buildQuoteEmail(customerName: string, url: string, total: number
       <p style="margin:10px 0 0 0;font-size:15px;line-height:1.55;color:#0b0b0b">Hi ${escapeHtml(name)}, your contract${total > 0 ? ` for <strong>${amount}</strong>` : ""} is ready to review and approve.</p>
     </div>
     ${personalNote ? `<div style="border:1px solid #d8d8d2;background:#ffffff;padding:14px 16px;margin:0 0 20px 0;font-size:14px;line-height:1.55;color:#0b0b0b">${escapeHtml(personalNote).replace(/\n/g, "<br>")}</div>` : ""}
+    ${reviewContractButton(url, "0 0 20px 0")}
     ${quoteVersions.length > 1 ? `<div style="border:2px solid #0b0b0b;background:#f4f4f2;padding:14px 16px;margin:0 0 20px 0"><div style="font-size:15px;font-weight:700;margin-bottom:8px">${quoteVersions.length} quotes included</div><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">${quoteVersions.map((version) => `<tr><td width="50%" style="width:50%;padding:7px 12px 7px 0;border-top:1px solid #d8d8d2;white-space:nowrap"><strong>Quote ${escapeHtml(version.label)}</strong></td><td width="50%" align="right" style="width:50%;padding:7px 0 7px 12px;border-top:1px solid #d8d8d2;white-space:nowrap"><strong>${money(version.total)}</strong></td></tr>`).join("")}</table><div style="font-size:13px;line-height:1.45;margin-top:8px;color:#0b0b0b">Use the large tabs at the top of the contract page to compare each quote.</div></div>` : ""}
     ${details.lines?.length ? quoteLinesTable(details.lines) : ""}
     ${quoteSummary(details, total)}
     <p style="margin:18px 0 0 0;font-size:14px;line-height:1.6;color:#0b0b0b">Prefer to pay directly? Venmo <strong>@${escapeHtml(VENMO_HANDLE)}</strong> &middot; Zelle <strong>${escapeHtml(ZELLE_DESTINATION)}</strong></p>
-    <div style="margin:26px 0 18px 0">
-      <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
-    </div>
+    ${reviewContractButton(url, "26px 0 18px 0")}
     <p style="margin:0 0 18px 0;font-size:13px;line-height:1.5;color:#0b0b0b">Or paste this link into your browser:<br><span style="word-break:break-all;color:#0b0b0b">${escapeHtml(url)}</span></p>
     ${financing.html}
     ${officialContactFooterHtml()}
@@ -391,6 +390,12 @@ function officialContactFooterHtml(): string {
     Thank you,<br><strong style="color:#0b0b0b">${brandIdentity.name}</strong><br>
     Official contact: <a href="${brandIdentity.website}" style="color:#0b0b0b;font-weight:700">${brandIdentity.domain}</a> &middot; <a href="${brandIdentity.phoneHref}" style="color:#0b0b0b;font-weight:700">${brandIdentity.phone}</a><br>
     <a href="${brandIdentity.emailHref}" style="color:#0b0b0b">${brandIdentity.email}</a>
+  </div>`;
+}
+
+function reviewContractButton(url: string, margin: string): string {
+  return `<div style="margin:${margin}">
+    <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
   </div>`;
 }
 

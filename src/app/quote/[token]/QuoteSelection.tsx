@@ -163,17 +163,45 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
                 <td style={td}>
                   {line.priceReady ? (
                     <div>
-                      <div>
-                        {line.productName}
-                        {line.styleName ? ` — ${line.styleName}` : ""}
-                      </div>
-                      {line.options.length ? (
-                        <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.7 }}>
-                          {line.options.map((o, i) => (
-                            <li key={i}>{o}</li>
+                      {line.showDesignOptions && line.designOptions.length ? (
+                        <div style={{ display: "grid", gap: 8 }}>
+                          {line.designOptions.map((option) => (
+                            <div key={option.id} style={designOptionBox}>
+                              {line.designOptions.length > 1 ? (
+                                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                                  <strong>Option {option.label}</strong>
+                                  <span style={{ whiteSpace: "nowrap" }}>{money(option.lineTotal)}</span>
+                                </div>
+                              ) : null}
+                              <div>
+                                {option.productName}
+                                {option.styleName ? ` — ${option.styleName}` : ""}
+                              </div>
+                              {option.options.length ? (
+                                <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.75 }}>
+                                  {option.options.map((detail, detailIndex) => (
+                                    <li key={detailIndex}>{detail}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
+                            </div>
                           ))}
-                        </ul>
-                      ) : null}
+                        </div>
+                      ) : (
+                        <div>
+                          <div>
+                            {line.productName}
+                            {line.styleName ? ` — ${line.styleName}` : ""}
+                          </div>
+                          {line.options.length ? (
+                            <ul style={{ margin: "4px 0 0", paddingLeft: 18, fontSize: 13, opacity: 0.7 }}>
+                              {line.options.map((o, i) => (
+                                <li key={i}>{o}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <em style={{ opacity: 0.6 }}>Pricing in progress</em>
@@ -342,6 +370,12 @@ function Row({ label, value, strong, highlight }: { label: string; value: string
 
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;
+const designOptionBox = {
+  padding: "8px 10px",
+  border: "1px solid #d8d8d2",
+  borderRadius: 6,
+  background: "#fbfbfa",
+} as const;
 const payBox = {
   border: "1px solid #d8d8d2",
   borderRadius: 10,

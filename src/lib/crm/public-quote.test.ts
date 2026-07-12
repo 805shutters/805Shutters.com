@@ -284,6 +284,37 @@ describe("projectLine (per-line discount on the contract)", () => {
     expect(projectLine(lineItem({ discount_percent: 15, designs: [d] }), true).discountPercent).toBe(0);
   });
 
+  it("preserves legacy product specifications for the contract and email", () => {
+    const d = design({
+      product_id: "roller",
+      unit_price: 509.4,
+      price_breakdown: {
+        source: "mts_805_bookkeeping",
+        productType: "Roller Shades",
+        details: [
+          { label: "Fabric", value: "Callie - Linen" },
+          { label: "Lift System", value: "Cordless" },
+          { label: "Mount Type", value: "Inside Mount" },
+          { label: "Valance", value: "Cassette" },
+        ],
+      },
+    });
+
+    const line = projectLine(lineItem({ notes: "Roller Shades", designs: [d] }), true);
+
+    expect(line.showDesignOptions).toBe(true);
+    expect(line.designOptions[0]?.options).toEqual([
+      "Fabric: Callie - Linen",
+      "Lift System: Cordless",
+      "Mount Type: Inside Mount",
+      "Valance: Cassette",
+    ]);
+    expect(line.options).toContain("Fabric: Callie - Linen");
+    expect(line.options).toContain("Lift System: Cordless");
+    expect(line.options).toContain("Mount Type: Inside Mount");
+    expect(line.options).toContain("Valance: Cassette");
+  });
+
   it("expands quantity into separate customer contract rows", () => {
     const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
     const line = projectLine(lineItem({ id: "line-1", quantity: 3, designs: [d], selected_design_id: d.id }), false);

@@ -1,0 +1,83 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import type { PublicQuote } from "@/lib/crm/public-quote";
+import { DEFAULT_ADJUSTMENTS } from "@/lib/crm/quote-builder";
+import { QuoteSelection } from "./QuoteSelection";
+
+function quoteWithLegacyDetails(): PublicQuote {
+  return {
+    token: "test-token",
+    id: "quote-1",
+    quoteNumber: "805-0109",
+    customerName: "Test Customer",
+    status: "sent",
+    signed: true,
+    signedAt: null,
+    lines: [
+      {
+        id: "line-1",
+        lineItemId: "line-1",
+        room: "Kitchen",
+        dimensions: '48" W × 64" H',
+        productName: "Roller Shades",
+        styleName: "",
+        options: ["Fabric: Callie - Linen", "Lift System: Cordless"],
+        designOptions: [
+          {
+            id: "design-1",
+            label: "A",
+            productName: "Roller Shades",
+            styleName: "Callie",
+            options: [
+              "Fabric: Callie - Linen",
+              "Lift System: Cordless",
+              "Mount Type: Inside Mount",
+              "Valance: Cassette",
+            ],
+            unitPrice: 509.4,
+            lineTotal: 509.4,
+            priceReady: true,
+          },
+        ],
+        showDesignOptions: true,
+        unitPrice: 509.4,
+        quantity: 1,
+        lineTotal: 509.4,
+        discountPercent: 0,
+        priceReady: true,
+      },
+    ],
+    subtotal: 509.4,
+    fees: [],
+    discount: 0,
+    tax: 0,
+    sourceTotalAdjustment: 0,
+    depositDue: 254.7,
+    balanceDue: 254.7,
+    total: 509.4,
+    allPriced: true,
+    hasOnyxShutters: false,
+    adjustments: DEFAULT_ADJUSTMENTS,
+    business: {
+      name: "805 Shutters",
+      phone: "805-806-9344",
+      website: "https://www.805shutters.com",
+      email: "805@805shutters.com",
+    },
+    versions: [],
+  };
+}
+
+describe("QuoteSelection", () => {
+  it("renders saved legacy product specifications on the customer contract", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails() }));
+
+    expect(html).toContain("Roller Shades");
+    expect(html).toContain("Callie");
+    expect(html).toContain("Fabric: Callie - Linen");
+    expect(html).toContain("Lift System: Cordless");
+    expect(html).toContain("Mount Type: Inside Mount");
+    expect(html).toContain("Valance: Cassette");
+  });
+});

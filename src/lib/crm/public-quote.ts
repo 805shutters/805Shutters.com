@@ -330,6 +330,18 @@ function projectDesignOption(design: CrmQuoteDesign, quantity: number): PublicQu
   };
 }
 
+function legacyLineOptions(designOptions: PublicQuoteDesignOption[]): string[] {
+  const labelEachDesign = designOptions.length > 1;
+  return designOptions.flatMap((option) => {
+    const product = [option.productName, option.styleName].filter(Boolean).join(" — ");
+    const optionPrefix = labelEachDesign ? `Option ${option.label}` : "";
+    return [
+      ...(product ? [`${optionPrefix ? `${optionPrefix}: ` : ""}${product}`] : []),
+      ...option.options.map((detail) => `${optionPrefix ? `${optionPrefix} — ` : ""}${detail}`),
+    ];
+  });
+}
+
 export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuoteLine {
   const qty = Math.max(1, Math.floor(Number(li.quantity) || 1));
   const discountPercent = Math.min(100, Math.max(0, Number(li.discount_percent) || 0));
@@ -346,7 +358,7 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       dimensions: dimensions(li),
       productName: li.notes || first?.productName || "-",
       styleName: "",
-      options: [],
+      options: legacyLineOptions(designOptions),
       designOptions,
       showDesignOptions: true,
       unitPrice: priceReady ? round2(designOptions.reduce((sum, option) => sum + option.unitPrice, 0)) : 0,
