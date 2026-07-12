@@ -37,6 +37,7 @@ import {
   soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
+import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import {
   PAYMENT_PLAN_METHOD_LABELS,
   getPaymentPlanMeta,
@@ -423,22 +424,18 @@ function calendarEventPlacement(event: CrmCalendarEvent, days: string[]) {
   if (dayIndex < 0) return null;
 
   const day = days[dayIndex];
-  const overlappingRows = calendarSlotTimes
-    .map((time, index) => {
-      const slot = calendarSlotSelection(day, time);
-      return eventStart < new Date(slot.endAt) && eventEnd > new Date(slot.startAt) ? index : -1;
-    })
-    .filter((index) => index >= 0);
+  const rowRange = calendarTimelineRowRange(
+    eventStart,
+    eventEnd,
+    calendarSlotTimes.map((time) => calendarSlotStart(day, time))
+  );
 
-  if (!overlappingRows.length) return null;
-
-  const firstRow = Math.min(...overlappingRows);
-  const lastRow = Math.max(...overlappingRows);
+  if (!rowRange) return null;
 
   return {
     column: dayIndex + 2,
-    rowStart: firstRow + 2,
-    rowEnd: lastRow + 3
+    rowStart: rowRange.firstRow + 2,
+    rowEnd: rowRange.lastRow + 3
   };
 }
 
