@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PublicQuote } from "@/lib/crm/public-quote";
 import type { PaymentOptions } from "@/lib/finance/payment-options";
 import { SignQuote } from "./SignQuote";
+import styles from "./QuoteSelection.module.css";
 
 function money(n: number): string {
   return (Number(n) || 0).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -117,16 +118,18 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   return (
     <>
       {allowSelection ? (
-        <div style={selectBar}>
-          <span style={{ fontSize: 13, opacity: 0.7, alignSelf: "center" }}>Purchase:</span>
-          <label style={radioLabel}>
-            <input type="radio" name="purchase-mode" checked={mode === "all"} onChange={() => setMode("all")} /> All
+        <div className={styles.purchaseSelector}>
+          <span className={styles.purchaseHeading}>Purchase:</span>
+          <label className={styles.purchaseOption} data-selected={mode === "all"}>
+            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "all"} onChange={() => setMode("all")} />
+            <span>All</span>
           </label>
-          <label style={radioLabel}>
-            <input type="radio" name="purchase-mode" checked={mode === "some"} onChange={() => setMode("some")} /> Some
+          <label className={styles.purchaseOption} data-selected={mode === "some"}>
+            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "some"} onChange={() => setMode("some")} />
+            <span>Some</span>
           </label>
           {mode === "some" ? (
-            <span style={{ fontSize: 13, opacity: 0.7 }}>Please select the line items you wish to purchase.</span>
+            <span className={styles.purchaseHelp}>Please select the line items you wish to purchase.</span>
           ) : null}
         </div>
       ) : null}
@@ -204,7 +207,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
           <Row label="Total" value={money(live.total)} strong />
         </div>
-        {live.depositDue > 0 ? <Row label="Deposit due" value={money(live.depositDue)} highlight /> : null}
+        {live.depositDue > 0 ? <Row label="Deposit" value={money(live.depositDue)} highlight /> : null}
         {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
         {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
       </div>
@@ -212,7 +215,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
       {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
         <div id="payment" className="no-print" style={payBox}>
           <strong>Ways to pay</strong>
-          {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit due: {money(live.depositDue)}</div> : null}
+          {live.depositDue > 0 ? <div style={depositDueCallout}>Deposit: {money(live.depositDue)}</div> : null}
           <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginTop: 10, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontSize: 14 }}>
@@ -339,17 +342,6 @@ function Row({ label, value, strong, highlight }: { label: string; value: string
 
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;
-const selectBar = {
-  display: "flex",
-  gap: 14,
-  alignItems: "center",
-  flexWrap: "wrap",
-  marginBottom: 16,
-  padding: "12px 14px",
-  border: "1px solid #d8d8d2",
-  borderRadius: 10,
-  background: "#fbfbfa",
-} as const;
 const payBox = {
   border: "1px solid #d8d8d2",
   borderRadius: 10,
@@ -391,7 +383,6 @@ const cardBtn = {
   fontWeight: 700,
   cursor: "pointer",
 } as const;
-const radioLabel = { display: "inline-flex", gap: 6, alignItems: "center", fontSize: 15, fontWeight: 600, cursor: "pointer" } as const;
 const termsBox = {
   marginTop: 20,
   padding: 14,
