@@ -128,7 +128,11 @@ export function SiteHeader() {
             </Link>
           </div>
         </div>
-        <Link className={`brand ${isCommercialMode ? "brand--commercial" : "brand--exact"}`} href="/" aria-label={brandName}>
+        <Link
+          className={`brand ${isCommercialMode ? "brand--commercial" : "brand--exact"}${!isHome ? " brand--dark" : ""}`}
+          href="/"
+          aria-label={brandName}
+        >
           <span className="brand-text-logo" aria-hidden="true">
             <span className="brand-text-logo-number">805</span>
             <span className="brand-text-logo-name">{brandLabel}</span>

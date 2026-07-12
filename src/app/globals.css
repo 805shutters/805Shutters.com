@@ -11871,6 +11871,12 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   filter: brightness(0) invert(1) drop-shadow(0 1px 0 rgba(0, 0, 0, 0.28));
 }
 
+/* Interior pages use a white masthead, so keep the logo black even when the
+   homepage scroll state briefly persists during client-side navigation. */
+.brand.brand--dark .brand-logo-exact {
+  filter: none !important;
+}
+
 @media (max-width: 620px) {
   .brand.brand--exact .brand-logo-exact {
     width: clamp(116px, 30vw, 138px) !important;
