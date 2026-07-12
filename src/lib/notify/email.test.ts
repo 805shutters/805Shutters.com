@@ -91,6 +91,9 @@ describe("buildQuoteEmail", () => {
     expect(text).toContain("Quote B: $2,679.00");
     expect(text).toContain("Quote C: $3,627.00");
     expect(html).toContain("3 quotes included");
+    expect(html).toContain('padding:7px 12px 7px 0');
+    expect(html).toContain('padding:7px 0 7px 12px');
+    expect(html).not.toContain('display:flex;justify-content:space-between;gap:16px');
     expect(html).toContain("large tabs at the top");
   });
 });
