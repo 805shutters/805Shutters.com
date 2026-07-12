@@ -53,7 +53,7 @@ export async function sendSalesQuoteToCustomer(
     if (error) throw new CrmAuthError(502, "Customer contact could not be saved before sending.");
   }
 
-  const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quoteForSend);
+  const crmQuoteId = await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForSend);
   const result = await sendQuoteToCustomer(supabase, crmQuoteId, actor, {
     email: options.channels?.email,
     sms: options.channels?.sms,
@@ -64,6 +64,41 @@ export async function sendSalesQuoteToCustomer(
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
   return result;
+}
+
+async function mirrorSalesQuoteGroupForCustomerSend(
+  supabase: CrmSupabaseClient,
+  activeQuote: AnyRow,
+): Promise<string> {
+  let groupQuotes: AnyRow[] = [];
+  if (activeQuote.quote_group_id) {
+    const { data, error } = await supabase
+      .from("sales_quotes")
+      .select("*")
+      .eq("quote_group_id", activeQuote.quote_group_id);
+    if (error) throw new CrmAuthError(502, "Quote options could not be loaded before sending.");
+    groupQuotes = (data || []) as AnyRow[];
+  }
+
+  const quotes = salesQuotesToMirror(activeQuote, groupQuotes);
+  let activeCrmQuoteId = "";
+  for (const quote of quotes) {
+    const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quote);
+    if (quote.id === activeQuote.id) activeCrmQuoteId = crmQuoteId;
+  }
+  if (!activeCrmQuoteId) throw new CrmAuthError(502, "The selected quote option could not be prepared for sending.");
+  return activeCrmQuoteId;
+}
+
+export function salesQuotesToMirror(activeQuote: AnyRow, groupQuotes: AnyRow[]): AnyRow[] {
+  const byId = new Map<string, AnyRow>();
+  for (const quote of groupQuotes) {
+    if (quote?.id) byId.set(String(quote.id), quote);
+  }
+  byId.set(String(activeQuote.id), activeQuote);
+  return [...byId.values()].sort((a, b) =>
+    String(a.quote_letter || "A").localeCompare(String(b.quote_letter || "A")),
+  );
 }
 
 export async function sendSalesQuotePaymentLinkToCustomer(

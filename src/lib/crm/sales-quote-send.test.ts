@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { calculateSalesQuoteMirrorPricing } from "./sales-quote-send";
+import { calculateSalesQuoteMirrorPricing, salesQuotesToMirror } from "./sales-quote-send";
+
+describe("salesQuotesToMirror", () => {
+  it("includes every A/B/C sibling and keeps the patched active quote", () => {
+    const quotes = salesQuotesToMirror(
+      { id: "quote-b", quote_letter: "B", customer_email: "updated@example.com" },
+      [
+        { id: "quote-c", quote_letter: "C" },
+        { id: "quote-a", quote_letter: "A" },
+        { id: "quote-b", quote_letter: "B", customer_email: "old@example.com" },
+      ],
+    );
+
+    expect(quotes.map((quote) => quote.quote_letter)).toEqual(["A", "B", "C"]);
+    expect(quotes.find((quote) => quote.id === "quote-b")?.customer_email).toBe("updated@example.com");
+  });
+
+  it("returns just the active quote when it has no mirrored siblings", () => {
+    const active = { id: "quote-a", quote_letter: "A" };
+    expect(salesQuotesToMirror(active, [])).toEqual([active]);
+  });
+});
 
 describe("calculateSalesQuoteMirrorPricing", () => {
   it("uses current line-item math instead of a stale stored sales quote total", () => {
