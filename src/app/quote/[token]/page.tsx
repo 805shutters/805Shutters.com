@@ -75,26 +75,30 @@ export default async function PublicQuotePage({
       </header>
 
       {quote.versions.length > 1 ? (
-        <div className="no-print" style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
-          <span style={{ alignSelf: "center", fontSize: 13, opacity: 0.7 }}>Compare options:</span>
-          {quote.versions.map((v) => (
-            <a
-              key={v.token}
-              href={`/quote/${v.token}`}
-              style={{
-                textDecoration: "none",
-                border: "1px solid #d8d8d2",
-                borderRadius: 8,
-                padding: "8px 14px",
-                background: v.current ? "#0b0b0b" : "#ffffff",
-                color: v.current ? "#ffffff" : "#0b0b0b",
-              }}
-            >
-              Option {v.label} — {money(v.total)}
-              {v.signed ? " ✓" : ""}
-            </a>
-          ))}
-        </div>
+        <section className="no-print" style={quoteTabsSection} aria-label="Compare quote options">
+          <strong style={quoteTabsHeading}>Choose a quote to review</strong>
+          <div role="tablist" aria-label="Available quotes" style={quoteTabsGrid}>
+            {quote.versions.map((v) => (
+              <a
+                key={v.token}
+                href={`/quote/${v.token}`}
+                role="tab"
+                aria-selected={v.current}
+                aria-current={v.current ? "page" : undefined}
+                style={{
+                  ...quoteTab,
+                  background: v.current ? "#0b0b0b" : "#ffffff",
+                  color: v.current ? "#ffffff" : "#0b0b0b",
+                  borderColor: v.current ? "#0b0b0b" : "#b8b6ae",
+                }}
+              >
+                <span style={quoteTabLabel}>Quote {v.label}</span>
+                <span style={quoteTabPrice}>{money(v.total)}</span>
+                {v.signed ? <span style={quoteTabStatus}>Selected ✓</span> : null}
+              </a>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {quote.signed ? (
@@ -120,6 +124,38 @@ export default async function PublicQuotePage({
 }
 
 const wrap = { maxWidth: 760, margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif", color: "#0b0b0b" } as const;
+const quoteTabsSection = {
+  marginBottom: 22,
+  padding: 14,
+  border: "2px solid #0b0b0b",
+  borderRadius: 12,
+  background: "#f4f4f2",
+} as const;
+const quoteTabsHeading = {
+  display: "block",
+  marginBottom: 10,
+  fontSize: 15,
+} as const;
+const quoteTabsGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 10,
+} as const;
+const quoteTab = {
+  display: "flex",
+  minHeight: 78,
+  flexDirection: "column",
+  justifyContent: "center",
+  padding: "12px 16px",
+  border: "2px solid",
+  borderRadius: 9,
+  textDecoration: "none",
+  textAlign: "center",
+  boxSizing: "border-box",
+} as const;
+const quoteTabLabel = { fontSize: 18, fontWeight: 800, lineHeight: 1.2 } as const;
+const quoteTabPrice = { marginTop: 4, fontSize: 16, fontWeight: 650, lineHeight: 1.2 } as const;
+const quoteTabStatus = { marginTop: 5, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 } as const;
 const contractPreviewWrap = {
   maxWidth: "none",
   margin: 0,

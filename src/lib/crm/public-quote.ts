@@ -1084,14 +1084,14 @@ export async function sendQuoteToCustomer(
   const wantSms = options.sms !== false;
   const wantEmail = options.email !== false;
   const { token, url } = await ensureShareToken(supabase, quoteId, actor);
-  // Give every sibling version a link too, so the customer can compare them.
-  try {
-    const versions = await listQuoteVersions(supabase, quoteId);
-    for (const v of versions) {
-      if (!v.share_token && v.id !== quoteId) await ensureShareToken(supabase, v.id, actor);
+  // A grouped contract is one customer deliverable. Do not send a partial link
+  // if any sibling cannot be made public, otherwise the page silently shows
+  // only the active quote even though the designer built A/B/C.
+  const versions = await listQuoteVersions(supabase, quoteId);
+  for (const version of versions) {
+    if (!version.share_token && version.id !== quoteId) {
+      await ensureShareToken(supabase, version.id, actor);
     }
-  } catch {
-    /* non-fatal */
   }
   const { data: quote } = await supabase
     .from("crm_quotes")
@@ -1133,6 +1133,7 @@ export async function sendQuoteToCustomer(
     sourceTotalAdjustment: publicQuote?.sourceTotalAdjustment,
     depositDue: publicQuote?.depositDue,
     balanceDue: publicQuote?.balanceDue,
+    versions: publicQuote?.versions,
     logoUrl: publicAssetUrl("/brand/805-shutters-logo-header.png"),
     businessPhone: publicQuote?.business.phone,
     personalNote: note,

@@ -76,6 +76,23 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain("source");
     expect(html).not.toContain("internal");
   });
+
+  it("calls out every grouped quote and its price", () => {
+    const { html, text } = buildQuoteEmail("Susan", "https://x/quote/abc", 3627, {
+      versions: [
+        { label: "A", total: 2181 },
+        { label: "B", total: 2679 },
+        { label: "C", total: 3627, current: true },
+      ],
+    });
+
+    expect(text).toContain("This link includes 3 quotes to compare");
+    expect(text).toContain("Quote A: $2,181.00");
+    expect(text).toContain("Quote B: $2,679.00");
+    expect(text).toContain("Quote C: $3,627.00");
+    expect(html).toContain("3 quotes included");
+    expect(html).toContain("large tabs at the top");
+  });
 });
 
 describe("financing options section", () => {
