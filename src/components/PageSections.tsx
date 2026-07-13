@@ -359,6 +359,29 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
   }
 ];
 
+const mobileHomeHeroSlides: HomeHeroSlide[] = [
+  {
+    label: "Top-down, bottom-up cellular shades",
+    image: "/images/homepage-flow/mobile-hero-cellular-top-down-bottom-up.jpg",
+    imageAlt: "Warm reading room with top-down, bottom-up cellular shades floating in the center of three windows"
+  },
+  {
+    label: "Roman shades",
+    image: "/images/homepage-flow/mobile-hero-roman-shades.jpg",
+    imageAlt: "Coastal living room with tailored natural linen Roman shades and drapery"
+  },
+  {
+    label: "Arched plantation shutters",
+    image: "/images/homepage-flow/mobile-hero-arched-shutters.jpg",
+    imageAlt: "Spanish-modern living room with custom plantation shutters fitted to tall arched windows"
+  },
+  {
+    label: "Plantation shutters",
+    image: "/images/homepage-flow/mobile-hero-plantation-shutters.jpg",
+    imageAlt: "Warm coastal living room with tall white plantation shutters and natural wood furnishings"
+  }
+];
+
 const featuredResidentialHeroSlides = (page: SitePage, allSlides = homeHeroSlides(page)): HomeHeroSlide[] => {
   const findSlide = (label: string) => allSlides.find((slide) => slide.label === label);
 
@@ -1376,7 +1399,10 @@ function HomePageSections({ page, commercialMode }: { page: SitePage; commercial
     <>
       <section className="home-editorial">
         <div className="home-editorial-panel">
-          <HomeHeroCarousel slides={heroMediaSlides} />
+          <HomeHeroCarousel
+            slides={heroMediaSlides}
+            mobileSlides={commercialMode ? undefined : mobileHomeHeroSlides}
+          />
           <div className="home-hero-overlay">
             <h1 className="home-intro">{heroTitle}</h1>
             <div className="home-hero-actions">

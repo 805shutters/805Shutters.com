@@ -12533,185 +12533,127 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 }
 
 /* ==========================================================================
-   Mobile home hero reworked to match the scrollable photo flow (appended last).
-   The hero was a full-screen (100svh) cover-crop of a 2:1 panorama, so on a
-   tall phone it showed only a narrow vertical slice. Render it instead as a
-   16:9 block (same shape as .home-photo-flow-item) with the tagline + CTA as a
-   bottom caption, so the full composition shows and it's consistent with the
-   photos below. The header consequently becomes a normal in-flow compact bar
-   above the hero rather than a transparent overlay on a full-screen image.
-   Targets :has(.home-editorial), which matches the home page at every scroll
-   position and (being last in source) wins over both earlier header copies.
+   Mobile portrait hero. Residential phones use a dedicated vertical photo
+   set, with the masthead over the image and the consultation CTA near the
+   lower edge. Desktop and commercial hero behavior remain unchanged.
    ========================================================================== */
 @media (max-width: 620px) {
-  /* --- Header: in-flow compact solid bar (was a transparent fixed overlay) --- */
   body:has(.home-editorial) .site-header-shell {
-    position: sticky;
-    top: 0;
-    right: auto;
-    bottom: auto;
-    left: auto;
-    background: rgba(251, 251, 250, 0.98);
-    border-bottom: 1px solid var(--line);
-    color: var(--ink);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  body:has(.home-editorial) .site-header-shell::before {
-    content: none;
-  }
-
-  body:has(.home-editorial) .site-masthead {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 0;
-    padding: 8px 14px;
+    position: fixed;
+    inset: 0 0 auto;
     background: transparent;
     border-bottom: 0;
-  }
-
-  body:has(.home-editorial) .brand,
-  body:has(.home-editorial) .mobile-header-tools,
-  body:has(.home-editorial) .mobile-header-tools--left,
-  body:has(.home-editorial) .mobile-header-tools--right {
-    position: static;
-    top: auto;
-    left: auto;
-    right: auto;
-    transform: none;
-    color: var(--ink);
-    text-shadow: none;
-  }
-
-  body:has(.home-editorial) .brand {
-    order: -1;
-    margin-right: auto;
-  }
-
-  body:has(.home-editorial) .brand-text-logo {
-    justify-items: start;
-    text-align: left;
-    color: var(--ink);
-  }
-
-  body:has(.home-editorial) .brand-text-logo-number {
-    font-size: 30px;
-  }
-
-  body:has(.home-editorial) .brand-text-logo-name {
-    margin-top: 1px;
-    font-size: 8px;
-    letter-spacing: 0.22em;
-  }
-
-  body:has(.home-editorial) .mobile-header-tools--left {
-    gap: 8px;
-  }
-
-  body:has(.home-editorial) .commercial-mode-badge {
-    min-height: 38px;
-    padding: 8px 9px;
-    font-size: 9px;
-    letter-spacing: 0.05em;
-    background: var(--ink);
-    border-color: var(--ink);
-    color: var(--white);
-  }
-
-  body:has(.home-editorial) .commercial-mode-badge.active {
-    background: #111111;
-    border-color: #111111;
-  }
-
-  body:has(.home-editorial) .mobile-book-link {
-    min-height: 38px;
-    padding: 8px 10px;
-    font-size: 9px;
-    border-color: var(--line);
-    background: transparent;
-    color: var(--ink);
+    color: rgba(255, 255, 255, 0.96);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
 
-  body:has(.home-editorial) .mobile-book-link svg {
-    width: 16px;
-    height: 16px;
-    flex-basis: 16px;
-  }
-
-  body:has(.home-editorial) .mobile-header-icon {
-    width: 38px;
-    height: 38px;
-  }
-
-  body:has(.home-editorial) .category-nav {
-    display: none;
-  }
-
-  /* The residential brand mark is a PNG that the old transparent-hero rules
-     invert to white; on the new light bar it must stay dark and compact. */
-  body:has(.home-editorial):not(.site-header-solid) .brand.brand--exact .brand-logo-exact {
-    filter: none;
-  }
-
-  body:has(.home-editorial) .brand.brand--exact .brand-logo-exact {
-    width: clamp(74px, 20vw, 86px) !important;
-  }
-
-  /* Keep the primary installation photo large enough to lead the mobile page
-     while leaving the next section visible below it. */
-  body:has(.home-editorial) .home-editorial-panel {
-    min-height: 0;
-    aspect-ratio: 4 / 3;
-  }
-
-  body:has(.home-editorial) .home-editorial-panel::after {
+  body:has(.home-editorial) .site-header-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 -118px;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
     background: linear-gradient(
       180deg,
-      rgba(11, 11, 11, 0) 34%,
-      rgba(11, 11, 11, 0.68)
+      rgba(9, 9, 9, 0.58) 0%,
+      rgba(9, 9, 9, 0.38) 44%,
+      rgba(9, 9, 9, 0.14) 76%,
+      rgba(9, 9, 9, 0) 100%
     );
   }
 
-  /* Tagline + CTA: bottom-left caption, like the photo-flow figcaptions. */
-  body:has(.home-editorial) .home-hero-overlay {
-    inset: auto 0 0;
-    width: 100%;
+  body:has(.home-editorial) .site-masthead {
+    position: relative;
+    display: block;
+    min-height: 148px;
+    padding: 0;
+    background: transparent;
+    border-bottom: 0;
+  }
+
+  body:has(.home-editorial) .brand {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    z-index: 2;
     margin: 0;
-    padding: 0 16px 16px;
-    gap: 9px;
-    align-items: flex-start;
+    color: rgba(255, 255, 255, 0.98);
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.42);
+    transform: translateX(-50%);
+  }
+
+  body:has(.home-editorial) .mobile-header-tools,
+  body:has(.home-editorial) .mobile-header-tools--left,
+  body:has(.home-editorial) .mobile-header-tools--right {
+    position: absolute;
+    top: 44px;
+    z-index: 2;
+    color: rgba(255, 255, 255, 0.96);
+    text-shadow: 0 2px 16px rgba(0, 0, 0, 0.52);
+    transform: none;
+  }
+
+  body:has(.home-editorial) .mobile-header-tools--left {
+    left: 16px;
+  }
+
+  body:has(.home-editorial) .mobile-header-tools--right {
+    right: 16px;
+  }
+
+  body:has(.home-editorial):not(.site-header-solid) .brand.brand--exact .brand-logo-exact,
+  body:has(.home-editorial) .brand.brand--exact .brand-logo-exact {
+    width: clamp(116px, 30vw, 138px) !important;
+    filter: brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.42));
+  }
+
+  body:has(.home-editorial) .home-editorial-panel {
+    min-height: 100svh;
+    aspect-ratio: auto;
+  }
+
+  body:has(.home-editorial) .home-editorial-panel::after {
+    background:
+      linear-gradient(180deg, rgba(9, 9, 9, 0.2), transparent 34%, rgba(9, 9, 9, 0.58) 78%, rgba(9, 9, 9, 0.78)),
+      linear-gradient(90deg, rgba(9, 9, 9, 0.16), transparent 50%, rgba(9, 9, 9, 0.16));
+  }
+
+  body:has(.home-editorial) .home-hero-image {
+    object-position: center;
+  }
+
+  body:has(.home-editorial) .home-hero-overlay {
+    inset: 0;
+    width: min(100% - 32px, 460px);
+    margin: auto;
+    padding: 190px 0 max(116px, calc(env(safe-area-inset-bottom) + 104px));
+    gap: 14px;
+    align-items: center;
     justify-content: flex-end;
-    text-align: left;
+    text-align: center;
   }
 
   body:has(.home-editorial) .home-intro,
   body:has(.home-editorial) .home-editorial-panel h1 {
-    max-width: none;
     width: 100%;
-    font-size: clamp(18px, 5.2vw, 23px);
-    line-height: 1.02;
-    letter-spacing: 0.03em;
-    text-align: left;
-    text-shadow:
-      0 1px 2px rgba(0, 0, 0, 1),
-      0 3px 7px rgba(0, 0, 0, 0.98),
-      0 7px 16px rgba(0, 0, 0, 0.94),
-      0 14px 34px rgba(0, 0, 0, 0.88);
+    max-width: 350px;
+    font-size: clamp(25px, 7vw, 34px);
+    line-height: 1.04;
+    letter-spacing: 0.052em;
+    text-align: center;
   }
 
   body:has(.home-editorial) .home-hero-actions {
     width: 100%;
-    margin: 2px 0 0;
-    justify-content: flex-start;
+    margin: 0;
+    justify-content: center;
   }
 
   body:has(.home-editorial) .home-hero-actions .button {
     width: 100%;
-    min-height: 46px;
+    min-height: 52px;
     font-size: 11px;
   }
 }

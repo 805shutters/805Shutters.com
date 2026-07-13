@@ -13,6 +13,7 @@ export type HomeHeroSlide = {
 
 type HomeHeroCarouselProps = {
   slides: HomeHeroSlide[];
+  mobileSlides?: HomeHeroSlide[];
 };
 
 type PreviewLayer = {
@@ -25,12 +26,33 @@ type PreviewState = {
   active: boolean;
 };
 
-export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
+export function HomeHeroCarousel({ slides, mobileSlides }: HomeHeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [isMobileHero, setIsMobileHero] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ layers: [], active: false });
   const previewKeyRef = useRef(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const renderedSlides = isMobileHero && mobileSlides?.length ? mobileSlides : slides;
+  const slideCount = renderedSlides.length;
+
+  useEffect(() => {
+    const mobileHeroQuery = window.matchMedia("(max-width: 620px)");
+    const syncMobileHero = () => setIsMobileHero(mobileHeroQuery.matches);
+
+    syncMobileHero();
+
+    if (typeof mobileHeroQuery.addEventListener === "function") {
+      mobileHeroQuery.addEventListener("change", syncMobileHero);
+
+      return () => mobileHeroQuery.removeEventListener("change", syncMobileHero);
+    }
+
+    mobileHeroQuery.addListener(syncMobileHero);
+
+    return () => mobileHeroQuery.removeListener(syncMobileHero);
+  }, []);
+
   useEffect(() => {
     const staticHeroQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const syncStaticHero = () => {
@@ -51,12 +73,13 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   }, []);
 
   useEffect(() => {
-    if (slides.length < 2) {
+    if (slideCount === 0) {
+      setActiveIndex(null);
       return;
     }
 
-    setActiveIndex(Math.floor(Math.random() * slides.length));
-  }, [slides.length]);
+    setActiveIndex(slideCount === 1 ? 0 : Math.floor(Math.random() * slideCount));
+  }, [isMobileHero, slideCount]);
 
   useEffect(() => {
     const videos = carouselRef.current?.querySelectorAll("video");
@@ -68,7 +91,7 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
         video.pause();
       }
     });
-  }, [activeIndex, reduceMotion]);
+  }, [activeIndex, isMobileHero, reduceMotion]);
 
   useEffect(() => {
     const showPreview = (event: Event) => {
@@ -134,7 +157,6 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
     return () => window.clearTimeout(timeout);
   }, [preview.layers]);
 
-  const renderedSlides = slides;
   const previousIndex = activeIndex !== null && renderedSlides.length > 1
     ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length
     : activeIndex;
