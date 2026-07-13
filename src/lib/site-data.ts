@@ -177,6 +177,14 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
+    image: "/images/portfolio-enhanced/skylight-plantation-shutters-open-card.jpg",
+    imageAlt: "Custom white plantation shutters installed over a Ventura County skylight with the louvers open"
+  },
+  {
+    image: "/images/portfolio-enhanced/skylight-plantation-shutters-closed-card.jpg",
+    imageAlt: "Custom white plantation shutters closed over a Ventura County skylight for light control"
+  },
+  {
     image: "/images/portfolio-enhanced/bedroom-horizontal-blinds-before-card.jpg",
     imageAlt: "Before view of horizontal blinds on a Ventura County bedroom window",
     label: "Before"

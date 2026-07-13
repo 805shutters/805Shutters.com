@@ -68,6 +68,26 @@ const photos = [
     socialLabel: "AFTER"
   },
   {
+    base: "skylight-plantation-shutters-open",
+    source: "2026-07-13-skylight-plantation-shutters-open.jpg",
+    category: "Shutters",
+    title: "Skylight Plantation Shutters",
+    alt: "Custom white plantation shutters installed over a Ventura County skylight with the louvers open",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "skylight-plantation-shutters-closed",
+    source: "2026-07-13-skylight-plantation-shutters-closed.jpg",
+    category: "Shutters",
+    title: "Skylight Plantation Shutters Closed",
+    alt: "Custom white plantation shutters closed over a Ventura County skylight for light control",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
     base: "kitchen-roman-shade-lowered",
     source: "2026-07-08-kitchen-roman-shade-lowered.jpg",
     category: "Shades",
