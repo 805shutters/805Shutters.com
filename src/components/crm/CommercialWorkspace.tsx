@@ -250,6 +250,11 @@ export function CommercialWorkspace({ session }: { session: Session }) {
     [accounts, normalizedSearch, statusFilter, typeFilter]
   );
 
+  useEffect(() => {
+    if (selectedId && visibleAccounts.some((account) => account.id === selectedId)) return;
+    setSelectedId(visibleAccounts[0]?.id || null);
+  }, [selectedId, visibleAccounts]);
+
   const accountActivities = useMemo(
     () => (data?.activities || []).filter((activity) => activity.account_id === selectedId),
     [data?.activities, selectedId]
@@ -549,7 +554,14 @@ export function CommercialWorkspace({ session }: { session: Session }) {
 
           <div className="commercial-pipeline-toolbar">
             <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search company, contact, phone, city, license…" />
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
+            <select
+              value={typeFilter}
+              onChange={(event) => {
+                setTypeFilter(event.target.value);
+                setSearch("");
+              }}
+              aria-label="Filter prospects by company type"
+            >
               <option value="all">All account types</option>
               {commercialAccountTypes.map((type) => <option key={type} value={type}>{commercialTypeLabels[type]}</option>)}
             </select>
