@@ -575,7 +575,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
           </div>
 
           <div className="commercial-pipeline-layout">
-            <div className="commercial-account-list">
+            <div className="commercial-account-list" key={`${typeFilter}:${statusFilter}:${normalizedSearch}`}>
               <div className="commercial-account-list-head">
                 <strong>{visibleAccounts.length} prospects</strong>
                 <span>Select up to 25 for personalized outreach</span>
