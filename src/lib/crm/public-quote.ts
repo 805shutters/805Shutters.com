@@ -78,6 +78,9 @@ export type PublicQuote = {
   id: string;
   quoteNumber: string | null;
   customerName: string;
+  customerAddress: string | null;
+  customerPhone: string | null;
+  customerEmail: string | null;
   status: string;
   signed: boolean;
   signedAt: string | null;
@@ -99,6 +102,25 @@ export type PublicQuote = {
   business: { name: string; phone: string; website: string; email: string };
   versions: { token: string; label: string; total: number; signed: boolean; current: boolean }[];
 };
+
+export function formatPublicCustomerPhone(phone: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  const local = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (local.length !== 10) return phone.trim();
+  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6)}`;
+}
+
+export function publicQuoteCustomerDetails(
+  quote: Pick<PublicQuote, "customerName" | "customerAddress" | "customerPhone" | "customerEmail">,
+): string[] {
+  return [
+    quote.customerName,
+    quote.customerAddress,
+    formatPublicCustomerPhone(quote.customerPhone),
+    quote.customerEmail,
+  ].filter((detail): detail is string => Boolean(detail));
+}
 
 export type SignedContractSnapshot = {
   schema: "805_signed_quote_contract_v1";
@@ -474,9 +496,20 @@ export async function loadPublicQuoteByToken(
   const depositDue = depositPercent > 0 ? round2(total * (depositPercent / 100)) : money.depositRequired;
 
   let customerName = quote.customer_name || "";
-  if (!customerName && quote.job_id) {
-    const { data: job } = await supabase.from("crm_jobs").select("customer_name").eq("id", quote.job_id).maybeSingle();
-    customerName = (job as { customer_name?: string } | null)?.customer_name || "";
+  let customerAddress = quote.customer_address || null;
+  let customerPhone = quote.customer_phone || null;
+  let customerEmail = quote.customer_email || null;
+  if (quote.job_id && (!customerName || !customerAddress || !customerPhone || !customerEmail)) {
+    const { data: job } = await supabase
+      .from("crm_jobs")
+      .select("customer_name,address,phone,email")
+      .eq("id", quote.job_id)
+      .maybeSingle();
+    const customer = job as Pick<CrmJob, "customer_name" | "address" | "phone" | "email"> | null;
+    customerName ||= customer?.customer_name || "";
+    customerAddress ||= customer?.address || null;
+    customerPhone ||= customer?.phone || null;
+    customerEmail ||= customer?.email || null;
   }
 
   let versions: PublicQuote["versions"] = [];
@@ -492,6 +525,9 @@ export async function loadPublicQuoteByToken(
     id: quote.id,
     quoteNumber: quote.quote_number,
     customerName: customerName || "Valued customer",
+    customerAddress,
+    customerPhone,
+    customerEmail,
     status: quote.status,
     signed: Boolean(quote.signed_at),
     signedAt: quote.signed_at,

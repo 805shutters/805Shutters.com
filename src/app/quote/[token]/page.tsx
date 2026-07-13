@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { loadPublicQuoteByToken } from "@/lib/crm/public-quote";
+import { loadPublicQuoteByToken, publicQuoteCustomerDetails } from "@/lib/crm/public-quote";
 import { brandIdentity } from "@/lib/brand-identity";
 import { VENMO_HANDLE, ZELLE_DESTINATION, venmoProfileUrl } from "@/lib/finance/payment-options";
 import { privatePageMetadata } from "@/lib/private-page-metadata";
@@ -45,6 +45,7 @@ export default async function PublicQuotePage({
 
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) notFound();
+  const customerDetails = publicQuoteCustomerDetails(quote);
 
   // Venmo profile QR (static per handle) so the customer can scan to pay.
   const venmoQrSvg = await QRCode.toString(venmoProfileUrl(), { type: "svg", margin: 1 });
@@ -69,7 +70,7 @@ export default async function PublicQuotePage({
         </p>
         <h1 style={{ margin: "4px 0" }}>Your Contract</h1>
         <p style={{ margin: 0 }}>
-          Prepared for <strong>{quote.customerName}</strong>
+          Prepared for <strong>{customerDetails.join(", ")}</strong>
           {quote.quoteNumber ? ` · Contract ${quote.quoteNumber}` : ""}
         </p>
       </header>

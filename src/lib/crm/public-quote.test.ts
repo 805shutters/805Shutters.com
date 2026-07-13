@@ -13,6 +13,7 @@ import {
   soldQuoteShopSmsRecipients,
   linkedSalesQuoteIdForPublicQuote,
   formatDimensions,
+  publicQuoteCustomerDetails,
   expandPublicQuoteLine,
   projectLine,
   computeSelectionMoney,
@@ -186,6 +187,31 @@ describe("signed SMS copy", () => {
     const message = buildSignedCustomerSms("Jane");
     expect(message).toContain("Jane");
     expect(message).toContain("805Shutters.com | 805-806-9344");
+  });
+});
+
+describe("public contract customer details", () => {
+  it("lists full name, address, formatted phone, and email in that order", () => {
+    expect(publicQuoteCustomerDetails({
+      customerName: "Renee Appell",
+      customerAddress: "123 Main St, Camarillo, CA 93010",
+      customerPhone: "+1 805 555 1212",
+      customerEmail: "renee@example.com",
+    })).toEqual([
+      "Renee Appell",
+      "123 Main St, Camarillo, CA 93010",
+      "(805) 555-1212",
+      "renee@example.com",
+    ]);
+  });
+
+  it("omits unavailable contact fields without leaving empty separators", () => {
+    expect(publicQuoteCustomerDetails({
+      customerName: "Renee Appell",
+      customerAddress: null,
+      customerPhone: "8055551212",
+      customerEmail: null,
+    })).toEqual(["Renee Appell", "(805) 555-1212"]);
   });
 });
 
@@ -382,6 +408,9 @@ describe("buildSignedContractSnapshot", () => {
       id: "quote-1",
       quoteNumber: "805-100",
       customerName: "Jane Smith",
+      customerAddress: "123 Main St, Ventura, CA 93001",
+      customerPhone: "805-555-1212",
+      customerEmail: "jane@example.com",
       status: "sold",
       signed: true,
       signedAt: "2026-06-27T12:00:00.000Z",
