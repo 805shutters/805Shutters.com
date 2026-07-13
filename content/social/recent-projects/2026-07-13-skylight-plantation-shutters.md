@@ -25,11 +25,11 @@
   - public/images/portfolio-enhanced/skylight-plantation-shutters-closed-natural.jpg
   - public/images/portfolio-enhanced/skylight-plantation-shutters-closed-social-square.jpg
 - Presentation: full-frame cards and social images with softly blurred backgrounds; no portion of either finished photo is cropped
-- Website status: prepared; not deployed
-- Facebook status: ready for logged-in Chrome publishing
-- Instagram status: ready for logged-in Chrome publishing
-- Google Business Profile status: ready for logged-in Chrome publishing
-- Yelp status: blocked; Yelp for Business account is signed out
+- Website status: live and verified at https://www.805shutters.com/gallery/
+- Facebook status: live organic carousel; post ID 1647545540712080
+- Instagram status: live organic carousel; media ID 18155515417488087
+- Google Business Profile status: submitted through the logged-in Business Profile publisher; no public post ID was returned, so it is not yet counted as confirmed live
+- Yelp status: blocked at the Yelp Google sign-in account chooser; photos were not uploaded
 
 ## Facebook and Instagram Copy
 
@@ -55,8 +55,8 @@ URL: https://www.805shutters.com/book-consultation/
 
 ## Platform Results
 
-- Website: pending deploy and live verification
-- Facebook: pending; no public post URL or post ID returned yet
-- Instagram: pending; no permalink or media ID returned yet
-- Google Business Profile: pending; no public post ID returned yet
-- Yelp: blocked; the Yelp for Business login page is open and needs the user to sign in
+- Website: live and verified at https://www.805shutters.com/gallery/ (Vercel deployment https://805-mmr8wy00m-805-shutters.vercel.app)
+- Facebook: live organic carousel; post ID `1647545540712080`
+- Instagram: live organic carousel; media ID `18155515417488087`; not currently boosted
+- Google Business Profile: submitted through the logged-in publisher with both photos; the composer closed, but Google did not return a public post ID, so live status remains unconfirmed
+- Yelp: blocked at the Google account chooser opened from Yelp for Business; complete the 805 Shutters Google sign-in in the open tab, then resume the photo upload
