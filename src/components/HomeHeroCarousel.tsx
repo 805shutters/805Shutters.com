@@ -26,7 +26,7 @@ type PreviewState = {
 };
 
 export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [preview, setPreview] = useState<PreviewState>({ layers: [], active: false });
   const previewKeyRef = useRef(0);
@@ -135,10 +135,15 @@ export function HomeHeroCarousel({ slides }: HomeHeroCarouselProps) {
   }, [preview.layers]);
 
   const renderedSlides = slides;
-  const previousIndex = renderedSlides.length > 1 ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length : activeIndex;
-  const nextIndex = renderedSlides.length > 1 ? (activeIndex + 1) % renderedSlides.length : activeIndex;
+  const previousIndex = activeIndex !== null && renderedSlides.length > 1
+    ? (activeIndex - 1 + renderedSlides.length) % renderedSlides.length
+    : activeIndex;
+  const nextIndex = activeIndex !== null && renderedSlides.length > 1
+    ? (activeIndex + 1) % renderedSlides.length
+    : activeIndex;
   const shouldLoadSlide = (index: number) =>
-    renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex;
+    activeIndex !== null
+    && (renderedSlides.length <= 3 || index === activeIndex || index === previousIndex || index === nextIndex);
 
   return (
     <div className="home-hero-media home-hero-carousel" aria-hidden="true" ref={carouselRef}>
