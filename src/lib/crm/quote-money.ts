@@ -67,6 +67,7 @@ export type QuoteAdjustments = {
   discountFlat: number;
   taxPercent: number;
   depositPercent: number;
+  totalOverride: number | null;
   balanceDueOverride: number | null;
   balanceAdjustmentNote: string | null;
   fees: QuoteFee[];
@@ -77,6 +78,7 @@ export const DEFAULT_ADJUSTMENTS: QuoteAdjustments = {
   discountFlat: 0,
   taxPercent: 0,
   depositPercent: 0,
+  totalOverride: null,
   balanceDueOverride: null,
   balanceAdjustmentNote: null,
   fees: [],
@@ -113,6 +115,7 @@ export function parseAdjustments(meta: unknown): QuoteAdjustments {
     discountFlat: nonNeg(o.discountFlat),
     taxPercent: Math.min(100, nonNeg(o.taxPercent)),
     depositPercent: Math.min(100, nonNeg(o.depositPercent)),
+    totalOverride: nullableNonNeg(o.totalOverride),
     balanceDueOverride: nullableNonNeg(o.balanceDueOverride),
     balanceAdjustmentNote: optionalText(o.balanceAdjustmentNote),
     fees,
@@ -139,7 +142,8 @@ export function computeQuoteMoney(subtotal: number, adj: QuoteAdjustments): Quot
   const discountAmount = round2(Math.min(preDiscount, Math.max(0, rawDiscount)));
   const taxableBase = round2(Math.max(preDiscount - discountAmount, 0));
   const taxAmount = round2(taxableBase * (adj.taxPercent / 100));
-  const calculatedTotal = round2(taxableBase + taxAmount);
+  const engineTotal = round2(taxableBase + taxAmount);
+  const calculatedTotal = adj.totalOverride == null ? engineTotal : round2(Math.max(adj.totalOverride, 0));
   const depositRequired = round2(calculatedTotal * (adj.depositPercent / 100));
   const calculatedBalanceDue = round2(Math.max(calculatedTotal - depositRequired, 0));
   const balanceDue = adj.balanceDueOverride == null ? calculatedBalanceDue : round2(Math.max(adj.balanceDueOverride, 0));

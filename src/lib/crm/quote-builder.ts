@@ -272,7 +272,8 @@ export async function updateQuoteAdjustments(
 ): Promise<CrmQuoteWithItems> {
   const { data: quote, error } = await supabase.from("crm_quotes").select("meta").eq("id", quoteId).maybeSingle();
   if (error || !quote) throw new CrmAuthError(404, "Quote was not found.");
-  const adjustments = parseAdjustments({ adjustments: payload });
+  const currentAdjustments = parseAdjustments(quote.meta);
+  const adjustments = parseAdjustments({ adjustments: { ...currentAdjustments, ...payload } });
   const meta = { ...((quote.meta as Record<string, unknown>) || {}), adjustments };
   const { error: upErr } = await supabase.from("crm_quotes").update({ meta }).eq("id", quoteId);
   if (upErr) throw new CrmAuthError(502, "Adjustments could not be saved.");

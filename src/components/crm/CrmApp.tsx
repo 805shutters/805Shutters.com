@@ -6681,7 +6681,13 @@ function DrillDetailCard({
         value: moneyEditorValue(row.total),
         disabled: busy,
         ariaLabel: "Edit total",
-        onSave: (value) => saveRow(row.source === "crm_quote" ? { quote_total: moneyPatch(value) } : { total_amount: moneyPatch(value) }, "Total updated.")
+        onSave: (value) =>
+          saveRow(
+            row.source === "crm_quote"
+              ? { quote_total: moneyPatch(value), manual_total_override: true }
+              : { total_amount: moneyPatch(value) },
+            "Total updated."
+          )
       }
     : canEditJob && job
       ? {
@@ -6981,7 +6987,10 @@ function DrillDetailCard({
           defaultValue: row.total || 0,
           disabled: busy,
           onSave: (amount) =>
-            saveRow(row.source === "crm_quote" ? { quote_total: amount } : { total_amount: amount }, "Total updated.")
+            saveRow(
+              row.source === "crm_quote" ? { quote_total: amount, manual_total_override: true } : { total_amount: amount },
+              "Total updated."
+            )
         },
         {
           key: "set-deposit",
@@ -8868,7 +8877,9 @@ function CustomerFilesView({
   const rowCogsPatch = (row: CrmBookkeepingRow) => (amount: number) =>
     row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount };
   const rowTotalPatch = (row: CrmBookkeepingRow) => (amount: number) =>
-    row.source === "crm_quote" ? { quote_total: amount } : { total_amount: amount };
+    row.source === "crm_quote"
+      ? { quote_total: amount, manual_total_override: true }
+      : { total_amount: amount };
   const sortedFiles = useMemo(
     () =>
       [...files].sort((a, b) => {

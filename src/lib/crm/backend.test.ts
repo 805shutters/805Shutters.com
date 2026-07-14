@@ -697,6 +697,45 @@ describe("quote bookkeeping notes", () => {
     expect(entryUpsert?.payload).not.toHaveProperty("notes");
   });
 
+  it("allows an intentional overall-total override for a builder-managed quote", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      existingQuote: quote({
+        id: "quote-1",
+        status: "ordered",
+        quote_total: 5000,
+        deposit_required: 2500,
+        balance_due: 2500,
+        meta: { adjustments: { depositPercent: 50, balanceDueOverride: 2400 } }
+      }),
+      lineItemCount: 3
+    });
+
+    await updateCrmQuote(
+      supabase,
+      "quote-1",
+      { quote_total: 3955.12, manual_total_override: true },
+      actor
+    );
+
+    const quoteUpdate = calls.find((call) => call.table === "crm_quotes" && call.action === "update");
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(quoteUpdate?.payload).toMatchObject({
+      quote_total: 3955.12,
+      deposit_required: 1977.56,
+      balance_due: 1977.56,
+      meta: {
+        adjustments: {
+          depositPercent: 50,
+          totalOverride: 3955.12,
+          balanceDueOverride: null
+        }
+      }
+    });
+    expect(entryUpsert?.payload).toMatchObject({ total_amount: 3955.12 });
+  });
+
   it("preserves the existing bookkeeping customer name when quote updates omit customer_name", async () => {
     const { calls, supabase } = createSupabaseRecorder({
       job: job({ id: "job-1", customer_name: "Linked Job Customer" }),

@@ -69,6 +69,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
+import { computeQuoteMoney, parseAdjustments } from "@/lib/crm/quote-money";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -2785,6 +2786,8 @@ export async function updateCrmQuote(
     .eq("quote_id", id);
   const builderManaged = (lineItemCount ?? 0) > 0;
   const serverPricedFields = new Set(["quote_total", "discount", "tax", "balance_due"]);
+  const hasBuilderTotalOverride =
+    builderManaged && payload.manual_total_override === true && hasPayloadKey(payload, "quote_total");
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {};
@@ -2795,7 +2798,7 @@ export async function updateCrmQuote(
 
   for (const [key, value] of Object.entries(payload)) {
     if (!allowedQuotePatchFields.has(key)) continue;
-    if (builderManaged && serverPricedFields.has(key)) continue; // server-authoritative
+    if (builderManaged && serverPricedFields.has(key) && !(key === "quote_total" && hasBuilderTotalOverride)) continue; // server-authoritative
     if (key === "status") {
       patch.status = normalizeEnum<CrmQuoteStatus>(value, quoteStatusSet, existing.status, "Invalid quote status.");
     } else if (["quote_total", "materials_cost", "labor_cost", "discount", "tax", "deposit_required", "balance_due"].includes(key)) {
@@ -2837,9 +2840,33 @@ export async function updateCrmQuote(
 
   let quote = existing as CrmQuote;
   if (Object.keys(patch).length) {
+    const existingMeta = (existing.meta as Record<string, unknown> | null) || {};
+    const existingAdjustments =
+      existingMeta.adjustments && typeof existingMeta.adjustments === "object"
+        ? (existingMeta.adjustments as Record<string, unknown>)
+        : {};
+    const totalOverrideAdjustments = hasBuilderTotalOverride
+      ? {
+          ...existingAdjustments,
+          totalOverride: toMoney(payload.quote_total),
+          balanceDueOverride: null
+        }
+      : null;
+    if (totalOverrideAdjustments) {
+      const overrideMoney = computeQuoteMoney(0, parseAdjustments({ adjustments: totalOverrideAdjustments }));
+      patch.deposit_required = overrideMoney.depositRequired;
+      patch.balance_due = overrideMoney.balanceDue;
+    }
     patch.meta = {
-      ...(existing.meta || {}),
+      ...existingMeta,
       ...(typeof payload.meta === "object" && payload.meta ? payload.meta : {}),
+      ...(hasBuilderTotalOverride
+        ? {
+            adjustments: {
+              ...totalOverrideAdjustments
+            }
+          }
+        : {}),
       lastUpdatedBy: actor.email,
       lastUpdatedAt: now
     };

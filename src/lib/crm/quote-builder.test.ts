@@ -149,6 +149,13 @@ describe("computeQuoteMoney (discount / tax / deposit / fees)", () => {
     expect(m.total).toBe(0);
   });
 
+  it("uses an explicit overall-total override and recalculates the deposit split", () => {
+    const m = computeQuoteMoney(5000, { ...DEFAULT_ADJUSTMENTS, depositPercent: 50, totalOverride: 3955.12 });
+    expect(m.total).toBe(3955.12);
+    expect(m.depositRequired).toBe(1977.56);
+    expect(m.balanceDue).toBe(1977.56);
+  });
+
   it("lets staff pin the remaining balance while keeping the deposit amount stable", () => {
     const m = computeQuoteMoney(816, { ...DEFAULT_ADJUSTMENTS, depositPercent: 50, balanceDueOverride: 300 });
     expect(m.depositRequired).toBe(408);
@@ -185,6 +192,10 @@ describe("parseAdjustments", () => {
     const a = parseAdjustments({ adjustments: { balanceDueOverride: "408.125", balanceAdjustmentNote: "second discount" } });
     expect(a.balanceDueOverride).toBe(408.13);
     expect(a.balanceAdjustmentNote).toBe("second discount");
+  });
+
+  it("normalizes an overall-total override", () => {
+    expect(parseAdjustments({ adjustments: { totalOverride: "3955.125" } }).totalOverride).toBe(3955.13);
   });
 });
 
