@@ -88,6 +88,66 @@ const photos = [
     fullFrame: true
   },
   {
+    base: "top-down-bottom-up-shades-bedroom-angle",
+    source: "2026-07-14-top-down-bottom-up-shades-bedroom-angle.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Bedroom Shade",
+    alt: "Top-down bottom-up cellular shade installed in a Ventura County bedroom remodel",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "top-down-bottom-up-shades-bedroom-front",
+    source: "2026-07-14-top-down-bottom-up-shades-bedroom-front.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Bedroom Privacy",
+    alt: "Top-down bottom-up cellular shade balancing daylight and privacy in a Ventura County bedroom",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "top-down-bottom-up-shades-bedroom-detail",
+    source: "2026-07-14-top-down-bottom-up-shades-bedroom-detail.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Shade Detail",
+    alt: "Close view of a top-down bottom-up cellular shade installed in a Ventura County remodel",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "top-down-bottom-up-shades-office-pair",
+    source: "2026-07-14-top-down-bottom-up-shades-office-pair.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Office Shades",
+    alt: "Paired top-down bottom-up cellular shades installed in a Ventura County home office",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "top-down-bottom-up-shades-bathroom-detail",
+    source: "2026-07-14-top-down-bottom-up-shades-bathroom-detail.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Bathroom Shades",
+    alt: "Top-down bottom-up cellular shades providing privacy in a Ventura County bathroom remodel",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "top-down-bottom-up-shades-bathroom-wide",
+    source: "2026-07-14-top-down-bottom-up-shades-bathroom-wide.jpg",
+    category: "Shades",
+    title: "Top-Down Bottom-Up Bath Remodel",
+    alt: "Top-down bottom-up cellular shades bringing privacy and daylight control to a Ventura County bathroom remodel",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
     base: "kitchen-roman-shade-lowered",
     source: "2026-07-08-kitchen-roman-shade-lowered.jpg",
     category: "Shades",

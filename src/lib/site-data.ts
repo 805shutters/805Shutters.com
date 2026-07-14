@@ -177,6 +177,30 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bathroom-wide-card.jpg",
+    imageAlt: "Top-down bottom-up cellular shades bringing privacy and daylight control to a Ventura County bathroom remodel"
+  },
+  {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bathroom-detail-card.jpg",
+    imageAlt: "Top-down bottom-up cellular shades providing privacy in a Ventura County bathroom remodel"
+  },
+  {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-front-card.jpg",
+    imageAlt: "Top-down bottom-up cellular shade balancing daylight and privacy in a Ventura County bedroom"
+  },
+  {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-angle-card.jpg",
+    imageAlt: "Top-down bottom-up cellular shade installed in a Ventura County bedroom remodel"
+  },
+  {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-office-pair-card.jpg",
+    imageAlt: "Paired top-down bottom-up cellular shades installed in a Ventura County home office"
+  },
+  {
+    image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bedroom-detail-card.jpg",
+    imageAlt: "Close view of a top-down bottom-up cellular shade installed in a Ventura County remodel"
+  },
+  {
     image: "/images/portfolio-enhanced/skylight-plantation-shutters-open-card.jpg",
     imageAlt: "Custom white plantation shutters installed over a Ventura County skylight with the louvers open"
   },
