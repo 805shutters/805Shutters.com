@@ -34,9 +34,9 @@ export function MeasurementGridModal({
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  // Generate whole numbers 10-119
+  const maxWholeInches = isWidth ? 250 : 119;
   const wholeNumbers: number[] = [];
-  for (let i = 10; i <= 119; i++) wholeNumbers.push(i);
+  for (let i = 10; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
   const handleWholeClick = (n: number) => {
     if (step === "width_whole") onWidthWhole(n);
