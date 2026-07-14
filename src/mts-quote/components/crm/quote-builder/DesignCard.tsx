@@ -202,11 +202,17 @@ import {
 } from "@mts/lib/quoteDiscounts";
 import { getAutomaticShutterOptionSurcharges } from "@mts/lib/shutterOptionSurcharges";
 import {
+  PricingAuditPanel,
+  type PricingAuditSurcharge,
+} from "@mts/components/crm/quote-builder/PricingAuditPanel";
+import {
   FAUX_WOOD_SURCHARGES,
   HONEYCOMB_SURCHARGES,
   MOTORIZATION_OPTIONS,
+  NORMAN_SHUTTER_PROGRAMS,
   ONYX_SHUTTER_FIXED_SURCHARGES,
   ONYX_SHUTTER_PERCENTAGE_SURCHARGES,
+  ONYX_SHUTTER_PROGRAMS,
   PERFECTSHEER_SURCHARGES,
   ROLLER_MOTORIZATION,
   ROLLER_SURCHARGES,
@@ -220,6 +226,7 @@ import {
   VERTICAL_SURCHARGES,
   WOOD_BLIND_SURCHARGES,
   type MotorOption,
+  type ShutterProgram,
   type Surcharge,
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
@@ -1016,97 +1023,68 @@ function normalizeLineItemQuantity(value: unknown): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function getShutterProgramPricing(
+  supplier: string | null | undefined,
+  programName: string | undefined
+): ShutterProgram | null {
+  if (!supplier || !programName) return null;
+  const programs = supplier === "Onyx" ? ONYX_SHUTTER_PROGRAMS : NORMAN_SHUTTER_PROGRAMS;
+  return programs.find((program) => program.name === programName) ?? null;
+}
+
 function PriceExplanation({
   design,
   productType,
+  widthIn,
+  heightIn,
   rawSqft,
   sqft,
+  quantity,
+  currentRetailPerSqft,
 }: {
   design: SalesQuoteDesign | undefined;
   productType: string;
+  widthIn: number;
+  heightIn: number;
   rawSqft: number | null;
   sqft: number | null;
+  quantity: number;
+  currentRetailPerSqft: number | null;
 }) {
   const options = (design?.options_json as Record<string, unknown> | undefined) || {};
-  const isManual = options.manual_price_override === true;
-  const hasStoredPricing =
-    options.base_price !== undefined ||
-    options.pricing_grid_width !== undefined ||
-    options.surcharge_total !== undefined ||
-    options.discount_percent !== undefined;
-  const hasPrice = Boolean(design && (hasStoredPricing || isManual || design.unit_price));
-
-  const gridWidth = Number(options.pricing_grid_width);
-  const gridHeight = Number(options.pricing_grid_height);
-  const hasGridMatch = Number.isFinite(gridWidth) && Number.isFinite(gridHeight);
-  const discountPercent = Number(options.discount_percent) || 0;
-  const surchargeTotal = Number(options.surcharge_total) || 0;
+  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design, widthIn);
+  const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
+  const selectedSurcharges = dedupeQuoteSurcharges([
+    ...automaticSurcharges,
+    ...getSelectedSurcharges(design),
+  ]);
+  const programName = getShutterProgramName(design);
+  const shutterProgram =
+    productType === "Shutters"
+      ? getShutterProgramPricing(design?.supplier, programName)
+      : null;
+  const auditSurcharges: PricingAuditSurcharge[] = selectedSurcharges.map((item) => ({
+    ...item,
+    automatic: automaticIds.has(item.id),
+  }));
 
   return (
-    <details className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-      <summary className="cursor-pointer font-semibold text-slate-900">Why this price?</summary>
-      <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-        <div>
-          <span className="font-semibold">Product:</span> {productType}
-        </div>
-        {!hasPrice && (
-          <div>
-            <span className="font-semibold">Status:</span> waiting for saved selections and measurements
-          </div>
-        )}
-        {isManual && (
-          <div>
-            <span className="font-semibold">Mode:</span> manual customer price
-          </div>
-        )}
-        {hasGridMatch && (
-          <div>
-            <span className="font-semibold">Grid cell:</span> {gridWidth}&quot; W x {gridHeight}
-            &quot; H
-          </div>
-        )}
-        {!!options.pricing_grid_key && (
-          <div>
-            <span className="font-semibold">Grid:</span> {String(options.pricing_grid_key)}
-          </div>
-        )}
-        {options.pricing_grid_price !== undefined && (
-          <div>
-            <span className="font-semibold">Grid price:</span>{" "}
-            {formatMoney(options.pricing_grid_price)}
-          </div>
-        )}
-        {options.base_price !== undefined && (
-          <div>
-            <span className="font-semibold">Base:</span> {formatMoney(options.base_price)}
-          </div>
-        )}
-        <div>
-          <span className="font-semibold">Surcharges:</span> {formatMoney(surchargeTotal)}
-        </div>
-        {discountPercent > 0 && (
-          <>
-            <div>
-              <span className="font-semibold">Discount:</span> {discountPercent}% (
-              {formatMoney(options.discount_amount)})
-            </div>
-            <div>
-              <span className="font-semibold">Discount source:</span>{" "}
-              {formatMoney(options.discount_source_price)}
-            </div>
-          </>
-        )}
-        {productType === "Shutters" && rawSqft !== null && sqft !== null && (
-          <div>
-            <span className="font-semibold">Sq ft:</span> {rawSqft.toFixed(2)} actual,{" "}
-            {sqft.toFixed(2)} priced
-          </div>
-        )}
-        <div>
-          <span className="font-semibold">Final:</span> {formatMoney(design?.unit_price || 0)}
-        </div>
-      </div>
-    </details>
+    <PricingAuditPanel
+      productType={productType}
+      supplier={design?.supplier ?? null}
+      programName={programName ?? null}
+      widthIn={widthIn}
+      heightIn={heightIn}
+      rawSqft={rawSqft}
+      billableSqft={sqft}
+      quantity={quantity}
+      savedUnitPrice={Number(design?.unit_price) || 0}
+      options={options}
+      currentRetailPerSqft={currentRetailPerSqft}
+      wholesaleRate={shutterProgram?.wholesalePrice ?? null}
+      tariffPercent={shutterProgram?.tariff ?? 0}
+      surcharges={auditSurcharges}
+    />
   );
 }
 
@@ -3496,8 +3474,12 @@ export function DesignCard({
         <PriceExplanation
           design={currentDesign}
           productType={lineItem.product_type}
+          widthIn={widthIn}
+          heightIn={heightIn}
           rawSqft={rawSqft}
           sqft={sqft}
+          quantity={quantity}
+          currentRetailPerSqft={currentRetailPerSqft}
         />
 
         {/* Copy actions */}
