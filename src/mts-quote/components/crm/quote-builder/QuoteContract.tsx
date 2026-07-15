@@ -54,8 +54,6 @@ import {
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
 import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
-import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
-import { send805SoldQuoteNotification } from "@mts/lib/quoteSoldNotification";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
@@ -245,32 +243,20 @@ export function QuoteContract() {
   // Mark as sold
   const markAsSold = useMutation({
     mutationFn: async () => {
-      const salesOwnerPatch =
-        quote?.account_id === ACCOUNT_IDS.SHUTTERS_805 && !quote.sales_owner
-          ? await getCurrentQuoteSalesOwnerPatch()
-          : null;
-      const { error } = await (supabase as any)
-        .from("sales_quotes")
-        .update({
-          status: "sold",
-          signed_at: new Date().toISOString(),
-          ...(salesOwnerPatch || {}),
-        })
-        .eq("id", activeQuoteId!);
-      if (error) throw error;
+      const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/sold`, {
+        method: "POST",
+      });
+      const payload = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(payload.message || "The sold workflow failed.");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      if (activeQuoteId) {
-        void send805SoldQuoteNotification({
-          supabaseClient: supabase as any,
-          quoteId: activeQuoteId,
-        }).catch((error: Error) => {
-          toast.error(error.message || "Quote marked sold, but sold SMS failed");
-        });
-      }
-      toast.success("Quote marked as sold! Customer card will be created.");
+      toast.success("Contract sold: CRM, bookkeeping, and notifications updated.");
       setActiveTab("dashboard");
+    },
+    onError: (error: Error) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      toast.error(error.message || "The sold workflow failed.");
     },
   });
 

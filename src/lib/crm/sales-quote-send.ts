@@ -2,6 +2,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
+import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { sendSms } from "@/lib/notify/twilio";
+import {
+  build805SoldQuoteSmsMessageForRecipient,
+  SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
+} from "@mts/lib/quoteSoldNotification";
 
 type CrmSupabaseClient = SupabaseClient;
 type AnyRow = Record<string, any>;
@@ -15,6 +21,51 @@ export type SendSalesQuoteOptions = {
   emailType?: "quote_only" | "sold_contract";
   bypassHours?: boolean;
 };
+
+export async function markSalesQuoteSold(
+  supabase: CrmSupabaseClient,
+  salesQuoteId: string,
+  actor: CrmActor,
+) {
+  const original = await loadSalesQuote(supabase, salesQuoteId);
+  const signedAt = original.signed_at || new Date().toISOString();
+  const { error } = await supabase
+    .from("sales_quotes")
+    .update({ status: "sold", signed_at: signedAt })
+    .eq("id", salesQuoteId);
+  if (error) throw new CrmAuthError(502, "The contract could not be marked sold.");
+
+  const soldSource: AnyRow = { ...original, status: "sold", signed_at: signedAt };
+  const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
+  const crmQuote = await advanceQuoteStatus(supabase, crmQuoteId, "sold", actor);
+
+  const contractUrl = soldSource.share_token
+    ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`
+    : null;
+  const notifications = await Promise.all(
+    SOLD_QUOTE_NOTIFICATION_RECIPIENTS.map(async (recipient) => ({
+      recipient,
+      result: await sendSms({
+        to: recipient,
+        body: build805SoldQuoteSmsMessageForRecipient(recipient, {
+          account_id: soldSource.account_id,
+          customer_name: soldSource.customer_name,
+          customer_phone: soldSource.customer_phone,
+          customer_address: soldSource.customer_address,
+          total_amount: soldSource.total_amount,
+          deposit_paid: soldSource.deposit_paid,
+          share_token: soldSource.share_token,
+        }, contractUrl),
+      }),
+    })),
+  );
+  const failed = notifications.filter(({ result }) => !result.sent);
+  if (failed.length) {
+    throw new CrmAuthError(502, `The sale was saved, but ${failed.length} sold notification text(s) failed.`);
+  }
+
+  return { salesQuote: soldSource, crmQuote, notifications };
+}
 
 const IMPORT_SOURCE = "mts_805_bookkeeping";
 const DEFAULT_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
