@@ -200,7 +200,11 @@ import {
   removeQuoteDesignDiscount,
   type QuoteDiscountPercent,
 } from "@mts/lib/quoteDiscounts";
-import { getAutomaticShutterOptionSurcharges } from "@mts/lib/shutterOptionSurcharges";
+import {
+  getAutomaticShutterOptionSurcharges,
+  getInvisibleTiltPanelRate,
+  isInvisibleTiltPanelSelectionMissing,
+} from "@mts/lib/shutterOptionSurcharges";
 import {
   PricingAuditPanel,
   type PricingAuditSurcharge,
@@ -2071,6 +2075,7 @@ function isTrackedOrSpecialty(design: SalesQuoteDesign | undefined): boolean {
 }
 
 function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): GridOption[] {
+  const invisibleTiltPanelRate = getInvisibleTiltPanelRate(design);
   const isOnyxPolyProgram =
     !!design?.material &&
     ONYX_POLY_MATERIALS.includes(design.material as (typeof ONYX_POLY_MATERIALS)[number]);
@@ -2134,7 +2139,9 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
       },
       {
         key: "panel_config",
-        label: "Panel Configuration",
+        label: invisibleTiltPanelRate
+          ? `Invisible Tilt Panels ($${invisibleTiltPanelRate}/panel)`
+          : "Panel Configuration",
         field: "panel_config",
         type: "select",
         options: ONYX_PANEL_CONFIGS,
@@ -2208,7 +2215,9 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
     },
     {
       key: "panel_config",
-      label: "Panel Configuration",
+      label: invisibleTiltPanelRate
+        ? `Invisible Tilt Panels ($${invisibleTiltPanelRate}/panel)`
+        : "Panel Configuration",
       field: "panel_config",
       type: "select",
       options: SHUTTER_PANEL_CONFIGS,
@@ -3715,6 +3724,13 @@ function ShutterDesignOptions({
           optionalOptions={editableOptionRows.optional}
           renderSlot={renderOptionSlot}
         />
+      )}
+
+      {isInvisibleTiltPanelSelectionMissing(workingDesign) && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          Select the panel configuration to calculate the invisible-tilt surcharge.
+        </div>
       )}
 
       {/* For Tracked/Specialty shutters, use the old step-by-step flow */}

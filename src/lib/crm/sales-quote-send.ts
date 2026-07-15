@@ -8,6 +8,8 @@ import {
   build805SoldQuoteSmsMessageForRecipient,
   SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
 } from "@mts/lib/quoteSoldNotification";
+import { isInvisibleTiltPanelSelectionMissing } from "@mts/lib/shutterOptionSurcharges";
+import type { SalesQuoteDesign } from "@mts/types/quote";
 
 type CrmSupabaseClient = SupabaseClient;
 type AnyRow = Record<string, any>;
@@ -203,6 +205,18 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     ? await supabase.from("sales_quote_designs").select("*").in("line_item_id", lineIds)
     : { data: [], error: null };
   if (designError) throw new CrmAuthError(502, "Quote design options could not be loaded.");
+
+  const incompleteInvisibleTiltDesign = ((designs || []) as AnyRow[]).find((design) =>
+    isInvisibleTiltPanelSelectionMissing(design as SalesQuoteDesign)
+  );
+  if (incompleteInvisibleTiltDesign) {
+    const line = lineRows.find((item) => item.id === incompleteInvisibleTiltDesign.line_item_id);
+    const room = textOrNull(line?.room_name);
+    throw new CrmAuthError(
+      400,
+      `${room ? `${room}: ` : ""}Panel configuration is required for invisible tilt pricing.`
+    );
+  }
 
   const designsByLineItemId = groupBy((designs || []) as AnyRow[], "line_item_id");
   const pricing = calculateSalesQuoteMirrorPricing(quote, lineRows, designsByLineItemId);

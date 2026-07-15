@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { getAutomaticShutterOptionSurcharges } from "./shutterOptionSurcharges";
+import {
+  getAutomaticShutterOptionSurcharges,
+  isInvisibleTiltPanelSelectionMissing,
+} from "./shutterOptionSurcharges";
 import type { SalesQuoteDesign } from "../types/quote";
 
 function design(partial: Partial<SalesQuoteDesign>): SalesQuoteDesign {
@@ -117,5 +120,63 @@ describe("MTS shutter option surcharge mapping", () => {
     expect(oneName({ supplier: "Norman", options_json: { custom_work: "French Door Cutout" } })).toBe("French Door Cutout");
     expect(oneName({ supplier: "Norman", options_json: { specialty_shape: "Angle Top" } })).toBe("Angle Top");
     expect(oneName({ supplier: "Norman", options_json: { track_system: "Floating 90 Bifold" } })).toBe("Floating 90 Bifold");
+  });
+
+  it("charges Woodlore composite invisible tilt at $15 for each selected panel", () => {
+    const surcharges = getAutomaticShutterOptionSurcharges(design({
+      supplier: "Norman",
+      tilt_type: "Invisible Tilt",
+      panel_config: "LLR",
+      options_json: { material_type: "Composite", composite_subtype: "Woodlore" },
+    }));
+
+    expect(surcharges).toMatchObject([{
+      name: "Woodlore InvisibleTilt ($15/panel)",
+      type: "fixed",
+      value: 15,
+      quantity: 3,
+    }]);
+  });
+
+  it("waits for a panel configuration before pricing Woodlore invisible tilt", () => {
+    const incompleteDesign = design({
+      supplier: "Norman",
+      tilt_type: "Invisible Tilt",
+      options_json: { material_type: "Composite", composite_subtype: "Woodlore" },
+    });
+    const surcharges = getAutomaticShutterOptionSurcharges(incompleteDesign);
+
+    expect(surcharges).toEqual([]);
+    expect(isInvisibleTiltPanelSelectionMissing(incompleteDesign)).toBe(true);
+  });
+
+  it("charges only Onyx Poly Composite H3 at $10 for each selected panel", () => {
+    const h3 = getAutomaticShutterOptionSurcharges(design({
+      supplier: "Onyx",
+      material: "Poly Composite",
+      tilt_type: "H3 - Hidden Tiltrod In Stile",
+      panel_config: "LLRR",
+    }));
+    const h2 = getAutomaticShutterOptionSurcharges(design({
+      supplier: "Onyx",
+      material: "Poly Composite",
+      tilt_type: "H2 - Hidden Tiltrod Notch On Louver",
+      panel_config: "LLRR",
+    }));
+    const woodH3 = getAutomaticShutterOptionSurcharges(design({
+      supplier: "Onyx",
+      material: "Painted Basswood",
+      tilt_type: "H3 - Hidden Tiltrod In Stile",
+      panel_config: "LLRR",
+    }));
+
+    expect(h3).toMatchObject([{
+      name: "Onyx H3 Invisible Tilt ($10/panel)",
+      type: "fixed",
+      value: 10,
+      quantity: 4,
+    }]);
+    expect(h2).toEqual([]);
+    expect(woodH3).toEqual([]);
   });
 });
