@@ -243,8 +243,12 @@ export function QuoteContract() {
   // Mark as sold
   const markAsSold = useMutation({
     mutationFn: async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
       const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/sold`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
       });
       const payload = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) throw new Error(payload.message || "The sold workflow failed.");
@@ -1273,11 +1277,15 @@ export function QuoteContract() {
         <Button
           size="lg"
           onClick={() => markAsSold.mutate()}
-          disabled={markAsSold.isPending || quote.status === "sold"}
+          disabled={markAsSold.isPending}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <CheckCircle2 className="h-5 w-5 mr-2" />
-          {quote.status === "sold" ? "Already Sold" : "Mark as Sold"}
+          {markAsSold.isPending
+            ? "Running Sold Workflow..."
+            : quote.status === "sold"
+              ? "Complete Sold Workflow"
+              : "Mark as Sold"}
         </Button>
       </div>
 
