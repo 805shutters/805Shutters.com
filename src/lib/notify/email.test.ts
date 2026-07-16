@@ -96,6 +96,7 @@ describe("buildQuoteEmail", () => {
     expect(html).not.toContain('display:flex;justify-content:space-between;gap:16px');
     expect(html).toContain("large tabs at the top");
     expect(html.match(/Review and approve contract/g)).toHaveLength(2);
+    expect(html.match(/background:#dc2626/g)).toHaveLength(2);
     expect(html.indexOf("Review and approve contract")).toBeLessThan(html.indexOf("3 quotes included"));
     expect(html.lastIndexOf("Review and approve contract")).toBeGreaterThan(html.indexOf("3 quotes included"));
   });

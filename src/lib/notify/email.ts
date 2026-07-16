@@ -395,7 +395,7 @@ function officialContactFooterHtml(): string {
 
 function reviewContractButton(url: string, margin: string): string {
   return `<div style="margin:${margin}">
-    <a href="${escapeAttr(url)}" style="display:inline-block;background:#0b0b0b;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
+    <a href="${escapeAttr(url)}" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:4px;font-size:15px;font-weight:700">Review and approve contract</a>
   </div>`;
 }
 
