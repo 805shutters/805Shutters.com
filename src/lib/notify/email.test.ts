@@ -1,5 +1,29 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { buildPaymentLinkEmail, buildQuoteEmail, buildSignedQuoteShopEmail, isResendConfigured, sendEmail } from "./email";
+import { buildPaymentLinkEmail, buildQuoteEmail, buildSignedQuoteShopEmail, buildSquareOrderPaymentEmail, isResendConfigured, sendEmail } from "./email";
+
+describe("buildSquareOrderPaymentEmail", () => {
+  it("uses deposit-specific order-start language and the Square link", () => {
+    const mail = buildSquareOrderPaymentEmail("Jane Smith", "https://square.link/deposit", {
+      paymentType: "deposit",
+      amount: 1_250,
+      quoteNumber: "805-0123",
+    });
+    expect(mail.subject).toContain("deposit link");
+    expect(mail.text).toContain("start your order");
+    expect(mail.text).toContain("$1,250.00");
+    expect(mail.html).toContain("https://square.link/deposit");
+  });
+
+  it("thanks the customer and requests the remaining balance", () => {
+    const mail = buildSquareOrderPaymentEmail("Jane Smith", "https://square.link/balance", {
+      paymentType: "balance",
+      amount: 2_750,
+    });
+    expect(mail.subject).toContain("balance link");
+    expect(mail.text).toContain("Thank you so much for your order");
+    expect(mail.text).toContain("remaining balance");
+  });
+});
 
 describe("buildQuoteEmail", () => {
   it("includes the amount, link, and customer name", () => {

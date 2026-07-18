@@ -57,7 +57,12 @@ export function summarizeExistingSquareLedger(payments: ExistingPayment[]) {
   };
 }
 
-export function resolveSquarePaymentLabel(payments: ExistingPayment[]): "Deposit" | "Balance payment" {
+export function resolveSquarePaymentLabel(
+  payments: ExistingPayment[],
+  paymentType?: string | null,
+): "Deposit" | "Balance payment" {
+  if (paymentType === "deposit") return "Deposit";
+  if (paymentType === "balance") return "Balance payment";
   const summary = summarizeExistingSquareLedger(payments);
   return summary.depositPaid <= 0 && summary.balancePaid <= 0 ? "Deposit" : "Balance payment";
 }
@@ -182,7 +187,7 @@ export async function reconcileSquareQuotePayment(
     };
   }
 
-  const paymentLabel = resolveSquarePaymentLabel(payments);
+  const paymentLabel = resolveSquarePaymentLabel(payments, facts.paymentType);
   const paymentType: CrmBookkeepingPaymentType = "credit_card";
   const record = {
     quote_id: facts.quoteId,

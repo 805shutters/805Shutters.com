@@ -4338,6 +4338,88 @@ body.qb-fullscreen .crm-app-shell {
   text-transform: uppercase;
 }
 
+.crm-square-payment-route[aria-expanded="true"] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--white);
+}
+
+.crm-square-payment-route[aria-expanded="true"] span {
+  color: inherit;
+}
+
+.crm-square-payment-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ink);
+  background: var(--white);
+}
+
+.crm-square-payment-panel > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.crm-square-payment-panel > div:first-child > strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.crm-square-payment-panel > div:first-child > span,
+.crm-square-payment-panel > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.crm-square-payment-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.crm-square-payment-actions button {
+  display: grid;
+  justify-items: start;
+  gap: 3px;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+}
+
+.crm-square-payment-actions button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--white);
+}
+
+.crm-square-payment-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.crm-square-payment-actions button span {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.crm-square-payment-actions button strong {
+  font-size: 17px;
+  font-weight: 900;
+}
+
+@media (max-width: 620px) {
+  .crm-square-payment-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
 .crm-dashboard-head {
   align-items: center;
 }

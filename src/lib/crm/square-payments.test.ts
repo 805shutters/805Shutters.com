@@ -18,6 +18,10 @@ describe("Square CRM payment classification", () => {
     expect(resolveSquarePaymentLabel([{ payment_label: "Balance payment", amount: 500 }])).toBe("Balance payment");
   });
 
+  it("honors an explicit balance link even when it is the first Square payment", () => {
+    expect(resolveSquarePaymentLabel([], "balance")).toBe("Balance payment");
+  });
+
   it("summarizes deposit and balance rows using the same label rule as bookkeeping", () => {
     expect(
       summarizeExistingSquareLedger([

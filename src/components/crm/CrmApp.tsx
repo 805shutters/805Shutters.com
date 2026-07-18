@@ -934,6 +934,26 @@ export function CrmApp({
     }
   }
 
+  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType) {
+    if (!session) throw new Error("Sign in again before sending a payment link.");
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await crmFetch<SquarePaymentLinkResult>(
+        session,
+        `/api/crm/quotes/${quoteId}/square-payment-link`,
+        { method: "POST", body: JSON.stringify({ paymentType }) },
+      );
+      if (!result.email.sent) {
+        throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
+      }
+      setMessage(`${paymentType === "deposit" ? "Deposit" : "Balance"} link for ${toCurrency(result.amount)} sent to ${result.recipient}.`);
+      return result;
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openSummaryDrill(metric: string) {
     const payload = buildSummaryDrill(
       metric,
@@ -2627,6 +2647,7 @@ export function CrmApp({
             activeDrill={commandDrill}
             busy={busy}
             onProcessEmails={(target) => processEmails(target)}
+            onSendSquarePaymentLink={sendSquarePaymentLink}
             onOpenPage={openCustomerSearchPage}
             onDrill={setDrill}
             onCloseDrill={() => setDrill(null)}
@@ -3337,6 +3358,14 @@ type CustomerSearchResult = {
   score: number;
 };
 type MeasureNeededAction = "request" | "measured";
+type SquareOrderPaymentType = "deposit" | "balance";
+type SquarePaymentLinkResult = {
+  paymentType: SquareOrderPaymentType;
+  amount: number;
+  recipient: string;
+  url: string;
+  email: { sent: boolean; skipped?: string; error?: string };
+};
 type MeasureNeededApiResult = {
   job: CrmJob;
   mts?: {
@@ -5206,6 +5235,7 @@ function CommandDashboard({
   activeDrill,
   busy,
   onProcessEmails,
+  onSendSquarePaymentLink,
   onOpenPage,
   onDrill,
   onCloseDrill,
@@ -5226,6 +5256,7 @@ function CommandDashboard({
   activeDrill: DrillPayload | null;
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
@@ -5378,6 +5409,7 @@ function CommandDashboard({
           events={events}
           busy={busy}
           onProcessEmails={onProcessEmails}
+          onSendSquarePaymentLink={onSendSquarePaymentLink}
           onOpenPage={onOpenPage}
           onOpenCustomer={onOpenCustomer}
           onReassignSale={onReassignSale}
@@ -6168,6 +6200,61 @@ function InlineDepositValue({
   );
 }
 
+function SquarePaymentLinkPanel({
+  entry,
+  quote,
+  busy,
+  onSend,
+}: {
+  entry: DrillEntry;
+  quote?: CrmQuote | null;
+  busy: boolean;
+  onSend: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
+}) {
+  const [sending, setSending] = useState<SquareOrderPaymentType | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+  const row = entry.row;
+  const configuredDeposit = Math.max(Number(row?.depositDue ?? quote?.deposit_required) || 0, 0);
+  const depositRemaining = Math.max(configuredDeposit - (Number(row?.depositPaid) || 0), 0);
+  const outstanding = Math.max(Number(row?.balance ?? quote?.quote_total) || 0, 0);
+  const balanceRemaining = Math.max(outstanding - depositRemaining, 0);
+
+  async function send(paymentType: SquareOrderPaymentType) {
+    if (!quote?.id) return;
+    setSending(paymentType);
+    setResult(null);
+    try {
+      const sent = await onSend(quote.id, paymentType);
+      setResult(`${paymentType === "deposit" ? "Deposit" : "Balance"} link sent to ${sent.recipient}.`);
+    } catch (error) {
+      setResult(error instanceof Error ? error.message : "Payment link could not be sent.");
+    } finally {
+      setSending(null);
+    }
+  }
+
+  return (
+    <div className="crm-square-payment-panel" aria-label="Square customer payment links">
+      <div>
+        <strong>Send a Square payment link</strong>
+        <span>The customer receives an automated email with a secure, order-specific checkout link.</span>
+      </div>
+      <div className="crm-square-payment-actions">
+        <button type="button" disabled={busy || sending !== null || !quote?.id || depositRemaining <= 0} onClick={() => void send("deposit")}>
+          <span>Send Deposit Link</span>
+          <strong>{toCurrency(depositRemaining)}</strong>
+        </button>
+        <button type="button" disabled={busy || sending !== null || !quote?.id || balanceRemaining <= 0} onClick={() => void send("balance")}>
+          <span>Send Balance Link</span>
+          <strong>{toCurrency(balanceRemaining)}</strong>
+        </button>
+      </div>
+      {sending ? <p>Creating and emailing the {sending} link…</p> : null}
+      {result ? <p role="status">{result}</p> : null}
+    </div>
+  );
+}
+
 function GlobalCustomerSearchPanel({
   jobs,
   quotes,
@@ -6176,6 +6263,7 @@ function GlobalCustomerSearchPanel({
   events,
   busy,
   onProcessEmails,
+  onSendSquarePaymentLink,
   onOpenPage,
   onOpenCustomer,
   onReassignSale,
@@ -6191,6 +6279,7 @@ function GlobalCustomerSearchPanel({
   events: CrmCalendarEvent[];
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
@@ -6201,6 +6290,7 @@ function GlobalCustomerSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const [paymentPanelResultId, setPaymentPanelResultId] = useState<string | null>(null);
   const normalizedQuery = query.trim();
   const results = useMemo(
     () => buildCustomerSearchResults({ query: normalizedQuery, jobs, quotes, rows, files, events }),
@@ -6351,7 +6441,26 @@ function GlobalCustomerSearchPanel({
                       {page.detail ? <span>{page.detail}</span> : null}
                     </button>
                   ))}
+                  {selectedQuote ? (
+                    <button
+                      type="button"
+                      className="crm-ghost-button crm-square-payment-route"
+                      aria-expanded={paymentPanelResultId === selectedResult.id}
+                      onClick={() => setPaymentPanelResultId((current) => current === selectedResult.id ? null : selectedResult.id)}
+                    >
+                      Square Payments
+                      <span>Deposit + Balance</span>
+                    </button>
+                  ) : null}
                 </div>
+                {paymentPanelResultId === selectedResult.id ? (
+                  <SquarePaymentLinkPanel
+                    entry={selectedResult.entry}
+                    quote={selectedQuote}
+                    busy={busy}
+                    onSend={onSendSquarePaymentLink}
+                  />
+                ) : null}
               </div>
               <DrillDetailCard
                 entry={selectedResult.entry}
