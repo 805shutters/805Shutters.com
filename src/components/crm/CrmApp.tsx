@@ -934,7 +934,7 @@ export function CrmApp({
     }
   }
 
-  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType) {
+  async function sendSquarePaymentLink(quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) {
     if (!session) throw new Error("Sign in again before sending a payment link.");
     setBusy(true);
     setMessage(null);
@@ -942,7 +942,7 @@ export function CrmApp({
       const result = await crmFetch<SquarePaymentLinkResult>(
         session,
         `/api/crm/quotes/${quoteId}/square-payment-link`,
-        { method: "POST", body: JSON.stringify({ paymentType }) },
+        { method: "POST", body: JSON.stringify({ paymentType, recipientEmail: recipientEmail?.trim() || undefined }) },
       );
       if (!result.email.sent) {
         throw new Error(result.email.error || result.email.skipped || "Square link was created, but the email was not sent.");
@@ -5256,7 +5256,7 @@ function CommandDashboard({
   activeDrill: DrillPayload | null;
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
-  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onDrill: (payload: DrillPayload) => void;
   onCloseDrill: () => void;
@@ -6209,23 +6209,44 @@ function SquarePaymentLinkPanel({
   entry: DrillEntry;
   quote?: CrmQuote | null;
   busy: boolean;
-  onSend: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
+  onSend: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
 }) {
   const [sending, setSending] = useState<SquareOrderPaymentType | null>(null);
+  const [confirming, setConfirming] = useState<SquareOrderPaymentType | null>(null);
+  const [alternateEmail, setAlternateEmail] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const row = entry.row;
   const configuredDeposit = Math.max(Number(row?.depositDue ?? quote?.deposit_required) || 0, 0);
   const depositRemaining = Math.max(configuredDeposit - (Number(row?.depositPaid) || 0), 0);
   const outstanding = Math.max(Number(row?.balance ?? quote?.quote_total) || 0, 0);
   const balanceRemaining = Math.max(outstanding - depositRemaining, 0);
+  const savedEmail = quote?.customer_email?.trim() || "";
+  const recipientEmail = alternateEmail.trim() || savedEmail;
 
-  async function send(paymentType: SquareOrderPaymentType) {
+  useEffect(() => {
+    setConfirming(null);
+    setAlternateEmail("");
+    setResult(null);
+  }, [quote?.id]);
+
+  function confirm(paymentType: SquareOrderPaymentType) {
+    setConfirming(paymentType);
+    setAlternateEmail("");
+    setResult(null);
+  }
+
+  async function send(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const paymentType = confirming;
+    if (!paymentType) return;
     if (!quote?.id) return;
     setSending(paymentType);
     setResult(null);
     try {
-      const sent = await onSend(quote.id, paymentType);
+      const sent = await onSend(quote.id, paymentType, alternateEmail.trim() || undefined);
       setResult(`${paymentType === "deposit" ? "Deposit" : "Balance"} link sent to ${sent.recipient}.`);
+      setConfirming(null);
+      setAlternateEmail("");
     } catch (error) {
       setResult(error instanceof Error ? error.message : "Payment link could not be sent.");
     } finally {
@@ -6240,15 +6261,53 @@ function SquarePaymentLinkPanel({
         <span>The customer receives an automated email with a secure, order-specific checkout link.</span>
       </div>
       <div className="crm-square-payment-actions">
-        <button type="button" disabled={busy || sending !== null || !quote?.id || depositRemaining <= 0} onClick={() => void send("deposit")}>
+        <button type="button" disabled={busy || sending !== null || !quote?.id || depositRemaining <= 0} onClick={() => confirm("deposit")}>
           <span>Send Deposit Link</span>
           <strong>{toCurrency(depositRemaining)}</strong>
         </button>
-        <button type="button" disabled={busy || sending !== null || !quote?.id || balanceRemaining <= 0} onClick={() => void send("balance")}>
+        <button type="button" disabled={busy || sending !== null || !quote?.id || balanceRemaining <= 0} onClick={() => confirm("balance")}>
           <span>Send Balance Link</span>
           <strong>{toCurrency(balanceRemaining)}</strong>
         </button>
       </div>
+      {confirming ? (
+        <form className="crm-square-payment-recipient" onSubmit={send}>
+          <div>
+            <strong>Confirm {confirming} link recipient</strong>
+            <span>
+              Customer email: <b>{savedEmail || "No customer email saved"}</b>
+            </span>
+          </div>
+          <label>
+            Different email address <span>(optional)</span>
+            <input
+              type="email"
+              value={alternateEmail}
+              onChange={(event) => setAlternateEmail(event.target.value)}
+              placeholder="name@example.com"
+              autoComplete="email"
+            />
+          </label>
+          <p>
+            This {confirming} link will be sent to <strong>{recipientEmail || "an email address entered above"}</strong>.
+          </p>
+          <div className="crm-square-payment-confirm-actions">
+            <button type="submit" disabled={busy || sending !== null || !recipientEmail}>
+              Send {confirming === "deposit" ? "Deposit" : "Balance"} Link
+            </button>
+            <button
+              type="button"
+              disabled={busy || sending !== null}
+              onClick={() => {
+                setConfirming(null);
+                setAlternateEmail("");
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
       {sending ? <p>Creating and emailing the {sending} link…</p> : null}
       {result ? <p role="status">{result}</p> : null}
     </div>
@@ -6279,7 +6338,7 @@ function GlobalCustomerSearchPanel({
   events: CrmCalendarEvent[];
   busy: boolean;
   onProcessEmails: (target?: DrillEntry | null) => void;
-  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType) => Promise<SquarePaymentLinkResult>;
+  onSendSquarePaymentLink: (quoteId: string, paymentType: SquareOrderPaymentType, recipientEmail?: string) => Promise<SquarePaymentLinkResult>;
   onOpenPage: (page: CustomerSearchPage, entry: DrillEntry) => void;
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;

@@ -25,6 +25,15 @@ function isDepositPayment(payment: LedgerPayment) {
   return String(payment.payment_label || "").toLowerCase().includes("deposit");
 }
 
+export function squarePaymentRecipient(savedEmail: string | null | undefined, alternateEmail?: string | null) {
+  const recipient = String(alternateEmail || "").trim() || String(savedEmail || "").trim();
+  if (!recipient) throw new CrmAuthError(400, "Add a customer email or enter a different email before sending a Square payment link.");
+  if (recipient.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+    throw new CrmAuthError(400, "Enter a valid email address before sending the Square payment link.");
+  }
+  return recipient;
+}
+
 export function squareOrderPaymentAmounts(input: {
   total: number;
   depositRequired: number;
@@ -48,6 +57,7 @@ export async function sendSquareOrderPaymentLink(
   quoteId: string,
   paymentType: SquareOrderPaymentType,
   actor: CrmActor,
+  alternateEmail?: string | null,
 ) {
   if (!isSquareConfigured()) throw new CrmAuthError(503, "Square card payments are not configured.");
 
@@ -76,8 +86,8 @@ export async function sendSquareOrderPaymentLink(
     throw new CrmAuthError(400, paymentType === "deposit" ? "No deposit is currently due." : "No remaining balance is currently due.");
   }
 
-  const customerEmail = publicQuote.customerEmail?.trim();
-  if (!customerEmail) throw new CrmAuthError(400, "Add a customer email before sending a Square payment link.");
+  const savedCustomerEmail = publicQuote.customerEmail?.trim() || null;
+  const customerEmail = squarePaymentRecipient(savedCustomerEmail, alternateEmail);
 
   const label = paymentType === "deposit" ? "Deposit" : "Order balance";
   const link = await createSquarePaymentLink({
@@ -102,6 +112,8 @@ export async function sendSquareOrderPaymentLink(
     metadata: {
       amount,
       recipient: customerEmail,
+      savedCustomerEmail,
+      recipientOverridden: Boolean(alternateEmail?.trim() && customerEmail !== savedCustomerEmail),
       squarePaymentLinkId: link.id,
       squarePaymentLinkUrl: link.url,
       emailSent: email.sent,
