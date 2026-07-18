@@ -22,6 +22,8 @@ import {
   getVerticalFabricPriceGroup,
 } from "./quoteConstants";
 import { getMtsGridKeyForCatalogProgram } from "./productColorCatalog";
+import { getProduct, getProgram } from "@/lib/quote/catalog";
+import { isMiniBlindSizeWithinLimits } from "./miniBlindOptions";
 
 /**
  * Round dimension UP to nearest 6"
@@ -191,6 +193,7 @@ export interface PriceLookupOptions {
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
   fabric?: string; // for fabric-based routing
+  slatSize?: string; // for slat-specific blind size limits
 }
 
 function getCatalogGridKey(productType: string, options: PriceLookupOptions): string | null {
@@ -393,6 +396,41 @@ function gridBreakdown(
   };
 }
 
+function catalogGridBreakdown(
+  options: ProductPricingOptions,
+  productId: string,
+  programId: string
+): ProductPriceBreakdown {
+  const product = getProduct(productId);
+  const program = product ? getProgram(product, programId) : undefined;
+  const gridKey = getMtsGridKeyForCatalogProgram(options.productType, programId) ?? programId;
+
+  if (!program || program.priceAxis !== "wh") {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "none" };
+  }
+
+  const widthIndex = program.grid.widths.findIndex((width) => width >= options.width);
+  const heightIndex = program.grid.heights.findIndex((height) => height >= options.height);
+  if (widthIndex < 0 || heightIndex < 0) {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+  }
+
+  const price = program.grid.prices[heightIndex]?.[widthIndex];
+  if (price === null || price === undefined || price <= 0) {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+  }
+
+  return {
+    productType: options.productType,
+    price,
+    gridPrice: price,
+    gridKey,
+    matchedWidth: program.grid.widths[widthIndex],
+    matchedHeight: program.grid.heights[heightIndex],
+    pricingMethod: "grid",
+  };
+}
+
 export function getProductPriceBreakdown(options: ProductPricingOptions): ProductPriceBreakdown {
   const { productType } = options;
 
@@ -433,6 +471,21 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
         options,
         PERFECTSHEER_PRICING[gridKey as keyof typeof PERFECTSHEER_PRICING],
         gridKey
+      );
+    }
+    case "Mini Blinds": {
+      if (!isMiniBlindSizeWithinLimits(options.width, options.height, options.slatSize)) {
+        return {
+          productType,
+          price: null,
+          gridKey: "citylights_aluminum",
+          pricingMethod: "grid",
+        };
+      }
+      return catalogGridBreakdown(
+        options,
+        "citylights_aluminum",
+        options.catalogProgramId || "citylights_aluminum_1in_slats_cordless_pgusa"
       );
     }
     case "Vertical Blinds": {

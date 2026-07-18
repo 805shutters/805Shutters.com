@@ -80,6 +80,7 @@ export const PRODUCT_TYPES = [
   "Roman Shades",
   "Honeycomb Shades",
   "Sheer Shades",
+  "Mini Blinds",
   "Faux Wood Blinds",
   "Wood Blinds",
   "Vertical Blinds",
@@ -87,6 +88,18 @@ export const PRODUCT_TYPES = [
 ] as const;
 
 export type ProductType = (typeof PRODUCT_TYPES)[number];
+
+export const MINI_BLIND_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
+
+export const MINI_BLIND_SLAT_SIZES = ['1/2"', '1"', '2"'] as const;
+
+export const MINI_BLIND_FINISHES = [
+  "Standard",
+  "Metallic",
+  "Matte",
+  "Perforated",
+  "Textured",
+] as const;
 
 export const ROOM_PRESETS = [
   "Living Room",

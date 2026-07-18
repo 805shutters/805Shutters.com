@@ -85,6 +85,7 @@ const PRODUCT_TYPE_TO_COLOR_PRODUCT: Record<string, string[]> = {
   "Sheer Shades": ["perfectsheer"],
   "Smart Drapes": ["smartdrape"],
   "Vertical Blinds": ["synchrony_vertical"],
+  "Mini Blinds": ["citylights_aluminum"],
   "Wood Blinds": ["wood_blinds"],
 };
 
@@ -116,7 +117,7 @@ export function supportsMtsProductColorSearch(
   }
 
   if (field === "json:color") {
-    return ["Faux Wood Blinds", "Wood Blinds"].includes(productType ?? "");
+    return ["Mini Blinds", "Faux Wood Blinds", "Wood Blinds"].includes(productType ?? "");
   }
 
   if (field === "json:vertical_color") {
@@ -283,6 +284,12 @@ export function getMtsGridKeyForCatalogProgram(
     return programId.startsWith("wood_blinds_") ? "ultimate" : PRODUCT_COLOR_UNKNOWN_GRID;
   }
 
+  if (productType === "Mini Blinds") {
+    return programId.startsWith("citylights_aluminum_")
+      ? "citylights_aluminum"
+      : PRODUCT_COLOR_UNKNOWN_GRID;
+  }
+
   if (productType === "Sheer Shades") {
     return programId.startsWith("perfectsheer_") ? "light_filtering" : PRODUCT_COLOR_UNKNOWN_GRID;
   }
@@ -365,6 +372,10 @@ function rowMatchesMtsContext(
     case "Vertical Blinds": {
       const fabricGroup = stringOption(optionsJson, "fabric_group");
       return !fabricGroup || normalizeVerticalCollection(row.collection) === normalizeVerticalCollection(fabricGroup);
+    }
+    case "Mini Blinds": {
+      const slatSize = stringOption(optionsJson, "slat_size");
+      return !slatSize || row.fabricType.includes(slatSize);
     }
     default:
       return true;
