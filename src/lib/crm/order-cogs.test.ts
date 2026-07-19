@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractNormanOrderCogs, extractOrderCogsFromText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -236,6 +236,27 @@ describe("extractNormanOrderCogs", () => {
     expect(result.orderNumber).toBe("8800217950");
     expect(result.orderAmount).toBe(312.4);
   });
+
+  it("reads a confirmation-sheet order number from Norman PDF text", () => {
+    const result = extractNormanOrderCogs(
+      "8800219384 Confirmation Sheet PO#: Linda Brown Side Mark: Linda Brown Total Amount: $1,025.00"
+    );
+    expect(result.customerName).toBe("Linda Brown");
+    expect(result.orderNumber).toBe("8800219384");
+    expect(result.orderAmount).toBe(1025);
+  });
+});
+
+describe("extractOnyxOrderCogs", () => {
+  it("uses Grand Total and normalizes a last-name-first PO", () => {
+    const result = extractOnyxOrderCogs(
+      "Order No.: 52607181014 PO No.: Brown, Linda Side Mark: CHE01-Brown, Linda Total Area: 125.000 Grand Total: 1646.25 Proposed Deposit: 823.13"
+    );
+    expect(result.customerName).toBe("Linda Brown");
+    expect(result.orderNumber).toBe("52607181014");
+    expect(result.orderAmount).toBe(1646.25);
+    expect(result.manufacturer).toBe("Onyx");
+  });
 });
 
 describe("processOrderCogsInbox", () => {
@@ -253,6 +274,7 @@ describe("processOrderCogsInbox", () => {
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.endsWith("/labels")) return jsonResponse({ labels: [{ id: "label-processed", name: "Processed" }] });
         if (url.includes("oauth2.googleapis.com/token")) {
           return jsonResponse({ access_token: "token" });
         }
@@ -342,6 +364,7 @@ describe("processOrderCogsInbox", () => {
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.endsWith("/labels")) return jsonResponse({ labels: [{ id: "label-processed", name: "Processed" }] });
         if (url.includes("oauth2.googleapis.com/token")) {
           return jsonResponse({ access_token: "token" });
         }
@@ -426,6 +449,7 @@ describe("processOrderCogsInbox", () => {
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.endsWith("/labels")) return jsonResponse({ labels: [{ id: "label-processed", name: "Processed" }] });
         if (url.includes("oauth2.googleapis.com/token")) {
           return jsonResponse({ access_token: "token" });
         }
@@ -474,6 +498,7 @@ describe("processOrderCogsInbox", () => {
       "fetch",
       vi.fn(async (input: string | URL | Request) => {
         const url = String(input);
+        if (url.endsWith("/labels")) return jsonResponse({ labels: [{ id: "label-processed", name: "Processed" }] });
         if (url.includes("oauth2.googleapis.com/token")) {
           return jsonResponse({ access_token: "token" });
         }

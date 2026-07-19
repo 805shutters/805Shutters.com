@@ -44,6 +44,10 @@ type GmailListResponse = {
   nextPageToken?: string;
 };
 
+type GmailAttachmentResponse = {
+  data?: string;
+};
+
 type OrderCogsCandidate = {
   source: "entry" | "quote" | "job";
   customerName: string;
@@ -116,7 +120,7 @@ export type ProcessOrderCogsResult = {
 };
 
 function defaultQuery(mailbox: string) {
-  return `in:inbox to:${mailbox} newer_than:30d (from:normanusa.com OR order OR receipt OR confirmation OR invoice OR "order total" OR "grand total")`;
+  return `in:inbox to:${mailbox} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com)`;
 }
 
 function envValue(keys: string[]) {
@@ -186,13 +190,32 @@ async function getGmailAccessToken(mailbox: string) {
  * a readonly token returns 403, which the caller swallows so processing never fails just
  * because archiving is unavailable.
  */
-async function archiveGmailMessage(accessToken: string, messageId: string) {
+async function ensureProcessedLabel(accessToken: string) {
+  const labels = await gmailJson<{ labels?: Array<{ id?: string; name?: string }> }>(
+    accessToken,
+    "https://gmail.googleapis.com/gmail/v1/users/me/labels"
+  );
+  const existing = labels.labels?.find((label) => label.name?.toLowerCase() === "processed");
+  if (existing?.id) return existing.id;
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/labels", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Processed", labelListVisibility: "labelShow", messageListVisibility: "show" })
+  });
+  if (!response.ok) throw new CrmAuthError(502, `Gmail Processed label creation failed with ${response.status}.`);
+  const created = (await response.json()) as { id?: string };
+  if (!created.id) throw new CrmAuthError(502, "Gmail did not return an id for the Processed label.");
+  return created.id;
+}
+
+async function fileProcessedGmailMessage(accessToken: string, messageId: string, processedLabelId: string) {
   const response = await fetch(
     `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/modify`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ removeLabelIds: ["INBOX"] })
+      body: JSON.stringify({ addLabelIds: [processedLabelId], removeLabelIds: ["INBOX"] })
     }
   );
   if (!response.ok) {
@@ -227,9 +250,22 @@ async function getGmailMessage(accessToken: string, id: string) {
   return gmailJson<GmailMessage>(accessToken, url.toString());
 }
 
+async function getGmailAttachment(accessToken: string, messageId: string, attachmentId: string) {
+  const url = new URL(
+    `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`
+  );
+  return gmailJson<GmailAttachmentResponse>(accessToken, url.toString());
+}
+
 function decodeBody(data?: string) {
   if (!data) return "";
   return Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+}
+
+function decodeBodyBuffer(data: string) {
+  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  return Buffer.from(padded, "base64");
 }
 
 function htmlToText(html: string) {
@@ -261,6 +297,50 @@ function attachmentNames(part?: GmailMessagePart): string[] {
     part.filename || "",
     ...(part.parts || []).flatMap((child) => attachmentNames(child))
   ].filter(Boolean);
+}
+
+function collectMessageParts(part?: GmailMessagePart, output: GmailMessagePart[] = []) {
+  if (!part) return output;
+  output.push(part);
+  for (const child of part.parts || []) collectMessageParts(child, output);
+  return output;
+}
+
+function pdfAttachmentParts(part?: GmailMessagePart) {
+  return collectMessageParts(part).filter((candidate) => {
+    const filename = candidate.filename?.trim() || "";
+    return Boolean(filename) && (/\.pdf$/i.test(filename) || candidate.mimeType === "application/pdf");
+  });
+}
+
+async function parsePdfText(buffer: Buffer) {
+  const { PDFParse } = await import("pdf-parse");
+  const parser = new PDFParse({ data: buffer });
+  try {
+    const result = await parser.getText({ first: 4, pageJoiner: "\n" });
+    return result.text.replace(/\r/g, "\n").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  } finally {
+    await parser.destroy();
+  }
+}
+
+async function extractPdfText(accessToken: string, message: GmailMessage) {
+  const texts: string[] = [];
+  const errors: string[] = [];
+  for (const part of pdfAttachmentParts(message.payload)) {
+    const filename = part.filename?.trim() || "confirmation.pdf";
+    try {
+      const encoded = part.body?.data || (part.body?.attachmentId
+        ? (await getGmailAttachment(accessToken, message.id, part.body.attachmentId)).data
+        : null);
+      if (!encoded) throw new Error("Attachment data was missing.");
+      const text = await parsePdfText(decodeBodyBuffer(encoded));
+      if (text) texts.push(`PDF Attachment: ${filename}\n${text}`);
+    } catch (error) {
+      errors.push(`${filename}: ${error instanceof Error ? error.message : "PDF extraction failed."}`);
+    }
+  }
+  return { text: texts.join("\n\n"), errors };
 }
 
 function getHeader(headers: GmailHeader[] | undefined, name: string) {
@@ -360,7 +440,10 @@ export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
   const totalMatch = normalized.match(/\bTotal\s*Amount\b\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
   const orderAmount = moneyFrom(totalMatch?.[1]);
 
-  const woMatch = normalized.match(/\bWO\s*#\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i);
+  const woMatch =
+    normalized.match(/\bWO\s*#\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i) ||
+    normalized.match(/\bOrder\s*(?:No\.?|Number|#)\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i) ||
+    normalized.match(/\b(\d{8,})\s+Confirmation\s+Sheet\b/i);
   const orderNumber = woMatch?.[1] || null;
 
   const confidence = Math.min(1, (customerName ? 0.6 : 0) + (orderAmount ? 0.35 : 0) + (orderNumber ? 0.05 : 0));
@@ -376,8 +459,43 @@ export function extractNormanOrderCogs(text: string): ExtractedOrderCogs {
   };
 }
 
+function customerNameFromOnyx(value: string | null) {
+  if (!value) return null;
+  const withoutSideMarkPrefix = value.replace(/^[A-Z]{2,}\d+-/i, "").trim();
+  const lastFirst = withoutSideMarkPrefix.match(/^([^,]{2,}),\s*(.+)$/);
+  return cleanName(lastFirst ? `${lastFirst[2]} ${lastFirst[1]}` : withoutSideMarkPrefix);
+}
+
+export function isOnyxOrderEmail(text: string, fromEmail: string | null) {
+  const haystack = `${fromEmail || ""} ${text}`.toLowerCase();
+  return haystack.includes("orders@onyxshutters.com") || haystack.includes("onyx shutters");
+}
+
+/** Parse Onyx order confirmations. Grand Total is COGS; Proposed Deposit is not. */
+export function extractOnyxOrderCogs(text: string): ExtractedOrderCogs {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const poMatch = normalized.match(/\bPO\s*No\.?\s*[:#-]?\s*(.+?)\s+(?=Side\s*Mark|Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
+  const sideMarkMatch = normalized.match(/\bSide\s*Mark\s*[:#-]?\s*(.+?)\s+(?=Total\s*Area|Grand\s*Total|Proposed\s*Deposit|$)/i);
+  const amountMatch = normalized.match(/\bGrand\s*Total\s*[:#-]?\s*\$?\s*([\d,]+(?:\.\d{2})?)/i);
+  const orderMatch = normalized.match(/\bOrder\s*(?:No\.?|Number|#)\s*[:#-]?\s*([A-Za-z0-9-]{4,})/i);
+  const customerName = customerNameFromOnyx(poMatch?.[1] || sideMarkMatch?.[1] || null);
+  const orderAmount = moneyFrom(amountMatch?.[1]);
+  const orderNumber = orderMatch?.[1] || null;
+  const confidence = Math.min(1, (customerName ? 0.6 : 0) + (orderAmount ? 0.35 : 0) + (orderNumber ? 0.05 : 0));
+  return {
+    customerName,
+    orderAmount,
+    orderNumber,
+    confidence,
+    amountConfidence: orderAmount ? 0.98 : 0,
+    text: normalized,
+    manufacturer: "Onyx"
+  };
+}
+
 /** Dispatch to a vendor-specific parser when recognised; else the generic parser. */
 export function extractOrderCogs(text: string, fromEmail: string | null): ExtractedOrderCogs {
+  if (isOnyxOrderEmail(text, fromEmail)) return extractOnyxOrderCogs(text);
   if (isNormanOrderEmail(text, fromEmail)) return extractNormanOrderCogs(text);
   return extractOrderCogsFromText(text);
 }
@@ -458,11 +576,22 @@ function candidateAppliedOrderRefs(candidate: OrderCogsCandidate) {
   ];
 }
 
+function orderKey(manufacturer: string | null | undefined, orderNumber: string | null | undefined) {
+  return manufacturer && orderNumber ? `${manufacturer.toLowerCase()}:${orderNumber.toLowerCase()}` : null;
+}
+
+function candidateAppliedOrderKeys(candidate: OrderCogsCandidate) {
+  return stringList(candidate.meta.orderCogsOrderKeys).map((value) => value.toLowerCase());
+}
+
 function candidateAlreadyApplied(candidate: OrderCogsCandidate, extraction: ExtractedOrderCogs, gmailMessageId: string) {
   if (candidateAppliedMessageIds(candidate).includes(gmailMessageId)) return true;
+  const key = orderKey(extraction.manufacturer, extraction.orderNumber);
+  if (key && candidateAppliedOrderKeys(candidate).includes(key)) return true;
   return Boolean(
     extraction.orderNumber &&
       roundMoney(candidate.cogsAmount) > 0 &&
+      (!candidate.manufacturerName || candidate.manufacturerName === extraction.manufacturer) &&
       candidateAppliedOrderRefs(candidate).includes(extraction.orderNumber)
   );
 }
@@ -480,6 +609,7 @@ function nextOrderCogsMeta(
     : [];
   const nextApplication = {
     gmailMessageId: message.id,
+    manufacturer: extraction.manufacturer || null,
     orderNumber: extraction.orderNumber,
     orderAmount: extraction.orderAmount,
     previousCogsAmount,
@@ -493,6 +623,7 @@ function nextOrderCogsMeta(
     orderCogsMessageId: message.id,
     orderCogsMessageIds: appendUnique(candidateAppliedMessageIds(candidate), message.id),
     orderCogsOrderRefs: appendUnique(candidateAppliedOrderRefs(candidate), extraction.orderNumber),
+    orderCogsOrderKeys: appendUnique(candidateAppliedOrderKeys(candidate), orderKey(extraction.manufacturer, extraction.orderNumber)),
     orderCogsAppliedAt: now,
     orderCogsPreviousAmount: previousCogsAmount,
     orderCogsAddedAmount: extraction.orderAmount,
@@ -799,7 +930,9 @@ async function applyOrderCogs(
   const nextCogsAmount = addMoney(previousCogsAmount, amount);
   const now = new Date().toISOString();
   const manufacturerOrderRef = mergeOrderRefs(candidate.manufacturerOrderRef, extraction.orderNumber);
-  const manufacturerName = extraction.manufacturer || candidate.manufacturerName;
+  const manufacturerName = candidate.manufacturerName && extraction.manufacturer && candidate.manufacturerName !== extraction.manufacturer
+    ? "Other"
+    : extraction.manufacturer || candidate.manufacturerName;
   const manufacturerOrderUrl = gmailUrl(message) || candidate.manufacturerOrderUrl;
   const meta = nextOrderCogsMeta(candidate, extraction, message, previousCogsAmount, nextCogsAmount, now);
   const patch = {
@@ -941,6 +1074,7 @@ export async function processOrderCogsInbox(
   const archiveEnabled = options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false";
   const candidates = await loadOrderCogsCandidates(supabase);
   const accessToken = options.messageIds?.length ? null : await getGmailAccessToken(mailbox);
+  const processedLabelId = archiveEnabled && accessToken ? await ensureProcessedLabel(accessToken) : null;
   const messages = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
     : await listGmailMessages(accessToken as string, query, maxResults);
@@ -968,7 +1102,7 @@ export async function processOrderCogsInbox(
         result.skipped += 1;
         if (archiveEnabled && accessToken) {
           try {
-            await archiveGmailMessage(accessToken, listed.id);
+            await fileProcessedGmailMessage(accessToken, listed.id, processedLabelId as string);
             result.archived += 1;
           } catch {
             result.archiveErrors += 1;
@@ -979,8 +1113,14 @@ export async function processOrderCogsInbox(
 
       const message = accessToken ? await getGmailMessage(accessToken, listed.id) : ({ id: listed.id } as GmailMessage);
       const headers = message.payload?.headers;
-      const text = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
-      const extraction = extractOrderCogs(text, getHeader(headers, "From"));
+      const bodyText = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
+      const fromEmail = getHeader(headers, "From");
+      const subject = getHeader(headers, "Subject") || "";
+      const pdf = accessToken && isNormanOrderEmail(`${subject} ${bodyText}`, fromEmail)
+        ? await extractPdfText(accessToken, message)
+        : { text: "", errors: [] as string[] };
+      const text = [subject, bodyText, pdf.text].filter(Boolean).join("\n");
+      const extraction = extractOrderCogs(text, fromEmail);
       const match = matchOrderCogs(extraction, candidates);
       const review = reviewStatus(extraction, match);
       const now = new Date().toISOString();
@@ -1036,6 +1176,7 @@ export async function processOrderCogsInbox(
         raw: {
           actorEmail: options.actorEmail || null,
           duplicateApplied,
+          pdfExtractionErrors: pdf.errors,
           textPreview: extraction.text.slice(0, 1000)
         }
       } satisfies Omit<CrmOrderCogsEmail, "id" | "created_at" | "updated_at">;
@@ -1064,7 +1205,7 @@ export async function processOrderCogsInbox(
       // is unavailable and can't track them). Archive failure never fails the pull.
       if (archiveEnabled && accessToken && ((review.canApply && cogsApplied && status === "matched") || duplicateApplied)) {
         try {
-          await archiveGmailMessage(accessToken, message.id);
+          await fileProcessedGmailMessage(accessToken, message.id, processedLabelId as string);
           result.archived += 1;
         } catch {
           result.archiveErrors += 1;
