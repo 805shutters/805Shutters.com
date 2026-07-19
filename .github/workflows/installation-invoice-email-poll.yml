@@ -1,0 +1,25 @@
+name: Poll installation invoice emails
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: installation-invoice-email-poll
+  cancel-in-progress: false
+
+jobs:
+  poll-installation-invoices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process installation invoice emails
+        env:
+          INSTALLATION_INVOICE_CRON_SECRET: ${{ secrets.INSTALLATION_INVOICE_CRON_SECRET }}
+        run: |
+          test -n "${INSTALLATION_INVOICE_CRON_SECRET}"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --request POST \
+            --header "Authorization: Bearer ${INSTALLATION_INVOICE_CRON_SECRET}" \
+            https://805-one.vercel.app/api/cron/installation-invoices

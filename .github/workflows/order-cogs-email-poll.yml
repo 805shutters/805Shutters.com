@@ -1,0 +1,25 @@
+name: Poll order COGS emails
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: order-cogs-email-poll
+  cancel-in-progress: false
+
+jobs:
+  poll-order-cogs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process manufacturer order confirmations
+        env:
+          ORDER_COGS_CRON_SECRET: ${{ secrets.ORDER_COGS_CRON_SECRET }}
+        run: |
+          test -n "${ORDER_COGS_CRON_SECRET}"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --request POST \
+            --header "Authorization: Bearer ${ORDER_COGS_CRON_SECRET}" \
+            https://805-one.vercel.app/api/cron/order-cogs

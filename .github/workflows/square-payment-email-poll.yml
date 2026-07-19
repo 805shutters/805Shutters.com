@@ -22,4 +22,4 @@ jobs:
             --retry 2 \
             --request POST \
             --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
-            https://www.805shutters.com/api/cron/square-payment-emails/
+            https://805-one.vercel.app/api/cron/square-payment-emails
