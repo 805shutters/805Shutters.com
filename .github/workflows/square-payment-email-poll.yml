@@ -18,7 +18,7 @@ jobs:
           SQUARE_PAYMENT_EMAIL_CRON_SECRET: ${{ secrets.SQUARE_PAYMENT_EMAIL_CRON_SECRET }}
         run: |
           test -n "${SQUARE_PAYMENT_EMAIL_CRON_SECRET}"
-          curl --fail --silent --show-error \
+          curl --fail-with-body --silent --show-error \
             --retry 2 \
             --request POST \
             --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
