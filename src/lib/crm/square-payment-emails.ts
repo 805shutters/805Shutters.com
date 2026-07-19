@@ -333,7 +333,7 @@ export async function processSquarePaymentEmails(
   };
 
   const [quotesResult, jobsResult, paymentsResult, creditsResult] = await Promise.all([
-    supabase.from("crm_quotes").select("id,job_id,quote_number,status,quote_total,deposit_required,customer_name,customer_email").limit(2000),
+    supabase.from("crm_quotes").select("id,job_id,quote_number,status,quote_total,deposit_required,customer_email").limit(2000),
     supabase.from("crm_jobs").select("id,customer_name,email").limit(2000),
     supabase.from("crm_quote_bookkeeping_payments").select("quote_id,payment_label,amount,paid_at,external_source,external_id,meta").limit(5000),
     supabase.from("crm_quote_bookkeeping_credits").select("amount,from_quote_id,to_quote_id").limit(5000),
