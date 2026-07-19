@@ -33,6 +33,13 @@ export type SquareReconcileResult = {
   markedPaid?: boolean;
 };
 
+export type SquareReconcileOptions = {
+  externalSource?: string;
+  externalId?: string;
+  createdBy?: string;
+  metadata?: Record<string, unknown>;
+};
+
 function roundMoney(value: unknown) {
   const amount = Number(value || 0);
   if (!Number.isFinite(amount)) return 0;
@@ -103,9 +110,9 @@ async function loadQuotePayments(supabase: CrmSupabaseClient, quoteId: string) {
   return (data || []) as PaymentRow[];
 }
 
-function isDuplicateSquarePayment(payments: PaymentRow[], squarePaymentId: string) {
+function isDuplicateSquarePayment(payments: PaymentRow[], squarePaymentId: string, externalSource = "square", externalId = squarePaymentId) {
   return payments.some((payment) => {
-    if (payment.external_source === "square" && payment.external_id === squarePaymentId) return true;
+    if (payment.external_source === externalSource && payment.external_id === externalId) return true;
     return payment.meta?.square_payment_id === squarePaymentId;
   });
 }
@@ -145,6 +152,7 @@ async function markQuotePaidIfCovered(
 export async function reconcileSquareQuotePayment(
   supabase: CrmSupabaseClient,
   facts: SquarePaymentFacts,
+  options: SquareReconcileOptions = {},
 ): Promise<SquareReconcileResult> {
   const amount = roundMoney(facts.amountCents / 100);
   if (!facts.quoteId) {
@@ -178,7 +186,9 @@ export async function reconcileSquareQuotePayment(
   }
 
   const payments = await loadQuotePayments(supabase, facts.quoteId);
-  if (isDuplicateSquarePayment(payments, facts.squarePaymentId)) {
+  const externalSource = options.externalSource || "square";
+  const externalId = options.externalId || facts.squarePaymentId;
+  if (isDuplicateSquarePayment(payments, facts.squarePaymentId, externalSource, externalId)) {
     return {
       status: "duplicate",
       quoteId: facts.quoteId,
@@ -197,13 +207,14 @@ export async function reconcileSquareQuotePayment(
     amount,
     paid_at: paymentDate(facts),
     source: "crm_quote",
-    external_source: "square",
-    external_id: facts.squarePaymentId,
+    external_source: externalSource,
+    external_id: externalId,
     meta: {
       square_payment_id: facts.squarePaymentId,
       square_order_id: facts.orderId,
       square_payment_type: facts.paymentType,
-      createdBy: "square-webhook",
+      createdBy: options.createdBy || "square-webhook",
+      ...options.metadata,
     },
   };
 
