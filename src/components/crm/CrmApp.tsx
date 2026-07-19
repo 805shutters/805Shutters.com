@@ -6682,7 +6682,11 @@ function DrillDetailCard({
   const saveJob = (patch: Record<string, unknown>, message: string) => onSaveField(entry, { job: patch, message });
   const saveRow = (patch: Record<string, unknown>, message: string) => {
     if (!row && !canEditJob) return Promise.resolve(false);
-    const rowPatch = row?.source === "crm_quote" && row.quoteId ? { quote_total: row.total, ...patch } : patch;
+    const rowPatch = row?.source === "crm_quote" && row.quoteId
+      ? { quote_total: row.total, ...patch }
+      : row
+        ? patch
+        : { deposit_required: fallbackDepositDue, ...patch };
     return onSaveField(entry, { row: rowPatch, message });
   };
   const moneyEditorValue = (value: number | null | undefined) => (value ? String(value) : "");
@@ -7015,10 +7019,10 @@ function DrillDetailCard({
         onSave: (value) => saveJob({ next_action: value.trim() }, "Next action updated.")
       }
     : undefined;
-  const depositShortfall = row ? roundCurrency(Math.max((row.depositDue || 0) - (row.depositPaid || 0), 0)) : 0;
-  const configuredBalanceDue = row ? roundCurrency(Math.max((row.total || 0) - (row.depositDue || 0), 0)) : 0;
-  const balancePaymentShortfall = row ? roundCurrency(Math.max(configuredBalanceDue - (row.balancePaid || 0), 0)) : 0;
-  const openJobBalance = row ? roundCurrency(Math.max(row.balance || 0, 0)) : 0;
+  const depositShortfall = roundCurrency(Math.max((row?.depositDue ?? fallbackDepositDue) - (row?.depositPaid || 0), 0));
+  const configuredBalanceDue = roundCurrency(Math.max((row?.total ?? fallbackTotal) - (row?.depositDue ?? fallbackDepositDue), 0));
+  const balancePaymentShortfall = roundCurrency(Math.max(configuredBalanceDue - (row?.balancePaid || 0), 0));
+  const openJobBalance = roundCurrency(Math.max(row?.balance ?? fallbackTotal, 0));
   const needsOrderHighlight = rowNeedsOrder(row);
   const depositMissingHighlight = rowDepositShortfall(row) > 0;
   const balanceMissingHighlight = rowBalanceShortfall(row) > 0;
@@ -7038,14 +7042,14 @@ function DrillDetailCard({
           onSave: statusEditor.onSave
         }
       : null;
-  const payJobPatch = row
+  const payJobPatch = row || canEditJob
     ? {
         payment_type: rowPaymentType,
         paid_at: paidAt,
-        ...(depositShortfall > 0 ? { deposit_paid_target: row.depositDue } : {}),
+        ...(depositShortfall > 0 ? { deposit_paid_target: row?.depositDue ?? fallbackDepositDue } : {}),
         ...(balancePaymentShortfall > 0 ? { balance_paid_target: configuredBalanceDue } : {}),
         mark_balance_paid: true,
-        ...(row.source === "crm_quote" ? { status: "paid" } : {})
+        ...(row?.source === "crm_quote" ? { status: "paid" } : {})
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
@@ -7094,7 +7098,7 @@ function DrillDetailCard({
   ];
   const workflowCommands = workflowCommandOptions.filter((command): command is DrillCommandButton => Boolean(command));
   const moneyCommandOptions: Array<DrillCommandButton | null> = [
-    row && payJobPatch && (depositShortfall > 0 || balancePaymentShortfall > 0 || openJobBalance > 0)
+    payJobPatch && (depositShortfall > 0 || balancePaymentShortfall > 0 || openJobBalance > 0)
       ? {
           key: "pay-job",
           label: "Pay Job",
@@ -7104,7 +7108,7 @@ function DrillDetailCard({
           onClick: () => void saveRow(payJobPatch, "Job marked paid.")
         }
       : null,
-    row && depositShortfall > 0
+    (row || canEditJob) && depositShortfall > 0
       ? {
           key: "pay-deposit",
           label: "Pay Deposit",
@@ -7116,7 +7120,7 @@ function DrillDetailCard({
             onSelect: (paymentType) =>
               void saveRow(
                 {
-                  deposit_paid_target: row.depositDue,
+                  deposit_paid_target: row?.depositDue ?? fallbackDepositDue,
                   payment_type: paymentType,
                   paid_at: paidAt
                 },
@@ -7126,7 +7130,7 @@ function DrillDetailCard({
           onClick: () =>
             void saveRow(
               {
-                deposit_paid_target: row.depositDue,
+                deposit_paid_target: row?.depositDue ?? fallbackDepositDue,
                 payment_type: depositPaymentType,
                 paid_at: paidAt
               },
@@ -7134,7 +7138,7 @@ function DrillDetailCard({
             )
         }
       : null,
-    row && balancePaymentShortfall > 0
+    (row || canEditJob) && balancePaymentShortfall > 0
       ? {
           key: "pay-balance",
           label: "Pay Balance",
@@ -7150,7 +7154,7 @@ function DrillDetailCard({
                   payment_type: paymentType,
                   paid_at: paidAt,
                   ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
-                  ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
+                  ...(depositShortfall <= 0 && row?.source === "crm_quote" ? { status: "paid" } : {})
                 },
                 "Balance paid."
               )
@@ -7162,7 +7166,7 @@ function DrillDetailCard({
                 payment_type: balancePaymentType,
                 paid_at: paidAt,
                 ...(depositShortfall <= 0 ? { mark_balance_paid: true } : {}),
-                ...(depositShortfall <= 0 && row.source === "crm_quote" ? { status: "paid" } : {})
+                ...(depositShortfall <= 0 && row?.source === "crm_quote" ? { status: "paid" } : {})
               },
               "Balance paid."
             )
@@ -7170,25 +7174,25 @@ function DrillDetailCard({
       : null
   ];
   const moneyCommands = moneyCommandOptions.filter((command): command is DrillCommandButton => Boolean(command));
-  const amountCommands: DrillAmountCommand[] = row
+  const amountCommands: DrillAmountCommand[] = row || canEditJob
     ? [
         {
           key: "set-total",
           label: "Sold Total",
-          detail: toLedgerCurrency(row.total),
-          defaultValue: row.total || 0,
+          detail: toLedgerCurrency(row?.total ?? fallbackTotal),
+          defaultValue: row?.total || fallbackTotal,
           disabled: busy,
           onSave: (amount) =>
             saveRow(
-              row.source === "crm_quote" ? { quote_total: amount, manual_total_override: true } : { total_amount: amount },
+              row?.source === "crm_quote" ? { quote_total: amount, manual_total_override: true } : { total_amount: amount },
               "Total updated."
             )
         },
         {
           key: "set-deposit",
           label: "Deposit Due",
-          detail: toLedgerCurrency(row.depositDue),
-          defaultValue: row.depositDue || 0,
+          detail: toLedgerCurrency(row?.depositDue ?? fallbackDepositDue),
+          defaultValue: row?.depositDue || fallbackDepositDue,
           tone: depositMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ deposit_required: amount }, "Deposit due updated.")
@@ -7196,8 +7200,8 @@ function DrillDetailCard({
         {
           key: "set-deposit-paid",
           label: "Deposit Paid",
-          detail: ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType),
-          defaultValue: row.depositPaid || 0,
+          detail: ledgerCurrencyWithPaymentType(row?.depositPaid || 0, row?.depositPaymentType),
+          defaultValue: row?.depositPaid || 0,
           paymentType: depositPaymentType,
           requirePaymentType: true,
           tone: depositMissingHighlight ? "missing" : undefined,
@@ -7215,8 +7219,8 @@ function DrillDetailCard({
         {
           key: "set-balance",
           label: "Balance Due",
-          detail: toLedgerCurrency(row.balance),
-          defaultValue: row.balance || 0,
+          detail: toLedgerCurrency(row?.balance ?? configuredBalanceDue),
+          defaultValue: row?.balance || configuredBalanceDue,
           tone: balanceMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ balance_due_target: amount }, "Balance updated.")
@@ -7224,8 +7228,8 @@ function DrillDetailCard({
         {
           key: "set-balance-paid",
           label: "Balance Paid",
-          detail: ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType),
-          defaultValue: row.balancePaid || 0,
+          detail: ledgerCurrencyWithPaymentType(row?.balancePaid || 0, row?.balancePaymentType),
+          defaultValue: row?.balancePaid || 0,
           paymentType: balancePaymentType,
           requirePaymentType: true,
           tone: balanceMissingHighlight ? "missing" : undefined,
@@ -7243,18 +7247,18 @@ function DrillDetailCard({
         {
           key: "write-cogs",
           label: "Write COGS",
-          detail: row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing",
-          defaultValue: row.cogs || 0,
+          detail: (row?.cogs || 0) > 0 ? toLedgerCurrency(row?.cogs || 0) : "Missing",
+          defaultValue: row?.cogs || 0,
           tone: cogsMissingHighlight ? "missing" : undefined,
           disabled: busy,
           onSave: (amount) =>
-            saveRow(row.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount }, "COGS updated.")
+            saveRow(row?.source === "crm_quote" ? { materials_cost: amount } : { cogs_amount: amount }, "COGS updated.")
         },
         {
           key: "set-install",
           label: "Install $",
-          detail: toLedgerCurrency(row.installationInvoiceAmount),
-          defaultValue: row.installationInvoiceAmount || 0,
+          detail: toLedgerCurrency(row?.installationInvoiceAmount || 0),
+          defaultValue: row?.installationInvoiceAmount || 0,
           tone: installMissingHighlight ? "warning" : undefined,
           disabled: busy,
           onSave: (amount) => saveRow({ installation_invoice_amount: amount }, "Installation amount updated.")
@@ -7262,7 +7266,7 @@ function DrillDetailCard({
         {
           key: "add-payment",
           label: "Add Payment",
-          detail: formatPaymentType(row.paymentType),
+          detail: formatPaymentType(row?.paymentType || "other"),
           defaultValue: 0,
           disabled: busy,
           onSave: (amount) =>
