@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -46,6 +46,13 @@ export function QuotesTable({
   title = "Quotes",
 }: QuotesTableProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [quotes]);
+
+  const visibleQuotes = useMemo(() => quotes.slice(0, visibleCount), [quotes, visibleCount]);
 
   if (isLoading) {
     return (
@@ -83,7 +90,7 @@ export function QuotesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {quotes.map((quote) => {
+          {visibleQuotes.map((quote) => {
             const isHovered = hoveredId === quote.id;
             const isCrmQuote = quote.source === "crm";
             const salesQuoteId = quote.sourceQuoteId || quote.id;
@@ -188,6 +195,17 @@ export function QuotesTable({
           })}
         </TableBody>
       </Table>
+      {visibleCount < quotes.length && (
+        <div className="border-t p-4 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setVisibleCount((count) => Math.min(count + 25, quotes.length))}
+          >
+            Show 25 more ({quotes.length - visibleCount} remaining)
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

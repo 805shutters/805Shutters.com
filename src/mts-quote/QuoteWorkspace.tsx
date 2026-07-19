@@ -11,7 +11,7 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
@@ -19,11 +19,31 @@ import { cn } from "@mts/lib/utils";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
-import { QuoteBuilder } from "@mts/components/crm/quote-builder/QuoteBuilder";
-import { QuoteContract } from "@mts/components/crm/quote-builder/QuoteContract";
-import { PricingGrids } from "@mts/components/crm/quote-builder/PricingGrids";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
+
+// The builder and contract pull in the full product catalog, pricing engine,
+// and design controls. Loading them with the dashboard made older iPads parse
+// several hundred KB of JavaScript before the quote list could appear.
+const QuoteBuilder = lazy(() =>
+  import("@mts/components/crm/quote-builder/QuoteBuilder").then((module) => ({
+    default: module.QuoteBuilder,
+  }))
+);
+const QuoteContract = lazy(() =>
+  import("@mts/components/crm/quote-builder/QuoteContract").then((module) => ({
+    default: module.QuoteContract,
+  }))
+);
+const PricingGrids = lazy(() =>
+  import("@mts/components/crm/quote-builder/PricingGrids").then((module) => ({
+    default: module.PricingGrids,
+  }))
+);
+
+function QuoteTabLoading() {
+  return <div className="p-8 text-center text-sm text-muted-foreground">Loading quote tools...</div>;
+}
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
@@ -145,9 +165,21 @@ export function QuoteWorkspace({
                 onOpenCrmQuote={onOpenCrmQuote}
               />
             )}
-            {effectiveTab === "builder" && <QuoteBuilder />}
-            {effectiveTab === "pricing" && <PricingGrids />}
-            {effectiveTab === "contract" && <QuoteContract />}
+            {effectiveTab === "builder" && (
+              <Suspense fallback={<QuoteTabLoading />}>
+                <QuoteBuilder />
+              </Suspense>
+            )}
+            {effectiveTab === "pricing" && (
+              <Suspense fallback={<QuoteTabLoading />}>
+                <PricingGrids />
+              </Suspense>
+            )}
+            {effectiveTab === "contract" && (
+              <Suspense fallback={<QuoteTabLoading />}>
+                <QuoteContract />
+              </Suspense>
+            )}
           </div>
 
           <Toaster richColors position="top-right" />
