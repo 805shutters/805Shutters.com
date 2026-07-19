@@ -27,10 +27,6 @@
     {
       "path": "/api/cron/indexnow",
       "schedule": "45 18 * * 1"
-    },
-    {
-      "path": "/api/cron/square-payment-emails",
-      "schedule": "*/15 * * * *"
     }
   ]
 }

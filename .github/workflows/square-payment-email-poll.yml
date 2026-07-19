@@ -1,0 +1,25 @@
+name: Poll Square payment emails
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: square-payment-email-poll
+  cancel-in-progress: false
+
+jobs:
+  poll-square-payments:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Process Square payment receipts
+        env:
+          SQUARE_PAYMENT_EMAIL_CRON_SECRET: ${{ secrets.SQUARE_PAYMENT_EMAIL_CRON_SECRET }}
+        run: |
+          test -n "${SQUARE_PAYMENT_EMAIL_CRON_SECRET}"
+          curl --fail --silent --show-error \
+            --retry 2 \
+            --request POST \
+            --header "Authorization: Bearer ${SQUARE_PAYMENT_EMAIL_CRON_SECRET}" \
+            https://805-one.vercel.app/api/cron/square-payment-emails
