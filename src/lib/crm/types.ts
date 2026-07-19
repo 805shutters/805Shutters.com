@@ -407,6 +407,7 @@ export type CrmBookkeepingRow = {
   balance: number;
   kenCut: number;
   kenCutOverride: number | null;
+  advertisingReserve: number;
   mikeProfit: number;
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationInvoiceDocumentId: string | null;
@@ -476,6 +477,7 @@ export type CrmBookkeepingTotals = {
   remakeTotal: number;
   balance: number;
   kenCut: number;
+  advertisingReserve: number;
   mikeProfit: number;
   installationAmount: number;
   jessicaCommission: number;

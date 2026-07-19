@@ -1087,16 +1087,16 @@ describe("partner payment write rules", () => {
 
     expect(calls.find((call) => call.table === "crm_commission_payments")?.payload).toMatchObject({
       recipient: "mike",
-      amount: 800
+      amount: 730
     });
     expect(calls.find((call) => call.table === "crm_commission_payment_allocations")).toBeTruthy();
     expect((result.payment.meta as { selectedItemAllocations?: Array<Record<string, unknown>> }).selectedItemAllocations?.[0]).toMatchObject({
       person: "mike",
       item_key: "mike:crm_quote:quote-1",
-      amount: 800
+      amount: 730
     });
     expect(result.dashboard.partnerPaymentLedger.people.mike).toMatchObject({
-      paid: 800,
+      paid: 730,
       owed: 0,
       activeJobCount: 0
     });
@@ -1231,13 +1231,13 @@ describe("partner payment write rules", () => {
 
     expect(calls.some((call) => call.table === "crm_commission_payments")).toBe(true);
     const fallbackPayload = calls.find((call) => call.table === "crm_ken_payments")?.payload as Record<string, unknown>;
-    expect(fallbackPayload).toMatchObject({ amount: 800 });
+    expect(fallbackPayload).toMatchObject({ amount: 730 });
     expect(fallbackPayload.meta).toMatchObject({
       partnerPaymentPerson: "mike",
       partnerPaymentFallbackTable: "crm_ken_payments"
     });
     expect(result.dashboard.partnerPaymentLedger.people.mike).toMatchObject({
-      paid: 800,
+      paid: 730,
       owed: 0,
       activeJobCount: 0
     });

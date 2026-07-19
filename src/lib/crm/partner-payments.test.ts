@@ -53,6 +53,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     balance: 0,
     kenCut: 100,
     kenCutOverride: null,
+    advertisingReserve: 70,
     mikeProfit: 600,
     salesOwner: "mike",
     installationInvoiceDocumentId: null,

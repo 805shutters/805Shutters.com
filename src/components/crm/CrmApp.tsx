@@ -11371,6 +11371,7 @@ function ReadOnlyBookkeepingSpreadsheet({
 }) {
   const totalProfit = roundCurrency(
     (totals?.total || 0) -
+      (totals?.advertisingReserve || 0) -
       (totals?.cogs || 0) -
       (totals?.installationAmount || 0) -
       (totals?.expensesTotal || 0) -
@@ -11389,6 +11390,7 @@ function ReadOnlyBookkeepingSpreadsheet({
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
     { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
+    { label: "Advertising Reserve (7%)", value: toLedgerCurrency(totals?.advertisingReserve) },
     { label: "Remake", value: toLedgerCurrency(-(totals?.remakeTotal || 0)) },
     { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
     { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
@@ -11443,6 +11445,7 @@ function ReadOnlyBookkeepingSpreadsheet({
               <th>Deposit</th>
               <th>PD/W</th>
               <th>COGS</th>
+              <th>Advertising 7%</th>
               <th>Remake</th>
               <th>Installation</th>
               <th>Balance / Paid</th>
@@ -11459,7 +11462,7 @@ function ReadOnlyBookkeepingSpreadsheet({
               return (
                 <Fragment key={`readonly-status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={15}>
+                    <td className="crm-bookkeeping-group-head" colSpan={16}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
@@ -11490,6 +11493,7 @@ function ReadOnlyBookkeepingSpreadsheet({
                       <td>{toLedgerCurrency(row.depositPaid)}</td>
                       <td>{formatPaymentType(row.paymentType)}</td>
                       <td>{row.cogs <= 0 ? <span className="crm-bookkeeping-pill">Missing</span> : toLedgerCurrency(row.cogs)}</td>
+                      <td className="crm-ledger-money-warn">{toLedgerCurrency(row.advertisingReserve)}</td>
                       <td className={row.remakeTotal > 0 ? "crm-ledger-money-warn" : undefined}>{toLedgerCurrency(-row.remakeTotal)}</td>
                       <td>
                         {row.isInstallationComplete ? (
@@ -11551,6 +11555,7 @@ function ReadOnlyBookkeepingSpreadsheet({
                     <td>{toLedgerCurrency(groupTotals.depositPaid)}</td>
                     <td>-</td>
                     <td>{toLedgerCurrency(groupTotals.cogs)}</td>
+                    <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.advertisingReserve)}</td>
                     <td>{toLedgerCurrency(-groupTotals.remake)}</td>
                     <td>{toLedgerCurrency(groupTotals.installation)}</td>
                     <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>
@@ -11662,6 +11667,7 @@ function BookkeepingSpreadsheet({
   const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
     (totals?.total || 0) -
+      (totals?.advertisingReserve || 0) -
       (totals?.cogs || 0) -
       (totals?.installationAmount || 0) -
       (totals?.expensesTotal || 0) -
@@ -11686,6 +11692,7 @@ function BookkeepingSpreadsheet({
     { label: "Total Sales", value: toLedgerCurrency(totals?.total) },
     { label: "Open Balance", value: toLedgerCurrency(totals?.balance) },
     { label: "COGS", value: toLedgerCurrency(totals?.cogs) },
+    { label: "Advertising Reserve (7%)", value: toLedgerCurrency(totals?.advertisingReserve) },
     { label: "Remake", value: toLedgerCurrency(-(totals?.remakeTotal || 0)) },
     { label: "Installation", value: toLedgerCurrency(totals?.installationAmount) },
     { label: "Expenses", value: toLedgerCurrency(totals?.expensesTotal) },
@@ -11763,6 +11770,7 @@ function BookkeepingSpreadsheet({
               <th>Deposit</th>
               <th>PD/W</th>
               <th>COGS</th>
+              <th>Advertising 7%</th>
               <th>Remake</th>
               <th>Installation</th>
               <th>Balance / Paid</th>
@@ -11780,7 +11788,7 @@ function BookkeepingSpreadsheet({
               return (
                 <Fragment key={`status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={16}>
+                    <td className="crm-bookkeeping-group-head" colSpan={17}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
@@ -11883,6 +11891,7 @@ function BookkeepingSpreadsheet({
                     </BookkeepingCellButton>
                   )}
                 </td>
+                <td className="crm-ledger-money-warn">{toLedgerCurrency(row.advertisingReserve)}</td>
                 <td>
                   {isEditing(row, "remake") ? (
                     <BookkeepingInlineTextEditor
@@ -12052,6 +12061,7 @@ function BookkeepingSpreadsheet({
                     <td>{toLedgerCurrency(groupTotals.depositPaid)}</td>
                     <td>-</td>
                     <td>{toLedgerCurrency(groupTotals.cogs)}</td>
+                    <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.advertisingReserve)}</td>
                     <td>{toLedgerCurrency(-groupTotals.remake)}</td>
                     <td>{toLedgerCurrency(groupTotals.installation)}</td>
                     <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(groupTotals.balance)}</td>
@@ -12153,6 +12163,7 @@ function bookkeepingGroupTotals(rows: CrmBookkeepingRow[]) {
       total: roundCurrency(totals.total + row.total),
       depositPaid: roundCurrency(totals.depositPaid + row.depositPaid),
       cogs: roundCurrency(totals.cogs + row.cogs),
+      advertisingReserve: roundCurrency(totals.advertisingReserve + row.advertisingReserve),
       remake: roundCurrency(totals.remake + row.remakeTotal),
       installation: roundCurrency(totals.installation + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)),
       balance: roundCurrency(totals.balance + Math.max(row.balance, 0)),
@@ -12165,6 +12176,7 @@ function bookkeepingGroupTotals(rows: CrmBookkeepingRow[]) {
       total: 0,
       depositPaid: 0,
       cogs: 0,
+      advertisingReserve: 0,
       remake: 0,
       installation: 0,
       balance: 0,

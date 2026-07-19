@@ -16,6 +16,7 @@ import {
 } from "@/lib/crm/types";
 
 export const OWNER_COMMISSION_RATE = 0.1;
+export const ADVERTISING_RESERVE_RATE = 0.07;
 
 // Fixed price the business is being purchased from Ken for. Every dollar paid to
 // Ken (opening balance + recorded checks) counts toward this payoff.
@@ -171,6 +172,7 @@ export function sumBookkeepingRows(
       totals.remakeTotal = roundCents(totals.remakeTotal + row.remakeTotal);
       totals.balance = roundCents(totals.balance + Math.max(row.balance, 0));
       totals.kenCut = roundCents(totals.kenCut + row.kenCut);
+      totals.advertisingReserve = roundCents(totals.advertisingReserve + row.advertisingReserve);
       totals.mikeProfit = roundCents(totals.mikeProfit + row.mikeProfit);
       totals.installationAmount = roundCents(
         totals.installationAmount + (row.isInstallationComplete ? row.installationInvoiceAmount : 0)
@@ -204,6 +206,7 @@ export function sumBookkeepingRows(
       remakeTotal: 0,
       balance: 0,
       kenCut: 0,
+      advertisingReserve: 0,
       mikeProfit: 0,
       installationAmount: 0,
       jessicaCommission: 0,
@@ -482,6 +485,7 @@ function buildEntryRow(
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
   const kenCut = computeKenCut({ total, override: entry.ken_cut_override });
+  const advertisingReserve = computeAdvertisingReserve(total);
   const installation = getInstallationFields(entry);
   const missingInstallerInvoice = isMissingInstallerInvoice({
     source: entry.source,
@@ -493,6 +497,7 @@ function buildEntryRow(
     total,
     cogs,
     kenCut,
+    advertisingReserve,
     salesOwner: entry.sales_owner,
     installationAmount: installation.invoiceAmount,
     isInstallationComplete: installation.isComplete,
@@ -523,6 +528,7 @@ function buildEntryRow(
     balance,
     kenCut,
     kenCutOverride: entry.ken_cut_override ?? null,
+    advertisingReserve,
     mikeProfit: profit.mikeProfit,
     salesOwner: entry.sales_owner,
     installationInvoiceDocumentId: entry.installation_invoice_document_id,
@@ -602,6 +608,7 @@ function buildQuoteRow(
   const status = quoteStatusForBookkeeping(quote);
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
   const kenCut = computeKenCut({ total, override: entry?.ken_cut_override });
+  const advertisingReserve = computeAdvertisingReserve(total);
   const installation = getInstallationFields(entry);
   const missingInstallerInvoice = isMissingInstallerInvoice({
     source: "crm_quote",
@@ -613,6 +620,7 @@ function buildQuoteRow(
     total,
     cogs,
     kenCut,
+    advertisingReserve,
     salesOwner,
     installationAmount: installation.invoiceAmount,
     isInstallationComplete: installation.isComplete,
@@ -645,6 +653,7 @@ function buildQuoteRow(
     balance,
     kenCut,
     kenCutOverride: entry?.ken_cut_override ?? null,
+    advertisingReserve,
     mikeProfit: profit.mikeProfit,
     salesOwner,
     installationInvoiceDocumentId: entry?.installation_invoice_document_id || null,
@@ -779,6 +788,10 @@ function computeKenCut({
   return roundCents(total * OWNER_COMMISSION_RATE);
 }
 
+function computeAdvertisingReserve(total: number) {
+  return roundCents(Math.max(total, 0) * ADVERTISING_RESERVE_RATE);
+}
+
 function isDepositPayment(payment: CrmBookkeepingPayment) {
   return payment.payment_label.toLowerCase().includes("deposit");
 }
@@ -843,6 +856,7 @@ function calculateBookkeepingProfit({
   total,
   cogs,
   kenCut,
+  advertisingReserve,
   salesOwner,
   installationAmount,
   isInstallationComplete,
@@ -851,13 +865,16 @@ function calculateBookkeepingProfit({
   total: number;
   cogs: number;
   kenCut: number;
+  advertisingReserve: number;
   salesOwner: CrmBookkeepingSalesOwner | null;
   installationAmount: number;
   isInstallationComplete: boolean;
   expenses: number;
 }) {
   const installationCost = isInstallationComplete ? installationAmount : 0;
-  const remainingProfitBeforeJessica = roundCents(total - cogs - kenCut - installationCost - expenses);
+  const remainingProfitBeforeJessica = roundCents(
+    total - advertisingReserve - cogs - kenCut - installationCost - expenses
+  );
   // The 50/50 split applies ONLY to Jessica's own sales (owner-confirmed rule,
   // June 2026); Mike keeps 100% of jobs he sold. This intentionally differs from
   // the "regardless of who sold it" wording in migration 20260610. Installation

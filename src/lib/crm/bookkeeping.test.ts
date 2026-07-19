@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUSINESS_PAYOFF_TARGET,
+  ADVERTISING_RESERVE_RATE,
   OWNER_COMMISSION_RATE,
   buildAccountabilityQueue,
   buildBookkeepingRows,
@@ -442,9 +443,10 @@ describe("Ken cut", () => {
       entries: [entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", sold_date: "2026-05-01" })]
     });
     expect(row.kenCut).toBe(1000);
-    expect(row.remainingProfitBeforeJessica).toBe(6000); // 10000 - 3000 - 1000
+    expect(row.advertisingReserve).toBe(700);
+    expect(row.remainingProfitBeforeJessica).toBe(5300);
     expect(row.jessicaCommission).toBe(0);
-    expect(row.mikeProfit).toBe(6000);
+    expect(row.mikeProfit).toBe(5300);
   });
 
   it("charges 10% on Jessica's sales too — the June 2026 exemption is gone", () => {
@@ -471,7 +473,7 @@ describe("ken_cut_override", () => {
       entries: [entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", ken_cut_override: 500 })]
     });
     expect(row.kenCut).toBe(500);
-    expect(row.remainingProfitBeforeJessica).toBe(6500); // 10000 - 3000 - 500
+    expect(row.remainingProfitBeforeJessica).toBe(5800);
   });
 
   it("waives Ken's cut entirely when set to 0", () => {
@@ -479,7 +481,7 @@ describe("ken_cut_override", () => {
       entries: [entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", ken_cut_override: 0 })]
     });
     expect(row.kenCut).toBe(0);
-    expect(row.remainingProfitBeforeJessica).toBe(7000);
+    expect(row.remainingProfitBeforeJessica).toBe(6300);
   });
 });
 
@@ -494,8 +496,8 @@ describe("job expenses", () => {
     });
     expect(row.expensesTotal).toBe(400);
     expect(row.remakeTotal).toBe(0);
-    expect(row.remainingProfitBeforeJessica).toBe(6600); // 10000 - 3000 - 0 - 400
-    expect(row.mikeProfit).toBe(6600);
+    expect(row.remainingProfitBeforeJessica).toBe(5900);
+    expect(row.mikeProfit).toBe(5900);
   });
 
   it("tracks remake costs separately from other expenses and subtracts both from profit", () => {
@@ -509,8 +511,8 @@ describe("job expenses", () => {
     expect(row.expenses).toHaveLength(1);
     expect(row.expensesTotal).toBe(250);
     expect(row.remakeTotal).toBe(325);
-    expect(row.remainingProfitBeforeJessica).toBe(6425); // 10000 - 3000 - 0 - 250 - 325
-    expect(row.mikeProfit).toBe(6425);
+    expect(row.remainingProfitBeforeJessica).toBe(5725);
+    expect(row.mikeProfit).toBe(5725);
   });
 
   it("matches job-linked expenses to the row and counts each only once", () => {
@@ -520,7 +522,7 @@ describe("job expenses", () => {
     });
     expect(row.expenses).toHaveLength(1);
     expect(row.expensesTotal).toBe(300);
-    expect(row.remainingProfitBeforeJessica).toBe(4700);
+    expect(row.remainingProfitBeforeJessica).toBe(4350);
   });
 
   it("ignores expenses that do not match any row", () => {
@@ -548,9 +550,10 @@ describe("Jessica's 50% commission", () => {
     // Ken's 10% comes off first, then the matched install cost.
     expect(row.kenCut).toBe(1000);
     expect(row.isInstallationComplete).toBe(true);
-    expect(row.remainingProfitBeforeJessica).toBe(5000); // 10000 - 3000 - 1000 - 1000
-    expect(row.jessicaCommission).toBe(2500);
-    expect(row.mikeProfit).toBe(2500);
+    expect(row.advertisingReserve).toBe(700);
+    expect(row.remainingProfitBeforeJessica).toBe(4300);
+    expect(row.jessicaCommission).toBe(2150);
+    expect(row.mikeProfit).toBe(2150);
   });
 
   it("splits Jessica's own sale even before an install invoice is matched", () => {
@@ -560,9 +563,9 @@ describe("Jessica's 50% commission", () => {
       ]
     });
     expect(row.isInstallationComplete).toBe(false);
-    expect(row.remainingProfitBeforeJessica).toBe(6000); // 10000 - 3000 - 1000 (Ken) - 0 install
-    expect(row.jessicaCommission).toBe(3000);
-    expect(row.mikeProfit).toBe(3000);
+    expect(row.remainingProfitBeforeJessica).toBe(5300);
+    expect(row.jessicaCommission).toBe(2650);
+    expect(row.mikeProfit).toBe(2650);
   });
 
   it("uses a quote's sold-by Jessica value for the 50/50 split", () => {
@@ -580,9 +583,9 @@ describe("Jessica's 50% commission", () => {
     });
     expect(row.salesOwner).toBe("jessica");
     expect(row.isInstallationComplete).toBe(false);
-    expect(row.remainingProfitBeforeJessica).toBe(6000);
-    expect(row.jessicaCommission).toBe(3000);
-    expect(row.mikeProfit).toBe(3000);
+    expect(row.remainingProfitBeforeJessica).toBe(5300);
+    expect(row.jessicaCommission).toBe(2650);
+    expect(row.mikeProfit).toBe(2650);
   });
 
   it("keeps 100% with Mike on his own sales (no split)", () => {
@@ -599,7 +602,7 @@ describe("Jessica's 50% commission", () => {
     });
     expect(row.kenCut).toBe(1000); // Mike is not exempt
     expect(row.jessicaCommission).toBe(0);
-    expect(row.mikeProfit).toBe(5000); // 10000 - 3000 - 1000 - 1000
+    expect(row.mikeProfit).toBe(4300);
   });
 
   it("nets expenses out before splitting Jessica's commission", () => {
@@ -616,9 +619,9 @@ describe("Jessica's 50% commission", () => {
       ],
       expenses: [expense({ id: "x1", bookkeeping_entry_id: "e1", amount: 400 })]
     });
-    expect(row.remainingProfitBeforeJessica).toBe(4600); // 10000 - 3000 - 1000 - 1000 - 400
-    expect(row.jessicaCommission).toBe(2300);
-    expect(row.mikeProfit).toBe(2300);
+    expect(row.remainingProfitBeforeJessica).toBe(3900);
+    expect(row.jessicaCommission).toBe(1950);
+    expect(row.mikeProfit).toBe(1950);
   });
 
   it("nets remake costs out before splitting Jessica's commission", () => {
@@ -637,9 +640,9 @@ describe("Jessica's 50% commission", () => {
     });
     expect(row.expensesTotal).toBe(0);
     expect(row.remakeTotal).toBe(500);
-    expect(row.remainingProfitBeforeJessica).toBe(4500); // 10000 - 3000 - 1000 - 1000 - 500
-    expect(row.jessicaCommission).toBe(2250);
-    expect(row.mikeProfit).toBe(2250);
+    expect(row.remainingProfitBeforeJessica).toBe(3800);
+    expect(row.jessicaCommission).toBe(1900);
+    expect(row.mikeProfit).toBe(1900);
   });
 
   it("reports commission as owed until it is marked paid", () => {
@@ -651,12 +654,12 @@ describe("Jessica's 50% commission", () => {
       installation_invoice_amount: 1000
     });
     const [owedRow] = rowsFrom({ entries: [unpaid] });
-    expect(owedRow.jessicaCommissionOwed).toBe(2500);
+    expect(owedRow.jessicaCommissionOwed).toBe(2150);
 
     const [paidRow] = rowsFrom({
       entries: [{ ...unpaid, jessica_commission_paid_at: "2026-08-01T00:00:00.000Z" }]
     });
-    expect(paidRow.jessicaCommission).toBe(2500);
+    expect(paidRow.jessicaCommission).toBe(2150);
     expect(paidRow.jessicaCommissionOwed).toBe(0);
   });
 
@@ -720,9 +723,10 @@ describe("Jessica's 50% commission", () => {
         })
       ]
     });
-    expect(row.remainingProfitBeforeJessica).toBe(56.67); // 100 - 33.33 - 10 (Ken)
-    expect(row.jessicaCommission).toBe(28.34); // 56.67 / 2, rounded
-    expect(row.mikeProfit).toBe(28.33);
+    expect(row.advertisingReserve).toBe(7);
+    expect(row.remainingProfitBeforeJessica).toBe(49.67);
+    expect(row.jessicaCommission).toBe(24.84);
+    expect(row.mikeProfit).toBe(24.83);
   });
 });
 
@@ -733,7 +737,7 @@ describe("missing installer invoice hold", () => {
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
     expect(row.isMissingInstallerInvoice).toBe(true);
-    expect(row.jessicaCommission).toBe(3000); // estimate still shown
+    expect(row.jessicaCommission).toBe(2650); // estimate still shown after the reserve
     expect(row.jessicaCommissionOwed).toBe(0); // but nothing owed until the invoice lands
 
     const queue = buildAccountabilityQueue([row]);
@@ -764,7 +768,7 @@ describe("missing installer invoice hold", () => {
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
     expect(row.isMissingInstallerInvoice).toBe(false);
-    expect(row.jessicaCommissionOwed).toBe(2500); // 10000 - 3000 - 1000 - 1000, split
+    expect(row.jessicaCommissionOwed).toBe(2150);
   });
 
   it("never flags legacy sheet rows", () => {
@@ -822,9 +826,9 @@ describe("quote-sourced rows", () => {
     const [row] = rows;
     expect(row.source).toBe("crm_quote");
     expect(row.kenCut).toBe(1000);
-    expect(row.remainingProfitBeforeJessica).toBe(5000);
-    expect(row.jessicaCommission).toBe(2500);
-    expect(row.mikeProfit).toBe(2500);
+    expect(row.remainingProfitBeforeJessica).toBe(4300);
+    expect(row.jessicaCommission).toBe(2150);
+    expect(row.mikeProfit).toBe(2150);
   });
 });
 
@@ -854,9 +858,10 @@ describe("sumBookkeepingRows", () => {
     expect(totals.expensesTotal).toBe(400);
     expect(totals.remakeTotal).toBe(200);
     expect(totals.kenCut).toBe(1500); // 10% of 10000 + 10% of 5000
-    expect(totals.jessicaCommission).toBe(2200); // half of (10000-3000-1000-1000-400-200)
-    expect(totals.jessicaCommissionOwed).toBe(2200);
-    expect(totals.mikeProfit).toBe(5700); // e1 2200 + e2 (5000-1000-500) 3500
+    expect(totals.advertisingReserve).toBe(1050);
+    expect(totals.jessicaCommission).toBe(1850);
+    expect(totals.jessicaCommissionOwed).toBe(1850);
+    expect(totals.mikeProfit).toBe(5000);
   });
 
   it("tracks Ken's current-month due and running total from closed jobs only", () => {
@@ -921,15 +926,15 @@ describe("buildCommissionSummary", () => {
     expect(summary.monthly).toHaveLength(1);
     expect(summary.monthly[0]).toMatchObject({
       periodMonth: "2026-07-01",
-      mikeEarned: 7500, // 5000 own sale + 2500 half of Jessica's
-      jessicaEarned: 2500,
+      mikeEarned: 6450,
+      jessicaEarned: 2150,
       mikePaid: 0,
       jessicaPaid: 0,
-      mikeBalance: 7500,
-      jessicaBalance: 2500
+      mikeBalance: 6450,
+      jessicaBalance: 2150
     });
-    expect(summary.totals.mikeOwed).toBe(7500);
-    expect(summary.totals.jessicaOwed).toBe(2500);
+    expect(summary.totals.mikeOwed).toBe(6450);
+    expect(summary.totals.jessicaOwed).toBe(2150);
   });
 
   it("subtracts Mike/Jessica payment ledger rows into running balances", () => {
@@ -970,19 +975,23 @@ describe("buildCommissionSummary", () => {
     ]);
 
     expect(summary.totals).toMatchObject({
-      mikeEarned: 7500,
+      mikeEarned: 6450,
       mikePaid: 2500,
-      mikeOwed: 5000,
-      jessicaEarned: 2500,
+      mikeOwed: 3950,
+      jessicaEarned: 2150,
       jessicaPaid: 1000,
-      jessicaOwed: 1500
+      jessicaOwed: 1150
     });
-    expect(summary.monthly[0].mikeBalance).toBe(5000);
-    expect(summary.monthly[0].jessicaBalance).toBe(1500);
+    expect(summary.monthly[0].mikeBalance).toBe(3950);
+    expect(summary.monthly[0].jessicaBalance).toBe(1150);
   });
 });
 
 describe("constants", () => {
+  it("holds back 7% of gross sales for advertising", () => {
+    expect(ADVERTISING_RESERVE_RATE).toBe(0.07);
+  });
+
   it("keeps the historical 10% owner commission rate", () => {
     expect(OWNER_COMMISSION_RATE).toBe(0.1);
   });
