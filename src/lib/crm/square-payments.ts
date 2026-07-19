@@ -180,7 +180,8 @@ export async function reconcileSquareQuotePayment(
       supabase,
       quote.id,
       { email: options.createdBy || "square-webhook" },
-      `${options.createdBy || "square-webhook"}-retry`
+      `${options.createdBy || "square-webhook"}-retry`,
+      String(options.metadata?.square_customer_email || "") || null
     );
     return {
       status: "duplicate",
@@ -220,7 +221,8 @@ export async function reconcileSquareQuotePayment(
       supabase,
       quote.id,
       { email: options.createdBy || "square-webhook" },
-      options.createdBy || "square-webhook"
+      options.createdBy || "square-webhook",
+      String(options.metadata?.square_customer_email || "") || null
     );
   }
   return {

@@ -130,7 +130,8 @@ export async function maybeSendCustomerCloseoutForQuote(
   supabase: CrmSupabaseClient,
   quoteId: string,
   actor: CrmActor,
-  source = "crm_payment"
+  source = "crm_payment",
+  recipientOverride?: string | null
 ): Promise<CustomerCloseoutResult> {
   try {
     const { data: quote, error: quoteError } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
@@ -164,7 +165,7 @@ export async function maybeSendCustomerCloseoutForQuote(
         return { status: "error", message: closeError instanceof Error ? closeError.message : "Paid job could not be closed." };
       }
     }
-    const recipient = String(quote.customer_email || job?.email || "").trim();
+    const recipient = String(recipientOverride || quote.customer_email || job?.email || "").trim();
     if (!recipient) return { status: "skipped", message: "Customer email is missing." };
     const customerName = String(job?.customer_name || quote.customer_name || quote.customer_printed_name || "Valued customer");
     const paidOn = (paymentsResult.data || []).map((row) => String(row.paid_at || "")).filter(Boolean).sort().at(-1) || null;

@@ -40,6 +40,12 @@ type CreditRow = {
   to_quote_id?: string | null;
 };
 
+type PaymentLinkEventRow = {
+  entity_id?: string | null;
+  action?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
 type QuoteRow = {
   id: string;
   job_id: string | null;
@@ -234,6 +240,7 @@ export function matchSquarePaymentEmail(input: {
   jobs: JobRow[];
   payments: PaymentRow[];
   credits: CreditRow[];
+  paymentLinkEvents?: PaymentLinkEventRow[];
 }): { candidate: SquarePaymentEmailCandidate | null; reason?: string } {
   const jobsById = new Map(input.jobs.map((job) => [job.id, job]));
   const receiptName = normalizedIdentity(input.receipt.customerName);
@@ -271,6 +278,43 @@ export function matchSquarePaymentEmail(input: {
       paidDate: input.receipt.paidDate,
       identityScore: (nameMatches ? 1 : 0) + (emailMatches ? 2 : 0),
     });
+  }
+
+  if (!candidates.length && receiptEmail) {
+    const linkedQuoteIds = new Set(
+      (input.paymentLinkEvents || [])
+        .filter((event) => {
+          const metadata = event.metadata || {};
+          return normalizedEmail(String(metadata.recipient || "")) === receiptEmail && moneyMatches(metadata.amount, input.receipt.amount);
+        })
+        .map((event) => String(event.entity_id || ""))
+        .filter(Boolean)
+    );
+    for (const quote of input.quotes.filter((row) => linkedQuoteIds.has(row.id))) {
+      if (!ACTIVE_PAYMENT_STATUSES.has(String(quote.status || "").toLowerCase())) continue;
+      const quotePayments = input.payments.filter((payment) => payment.quote_id === quote.id);
+      const creditsIn = input.credits.filter((credit) => credit.to_quote_id === quote.id);
+      const creditsOut = input.credits.filter((credit) => credit.from_quote_id === quote.id);
+      const amounts = quotePaymentAmounts(quote, quotePayments, creditsIn, creditsOut);
+      const paymentType = moneyMatches(input.receipt.amount, amounts.deposit) && amounts.deposit > 0
+        ? "deposit"
+        : moneyMatches(input.receipt.amount, amounts.balance) && amounts.balance > 0
+          ? "balance"
+          : null;
+      if (!paymentType) continue;
+      const job = quote.job_id ? jobsById.get(quote.job_id) : null;
+      candidates.push({
+        quoteId: quote.id,
+        jobId: quote.job_id,
+        quoteNumber: quote.quote_number || null,
+        customerName: String(quote.customer_name || job?.customer_name || "").trim(),
+        customerEmail: input.receipt.customerEmail,
+        paymentType,
+        amount: input.receipt.amount,
+        paidDate: input.receipt.paidDate,
+        identityScore: 3,
+      });
+    }
   }
 
   if (!candidates.length) return { candidate: null, reason: "No active CRM quote uniquely matched the Square customer and amount." };
@@ -327,6 +371,13 @@ export async function addGmailMessageLabel(accessToken: string, messageId: strin
   });
 }
 
+export async function fileProcessedGmailMessage(accessToken: string, messageId: string, labelId: string) {
+  await gmailFetch(accessToken, `messages/${encodeURIComponent(messageId)}/modify`, {
+    method: "POST",
+    body: JSON.stringify({ addLabelIds: [labelId], removeLabelIds: ["INBOX"] }),
+  });
+}
+
 async function listMessages(accessToken: string, query: string, maxResults: number) {
   const params = new URLSearchParams({ q: query, maxResults: String(maxResults) });
   const result = await gmailFetch<{ messages?: Array<{ id: string; threadId?: string }> }>(accessToken, `messages?${params.toString()}`);
@@ -371,25 +422,27 @@ export async function processSquarePaymentEmails(
     results: [],
   };
 
-  const [quotesResult, jobsResult, paymentsResult, creditsResult] = await Promise.all([
+  const [quotesResult, jobsResult, paymentsResult, creditsResult, paymentLinkEventsResult] = await Promise.all([
     supabase.from("crm_quotes").select("id,job_id,quote_number,status,quote_total,deposit_required,customer_email").limit(2000),
     supabase.from("crm_jobs").select("id,customer_name,email").limit(2000),
     supabase.from("crm_quote_bookkeeping_payments").select("quote_id,payment_label,amount,paid_at,external_source,external_id,meta").limit(5000),
     supabase.from("crm_quote_bookkeeping_credits").select("amount,from_quote_id,to_quote_id").limit(5000),
+    supabase.from("crm_activity_events").select("entity_id,action,metadata").in("action", ["square_deposit_link.send", "square_balance_link.send"]).limit(2000),
   ]);
-  const loadError = quotesResult.error || jobsResult.error || paymentsResult.error || creditsResult.error;
+  const loadError = quotesResult.error || jobsResult.error || paymentsResult.error || creditsResult.error || paymentLinkEventsResult.error;
   if (loadError) throw new CrmAuthError(502, `Square payment CRM matching data could not be loaded: ${loadError.message}`);
 
   const quotes = (quotesResult.data || []) as QuoteRow[];
   const jobs = (jobsResult.data || []) as JobRow[];
   const payments = (paymentsResult.data || []) as PaymentRow[];
   const credits = (creditsResult.data || []) as CreditRow[];
+  const paymentLinkEvents = (paymentLinkEventsResult.data || []) as PaymentLinkEventRow[];
   let processedLabelId: string | null = null;
 
   async function markProcessed(messageId: string) {
     const labelId = processedLabelId || await ensureGmailLabel(gmailAccessToken, PROCESSED_LABEL);
     processedLabelId = labelId;
-    await addGmailMessageLabel(gmailAccessToken, messageId, labelId);
+    await fileProcessedGmailMessage(gmailAccessToken, messageId, labelId);
     result.labeled += 1;
   }
 
@@ -410,7 +463,7 @@ export async function processSquarePaymentEmails(
         continue;
       }
 
-      const match = matchSquarePaymentEmail({ receipt, quotes, jobs, payments, credits });
+      const match = matchSquarePaymentEmail({ receipt, quotes, jobs, payments, credits, paymentLinkEvents });
       if (!match.candidate) {
         result.review += 1;
         result.results.push({
@@ -429,7 +482,8 @@ export async function processSquarePaymentEmails(
           supabase,
           match.candidate.quoteId,
           { email: "square-payment-email-poller" },
-          "square-payment-email-poller-retry"
+          "square-payment-email-poller-retry",
+          receipt.customerEmail
         );
         await markProcessed(receipt.gmailMessageId);
         result.duplicates += 1;

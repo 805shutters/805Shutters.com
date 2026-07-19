@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addGmailMessageLabel,
   ensureGmailLabel,
+  fileProcessedGmailMessage,
   matchSquarePaymentEmail,
   parseSquarePaymentEmail,
   squarePaymentEmailQuery,
@@ -96,6 +97,24 @@ describe("matchSquarePaymentEmail", () => {
   it("does not match an amount that is not currently due", () => {
     expect(matchSquarePaymentEmail({ receipt: { ...receipt, amount: 500 }, quotes, jobs, payments: [], credits: [] }).candidate).toBeNull();
   });
+
+  it("matches an alternate Square-link recipient recorded in CRM activity", () => {
+    const alternateReceipt = { ...receipt, customerName: "Brenda Andrade", customerEmail: "andrade4law@gmail.com", amount: 520 };
+    const first5Quote = { ...quotes[0], id: "quote-first5", job_id: "job-first5", quote_total: 1040, deposit_required: 520 };
+    const result = matchSquarePaymentEmail({
+      receipt: alternateReceipt,
+      quotes: [first5Quote],
+      jobs: [{ id: "job-first5", customer_name: "First 5", email: "assistant@first5ventura.org" }],
+      payments: [{ quote_id: "quote-first5", payment_label: "Deposit", amount: 520 }],
+      credits: [],
+      paymentLinkEvents: [{
+        entity_id: "quote-first5",
+        action: "square_balance_link.send",
+        metadata: { recipient: "andrade4law@gmail.com", amount: 520 }
+      }]
+    });
+    expect(result.candidate).toMatchObject({ quoteId: "quote-first5", paymentType: "balance", customerEmail: "andrade4law@gmail.com" });
+  });
 });
 
 describe("squarePaymentEmailQuery", () => {
@@ -134,5 +153,16 @@ describe("Gmail Processed label", () => {
     await addGmailMessageLabel("token", "gmail-michael", "label-processed");
     expect(fetchMock.mock.calls[0][0]).toContain("messages/gmail-michael/modify");
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ addLabelIds: ["label-processed"] });
+  });
+
+  it("labels and archives a filed Square receipt", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "gmail-michael" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fileProcessedGmailMessage("token", "gmail-michael", "label-processed");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      addLabelIds: ["label-processed"],
+      removeLabelIds: ["INBOX"]
+    });
   });
 });
