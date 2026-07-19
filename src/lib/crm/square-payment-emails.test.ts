@@ -5,6 +5,7 @@ import {
   fileProcessedGmailMessage,
   matchSquarePaymentEmail,
   parseSquarePaymentEmail,
+  squarePaymentTelegramText,
   squarePaymentEmailQuery,
 } from "@/lib/crm/square-payment-emails";
 
@@ -120,6 +121,28 @@ describe("matchSquarePaymentEmail", () => {
 describe("squarePaymentEmailQuery", () => {
   it("targets only recent Square payment-link receipts", () => {
     expect(squarePaymentEmailQuery()).toBe('newer_than:14d from:noreply@messaging.squareup.com subject:"payment received from" -label:Processed');
+  });
+});
+
+describe("squarePaymentTelegramText", () => {
+  it.each([
+    ["deposit" as const, "✅ Square deposit processed", "Deposit"],
+    ["balance" as const, "✅ Square balance processed", "Balance"],
+  ])("formats a successful %s CRM payment notification", (paymentType, heading, label) => {
+    expect(squarePaymentTelegramText({
+      customerName: "Michael Lee",
+      quoteNumber: "805-0129",
+      paymentType,
+      amount: 552,
+      paidDate: "2026-07-18"
+    })).toBe([
+      heading,
+      "Customer: Michael Lee",
+      "Quote: 805-0129",
+      `Payment: ${label}`,
+      "Amount recorded: $552.00",
+      "Paid date: 2026-07-18"
+    ].join("\n"));
   });
 });
 

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { getBrokeredGmailAccessToken } from "@/lib/crm/installation-invoices";
 import { reconcileSquareQuotePayment } from "@/lib/crm/square-payments";
+import { sendTelegramMessage } from "@/lib/notify/telegram";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -95,6 +96,8 @@ export type SquarePaymentEmailRunResult = {
   ignored: number;
   errors: number;
   labeled: number;
+  telegramSent: number;
+  telegramErrors: number;
   results: Array<{
     gmailMessageId: string;
     customerName?: string;
@@ -118,6 +121,28 @@ function roundMoney(value: unknown) {
 
 function moneyMatches(left: unknown, right: unknown) {
   return Math.abs(roundMoney(left) - roundMoney(right)) < 0.01;
+}
+
+function formatPaymentMoney(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(roundMoney(value));
+}
+
+export function squarePaymentTelegramText(input: {
+  customerName: string;
+  quoteNumber: string | null;
+  paymentType: "deposit" | "balance";
+  amount: number;
+  paidDate: string;
+}) {
+  const paymentLabel = input.paymentType === "deposit" ? "Deposit" : "Balance";
+  return [
+    `✅ Square ${paymentLabel.toLowerCase()} processed`,
+    `Customer: ${input.customerName}`,
+    `Quote: ${input.quoteNumber || "Not provided"}`,
+    `Payment: ${paymentLabel}`,
+    `Amount recorded: ${formatPaymentMoney(input.amount)}`,
+    `Paid date: ${input.paidDate}`
+  ].join("\n");
 }
 
 function normalizedIdentity(value: string | null | undefined) {
@@ -419,6 +444,8 @@ export async function processSquarePaymentEmails(
     ignored: 0,
     errors: 0,
     labeled: 0,
+    telegramSent: 0,
+    telegramErrors: 0,
     results: [],
   };
 
@@ -519,6 +546,20 @@ export async function processSquarePaymentEmails(
           square_receipt_subject: receipt.subject,
         },
       });
+
+      if (reconciled.status === "recorded") {
+        const telegram = await sendTelegramMessage({
+          text: squarePaymentTelegramText({
+            customerName: match.candidate.customerName,
+            quoteNumber: match.candidate.quoteNumber,
+            paymentType: match.candidate.paymentType,
+            amount: receipt.amount,
+            paidDate: receipt.paidDate
+          })
+        });
+        if (telegram.sent) result.telegramSent += 1;
+        else if (telegram.error) result.telegramErrors += 1;
+      }
 
       await markProcessed(receipt.gmailMessageId);
 
