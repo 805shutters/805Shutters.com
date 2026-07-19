@@ -19,6 +19,11 @@ type GmailMessage = {
   payload?: GmailMessagePart;
 };
 
+type GmailLabel = {
+  id?: string;
+  name?: string;
+};
+
 type PaymentRow = {
   quote_id?: string | null;
   payment_label?: string | null;
@@ -83,6 +88,7 @@ export type SquarePaymentEmailRunResult = {
   review: number;
   ignored: number;
   errors: number;
+  labeled: number;
   results: Array<{
     gmailMessageId: string;
     customerName?: string;
@@ -96,6 +102,7 @@ export type SquarePaymentEmailRunResult = {
 
 const SQUARE_SENDER = "noreply@messaging.squareup.com";
 const DEFAULT_MAILBOX = "805shutters@gmail.com";
+const PROCESSED_LABEL = "Processed";
 const ACTIVE_PAYMENT_STATUSES = new Set(["sold", "approved", "ordered", "received", "installed", "invoiced"]);
 
 function roundMoney(value: unknown) {
@@ -282,12 +289,42 @@ function isEquivalentExistingPayment(receipt: SquarePaymentEmailReceipt, quoteId
   });
 }
 
-async function gmailFetch<T>(accessToken: string, path: string) {
+async function gmailFetch<T>(accessToken: string, path: string, init: RequestInit = {}) {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    Accept: "application/json",
+  };
+  if (init.body) headers["Content-Type"] = "application/json";
   const response = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/${path}`, {
-    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+    ...init,
+    headers,
   });
   if (!response.ok) throw new CrmAuthError(502, `Square payment Gmail request failed: ${response.status} ${await response.text()}`);
   return (await response.json()) as T;
+}
+
+export async function ensureGmailLabel(accessToken: string, labelName: string) {
+  const labels = await gmailFetch<{ labels?: GmailLabel[] }>(accessToken, "labels");
+  const existing = (labels.labels || []).find((label) => label.name?.toLowerCase() === labelName.toLowerCase());
+  if (existing?.id) return existing.id;
+
+  const created = await gmailFetch<GmailLabel>(accessToken, "labels", {
+    method: "POST",
+    body: JSON.stringify({
+      name: labelName,
+      labelListVisibility: "labelShow",
+      messageListVisibility: "show",
+    }),
+  });
+  if (!created.id) throw new CrmAuthError(502, `Gmail did not return an id for the ${labelName} label.`);
+  return created.id;
+}
+
+export async function addGmailMessageLabel(accessToken: string, messageId: string, labelId: string) {
+  await gmailFetch<Record<string, unknown>>(accessToken, `messages/${encodeURIComponent(messageId)}/modify`, {
+    method: "POST",
+    body: JSON.stringify({ addLabelIds: [labelId] }),
+  });
 }
 
 async function listMessages(accessToken: string, query: string, maxResults: number) {
@@ -307,7 +344,7 @@ function configuredMailbox() {
 }
 
 export function squarePaymentEmailQuery() {
-  return `newer_than:14d from:${SQUARE_SENDER} subject:"payment received from"`;
+  return `newer_than:14d from:${SQUARE_SENDER} subject:"payment received from" -label:${PROCESSED_LABEL}`;
 }
 
 export async function processSquarePaymentEmails(
@@ -317,9 +354,10 @@ export async function processSquarePaymentEmails(
   const mailbox = configuredMailbox();
   const accessToken = await getBrokeredGmailAccessToken(mailbox);
   if (!accessToken) throw new CrmAuthError(503, "Square payment email polling is missing Gmail broker access.");
+  const gmailAccessToken = accessToken;
 
   const query = squarePaymentEmailQuery();
-  const listed = await listMessages(accessToken, query, Math.min(Math.max(options.maxResults || 50, 1), 100));
+  const listed = await listMessages(gmailAccessToken, query, Math.min(Math.max(options.maxResults || 50, 1), 100));
   const result: SquarePaymentEmailRunResult = {
     mailbox,
     query,
@@ -329,6 +367,7 @@ export async function processSquarePaymentEmails(
     review: 0,
     ignored: 0,
     errors: 0,
+    labeled: 0,
     results: [],
   };
 
@@ -345,16 +384,25 @@ export async function processSquarePaymentEmails(
   const jobs = (jobsResult.data || []) as JobRow[];
   const payments = (paymentsResult.data || []) as PaymentRow[];
   const credits = (creditsResult.data || []) as CreditRow[];
+  let processedLabelId: string | null = null;
+
+  async function markProcessed(messageId: string) {
+    const labelId = processedLabelId || await ensureGmailLabel(gmailAccessToken, PROCESSED_LABEL);
+    processedLabelId = labelId;
+    await addGmailMessageLabel(gmailAccessToken, messageId, labelId);
+    result.labeled += 1;
+  }
 
   for (const listedMessage of listed) {
     try {
       if (payments.some((payment) => payment.external_source === "square_email" && payment.external_id === listedMessage.id)) {
+        await markProcessed(listedMessage.id);
         result.duplicates += 1;
         result.results.push({ gmailMessageId: listedMessage.id, status: "duplicate", reason: "Gmail receipt was already recorded." });
         continue;
       }
 
-      const message = await getMessage(accessToken, listedMessage.id);
+      const message = await getMessage(gmailAccessToken, listedMessage.id);
       const receipt = parseSquarePaymentEmail(message);
       if (!receipt) {
         result.ignored += 1;
@@ -376,6 +424,7 @@ export async function processSquarePaymentEmails(
       }
 
       if (isEquivalentExistingPayment(receipt, match.candidate.quoteId, payments)) {
+        await markProcessed(receipt.gmailMessageId);
         result.duplicates += 1;
         result.results.push({
           gmailMessageId: receipt.gmailMessageId,
@@ -409,6 +458,8 @@ export async function processSquarePaymentEmails(
           square_receipt_subject: receipt.subject,
         },
       });
+
+      await markProcessed(receipt.gmailMessageId);
 
       if (reconciled.status === "recorded") {
         result.recorded += 1;

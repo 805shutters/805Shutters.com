@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { matchSquarePaymentEmail, parseSquarePaymentEmail, squarePaymentEmailQuery } from "@/lib/crm/square-payment-emails";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  addGmailMessageLabel,
+  ensureGmailLabel,
+  matchSquarePaymentEmail,
+  parseSquarePaymentEmail,
+  squarePaymentEmailQuery,
+} from "@/lib/crm/square-payment-emails";
 
 function encoded(value: string) {
   return Buffer.from(value).toString("base64url");
@@ -94,6 +100,39 @@ describe("matchSquarePaymentEmail", () => {
 
 describe("squarePaymentEmailQuery", () => {
   it("targets only recent Square payment-link receipts", () => {
-    expect(squarePaymentEmailQuery()).toBe('newer_than:14d from:noreply@messaging.squareup.com subject:"payment received from"');
+    expect(squarePaymentEmailQuery()).toBe('newer_than:14d from:noreply@messaging.squareup.com subject:"payment received from" -label:Processed');
+  });
+});
+
+describe("Gmail Processed label", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("reuses an existing Processed label", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      labels: [{ id: "label-processed", name: "Processed" }],
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(ensureGmailLabel("token", "Processed")).resolves.toBe("label-processed");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates the Processed label when it is missing", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ labels: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "label-new", name: "Processed" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(ensureGmailLabel("token", "Processed")).resolves.toBe("label-new");
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({ name: "Processed" });
+  });
+
+  it("applies the label to the processed Gmail message", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "gmail-michael" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await addGmailMessageLabel("token", "gmail-michael", "label-processed");
+    expect(fetchMock.mock.calls[0][0]).toContain("messages/gmail-michael/modify");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({ addLabelIds: ["label-processed"] });
   });
 });
