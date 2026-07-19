@@ -907,6 +907,22 @@ export function QuoteBuilder() {
     }
   };
 
+  const handleDirectMeasurements = (
+    width: { whole: number; fraction: string },
+    height: { whole: number; fraction: string },
+  ) => {
+    if (!measuringItemId) return;
+    updateLineItem.mutate({
+      id: measuringItemId,
+      width_whole: width.whole,
+      width_fraction: width.fraction,
+      height_whole: height.whole,
+      height_fraction: height.fraction,
+    });
+    setMeasuringItemId(null);
+    resetMeasurement();
+  };
+
   const handleCopyAll = (sourceId: string) => {
     const sourceItem = lineItems.find((item) => item.id === sourceId);
     if (!sourceItem) return;
@@ -1491,6 +1507,7 @@ export function QuoteBuilder() {
         onWidthFraction={setWidthFraction}
         onHeightWhole={setHeightWhole}
         onHeightFraction={handleHeightFraction}
+        onDirectMeasurements={handleDirectMeasurements}
         pendingWidth={pendingWidth}
         pendingHeight={pendingHeight}
       />
