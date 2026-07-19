@@ -22,7 +22,6 @@ function quoteWithLegacyDetails(): PublicQuote {
         id: "line-1",
         lineItemId: "line-1",
         room: "Kitchen",
-        dimensions: '48" W × 64" H',
         productName: "Roller Shades",
         styleName: "",
         options: ["Fabric: Callie - Linen", "Lift System: Cordless"],
@@ -82,5 +81,6 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Lift System: Cordless");
     expect(html).toContain("Mount Type: Inside Mount");
     expect(html).toContain("Valance: Cassette");
+    expect(html).not.toContain('48&quot; W');
   });
 });

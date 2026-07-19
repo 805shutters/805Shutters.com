@@ -65,7 +65,6 @@ describe("buildQuoteEmail", () => {
       lines: [
         {
           room: "Living Room",
-          dimensions: '72" W x 48" H',
           productName: "Honeycomb Shades",
           styleName: "Cordless",
           options: ["Inside mount"],
@@ -86,6 +85,7 @@ describe("buildQuoteEmail", () => {
     expect(lineItemTable).not.toContain("<img");
     expect(text).toContain("Contract items:");
     expect(text).toContain("Living Room - Honeycomb Shades - Cordless");
+    expect(text).not.toContain('72" W');
   });
 
   it("renders legacy/source total deltas as a generic contract adjustment", () => {

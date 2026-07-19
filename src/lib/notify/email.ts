@@ -76,7 +76,6 @@ function applyEmailLogoContrast(html: string): string {
 
 export type QuoteEmailLine = {
   room: string;
-  dimensions?: string;
   productName: string;
   styleName?: string;
   options?: string[];
@@ -397,13 +396,12 @@ export function buildSignedQuoteShopEmail(customerName: string, url: string, tot
 }
 
 function quoteLinesTable(lines: QuoteEmailLine[]): string {
-  const rows = lines.map((line, index) => {
+  const rows = lines.map((line) => {
     const product = line.priceReady === false ? "Pricing in progress" : line.productName || "Window treatment";
     const style = line.styleName ? ` - ${line.styleName}` : "";
-    const details = [line.dimensions, ...(line.options ?? [])].filter(Boolean).join(" | ");
+    const details = (line.options ?? []).filter(Boolean).join(" | ");
     const price = line.priceReady === false ? "-" : money(line.lineTotal);
     return `<tr>
-      <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">${index + 1}</td>
       <td style="padding:12px 8px;border-bottom:1px solid #e5e5e0;vertical-align:top;font-size:14px;color:#0b0b0b">
         <strong>${escapeHtml(line.room || "Window")}</strong><br>
         <span style="color:#0b0b0b">${escapeHtml(product)}${escapeHtml(style)}</span>
@@ -417,7 +415,6 @@ function quoteLinesTable(lines: QuoteEmailLine[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 20px 0">
     <thead>
       <tr>
-        <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">#</th>
         <th align="left" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Item</th>
         <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Qty</th>
         <th align="right" style="padding:0 8px 8px 8px;border-bottom:1px solid #0b0b0b;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#0b0b0b;font-weight:700">Total</th>
@@ -460,11 +457,11 @@ function summaryRow(label: string, value: number): string {
   return `<tr><td style="padding:4px 0;font-size:14px;color:#0b0b0b">${escapeHtml(label)}</td><td align="right" style="padding:4px 0;font-size:14px;color:#0b0b0b">${money(value)}</td></tr>`;
 }
 
-function textLine(line: QuoteEmailLine, index: number): string {
+function textLine(line: QuoteEmailLine, _index: number): string {
   const product = line.priceReady === false ? "Pricing in progress" : [line.productName, line.styleName].filter(Boolean).join(" - ");
-  const details = [line.dimensions, ...(line.options ?? [])].filter(Boolean).join("; ");
+  const details = (line.options ?? []).filter(Boolean).join("; ");
   const total = line.priceReady === false ? "Pricing in progress" : money(line.lineTotal);
-  return `${index + 1}. ${line.room || "Window"} - ${product}${details ? ` (${details})` : ""} - Qty ${line.quantity} - ${total}`;
+  return `${line.room || "Window"} - ${product}${details ? ` (${details})` : ""} - Qty ${line.quantity} - ${total}`;
 }
 
 function money(n: number): string {

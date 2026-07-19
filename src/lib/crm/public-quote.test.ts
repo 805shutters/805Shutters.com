@@ -15,6 +15,7 @@ import {
   formatDimensions,
   publicQuoteCustomerDetails,
   expandPublicQuoteLine,
+  labelDuplicatePublicQuoteRooms,
   projectLine,
   computeSelectionMoney,
   type PublicQuote,
@@ -351,6 +352,16 @@ describe("projectLine (per-line discount on the contract)", () => {
     expect(rows.map((row) => row.lineItemId)).toEqual(["line-1", "line-1", "line-1"]);
     expect(rows.map((row) => row.quantity)).toEqual([1, 1, 1]);
     expect(rows.reduce((sum, row) => sum + row.lineTotal, 0)).toBe(636);
+  });
+
+  it("numbers only repeated room labels and does not expose dimensions", () => {
+    const d = design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell", unit_price: 212 });
+    const livingRoom = projectLine(lineItem({ id: "line-1", room: "Living Room", designs: [d], selected_design_id: d.id }), false);
+    const kitchen = projectLine(lineItem({ id: "line-2", room: "Kitchen", designs: [d], selected_design_id: d.id }), false);
+    const rows = labelDuplicatePublicQuoteRooms([livingRoom, kitchen, { ...livingRoom, id: "line-3", lineItemId: "line-3" }]);
+
+    expect(rows.map((row) => row.room)).toEqual(["Living Room 1", "Kitchen", "Living Room 2"]);
+    expect(rows.every((row) => !("dimensions" in row))).toBe(true);
   });
 });
 

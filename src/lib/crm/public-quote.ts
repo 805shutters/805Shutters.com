@@ -47,7 +47,6 @@ export type PublicQuoteLine = {
   id: string;
   lineItemId: string;
   room: string;
-  dimensions: string;
   productName: string;
   styleName: string;
   options: string[];
@@ -132,7 +131,6 @@ export type SignedContractSnapshot = {
   lines: Array<{
     lineItemId: string;
     room: string;
-    dimensions: string;
     productName: string;
     styleName: string;
     options: string[];
@@ -170,7 +168,6 @@ export function buildSignedContractSnapshot(
     lines: pub.lines.map((line) => ({
       lineItemId: line.lineItemId,
       room: line.room,
-      dimensions: line.dimensions,
       productName: line.productName,
       styleName: line.styleName,
       options: [...line.options],
@@ -377,7 +374,6 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       id: li.id,
       lineItemId: li.id,
       room: li.room || "Window",
-      dimensions: dimensions(li),
       productName: li.notes || first?.productName || "-",
       styleName: "",
       options: legacyLineOptions(designOptions),
@@ -397,7 +393,6 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
       id: li.id,
       lineItemId: li.id,
       room: li.room || "Window",
-      dimensions: dimensions(li),
       productName: "-",
       styleName: "",
       options: [],
@@ -418,7 +413,6 @@ export function projectLine(li: CrmQuoteLineItem, legacyMts: boolean): PublicQuo
     id: li.id,
     lineItemId: li.id,
     room: li.room || "Window",
-    dimensions: dimensions(li),
     productName,
     styleName,
     options,
@@ -457,6 +451,23 @@ export function expandPublicQuoteLine(line: PublicQuoteLine): PublicQuoteLine[] 
   }));
 }
 
+/** Keep customer-facing rows identifiable without exposing measurements. */
+export function labelDuplicatePublicQuoteRooms(lines: PublicQuoteLine[]): PublicQuoteLine[] {
+  const keys = lines.map((line) => (line.room.trim() || "Window").toLocaleLowerCase());
+  const totals = new Map<string, number>();
+  keys.forEach((key) => totals.set(key, (totals.get(key) ?? 0) + 1));
+  const seen = new Map<string, number>();
+
+  return lines.map((line, index) => {
+    const key = keys[index];
+    const room = line.room.trim() || "Window";
+    if ((totals.get(key) ?? 0) < 2) return { ...line, room };
+    const occurrence = (seen.get(key) ?? 0) + 1;
+    seen.set(key, occurrence);
+    return { ...line, room: `${room} ${occurrence}` };
+  });
+}
+
 async function fetchByToken(supabase: CrmSupabaseClient, token: string): Promise<CrmQuote | null> {
   if (!token) return null;
   const { data } = await supabase.from("crm_quotes").select("*").eq("share_token", token).maybeSingle();
@@ -478,9 +489,9 @@ export async function loadPublicQuoteByToken(
     .map((li) => ({ ...li, designs: li.designs ?? [] }))
     .sort((a, b) => a.sort_order - b.sort_order);
   const legacyMts = isLegacyMtsQuote(quote);
-  const lines = lineItems.flatMap((lineItem) =>
+  const lines = labelDuplicatePublicQuoteRooms(lineItems.flatMap((lineItem) =>
     expandPublicQuoteLine(projectLine(lineItem, legacyMts))
-  );
+  ));
   const hasOnyxShutters =
     quoteHasOnyxManufacturer(quote) ||
     lineItems.some((lineItem) => lineItemHasOnyxShutters(lineItem, legacyMts));
