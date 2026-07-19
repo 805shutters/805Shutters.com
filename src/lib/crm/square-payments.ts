@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { CrmBookkeepingPaymentType, CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
+import { CrmBookkeepingPaymentType, CrmQuoteStatus } from "@/lib/crm/types";
 import { SquarePaymentFacts } from "@/lib/finance/square";
+import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -132,20 +133,6 @@ async function markQuotePaidIfCovered(
     if (error) throw new Error(`Square payment recorded, but quote could not be marked paid: ${error.message}`);
   }
 
-  if (quote.job_id) {
-    const { data: job, error: readError } = await supabase
-      .from("crm_jobs")
-      .select("status")
-      .eq("id", quote.job_id)
-      .maybeSingle();
-    if (readError) throw new Error(`Square payment recorded, but job status could not be checked: ${readError.message}`);
-    const status = (job as { status?: CrmJobStatus } | null)?.status;
-    if (status && status !== "closed" && status !== "lost") {
-      const { error } = await supabase.from("crm_jobs").update({ status: "closed" }).eq("id", quote.job_id);
-      if (error) throw new Error(`Square payment recorded, but job could not be marked closed: ${error.message}`);
-    }
-  }
-
   return true;
 }
 
@@ -189,6 +176,12 @@ export async function reconcileSquareQuotePayment(
   const externalSource = options.externalSource || "square";
   const externalId = options.externalId || facts.squarePaymentId;
   if (isDuplicateSquarePayment(payments, facts.squarePaymentId, externalSource, externalId)) {
+    await maybeSendCustomerCloseoutForQuote(
+      supabase,
+      quote.id,
+      { email: options.createdBy || "square-webhook" },
+      `${options.createdBy || "square-webhook"}-retry`
+    );
     return {
       status: "duplicate",
       quoteId: facts.quoteId,
@@ -222,6 +215,14 @@ export async function reconcileSquareQuotePayment(
   if (error) throw new Error(`Square payment could not be recorded: ${error.message}`);
 
   const markedPaid = await markQuotePaidIfCovered(supabase, quote, payments, amount);
+  if (markedPaid) {
+    await maybeSendCustomerCloseoutForQuote(
+      supabase,
+      quote.id,
+      { email: options.createdBy || "square-webhook" },
+      options.createdBy || "square-webhook"
+    );
+  }
   return {
     status: "recorded",
     quoteId: facts.quoteId,

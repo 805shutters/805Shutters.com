@@ -424,6 +424,13 @@ export async function processSquarePaymentEmails(
       }
 
       if (isEquivalentExistingPayment(receipt, match.candidate.quoteId, payments)) {
+        const { maybeSendCustomerCloseoutForQuote } = await import("@/lib/crm/customer-closeout");
+        await maybeSendCustomerCloseoutForQuote(
+          supabase,
+          match.candidate.quoteId,
+          { email: "square-payment-email-poller" },
+          "square-payment-email-poller-retry"
+        );
         await markProcessed(receipt.gmailMessageId);
         result.duplicates += 1;
         result.results.push({

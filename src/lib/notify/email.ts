@@ -29,6 +29,7 @@ export async function sendEmail(input: {
   html: string;
   text: string;
   attachments?: EmailAttachment[];
+  idempotencyKey?: string;
 }): Promise<EmailResult> {
   const to = (input.to || "").trim();
   if (!to) return { sent: false, skipped: "no recipient email" };
@@ -40,6 +41,7 @@ export async function sendEmail(input: {
       headers: {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         "Content-Type": "application/json",
+        ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: resendFromAddress(),

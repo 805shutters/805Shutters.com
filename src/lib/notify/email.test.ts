@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { buildPaymentLinkEmail, buildQuoteEmail, buildSignedQuoteShopEmail, buildSquareOrderPaymentEmail, isResendConfigured, sendEmail } from "./email";
 
 describe("buildSquareOrderPaymentEmail", () => {
@@ -213,6 +213,27 @@ describe("sendEmail guards (never throws, no-ops without config)", () => {
   it("uses the default quote sender when only the Resend API key is configured", () => {
     process.env.RESEND_API_KEY = "test-key";
     expect(isResendConfigured()).toBe(true);
+  });
+  it("passes a deterministic idempotency key to Resend", async () => {
+    process.env.RESEND_API_KEY = "test-key";
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "email-1" }) });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const result = await sendEmail({
+        to: "customer@example.com",
+        subject: "Paid in full",
+        html: "<p>Thank you</p>",
+        text: "Thank you",
+        idempotencyKey: "customer-closeout-quote-1"
+      });
+      expect(result).toEqual({ sent: true, id: "email-1" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://api.resend.com/emails",
+        expect.objectContaining({ headers: expect.objectContaining({ "Idempotency-Key": "customer-closeout-quote-1" }) })
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

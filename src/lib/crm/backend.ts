@@ -22,6 +22,7 @@ import {
   sendPartnerPaymentReceiptEmail
 } from "@/lib/crm/partner-payment-receipts";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
 import { hydrateLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
 import { isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
@@ -2759,6 +2760,10 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
     }
   });
 
+  if (paymentRows.length) {
+    await maybeSendCustomerCloseoutForQuote(supabase, data.id, actor, "quote_create_payment");
+  }
+
   return data as CrmQuote;
 }
 
@@ -3018,6 +3023,10 @@ export async function updateCrmQuote(
         ? { balanceAdjustment, paymentTargetAdjustments }
         : undefined
   });
+
+  if (hasPaymentPatch || hasPaymentTargetAdjustment || hasBalanceAdjustment) {
+    await maybeSendCustomerCloseoutForQuote(supabase, id, actor, "quote_ledger_update");
+  }
 
   return quote as CrmQuote;
 }
@@ -3383,6 +3392,13 @@ export async function updateCrmBookkeepingEntry(
     await closeBookkeepingJobAfterBalancePaid(supabase, String(entry.job_id), actor);
   }
 
+  if (
+    entry.quote_id &&
+    (paymentAmount > 0 || markBalancePaid || hasPaymentTargetAdjustment || hasBalanceAdjustment)
+  ) {
+    await maybeSendCustomerCloseoutForQuote(supabase, String(entry.quote_id), actor, "bookkeeping_ledger_update");
+  }
+
   const totalAmountChanged =
     hasPayloadKey(payload, "total_amount") &&
     Math.abs(toMoney(entry.total_amount) - toMoney(existing.total_amount)) >= 0.01;
@@ -3483,6 +3499,9 @@ export async function updateCrmBookkeepingPayment(
     before: existing,
     after: data
   });
+
+  const quoteId = optionalText((data as CrmBookkeepingPayment).quote_id || (existing as CrmBookkeepingPayment).quote_id);
+  if (quoteId) await maybeSendCustomerCloseoutForQuote(supabase, quoteId, actor, "payment_row_update");
 
   return data as CrmBookkeepingPayment;
 }
