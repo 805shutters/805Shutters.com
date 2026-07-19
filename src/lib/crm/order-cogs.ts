@@ -3,6 +3,7 @@ import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
 import { getBrokeredGmailAccessToken } from "@/lib/crm/installation-invoices";
+import { sendTelegramMessage } from "@/lib/notify/telegram";
 import { advanceJobStatus, statusRank } from "@/lib/quote/lifecycle";
 import { CrmJobStatus, CrmQuoteStatus, CrmOrderCogsEmail, CrmOrderCogsEmailStatus } from "@/lib/crm/types";
 
@@ -108,6 +109,8 @@ export type ProcessOrderCogsResult = {
   errors: number;
   archived: number;
   archiveErrors: number;
+  telegramSent: number;
+  telegramErrors: number;
   /** Emails whose job was actually marked ordered + COGS written. */
   applied?: number;
   /** Emails whose audit-log record could not be saved (core job update still applied). */
@@ -526,6 +529,27 @@ function addMoney(left: number, right: number) {
   return roundMoney((Number(left) || 0) + (Number(right) || 0));
 }
 
+function formatCogsMoney(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(roundMoney(value));
+}
+
+export function orderCogsTelegramText(input: {
+  customerName: string;
+  manufacturer: string | null | undefined;
+  orderNumber: string | null | undefined;
+  addedAmount: number;
+  totalCogs: number;
+}) {
+  return [
+    "✅ COGS processed",
+    `Customer: ${input.customerName}`,
+    `Manufacturer: ${input.manufacturer || "Unknown"}`,
+    `Order: ${input.orderNumber || "Not provided"}`,
+    `Added to COGS: ${formatCogsMoney(input.addedAmount)}`,
+    `New total COGS: ${formatCogsMoney(input.totalCogs)}`
+  ].join("\n");
+}
+
 function mergeOrderRefs(existing: string | null, next: string | null) {
   const refs = new Set(
     (existing || "")
@@ -923,7 +947,7 @@ async function applyOrderCogs(
   extraction: ExtractedOrderCogs,
   message: GmailMessage,
   actor: CrmActor
-): Promise<{ cogsApplied: boolean }> {
+): Promise<{ cogsApplied: boolean; previousCogsAmount: number; nextCogsAmount: number }> {
   const amount = extraction.orderAmount;
   if (!amount) throw new CrmAuthError(400, "Order COGS amount is required.");
   const previousCogsAmount = roundMoney(candidate.cogsAmount);
@@ -955,7 +979,7 @@ async function applyOrderCogs(
     if (error) throw new CrmAuthError(502, "Order email matched, but COGS could not be updated.");
     await markCandidateOrdered(supabase, candidate, actor);
     rememberAppliedCogs();
-    return { cogsApplied: true };
+    return { cogsApplied: true, previousCogsAmount, nextCogsAmount };
   }
 
   if (candidate.quoteId) {
@@ -990,13 +1014,13 @@ async function applyOrderCogs(
     if (error) throw new CrmAuthError(502, "Order email matched, but quote bookkeeping COGS could not be saved.");
     await markCandidateOrdered(supabase, candidate, actor);
     rememberAppliedCogs();
-    return { cogsApplied: true };
+    return { cogsApplied: true, previousCogsAmount, nextCogsAmount };
   }
 
   // Matched a bare sold job with no ledger target: still mark it ordered, but the COGS
   // has nowhere to land — surface it for manual entry instead of dropping the email.
   await markCandidateOrdered(supabase, candidate, actor);
-  return { cogsApplied: false };
+  return { cogsApplied: false, previousCogsAmount, nextCogsAmount: previousCogsAmount };
 }
 
 async function alreadyAppliedOrderCogsRecord(supabase: CrmSupabaseClient, gmailMessageId: string) {
@@ -1091,6 +1115,8 @@ export async function processOrderCogsInbox(
     errors: 0,
     archived: 0,
     archiveErrors: 0,
+    telegramSent: 0,
+    telegramErrors: 0,
     emails: records
   };
 
@@ -1129,13 +1155,29 @@ export async function processOrderCogsInbox(
       // match has no ledger row (a bare sold job), the job is still marked ordered but
       // the COGS lands in "needs_review" for manual entry rather than being lost.
       let cogsApplied = false;
+      let appliedTotalCogs: number | null = null;
       const duplicateApplied = Boolean(
         review.canApply && match.candidate && candidateAlreadyApplied(match.candidate, extraction, message.id)
       );
       if (duplicateApplied) {
         cogsApplied = false;
       } else if (review.canApply && match.candidate) {
-        ({ cogsApplied } = await applyOrderCogs(supabase, match.candidate, extraction, message, actor));
+        const applied = await applyOrderCogs(supabase, match.candidate, extraction, message, actor);
+        cogsApplied = applied.cogsApplied;
+        appliedTotalCogs = applied.cogsApplied ? applied.nextCogsAmount : null;
+      }
+      if (cogsApplied && match.candidate && extraction.orderAmount && appliedTotalCogs !== null) {
+        const telegram = await sendTelegramMessage({
+          text: orderCogsTelegramText({
+            customerName: match.candidate.customerName,
+            manufacturer: extraction.manufacturer,
+            orderNumber: extraction.orderNumber,
+            addedAmount: extraction.orderAmount,
+            totalCogs: appliedTotalCogs
+          })
+        });
+        if (telegram.sent) result.telegramSent += 1;
+        else if (telegram.error) result.telegramErrors += 1;
       }
       const status = duplicateApplied ? "skipped" : review.canApply && !cogsApplied ? "needs_review" : review.status;
       const reason = duplicateApplied

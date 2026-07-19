@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -256,6 +256,25 @@ describe("extractOnyxOrderCogs", () => {
     expect(result.orderNumber).toBe("52607181014");
     expect(result.orderAmount).toBe(1646.25);
     expect(result.manufacturer).toBe("Onyx");
+  });
+});
+
+describe("orderCogsTelegramText", () => {
+  it("reports the exact extracted amount and resulting CRM COGS total", () => {
+    expect(orderCogsTelegramText({
+      customerName: "Linda Brown",
+      manufacturer: "Onyx",
+      orderNumber: "52607181014",
+      addedAmount: 1646.25,
+      totalCogs: 2671.25
+    })).toBe([
+      "✅ COGS processed",
+      "Customer: Linda Brown",
+      "Manufacturer: Onyx",
+      "Order: 52607181014",
+      "Added to COGS: $1,646.25",
+      "New total COGS: $2,671.25"
+    ].join("\n"));
   });
 });
 
