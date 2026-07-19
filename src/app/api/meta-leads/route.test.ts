@@ -1,6 +1,6 @@
 import { createHmac } from "crypto";
 import { describe, expect, it } from "vitest";
-import { mapMetaFieldData, verifyMetaSignature } from "./route";
+import { mapMetaFieldData, verifyMetaSignature } from "@/lib/meta-leads";
 
 describe("mapMetaFieldData", () => {
   it("maps standard Instant Form fields", () => {
