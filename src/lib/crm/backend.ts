@@ -3190,12 +3190,14 @@ export async function createCrmBookkeepingEntry(
   const source = payload.source === "legacy_sheet" ? "legacy_sheet" : "manual";
   const depositAmount = toMoney(payload.deposit_paid);
   const balanceAmount = toMoney(payload.balance_paid);
+  const additionalPaymentAmount = toMoney(payload.payment_amount);
   const now = new Date().toISOString();
 
   const { data: entry, error } = await supabase
     .from("crm_quote_bookkeeping_entries")
     .insert({
       source,
+      job_id: optionalText(payload.job_id),
       customer_name: requiredText(payload.customer_name, "Customer name is required for a bookkeeping row."),
       sold_date: payload.sold_date || null,
       total_amount: toMoney(payload.total_amount),
@@ -3219,7 +3221,10 @@ export async function createCrmBookkeepingEntry(
       manufacturer_document_url: optionalText(payload.manufacturer_document_url),
       notes: optionalText(payload.notes),
       imported_sheet_row: payload.imported_sheet_row ? Number(payload.imported_sheet_row) : null,
-      meta: { createdBy: actor.email }
+      meta: {
+        createdBy: actor.email,
+        ...(hasPayloadKey(payload, "deposit_required") ? { deposit_required: toMoney(payload.deposit_required) } : {})
+      }
     })
     .select("*")
     .single();
@@ -3241,7 +3246,8 @@ export async function createCrmBookkeepingEntry(
 
   const paymentRows = [
     { label: "Deposit", amount: depositAmount },
-    { label: "Balance payment", amount: balanceAmount }
+    { label: "Balance payment", amount: balanceAmount },
+    { label: optionalText(payload.payment_label) || "Payment", amount: additionalPaymentAmount }
   ].filter((payment) => payment.amount > 0);
 
   if (paymentRows.length) {

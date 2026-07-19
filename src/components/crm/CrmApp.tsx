@@ -1511,7 +1511,7 @@ export function CrmApp({
     const row = entry.row;
     const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
 
-    if ((patch.job && !jobId) || (patch.row && !row)) {
+    if ((patch.job && !jobId) || (patch.row && !row && !jobId)) {
       setMessage("This card is a customer snapshot. Open the file to edit the source record.");
       return false;
     }
@@ -1527,16 +1527,38 @@ export function CrmApp({
         });
       }
 
-      if (patch.row && row) {
-        if (row.source === "crm_quote" && row.quoteId) {
+      if (patch.row) {
+        if (row?.source === "crm_quote" && row.quoteId) {
           await crmFetch(session, `/api/crm/quotes/${row.quoteId}`, {
             method: "PATCH",
             body: JSON.stringify(patch.row)
           });
-        } else {
+        } else if (row) {
           await crmFetch(session, `/api/crm/bookkeeping/${row.id}`, {
             method: "PATCH",
             body: JSON.stringify(patch.row)
+          });
+        } else if (jobId) {
+          const job = entry.job;
+          const depositPaid = Number(patch.row.deposit_paid_target || 0);
+          const balancePaid = Number(patch.row.balance_paid_target || 0);
+          await crmFetch(session, "/api/crm/bookkeeping", {
+            method: "POST",
+            body: JSON.stringify({
+              job_id: jobId,
+              customer_name: job?.customer_name || entry.customerName || entry.name,
+              sold_date: todayInputValue(),
+              total_amount: Number(job?.quote_total || job?.estimated_total || 0),
+              payment_type: patch.row.payment_type || "other",
+              cogs_amount: Number(patch.row.cogs_amount || patch.row.materials_cost || 0),
+              deposit_required: Number(patch.row.deposit_required || 0),
+              deposit_paid: depositPaid,
+              balance_paid: balancePaid,
+              payment_amount: Number(patch.row.payment_amount || 0),
+              payment_label: patch.row.payment_label,
+              paid_at: patch.row.paid_at,
+              sales_owner: job?.sales_owner
+            })
           });
         }
       }
@@ -6655,10 +6677,12 @@ function DrillDetailCard({
   const documentsAndNotesCount = documents.length + notes.length;
   const lineItemLabel = (count: number) => `${count} line item${count === 1 ? "" : "s"}`;
   const customerName = job?.customer_name || row?.customerName || file?.customerName || entry.customerName;
+  const fallbackTotal = Number(job?.quote_total || job?.estimated_total || 0);
+  const fallbackDepositDue = roundCurrency(fallbackTotal / 2);
   const saveJob = (patch: Record<string, unknown>, message: string) => onSaveField(entry, { job: patch, message });
   const saveRow = (patch: Record<string, unknown>, message: string) => {
-    if (!row) return Promise.resolve(false);
-    const rowPatch = row.source === "crm_quote" && row.quoteId ? { quote_total: row.total, ...patch } : patch;
+    if (!row && !canEditJob) return Promise.resolve(false);
+    const rowPatch = row?.source === "crm_quote" && row.quoteId ? { quote_total: row.total, ...patch } : patch;
     return onSaveField(entry, { row: rowPatch, message });
   };
   const moneyEditorValue = (value: number | null | undefined) => (value ? String(value) : "");
@@ -6866,29 +6890,29 @@ function DrillDetailCard({
           onSave: (value) => saveJob({ estimated_total: moneyPatch(value) }, "Total updated.")
         }
       : undefined;
-  const paymentEditor: DrillInlineEditor | undefined = row
+  const paymentEditor: DrillInlineEditor | undefined = row || canEditJob
     ? {
         type: "select",
-        value: row.paymentType || "other",
+        value: row?.paymentType || "other",
         options: paymentTypes.map((item) => ({ value: item.value, label: item.label })),
         disabled: busy,
         ariaLabel: "Edit payment type",
         onSave: (value) => saveRow({ payment_type: value }, "Payment type updated.")
       }
     : undefined;
-  const balanceEditor: DrillInlineEditor | undefined = row
+  const balanceEditor: DrillInlineEditor | undefined = row || canEditJob
     ? {
         type: "number",
-        value: moneyEditorValue(row.balance),
+        value: moneyEditorValue(row?.balance ?? fallbackTotal),
         disabled: busy,
         ariaLabel: "Edit balance due",
         onSave: (value) => saveRow({ balance_due_target: moneyPatch(value) }, "Balance updated.")
       }
     : undefined;
-  const depositEditor: DrillDepositEditor | undefined = row
+  const depositEditor: DrillDepositEditor | undefined = row || canEditJob
     ? {
-        depositPaidValue: moneyEditorValue(row.depositPaid),
-        depositDueValue: moneyEditorValue(row.depositDue),
+        depositPaidValue: moneyEditorValue(row?.depositPaid ?? 0),
+        depositDueValue: moneyEditorValue(row?.depositDue ?? fallbackDepositDue),
         disabled: busy,
         onSave: ({ depositPaid, depositDue }) =>
           saveRow(
@@ -6900,22 +6924,22 @@ function DrillDetailCard({
           )
       }
     : undefined;
-  const balancePaidEditor: DrillInlineEditor | undefined = row
+  const balancePaidEditor: DrillInlineEditor | undefined = row || canEditJob
     ? {
         type: "number",
-        value: moneyEditorValue(row.balancePaid),
+        value: moneyEditorValue(row?.balancePaid ?? 0),
         disabled: busy,
         ariaLabel: "Edit balance paid",
         onSave: (value) => saveRow({ balance_paid_target: moneyPatch(value) }, "Balance paid updated.")
       }
     : undefined;
-  const cogsEditor: DrillInlineEditor | undefined = row
+  const cogsEditor: DrillInlineEditor | undefined = row || canEditJob
     ? {
         type: "number",
-        value: moneyEditorValue(row.cogs),
+        value: moneyEditorValue(row?.cogs ?? 0),
         disabled: busy,
         ariaLabel: "Edit COGS",
-        onSave: (value) => saveRow(row.source === "crm_quote" ? { materials_cost: moneyPatch(value) } : { cogs_amount: moneyPatch(value) }, "COGS updated.")
+        onSave: (value) => saveRow(row?.source === "crm_quote" ? { materials_cost: moneyPatch(value) } : { cogs_amount: moneyPatch(value) }, "COGS updated.")
       }
     : undefined;
   const manufacturerEditor: DrillInlineEditor | undefined = row
@@ -7420,15 +7444,19 @@ function DrillDetailCard({
               <DrillFact label="Balance" value={toLedgerCurrency(row?.balance ?? file?.openBalance)} tone={(row?.balance ?? file?.openBalance ?? 0) > 0 ? "warn" : "good"} editor={balanceEditor} />
               <DrillFact
                 label="Deposit"
-                value={row ? `${ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType)} / ${toLedgerCurrency(row.depositDue)}` : "No ledger row"}
+                value={
+                  row
+                    ? `${ledgerCurrencyWithPaymentType(row.depositPaid, row.depositPaymentType)} / ${toLedgerCurrency(row.depositDue)}`
+                    : `${toLedgerCurrency(0)} / ${toLedgerCurrency(fallbackDepositDue)}`
+                }
                 tone={depositMissingHighlight ? "warn" : undefined}
                 depositEditor={depositEditor}
               />
-              <DrillFact label="Balance Paid" value={row ? ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType) : "No ledger row"} tone={balanceMissingHighlight ? "warn" : undefined} editor={balancePaidEditor} />
+              <DrillFact label="Balance Paid" value={row ? ledgerCurrencyWithPaymentType(row.balancePaid, row.balancePaymentType) : toLedgerCurrency(0)} tone={balanceMissingHighlight ? "warn" : undefined} editor={balancePaidEditor} />
               <DrillFact label="Payment" value={row?.paymentType ? formatPaymentType(row.paymentType) : "Not recorded"} editor={paymentEditor} />
               <DrillFact
                 label="COGS"
-                value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "No COGS row"}
+                value={row ? (row.cogs > 0 ? toLedgerCurrency(row.cogs) : "Missing") : "Missing"}
                 tone={cogsMissingHighlight ? "warn" : undefined}
                 editor={cogsEditor}
               />
