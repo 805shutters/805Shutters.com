@@ -64,6 +64,14 @@ describe("shutter $/sqft pricing", () => {
     expect(r.wholesaleUnitPrice).toBe(168.75);
   });
 
+  it("uses the $12/sqft Onyx Poly Composite wholesale rate with the 8 sq ft minimum", () => {
+    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "poly_composite", widthInches: 24, heightInches: 24 }));
+    expect(r.sqft).toBe(4);
+    expect(r.billableSqft).toBe(8);
+    expect(r.wholesaleBase).toBe(96);
+    expect(r.wholesaleUnitPrice).toBe(96);
+  });
+
   it("Onyx Stained Basswood keeps retail and portal-supported wholesale separate", () => {
     const r = ok(priceDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
     expect(r.base).toBe(525);

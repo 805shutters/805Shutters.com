@@ -1127,7 +1127,7 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   },
   {
     name: "Poly Composite",
-    wholesalePrice: 15.0,
+    wholesalePrice: 12.0,
     retailPrice: 31.0,
     tariff: 0,
   },
