@@ -6939,6 +6939,11 @@ function DrillDetailCard({
   const canMarkOrdered =
     (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
     (canEditQuoteRow || canEditJob);
+  const canFindOrderEmail =
+    !canMarkOrdered &&
+    (liveRowStatus === "ordered" || job?.status === "ordered") &&
+    (canEditQuoteRow || canEditJob) &&
+    (!row || row.cogs <= 0 || !row.manufacturerOrderRef);
   const canMarkComplete =
     canEditJob ||
     Boolean(row && (canEditQuoteRow || row.source !== "crm_quote"));
@@ -7223,6 +7228,15 @@ function DrillDetailCard({
           disabled: busy,
           onClick: () => void markOrdered()
         }
+      : canFindOrderEmail
+        ? {
+            key: "find-order-email",
+            label: "Find Order Email",
+            detail: "Start COGS",
+            tone: needsOrderHighlight ? "warning" : undefined,
+            disabled: busy,
+            onClick: () => void markOrdered()
+          }
       : null,
     canMarkComplete
       ? {
