@@ -720,58 +720,8 @@ type OrderCogsPullResult = {
   skipped: number;
   errors: number;
   applied?: number;
+  emails?: CrmOrderCogsEmail[];
 };
-
-function gmailQuotedTerm(value: string | null | undefined) {
-  const term = value?.trim().replace(/[\\"]/g, " ");
-  return term ? `"${term}"` : null;
-}
-
-function customerNameSearchTerms(value: string | null | undefined) {
-  const name = value?.trim().replace(/\s+/g, " ");
-  if (!name) return [];
-
-  const terms = new Set<string>();
-  const quotedName = gmailQuotedTerm(name);
-  if (quotedName) terms.add(quotedName);
-
-  const parts = name.split(" ").filter(Boolean);
-  if (parts.length >= 2) {
-    const first = parts[0];
-    const last = parts[parts.length - 1];
-    const middle = parts.slice(1, -1).join(" ");
-    const lastFirst = [last, first].filter(Boolean).join(", ");
-    const lastFirstMiddle = [last, [first, middle].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    const lastFirstNoComma = [last, first].filter(Boolean).join(" ");
-
-    for (const variant of [lastFirst, lastFirstMiddle, lastFirstNoComma]) {
-      const quotedVariant = gmailQuotedTerm(variant);
-      if (quotedVariant) terms.add(quotedVariant);
-    }
-  }
-
-  return [...terms];
-}
-
-function orderCogsSearchQueryForEntry(entry: DrillEntry) {
-  const row = entry.row;
-  const job = entry.job;
-  const terms = [
-    ...customerNameSearchTerms(entry.customerName || entry.name),
-    gmailQuotedTerm(row?.quoteNumber),
-    gmailQuotedTerm(row?.manufacturerOrderRef),
-    gmailQuotedTerm(job?.phone || row?.customerPhone || null),
-    gmailQuotedTerm(job?.address || null)
-  ].filter((term): term is string => Boolean(term));
-
-  if (!terms.length) return null;
-
-  return [
-    "newer_than:90d",
-    `(${terms.join(" OR ")})`,
-    '(from:normanusa.com OR subject:order OR subject:confirmation OR "Online Order Confirmation" OR "order total" OR "grand total" OR "Total Amount")'
-  ].join(" ");
-}
 
 function isCrmSessionFetchError(error: unknown) {
   return error instanceof CrmFetchError && error.status === 401;
@@ -1572,6 +1522,8 @@ export function CrmApp({
 
     const row = entry.row;
     const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
+    const quoteId = row?.quoteId || null;
+    const rowId = row?.id || null;
     const canPatchQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
     const fallbackPatch: DrillFieldPatch | null = canPatchQuoteRow
       ? { row: { status: "ordered" } }
@@ -1584,48 +1536,51 @@ export function CrmApp({
       return false;
     }
 
-    const query = orderCogsSearchQueryForEntry(entry);
-    let fallbackMessage = "Order email search found no confirmation; marked ordered.";
+    let fallbackMessage = "Order email pull found no confirmation for this job; marked ordered.";
 
-    if (query) {
-      setBusy(true);
-      setMessage("Searching email for the order confirmation...");
-      try {
-        const result = await crmFetch<OrderCogsPullResult>(session, "/api/crm/order-cogs/pull", {
-          method: "POST",
-          body: JSON.stringify({ query, maxResults: 10 })
-        });
-        const dashboardResult = await refresh();
-        if (dashboardResult && drill) {
-          setDrill(
-            rebuildDrillPayload(
-              drill,
-              dashboardResult.jobs,
-              dashboardResult.quotes,
-              dashboardResult.bookkeepingRows,
-              dashboardResult.customerFiles,
-              dashboardResult.installationInvoiceEmails,
-              dashboardResult.orderCogsEmails
-            )
-          );
-        }
-
-        if ((result.applied || 0) > 0 || result.matched > 0) {
-          setMessage(
-            `Order email matched. COGS workflow applied ${result.applied || result.matched}; ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped.`
-          );
-          return true;
-        }
-
-        fallbackMessage =
-          result.needsReview > 0
-            ? `Order email search started COGS review; marked ordered. ${result.needsReview} needs review.`
-            : `Order email search scanned ${result.scanned} and found no confirmation; marked ordered.`;
-      } catch (error) {
-        fallbackMessage = `Order email search failed: ${error instanceof Error ? error.message : "unknown error"}. Marked ordered.`;
-      } finally {
-        setBusy(false);
+    setBusy(true);
+    setMessage("Processing recent order confirmation emails...");
+    try {
+      const result = await crmFetch<OrderCogsPullResult>(session, "/api/crm/order-cogs/pull", {
+        method: "POST",
+        body: JSON.stringify({ maxResults: 100 })
+      });
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill) {
+        setDrill(
+          rebuildDrillPayload(
+            drill,
+            dashboardResult.jobs,
+            dashboardResult.quotes,
+            dashboardResult.bookkeepingRows,
+            dashboardResult.customerFiles,
+            dashboardResult.installationInvoiceEmails,
+            dashboardResult.orderCogsEmails
+          )
+        );
       }
+
+      const targetEmails = (result.emails || []).filter((email) =>
+        (jobId && email.matched_job_id === jobId) ||
+        (quoteId && email.matched_quote_id === quoteId) ||
+        (rowId && email.matched_bookkeeping_entry_id === rowId)
+      );
+      const appliedTarget = targetEmails.find((email) => email.applied_at || email.match_status === "matched");
+      if (appliedTarget) {
+        setMessage(
+          `Order email matched. COGS workflow processed ${appliedTarget.extracted_order_number || "the confirmation"} for ${appliedTarget.extracted_customer_name || entry.customerName || entry.name}.`
+        );
+        return true;
+      }
+
+      fallbackMessage =
+        targetEmails.length > 0
+          ? `Order email found but needs review; marked ordered. ${targetEmails[0].match_reason || "Review COGS email."}`
+          : `Order email pull scanned ${result.scanned} recent confirmations and found no match for this job; marked ordered.`;
+    } catch (error) {
+      fallbackMessage = `Order email pull failed: ${error instanceof Error ? error.message : "unknown error"}. Marked ordered.`;
+    } finally {
+      setBusy(false);
     }
 
     return saveDrillField(entry, {
