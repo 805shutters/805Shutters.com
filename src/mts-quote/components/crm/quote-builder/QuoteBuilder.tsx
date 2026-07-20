@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { ProductTypeButtons } from "./ProductTypeButtons";
@@ -330,6 +330,7 @@ function StackedLineItemRow({
 }
 
 export function QuoteBuilder() {
+  const { database: supabase, isolated, preferStoredTotal } = useQuoteBuilderDatabase();
   const {
     activeQuoteId,
     selectedProductType,
@@ -548,6 +549,9 @@ export function QuoteBuilder() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Line item could not be added");
     },
   });
 
@@ -1134,7 +1138,11 @@ export function QuoteBuilder() {
                 {quote && (
                   <Button
                     size="sm"
-                    onClick={() => setShowSendDialog(true)}
+                    onClick={() =>
+                      isolated
+                        ? toast.info("Testing mode: sending is safely disabled.")
+                        : setShowSendDialog(true)
+                    }
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
                     title="Email or text the quote link to the customer"
                   >
@@ -1146,7 +1154,11 @@ export function QuoteBuilder() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowPaymentLinkDialog(true)}
+                    onClick={() =>
+                      isolated
+                        ? toast.info("Testing mode: payment links are safely disabled.")
+                        : setShowPaymentLinkDialog(true)
+                    }
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
                     title="Email the deposit payment link to the customer"
                   >
@@ -1544,6 +1556,7 @@ export function QuoteBuilder() {
           lineItems={lineItems}
           designs={designs}
           storedTotal={quote.total_amount}
+          preferStoredTotal={preferStoredTotal}
         />
       )}
     </div>

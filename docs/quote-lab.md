@@ -1,13 +1,13 @@
 # 805 Quote Lab
 
-The Quote Lab is an isolated version of the familiar MTS quote-builder workflow.
-It uses the existing product and room controls while comparing the active
-browser pricing behavior with the server-authoritative catalog engine before any
-CRM cutover.
+The Quote Lab mounts the real MTS `QuoteBuilder` component and its real CSS
+unchanged at the presentation layer. A provider swaps only the component's
+database boundary, replacing production Supabase with an in-memory,
+browser-session test adapter backed by protected server-authoritative pricing.
 
 ## Safety boundary
 
-- No Supabase client or database credentials.
+- The test adapter never calls production Supabase or uses database credentials.
 - No production quote, customer, contract, bookkeeping, or payment writes.
 - No email, SMS, payment-link, signature, or manufacturer-order actions.
 - Test quote state exists only in the browser session and disappears on refresh.
@@ -23,13 +23,18 @@ payment, or manufacturer-order modules.
 
 ## Routes
 
-- `/quote-lab` - access gate and familiar quote-builder test UI.
+- `/quote-lab` - access gate followed by the exact existing quote-builder UI.
 - `POST /api/quote-lab/access` - verifies the preview-only access code.
 - `GET /api/quote-lab/catalog` - returns the safe catalog projection and
   anonymized fixtures.
 - `POST /api/quote-lab/compare` - validates the request, calculates both engine
   results, applies selected-design billing to the authoritative total, and
   returns order-level freight/oversize exposure separately from retail.
+- `POST /api/quote-lab/price-exact` - accepts the existing builder's line/design
+  payload, discards its submitted price, and returns a fresh authoritative
+  catalog price.
+- `POST /api/quote-lab/reprice-exact` - reprices every design and computes the
+  selected-design quote total together on the server after each builder edit.
 
 ## Included regression scenarios
 
@@ -43,12 +48,16 @@ payment, or manufacturer-order modules.
 
 ## Builder behavior
 
-- Uses the existing MTS `ProductTypeButtons` and `RoomPresetButtons` controls.
-- Adds, copies, removes, stacks, and reopens line items without persistence.
-- Supports up to six A-F designs per line and bills only the selected design.
-- Automatically reprices the entire draft through the protected server route.
-- Keeps old-vs-new discrepancies in a collapsed backend audit panel rather than
-  changing the normal quote-building layout.
+- Renders the production `QuoteBuilder`, `DesignCard`, `MeasurementGridModal`,
+  product/room controls, command bar, quote tabs, and floating total—not copied
+  or look-alike replacements.
+- Adds, copies, removes, stacks, measures, discounts, and edits line items
+  through a test-only Supabase-shaped adapter.
+- Enforces 40 stored line-item rows and rejects a 41st with a visible error.
+- Reprices edits through `POST /api/quote-lab/reprice-exact`; the adapter ignores
+  browser-submitted `unit_price` values and keeps the displayed contract total
+  authoritative.
+- Leaves send and payment controls visually unchanged but safely inert.
 
 ## Local verification
 

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { getQuoteColor, QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import type { SalesQuote } from "@mts/types/quote";
 
 export function QuoteGroupTabs() {
+  const { database: supabase } = useQuoteBuilderDatabase();
   const { activeQuoteId, setActiveQuote } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
 
