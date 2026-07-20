@@ -7,7 +7,7 @@ import {
 import { QUOTE_LAB_ISOLATION } from "@/lib/quote-lab/comparison";
 import { quoteLabFixtures } from "@/lib/quote-lab/fixtures";
 import type { QuoteLabCatalogResponse } from "@/lib/quote-lab/types";
-import { buildUiCatalog } from "@/lib/quote/ui-catalog";
+import { buildUiCatalog, resolveMotorizationOptionsForProduct } from "@/lib/quote/ui-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,12 +42,7 @@ export async function GET(request: NextRequest) {
           .map((group) => ({
             groupId: group.groupId,
             name: group.name,
-            options: group.options.map((option) => {
-              const mapped = option.priceByProduct && product.id in option.priceByProduct
-                ? option.priceByProduct[product.id]
-                : option.price;
-              return { id: option.id, name: option.name, price: mapped ?? null };
-            }),
+            options: resolveMotorizationOptionsForProduct(group, product.id),
           })),
       })),
       fixtures: quoteLabFixtures,

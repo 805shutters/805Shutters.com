@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPricingReference, buildUiCatalog } from "./ui-catalog";
+import { buildPricingReference, buildUiCatalog, resolveMotorizationOptionsForProduct } from "./ui-catalog";
 
 describe("buildUiCatalog", () => {
   const ui = buildUiCatalog();
@@ -87,6 +87,14 @@ describe("buildUiCatalog", () => {
     const dualMotor = smart.options.find((o) => o.id === "dual_motor_for_honeycomb")!;
     expect(dualMotor.priceByProduct?.honeycomb).toBe(642);
     expect(dualMotor.priceByProduct?.roller).toBeNull();
+  });
+
+  it("omits authoritative NA motor options from each product selector", () => {
+    const smart = ui.motorization.find((group) => group.groupId === "smart_motorization")!;
+    expect(resolveMotorizationOptionsForProduct(smart, "roller").find((option) => option.id === "smartsense")?.price).toBe(60);
+    expect(resolveMotorizationOptionsForProduct(smart, "smartfold").find((option) => option.id === "smartsense")?.price).toBe(60);
+    expect(resolveMotorizationOptionsForProduct(smart, "honeycomb").some((option) => option.id === "smartsense")).toBe(false);
+    expect(resolveMotorizationOptionsForProduct(smart, "smartdrape").some((option) => option.id === "wired_charging_wand")).toBe(false);
   });
 
   it("does not leak full price grids to the UI projection", () => {

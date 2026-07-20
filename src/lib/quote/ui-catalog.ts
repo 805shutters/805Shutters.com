@@ -96,6 +96,18 @@ export type UiCatalog = {
   motorization: UiMotorizationGroup[];
 };
 
+export function resolveMotorizationOptionsForProduct(
+  group: UiMotorizationGroup,
+  productId: string,
+): Array<{ id: string; name: string; price: number | null }> {
+  return group.options.flatMap((option) => {
+    const hasProductPrice = Boolean(option.priceByProduct && productId in option.priceByProduct);
+    const mapped = hasProductPrice ? option.priceByProduct?.[productId] : option.price;
+    if (hasProductPrice && mapped == null) return [];
+    return [{ id: option.id, name: option.name, price: mapped ?? null }];
+  });
+}
+
 export type UiPricingReferenceProgram = {
   productId: string;
   productName: string;

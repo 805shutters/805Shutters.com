@@ -34,6 +34,7 @@ export type PriceErrorCode =
   | "SURCHARGE_UNKNOWN"
   | "SURCHARGE_NO_PRICE"
   | "MOTORIZATION_UNKNOWN"
+  | "MOTORIZATION_NO_PRICE"
   | "CONFIGURATION_INCOMPLETE"
   | "MANUAL_PRICE_REQUIRED"
   | "CUSTOMER_RETAIL_UNDEFINED"
@@ -483,8 +484,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       motorPrice = mapped;
     }
     if (motorPrice == null) {
-      warnings.push(`Motorization '${opt.name}' has no catalog price and was skipped.`);
-      continue;
+      return fail("MOTORIZATION_NO_PRICE", `Motorization '${opt.name}' has no catalog price for ${product.name}.`, warnings);
     }
     const selectedUnits = Math.max(1, Math.round(Number(sel.units) || 1));
     const needsTwoMotors =
