@@ -727,11 +727,37 @@ function gmailQuotedTerm(value: string | null | undefined) {
   return term ? `"${term}"` : null;
 }
 
+function customerNameSearchTerms(value: string | null | undefined) {
+  const name = value?.trim().replace(/\s+/g, " ");
+  if (!name) return [];
+
+  const terms = new Set<string>();
+  const quotedName = gmailQuotedTerm(name);
+  if (quotedName) terms.add(quotedName);
+
+  const parts = name.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    const middle = parts.slice(1, -1).join(" ");
+    const lastFirst = [last, first].filter(Boolean).join(", ");
+    const lastFirstMiddle = [last, [first, middle].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const lastFirstNoComma = [last, first].filter(Boolean).join(" ");
+
+    for (const variant of [lastFirst, lastFirstMiddle, lastFirstNoComma]) {
+      const quotedVariant = gmailQuotedTerm(variant);
+      if (quotedVariant) terms.add(quotedVariant);
+    }
+  }
+
+  return [...terms];
+}
+
 function orderCogsSearchQueryForEntry(entry: DrillEntry) {
   const row = entry.row;
   const job = entry.job;
   const terms = [
-    gmailQuotedTerm(entry.customerName || entry.name),
+    ...customerNameSearchTerms(entry.customerName || entry.name),
     gmailQuotedTerm(row?.quoteNumber),
     gmailQuotedTerm(row?.manufacturerOrderRef),
     gmailQuotedTerm(job?.phone || row?.customerPhone || null),
