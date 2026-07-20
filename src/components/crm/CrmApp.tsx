@@ -711,6 +711,42 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
   return body as T;
 }
 
+type OrderCogsPullResult = {
+  scanned: number;
+  processed: number;
+  matched: number;
+  needsReview: number;
+  unmatched: number;
+  skipped: number;
+  errors: number;
+  applied?: number;
+};
+
+function gmailQuotedTerm(value: string | null | undefined) {
+  const term = value?.trim().replace(/[\\"]/g, " ");
+  return term ? `"${term}"` : null;
+}
+
+function orderCogsSearchQueryForEntry(entry: DrillEntry) {
+  const row = entry.row;
+  const job = entry.job;
+  const terms = [
+    gmailQuotedTerm(entry.customerName || entry.name),
+    gmailQuotedTerm(row?.quoteNumber),
+    gmailQuotedTerm(row?.manufacturerOrderRef),
+    gmailQuotedTerm(job?.phone || row?.customerPhone || null),
+    gmailQuotedTerm(job?.address || null)
+  ].filter((term): term is string => Boolean(term));
+
+  if (!terms.length) return null;
+
+  return [
+    "newer_than:90d",
+    `(${terms.join(" OR ")})`,
+    '(from:normanusa.com OR subject:order OR subject:confirmation OR "Online Order Confirmation" OR "order total" OR "grand total" OR "Total Amount")'
+  ].join(" ");
+}
+
 function isCrmSessionFetchError(error: unknown) {
   return error instanceof CrmFetchError && error.status === 401;
 }
@@ -1503,6 +1539,73 @@ export function CrmApp({
     }
 
     await updateMeasureNeededForJob(jobId, entry.customerName || entry.name, action);
+  }
+
+  async function markOrderedFromDrill(entry: DrillEntry) {
+    if (!session) return false;
+
+    const row = entry.row;
+    const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
+    const canPatchQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
+    const fallbackPatch: DrillFieldPatch | null = canPatchQuoteRow
+      ? { row: { status: "ordered" } }
+      : jobId
+        ? { job: { status: "ordered" } }
+        : null;
+
+    if (!fallbackPatch) {
+      setMessage("This card is a customer snapshot. Open the file to edit the source record.");
+      return false;
+    }
+
+    const query = orderCogsSearchQueryForEntry(entry);
+    let fallbackMessage = "Order email search found no confirmation; marked ordered.";
+
+    if (query) {
+      setBusy(true);
+      setMessage("Searching email for the order confirmation...");
+      try {
+        const result = await crmFetch<OrderCogsPullResult>(session, "/api/crm/order-cogs/pull", {
+          method: "POST",
+          body: JSON.stringify({ query, maxResults: 10 })
+        });
+        const dashboardResult = await refresh();
+        if (dashboardResult && drill) {
+          setDrill(
+            rebuildDrillPayload(
+              drill,
+              dashboardResult.jobs,
+              dashboardResult.quotes,
+              dashboardResult.bookkeepingRows,
+              dashboardResult.customerFiles,
+              dashboardResult.installationInvoiceEmails,
+              dashboardResult.orderCogsEmails
+            )
+          );
+        }
+
+        if ((result.applied || 0) > 0 || result.matched > 0) {
+          setMessage(
+            `Order email matched. COGS workflow applied ${result.applied || result.matched}; ${result.needsReview} review, ${result.unmatched} unmatched, ${result.skipped} skipped.`
+          );
+          return true;
+        }
+
+        fallbackMessage =
+          result.needsReview > 0
+            ? `Order email search started COGS review; marked ordered. ${result.needsReview} needs review.`
+            : `Order email search scanned ${result.scanned} and found no confirmation; marked ordered.`;
+      } catch (error) {
+        fallbackMessage = `Order email search failed: ${error instanceof Error ? error.message : "unknown error"}. Marked ordered.`;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    return saveDrillField(entry, {
+      ...fallbackPatch,
+      message: fallbackMessage
+    });
   }
 
   async function saveDrillField(entry: DrillEntry, patch: DrillFieldPatch) {
@@ -2614,6 +2717,7 @@ export function CrmApp({
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
+            onMarkOrdered={markOrderedFromDrill}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
@@ -2676,6 +2780,7 @@ export function CrmApp({
             onOpenCustomer={openCustomerFile}
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
+            onMarkOrdered={markOrderedFromDrill}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
@@ -5264,6 +5369,7 @@ function CommandDashboard({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
+  onMarkOrdered,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -5285,6 +5391,7 @@ function CommandDashboard({
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
+  onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -5792,6 +5899,7 @@ type DrillPanelProps = {
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
+  onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -5807,6 +5915,7 @@ function DrillSearchResultsPanel({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
+  onMarkOrdered,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -5905,9 +6014,10 @@ function DrillSearchResultsPanel({
                 onOpenCustomer={onOpenCustomer}
                 onReassignSale={onReassignSale}
                 onMeasureNeededAction={onMeasureNeededAction}
+                onMarkOrdered={onMarkOrdered}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
-        onPaymentPlanAction={onPaymentPlanAction}
+                onPaymentPlanAction={onPaymentPlanAction}
               />
             </div>
           ) : null}
@@ -6349,6 +6459,7 @@ function GlobalCustomerSearchPanel({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
+  onMarkOrdered,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6365,6 +6476,7 @@ function GlobalCustomerSearchPanel({
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
+  onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -6550,9 +6662,10 @@ function GlobalCustomerSearchPanel({
                 onOpenCustomer={onOpenCustomer}
                 onReassignSale={onReassignSale}
                 onMeasureNeededAction={onMeasureNeededAction}
+                onMarkOrdered={onMarkOrdered}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
-        onPaymentPlanAction={onPaymentPlanAction}
+                onPaymentPlanAction={onPaymentPlanAction}
               />
             </div>
           ) : null}
@@ -6593,6 +6706,7 @@ function DrillDetailPanel({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
+  onMarkOrdered,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6623,9 +6737,10 @@ function DrillDetailPanel({
             onOpenCustomer={onOpenCustomer}
             onReassignSale={onReassignSale}
             onMeasureNeededAction={onMeasureNeededAction}
+            onMarkOrdered={onMarkOrdered}
             onSaveField={onSaveField}
             onLedgerLineAction={onLedgerLineAction}
-        onPaymentPlanAction={onPaymentPlanAction}
+            onPaymentPlanAction={onPaymentPlanAction}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -6641,6 +6756,7 @@ function DrillDetailCard({
   onOpenCustomer,
   onReassignSale,
   onMeasureNeededAction,
+  onMarkOrdered,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6651,6 +6767,7 @@ function DrillDetailCard({
   onOpenCustomer: (customerName: string) => void;
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
+  onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -6800,6 +6917,7 @@ function DrillDetailCard({
     canEditJob ||
     Boolean(row && (canEditQuoteRow || row.source !== "crm_quote"));
   const markOrdered = () => {
+    if (onMarkOrdered) return onMarkOrdered(entry);
     if (canEditQuoteRow) return saveRow({ status: "ordered" }, "Marked ordered.");
     if (canEditJob) return saveJob({ status: "ordered" }, "Marked ordered.");
     return Promise.resolve(false);
