@@ -244,6 +244,18 @@ import {
   type Surcharge,
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import type { QuoteLabCatalogProduct, QuoteLabCatalogResponse } from "@/lib/quote-lab/types";
+
+let quoteLabCatalogPromise: Promise<QuoteLabCatalogResponse> | null = null;
+
+function loadQuoteLabCatalog() {
+  quoteLabCatalogPromise ??= fetch("/api/quote-lab/catalog", { cache: "no-store" }).then((response) => {
+    if (!response.ok) throw new Error("Catalog unavailable");
+    return response.json() as Promise<QuoteLabCatalogResponse>;
+  });
+  return quoteLabCatalogPromise;
+}
 
 interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
@@ -2678,6 +2690,7 @@ export function DesignCard({
   onUpdateRoomName,
   onUpdateQuantity,
 }: DesignCardProps) {
+  const { isolated } = useQuoteBuilderDatabase();
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
     () => (isShutters ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
@@ -3495,6 +3508,14 @@ export function DesignCard({
           </Tabs>
         )}
 
+        {isolated && (
+          <QuoteLabCatalogControls
+            productType={lineItem.product_type}
+            design={currentDesign}
+            onUpdateFields={updateFields}
+          />
+        )}
+
         {/* Design options based on product type */}
         {isShutters ? (
           <ShutterDesignOptions
@@ -3603,6 +3624,144 @@ export function DesignCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function QuoteLabCatalogControls({
+  productType,
+  design,
+  onUpdateFields,
+}: {
+  productType: string;
+  design: SalesQuoteDesign | undefined;
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+}) {
+  const [products, setProducts] = useState<QuoteLabCatalogProduct[]>([]);
+  const options = (design?.options_json as Record<string, unknown> | undefined) || {};
+  const productId = typeof options.quote_lab_product_id === "string" ? options.quote_lab_product_id : "";
+  const programId = typeof options.quote_lab_program_id === "string" ? options.quote_lab_program_id : "";
+  const selectedProduct = products.find((product) => product.id === productId);
+  const availableProducts = products.filter((product) =>
+    product.productType === productType || (productType === "Roller Shades" && product.id === "roller"),
+  );
+  const selectedSurcharges = Array.isArray(options.surcharges)
+    ? (options.surcharges as Array<{ id?: string; quantity?: number }>).filter((entry) => entry?.id)
+    : [];
+
+  useEffect(() => {
+    let active = true;
+    loadQuoteLabCatalog()
+      .then((payload: QuoteLabCatalogResponse) => { if (active) setProducts(payload.products); })
+      .catch(() => { if (active) setProducts([]); });
+    return () => { active = false; };
+  }, []);
+
+  if (availableProducts.length === 0) return null;
+
+  const chooseProduct = (nextId: string) => {
+    const product = products.find((candidate) => candidate.id === nextId);
+    if (!product || product.priceBasis === "unavailable") return;
+    const firstProgram = product.programs[0];
+    onUpdateFields({
+      supplier: product.manufacturer,
+      material: firstProgram?.name ?? product.system ?? product.name,
+      fabric: null,
+      motor_type: null,
+      remote_type: null,
+      options_json: {
+        ...options,
+        quote_lab_product_id: product.id,
+        quote_lab_program_id: firstProgram?.id ?? null,
+        catalog_program_id: firstProgram?.id ?? null,
+        surcharges: [],
+      },
+    });
+  };
+
+  const addSurcharge = (id: string) => {
+    if (!id || selectedSurcharges.some((entry) => entry.id === id)) return;
+    onUpdateFields({ options_json: { ...options, surcharges: [...selectedSurcharges, { id, quantity: 1 }] } });
+  };
+
+  const statusText = selectedProduct?.priceBasis === "manual_required"
+    ? "Manual price required by source"
+    : selectedProduct?.priceBasis === "dealer_net"
+      ? "Dealer-net only; customer retail undefined"
+      : null;
+
+  return (
+    <div className="space-y-3 border-y border-slate-200 py-3" data-testid="quote-lab-catalog-controls">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-1">
+          <Label className="text-xs font-semibold">Manufacturer / product</Label>
+          <Select value={productId || undefined} onValueChange={chooseProduct}>
+            <SelectTrigger aria-label="Manufacturer and product"><SelectValue placeholder="Select required">{selectedProduct ? `${selectedProduct.manufacturer ?? "Norman"} - ${selectedProduct.system ?? selectedProduct.name}` : undefined}</SelectValue></SelectTrigger>
+            <SelectContent>
+              {availableProducts.map((product) => (
+                <SelectItem key={product.id} value={product.id} disabled={product.priceBasis === "unavailable"}>
+                  {product.manufacturer ?? "Norman"} - {product.system ?? product.name}{product.priceBasis === "unavailable" ? " (unavailable)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {selectedProduct && selectedProduct.programs.length > 1 && (
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Price program</Label>
+            <Select value={programId || undefined} onValueChange={(next) => {
+              const program = selectedProduct.programs.find((candidate) => candidate.id === next);
+              onUpdateFields({ material: program?.name ?? null, fabric: null, options_json: { ...options, quote_lab_program_id: next, catalog_program_id: next } });
+            }}>
+              <SelectTrigger aria-label="Price program"><SelectValue placeholder="Select required" /></SelectTrigger>
+              <SelectContent>{selectedProduct.programs.map((program) => <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {selectedProduct && (selectedProduct.fabrics?.length ?? 0) > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Polar fabric</Label>
+            <Select value={design?.fabric || undefined} onValueChange={(fabric) => {
+              const choice = selectedProduct.fabrics?.find((candidate) => candidate.name === fabric);
+              onUpdateFields({ fabric, material: choice ? `Price Group ${choice.programId.replace("group_", "")}` : null, options_json: { ...options, quote_lab_program_id: choice?.programId ?? null, catalog_program_id: choice?.programId ?? null } });
+            }}>
+              <SelectTrigger aria-label="Polar fabric"><SelectValue placeholder="Select fabric" /></SelectTrigger>
+              <SelectContent>{selectedProduct.fabrics?.map((fabric) => <SelectItem key={fabric.name} value={fabric.name}>{fabric.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {selectedProduct && selectedProduct.surcharges.length > 0 && (
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Add accessory</Label>
+            <Select value="" onValueChange={addSurcharge}>
+              <SelectTrigger aria-label="Add Polar accessory"><SelectValue placeholder="Choose accessory" /></SelectTrigger>
+              <SelectContent>{selectedProduct.surcharges.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {selectedProduct?.motorizationGroups.flatMap((group) => group.options).length ? (
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Motor / control</Label>
+            <Select value={design?.motor_type || undefined} onValueChange={(motor_type) => onUpdateFields({ motor_type })}>
+              <SelectTrigger aria-label="Polar motor or control"><SelectValue placeholder="Manual / none" /></SelectTrigger>
+              <SelectContent>{selectedProduct.motorizationGroups.flatMap((group) => group.options.map((item) => <SelectItem key={`${group.groupId}:${item.id}`} value={item.id}>{item.name}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+        ) : null}
+      </div>
+      {selectedSurcharges.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {selectedSurcharges.map((entry) => {
+            const item = selectedProduct?.surcharges.find((candidate) => candidate.id === entry.id);
+            return <Button key={entry.id} type="button" variant="outline" size="sm" onClick={() => onUpdateFields({ options_json: { ...options, surcharges: selectedSurcharges.filter((candidate) => candidate.id !== entry.id) } })}>{item?.name ?? entry.id}<X className="ml-1 h-3 w-3" /></Button>;
+          })}
+        </div>
+      )}
+      {statusText && <div role="alert" className="text-sm font-semibold text-amber-800">{statusText}</div>}
+    </div>
   );
 }
 

@@ -7,7 +7,6 @@ import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 
 const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   Shutters: "norman_shutters",
-  "Roller Shades": "roller",
   "Roman Shades": "roman",
   "Honeycomb Shades": "honeycomb",
   "Sheer Shades": "perfectsheer",
@@ -16,6 +15,9 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   "Wood Blinds": "wood_blinds",
   "Vertical Blinds": "synchrony_vertical",
   "Smart Drapes": "smartdrape",
+  "Drapery Tracks": "polar_drapery_track",
+  "Tension Shades": "polar_tension_shade",
+  "Retractable Screens": "polar_all_seasons_screen",
 };
 
 function decimalMeasurement(whole: unknown, fraction: unknown): number {
@@ -47,6 +49,7 @@ function resolveProductId(line: SalesQuoteLineItem, design: Partial<SalesQuoteDe
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
   const explicit = textOption(options, "quote_lab_product_id", "fabric_product_id");
   if (explicit && getProduct(explicit)) return explicit;
+  if (line.product_type === "Roller Shades" || line.product_type === "Awnings") return "";
   if (line.product_type === "Shutters" && slug(design.supplier)?.includes("onyx")) return "onyx_shutters";
   if (line.product_type === "Faux Wood Blinds" && slug(options.product_line)?.includes("smartprivacy")) {
     return "smartprivacy_faux";

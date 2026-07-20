@@ -85,6 +85,10 @@ export const PRODUCT_TYPES = [
   "Wood Blinds",
   "Vertical Blinds",
   "Smart Drapes",
+  "Drapery Tracks",
+  "Tension Shades",
+  "Retractable Screens",
+  "Awnings",
 ] as const;
 
 export type ProductType = (typeof PRODUCT_TYPES)[number];

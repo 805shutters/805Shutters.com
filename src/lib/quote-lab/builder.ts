@@ -15,6 +15,10 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Wood Blinds",
   "Vertical Blinds",
   "Smart Drapes",
+  "Drapery Tracks",
+  "Tension Shades",
+  "Retractable Screens",
+  "Awnings",
 ] as const;
 
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
@@ -30,6 +34,10 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
   "Wood Blinds": "wood_blinds",
   "Vertical Blinds": "synchrony_vertical",
   "Smart Drapes": "smartdrape",
+  "Drapery Tracks": "polar_drapery_track",
+  "Tension Shades": "polar_tension_shade",
+  "Retractable Screens": "polar_all_seasons_screen",
+  Awnings: "polar_awning_premium_pro",
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
@@ -47,6 +55,19 @@ const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
   wood_blinds: "Wood Blinds",
   synchrony_vertical: "Vertical Blinds",
   smartdrape: "Smart Drapes",
+  polar_interior_roller: "Roller Shades",
+  polar_elite_patio: "Roller Shades",
+  polar_titan_patio: "Roller Shades",
+  polar_mega_exterior: "Roller Shades",
+  polar_exterior_clutch_unavailable: "Roller Shades",
+  polar_drapery_track: "Drapery Tracks",
+  polar_tension_shade: "Tension Shades",
+  polar_all_seasons_screen: "Retractable Screens",
+  polar_awning_premium_pro: "Awnings",
+  polar_awning_premium_plus: "Awnings",
+  polar_awning_premium: "Awnings",
+  polar_awning_select: "Awnings",
+  polar_awning_drop_arm: "Awnings",
 };
 
 function uniqueId(prefix: string): string {

@@ -18,6 +18,7 @@ describe("STRESS: every in-range grid cell prices to exactly its catalog value",
   it("sweeps all grid + width-only programs", () => {
     let verified = 0;
     for (const product of catalog.products) {
+      if (product.priceBasis && product.priceBasis !== "suggested_retail") continue;
       for (const prog of product.programs) {
         if (prog.priceAxis === "sqft") continue;
         const { widths, heights, prices } = prog.grid;

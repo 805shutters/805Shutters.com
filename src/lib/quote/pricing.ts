@@ -22,6 +22,7 @@ import { squareFeet } from "./measurements";
 import { getMotorizationGroupsForProduct } from "./product-options";
 
 export type PriceErrorCode =
+  | "PRODUCT_SELECTION_REQUIRED"
   | "PRODUCT_NOT_FOUND"
   | "PROGRAM_NOT_RESOLVED"
   | "FABRIC_UNKNOWN"
@@ -32,7 +33,10 @@ export type PriceErrorCode =
   | "NA_CELL"
   | "SURCHARGE_UNKNOWN"
   | "SURCHARGE_NO_PRICE"
-  | "MOTORIZATION_UNKNOWN";
+  | "MOTORIZATION_UNKNOWN"
+  | "MANUAL_PRICE_REQUIRED"
+  | "CUSTOMER_RETAIL_UNDEFINED"
+  | "PRODUCT_UNAVAILABLE";
 
 export type SurchargeSelection = {
   id: string;
@@ -105,6 +109,8 @@ export type PriceBreakdown = {
   /** Internal dealer/wholesale line total. Null when the source guide exposes retail only. */
   wholesaleTotal: number | null;
   warnings: string[];
+  /** Internal landed-cost state; customer projections must omit this field. */
+  costStatus?: "complete" | "incomplete" | "unavailable";
 };
 
 export type PriceFailure = {
@@ -259,8 +265,21 @@ function lookupBaseCents(
 export function priceDesign(input: PriceInput): PriceResult {
   const warnings: string[] = [];
 
+  if (!input.productId) return fail("PRODUCT_SELECTION_REQUIRED", "Select a manufacturer and product before pricing this line.", warnings);
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
+  if (product.priceBasis === "manual_required") {
+    return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual price because the source does not provide a complete retail grid.`, warnings);
+  }
+  if (product.priceBasis === "dealer_net") {
+    return fail("CUSTOMER_RETAIL_UNDEFINED", `${product.name} publishes dealer-net pricing only; customer retail is undefined.`, warnings);
+  }
+  if (product.priceBasis === "unavailable") {
+    return fail("PRODUCT_UNAVAILABLE", `${product.name} has no usable product or pricing section in the source.`, warnings);
+  }
+  if (product.freightStatus === "unresolved") {
+    warnings.push("Freight/packaging and residential or out-of-area delivery amounts are not defined; landed cost and margin are incomplete.");
+  }
 
   const progOrFail = resolveProgram(product, input, warnings);
   if ("ok" in progOrFail) return progOrFail; // PriceFailure has ok:false
@@ -274,6 +293,12 @@ export function priceDesign(input: PriceInput): PriceResult {
   const needsHeight = prog.priceAxis !== "width";
   if (needsHeight && (!Number.isFinite(H) || H <= 0)) {
     return fail("INVALID_DIMENSIONS", `Height must be a positive number (got ${input.heightInches}).`, warnings);
+  }
+  if (prog.minWidth != null && W < prog.minWidth) {
+    return fail("INVALID_DIMENSIONS", `Width ${W}\" is below the ${prog.minWidth}\" minimum for ${prog.name}.`, warnings);
+  }
+  if (needsHeight && prog.minHeight != null && H < prog.minHeight) {
+    return fail("INVALID_DIMENSIONS", `Height ${H}\" is below the ${prog.minHeight}\" minimum for ${prog.name}.`, warnings);
   }
 
   // Hard max-dimension limits (can be tighter than the grid extent).
@@ -290,9 +315,31 @@ export function priceDesign(input: PriceInput): PriceResult {
     }
   }
 
+  const surchargeIds = new Set((input.surcharges ?? []).map((item) => item.id));
+  const hasVortex = surchargeIds.has("vortex_36_96") || surchargeIds.has("vortex_108_plus");
+  if (hasVortex) {
+    if ((H <= 96 && !surchargeIds.has("vortex_36_96")) || (H > 96 && !surchargeIds.has("vortex_108_plus"))) {
+      return fail("SURCHARGE_UNKNOWN", `Select the Vortex price tier that matches the shade height.`, warnings);
+    }
+    if (product.id === "polar_titan_patio" && W > 197) {
+      return fail("INVALID_DIMENSIONS", `Titan Vortex is not available above 197\" wide.`, warnings);
+    }
+    if (product.id === "polar_mega_exterior") {
+      const widths = [204,216,228,240,252,264,276,288,300];
+      const maxHeights = [192,184,176,168,160,152,144,136,128];
+      const wi = roundUpIndex(widths, W);
+      if (wi < 0 || H > maxHeights[wi]) {
+        return fail("INVALID_DIMENSIONS", `Mega Vortex is not available at ${W}\" x ${H}\"; the source limit at this rounded width is ${wi < 0 ? "undefined" : `${maxHeights[wi]}\" high`}.`, warnings);
+      }
+    }
+  }
+
   const baseLookup = lookupBaseCents(prog, W, H, warnings);
   if ("ok" in baseLookup) return baseLookup;
-  const { cents: baseCents, wholesaleCents: wholesaleBaseCents, matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
+  const dealerFactor = product.dealerFactor;
+  const sourceWholesaleBaseCents = baseLookup.wholesaleCents;
+  const wholesaleBaseCents = sourceWholesaleBaseCents ?? (dealerFactor == null ? null : Math.round(baseLookup.cents * dealerFactor));
+  const { cents: baseCents, matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
 
   // Surcharges
   const surchargeLines: PriceLine[] = [];
@@ -317,9 +364,23 @@ export function priceDesign(input: PriceInput): PriceResult {
         return fail("NA_CELL", `${sc.name} is not available at width ${W}".`, warnings);
       }
       amountCents = graduatedCents;
+      if (dealerFactor != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor));
       detail = `by width (${W}")`;
-      surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), kind: sc.kind, detail });
+      surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }), kind: sc.kind, detail });
       perWindowCents += amountCents;
+      if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
+      continue;
+    }
+    if (sc.heightGraduated) {
+      const hi = roundUpIndex(sc.heightGraduated.heights, H);
+      const heightPrice = hi < 0 ? null : sc.heightGraduated.prices[hi];
+      if (heightPrice == null) return fail("NA_CELL", `${sc.name} is not available at height ${H}\".`, warnings);
+      amountCents = toCents(heightPrice);
+      if (dealerFactor != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor));
+      detail = `by height (${H}")`;
+      surchargeLines.push({ id: sc.id, label: sc.name, amount: fromCents(amountCents), ...(wholesaleAmountCents == null ? {} : { wholesaleAmount: fromCents(wholesaleAmountCents) }), kind: sc.kind, detail });
+      perWindowCents += amountCents;
+      if (wholesaleAmountCents != null) wholesalePerWindowCents += wholesaleAmountCents;
       continue;
     }
     if (sc.value == null) {
@@ -328,20 +389,35 @@ export function priceDesign(input: PriceInput): PriceResult {
       return fail("SURCHARGE_NO_PRICE", `Surcharge '${sc.name}' has no catalog price. Remove it or add a price before quoting.`, warnings);
     }
     if (sc.kind === "percent") {
-      amountCents = Math.round((baseCents * sc.value) / 100);
-      if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round((wholesaleBaseCents * sc.value) / 100);
+      let percentBaseCents = baseCents;
+      if (sc.percentOfSurchargeId) {
+        const target = surchargeLines.find((line) => line.id === sc.percentOfSurchargeId);
+        if (!target) return fail("SURCHARGE_NO_PRICE", `${sc.name} requires ${sc.percentOfSurchargeId} to be selected first.`, warnings);
+        percentBaseCents = toCents(target.amount);
+      }
+      amountCents = Math.round((percentBaseCents * sc.value) / 100);
+      if (wholesaleBaseCents != null) {
+        if (sc.percentOfSurchargeId) {
+          const target = surchargeLines.find((line) => line.id === sc.percentOfSurchargeId);
+          wholesaleAmountCents = target?.wholesaleAmount == null ? null : Math.round((toCents(target.wholesaleAmount) * sc.value) / 100);
+        } else {
+          wholesaleAmountCents = Math.round((wholesaleBaseCents * sc.value) / 100);
+        }
+      }
       detail = `${sc.value}% of base`;
     } else if (sc.per === "sqft") {
       const sqft = actualSqft ?? (needsHeight ? squareFeet(W, H) : 0);
       amountCents = Math.round(toCents(sc.value) * sqft);
-      if (wholesaleBaseCents != null) wholesaleAmountCents = amountCents;
+      if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
       detail = `$${sc.value}/sq ft x ${sqft.toFixed(1)}`;
     } else {
       // Sides (cut-outs) and feet (additional valance foot) are billed per whole
       // unit — never a fractional count (which would yield a fractional charge).
-      const units = sc.per === "side" || sc.per === "foot" ? Math.max(1, Math.round(Number(sel.units) || 1)) : 1;
+      const automaticUnits = sc.autoUnits === "width_foot" ? Math.ceil(W / 12) : sc.autoUnits === "height_foot" ? Math.ceil(H / 12) : null;
+      const units = sc.per === "side" || sc.per === "foot" ? (automaticUnits ?? Math.max(1, Math.round(Number(sel.units) || 1))) : 1;
       amountCents = toCents(sc.value) * units;
-      if (wholesaleBaseCents != null) wholesaleAmountCents = amountCents;
+      if (sc.minimumCharge != null) amountCents = Math.max(amountCents, toCents(sc.minimumCharge));
+      if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
       if (units > 1) detail = `${sc.value} x ${units} ${sc.per}s`;
     }
     surchargeLines.push({
@@ -389,7 +465,7 @@ export function priceDesign(input: PriceInput): PriceResult {
     }
     const units = Math.max(1, Math.round(Number(sel.units) || 1));
     const amountCents = toCents(motorPrice) * units;
-    const wholesaleAmountCents = wholesaleBaseCents == null ? null : amountCents;
+    const wholesaleAmountCents = wholesaleBaseCents == null ? null : Math.round(amountCents * (dealerFactor ?? 1));
     surchargeLines.push({
       id: `motor:${sel.groupId}:${opt.id}`,
       label: opt.name,
@@ -435,5 +511,6 @@ export function priceDesign(input: PriceInput): PriceResult {
     total: fromCents(totalCents),
     wholesaleTotal: wholesaleTotalCents == null ? null : fromCents(wholesaleTotalCents),
     warnings,
+    costStatus: product.freightStatus === "unresolved" ? "incomplete" : wholesaleTotalCents == null ? "unavailable" : "complete",
   };
 }

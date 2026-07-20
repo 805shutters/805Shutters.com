@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { PRODUCT_TYPES } from "@mts/lib/quoteConstants";
 
 describe("Quote Lab exact interface contract", () => {
   it("mounts the production QuoteBuilder component under an isolated database provider", () => {
@@ -17,5 +18,13 @@ describe("Quote Lab exact interface contract", () => {
     const source = readFileSync(fileURLToPath(new URL("./QuoteLab.tsx", import.meta.url)), "utf8");
     expect(source).toContain("<ExactQuoteLabWorkspace database={database} />");
     expect(source).not.toContain("QuoteLabBuilder");
+  });
+
+  it("preserves the ten existing categories and adds exactly the four approved categories", () => {
+    expect(PRODUCT_TYPES).toEqual([
+      "Shutters", "Roller Shades", "Roman Shades", "Honeycomb Shades", "Sheer Shades",
+      "Mini Blinds", "Faux Wood Blinds", "Wood Blinds", "Vertical Blinds", "Smart Drapes",
+      "Drapery Tracks", "Tension Shades", "Retractable Screens", "Awnings",
+    ]);
   });
 });

@@ -3,12 +3,27 @@
 // price cell is verified against the source PDF text layer.
 
 export type CatalogPriceAxis = "wh" | "width" | "sqft";
+export type CatalogPriceBasis =
+  | "suggested_retail"
+  | "dealer_net"
+  | "manual_required"
+  | "unavailable";
 export type SurchargeKind = "percent" | "flat";
 export type SurchargePer = "unit" | "side" | "foot" | "sqft" | "once";
 
 export type CatalogFabricCollection = {
   category: string;
   fabrics: string[];
+};
+
+export type CatalogFabricMetadata = {
+  name: string;
+  priceGroup: string;
+  openness: string;
+  rollWidthInches: number | null;
+  maxRailroadLengthInches: number | null;
+  railroadAllowed: boolean;
+  sourcePage: number;
 };
 
 export type CatalogGrid = {
@@ -32,11 +47,14 @@ export type CatalogProgram = {
   costPerSqft?: number | null;
   /** For priceAxis "sqft": minimum billable square footage (e.g. 8 for shutters). */
   minSqft?: number | null;
+  minWidth?: number | null;
+  minHeight?: number | null;
   maxWidth: number | null;
   maxHeight: number | null;
   maxAreaSqft: number | null;
   fabricCollections: CatalogFabricCollection[];
   notes: string[];
+  sourcePages?: number[];
 };
 
 /** Width-graduated surcharge price table (e.g. valances priced by window width). */
@@ -49,19 +67,41 @@ export type CatalogWidthGraduated = {
   additionalFootRate: number;
 };
 
+export type CatalogHeightGraduated = {
+  heights: number[];
+  prices: Array<number | null>;
+};
+
 export type CatalogSurcharge = {
   id: string;
   name: string;
   kind: SurchargeKind;
   per: SurchargePer;
   value: number | null;
+  /** Optional dealer-cost multiplier override. `1` means no dealer discount. */
+  dealerFactor?: number | null;
+  autoUnits?: "width_foot" | "height_foot";
+  percentOfSurchargeId?: string;
+  minimumCharge?: number;
   /** When present, the charge is looked up by window width (round up) rather than
    *  using a flat `value`. Used for width-graduated valances whose price table
    *  would otherwise sit unused in `notes` and bill $0. */
   widthGraduated?: CatalogWidthGraduated;
+  heightGraduated?: CatalogHeightGraduated;
   appliesTo: string;
   notes: string;
   sourceType: string;
+  sourcePages?: number[];
+};
+
+export type CatalogSourceMetadata = {
+  file: string;
+  title: string;
+  revision: string;
+  effectiveDate: string | null;
+  receivedDate: string;
+  modifiedDate: string;
+  pages: number;
 };
 
 export type CatalogFabricByYard = {
@@ -74,6 +114,12 @@ export type CatalogProduct = {
   id: string;
   productType: string;
   name: string;
+  manufacturer?: string;
+  system?: string;
+  priceBasis?: CatalogPriceBasis;
+  /** Server-only cost policy. Never include this field in customer projections. */
+  dealerFactor?: number | null;
+  freightStatus?: "defined" | "unresolved" | "not_applicable";
   pages: number[];
   /** True when prices are not yet verified against a current price guide. */
   provisional?: boolean;
@@ -81,6 +127,7 @@ export type CatalogProduct = {
   source?: string;
   /** fabric name -> program id. null for products with a single program. */
   fabricRouting: Record<string, string> | null;
+  fabricMetadata?: CatalogFabricMetadata[];
   programs: CatalogProgram[];
   surcharges: CatalogSurcharge[];
   fabricByYard: CatalogFabricByYard[];
@@ -112,6 +159,7 @@ export type Catalog = {
   effectiveDate: string;
   currency: string;
   generatedFrom: string;
+  sources?: CatalogSourceMetadata[];
   globalRules: { surcharges: CatalogSurcharge[]; notes: string[] };
   products: CatalogProduct[];
   motorization: Record<string, CatalogMotorizationGroup>;

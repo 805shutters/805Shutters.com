@@ -1144,7 +1144,8 @@ export function QuoteBuilder() {
                         : setShowSendDialog(true)
                     }
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                    title="Email or text the quote link to the customer"
+                    disabled={isolated}
+                    title={isolated ? "Disabled in isolated Quote Lab" : "Email or text the quote link to the customer"}
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quote
@@ -1160,7 +1161,8 @@ export function QuoteBuilder() {
                         : setShowPaymentLinkDialog(true)
                     }
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
-                    title="Email the deposit payment link to the customer"
+                    disabled={isolated}
+                    title={isolated ? "Disabled in isolated Quote Lab" : "Email the deposit payment link to the customer"}
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Send Payment Link

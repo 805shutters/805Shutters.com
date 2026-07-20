@@ -99,9 +99,13 @@ export type QuoteLabCatalogProduct = {
   id: string;
   name: string;
   productType: string;
+  manufacturer?: string | null;
+  system?: string | null;
+  priceBasis?: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
   programs: Array<{ id: string; name: string; priceAxis: "wh" | "width" | "sqft" }>;
+  fabrics?: Array<{ name: string; programId: string }>;
   surcharges: Array<{
     id: string;
     name: string;

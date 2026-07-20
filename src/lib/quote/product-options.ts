@@ -919,6 +919,16 @@ const productMotorizationGroups: Record<string, string[]> = {
   smartfold: shadeMotorizationGroups,
   synchrony_vertical: shadeMotorizationGroups,
   vertical_honeycomb: shadeMotorizationGroups,
+  polar_interior_roller: ["polar_interior_motors"],
+  polar_elite_patio: ["polar_elite_motors"],
+  polar_titan_patio: ["polar_titan_motors"],
+  polar_mega_exterior: ["polar_mega_motors"],
+  polar_drapery_track: ["polar_drapery_motors"],
+  polar_awning_premium_pro: ["polar_awning_controls"],
+  polar_awning_premium_plus: ["polar_awning_controls"],
+  polar_awning_premium: ["polar_awning_controls"],
+  polar_awning_select: ["polar_awning_controls"],
+  polar_awning_drop_arm: ["polar_awning_controls"],
 };
 
 export function getDetailFieldsForProduct(productId: string): QuoteDetailField[] {

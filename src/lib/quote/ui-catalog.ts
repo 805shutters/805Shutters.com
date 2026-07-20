@@ -61,6 +61,9 @@ export type UiProduct = {
   id: string;
   name: string;
   productType: string;
+  manufacturer: string | null;
+  system: string | null;
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
   image: string;
@@ -166,6 +169,9 @@ export function buildUiCatalog(): UiCatalog {
     id: p.id,
     name: p.name,
     productType: p.productType,
+    manufacturer: p.manufacturer ?? (p.id.startsWith("polar_") ? "Polar" : "Norman"),
+    system: p.system ?? null,
+    priceBasis: p.priceBasis ?? "suggested_retail",
     provisional: p.provisional === true,
     source: p.source ?? null,
     image: productImage(p.productType),

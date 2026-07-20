@@ -93,6 +93,19 @@ describe("buildUiCatalog", () => {
     const json = JSON.stringify(ui);
     expect(json).not.toContain("\"prices\"");
     expect(json).not.toContain("\"grid\"");
+    expect(json).not.toContain("dealerFactor");
+    expect(json).not.toContain("wholesale");
+  });
+
+  it("exposes Polar choices without exposing internal cost policy", () => {
+    const polar = ui.products.filter((product) => product.manufacturer === "Polar");
+    expect(polar).toHaveLength(13);
+    expect(polar.find((product) => product.id === "polar_interior_roller")).toMatchObject({
+      productType: "Roller Shades",
+      system: "Interior Roller",
+      priceBasis: "suggested_retail",
+    });
+    expect(polar.find((product) => product.id === "polar_tension_shade")?.priceBasis).toBe("manual_required");
   });
 
   it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
