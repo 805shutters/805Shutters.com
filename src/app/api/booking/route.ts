@@ -10,6 +10,11 @@ import {
 } from "@/lib/booking/availability";
 import { addGeoPointsToEvents, geocodeBookingAddress, maxBookingTravelMiles } from "@/lib/booking/geo";
 import { syncSelfBookingCustomerDetails } from "@/lib/booking/customer-snapshot";
+import {
+  sales805AppointmentDateRange,
+  sales805AppointmentsToCalendarEvents,
+  type Sales805BookingAppointment
+} from "@/lib/booking/sales-805-appointments";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 import { sendCalendarAssignmentSms } from "@/lib/crm/calendar-notifications";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
@@ -501,13 +506,22 @@ export async function POST(request: NextRequest) {
 
   const month = date.slice(0, 7);
   const range = monthRangeUtc(month);
-  const [eventsResult, slotsResult] = await Promise.all([
+  const appointmentDateRange = sales805AppointmentDateRange(month);
+  const [eventsResult, sales805AppointmentsResult, slotsResult] = await Promise.all([
     supabase
       .from("crm_calendar_events")
       .select("*")
       .gte("start_at", range.start)
       .lt("start_at", range.end)
       .neq("status", "canceled"),
+    supabase
+      .from("sales_805_appointments")
+      .select(
+        "id, quote_id, customer_name, customer_phone, customer_address, appointment_date, start_time, end_time, assigned_to, status, notes, source, metadata, created_at, updated_at"
+      )
+      .gte("appointment_date", appointmentDateRange.start)
+      .lt("appointment_date", appointmentDateRange.end)
+      .neq("status", "cancelled"),
     supabase
       .from("crm_availability_slots")
       .select("*")
@@ -516,13 +530,21 @@ export async function POST(request: NextRequest) {
       .lt("start_at", range.end)
   ]);
 
-  if (eventsResult.error || (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))) {
+  if (
+    eventsResult.error ||
+    sales805AppointmentsResult.error ||
+    (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))
+  ) {
     return NextResponse.json({ message: "Calendar could not be checked." }, { status: 502 });
   }
 
+  const calendarEvents = [
+    ...((eventsResult.data || []) as CrmCalendarEvent[]),
+    ...sales805AppointmentsToCalendarEvents((sales805AppointmentsResult.data || []) as Sales805BookingAppointment[])
+  ];
   const existingEvents = geocodeResult.point
-    ? await addGeoPointsToEvents((eventsResult.data || []) as CrmCalendarEvent[])
-    : ((eventsResult.data || []) as CrmCalendarEvent[]);
+    ? await addGeoPointsToEvents(calendarEvents)
+    : calendarEvents;
   let availabilitySlots: CrmAvailabilitySlot[] | undefined = slotsResult.error
     ? undefined
     : ((slotsResult.data || []) as CrmAvailabilitySlot[]);

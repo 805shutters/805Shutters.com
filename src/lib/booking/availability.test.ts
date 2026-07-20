@@ -7,6 +7,7 @@ import {
   freeRepsForSlot,
   zonedTimeToUtc
 } from "./availability";
+import { sales805AppointmentsToCalendarEvents } from "./sales-805-appointments";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
 
 function eventAt(
@@ -198,6 +199,32 @@ describe("buildBookingAvailability", () => {
 
     expect(monday?.slots.find((slot) => slot.time === "09:00")?.available).toBe(false);
     expect(monday?.slots.find((slot) => slot.time === "11:00")?.available).toBe(true);
+  });
+
+  it("blocks public booking slots from mirrored 805 sales appointments", () => {
+    const events = sales805AppointmentsToCalendarEvents([
+      {
+        id: "appointment-1",
+        quote_id: "quote-1",
+        customer_name: "Gina Hardy",
+        customer_phone: "805-857-5196",
+        customer_address: "5050 Alta St, Simi Valley, CA 93063",
+        appointment_date: "2030-06-03",
+        start_time: "09:30",
+        end_time: "10:30",
+        assigned_to: "Jessica",
+        status: "scheduled",
+        notes: null,
+        source: "manual_calendar",
+        metadata: {}
+      }
+    ]);
+    const availability = buildBookingAvailability("2030-06", events);
+    const monday = availability.days.find((day) => day.date === "2030-06-03");
+
+    expect(monday?.slots.find((slot) => slot.time === "09:30")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "10:00")?.available).toBe(false);
+    expect(monday?.slots.find((slot) => slot.time === "10:30")?.available).toBe(true);
   });
 
   it("allows a fitting fourth self-booking when three short appointments are already on the day", () => {

@@ -7,6 +7,11 @@ import {
   monthRangeUtc
 } from "@/lib/booking/availability";
 import { addGeoPointsToEvents, geocodeBookingAddress } from "@/lib/booking/geo";
+import {
+  sales805AppointmentDateRange,
+  sales805AppointmentsToCalendarEvents,
+  type Sales805BookingAppointment
+} from "@/lib/booking/sales-805-appointments";
 import { listCrmAvailabilityFallbackSlots } from "@/lib/crm/backend";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import { CrmAvailabilitySlot, CrmCalendarEvent } from "@/lib/crm/types";
@@ -55,7 +60,8 @@ export async function GET(request: NextRequest) {
   }
 
   const range = monthRangeUtc(month);
-  const [eventsResult, slotsResult] = await Promise.all([
+  const appointmentDateRange = sales805AppointmentDateRange(month);
+  const [eventsResult, sales805AppointmentsResult, slotsResult] = await Promise.all([
     supabase
       .from("crm_calendar_events")
       .select("*")
@@ -64,6 +70,14 @@ export async function GET(request: NextRequest) {
       .neq("status", "canceled")
       .order("start_at", { ascending: true }),
     supabase
+      .from("sales_805_appointments")
+      .select(
+        "id, quote_id, customer_name, customer_phone, customer_address, appointment_date, start_time, end_time, assigned_to, status, notes, source, metadata, created_at, updated_at"
+      )
+      .gte("appointment_date", appointmentDateRange.start)
+      .lt("appointment_date", appointmentDateRange.end)
+      .neq("status", "cancelled"),
+    supabase
       .from("crm_availability_slots")
       .select("*")
       .eq("status", "available")
@@ -71,7 +85,11 @@ export async function GET(request: NextRequest) {
       .lt("start_at", range.end)
   ]);
 
-  if (eventsResult.error || (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))) {
+  if (
+    eventsResult.error ||
+    sales805AppointmentsResult.error ||
+    (slotsResult.error && !isAvailabilitySlotsMissing(slotsResult.error))
+  ) {
     return NextResponse.json({ message: "Availability could not be loaded." }, { status: 502 });
   }
 
@@ -83,9 +101,11 @@ export async function GET(request: NextRequest) {
     availabilitySlots = (await listCrmAvailabilityFallbackSlots(supabase, month)) as CrmAvailabilitySlot[];
   }
 
-  const events = geocodeResult.point
-    ? await addGeoPointsToEvents((eventsResult.data || []) as CrmCalendarEvent[])
-    : ((eventsResult.data || []) as CrmCalendarEvent[]);
+  const calendarEvents = [
+    ...((eventsResult.data || []) as CrmCalendarEvent[]),
+    ...sales805AppointmentsToCalendarEvents((sales805AppointmentsResult.data || []) as Sales805BookingAppointment[])
+  ];
+  const events = geocodeResult.point ? await addGeoPointsToEvents(calendarEvents) : calendarEvents;
 
   return NextResponse.json({
     configured: true,
