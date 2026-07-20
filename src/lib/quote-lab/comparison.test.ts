@@ -81,6 +81,22 @@ describe("Quote Lab comparison", () => {
     expect(result.sendBlocked).toBe(false);
     expect(result.authoritativeTotal).toBeGreaterThan(0);
   });
+
+  it("uses the builder's real room presets for all forty test lines", () => {
+    const fixture = quoteLabFixture("forty-line-quote")!;
+    const roomNames = fixture.quote.lines.map((line) => line.room);
+
+    expect(roomNames.slice(0, 4)).toEqual([
+      "Living Room",
+      "Living Room",
+      "Family Room",
+      "Family Room",
+    ]);
+    expect(roomNames.slice(-2)).toEqual(["Closet", "Closet"]);
+    expect(new Set(roomNames)).toHaveLength(20);
+    expect(roomNames).not.toContain("Room 1");
+    expect(roomNames).not.toContain("Room 40");
+  });
 });
 
 describe("Quote Lab input boundary", () => {

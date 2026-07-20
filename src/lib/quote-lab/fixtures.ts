@@ -1,4 +1,5 @@
 import type { QuoteLabFixture } from "./types";
+import { ROOM_PRESETS } from "@mts/lib/quoteConstants";
 
 export const quoteLabFixtures: QuoteLabFixture[] = [
   {
@@ -204,9 +205,10 @@ export const quoteLabFixtures: QuoteLabFixture[] = [
       lines: Array.from({ length: 40 }, (_, index) => {
         const lineNumber = index + 1;
         const designId = `bulk-${lineNumber}-a`;
+        const room = ROOM_PRESETS[Math.floor(index / 2)];
         return {
           id: `bulk-line-${lineNumber}`,
-          room: `Room ${lineNumber}`,
+          room,
           quantity: 1,
           selectedDesignId: designId,
           designs: [

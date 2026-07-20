@@ -44,7 +44,9 @@ payment, or manufacturer-order modules.
 4. Browser-local shutter rate divergence.
 5. SmartFold catalog coverage missing from the active legacy switch.
 6. Manufacturer freight and oversize cost exposure.
-7. A full 40-line whole-home quote through one authoritative request.
+7. A full 40-line whole-home quote using the builder's twenty real room
+   presets, with two independent lines per room, through one authoritative
+   request.
 
 ## Builder behavior
 
