@@ -1,5 +1,8 @@
 import type { MotorizationSelection, PriceInput, PriceResult, SurchargeSelection } from "@/lib/quote/pricing";
 
+export const QUOTE_LAB_MAX_LINES = 40;
+export const QUOTE_LAB_MAX_DESIGNS_PER_LINE = 6;
+
 export type QuoteLabDesignInput = Omit<PriceInput, "quantity"> & {
   id: string;
   label: string;

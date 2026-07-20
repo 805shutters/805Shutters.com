@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compareQuoteLab, normalizeQuoteLabQuote, QUOTE_LAB_ISOLATION, QuoteLabInputError } from "./comparison";
 import { quoteLabFixture, quoteLabFixtures } from "./fixtures";
+import { QUOTE_LAB_MAX_LINES } from "./types";
 
 function compareFixture(id: string) {
   const fixture = quoteLabFixture(id);
@@ -73,6 +74,13 @@ describe("Quote Lab comparison", () => {
     expect(result.orderChargeTotal).toBe(166);
     expect(result.authoritativeTotal).toBeGreaterThan(0);
   });
+
+  it("prices a full forty-line quote through the authoritative backend", () => {
+    const result = compareFixture("forty-line-quote");
+    expect(result.lines).toHaveLength(QUOTE_LAB_MAX_LINES);
+    expect(result.sendBlocked).toBe(false);
+    expect(result.authoritativeTotal).toBeGreaterThan(0);
+  });
 });
 
 describe("Quote Lab input boundary", () => {
@@ -85,5 +93,12 @@ describe("Quote Lab input boundary", () => {
     const quote = structuredClone(fixture.quote);
     quote.lines[0].quantity = 100000;
     expect(normalizeQuoteLabQuote(quote).lines[0].quantity).toBe(100);
+  });
+
+  it("rejects a forty-first line item instead of silently dropping it", () => {
+    const fixture = quoteLabFixture("forty-line-quote")!;
+    const quote = structuredClone(fixture.quote);
+    quote.lines.push(structuredClone(quote.lines[0]));
+    expect(() => normalizeQuoteLabQuote(quote)).toThrow(`no more than ${QUOTE_LAB_MAX_LINES}`);
   });
 });

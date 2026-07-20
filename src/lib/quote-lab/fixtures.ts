@@ -194,6 +194,38 @@ export const quoteLabFixtures: QuoteLabFixture[] = [
       ],
     },
   },
+  {
+    id: "forty-line-quote",
+    name: "40-line working quote",
+    description: "A full-capacity quote that proves the familiar builder and authoritative backend can price forty independent line items together.",
+    quote: {
+      id: "fixture-forty-lines",
+      name: "Forty-line whole-home quote",
+      lines: Array.from({ length: 40 }, (_, index) => {
+        const lineNumber = index + 1;
+        const designId = `bulk-${lineNumber}-a`;
+        return {
+          id: `bulk-line-${lineNumber}`,
+          room: `Room ${lineNumber}`,
+          quantity: 1,
+          selectedDesignId: designId,
+          designs: [
+            {
+              id: designId,
+              label: "A",
+              productId: "roller",
+              programId: "roller_cordless_fabric_price_group_1_pg1",
+              widthInches: 30 + (index % 6) * 6,
+              heightInches: 48 + (index % 5) * 6,
+              discountPercent: 0,
+              surcharges: [],
+              motorization: [],
+            },
+          ],
+        };
+      }),
+    },
+  },
 ];
 
 export function quoteLabFixture(id: string): QuoteLabFixture | undefined {

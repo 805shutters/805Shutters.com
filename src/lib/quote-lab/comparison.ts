@@ -2,6 +2,7 @@ import { catalog, findProductSurcharge, getProduct, getProgram } from "@/lib/quo
 import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
 import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
 import { getProductPriceBreakdown } from "@mts/lib/pricingEngine";
+import { QUOTE_LAB_MAX_DESIGNS_PER_LINE, QUOTE_LAB_MAX_LINES } from "./types";
 import type {
   LegacyPriceResult,
   QuoteLabComparison,
@@ -61,12 +62,15 @@ function optionalPositiveNumber(value: unknown): number | undefined {
 
 export function normalizeQuoteLabQuote(value: unknown): QuoteLabQuoteInput {
   const source = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const rawLines = Array.isArray(source.lines) ? source.lines.slice(0, 20) : [];
+  const rawLines = Array.isArray(source.lines) ? source.lines : [];
   if (rawLines.length === 0) throw new QuoteLabInputError("Add at least one test window.");
+  if (rawLines.length > QUOTE_LAB_MAX_LINES) {
+    throw new QuoteLabInputError(`A quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+  }
 
   const lines: QuoteLabLineInput[] = rawLines.map((rawLine, lineIndex) => {
     const line = rawLine && typeof rawLine === "object" ? (rawLine as Record<string, unknown>) : {};
-    const rawDesigns = Array.isArray(line.designs) ? line.designs.slice(0, 6) : [];
+    const rawDesigns = Array.isArray(line.designs) ? line.designs.slice(0, QUOTE_LAB_MAX_DESIGNS_PER_LINE) : [];
     if (rawDesigns.length === 0) throw new QuoteLabInputError(`Window ${lineIndex + 1} needs at least one design.`);
     const designs: QuoteLabDesignInput[] = rawDesigns.map((rawDesign, designIndex) => {
       const design = rawDesign && typeof rawDesign === "object" ? (rawDesign as Record<string, unknown>) : {};

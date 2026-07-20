@@ -1,8 +1,9 @@
 # 805 Quote Lab
 
-The Quote Lab is an isolated test harness for comparing the active MTS quote
-pricing behavior with the server-authoritative catalog engine before any CRM
-cutover.
+The Quote Lab is an isolated version of the familiar MTS quote-builder workflow.
+It uses the existing product and room controls while comparing the active
+browser pricing behavior with the server-authoritative catalog engine before any
+CRM cutover.
 
 ## Safety boundary
 
@@ -10,6 +11,8 @@ cutover.
 - No production quote, customer, contract, bookkeeping, or payment writes.
 - No email, SMS, payment-link, signature, or manufacturer-order actions.
 - Test quote state exists only in the browser session and disappears on refresh.
+- The UI and API both enforce a maximum of 40 line items. A 41st line is rejected
+  instead of silently dropped.
 - The catalog and comparison endpoints require the `QUOTE_LAB_ACCESS_CODE`
   HttpOnly session cookie.
 - Vercel preview hosts are already marked `noindex, nofollow` by `src/proxy.ts`.
@@ -20,7 +23,7 @@ payment, or manufacturer-order modules.
 
 ## Routes
 
-- `/quote-lab` - access gate and interactive comparison UI.
+- `/quote-lab` - access gate and familiar quote-builder test UI.
 - `POST /api/quote-lab/access` - verifies the preview-only access code.
 - `GET /api/quote-lab/catalog` - returns the safe catalog projection and
   anonymized fixtures.
@@ -36,6 +39,16 @@ payment, or manufacturer-order modules.
 4. Browser-local shutter rate divergence.
 5. SmartFold catalog coverage missing from the active legacy switch.
 6. Manufacturer freight and oversize cost exposure.
+7. A full 40-line whole-home quote through one authoritative request.
+
+## Builder behavior
+
+- Uses the existing MTS `ProductTypeButtons` and `RoomPresetButtons` controls.
+- Adds, copies, removes, stacks, and reopens line items without persistence.
+- Supports up to six A-F designs per line and bills only the selected design.
+- Automatically reprices the entire draft through the protected server route.
+- Keeps old-vs-new discrepancies in a collapsed backend audit panel rather than
+  changing the normal quote-building layout.
 
 ## Local verification
 
