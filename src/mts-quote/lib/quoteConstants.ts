@@ -630,7 +630,13 @@ export const PAYMENT_METHODS = [
 
 // Roller Shade Options
 export const ROLLER_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
-export const ROLLER_SHADE_TYPES = ["Single Shade", "Dual Rollers", "Common Valance"] as const;
+export const ROLLER_SHADE_TYPES = [
+  "Single Shade",
+  "Dual Rollers",
+  "Coupled Shades",
+  "LightGuard 360 with T-Post",
+  "Common Valance",
+] as const;
 export const ROLLER_LIFT_SYSTEMS = [
   "Cordless",
   "Continuous Cord Loop",

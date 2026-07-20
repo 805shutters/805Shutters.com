@@ -38,3 +38,34 @@ test("protected Quote Lab renders Polar in the exact existing builder", async ({
   await expect(page.locator('[aria-label="Add quote line item"]').getByRole("button", { name: "Awnings" }).first()).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("quote-lab-polar-mobile.png"), fullPage: false });
 });
+
+test("Norman coupled quantity and SmartSense price through the existing builder", async ({ page }, testInfo) => {
+  test.skip(!accessCode, "Requires QUOTE_LAB_ACCESS_CODE for the isolated preview.");
+  const response = await page.request.post("/api/quote-lab/access", { data: { code: accessCode } });
+  expect(response.ok()).toBe(true);
+  await page.goto("/quote-lab");
+
+  const controls = page.getByTestId("quote-lab-catalog-controls").first();
+  await expect(controls.getByRole("combobox", { name: "Manufacturer and product" })).toContainText("Norman - Soluna Roller Shades");
+  await page.getByRole("button", { name: "Shade Type", exact: true }).first().click();
+  await page.getByRole("button", { name: "Coupled Shades", exact: true }).first().click();
+  const countControl = page.getByRole("button", { name: "Coupled Shade Count", exact: true }).first();
+  await expect(page.getByRole("button", { name: /Coupled Shade Count/ }).first()).toBeVisible();
+  await countControl.click();
+  await page.getByRole("button", { name: "3", exact: true }).first().click();
+  await expect(page.getByText("$1,128", { exact: true }).first()).toBeVisible();
+
+  const motor = controls.getByRole("combobox", { name: "Motor or control" });
+  await motor.click();
+  await page.getByRole("option", { name: "SmartSense", exact: true }).click();
+  await expect(page.getByText("$1,188", { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-norman-coupled-desktop.png"), fullPage: false });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  const mobileCountControl = page.getByRole("button", { name: /Coupled Shade Count/ }).first();
+  await expect(mobileCountControl).toBeVisible();
+  await mobileCountControl.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-norman-coupled-mobile.png"), fullPage: false });
+});

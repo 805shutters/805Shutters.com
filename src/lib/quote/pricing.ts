@@ -34,6 +34,7 @@ export type PriceErrorCode =
   | "SURCHARGE_UNKNOWN"
   | "SURCHARGE_NO_PRICE"
   | "MOTORIZATION_UNKNOWN"
+  | "CONFIGURATION_INCOMPLETE"
   | "MANUAL_PRICE_REQUIRED"
   | "CUSTOMER_RETAIL_UNDEFINED"
   | "PRODUCT_UNAVAILABLE";
@@ -90,6 +91,8 @@ export type PriceBreakdown = {
   /** Billable square footage after the minimum floor (sqft-priced programs only). */
   billableSqft?: number;
   base: number;
+  /** Number of physical shade units represented by one configured window. */
+  configurationUnits: number;
   /** Internal dealer/wholesale base cost. Null when the source guide exposes retail only. */
   wholesaleBase: number | null;
   surchargeLines: PriceLine[];
@@ -280,6 +283,9 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (product.freightStatus === "unresolved") {
     warnings.push("Freight/packaging and residential or out-of-area delivery amounts are not defined; landed cost and margin are incomplete.");
   }
+  if (product.freightStatus === "order_level") {
+    warnings.push("Norman net freight and oversize charges are calculated at the complete quote level.");
+  }
 
   const progOrFail = resolveProgram(product, input, warnings);
   if ("ok" in progOrFail) return progOrFail; // PriceFailure has ok:false
@@ -336,10 +342,25 @@ export function priceDesign(input: PriceInput): PriceResult {
 
   const baseLookup = lookupBaseCents(prog, W, H, warnings);
   if ("ok" in baseLookup) return baseLookup;
+  let configurationUnits = 1;
+  for (const sel of input.surcharges ?? []) {
+    const surcharge = findProductSurcharge(product, sel.id);
+    if (!surcharge) continue;
+    const units = Math.max(1, Math.round(Number(sel.units) || 1));
+    const multiplier = surcharge.baseQuantityFromUnits === "units"
+      ? units
+      : surcharge.baseQuantityFromUnits === "units_plus_one"
+        ? units + 1
+        : surcharge.baseQuantityMultiplier ?? 1;
+    configurationUnits = Math.max(configurationUnits, multiplier);
+  }
   const dealerFactor = product.dealerFactor;
-  const sourceWholesaleBaseCents = baseLookup.wholesaleCents;
-  const wholesaleBaseCents = sourceWholesaleBaseCents ?? (dealerFactor == null ? null : Math.round(baseLookup.cents * dealerFactor));
-  const { cents: baseCents, matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
+  const baseCents = baseLookup.cents * configurationUnits;
+  const sourceWholesaleBaseCents = baseLookup.wholesaleCents == null
+    ? null
+    : baseLookup.wholesaleCents * configurationUnits;
+  const wholesaleBaseCents = sourceWholesaleBaseCents ?? (dealerFactor == null ? null : Math.round(baseCents * dealerFactor));
+  const { matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
 
   // Surcharges
   const surchargeLines: PriceLine[] = [];
@@ -414,7 +435,9 @@ export function priceDesign(input: PriceInput): PriceResult {
       // Sides (cut-outs) and feet (additional valance foot) are billed per whole
       // unit — never a fractional count (which would yield a fractional charge).
       const automaticUnits = sc.autoUnits === "width_foot" ? Math.ceil(W / 12) : sc.autoUnits === "height_foot" ? Math.ceil(H / 12) : null;
-      const units = sc.per === "side" || sc.per === "foot" ? (automaticUnits ?? Math.max(1, Math.round(Number(sel.units) || 1))) : 1;
+      const units = sc.per === "once"
+        ? 1
+        : automaticUnits ?? Math.max(1, Math.round(Number(sel.units) || 1));
       amountCents = toCents(sc.value) * units;
       if (sc.minimumCharge != null) amountCents = Math.max(amountCents, toCents(sc.minimumCharge));
       if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
@@ -463,7 +486,17 @@ export function priceDesign(input: PriceInput): PriceResult {
       warnings.push(`Motorization '${opt.name}' has no catalog price and was skipped.`);
       continue;
     }
-    const units = Math.max(1, Math.round(Number(sel.units) || 1));
+    const selectedUnits = Math.max(1, Math.round(Number(sel.units) || 1));
+    const needsTwoMotors =
+      surchargeIds.has("dual_shade") ||
+      (product.id === "roman" && surchargeIds.has("day_and_night"));
+    const isMotorDrive =
+      (sel.groupId === "smart_motorization" && opt.id === "motor") ||
+      (sel.groupId === "autowand" && opt.id === "autowand") ||
+      (sel.groupId === "automate_home" && (
+        opt.id.startsWith("motor_") || opt.id === "low_voltage_dc_motor"
+      ));
+    const units = selectedUnits * (needsTwoMotors && isMotorDrive ? 2 : 1);
     const amountCents = toCents(motorPrice) * units;
     const wholesaleAmountCents = wholesaleBaseCents == null ? null : Math.round(amountCents * (dealerFactor ?? 1));
     surchargeLines.push({
@@ -500,6 +533,7 @@ export function priceDesign(input: PriceInput): PriceResult {
     sqft: actualSqft,
     billableSqft,
     base: fromCents(baseCents),
+    configurationUnits,
     wholesaleBase: wholesaleBaseCents == null ? null : fromCents(wholesaleBaseCents),
     surchargeLines,
     unitPrice: fromCents(discountedUnitCents),
@@ -511,6 +545,11 @@ export function priceDesign(input: PriceInput): PriceResult {
     total: fromCents(totalCents),
     wholesaleTotal: wholesaleTotalCents == null ? null : fromCents(wholesaleTotalCents),
     warnings,
-    costStatus: product.freightStatus === "unresolved" ? "incomplete" : wholesaleTotalCents == null ? "unavailable" : "complete",
+    costStatus:
+      product.freightStatus === "unresolved" || product.freightStatus === "order_level"
+        ? "incomplete"
+        : wholesaleTotalCents == null
+          ? "unavailable"
+          : "complete",
   };
 }

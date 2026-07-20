@@ -3694,7 +3694,7 @@ function QuoteLabCatalogControls({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="space-y-1">
           <Label className="text-xs font-semibold">Manufacturer / product</Label>
-          <Select value={productId || undefined} onValueChange={chooseProduct}>
+          <Select value={productId} onValueChange={chooseProduct}>
             <SelectTrigger aria-label="Manufacturer and product"><SelectValue placeholder="Select required">{selectedProduct ? `${selectedProduct.manufacturer ?? "Norman"} - ${selectedProduct.system ?? selectedProduct.name}` : undefined}</SelectValue></SelectTrigger>
             <SelectContent>
               {availableProducts.map((product) => (
@@ -3709,7 +3709,7 @@ function QuoteLabCatalogControls({
         {selectedProduct && selectedProduct.programs.length > 1 && (
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Price program</Label>
-            <Select value={programId || undefined} onValueChange={(next) => {
+            <Select value={programId} onValueChange={(next) => {
               const program = selectedProduct.programs.find((candidate) => candidate.id === next);
               onUpdateFields({ material: program?.name ?? null, fabric: null, options_json: { ...options, quote_lab_program_id: next, catalog_program_id: next } });
             }}>
@@ -3721,12 +3721,12 @@ function QuoteLabCatalogControls({
 
         {selectedProduct && (selectedProduct.fabrics?.length ?? 0) > 0 && (
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">Polar fabric</Label>
-            <Select value={design?.fabric || undefined} onValueChange={(fabric) => {
+            <Label className="text-xs font-semibold">Fabric collection</Label>
+            <Select value={design?.fabric || ""} onValueChange={(fabric) => {
               const choice = selectedProduct.fabrics?.find((candidate) => candidate.name === fabric);
               onUpdateFields({ fabric, material: choice ? `Price Group ${choice.programId.replace("group_", "")}` : null, options_json: { ...options, quote_lab_program_id: choice?.programId ?? null, catalog_program_id: choice?.programId ?? null } });
             }}>
-              <SelectTrigger aria-label="Polar fabric"><SelectValue placeholder="Select fabric" /></SelectTrigger>
+              <SelectTrigger aria-label="Fabric collection"><SelectValue placeholder="Select fabric" /></SelectTrigger>
               <SelectContent>{selectedProduct.fabrics?.map((fabric) => <SelectItem key={fabric.name} value={fabric.name}>{fabric.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -3736,7 +3736,7 @@ function QuoteLabCatalogControls({
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Add accessory</Label>
             <Select value="" onValueChange={addSurcharge}>
-              <SelectTrigger aria-label="Add Polar accessory"><SelectValue placeholder="Choose accessory" /></SelectTrigger>
+              <SelectTrigger aria-label="Add accessory"><SelectValue placeholder="Choose accessory" /></SelectTrigger>
               <SelectContent>{selectedProduct.surcharges.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
@@ -3745,8 +3745,8 @@ function QuoteLabCatalogControls({
         {selectedProduct?.motorizationGroups.flatMap((group) => group.options).length ? (
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Motor / control</Label>
-            <Select value={design?.motor_type || undefined} onValueChange={(motor_type) => onUpdateFields({ motor_type })}>
-              <SelectTrigger aria-label="Polar motor or control"><SelectValue placeholder="Manual / none" /></SelectTrigger>
+            <Select value={design?.motor_type || ""} onValueChange={(motor_type) => onUpdateFields({ motor_type })}>
+              <SelectTrigger aria-label="Motor or control"><SelectValue placeholder="Manual / none" /></SelectTrigger>
               <SelectContent>{selectedProduct.motorizationGroups.flatMap((group) => group.options.map((item) => <SelectItem key={`${group.groupId}:${item.id}`} value={item.id}>{item.name}</SelectItem>))}</SelectContent>
             </Select>
           </div>
@@ -4750,6 +4750,7 @@ function ShadesAndBlindsOptions({
     switch (productType) {
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
+        const shadeType = getFieldValue(design, "shade_type");
         const premiumHardware = getFieldValue(design, "json:premium_hardware");
         const options: GridOption[] = [
           {
@@ -4816,6 +4817,26 @@ function ShadesAndBlindsOptions({
             noFirst: true,
           },
         ];
+
+        if (shadeType === "Coupled Shades") {
+          options.push({
+            key: "coupled_shade_count",
+            label: "Coupled Shade Count",
+            field: "json:coupled_shade_count",
+            type: "buttons",
+            options: ["2", "3", "4"],
+          });
+        }
+
+        if (shadeType === "LightGuard 360 with T-Post") {
+          options.push({
+            key: "lightguard_360_shade_count",
+            label: "LightGuard 360 Shade Count",
+            field: "json:lightguard_360_shade_count",
+            type: "buttons",
+            options: ["2", "3", "4"],
+          });
+        }
 
         if (premiumHardware === "Yes") {
           options.push({

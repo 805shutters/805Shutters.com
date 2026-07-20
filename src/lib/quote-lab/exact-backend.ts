@@ -1,7 +1,7 @@
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct } from "@/lib/quote/catalog";
 import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
-import { priceDesign, type MotorizationSelection, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
+import { priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 
@@ -153,6 +153,23 @@ export function priceExactQuoteBuilderDesign(
 ) {
   const productId = resolveProductId(line, design);
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
+  const details = authoritativeDetails(design);
+  if (productId === "roller") {
+    const shadeType = textOption(details, "shade_type");
+    const requiredCountField = shadeType === "coupled" || shadeType === "coupled_shades"
+      ? "coupled_shade_count"
+      : shadeType === "lightguard_360_t_post" || shadeType === "lightguard_360_with_t_post"
+        ? "lightguard_360_shade_count"
+        : null;
+    if (requiredCountField && !["2", "3", "4"].includes(textOption(details, requiredCountField) ?? "")) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error: `Select the ${requiredCountField === "coupled_shade_count" ? "coupled shade" : "LightGuard 360 shade"} count before pricing.`,
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+  }
   const input: PriceInput = {
     productId,
     programId: resolveProgramId(productId, design),
@@ -165,6 +182,14 @@ export function priceExactQuoteBuilderDesign(
     motorization: motorizationSelections(productId, design),
   };
   return priceDesign(input);
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function graduatedNetCost(units: number, first: number, additional: number): number {
+  return units <= 0 ? 0 : first + Math.max(0, units - 1) * additional;
 }
 
 export function repriceExactQuoteBuilder(input: {
@@ -185,15 +210,112 @@ export function repriceExactQuoteBuilder(input: {
         : ({ ok: false, code: "PRODUCT_NOT_FOUND", error: "Line item was not found.", warnings: [] } as const),
     };
   });
-  const total = input.lines.reduce((sum, line) => {
+  const selected = input.lines.map((line) => {
     const selectedVariant = input.selectedVariantByLine[line.id] ?? "A";
-    const selected = pricedDesigns.find(
+    const priced = pricedDesigns.find(
       (candidate) => candidate.lineItemId === line.id && candidate.variant === selectedVariant,
     ) ?? pricedDesigns.find((candidate) => candidate.lineItemId === line.id);
-    return sum + (selected?.result.ok ? selected.result.total : 0);
-  }, 0);
+    const design = input.designs.find(
+      (candidate) => candidate.line_item_id === line.id && candidate.variant === selectedVariant,
+    ) ?? input.designs.find((candidate) => candidate.line_item_id === line.id);
+    return { line, design, priced };
+  });
+  const total = selected.reduce((sum, entry) => sum + (entry.priced?.result.ok ? entry.priced.result.total : 0), 0);
+
+  let productCost = 0;
+  let blindShadeFreightUnits = 0;
+  let shutterFreightUnits = 0;
+  let blindShadeOversizeUnits = 0;
+  let shutterOversizeUnits = 0;
+  let costComplete = true;
+  const costWarnings: string[] = [];
+  const shippingRegions = new Set<string>();
+
+  for (const entry of selected) {
+    const result = entry.priced?.result;
+    if (!result?.ok) {
+      costComplete = false;
+      continue;
+    }
+    if (result.wholesaleTotal == null) {
+      costComplete = false;
+    } else {
+      productCost += result.wholesaleTotal;
+    }
+    const product = getProduct(result.productId);
+    if (result.costStatus !== "complete" && product?.freightStatus !== "order_level") {
+      costComplete = false;
+    }
+    const options = (entry.design?.options_json as Record<string, unknown> | undefined) ?? {};
+    const quantity = Math.max(1, Math.floor(Number(entry.line.quantity) || 1));
+    const componentsPerWindow = Math.max(1, result.configurationUnits);
+    const width = decimalMeasurement(entry.line.width_whole, entry.line.width_fraction);
+    const height = decimalMeasurement(entry.line.height_whole, entry.line.height_fraction);
+
+    if (product?.freightStatus === "order_level" && product.id !== "palladian_shelf") {
+      shippingRegions.add(options.shipping_region === "hi_ak" ? "hi_ak" : "continental_us");
+      const physicalUnits = componentsPerWindow * quantity;
+      blindShadeFreightUnits += physicalUnits;
+      const surchargeIds = new Set(result.surchargeLines.map((item) => item.id));
+      const coupled = surchargeIds.has("coupled_shade");
+      const billedComponents = coupled ? Math.min(2, componentsPerWindow) : componentsPerWindow;
+      if (width >= 90) blindShadeOversizeUnits += billedComponents * quantity;
+      const appliesToHeight =
+        product.id === "synchrony_vertical" ||
+        product.id === "vertical_honeycomb" ||
+        surchargeIds.has("basic_light_guard") ||
+        surchargeIds.has("premium_wood_light_guard") ||
+        surchargeIds.has("lightguard_360") ||
+        surchargeIds.has("smartfit_with_frame") ||
+        surchargeIds.has("smartfit_dual_shade_with_frame") ||
+        [...surchargeIds].some((id) => id.includes("single_motor_for_skylights"));
+      if (appliesToHeight && height >= 90) blindShadeOversizeUnits += billedComponents * quantity;
+    }
+
+    if (product?.id === "norman_shutters") {
+      shippingRegions.add(options.shipping_region === "hi_ak" ? "hi_ak" : "continental_us");
+      shutterFreightUnits += quantity;
+      const details = authoritativeDetails(entry.design ?? {});
+      const hasSourceException =
+        textOption(details, "panel_config") === "cafe" ||
+        ![undefined, "none"].includes(textOption(details, "specialty_shape"));
+      if (height >= 90 && hasSourceException) {
+        costComplete = false;
+        costWarnings.push("Norman shutter oversize exclusions for cafe shutters and specialty shapes require manual review.");
+      } else if (height >= 90) {
+        shutterOversizeUnits += quantity;
+      }
+    }
+
+  }
+
+  const mixedShippingRegions = shippingRegions.size > 1;
+  if (mixedShippingRegions) {
+    costComplete = false;
+    costWarnings.push("Mixed continental-US and HI/AK shipping regions require separate quotes; freight is unresolved.");
+  }
+  const hiAk = shippingRegions.size === 1 && shippingRegions.has("hi_ak");
+  const freightHandling = mixedShippingRegions
+    ? 0
+    : hiAk
+      ? graduatedNetCost(blindShadeFreightUnits, 100, 15) +
+        (shutterFreightUnits > 0 ? Math.max(100, graduatedNetCost(shutterFreightUnits, 75, 25)) : 0)
+      : graduatedNetCost(blindShadeFreightUnits, 25, 11) +
+        graduatedNetCost(shutterFreightUnits, 75, 25);
+  const oversize =
+    graduatedNetCost(blindShadeOversizeUnits, 80, 50) +
+    graduatedNetCost(shutterOversizeUnits, 80, 50);
+  const dealerCostTotal = productCost + freightHandling + oversize;
   return {
     total: Math.round(total * 100) / 100,
     designs: pricedDesigns,
+    costSummary: {
+      status: costComplete ? "complete" : "incomplete",
+      productCost: roundMoney(productCost),
+      freightHandling: roundMoney(freightHandling),
+      oversize: roundMoney(oversize),
+      dealerCostTotal: roundMoney(dealerCostTotal),
+      warnings: [...new Set(costWarnings)],
+    },
   };
 }

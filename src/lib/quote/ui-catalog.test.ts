@@ -124,7 +124,7 @@ describe("buildPricingReference", () => {
   it("exposes authoritative grid numbers for CRM reference", () => {
     const honeycomb = ref.programs.find((p) => p.programId === "honeycomb_9_16in_cordless_single_cell");
     expect(honeycomb).toBeTruthy();
-    expect(honeycomb!.source).toBeNull();
+    expect(honeycomb!.source).toBe("2026Jul Retail Price Guide (1).pdf");
     expect(honeycomb!.widths).toContain(24);
     expect(honeycomb!.heights).toContain(36);
     expect(honeycomb!.prices[0][0]).toBe(212);

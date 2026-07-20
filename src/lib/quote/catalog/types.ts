@@ -83,6 +83,10 @@ export type CatalogSurcharge = {
   autoUnits?: "width_foot" | "height_foot";
   percentOfSurchargeId?: string;
   minimumCharge?: number;
+  /** Multiply the source grid base when this option represents multiple shades. */
+  baseQuantityMultiplier?: number;
+  /** Derive the source grid base multiplier from the selected surcharge units. */
+  baseQuantityFromUnits?: "units" | "units_plus_one";
   /** When present, the charge is looked up by window width (round up) rather than
    *  using a flat `value`. Used for width-graduated valances whose price table
    *  would otherwise sit unused in `notes` and bill $0. */
@@ -102,6 +106,7 @@ export type CatalogSourceMetadata = {
   receivedDate: string;
   modifiedDate: string;
   pages: number;
+  sha256?: string;
 };
 
 export type CatalogFabricByYard = {
@@ -119,7 +124,7 @@ export type CatalogProduct = {
   priceBasis?: CatalogPriceBasis;
   /** Server-only cost policy. Never include this field in customer projections. */
   dealerFactor?: number | null;
-  freightStatus?: "defined" | "unresolved" | "not_applicable";
+  freightStatus?: "defined" | "order_level" | "unresolved" | "not_applicable";
   pages: number[];
   /** True when prices are not yet verified against a current price guide. */
   provisional?: boolean;
@@ -145,6 +150,7 @@ export type CatalogMotorizationOption = {
    */
   priceByProduct?: Record<string, number | null>;
   notes: string;
+  sourcePages?: number[];
 };
 
 export type CatalogMotorizationGroup = {
@@ -152,6 +158,7 @@ export type CatalogMotorizationGroup = {
   options: CatalogMotorizationOption[];
   surcharges: CatalogSurcharge[];
   notes: string[];
+  sourcePages?: number[];
 };
 
 export type Catalog = {

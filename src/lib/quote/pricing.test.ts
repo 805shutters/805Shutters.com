@@ -295,11 +295,11 @@ describe("motorization per-product pricing (Norman 2026 Retail Guide p7)", () =>
     if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
   });
 
-  it("never leaks wholesale/cost on Norman motorization (retail-only source)", () => {
+  it("applies the supplied 0.30 dealer factor to Norman motorization", () => {
     const r = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
-    expect(motorLine(r)?.wholesaleAmount ?? null).toBe(null);
-    expect(r.wholesaleUnitPrice).toBe(null);
-    expect(r.wholesaleTotal).toBe(null);
+    expect(motorLine(r)?.wholesaleAmount).toBe(192.6);
+    expect(r.wholesaleUnitPrice).toBe(Math.round(r.unitPrice * 0.3 * 100) / 100);
+    expect(r.wholesaleTotal).toBe(r.wholesaleUnitPrice);
   });
 });
 

@@ -207,7 +207,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
     expect(fields.price_status).toBe("ok");
     expect(fields.unit_price).toBe(212);
-    expect(fields.wholesale_unit_price).toBeNull();
+    expect(fields.wholesale_unit_price).toBe(63.6);
   });
 
   it("derives canonical surcharges from details and ignores client-provided manual surcharges", () => {
@@ -225,7 +225,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
     expect(fields.price_status).toBe("ok");
     expect(fields.surcharges).toEqual([{ id: "lightguard_360" }]);
     expect((fields.price_breakdown as { surchargeLines?: Array<{ id: string; amount: number }> }).surchargeLines).toEqual([
-      { id: "lightguard_360", label: "LightGuard 360", amount: 375, kind: "flat" },
+      expect.objectContaining({ id: "lightguard_360", label: "LightGuard 360", amount: 375, wholesaleAmount: 112.5, kind: "flat" }),
     ]);
     expect(fields.unit_price).toBe(629);
   });
