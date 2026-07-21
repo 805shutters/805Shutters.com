@@ -152,6 +152,8 @@ export type ManufacturerComparisonProduct = {
   manufacturer: string;
   productName: string;
   system: string | null;
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
+  provisional: boolean;
   selected: boolean;
   programs: ManufacturerComparisonProgram[];
 };

@@ -93,6 +93,31 @@ test("Lotus shares existing categories and adds Vinyl Blinds without exposing de
   await page.screenshot({ path: testInfo.outputPath("quote-lab-lotus-mobile.png"), fullPage: false });
 });
 
+test("Shutter comparison keeps Norman and Onyx distinct and labels provisional pricing", async ({ page }) => {
+  test.skip(!accessCode, "Requires QUOTE_LAB_ACCESS_CODE for the isolated preview.");
+  const response = await page.request.post("/api/quote-lab/access", { data: { code: accessCode } });
+  expect(response.ok()).toBe(true);
+  await page.goto("/quote-lab");
+
+  const firstControls = page.getByTestId("quote-lab-catalog-controls").first();
+  const firstLineCard = firstControls.locator("xpath=ancestor::div[contains(@class, 'overflow-hidden')][1]");
+  await firstLineCard.getByRole("button", { name: "Roller Shades", exact: true }).click();
+  await firstLineCard.locator('[aria-label="Select line item product type"]').getByRole("button", { name: "Shutters", exact: true }).click();
+
+  const shutterControls = page.getByTestId("quote-lab-catalog-controls").first();
+  await expect(shutterControls.getByRole("combobox", { name: "Manufacturer and product" })).toContainText("Select required");
+  await shutterControls.getByRole("button", { name: "Compare manufacturers" }).click();
+  const panel = shutterControls.getByTestId("manufacturer-comparison-panel");
+  await expect(panel.getByText("Norman - Norman Shutters", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Onyx - Onyx Shutters", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Provisional pricing source", { exact: true })).toHaveCount(2);
+
+  const onyx = panel.locator("details").filter({ hasText: "Onyx - Onyx Shutters" });
+  await onyx.locator("summary").click();
+  await onyx.getByTitle(/^Use Onyx /).first().click();
+  await expect(shutterControls.getByRole("combobox", { name: "Manufacturer and product" })).toContainText("Onyx - Onyx Shutters");
+});
+
 test("Norman coupled quantity and SmartSense price through the existing builder", async ({ page }, testInfo) => {
   test.skip(!accessCode, "Requires QUOTE_LAB_ACCESS_CODE for the isolated preview.");
   const response = await page.request.post("/api/quote-lab/access", { data: { code: accessCode } });

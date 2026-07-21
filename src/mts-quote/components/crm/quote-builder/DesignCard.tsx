@@ -3881,6 +3881,8 @@ function ManufacturerComparisonPanel({
                     <span>{product.manufacturer} - {product.system ?? product.productName}</span>
                     {product.selected && <span className="text-xs font-semibold text-blue-700">Current</span>}
                   </div>
+                  {product.provisional && <div className="text-xs font-semibold text-amber-800">Provisional pricing source</div>}
+                  {product.priceBasis === "unavailable" && <div className="text-xs font-semibold text-red-700">Unavailable from source</div>}
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
                     <span>Retail: <strong>{retailRange ?? "Not defined"}</strong></span>
                     <span>Dealer cost: <strong>{costRange ?? "Not available"}</strong></span>

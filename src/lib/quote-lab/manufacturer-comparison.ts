@@ -33,6 +33,8 @@ export function compareManufacturers(input: ManufacturerComparisonInput): Manufa
       manufacturer: product.manufacturer ?? "Norman",
       productName: product.name,
       system: product.system ?? null,
+      priceBasis: product.priceBasis ?? "suggested_retail",
+      provisional: Boolean(product.provisional),
       selected: product.id === input.selectedProductId,
       programs: product.programs.map((program) => {
         const priceInput = {
