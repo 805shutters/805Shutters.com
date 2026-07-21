@@ -712,6 +712,24 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     await card.getByText("Why this price?", { exact: false }).click();
     await expect(card).toContainText("$511.50");
     await expect(card).toContainText("$204.60");
+    const wholesalePanel = card.locator('[aria-label="Wholesale cost"]');
+    const highlightedWholesaleCosts = wholesalePanel.locator(
+      '[data-wholesale-cost-value="true"]',
+    );
+    await expect(highlightedWholesaleCosts).toHaveCount(6);
+    expect(
+      await highlightedWholesaleCosts.evaluateAll((elements) =>
+        elements.every(
+          (element) => getComputedStyle(element).color === "rgb(185, 28, 28)",
+        ),
+      ),
+    ).toBe(true);
+    await expect(
+      card.locator('[aria-label="Retail pricing"] [data-wholesale-cost-value="true"]'),
+    ).toHaveCount(0);
+    await expect(
+      highlightedWholesaleCosts.filter({ hasText: "$511.50" }),
+    ).toHaveCount(0);
     await expect(card).not.toContainText("Stored price mismatch");
     await expect(card).not.toContainText("Surcharge mismatch");
     await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();

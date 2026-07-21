@@ -83,15 +83,26 @@ function DetailRow({
   label,
   value,
   emphasized = false,
+  wholesaleCost = false,
 }: {
   label: string;
   value: ReactNode;
   emphasized?: boolean;
+  wholesaleCost?: boolean;
 }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-slate-200/80 py-1.5 last:border-b-0">
       <span className="text-slate-600">{label}</span>
-      <span className={cn("text-right text-slate-900", emphasized && "font-bold")}>{value}</span>
+      <span
+        className={cn(
+          "text-right",
+          wholesaleCost ? "font-semibold text-[#b91c1c]" : "text-slate-900",
+          emphasized && "font-bold",
+        )}
+        data-wholesale-cost-value={wholesaleCost ? "true" : undefined}
+      >
+        {value}
+      </span>
     </div>
   );
 }
@@ -421,37 +432,42 @@ export function PricingAuditPanel({
                   />
                 )}
                 {tariffPercent > 0 && !authoritativeWholesaleCost && <DetailRow label="Tariff" value={`${tariffPercent}%`} />}
-                <DetailRow label="Wholesale base" value={money(wholesaleBase)} />
+                <DetailRow label="Wholesale base" value={money(wholesaleBase)} wholesaleCost />
                 {wholesaleSurchargeLines.map((line) => (
                   <div key={line.id} className="border-b border-emerald-200/70 py-2">
                     <div className="flex items-start justify-between gap-4">
                       <span className="font-medium text-slate-900">{line.name} cost</span>
-                      <strong className="text-right text-slate-950">{money(line.amount)}</strong>
+                      <strong className="text-right text-[#b91c1c]" data-wholesale-cost-value="true">
+                        {money(line.amount)}
+                      </strong>
                     </div>
                     <div className="mt-0.5 text-right text-[11px] text-slate-500">{line.detail}</div>
                   </div>
                 ))}
-                <DetailRow label="Total wholesale add-ons" value={money(wholesaleSurchargeTotal)} />
+                <DetailRow label="Total wholesale add-ons" value={money(wholesaleSurchargeTotal)} wholesaleCost />
               </div>
               <div>
-                <DetailRow label="Our cost per window" value={money(wholesaleUnitCost)} emphasized />
+                <DetailRow label="Our cost per window" value={money(wholesaleUnitCost)} emphasized wholesaleCost />
                 {quantity > 1 && (
                   <DetailRow
                     label={`Our line cost (${quantity} windows)`}
                     value={money(wholesaleLineCost)}
                     emphasized
+                    wholesaleCost
                   />
                 )}
                 {(authoritativeWholesaleCost?.freightAllocated ?? 0) > 0 && (
                   <DetailRow
                     label="Allocated freight"
                     value={money(authoritativeWholesaleCost?.freightAllocated)}
+                    wholesaleCost
                   />
                 )}
                 {(authoritativeWholesaleCost?.oversizeAllocated ?? 0) > 0 && (
                   <DetailRow
                     label="Allocated oversize"
                     value={money(authoritativeWholesaleCost?.oversizeAllocated)}
+                    wholesaleCost
                   />
                 )}
                 {authoritativeWholesaleCost?.landedCostTotal !== undefined && (
@@ -459,6 +475,7 @@ export function PricingAuditPanel({
                     label="Landed line cost"
                     value={money(authoritativeWholesaleCost.landedCostTotal)}
                     emphasized
+                    wholesaleCost
                   />
                 )}
                 {authoritativeRetailBlocked ? (

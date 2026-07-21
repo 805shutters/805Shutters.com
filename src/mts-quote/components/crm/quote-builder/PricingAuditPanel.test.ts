@@ -15,7 +15,7 @@ function renderCost(cost: PricingAuditWholesaleCost, savedUnitPrice: number, bas
     heightIn: 48,
     rawSqft: 10,
     billableSqft: 10,
-    quantity: 1,
+    quantity: cost.quantity,
     savedUnitPrice,
     options: {
       base_price: basePrice,
@@ -38,6 +38,13 @@ function renderCost(cost: PricingAuditWholesaleCost, savedUnitPrice: number, bas
   }));
 }
 
+function highlightedWholesaleValues(html: string): string[] {
+  return Array.from(
+    html.matchAll(/data-wholesale-cost-value="true"[^>]*>([^<]*)</g),
+    (match) => match[1],
+  );
+}
+
 describe("PricingAuditPanel authoritative wholesale cost", () => {
   it("shows Norman retail-factor cost instead of the missing-cost warning", () => {
     const html = renderCost({
@@ -54,6 +61,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
 
     expect(html).toContain("Retail x 0.30");
     expect(html).toContain("$89.40");
+    expect(highlightedWholesaleValues(html)).toEqual(["$89.40", "$0", "$89.40"]);
     expect(html).not.toContain("No source-backed wholesale cost");
   });
 
@@ -72,6 +80,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
 
     expect(html).toContain("Dealer-net source grid");
     expect(html).toContain("$35.02");
+    expect(highlightedWholesaleValues(html)).toEqual(["$35.02", "$0", "$35.02"]);
     expect(html).toContain("Customer retail is blocked");
     expect(html).toContain("Incomplete - customer retail undefined");
     expect(html).not.toContain("Gross profit dollars");
@@ -137,7 +146,46 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("$204.60");
     expect(html).toContain("Allocated freight");
     expect(html).toContain("Landed line cost");
+    expect(highlightedWholesaleValues(html)).toEqual([
+      "$98.40",
+      "$204.60",
+      "$204.60",
+      "$303",
+      "$25",
+      "$328",
+    ]);
     expect(html).not.toContain("Stored price mismatch");
     expect(html).not.toContain("Surcharge mismatch");
+  });
+
+  it("highlights quantity line cost and oversize allocation without marking retail red", () => {
+    const html = renderCost({
+      ok: true,
+      basis: "catalog_factor",
+      matchedWidth: 96,
+      matchedHeight: 84,
+      wholesaleBase: 180,
+      wholesaleAddOns: [],
+      wholesaleUnitCost: 180,
+      quantity: 2,
+      wholesaleTotal: 360,
+      freightAllocated: 25,
+      oversizeAllocated: 80,
+      landedCostTotal: 465,
+      freightStatus: "published",
+    }, 600, 600);
+
+    expect(highlightedWholesaleValues(html)).toEqual([
+      "$180",
+      "$0",
+      "$180",
+      "$360",
+      "$25",
+      "$80",
+      "$465",
+    ]);
+    expect(highlightedWholesaleValues(html)).not.toContain("$1,200");
+    expect(html).toContain("Retail line revenue");
+    expect(html).toContain("Gross profit dollars");
   });
 });
