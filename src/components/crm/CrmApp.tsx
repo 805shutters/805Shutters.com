@@ -6888,12 +6888,16 @@ function DrillDetailCard({
       }
     : undefined;
   const measureNeededActive = Boolean(job && isMeasureNeededJob(job));
+  const measureWorkflow = job ? (getMeasureNeededMeta(job.meta) as Record<string, unknown>) : null;
+  const measureFormId = typeof measureWorkflow?.form_id === "string" ? measureWorkflow.form_id : null;
+  const measureFormComplete = measureWorkflow?.form_status === "submitted";
   const canRequestMeasure =
     Boolean(onMeasureNeededAction && job && !measureNeededActive) &&
     (liveRowStatus === "sold" || liveRowStatus === "approved" || job?.status === "sold");
   const canMarkOrdered =
     (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
-    (canEditQuoteRow || canEditJob);
+    (canEditQuoteRow || canEditJob) &&
+    (!measureNeededActive || measureFormComplete);
   const canFindOrderEmail =
     !canMarkOrdered &&
     (liveRowStatus === "ordered" || job?.status === "ordered") &&
@@ -7157,6 +7161,15 @@ function DrillDetailCard({
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
+    measureFormId
+      ? {
+          key: "technical-measure-form",
+          label: measureFormComplete ? "View Measure" : "Open Measure",
+          detail: measureFormComplete ? "Submitted measure sheet" : "Required before ordering",
+          disabled: busy,
+          onClick: () => window.open(`/crm/technical-measures/${measureFormId}`, "_blank", "noopener,noreferrer")
+        }
+      : null,
     measureNeededActive
       ? {
           key: "measured",
@@ -9607,6 +9620,19 @@ function CustomerFilesView({
                 </td>
                 <td className="crm-customer-action-cell" colSpan={18}>
                   <div className="crm-customer-action-strip">
+                    {sortedJobs.map((job) => {
+                      const measure = getMeasureNeededMeta(job.meta) as Record<string, unknown>;
+                      const formId = typeof measure.form_id === "string" ? measure.form_id : null;
+                      return formId ? (
+                        <a
+                          className="crm-customer-status-button"
+                          href={`/crm/technical-measures/${formId}`}
+                          key={`measure-link-${job.id}`}
+                        >
+                          {measure.form_status === "submitted" ? "View technical measure" : "Complete technical measure"}
+                        </a>
+                      ) : null;
+                    })}
                     {sortedJobs.map((job) => {
                       const nextStatus = nextJobStatus(job.status);
                       return (

@@ -15,6 +15,7 @@ import {
   Phone,
   Plus,
   RefreshCw,
+  Ruler,
   User,
   X
 } from "lucide-react";
@@ -454,6 +455,12 @@ function AppointmentDetailSheet({
         {etaMessage ? <p className="mobile-crm-eta-status">{etaMessage}</p> : null}
 
         <div className="mobile-crm-sheet-actions">
+          {event.job_id ? (
+            <a className="mobile-crm-secondary-action" href={`/crm/technical-measures?jobId=${encodeURIComponent(event.job_id)}`}>
+              <Ruler />
+              <span>Technical Measure</span>
+            </a>
+          ) : null}
           <button type="button" className="mobile-crm-primary-action" disabled={!canText || etaBusy} onClick={() => onTextAndNavigate(event)}>
             {etaBusy ? <Loader2 className="spin" /> : <MessageSquare />}
             <span>{etaBusy ? "Sending..." : "Text & Navigate"}</span>
@@ -799,6 +806,9 @@ export function MobileAppointmentApp() {
           <p>All appointments</p>
         </div>
         <div className="mobile-crm-topbar-actions">
+          <a href="/crm/technical-measures" aria-label="Open technical measures" title="Technical measures">
+            <Ruler />
+          </a>
           <a href="/crm/mobile/quotes" aria-label="Open quotes" title="Quotes">
             <FileText />
           </a>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { completeMeasureNeededForJob, markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
+import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,19 @@ export async function POST(
     }
 
     if (!body.action || body.action === "request") {
-      return NextResponse.json(await requestMeasureNeededForJob(supabase, id, actor, "manual"));
+      const result = await requestMeasureNeededForJob(supabase, id, actor, "manual");
+      const { data: quote } = await supabase
+        .from("crm_quotes")
+        .select("id")
+        .eq("job_id", id)
+        .in("status", ["sold", "approved"])
+        .order("signed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const form = quote?.id
+        ? await ensureTechnicalMeasureForm(supabase, { jobId: id, quoteId: quote.id }, actor)
+        : null;
+      return NextResponse.json({ ...result, form });
     }
 
     if (body.action === "not_needed") {

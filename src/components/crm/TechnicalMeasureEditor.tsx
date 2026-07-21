@@ -1,0 +1,366 @@
+"use client";
+
+import { PointerEvent, useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { ArrowLeft, Check, FileSignature, Loader2, Mail, Ruler, Save, X } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
+import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
+import { FRACTIONS } from "@mts/lib/quoteConstants";
+import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
+import { PortalContainerContext } from "@mts/lib/portal-container";
+
+type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
+
+async function crmFetch<T>(session: Session, path: string, init: RequestInit = {}) {
+  const response = await fetch(path, {
+    ...init,
+    headers: { ...(init.headers || {}), Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : "CRM request failed.");
+  return body as T;
+}
+
+function wholeFraction(value: number | null) {
+  const total = Math.round(Number(value || 0) * 16);
+  return { whole: Math.floor(total / 16), fraction: FRACTIONS[total % 16] || "0" };
+}
+
+function decimal(whole: number, fraction: string) {
+  const index = FRACTIONS.indexOf(fraction as (typeof FRACTIONS)[number]);
+  return whole + Math.max(0, index) / 16;
+}
+
+function inches(value: number | null) {
+  if (!value) return "Select";
+  const parsed = wholeFraction(value);
+  return `${parsed.whole}${parsed.fraction === "0" ? "" : ` ${parsed.fraction}`}\"`;
+}
+
+function changed(left: unknown, right: unknown) {
+  return JSON.stringify(left ?? null) !== JSON.stringify(right ?? null);
+}
+
+function money(value: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+}
+
+function fieldName(key: string) {
+  return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function SignaturePad({ value, onChange }: { value: SignatureStroke[]; onChange: (value: SignatureStroke[]) => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const activeRef = useRef<SignatureStroke | null>(null);
+
+  function draw(strokes: SignatureStroke[]) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const scale = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+    if (canvas.width !== width * scale || canvas.height !== height * scale) {
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+    }
+    const context = canvas.getContext("2d");
+    if (!context) return;
+    context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.clearRect(0, 0, width, height);
+    context.strokeStyle = "#101010";
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    for (const stroke of strokes) {
+      if (stroke.length < 2) continue;
+      context.beginPath();
+      context.moveTo(stroke[0].x * width, stroke[0].y * height);
+      for (const point of stroke.slice(1)) context.lineTo(point.x * width, point.y * height);
+      context.stroke();
+    }
+  }
+
+  useEffect(() => {
+    draw(value);
+    const onResize = () => draw(value);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [value]);
+
+  function point(event: PointerEvent<HTMLCanvasElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) / rect.width, y: (event.clientY - rect.top) / rect.height };
+  }
+
+  return (
+    <div className="technical-measure-signature">
+      <canvas
+        ref={canvasRef}
+        aria-label="Customer signature"
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          activeRef.current = [point(event)];
+        }}
+        onPointerMove={(event) => {
+          if (!activeRef.current) return;
+          activeRef.current.push(point(event));
+          draw([...value, activeRef.current]);
+        }}
+        onPointerUp={(event) => {
+          if (!activeRef.current) return;
+          activeRef.current.push(point(event));
+          const next = [...value, activeRef.current];
+          activeRef.current = null;
+          onChange(next);
+        }}
+      />
+      <button type="button" onClick={() => onChange([])} aria-label="Clear signature"><X size={16} /> Clear</button>
+    </div>
+  );
+}
+
+export function TechnicalMeasureEditor({ formId }: { formId: string }) {
+  const supabase = getSupabaseBrowserClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [form, setForm] = useState<TechnicalMeasureForm | null>(null);
+  const [lines, setLines] = useState<EditableLine[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [measurePicker, setMeasurePicker] = useState<{ lineId: string; step: MeasurementStep } | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [signerName, setSignerName] = useState("");
+  const [signature, setSignature] = useState<SignatureStroke[]>([]);
+  const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!supabase) { setAuthLoading(false); return; }
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => { if (active) { setSession(data.session); setAuthLoading(false); } });
+    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => { active = false; data.subscription.unsubscribe(); };
+  }, [supabase]);
+
+  async function load(activeSession = session) {
+    if (!activeSession) return;
+    setLoading(true);
+    try {
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(activeSession, `/api/crm/technical-measures/${formId}`);
+      setForm(result.form);
+      setLines(result.form.lines);
+      setSignerName(result.form.customer_snapshot.name || "");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Technical measure could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { void load(); }, [session?.access_token, formId]);
+
+  function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
+    setLines((current) => current.map((line) => line.id === lineId ? { ...line, current_values: { ...line.current_values, ...patch } } : line));
+  }
+
+  function updateDetail(lineId: string, key: string, value: string | boolean) {
+    setLines((current) => current.map((line) => line.id === lineId ? {
+      ...line,
+      current_values: { ...line.current_values, details: { ...line.current_values.details, [key]: value } },
+    } : line));
+  }
+
+  async function saveDraft() {
+    if (!session) throw new Error("CRM session is unavailable.");
+    const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ lines: lines.map((line) => ({ id: line.id, currentValues: line.current_values })) }),
+    });
+    setForm(result.form);
+    setLines(result.form.lines);
+    return result.form;
+  }
+
+  async function handleSave() {
+    setBusy(true); setMessage(null);
+    try { const saved = await saveDraft(); setMessage(saved.requiresAddendum ? "Draft saved. Customer signature is required for the highlighted contract changes." : "Technical measure draft saved."); }
+    catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be saved."); }
+    finally { setBusy(false); }
+  }
+
+  async function handleSubmit() {
+    if (!session) return;
+    setBusy(true); setMessage(null);
+    try {
+      const saved = await saveDraft();
+      if (saved.requiresAddendum) {
+        setMessage("Review the changes with the customer and collect their signature below.");
+        document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
+      setForm(result.form); setLines(result.form.lines); setMessage("Technical measure submitted and saved to the customer file.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be submitted."); }
+    finally { setBusy(false); }
+  }
+
+  async function handleSign() {
+    if (!session) return;
+    setBusy(true); setMessage(null);
+    try {
+      await saveDraft();
+      const result = await crmFetch<{ form: TechnicalMeasureForm; email: { sent: boolean; error?: string; skipped?: string } }>(session, `/api/crm/technical-measures/${formId}/sign`, {
+        method: "POST",
+        body: JSON.stringify({ acknowledged, signerName, signatureStrokes: signature }),
+      });
+      setForm(result.form); setLines(result.form.lines);
+      setMessage(result.email.sent ? "Change order signed, emailed to the customer, and saved to Customer Files." : `Change order signed and saved. Email needs retry: ${result.email.error || result.email.skipped || "delivery unavailable"}`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "The change order could not be signed."); }
+    finally { setBusy(false); }
+  }
+
+  async function retryEmail() {
+    if (!session) return;
+    setBusy(true); setMessage(null);
+    try {
+      const result = await crmFetch<{ email: { sent: boolean; error?: string; skipped?: string } }>(session, `/api/crm/technical-measures/${formId}/email`, { method: "POST", body: "{}" });
+      await load(session);
+      setMessage(result.email.sent ? "Signed change order emailed to the customer." : `Email still unavailable: ${result.email.error || result.email.skipped}`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Email could not be retried."); }
+    finally { setBusy(false); }
+  }
+
+  async function openAddendumPdf() {
+    if (!session) return;
+    setBusy(true); setMessage(null);
+    try {
+      const response = await fetch(`/api/crm/technical-measures/${formId}/addendum.pdf`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+      if (!response.ok) throw new Error("Signed change order PDF could not be opened.");
+      const url = URL.createObjectURL(await response.blob());
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Signed change order PDF could not be opened."); }
+    finally { setBusy(false); }
+  }
+
+  const activePickerLine = lines.find((line) => line.id === measurePicker?.lineId) || null;
+  const pendingWidth = activePickerLine ? wholeFraction(activePickerLine.current_values.width_in) : null;
+  const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
+  const readOnly = form?.status === "submitted";
+
+  if (authLoading || loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /><p>Loading technical measure...</p></main>;
+  if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in with an approved CRM account.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(`/crm/technical-measures/${formId}`)}`}>Continue with Google</a></main>;
+  if (!form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical measure unavailable</h1>{message ? <p>{message}</p> : null}<a href="/crm/technical-measures">Return to measures</a></main>;
+
+  return (
+    <PortalContainerContext.Provider value={scopeElement}>
+    <main ref={setScopeElement} className="mts-quote-scope technical-measure-shell">
+      <header className="technical-measure-header">
+        <a href="/crm/technical-measures" aria-label="Back to technical measures"><ArrowLeft /></a>
+        <div><span>{form.quote_snapshot.quoteNumber || "Sold contract"}</span><h1>Technical Measure</h1><p>{form.customer_snapshot.name}</p></div>
+        <strong data-status={form.status}>{form.status.replaceAll("_", " ")}</strong>
+      </header>
+
+      {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
+
+      <section className="technical-measure-customer">
+        <div><span>Customer</span><strong>{form.customer_snapshot.name}</strong></div>
+        <div><span>Phone</span><strong>{form.customer_snapshot.phone || "Not provided"}</strong></div>
+        <div><span>Email</span><strong>{form.customer_snapshot.email || "Not provided"}</strong></div>
+        <div><span>Project</span><strong>{[form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || "Not provided"}</strong></div>
+      </section>
+
+      <section className="technical-measure-lines">
+        {lines.map((line, index) => {
+          const baseline = line.baseline;
+          const current = line.current_values;
+          const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]));
+          return (
+            <article className="technical-measure-line" key={line.id}>
+              <div className="technical-measure-line-head"><div><span>Line {index + 1}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
+              <div className="technical-measure-dimensions">
+                <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
+                <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
+              </div>
+              <div className="technical-measure-fields">
+                <label className={changed(baseline.room, current.room) ? "changed" : ""}><span>Room</span><input disabled={readOnly} value={current.room} onChange={(event) => updateLine(line.id, { room: event.target.value })} /></label>
+                <label className={changed(baseline.quantity, current.quantity) ? "changed" : ""}><span>Quantity</span><input disabled={readOnly} type="number" min="1" value={current.quantity} onChange={(event) => updateLine(line.id, { quantity: Number(event.target.value) })} /></label>
+                <label className={changed(baseline.product_id, current.product_id) ? "changed" : ""}><span>Product</span><input disabled={readOnly} value={current.product_id} onChange={(event) => updateLine(line.id, { product_id: event.target.value })} /></label>
+                <label className={changed(baseline.program_id, current.program_id) ? "changed" : ""}><span>Program / Operating System</span><input disabled={readOnly} value={current.program_id || ""} onChange={(event) => updateLine(line.id, { program_id: event.target.value || null })} /></label>
+                <label className={changed(baseline.fabric, current.fabric) ? "changed" : ""}><span>Color / Fabric</span><input disabled={readOnly} value={current.fabric || ""} onChange={(event) => updateLine(line.id, { fabric: event.target.value || null })} /></label>
+                {detailKeys.map((key) => {
+                  const value = current.details[key];
+                  const isBoolean = typeof value === "boolean" || typeof baseline.details[key] === "boolean";
+                  return isBoolean ? (
+                    <label className={`technical-measure-check ${changed(baseline.details[key], value) ? "changed" : ""}`} key={key}><input disabled={readOnly} type="checkbox" checked={value === true} onChange={(event) => updateDetail(line.id, key, event.target.checked)} /><span>{fieldName(key)}</span></label>
+                  ) : (
+                    <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} /></label>
+                  );
+                })}
+                <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      {form.requiresAddendum && !readOnly ? (
+        <section id="technical-measure-addendum" className="technical-measure-addendum">
+          <div className="technical-measure-addendum-head"><FileSignature /><div><span>Customer acknowledgment required</span><h2>Contract Change Order</h2></div></div>
+          <div className="technical-measure-change-list">
+            {form.contractChanges.map((change, index) => <div key={`${change.lineId}-${change.field}-${index}`}><strong>{change.room} - {change.label}</strong><span>{change.original}</span><b>to</b><span>{change.revised}</span></div>)}
+          </div>
+          <div className="technical-measure-price-change"><div><span>Original contract</span><strong>{money(form.baseline_total)}</strong></div><div><span>Revised contract</span><strong>{money(form.current_total)}</strong></div><div><span>Difference</span><strong>{money(form.current_total - form.baseline_total)}</strong></div></div>
+          <label className="technical-measure-ack"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} /><span>I acknowledge and approve all changes listed above. This change order updates those details of the original contract.</span></label>
+          <label className="technical-measure-signer"><span>Customer printed name</span><input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
+          <div><span className="technical-measure-signature-label">Customer signature</span><SignaturePad value={signature} onChange={setSignature} /></div>
+          <button className="technical-measure-primary" type="button" disabled={busy || !acknowledged || !signerName.trim() || !signature.length} onClick={handleSign}>{busy ? <Loader2 className="spin" /> : <FileSignature />} Sign and Finalize Change Order</button>
+        </section>
+      ) : null}
+
+      {form.addendum?.signed_at ? (
+        <section className="technical-measure-complete"><Check /><div><strong>Signed change order on file</strong><span>{form.addendum.status === "emailed" ? `Emailed to ${form.addendum.email_recipient}` : "Customer email delivery needs attention"}</span></div><button type="button" onClick={openAddendumPdf} disabled={busy}>View PDF</button>{form.addendum.status === "email_failed" ? <button type="button" onClick={retryEmail} disabled={busy}><Mail /> Retry email</button> : null}</section>
+      ) : null}
+
+      {!readOnly ? <footer className="technical-measure-actions"><button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button><button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button></footer> : null}
+
+      {measurePicker && activePickerLine ? (
+        <MeasurementGridModal
+          open
+          onClose={() => setMeasurePicker(null)}
+          step={measurePicker.step}
+          pendingWidth={pendingWidth}
+          pendingHeight={pendingHeight}
+          onWidthWhole={(whole) => { updateLine(activePickerLine.id, { width_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "width_fraction" }); }}
+          onWidthFraction={(fraction) => { updateLine(activePickerLine.id, { width_in: decimal(wholeFraction(activePickerLine.current_values.width_in).whole, fraction) }); setMeasurePicker(null); }}
+          onHeightWhole={(whole) => { updateLine(activePickerLine.id, { height_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
+          onHeightFraction={(fraction) => { updateLine(activePickerLine.id, { height_in: decimal(wholeFraction(activePickerLine.current_values.height_in).whole, fraction) }); setMeasurePicker(null); }}
+          onDirectMeasurements={(width, height) => { updateLine(activePickerLine.id, { width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) }); setMeasurePicker(null); }}
+        />
+      ) : null}
+    </main>
+    </PortalContainerContext.Provider>
+  );
+}
+
+export function TechnicalMeasureList() {
+  const supabase = getSupabaseBrowserClient();
+  const [session, setSession] = useState<Session | null>(null);
+  const [forms, setForms] = useState<Array<Record<string, unknown>>>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    supabase.auth.getSession().then(async ({ data }) => {
+      setSession(data.session);
+      if (data.session) {
+        const jobId = new URLSearchParams(window.location.search).get("jobId");
+        const path = jobId ? `/api/crm/technical-measures?jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures";
+        try { setForms((await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms); } finally { setLoading(false); }
+      } else setLoading(false);
+    });
+  }, [supabase]);
+  if (loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /></main>;
+  if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
+  return <main className="mts-quote-scope technical-measure-shell"><header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Technical Measures</h1><p>{forms.length} measure sheet{forms.length === 1 ? "" : "s"}</p></div></header><section className="technical-measure-list">{forms.map((form) => { const customer = form.customer_snapshot as Record<string, unknown>; return <a href={`/crm/technical-measures/${form.id}`} key={String(form.id)}><div><strong>{String(customer?.name || "Customer")}</strong><span>{String(customer?.address || "Address not provided")}</span></div><em data-status={String(form.status)}>{String(form.status).replaceAll("_", " ")}</em></a>; })}{!forms.length ? <p>No technical measure sheets yet.</p> : null}</section></main>;
+}

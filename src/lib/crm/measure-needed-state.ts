@@ -17,6 +17,8 @@ export type CrmMeasureNeededMeta = {
   mts_sync_status?: "created" | "existing" | "skipped" | "error" | null;
   mts_sync_error?: string | null;
   last_mts_sync_attempt_at?: string | null;
+  form_id?: string | null;
+  form_status?: "draft" | "awaiting_signature" | "submitted" | null;
 };
 
 export function objectMeta(value: unknown): Record<string, unknown> {
@@ -42,6 +44,8 @@ export function technicalMeasureSmsLine(status?: CrmMeasureNeededStatus | null):
 export function measureNeededLabel(job: Pick<CrmJob, "meta">) {
   const measure = getMeasureNeededMeta(job.meta);
   if (measure.status === "needed") {
+    if (measure.form_status === "awaiting_signature") return "Measure awaiting customer signature";
+    if (measure.form_status === "draft") return "Measure form in progress";
     return measure.mts_job_number ? `Measure needed - MTS ${measure.mts_job_number}` : "Measure needed";
   }
   if (measure.status === "not_needed") return "No measure needed";

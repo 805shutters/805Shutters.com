@@ -7,6 +7,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
   isTechnicalMeasureDecision,
@@ -975,7 +976,19 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      await syncTechnicalMeasureDecisionForSoldJob(supabase, quote, soldSync.job, "quote_signed_retry");
+      const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
+        supabase,
+        quote,
+        soldSync.job,
+        "quote_signed_retry"
+      );
+      if (technicalMeasure === "needed" && soldSync.job) {
+        await ensureTechnicalMeasureForm(
+          supabase,
+          { jobId: soldSync.job.id, quoteId: quote.id },
+          { email: "automation:quote_signed" }
+        );
+      }
     }
     return { ok: true, alreadySigned: true };
   }
@@ -1137,6 +1150,13 @@ export async function acceptPublicQuote(
     signature,
     soldTotal,
   });
+  if (technicalMeasure === "needed" && soldSync.job) {
+    await ensureTechnicalMeasureForm(
+      supabase,
+      { jobId: soldSync.job.id, quoteId: signedQuote.id },
+      { email: "automation:quote_signed" }
+    );
+  }
 
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",

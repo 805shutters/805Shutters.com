@@ -2,6 +2,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
   isTechnicalMeasureDecision,
@@ -56,6 +57,9 @@ export async function markSalesQuoteSold(
   const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
   const crmQuote = await advanceQuoteStatus(supabase, crmQuoteId, "sold", actor);
   await syncTechnicalMeasureDecisionForSoldCrmQuote(supabase, crmQuote, actor, measureDecision, "in_home_sold");
+  if (measureDecision === "needed" && typeof crmQuote.job_id === "string") {
+    await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor);
+  }
 
   const contractUrl = soldSource.share_token
     ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`
