@@ -166,7 +166,23 @@ describe("Quote V2 authoritative manufacturer rules", () => {
         ...mismatchedMotor,
         motor_type: "Motor (Rechargeable Battery Pack)",
       })),
-    ).not.toContain("roller.motor.price_configuration_mismatch");
+    ).toContain("roller.motorization.canonical_required");
+
+    const canonical = ruleIds(selection("roller", {
+      ...mismatchedMotor,
+      motor_type: "stale legacy value ignored by canonical contract",
+      motorization_selections: [
+        {
+          groupId: "automate_home",
+          optionId: "motor_rechargeable_battery_pack",
+          role: "base_motor",
+          units: 1,
+        },
+      ],
+    }));
+    expect(canonical).not.toContain("roller.motor.price_configuration_mismatch");
+    expect(canonical).not.toContain("roller.motorization.canonical_required");
+    expect(canonical).not.toContain("roller.motorization.power_motor_mismatch");
   });
 
   it("enforces Roman Day & Night exact rear identity and 3:1 ratio", () => {

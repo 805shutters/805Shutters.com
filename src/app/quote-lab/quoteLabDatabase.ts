@@ -361,6 +361,10 @@ class QuoteLabQuery {
 
 class ExactQuoteLabDatabase {
   private queuedReprices = new Map<string, Promise<void>>();
+  private repriceGenerations = new Map<string, number>();
+  private persistenceRequestedGeneration = 0;
+  private persistenceCompletedGeneration = 0;
+  private queuedPersistence: Promise<void> | null = null;
 
   readonly auth = {
     getSession: async () => ({ data: { session: null }, error: null }),
@@ -372,12 +376,38 @@ class ExactQuoteLabDatabase {
   ) {}
 
   async initializeV2() {
-    await this.repriceQuote("quote-lab-exact");
+    await this.queueReprice("quote-lab-exact");
     await this.persistState();
   }
 
   async persistState() {
-    if (this.persist) await this.persist(structuredClone(this.state));
+    if (!this.persist) return;
+
+    // A save requested while another PUT is in flight becomes one trailing
+    // save of the newest state. This keeps the revision token strictly serial.
+    const requestedGeneration = ++this.persistenceRequestedGeneration;
+    while (this.persistenceCompletedGeneration < requestedGeneration) {
+      if (!this.queuedPersistence) {
+        const run = Promise.resolve().then(async () => {
+          while (
+            this.persistenceCompletedGeneration <
+            this.persistenceRequestedGeneration
+          ) {
+            const generation = this.persistenceRequestedGeneration;
+            const snapshot = structuredClone(this.state);
+            await this.persist!(snapshot);
+            this.persistenceCompletedGeneration = generation;
+          }
+        });
+        const queued = run.finally(() => {
+          if (this.queuedPersistence === queued) {
+            this.queuedPersistence = null;
+          }
+        });
+        this.queuedPersistence = queued;
+      }
+      await this.queuedPersistence;
+    }
   }
 
   from(table: TableName) {
@@ -461,7 +491,7 @@ class ExactQuoteLabDatabase {
     } satisfies SalesQuoteDesign;
   }
 
-  private async repriceQuote(quoteId: string) {
+  private async repriceQuote(quoteId: string, expectedGeneration: number) {
     const lines = this.state.lineItems.filter((line) => line.quote_id === quoteId);
     const lineIds = new Set(lines.map((line) => line.id));
     const designs = this.state.designs.filter((design) => lineIds.has(design.line_item_id));
@@ -484,6 +514,9 @@ class ExactQuoteLabDatabase {
       error?: string;
     };
     if (!response.ok || !body.quote) throw new Error(body.error || "Authoritative quote pricing failed.");
+    if (this.repriceGenerations.get(quoteId) !== expectedGeneration) {
+      return;
+    }
     for (const priced of body.quote.designs) {
       const design = this.state.designs.find(
         (candidate) => candidate.line_item_id === priced.lineItemId && candidate.variant === priced.variant,
@@ -575,14 +608,44 @@ class ExactQuoteLabDatabase {
     }
   }
 
+  private async runRepriceLoop(quoteId: string) {
+    while (true) {
+      const generation = this.repriceGenerations.get(quoteId) ?? 0;
+      try {
+        await this.repriceQuote(quoteId, generation);
+      } catch (error) {
+        if (this.repriceGenerations.get(quoteId) !== generation) continue;
+        throw error;
+      }
+      if (this.repriceGenerations.get(quoteId) === generation) return;
+      // A selection changed while the request was in flight. The response was
+      // discarded by repriceQuote, so loop once more with the latest snapshot.
+    }
+  }
+
   private queueReprice(quoteId: string) {
+    this.repriceGenerations.set(
+      quoteId,
+      (this.repriceGenerations.get(quoteId) ?? 0) + 1,
+    );
     const pending = this.queuedReprices.get(quoteId);
     if (pending) return pending;
     const queued = new Promise<void>((resolve, reject) => {
       globalThis.setTimeout(() => {
-        void this.repriceQuote(quoteId).then(resolve, reject).finally(() => {
-          this.queuedReprices.delete(quoteId);
-        });
+        void this.runRepriceLoop(quoteId).then(
+          () => {
+            if (this.queuedReprices.get(quoteId) === queued) {
+              this.queuedReprices.delete(quoteId);
+            }
+            resolve();
+          },
+          (error) => {
+            if (this.queuedReprices.get(quoteId) === queued) {
+              this.queuedReprices.delete(quoteId);
+            }
+            reject(error);
+          },
+        );
       }, 25);
     });
     this.queuedReprices.set(quoteId, queued);
@@ -754,7 +817,22 @@ class ExactQuoteLabDatabase {
       const quoteIds = new Set((deleted as SalesQuoteLineItem[]).map((line) => line.quote_id));
       for (const quoteId of quoteIds) await this.queueReprice(quoteId);
     } else if (table === "sales_quote_designs") {
-      const quoteIds = new Set((deleted as SalesQuoteDesign[]).map((design) => this.quoteIdForLine(design.line_item_id)).filter(Boolean) as string[]);
+      const deletedDesigns = deleted as SalesQuoteDesign[];
+      const affectedLineIds = new Set(
+        deletedDesigns.map((design) => design.line_item_id),
+      );
+      for (const lineId of affectedLineIds) {
+        const selectedVariant = this.state.selectedVariantByLine[lineId];
+        const selectionStillExists = this.state.designs.some(
+          (design) =>
+            design.line_item_id === lineId &&
+            design.variant === selectedVariant,
+        );
+        if (!selectionStillExists) {
+          delete this.state.selectedVariantByLine[lineId];
+        }
+      }
+      const quoteIds = new Set(deletedDesigns.map((design) => this.quoteIdForLine(design.line_item_id)).filter(Boolean) as string[]);
       for (const quoteId of quoteIds) await this.queueReprice(quoteId);
     } else {
       const quoteIds = new Set((deleted as SalesQuote[]).map((quote) => quote.id));

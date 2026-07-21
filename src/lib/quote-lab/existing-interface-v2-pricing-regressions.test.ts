@@ -245,7 +245,10 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       throw new Error(JSON.stringify(motorOnlyResult, null, 2));
     }
     expect(motorOnlyResult).toMatchObject({
+      base: 666,
+      wholesaleBase: 266.4,
       configurationUnits: 3,
+      total: 1_564.5,
       productStatus: "documented_limited",
       validationStatus: "valid",
     });
@@ -258,8 +261,9 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         }),
         expect.objectContaining({
           id: "motor:smart_motorization:motor",
-          amount: 361.5,
-          wholesaleAmount: 144.6,
+          amount: 723,
+          wholesaleAmount: 289.2,
+          detail: "482 x 2",
         }),
       ]),
     );

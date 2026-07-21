@@ -21,6 +21,10 @@ export type PricingAuditWholesaleCost = {
   wholesaleUnitCost: number;
   quantity: number;
   wholesaleTotal: number;
+  freightAllocated?: number;
+  oversizeAllocated?: number;
+  landedCostTotal?: number;
+  freightStatus?: "published" | "estimated" | "unresolved" | "not_applicable";
 };
 
 type PricingAuditPanelProps = {
@@ -116,9 +120,11 @@ export function PricingAuditPanel({
       ? (options.authoritative_price_breakdown as Record<string, unknown>)
       : null;
   const authoritativeRetailBlocked = authoritativeRetailResult?.ok === false;
+  const hasAuthoritativeRetail = authoritativeRetailResult?.ok === true;
   const hasStoredPricing =
     !authoritativeRetailBlocked &&
-    (options.base_price !== undefined ||
+    (hasAuthoritativeRetail ||
+      options.base_price !== undefined ||
       options.pricing_grid_width !== undefined ||
       options.surcharge_total !== undefined ||
       options.discount_percent !== undefined);
@@ -128,22 +134,62 @@ export function PricingAuditPanel({
     : authoritativeRetailBlocked
       ? 0
       : Number(options.base_price) || 0;
-  const discountPercent = Number(options.discount_percent) || 0;
-  const discountAmount = Number(options.discount_amount) || 0;
+  const discountPercent = hasAuthoritativeRetail
+    ? Number(authoritativeRetailResult.discountPercent) || 0
+    : Number(options.discount_percent) || 0;
+  const discountAmount = hasAuthoritativeRetail
+    ? Number(authoritativeRetailResult.discountAmount) || 0
+    : Number(options.discount_amount) || 0;
+  const authoritativeRetailSurchargeLines =
+    hasAuthoritativeRetail && Array.isArray(authoritativeRetailResult.surchargeLines)
+      ? authoritativeRetailResult.surchargeLines.flatMap((entry, index) => {
+          if (!entry || typeof entry !== "object") return [];
+          const line = entry as Record<string, unknown>;
+          const amount = Number(line.amount);
+          if (!Number.isFinite(amount)) return [];
+          return [{
+            id: typeof line.id === "string" ? line.id : `authoritative-${index}`,
+            name: typeof line.label === "string" ? line.label : "Catalog option",
+            amount: roundMoney(amount),
+            detail:
+              typeof line.detail === "string" && line.detail.trim()
+                ? line.detail
+                : "Source-backed catalog charge",
+          }];
+        })
+      : null;
+  const retailSurchargeLines = authoritativeRetailSurchargeLines ?? surcharges.map((surcharge) => ({
+    id: surcharge.id,
+    name: surcharge.name,
+    amount: surchargeAmount(basePrice, surcharge),
+    detail: `${surcharge.category} · ${surcharge.automatic ? "Automatic" : "Added manually"} · ${surchargeFormula(basePrice, surcharge)}`,
+  }));
   const itemizedRetailSurcharges = roundMoney(
-    surcharges.reduce((sum, surcharge) => sum + surchargeAmount(basePrice, surcharge), 0)
+    retailSurchargeLines.reduce((sum, surcharge) => sum + surcharge.amount, 0),
   );
-  const hasSavedSurchargeTotal = Number.isFinite(Number(options.surcharge_total));
+  const hasSavedSurchargeTotal =
+    !hasAuthoritativeRetail && Number.isFinite(Number(options.surcharge_total));
   const savedSurchargeTotal = Number(options.surcharge_total) || 0;
-  const displayedSurchargeTotal = hasSavedSurchargeTotal
-    ? savedSurchargeTotal
-    : itemizedRetailSurcharges;
+  const displayedSurchargeTotal =
+    hasSavedSurchargeTotal ? savedSurchargeTotal : itemizedRetailSurcharges;
   const retailBeforeDiscount = roundMoney(basePrice + displayedSurchargeTotal);
-  const finalUnitPrice = roundMoney(savedUnitPrice);
-  const retailLineTotal = roundMoney(finalUnitPrice * quantity);
-  const expectedRetailUnit = roundMoney(retailBeforeDiscount - discountAmount);
+  const authoritativeUnitPrice = Number(authoritativeRetailResult?.unitPrice);
+  const expectedRetailUnit =
+    hasAuthoritativeRetail && Number.isFinite(authoritativeUnitPrice)
+      ? roundMoney(authoritativeUnitPrice)
+      : roundMoney(retailBeforeDiscount - discountAmount);
+  const finalUnitPrice = hasAuthoritativeRetail ? expectedRetailUnit : roundMoney(savedUnitPrice);
+  const retailOnceTotal = hasAuthoritativeRetail
+    ? roundMoney(Number(authoritativeRetailResult.onceTotal) || 0)
+    : 0;
+  const retailLineTotal = hasAuthoritativeRetail && Number.isFinite(Number(authoritativeRetailResult.total))
+    ? roundMoney(Number(authoritativeRetailResult.total))
+    : roundMoney(finalUnitPrice * quantity + retailOnceTotal);
   const hasRetailMismatch =
-    hasPrice && !isManual && basePrice > 0 && Math.abs(expectedRetailUnit - finalUnitPrice) >= 0.01;
+    hasPrice &&
+    !isManual &&
+    basePrice > 0 &&
+    Math.abs(expectedRetailUnit - roundMoney(savedUnitPrice)) >= 0.01;
   const hasSurchargeMismatch =
     hasSavedSurchargeTotal && Math.abs(savedSurchargeTotal - itemizedRetailSurcharges) >= 0.01;
   const effectiveRetailRate =
@@ -179,10 +225,11 @@ export function PricingAuditPanel({
     ?? (wholesaleBase === null ? null : roundMoney(wholesaleBase + wholesaleSurchargeTotal));
   const wholesaleLineCost = authoritativeWholesaleCost?.wholesaleTotal
     ?? (wholesaleUnitCost === null ? null : roundMoney(wholesaleUnitCost * quantity));
+  const landedLineCost = authoritativeWholesaleCost?.landedCostTotal ?? wholesaleLineCost;
   const grossProfit =
-    authoritativeRetailBlocked || wholesaleLineCost === null
+    authoritativeRetailBlocked || landedLineCost === null
       ? null
-      : roundMoney(retailLineTotal - wholesaleLineCost);
+      : roundMoney(retailLineTotal - landedLineCost);
   const grossMargin =
     grossProfit === null || retailLineTotal <= 0
       ? null
@@ -305,17 +352,16 @@ export function PricingAuditPanel({
                 : money(basePrice)
             }
           />
-          {surcharges.map((surcharge) => (
+          {retailSurchargeLines.map((surcharge) => (
             <div key={surcharge.id} className="border-b border-blue-200/70 py-2">
               <div className="flex items-start justify-between gap-4">
                 <span className="font-medium text-slate-900">{surcharge.name}</span>
                 <strong className="text-right text-slate-950">
-                  {money(surchargeAmount(basePrice, surcharge))}
+                  {money(surcharge.amount)}
                 </strong>
               </div>
               <div className="mt-0.5 flex items-start justify-between gap-4 text-[11px] text-slate-500">
-                <span>{surcharge.category} · {surcharge.automatic ? "Automatic" : "Added manually"}</span>
-                <span className="text-right">{surchargeFormula(basePrice, surcharge)}</span>
+                <span>{surcharge.detail}</span>
               </div>
             </div>
           ))}
@@ -328,8 +374,11 @@ export function PricingAuditPanel({
             />
           )}
           <DetailRow label="Final per window" value={money(finalUnitPrice)} emphasized />
-          {quantity > 1 && (
-            <DetailRow label={`Line total (${quantity} windows)`} value={money(retailLineTotal)} emphasized />
+          {(quantity > 1 || retailOnceTotal > 0) && (
+            <DetailRow label={`Line total (${quantity} window${quantity === 1 ? "" : "s"})`} value={money(retailLineTotal)} emphasized />
+          )}
+          {retailOnceTotal > 0 && (
+            <DetailRow label="Once-per-line customer charges" value={money(retailOnceTotal)} />
           )}
           {hasSurchargeMismatch && (
             <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-red-900">
@@ -339,8 +388,8 @@ export function PricingAuditPanel({
           )}
           {hasRetailMismatch && (
             <div className="mt-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-red-900">
-              <strong>Stored price mismatch:</strong> the saved final is {money(finalUnitPrice)}, but
-              the displayed base, surcharges, and discount calculate to {money(expectedRetailUnit)}.
+              <strong>Stored price mismatch:</strong> the saved final is {money(roundMoney(savedUnitPrice))}, but
+              the authoritative result is {money(expectedRetailUnit)}.
               Recalculate this line before sending it.
             </div>
           )}
@@ -390,6 +439,25 @@ export function PricingAuditPanel({
                   <DetailRow
                     label={`Our line cost (${quantity} windows)`}
                     value={money(wholesaleLineCost)}
+                    emphasized
+                  />
+                )}
+                {(authoritativeWholesaleCost?.freightAllocated ?? 0) > 0 && (
+                  <DetailRow
+                    label="Allocated freight"
+                    value={money(authoritativeWholesaleCost?.freightAllocated)}
+                  />
+                )}
+                {(authoritativeWholesaleCost?.oversizeAllocated ?? 0) > 0 && (
+                  <DetailRow
+                    label="Allocated oversize"
+                    value={money(authoritativeWholesaleCost?.oversizeAllocated)}
+                  />
+                )}
+                {authoritativeWholesaleCost?.landedCostTotal !== undefined && (
+                  <DetailRow
+                    label="Landed line cost"
+                    value={money(authoritativeWholesaleCost.landedCostTotal)}
                     emphasized
                   />
                 )}

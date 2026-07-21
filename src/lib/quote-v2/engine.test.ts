@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { priceDesign } from "@/lib/quote/pricing";
 import type { SelectionContext, SelectionRecord } from "./core";
 import {
+  authoritativeAutomaticSurchargeSelections,
   createImmutablePriceSnapshot,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
@@ -190,6 +191,222 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result).toMatchObject({ ok: false, code: "CONFIGURATION_INCOMPLETE" });
   });
 
+  it("fails closed when a selected surcharge is omitted from price input", () => {
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single",
+        lift_system: "Cordless",
+        fabric_collection: "Amelia",
+        fabric_color_code: "F1484",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: "All Tubes",
+      },
+      {
+        options: {
+          surcharges: [
+            { id: "additional_fiberglass_pole", quantity: 2 },
+          ],
+        },
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.surcharge.selection_price_input_mismatch",
+    );
+  });
+
+  it("derives Roller Dual, Coupled, and LightGuard charges from configuration", () => {
+    const base = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+    );
+    const automatic = (configuration: SelectionRecord) =>
+      authoritativeAutomaticSurchargeSelections({
+        ...base,
+        configuration,
+      });
+
+    expect(automatic({ roller_application: "Dual Roller" })).toEqual([
+      { id: "dual_shade", units: 1 },
+    ]);
+    expect(
+      automatic({
+        roller_application: "Coupled Shades",
+        roller_coupling_count: 3,
+      }),
+    ).toEqual([{ id: "coupled_shade", units: 2 }]);
+    expect(
+      automatic({
+        roller_application: "LightGuard 360 with T-Post",
+        roller_coupling_count: 3,
+      }),
+    ).toEqual([
+      { id: "lightguard_360", units: 3 },
+      { id: "t_post_for_lg_360", units: 1 },
+    ]);
+    expect(automatic({ roller_application: "LightGuard 360" })).toEqual([
+      { id: "lightguard_360", units: 1 },
+    ]);
+  });
+
+  it("cannot price Dual Roller without its derived two-shade surcharge", () => {
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Dual Roller",
+        shade_type: "Dual Rollers",
+        lift_system: "Cordless",
+        fabric_collection: "Amelia",
+        fabric_color_code: "F1484",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: "All Tubes",
+      },
+    );
+    const request = (surcharges: Array<{ id: string; units?: number }>) =>
+      priceQuoteV2Selection({
+        selection: context,
+        priceInput: {
+          productId: context.productId,
+          programId: context.programId ?? undefined,
+          widthInches: context.widthInches,
+          heightInches: context.heightInches,
+          surcharges,
+        },
+        includeInternalCost: true,
+      });
+
+    const omitted = request([]);
+    expect(omitted.ok).toBe(false);
+    expect(omitted.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.surcharge.selection_price_input_mismatch",
+    );
+
+    const priced = request([{ id: "dual_shade" }]);
+    expect(priced.ok).toBe(true);
+    if (!priced.ok) return;
+    expect(priced.configurationUnits).toBe(2);
+    expect(priced.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "dual_shade" }),
+      ]),
+    );
+  });
+
+  it("rejects extra supported surcharges and automatic/manual collisions", () => {
+    const baseConfiguration = {
+      mount_type: "Inside Mount",
+      roller_region_scope: "ca_ma",
+      roller_application: "Single",
+      lift_system: "Cordless",
+      fabric_collection: "Amelia",
+      fabric_color_code: "F1484",
+      roller_top_treatment: "No Top Treatment",
+      roller_tube: "All Tubes",
+    } satisfies SelectionRecord;
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      baseConfiguration,
+    );
+    const extra = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        surcharges: [{ id: "additional_fiberglass_pole" }],
+      },
+    });
+    expect(extra.ok).toBe(false);
+    expect(extra.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.surcharge.selection_price_input_mismatch",
+    );
+
+    const collision = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      { ...baseConfiguration, roller_application: "Dual Roller" },
+      {
+        options: {
+          surcharges: [{ id: "dual_shade", quantity: 1 }],
+        },
+      },
+    );
+    const collided = priceQuoteV2Selection({
+      selection: collision,
+      priceInput: {
+        productId: collision.productId,
+        programId: collision.programId ?? undefined,
+        widthInches: collision.widthInches,
+        heightInches: collision.heightInches,
+        surcharges: [{ id: "dual_shade" }],
+      },
+    });
+    expect(collided.ok).toBe(false);
+    expect(collided.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.surcharge.automatic_manual_collision",
+    );
+  });
+
+  it("fails closed for an unsupported surcharge even when input and selection agree", () => {
+    const unsupportedId = "roller-shades-motorization-mystery-accessory";
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single",
+        lift_system: "Cordless",
+        fabric_collection: "Amelia",
+        fabric_color_code: "F1484",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: "All Tubes",
+      },
+      {
+        options: {
+          surcharges: [{ id: unsupportedId, quantity: 1 }],
+        },
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        surcharges: [{ id: unsupportedId, units: 1 }],
+      },
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+      pricedSelectionFingerprint: null,
+    });
+    expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.surcharge.unsupported",
+    );
+  });
+
   it("fails closed when validated selection and price lookup inputs diverge", () => {
     const context = selection(
       "roller",
@@ -212,6 +429,52 @@ describe("Quote V2 authoritative pricing engine", () => {
         programId: "roller_cordless_fabric_price_group_1_pg1",
         widthInches: context.widthInches + 1,
         heightInches: context.heightInches,
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.selection_price_input.mismatch",
+    );
+  });
+
+  it("requires price input to contain the exact canonical Roller motor BOM", () => {
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_2_pg2",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single",
+        lift_system: "Motorized",
+        fabric_collection: "Amelia",
+        fabric_color_code: "F1484",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: '1 3/4" (43mm) Tube',
+        roller_power_configuration: "Automate ARC Motor",
+        motorization_selections: [
+          {
+            groupId: "automate_home",
+            optionId: "motor_rechargeable_battery_pack",
+            role: "base_motor",
+            units: 1,
+          },
+        ],
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        motorization: [
+          {
+            groupId: "automate_home",
+            optionId: "low_voltage_dc_motor",
+            units: 1,
+          },
+        ],
       },
     });
     expect(result.ok).toBe(false);

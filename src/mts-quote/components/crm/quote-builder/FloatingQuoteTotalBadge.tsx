@@ -16,15 +16,19 @@ export function FloatingQuoteTotalBadge({
   designs,
   storedTotal,
   preferStoredTotal = false,
+  authoritativeV2 = false,
 }: {
   lineItems: QuoteTotalLineItem[];
   designs: QuoteTotalDesign[];
   storedTotal?: number | null;
   preferStoredTotal?: boolean;
+  authoritativeV2?: boolean;
 }) {
   const total = preferStoredTotal && Number.isFinite(Number(storedTotal))
     ? Number(storedTotal)
-    : resolveQuoteDisplayTotal(storedTotal, lineItems, designs);
+    : resolveQuoteDisplayTotal(storedTotal, lineItems, designs, {
+        mode: authoritativeV2 ? "authoritative_v2" : "legacy",
+      });
 
   return (
     <aside

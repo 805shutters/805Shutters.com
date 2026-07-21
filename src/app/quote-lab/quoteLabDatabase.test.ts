@@ -10,6 +10,7 @@ import {
   createExactQuoteLabDatabase,
   initializeExactQuoteLabDatabase,
   quoteLineItemCount,
+  type QuoteLabState,
 } from "./quoteLabDatabase";
 
 const isolation: QuoteLabComparison["isolation"] = {
@@ -93,22 +94,29 @@ const pricedFixture: QuoteLabFixture = {
   },
 };
 
-function authoritativeResponse(options?: { snapshot?: boolean }) {
+function authoritativeResponse(options?: {
+  snapshot?: boolean;
+  unitPrice?: number;
+  fingerprint?: string;
+}) {
+  const unitPrice = options?.unitPrice ?? 190.5;
+  const responseFingerprint = options?.fingerprint ?? fingerprint;
+  const total = unitPrice * 2 + 5;
   const result = {
     ok: true,
-    unitPrice: 190.5,
+    unitPrice,
     onceTotal: 5,
-    total: 386,
+    total,
     validationStatus: "valid",
-    selectionFingerprint: fingerprint,
-    pricedSelectionFingerprint: fingerprint,
+    selectionFingerprint: responseFingerprint,
+    pricedSelectionFingerprint: responseFingerprint,
     catalogVersion: "805-v2-norman-roller-2026-08-01",
     pricedCatalogVersion: "805-v2-norman-roller-2026-08-01",
   };
   return new Response(
     JSON.stringify({
       quote: {
-        total: 386,
+        total,
         designs: [
           {
             lineItemId: "quote-lab-line-1",
@@ -121,9 +129,9 @@ function authoritativeResponse(options?: { snapshot?: boolean }) {
                 : {
                     catalogVersion: result.catalogVersion,
                     catalogAsOf: "2026-08-01",
-                    selectionFingerprint: fingerprint,
+                    selectionFingerprint: responseFingerprint,
                     priceStatus: "authoritative",
-                    retail: { ok: true, unitPrice: 190.5, total: 386 },
+                    retail: { ok: true, unitPrice, total },
                   },
           },
         ],
@@ -131,6 +139,16 @@ function authoritativeResponse(options?: { snapshot?: boolean }) {
     }),
     { status: 200, headers: { "Content-Type": "application/json" } },
   );
+}
+
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
 }
 
 afterEach(() => {
@@ -324,6 +342,61 @@ describe("quoteLineItemCount", () => {
       ["C", true],
     ]);
   });
+
+  it("clears the persisted selected variant when a product-type change deletes its designs", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body || "{}")) as {
+          designs?: unknown[];
+        };
+        if ((request.designs?.length ?? 0) > 0) {
+          return authoritativeResponse();
+        }
+        return new Response(
+          JSON.stringify({ quote: { total: 0, designs: [] } }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+    let latestState: QuoteLabState | null = null;
+    const database = await initializeExactQuoteLabDatabase(
+      catalog,
+      pricedFixture,
+      comparison,
+      {
+        save: async (state) => {
+          latestState = structuredClone(state);
+        },
+      },
+    );
+
+    const updateResult = await database
+      .from("sales_quote_line_items")
+      .update({ product_type: "Roman Shades" })
+      .eq("id", "quote-lab-line-1");
+    expect(updateResult.error).toBeNull();
+    const deleteResult = await database
+      .from("sales_quote_designs")
+      .delete()
+      .eq("line_item_id", "quote-lab-line-1");
+    expect(deleteResult.error).toBeNull();
+
+    const persisted = latestState as QuoteLabState | null;
+    expect(persisted).not.toBeNull();
+    expect(
+      persisted?.lineItems.find((line) => line.id === "quote-lab-line-1")
+        ?.product_type,
+    ).toBe("Roman Shades");
+    expect(
+      persisted?.designs.filter(
+        (design) => design.line_item_id === "quote-lab-line-1",
+      ),
+    ).toHaveLength(0);
+    expect(persisted?.selectedVariantByLine).not.toHaveProperty(
+      "quote-lab-line-1",
+    );
+  });
 });
 
 describe("V2 authoritative price persistence", () => {
@@ -491,5 +564,245 @@ describe("V2 authoritative price persistence", () => {
     expect(options).not.toHaveProperty(
       "authoritative_v2_snapshot",
     );
+  });
+
+  it("does not apply an authoritative response for a superseded selection", async () => {
+    const staleResponse = deferred<Response>();
+    const latestResponse = deferred<Response>();
+    const staleRequestStarted = deferred<void>();
+    const latestRequestStarted = deferred<void>();
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        staleRequestStarted.resolve();
+        return staleResponse.promise;
+      })
+      .mockImplementationOnce(() => {
+        latestRequestStarted.resolve();
+        return latestResponse.promise;
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    const database = createExactQuoteLabDatabase(
+      catalog,
+      pricedFixture,
+      comparison,
+    );
+    const initial = await database
+      .from("sales_quote_designs")
+      .select()
+      .eq("line_item_id", "quote-lab-line-1")
+      .single();
+    if (!initial.data) throw new Error("Expected the seeded V2 design.");
+    const savedDesign = initial.data as SalesQuoteDesign;
+
+    const staleMutation = Promise.resolve(
+      database
+        .from("sales_quote_designs")
+        .upsert({
+          ...savedDesign,
+          options_json: {
+            ...savedDesign.options_json,
+            fabric_color_code: "STALE",
+          },
+        })
+        .select(),
+    );
+    await staleRequestStarted.promise;
+
+    const latestMutation = Promise.resolve(
+      database
+        .from("sales_quote_designs")
+        .upsert({
+          ...savedDesign,
+          options_json: {
+            ...savedDesign.options_json,
+            fabric_color_code: "LATEST",
+          },
+        })
+        .select(),
+    );
+    staleResponse.resolve(
+      authoritativeResponse({
+        unitPrice: 111,
+        fingerprint: `sha256:${"b".repeat(64)}`,
+      }),
+    );
+    await latestRequestStarted.promise;
+
+    const whileLatestIsPending = await database
+      .from("sales_quote_designs")
+      .select()
+      .eq("line_item_id", "quote-lab-line-1")
+      .single();
+    if (!whileLatestIsPending.data) {
+      throw new Error("Expected the latest pending V2 design.");
+    }
+    expect(whileLatestIsPending.data.unit_price).toBe(0);
+    expect(whileLatestIsPending.data.options_json).toMatchObject({
+      fabric_color_code: "LATEST",
+      authoritative_price_status: "stale",
+    });
+    expect(whileLatestIsPending.data.options_json).not.toHaveProperty(
+      "authoritative_price_breakdown",
+    );
+
+    latestResponse.resolve(
+      authoritativeResponse({
+        unitPrice: 222,
+        fingerprint: `sha256:${"c".repeat(64)}`,
+      }),
+    );
+    await Promise.all([staleMutation, latestMutation]);
+
+    const final = await database
+      .from("sales_quote_designs")
+      .select()
+      .eq("line_item_id", "quote-lab-line-1")
+      .single();
+    if (!final.data) throw new Error("Expected the latest priced V2 design.");
+    expect(final.data.unit_price).toBe(222);
+    expect(final.data.options_json).toMatchObject({
+      fabric_color_code: "LATEST",
+      authoritative_price_status: "authoritative",
+    });
+  });
+
+  it("coalesces changes during an in-flight request and reprices the latest generation", async () => {
+    const firstResponse = deferred<Response>();
+    const latestResponse = deferred<Response>();
+    const firstRequestStarted = deferred<void>();
+    const latestRequestStarted = deferred<void>();
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        firstRequestStarted.resolve();
+        return firstResponse.promise;
+      })
+      .mockImplementationOnce(() => {
+        latestRequestStarted.resolve();
+        return latestResponse.promise;
+      });
+    vi.stubGlobal("fetch", fetchMock);
+    const database = createExactQuoteLabDatabase(
+      catalog,
+      pricedFixture,
+      comparison,
+    );
+    const initial = await database
+      .from("sales_quote_designs")
+      .select()
+      .eq("line_item_id", "quote-lab-line-1")
+      .single();
+    if (!initial.data) throw new Error("Expected the seeded V2 design.");
+    const savedDesign = initial.data as SalesQuoteDesign;
+    const mutation = (fabricColorCode: string) =>
+      Promise.resolve(
+        database
+          .from("sales_quote_designs")
+          .upsert({
+            ...savedDesign,
+            options_json: {
+              ...savedDesign.options_json,
+              fabric_color_code: fabricColorCode,
+            },
+          })
+          .select(),
+      );
+
+    const first = mutation("FIRST");
+    await firstRequestStarted.promise;
+    const second = mutation("SECOND");
+    const third = mutation("THIRD");
+    firstResponse.resolve(authoritativeResponse({ unitPrice: 111 }));
+    await latestRequestStarted.promise;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const latestRequest = JSON.parse(
+      String(fetchMock.mock.calls[1]?.[1]?.body),
+    ) as { designs: SalesQuoteDesign[] };
+    expect(latestRequest.designs[0]?.options_json.fabric_color_code).toBe(
+      "THIRD",
+    );
+
+    latestResponse.resolve(authoritativeResponse({ unitPrice: 333 }));
+    await Promise.all([first, second, third]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const final = await database
+      .from("sales_quote_designs")
+      .select()
+      .eq("line_item_id", "quote-lab-line-1")
+      .single();
+    if (!final.data) throw new Error("Expected the coalesced V2 design.");
+    expect(final.data.unit_price).toBe(333);
+    expect(
+      (final.data.options_json as Record<string, unknown>).fabric_color_code,
+    ).toBe("THIRD");
+  });
+
+  it("serializes persistence and follows an in-flight save with the latest state", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(authoritativeResponse()));
+    const blockedSaveStarted = deferred<void>();
+    const releaseBlockedSave = deferred<void>();
+    const savedStates: Array<{
+      state: QuoteLabState;
+      activeAtStart: number;
+    }> = [];
+    let activeSaves = 0;
+    let maximumActiveSaves = 0;
+    let saveNumber = 0;
+    const save = vi.fn(async (state) => {
+      saveNumber += 1;
+      activeSaves += 1;
+      maximumActiveSaves = Math.max(maximumActiveSaves, activeSaves);
+      savedStates.push({
+        state: structuredClone(state),
+        activeAtStart: activeSaves,
+      });
+      try {
+        if (saveNumber === 2) {
+          blockedSaveStarted.resolve();
+          await releaseBlockedSave.promise;
+        }
+      } finally {
+        activeSaves -= 1;
+      }
+    });
+    const database = await initializeExactQuoteLabDatabase(
+      catalog,
+      pricedFixture,
+      comparison,
+      { state: null, save },
+    );
+    expect(save).toHaveBeenCalledTimes(1);
+    const persistence = database as unknown as {
+      persistState: () => Promise<void>;
+      persistenceRequestedGeneration: number;
+    };
+
+    const firstSave = persistence.persistState();
+    await blockedSaveStarted.promise;
+    const newerMutation = Promise.resolve(
+      database
+        .from("sales_quotes")
+        .update({ customer_name: "Latest Customer" })
+        .eq("id", "quote-lab-exact")
+        .select(),
+    );
+    await vi.waitFor(() => {
+      expect(persistence.persistenceRequestedGeneration).toBe(3);
+    });
+    releaseBlockedSave.resolve();
+    await Promise.all([firstSave, newerMutation]);
+
+    expect(maximumActiveSaves).toBe(1);
+    expect(save).toHaveBeenCalledTimes(3);
+    expect(savedStates[1]?.state.quotes[0]?.customer_name).not.toBe(
+      "Latest Customer",
+    );
+    expect(savedStates[2]?.state.quotes[0]?.customer_name).toBe(
+      "Latest Customer",
+    );
+    expect(savedStates.every((entry) => entry.activeAtStart === 1)).toBe(true);
   });
 });

@@ -21,6 +21,7 @@ import {
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { validateRollerMatrix } from "./roller-matrix";
 import { expectedRollerMotorForPowerConfiguration } from "./roller-motor";
+import { canonicalMotorizationSelectionsFromConfiguration } from "./roller-motor-contract";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
@@ -301,7 +302,12 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
   }
 
   const lift = normalized(configValue(context, "lift_system"));
-  if (lift.includes("motor") && !text(configValue(context, "motor_type", "roller_motor"))) {
+  const canonicalMotorization =
+    canonicalMotorizationSelectionsFromConfiguration(context.configuration);
+  const selectedLegacyMotor = text(
+    configValue(context, "motor_type", "roller_motor"),
+  );
+  if (lift.includes("motor") && !selectedLegacyMotor && !canonicalMotorization) {
     issues.push(
       issue(
         "hard_block",
@@ -311,6 +317,19 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
         "Motorized Roller shades require an exact motor and power configuration.",
       ),
     );
+  }
+  if (lift.includes("motor") && !canonicalMotorization) {
+    issues.push(
+      issue(
+        "hard_block",
+        "roller.motorization.canonical_required",
+        { sourceId: "norman-retail-guide-2026-07", pages: [7, 8, 28] },
+        { motorization_selections: null },
+        "Motorized Roller shades require canonical group, option, role, and unit identities before authoritative pricing.",
+      ),
+    );
+  } else if (canonicalMotorization) {
+    issues.push(...canonicalMotorization.issues);
   }
   if (lift.includes("motor") && !text(configValue(context, "roller_power_configuration"))) {
     issues.push(
@@ -327,7 +346,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
     const powerConfiguration = text(
       configValue(context, "roller_power_configuration"),
     );
-    const selectedMotor = text(configValue(context, "motor_type", "roller_motor"));
+    const selectedMotor = selectedLegacyMotor;
     const expectedMotor = expectedRollerMotorForPowerConfiguration(powerConfiguration);
     if (powerConfiguration && !expectedMotor) {
       issues.push(
@@ -340,6 +359,7 @@ function validateRoller(context: SelectionContext): ValidationIssue[] {
         ),
       );
     } else if (
+      !canonicalMotorization &&
       expectedMotor &&
       normalizeIdentity(selectedMotor) !== normalizeIdentity(expectedMotor)
     ) {

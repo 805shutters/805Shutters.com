@@ -91,6 +91,32 @@ describe("Norman multi-shade quantity rules", () => {
     expect(result.wholesaleTotal).toBe(298.8);
   });
 
+  it("sums each exact Roller component grid cell before adding the coupled charge", () => {
+    const single = priced(priceDesign({
+      productId: "roller",
+      fabric: "Brook",
+      widthInches: 24,
+      heightInches: 60,
+    }));
+    const assembly = priced(priceDesign({
+      productId: "roller",
+      fabric: "Brook",
+      widthInches: 72,
+      heightInches: 60,
+      componentWidthsInches: [24, 24, 24],
+      surcharges: [{ id: "coupled_shade", units: 2 }],
+    }));
+
+    expect(single.base).toBe(296);
+    expect(assembly.componentMatchedWidths).toEqual([24, 24, 24]);
+    expect(assembly.configurationUnits).toBe(3);
+    expect(assembly.base).toBe(single.base * 3);
+    expect(assembly.surchargeLines).toContainEqual(
+      expect.objectContaining({ id: "coupled_shade", amount: 234 }),
+    );
+    expect(assembly.total).toBe(single.base * 3 + 234);
+  });
+
   it("prices SmartFit Dual as two honeycomb shades plus the source surcharge", () => {
     const result = priced(priceDesign({
       productId: "honeycomb",

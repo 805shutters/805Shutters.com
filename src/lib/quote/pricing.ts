@@ -61,6 +61,12 @@ export type PriceInput = {
   fabric?: string;
   widthInches: number;
   heightInches: number;
+  /**
+   * Exact order widths for a documented multi-component Roller assembly.
+   * When present, each component is looked up in the selected fabric grid and
+   * the bases are summed. The overall width remains the assembled order width.
+   */
+  componentWidthsInches?: number[];
   quantity?: number;
   surcharges?: SurchargeSelection[];
   motorization?: MotorizationSelection[];
@@ -87,6 +93,8 @@ export type PriceBreakdown = {
   /** Grid cell the measurement rounded up to. */
   matchedWidth: number;
   matchedHeight: number | null;
+  /** Grid-width cells used for a multi-component Roller assembly. */
+  componentMatchedWidths?: number[];
   /** Actual square footage (sqft-priced programs only). */
   sqft?: number;
   /** Billable square footage after the minimum floor (sqft-priced programs only). */
@@ -379,24 +387,64 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (needsHeight && (!Number.isFinite(H) || H <= 0)) {
     return fail("INVALID_DIMENSIONS", `Height must be a positive number (got ${input.heightInches}).`, warnings);
   }
-  if (prog.minWidth != null && W < prog.minWidth) {
-    return fail("INVALID_DIMENSIONS", `Width ${W}\" is below the ${prog.minWidth}\" minimum for ${prog.name}.`, warnings);
+  const componentWidths = input.componentWidthsInches;
+  if (componentWidths !== undefined) {
+    if (
+      product.id !== "roller" ||
+      !Array.isArray(componentWidths) ||
+      componentWidths.length < 2 ||
+      componentWidths.length > 4 ||
+      componentWidths.some(
+        (width) => !Number.isFinite(Number(width)) || Number(width) <= 0,
+      )
+    ) {
+      return fail(
+        "CONFIGURATION_INCOMPLETE",
+        "Multi-component Roller pricing requires two to four positive component order widths.",
+        warnings,
+      );
+    }
+    const componentWidthTotal = componentWidths.reduce(
+      (sum, width) => sum + Number(width),
+      0,
+    );
+    if (Math.abs(componentWidthTotal - W) > 0.000_001) {
+      return fail(
+        "CONFIGURATION_INCOMPLETE",
+        `Roller component widths total ${componentWidthTotal}\", but the assembled order width is ${W}\".`,
+        warnings,
+      );
+    }
+  }
+  const pricedWidths = componentWidths?.map(Number) ?? [W];
+  const belowMinimumWidth =
+    prog.minWidth == null
+      ? undefined
+      : pricedWidths.find((width) => width < prog.minWidth!);
+  if (belowMinimumWidth !== undefined) {
+    return fail("INVALID_DIMENSIONS", `Width ${belowMinimumWidth}\" is below the ${prog.minWidth}\" minimum for ${prog.name}.`, warnings);
   }
   if (needsHeight && prog.minHeight != null && H < prog.minHeight) {
     return fail("INVALID_DIMENSIONS", `Height ${H}\" is below the ${prog.minHeight}\" minimum for ${prog.name}.`, warnings);
   }
 
   // Hard max-dimension limits (can be tighter than the grid extent).
-  if (prog.maxWidth != null && W > prog.maxWidth) {
-    return fail("WIDTH_EXCEEDS_MAX", `Width ${W}" exceeds the ${prog.maxWidth}" max for ${prog.name}.`, warnings);
+  const aboveMaximumWidth =
+    prog.maxWidth == null
+      ? undefined
+      : pricedWidths.find((width) => width > prog.maxWidth!);
+  if (aboveMaximumWidth !== undefined) {
+    return fail("WIDTH_EXCEEDS_MAX", `Width ${aboveMaximumWidth}" exceeds the ${prog.maxWidth}" max for ${prog.name}.`, warnings);
   }
   if (needsHeight && prog.maxHeight != null && H > prog.maxHeight) {
     return fail("HEIGHT_EXCEEDS_MAX", `Height ${H}" exceeds the ${prog.maxHeight}" max for ${prog.name}.`, warnings);
   }
   if (needsHeight && prog.maxAreaSqft != null) {
-    const sqft = squareFeet(W, H);
-    if (sqft > prog.maxAreaSqft) {
-      return fail("AREA_EXCEEDS_MAX", `${sqft.toFixed(1)} sq ft exceeds the ${prog.maxAreaSqft} sq ft max for ${prog.name}.`, warnings);
+    const oversizedArea = pricedWidths
+      .map((width) => squareFeet(width, H))
+      .find((sqft) => sqft > prog.maxAreaSqft!);
+    if (oversizedArea !== undefined) {
+      return fail("AREA_EXCEEDS_MAX", `${oversizedArea.toFixed(1)} sq ft exceeds the ${prog.maxAreaSqft} sq ft max for ${prog.name}.`, warnings);
     }
   }
 
@@ -419,8 +467,13 @@ export function priceDesign(input: PriceInput): PriceResult {
     }
   }
 
-  const baseLookup = lookupBaseCents(prog, W, H, warnings);
-  if ("ok" in baseLookup) return baseLookup;
+  const baseLookups: BaseLookup[] = [];
+  for (const pricedWidth of pricedWidths) {
+    const lookup = lookupBaseCents(prog, pricedWidth, H, warnings);
+    if ("ok" in lookup) return lookup;
+    baseLookups.push(lookup);
+  }
+  const baseLookup = baseLookups[0];
   let configurationUnits = 1;
   for (const sel of input.surcharges ?? []) {
     const surcharge = findProductSurcharge(product, sel.id);
@@ -433,13 +486,38 @@ export function priceDesign(input: PriceInput): PriceResult {
         : surcharge.baseQuantityMultiplier ?? 1;
     configurationUnits = Math.max(configurationUnits, multiplier);
   }
+  if (componentWidths && configurationUnits !== componentWidths.length) {
+    return fail(
+      "CONFIGURATION_INCOMPLETE",
+      `The priced Roller configuration represents ${configurationUnits} shades, but ${componentWidths.length} component widths were supplied.`,
+      warnings,
+    );
+  }
   const dealerFactor = product.dealerFactor;
-  const baseCents = baseLookup.cents * configurationUnits;
-  const sourceWholesaleBaseCents = baseLookup.wholesaleCents == null
+  const baseCents = componentWidths
+    ? baseLookups.reduce((sum, lookup) => sum + lookup.cents, 0)
+    : baseLookup.cents * configurationUnits;
+  const sourceWholesaleBaseCents = baseLookups.some(
+    (lookup) => lookup.wholesaleCents == null,
+  )
     ? null
-    : baseLookup.wholesaleCents * configurationUnits;
+    : componentWidths
+      ? baseLookups.reduce(
+          (sum, lookup) => sum + (lookup.wholesaleCents ?? 0),
+          0,
+        )
+      : (baseLookup.wholesaleCents ?? 0) * configurationUnits;
   const wholesaleBaseCents = sourceWholesaleBaseCents ?? (dealerFactor == null ? null : Math.round(baseCents * dealerFactor));
-  const { matchedWidth, matchedHeight, sqft: actualSqft, billableSqft } = baseLookup;
+  const matchedWidth = componentWidths
+    ? Math.max(...baseLookups.map((lookup) => lookup.matchedWidth))
+    : baseLookup.matchedWidth;
+  const matchedHeight = baseLookup.matchedHeight;
+  const actualSqft = componentWidths
+    ? baseLookups.reduce((sum, lookup) => sum + (lookup.sqft ?? 0), 0) || undefined
+    : baseLookup.sqft;
+  const billableSqft = componentWidths
+    ? baseLookups.reduce((sum, lookup) => sum + (lookup.billableSqft ?? 0), 0) || undefined
+    : baseLookup.billableSqft;
 
   // Surcharges
   const surchargeLines: PriceLine[] = [];
@@ -608,6 +686,9 @@ export function priceDesign(input: PriceInput): PriceResult {
     programName: prog.name,
     matchedWidth,
     matchedHeight,
+    ...(componentWidths
+      ? { componentMatchedWidths: baseLookups.map((lookup) => lookup.matchedWidth) }
+      : {}),
     sqft: actualSqft,
     billableSqft,
     base: fromCents(baseCents),

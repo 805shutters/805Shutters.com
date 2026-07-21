@@ -5,6 +5,7 @@ import { priceDealerNetDesign, priceDesign, type MotorizationSelection, type Pri
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import { evaluateSendability } from "@/lib/quote-v2/core";
 import {
+  authoritativeAutomaticSurchargeSelections,
   createImmutablePriceSnapshot,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
@@ -15,6 +16,12 @@ import { validateQuoteSelectionRelationships } from "@/lib/quote-v2/quote-rules"
 import {
   selectionContextFromExactInterface as adaptExactInterfaceSelection,
 } from "@/lib/quote-v2/exact-interface-adapter";
+import {
+  ROLLER_MOTORIZATION_SELECTIONS_KEY,
+  canonicalMotorizationPriceSelections,
+  resolveRollerMotorizationContract,
+} from "@/lib/quote-v2/roller-motor-contract";
+import { rollerComponentOrderWidthsForPricing } from "@/lib/quote-v2/roller-matrix";
 import type { ISODate, SelectionContext } from "@/lib/quote-v2/core";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { quoteLabProductType } from "./builder";
@@ -34,6 +41,16 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   "Retractable Screens": "polar_all_seasons_screen",
   "Vinyl Blinds": "lotus_vinyl_blinds",
 };
+
+const ROLLER_MOTORIZATION_ISSUES_REVALIDATED_BY_RULES = new Set([
+  "roller.motorization.not_allowed",
+  "roller.motorization.lightguard_application_ambiguous",
+  "roller.motorization.base_required",
+  "roller.motorization.drive_units_unresolved",
+  "roller.motorization.base_units_mismatch",
+  "roller.motorization.power_motor_mismatch",
+  "roller.motorization.family_mismatch",
+]);
 
 function decimalMeasurement(whole: unknown, fraction: unknown): number {
   const base = Number(whole) || 0;
@@ -219,23 +236,38 @@ function authoritativeDetails(design: Partial<SalesQuoteDesign>): Record<string,
   return details;
 }
 
-function surchargeSelections(productId: string, design: Partial<SalesQuoteDesign>): SurchargeSelection[] {
+function surchargeSelections(
+  productId: string,
+  design: Partial<SalesQuoteDesign>,
+  preserveUnsupported = false,
+  authoritativeSelection?: SelectionContext,
+): SurchargeSelection[] {
   const product = getProduct(productId);
   if (!product) return [];
-  const automatic = deriveAutomaticSurcharges(productId, authoritativeDetails(design));
+  const automatic = authoritativeSelection
+    ? authoritativeAutomaticSurchargeSelections(authoritativeSelection)
+    : deriveAutomaticSurcharges(productId, authoritativeDetails(design));
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
   const selected = Array.isArray(options.surcharges) ? options.surcharges : [];
   const manual = selected.flatMap((entry) => {
     if (!entry || typeof entry !== "object") return [];
     const source = entry as Record<string, unknown>;
     const id = typeof source.id === "string" ? source.id : "";
-    if (!findProductSurcharge(product, id)) return [];
+    // Legacy quotes keep their historical behavior. Authoritative V2 passes
+    // unknown IDs through to the pricing contract so they hard-block instead
+    // of disappearing from the price without an error.
+    if (!preserveUnsupported && !findProductSurcharge(product, id)) return [];
     return [{ id, units: Math.max(1, Number(source.quantity) || 1) }];
   });
+  if (authoritativeSelection) {
+    // Keep an automatic/manual collision visible so the engine rejects it;
+    // never let a browser-stored manual quantity overwrite a derived charge.
+    return [...automatic, ...manual];
+  }
   return [...new Map([...automatic, ...manual].map((item) => [item.id, item])).values()];
 }
 
-function motorizationSelections(productId: string, design: Partial<SalesQuoteDesign>): MotorizationSelection[] {
+function legacyMotorizationSelections(productId: string, design: Partial<SalesQuoteDesign>): MotorizationSelection[] {
   const values = [design.motor_type, design.remote_type].map(slug).filter(Boolean) as string[];
   if (values.length === 0) return [];
   const selections: MotorizationSelection[] = [];
@@ -258,10 +290,9 @@ function exactPriceInput(
   line: SalesQuoteLineItem,
   design: Partial<SalesQuoteDesign>,
   productId: string,
-  authoritativeSelection?: Pick<
-    SelectionContext,
-    "widthInches" | "heightInches" | "quantity"
-  >,
+  authoritativeSelection?: SelectionContext,
+  authoritativeMotorization?: readonly MotorizationSelection[],
+  preserveUnsupportedSurcharges = false,
 ): PriceInput {
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
   return {
@@ -276,12 +307,26 @@ function exactPriceInput(
     heightInches:
       authoritativeSelection?.heightInches ??
       decimalMeasurement(line.height_whole, line.height_fraction),
+    componentWidthsInches:
+      productId === "roller" && authoritativeSelection
+        ? rollerComponentOrderWidthsForPricing(
+            authoritativeSelection,
+          ) ?? undefined
+        : undefined,
     quantity:
       authoritativeSelection?.quantity ??
       Math.max(1, Math.floor(Number(line.quantity) || 1)),
     discountPercent: Math.min(100, Math.max(0, Number(options.discount_percent) || 0)),
-    surcharges: surchargeSelections(productId, design),
-    motorization: motorizationSelections(productId, design),
+    surcharges: surchargeSelections(
+      productId,
+      design,
+      preserveUnsupportedSurcharges,
+      preserveUnsupportedSurcharges ? authoritativeSelection : undefined,
+    ),
+    motorization:
+      authoritativeMotorization === undefined
+        ? legacyMotorizationSelections(productId, design)
+        : [...authoritativeMotorization],
   };
 }
 
@@ -413,6 +458,18 @@ function v2CostResult(result: QuoteV2PriceResult) {
       warnings: result.warnings,
     };
   }
+  if (
+    result.wholesaleBase == null ||
+    result.surchargeLines.some((line) => line.wholesaleAmount == null)
+  ) {
+    return {
+      ok: false as const,
+      code: "CUSTOMER_RETAIL_UNDEFINED" as const,
+      error:
+        "The selected V2 design has an incomplete source-backed wholesale breakdown.",
+      warnings: result.warnings,
+    };
+  }
   return {
     ok: true as const,
     productId: result.productId,
@@ -420,8 +477,12 @@ function v2CostResult(result: QuoteV2PriceResult) {
     basis: result.internalCost.basis,
     matchedWidth: result.matchedWidth,
     matchedHeight: result.matchedHeight,
-    wholesaleBase: result.internalCost.productCostUnit,
-    wholesaleAddOns: [],
+    wholesaleBase: result.wholesaleBase,
+    wholesaleAddOns: result.surchargeLines.map((line) => ({
+      id: line.id,
+      label: line.label,
+      amount: line.wholesaleAmount as number,
+    })),
     wholesaleUnitCost: result.internalCost.productCostUnit,
     quantity: result.quantity,
     wholesaleTotal: result.internalCost.productCostTotal,
@@ -559,8 +620,66 @@ function repriceExactQuoteBuilderV2(
       catalogAsOf,
       catalogVersion: quoteV2CatalogVersionFor(productId, catalogAsOf),
     });
-    const priceInput = exactPriceInput(line, design, productId, selection);
-    return { line, design, productId, programId, selection, priceInput };
+    const designOptions =
+      (design.options_json as Record<string, unknown> | undefined) ?? {};
+    const rollerMotorization =
+      productId === "roller"
+        ? resolveRollerMotorizationContract({
+            liftSystem: design.lift_system,
+            powerConfiguration:
+              designOptions.roller_power_configuration ??
+              designOptions.power_configuration,
+            application:
+              designOptions.roller_application ?? design.shade_type,
+            couplingArrangement: designOptions.coupling_arrangement,
+            componentCount:
+              designOptions.roller_coupling_count ??
+              designOptions.coupled_shade_count ??
+              designOptions.lightguard_360_shade_count,
+            canonicalSelections:
+              designOptions[ROLLER_MOTORIZATION_SELECTIONS_KEY],
+            canonicalSelectionsPresent: Object.prototype.hasOwnProperty.call(
+              designOptions,
+              ROLLER_MOTORIZATION_SELECTIONS_KEY,
+            ),
+            legacyMotorType: design.motor_type,
+            legacyRemoteType: design.remote_type,
+            legacyHubRequired: designOptions.hub_required,
+          })
+        : null;
+    if (rollerMotorization) {
+      selection.configuration = {
+        ...selection.configuration,
+        [ROLLER_MOTORIZATION_SELECTIONS_KEY]:
+          rollerMotorization.selections,
+      };
+    }
+    const authoritativeMotorization = rollerMotorization
+      ? canonicalMotorizationPriceSelections(rollerMotorization.selections)
+      : undefined;
+    const priceInput = exactPriceInput(
+      line,
+      design,
+      productId,
+      selection,
+      authoritativeMotorization,
+      true,
+    );
+    return {
+      line,
+      design,
+      productId,
+      programId,
+      selection,
+      priceInput,
+      motorizationIssues:
+        rollerMotorization?.issues.filter(
+          (validationIssue) =>
+            !ROLLER_MOTORIZATION_ISSUES_REVALIDATED_BY_RULES.has(
+              validationIssue.ruleId,
+            ),
+        ) ?? [],
+    };
   });
 
   const selectedPrepared = explicitSelections.map((entry) => {
@@ -615,7 +734,14 @@ function repriceExactQuoteBuilderV2(
   );
 
   const pricedDesigns = preparedDesigns.map(
-    ({ line, design, programId, selection, priceInput }) => {
+    ({
+      line,
+      design,
+      programId,
+      selection,
+      priceInput,
+      motorizationIssues,
+    }) => {
     const result = priceQuoteV2Selection({
       selection,
       priceInput: {
@@ -623,10 +749,12 @@ function repriceExactQuoteBuilderV2(
         programId: programId ?? undefined,
       },
       includeInternalCost: true,
-      additionalValidationIssues:
-        selectedDesignIdByLine.get(line.id) === design.id
-          ? relationshipIssuesByLine.get(line.id)
-          : undefined,
+      additionalValidationIssues: [
+        ...motorizationIssues,
+        ...(selectedDesignIdByLine.get(line.id) === design.id
+          ? relationshipIssuesByLine.get(line.id) ?? []
+          : []),
+      ],
     });
     return {
       lineItemId: design.line_item_id,

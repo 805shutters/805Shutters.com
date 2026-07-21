@@ -221,7 +221,15 @@ import {
   getRollerV2UiFacets,
   pruneRollerV2UiSelection,
 } from "@/lib/quote-v2/roller-ui-facets";
-import { expectedRollerMotorForPowerConfiguration } from "@/lib/quote-v2/roller-motor";
+import {
+  expectedRollerMotorForPowerConfiguration,
+  rollerMotorChargeForPowerConfiguration,
+} from "@/lib/quote-v2/roller-motor";
+import {
+  ROLLER_MOTORIZATION_SELECTIONS_KEY,
+  rollerBaseMotorUnitsForConfiguration,
+  type CanonicalMotorizationSelection,
+} from "@/lib/quote-v2/roller-motor-contract";
 import {
   isMarkedSelectedQuoteDesign,
   preferredSavedQuoteVariant,
@@ -278,6 +286,7 @@ import {
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
 import { resolveManufacturerStamp } from "./manufacturerStamp";
 import type {
   ManufacturerComparisonProgram,
@@ -1404,6 +1413,348 @@ function getRollerTopTreatmentForValance(valance: string | null): string | null 
   return null;
 }
 
+export function canonicalRollerMotorizationSelections(
+  powerConfiguration: unknown,
+  configuration: {
+    application: unknown;
+    couplingArrangement: unknown;
+    componentCount: unknown;
+  },
+): CanonicalMotorizationSelection[] {
+  const charge = rollerMotorChargeForPowerConfiguration(powerConfiguration);
+  const units = rollerBaseMotorUnitsForConfiguration(configuration);
+  return charge && units !== null
+    ? [{ groupId: charge.groupId, optionId: charge.optionId, role: "base_motor", units }]
+    : [];
+}
+
+function setRollerPowerConfiguration(
+  options: Record<string, unknown>,
+  powerConfiguration: unknown,
+): string | null {
+  const selectedPower =
+    typeof powerConfiguration === "string" && powerConfiguration.trim()
+      ? powerConfiguration
+      : null;
+  options.power_configuration = selectedPower;
+  options[ROLLER_MOTORIZATION_SELECTIONS_KEY] = canonicalRollerMotorizationSelections(
+    selectedPower,
+    {
+      application: options.roller_application,
+      couplingArrangement: options.coupling_arrangement,
+      componentCount: options.coupled_shade_count ?? options.lightguard_360_shade_count,
+    },
+  );
+  return expectedRollerMotorForPowerConfiguration(selectedPower);
+}
+
+function clearMotorizationOptions(
+  options: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...options,
+    power_configuration: null,
+    [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+    hub_required: null,
+  };
+}
+
+export function buildLegacyRollerTopTreatmentUpdate(
+  currentOptions: Record<string, unknown>,
+  topTreatment: string | null,
+): Partial<SalesQuoteDesign> {
+  const mappedValance = getRollerValanceForTopTreatment(topTreatment);
+  return {
+    ...(mappedValance
+      ? { valance: mappedValance }
+      : topTreatment === "LightGuard 360 Housing"
+        ? { valance: null }
+        : {}),
+    options_json: {
+      ...currentOptions,
+      top_treatment_class: topTreatment,
+    },
+  };
+}
+
+export function buildLegacyRollerLiftSystemUpdate(
+  currentOptions: Record<string, unknown>,
+  design: SalesQuoteDesign | undefined,
+  value: unknown,
+): Partial<SalesQuoteDesign> {
+  const nextJson = { ...currentOptions };
+  if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
+  if (value !== "Motorized") {
+    nextJson.hub_required = null;
+    nextJson.power_configuration = null;
+  } else if (nextJson.tube_class === "All Tubes") {
+    nextJson.tube_class = null;
+  }
+
+  return {
+    lift_system: typeof value === "string" ? value : null,
+    motor_type: value === "Motorized" ? design?.motor_type || null : null,
+    remote_type: null,
+    options_json: nextJson,
+  };
+}
+
+export function buildLegacyRomanLiftSystemUpdate(
+  currentOptions: Record<string, unknown>,
+  design: SalesQuoteDesign | undefined,
+  value: unknown,
+): Partial<SalesQuoteDesign> {
+  const nextControl = typeof value === "string" ? value : null;
+  const nextJson = { ...currentOptions };
+  if (!(nextControl === "Continuous Cord Loop" || nextControl === "SmartRelease")) {
+    nextJson.chain_type = null;
+    nextJson.chain_color = null;
+    nextJson.chain_location = null;
+    nextJson.chain_length = null;
+  }
+  if (nextControl !== "Continuous Cord Loop") {
+    nextJson.headrail_size = null;
+  }
+  if (nextControl !== "Cordless") {
+    nextJson.poles = null;
+    nextJson.pole_length = null;
+  }
+  if (nextControl !== "Motorized") {
+    nextJson.hub_required = null;
+  }
+
+  return {
+    lift_system: nextControl,
+    motor_type: nextControl === "Motorized" ? design?.motor_type || null : null,
+    remote_type: nextControl === "Motorized" ? design?.remote_type || null : null,
+    options_json: nextJson,
+  };
+}
+
+export function reconcileRollerTopTreatmentSelection(
+  currentOptions: Record<string, unknown>,
+  topTreatment: string | null,
+  liftSystem: string | null | undefined,
+): {
+  optionsJson: Record<string, unknown>;
+  liftSystem: string | null;
+  motorType: string | null;
+  powerChanged: boolean;
+} {
+  const nextJson: Record<string, unknown> = {
+    ...currentOptions,
+    top_treatment_class: topTreatment,
+  };
+  const previousPower = stringOption(currentOptions, "power_configuration");
+  const pruned = pruneRollerV2UiSelection({
+    application: stringOption(nextJson, "roller_application"),
+    couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+    componentCount:
+      Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
+    topTreatment,
+    liftSystem,
+    tubeClass: stringOption(nextJson, "tube_class"),
+    powerConfiguration: previousPower,
+  });
+  nextJson.tube_class = pruned.tubeClass;
+  const motorType = setRollerPowerConfiguration(
+    nextJson,
+    pruned.powerConfiguration,
+  );
+  return {
+    optionsJson: nextJson,
+    liftSystem: pruned.liftSystem,
+    motorType,
+    powerChanged: previousPower !== pruned.powerConfiguration,
+  };
+}
+
+export function resetHoneycombFrameOptions(
+  options: Record<string, unknown>,
+  mode: "none" | "standard" | "sloped",
+): Record<string, unknown> {
+  const next = { ...options };
+  if (mode === "none") {
+    next.honeycomb_frame_type = null;
+    next.honeycomb_actual_cell_size = null;
+    next.frame_qty = null;
+    next.pre_drilled = null;
+  }
+  if (mode !== "standard") {
+    next.frame_t_post_count = null;
+    next.frame_t_post_1_location = null;
+    next.frame_t_post_2_location = null;
+    next.frame_t_post_3_location = null;
+    next.sill_plate = null;
+    next.frame_notch_out = null;
+    next.frame_notch_a_inches = null;
+    next.frame_notch_b_inches = null;
+  }
+  if (mode !== "sloped") next.slope_angle_degrees = null;
+  const firstPanelToClear = mode === "sloped" ? 2 : mode === "none" ? 1 : 5;
+  for (let panelIndex = firstPanelToClear; panelIndex <= 4; panelIndex += 1) {
+    next[`honeycomb_panel_${panelIndex}_net_width`] = null;
+    next[`honeycomb_panel_${panelIndex}_net_height`] = null;
+  }
+  return next;
+}
+
+export function buildLegacyHoneycombApplicationFrameOptions(
+  options: Record<string, unknown>,
+  application: string | null,
+  frameApplication: boolean,
+): Record<string, unknown> {
+  const next = { ...options };
+  if (!frameApplication) {
+    next.honeycomb_frame_type = null;
+    next.frame_qty = null;
+    next.pre_drilled = null;
+    next.frame_t_post_count = null;
+    next.frame_t_post_1_location = null;
+    next.frame_t_post_2_location = null;
+    next.frame_t_post_3_location = null;
+    next.sill_plate = null;
+    next.frame_notch_out = null;
+    next.frame_notch_a_inches = null;
+    next.frame_notch_b_inches = null;
+    next.honeycomb_actual_cell_size = null;
+    for (let panelIndex = 1; panelIndex <= 4; panelIndex += 1) {
+      next[`honeycomb_panel_${panelIndex}_net_width`] = null;
+      next[`honeycomb_panel_${panelIndex}_net_height`] = null;
+    }
+  }
+  if (application === "SmartFit for Sloped Windows with Frame") {
+    next.frame_t_post_count = null;
+    next.frame_t_post_1_location = null;
+    next.frame_t_post_2_location = null;
+    next.frame_t_post_3_location = null;
+  }
+  if (application !== "SmartFit for Sloped Windows with Frame") {
+    next.slope_angle_degrees = null;
+  }
+  return next;
+}
+
+export function buildLegacyHoneycombCellSizeFrameOptions(
+  options: Record<string, unknown>,
+  cellSize: string | null,
+): Record<string, unknown> {
+  const next = { ...options };
+  if (!isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(cellSize))) {
+    next.frame_qty = null;
+    next.pre_drilled = null;
+    next.frame_t_post_count = null;
+    next.frame_t_post_1_location = null;
+    next.frame_t_post_2_location = null;
+    next.frame_t_post_3_location = null;
+  }
+  return next;
+}
+
+export function buildCleanCatalogSelectionOptions(
+  current: Record<string, unknown>,
+  product: { id: string; manufacturer?: string | null },
+  programId: string | null,
+): Record<string, unknown> {
+  const preservedKeys = [
+    "quote_v2_backend",
+    "quote_v2_catalog_version",
+    "quote_v2_catalog_as_of",
+    "discount_percent",
+  ] as const;
+  const preserved = Object.fromEntries(
+    preservedKeys.flatMap((key) =>
+      current[key] === undefined ? [] : [[key, current[key]]],
+    ),
+  );
+  return {
+    ...preserved,
+    quote_lab_product_id: product.id,
+    catalog_product_id: product.id,
+    quote_lab_program_id: programId,
+    catalog_program_id: programId,
+    catalog_manufacturer: product.manufacturer ?? null,
+    surcharges: [],
+    [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+  };
+}
+
+export function buildLegacyQuoteLabCatalogSelectionOptions(
+  current: Record<string, unknown>,
+  product: { id: string; manufacturer?: string | null },
+  programId: string | null,
+): Record<string, unknown> {
+  return {
+    ...current,
+    quote_lab_product_id: product.id,
+    quote_lab_program_id: programId,
+    catalog_manufacturer: product.manufacturer ?? null,
+    catalog_program_id: programId,
+    surcharges: [],
+  };
+}
+
+export function usableCatalogProductsForLine(
+  products: QuoteLabCatalogProduct[],
+  productType: string,
+): QuoteLabCatalogProduct[] {
+  return products.filter(
+    (product) =>
+      product.productType === productType &&
+      product.priceBasis !== "unavailable" &&
+      product.programs.some((program) => program.priceBasis !== "unavailable"),
+  );
+}
+
+function usableCatalogPrograms(product: QuoteLabCatalogProduct) {
+  return product.programs.filter(
+    (program) => program.priceBasis !== "unavailable",
+  );
+}
+
+/**
+ * A catalog product change is a hard configuration boundary. Keep only V2
+ * quote metadata and the exact product/program identities; every field whose
+ * meaning can vary by manufacturer must be selected again.
+ */
+export function buildCatalogSelectionPatch(
+  current: Record<string, unknown>,
+  product: QuoteLabCatalogProduct,
+  requestedProgramId?: string | null,
+): Partial<SalesQuoteDesign> {
+  const programs = usableCatalogPrograms(product);
+  const program =
+    typeof requestedProgramId === "string"
+      ? programs.find((candidate) => candidate.id === requestedProgramId) ?? null
+      : requestedProgramId === null
+        ? null
+        : programs.length === 1
+          ? programs[0]
+          : null;
+
+  return {
+    supplier: product.manufacturer?.trim() || null,
+    material: program?.name ?? null,
+    louver_size: null,
+    tilt_type: null,
+    hinge_color: null,
+    panel_config: null,
+    mount_type: null,
+    shade_type: null,
+    lift_system: null,
+    valance: null,
+    fabric: null,
+    motor_type: null,
+    remote_type: null,
+    unit_price: 0,
+    options_json: buildCleanCatalogSelectionOptions(
+      current,
+      product,
+      program?.id ?? null,
+    ),
+  };
+}
+
 function getHoneycombCellSizeFromProgram(programId: string | null | undefined): string | null {
   switch (programId) {
     case "honeycomb_9_16in_cordless_single_cell":
@@ -1460,26 +1811,183 @@ function getFauxWoodProductLineFromProductId(productId: string): string | null {
   return null;
 }
 
+export function buildFauxWoodColorIdentityPatch(
+  currentOptions: Record<string, unknown>,
+  product: { productId: string; programId: string | null },
+  authoritativeV2: boolean,
+): {
+  optionsJson: Record<string, unknown>;
+  designFields: Partial<SalesQuoteDesign>;
+} {
+  const productLine = getFauxWoodProductLineFromProductId(product.productId);
+  if (!productLine) {
+    return { optionsJson: { ...currentOptions }, designFields: {} };
+  }
+
+  const optionsJson: Record<string, unknown> = {
+    ...currentOptions,
+    product_line: productLine,
+  };
+  if (!authoritativeV2) {
+    return { optionsJson, designFields: {} };
+  }
+
+  return {
+    optionsJson: {
+      ...optionsJson,
+      quote_lab_product_id: product.productId,
+      catalog_product_id: product.productId,
+      quote_lab_program_id: product.programId,
+      catalog_program_id: product.programId,
+      catalog_manufacturer: "Norman",
+    },
+    designFields: {
+      supplier: "Norman",
+      material: '2" & 2 1/2" Slats Cordless',
+    },
+  };
+}
+
+function withShutterSelectionField(
+  fields: Partial<SalesQuoteDesign>,
+  field?: string,
+  value?: unknown,
+): Partial<SalesQuoteDesign> {
+  if (!field) return fields;
+  if (field.startsWith("json:")) {
+    fields.options_json = {
+      ...((fields.options_json as Record<string, unknown> | undefined) ?? {}),
+      [field.slice(5)]: value,
+    };
+  } else if (BOOLEAN_FIELDS.has(field)) {
+    (fields as Record<string, unknown>)[field] = value === "Yes";
+  } else {
+    (fields as Record<string, unknown>)[field] = value;
+  }
+  return fields;
+}
+
+export function buildAuthoritativeShutterRouteUpdate(
+  patch: ShutterRoutePatch,
+  design: SalesQuoteDesign | undefined,
+  field?: string,
+  value?: unknown,
+): Partial<SalesQuoteDesign> {
+  const currentJson = (design?.options_json as Record<string, unknown>) || {};
+  return withShutterSelectionField({
+    supplier: patch.supplier,
+    material: patch.material,
+    louver_size: null,
+    tilt_type: null,
+    hinge_color: null,
+    panel_config: null,
+    mount_type: null,
+    fabric: null,
+    motor_type: null,
+    remote_type: null,
+    options_json: {
+      ...buildCleanCatalogSelectionOptions(
+        currentJson,
+        { id: patch.productId, manufacturer: patch.supplier },
+        patch.programId,
+      ),
+      ...patch.options,
+    },
+  }, field, value);
+}
+
 function applyShutterRoutePatch(
   patch: ShutterRoutePatch,
   design: SalesQuoteDesign | undefined,
-  onUpdate: (field: string, value: unknown) => void
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void,
 ) {
-  const currentJson = (design?.options_json as Record<string, unknown>) || {};
-  onUpdate("supplier", patch.supplier);
-  onUpdate("material", patch.material);
-  onUpdate("options_json", { ...currentJson, ...patch.options });
+  onUpdateFields(buildAuthoritativeShutterRouteUpdate(patch, design));
 }
 
-function needsShutterRoutePatch(
+export function buildLegacyShutterRouteUpdate(
+  patch: ShutterRoutePatch,
   design: SalesQuoteDesign | undefined,
-  patch: ShutterRoutePatch
+  field?: string,
+  value?: unknown,
+): Partial<SalesQuoteDesign> {
+  const currentJson = (design?.options_json as Record<string, unknown>) || {};
+  return withShutterSelectionField({
+    supplier: patch.supplier,
+    material: patch.material,
+    options_json: { ...currentJson, ...patch.options },
+  }, field, value);
+}
+
+export function needsShutterRoutePatch(
+  design: SalesQuoteDesign | undefined,
+  patch: ShutterRoutePatch,
+  requireCatalogIdentity = false,
 ): boolean {
   const currentJson = (design?.options_json as Record<string, unknown>) || {};
   if (design?.supplier !== patch.supplier) return true;
   if ((design?.material || null) !== patch.material) return true;
+  if (requireCatalogIdentity) {
+    if (currentJson.quote_lab_product_id !== patch.productId) return true;
+    if (currentJson.catalog_product_id !== patch.productId) return true;
+    if (
+      typeof currentJson.fabric_product_id === "string" &&
+      currentJson.fabric_product_id !== patch.productId
+    ) return true;
+    if ((currentJson.quote_lab_program_id ?? null) !== patch.programId) return true;
+    if ((currentJson.catalog_program_id ?? null) !== patch.programId) return true;
+    if (
+      typeof currentJson.fabric_program_id === "string" &&
+      (currentJson.fabric_program_id || null) !== patch.programId
+    ) return true;
+  }
 
   return Object.entries(patch.options).some(([key, value]) => (currentJson[key] || null) !== value);
+}
+
+export function shouldApplyAutomaticShutterRoutePatch(
+  authoritativeV2: boolean,
+  design: SalesQuoteDesign | undefined,
+  patch: ShutterRoutePatch | null,
+): patch is ShutterRoutePatch {
+  return Boolean(
+    authoritativeV2 &&
+      design &&
+      patch &&
+      needsShutterRoutePatch(design, patch, true),
+  );
+}
+
+export function shutterRoutePatchStateKey(
+  activeVariant: string,
+  design: SalesQuoteDesign,
+  patch: ShutterRoutePatch,
+): string {
+  const currentJson =
+    (design.options_json as Record<string, unknown> | undefined) ?? {};
+  return JSON.stringify({
+    activeVariant,
+    designId: design.id,
+    expected: {
+      supplier: patch.supplier,
+      material: patch.material,
+      productId: patch.productId,
+      programId: patch.programId,
+      options: patch.options,
+    },
+    current: {
+      supplier: design.supplier,
+      material: design.material,
+      quoteLabProductId: currentJson.quote_lab_product_id ?? null,
+      catalogProductId: currentJson.catalog_product_id ?? null,
+      quoteLabProgramId: currentJson.quote_lab_program_id ?? null,
+      catalogProgramId: currentJson.catalog_program_id ?? null,
+      patchOptions: Object.fromEntries(
+        Object.keys(patch.options)
+          .sort()
+          .map((key) => [key, currentJson[key] ?? null]),
+      ),
+    },
+  });
 }
 
 function getShutterProgramName(design: SalesQuoteDesign | undefined): string | undefined {
@@ -1784,6 +2292,8 @@ function OptionSlot({
 
   return (
     <div
+      data-option-field={option.field}
+      data-option-label={option.label}
       className={cn(
         "quote-option-slot",
         selected && "quote-option-slot--selected",
@@ -2008,7 +2518,10 @@ function ProductTypeSwitcher({
   );
 }
 
-function buildDraftShutterDesign(activeVariant: string): SalesQuoteDesign {
+export function buildDraftShutterDesign(
+  activeVariant: string,
+  authoritativeV2: boolean,
+): SalesQuoteDesign {
   const patch = getAutoShutterRoutePatch(activeVariant);
 
   return {
@@ -2034,7 +2547,18 @@ function buildDraftShutterDesign(activeVariant: string): SalesQuoteDesign {
     requires_takedown: false,
     unit_price: 0,
     notes: null,
-    options_json: patch?.options ?? {},
+    options_json: patch
+      ? authoritativeV2
+        ? {
+            ...buildCleanCatalogSelectionOptions(
+              {},
+              { id: patch.productId, manufacturer: patch.supplier },
+              patch.programId,
+            ),
+            ...patch.options,
+          }
+        : patch.options
+      : {},
     created_at: "",
   };
 }
@@ -2866,7 +3390,10 @@ function GridSelect({
         </Label>
       )}
       <Select value={value || ""} onValueChange={onChange}>
-        <SelectTrigger className="quote-style-select h-6 min-h-0 px-2 py-0 text-[11px] text-gray-900">
+        <SelectTrigger
+          aria-label={label}
+          className="quote-style-select h-6 min-h-0 px-2 py-0 text-[11px] text-gray-900"
+        >
           <SelectValue placeholder="Select..." />
         </SelectTrigger>
         <SelectContent>
@@ -3407,9 +3934,13 @@ export function DesignCard({
   const [retailInput, setRetailInput] = useState("");
   const currentDesign = designs.find((d) => d.variant === activeVariant);
   const displayedUnitPrice = Number(currentDesign?.unit_price || 0);
-  const displayedLineTotal = Math.round(displayedUnitPrice * quantity * 100) / 100;
-  const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const displayedLineTotal = calculateLineItemDesignTotal(
+    lineItem,
+    currentDesign ? [currentDesign] : [],
+    { mode: authoritativeV2 ? "authoritative_v2" : "legacy" },
+  );
+  const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const manufacturerStamp = resolveManufacturerStamp(currentDesign);
   const authoritativePriceError =
     authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
@@ -4107,8 +4638,10 @@ export function DesignCard({
 
   return (
     <Card
+      data-quote-line-id={lineItem.id}
+      data-line-number={lineNumber}
       className={cn(
-        "overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white text-foreground shadow-[0_24px_70px_rgba(15,35,70,0.10)] transition-all",
+        "quote-line-card overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white text-foreground shadow-[0_24px_70px_rgba(15,35,70,0.10)] transition-all",
         isCopyTarget && "ring-2 ring-blue-300/30",
         isSelectedTarget && "ring-2 ring-blue-400 bg-blue-50"
       )}
@@ -4178,21 +4711,30 @@ export function DesignCard({
                 </button>
               )}
               {manufacturerStamp && (
-                <span
-                  aria-label={`Manufacturer: ${manufacturerStamp.label}`}
-                  className={cn(
-                    "quote-line-manufacturer-stamp",
-                    `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
-                  )}
-                  data-manufacturer={manufacturerStamp.label}
-                  data-testid="manufacturer-stamp"
-                  title={`Manufacturer: ${manufacturerStamp.label}`}
-                >
-                  <span className="quote-line-manufacturer-stamp-caption">MFR</span>
-                  <span className="quote-line-manufacturer-stamp-name">
-                    {manufacturerStamp.label}
+                authoritativeV2 ? (
+                  <ManufacturerCatalogStampChooser
+                    design={currentDesign}
+                    manufacturerStamp={manufacturerStamp}
+                    onUpdateFields={updateFields}
+                    productType={lineItem.product_type}
+                  />
+                ) : (
+                  <span
+                    aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+                    className={cn(
+                      "quote-line-manufacturer-stamp",
+                      `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+                    )}
+                    data-manufacturer={manufacturerStamp.label}
+                    data-testid="manufacturer-stamp"
+                    title={`Manufacturer: ${manufacturerStamp.label}`}
+                  >
+                    <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+                    <span className="quote-line-manufacturer-stamp-name">
+                      {manufacturerStamp.label}
+                    </span>
                   </span>
-                </span>
+                )
               )}
             </div>
           </div>
@@ -4365,7 +4907,7 @@ export function DesignCard({
           </Tabs>
         )}
 
-        {showLabCatalogControls && (
+        {showLabCatalogControls && !authoritativeV2 && (
           <QuoteLabCatalogControls
             productType={lineItem.product_type}
             lineItem={lineItem}
@@ -4475,12 +5017,14 @@ export function DesignCard({
             <FileText className="h-3 w-3" />
             Add Note
           </Button>
-          <SurchargePicker
-            productType={lineItem.product_type}
-            design={currentDesign}
-            width={widthIn}
-            onUpdate={updateField}
-          />
+          {!authoritativeV2 && (
+            <SurchargePicker
+              productType={lineItem.product_type}
+              design={currentDesign}
+              width={widthIn}
+              onUpdate={updateField}
+            />
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -4502,6 +5046,183 @@ export function DesignCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+export function ManufacturerCatalogStampChooser({
+  productType,
+  design,
+  manufacturerStamp,
+  onUpdateFields,
+  catalogProducts,
+}: {
+  productType: string;
+  design: SalesQuoteDesign | undefined;
+  manufacturerStamp: NonNullable<ReturnType<typeof resolveManufacturerStamp>>;
+  onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
+  catalogProducts?: QuoteLabCatalogProduct[];
+}) {
+  const [products, setProducts] = useState<QuoteLabCatalogProduct[]>(
+    catalogProducts ?? [],
+  );
+  const options =
+    (design?.options_json as Record<string, unknown> | undefined) || {};
+
+  useEffect(() => {
+    if (catalogProducts) {
+      setProducts(catalogProducts);
+      return;
+    }
+    let active = true;
+    loadQuoteLabCatalog()
+      .then((payload: QuoteLabCatalogResponse) => {
+        if (active) setProducts(payload.products);
+      })
+      .catch(() => {
+        if (active) setProducts([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [catalogProducts]);
+
+  const availableProducts = useMemo(
+    () => usableCatalogProductsForLine(products, productType),
+    [productType, products],
+  );
+  const productId =
+    stringOption(options, "catalog_product_id") ||
+    stringOption(options, "quote_lab_product_id") ||
+    "";
+  const selectedProduct = availableProducts.find(
+    (product) => product.id === productId,
+  );
+  const availablePrograms = selectedProduct
+    ? usableCatalogPrograms(selectedProduct)
+    : [];
+  const programId =
+    stringOption(options, "catalog_program_id") ||
+    stringOption(options, "quote_lab_program_id") ||
+    "";
+  const selectedProgram = availablePrograms.find(
+    (program) => program.id === programId,
+  );
+  const selectedManufacturer = selectedProduct?.manufacturer?.trim() || "";
+  const showProgramChooser =
+    Boolean(selectedProduct) &&
+    availablePrograms.length > 1 &&
+    (!selectedProgram || selectedManufacturer.toLowerCase() !== "norman");
+
+  const stamp = (
+    <span
+      aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+      className={cn(
+        "quote-line-manufacturer-stamp",
+        `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+      )}
+      data-manufacturer={manufacturerStamp.label}
+      data-testid="manufacturer-stamp"
+      title={`Manufacturer: ${manufacturerStamp.label}`}
+    >
+      <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+      <span className="quote-line-manufacturer-stamp-name">
+        {manufacturerStamp.label}
+      </span>
+    </span>
+  );
+
+  if (availableProducts.length <= 1) return stamp;
+
+  return (
+    <>
+      <Select
+        value={selectedProduct?.id ?? ""}
+        onValueChange={(nextProductId) => {
+          const product = availableProducts.find(
+            (candidate) => candidate.id === nextProductId,
+          );
+          if (!product) return;
+          onUpdateFields(buildCatalogSelectionPatch(options, product));
+        }}
+      >
+        <SelectTrigger
+          aria-label={`Change manufacturer or product. Current manufacturer: ${manufacturerStamp.label}`}
+          className={cn(
+            "quote-line-manufacturer-stamp h-8 w-auto cursor-pointer justify-start pr-2 focus:ring-2 focus:ring-offset-1",
+            `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+          )}
+          data-catalog-chooser="product"
+          data-manufacturer={manufacturerStamp.label}
+          data-testid="manufacturer-stamp"
+          title={
+            selectedProduct
+              ? `Change manufacturer / product: ${selectedProduct.manufacturer ?? "Manufacturer"} - ${selectedProduct.system ?? selectedProduct.name}`
+              : `Change manufacturer / product: ${manufacturerStamp.label}`
+          }
+        >
+          <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+          <span className="quote-line-manufacturer-stamp-name">
+            {manufacturerStamp.label}
+          </span>
+        </SelectTrigger>
+        <SelectContent>
+          {availableProducts.map((product) => (
+            <SelectItem
+              key={product.id}
+              data-manufacturer-product-id={product.id}
+              value={product.id}
+            >
+              {product.manufacturer ?? "Manufacturer"} - {product.system ?? product.name}
+              {product.priceBasis === "manual_required"
+                ? " (manual quote required)"
+                : ""}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {selectedProduct && showProgramChooser && (
+        <Select
+          value={selectedProgram?.id ?? ""}
+          onValueChange={(nextProgramId) => {
+            onUpdateFields(
+              buildCatalogSelectionPatch(
+                options,
+                selectedProduct,
+                nextProgramId,
+              ),
+            );
+          }}
+        >
+          <SelectTrigger
+            aria-label={`Price program for ${selectedProduct.manufacturer ?? "manufacturer"} ${selectedProduct.system ?? selectedProduct.name}`}
+            aria-invalid={!selectedProgram}
+            className={cn(
+              "h-8 w-auto max-w-[240px] gap-1 rounded-md border bg-white px-2 text-[11px] font-bold shadow-sm",
+              !selectedProgram && "border-amber-500 text-amber-900",
+            )}
+            data-testid="manufacturer-program-chooser"
+            title="Select the exact manufacturer price program"
+          >
+            <SelectValue placeholder="Select price program" />
+          </SelectTrigger>
+          <SelectContent>
+            {availablePrograms.map((program) => (
+              <SelectItem
+                key={program.id}
+                data-manufacturer-program-id={program.id}
+                value={program.id}
+              >
+                {program.name}
+                {program.priceBasis === "manual_required"
+                  ? " (manual quote required)"
+                  : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </>
   );
 }
 
@@ -4549,14 +5270,11 @@ function QuoteLabCatalogControls({
       fabric: null,
       motor_type: null,
       remote_type: null,
-      options_json: {
-        ...options,
-        quote_lab_product_id: product.id,
-        quote_lab_program_id: program?.id ?? null,
-        catalog_manufacturer: product.manufacturer ?? null,
-        catalog_program_id: program?.id ?? null,
-        surcharges: [],
-      },
+      options_json: buildLegacyQuoteLabCatalogSelectionOptions(
+        options,
+        product,
+        program?.id ?? null,
+      ),
     });
   };
 
@@ -4816,31 +5534,45 @@ function ShutterDesignOptions({
 }) {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
-  const draftDesign = useMemo(() => buildDraftShutterDesign(activeVariant), [activeVariant]);
+  const draftDesign = useMemo(
+    () => buildDraftShutterDesign(activeVariant, authoritativeV2),
+    [activeVariant, authoritativeV2],
+  );
   const workingDesign = design ?? draftDesign;
   const autoRoutePatchKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const patch = getAutoShutterRoutePatch(activeVariant);
-    if (!design || !patch || !needsShutterRoutePatch(design, patch)) return;
+    if (
+      !design ||
+      !shouldApplyAutomaticShutterRoutePatch(authoritativeV2, design, patch)
+    ) return;
 
-    const routeKey = [
-      activeVariant,
-      design?.id ?? "draft",
-      patch.supplier,
-      patch.material ?? "",
-      JSON.stringify(patch.options),
-    ].join(":");
+    const routeKey = shutterRoutePatchStateKey(activeVariant, design, patch);
 
     if (autoRoutePatchKeyRef.current === routeKey) return;
     autoRoutePatchKeyRef.current = routeKey;
-    applyShutterRoutePatch(patch, design, onUpdate);
-  }, [activeVariant, design, onUpdate]);
+    applyShutterRoutePatch(patch, design, onUpdateFields);
+  }, [activeVariant, authoritativeV2, design, onUpdateFields]);
 
   const handleUpdate = (field: string, value: unknown) => {
     const patch = getAutoShutterRoutePatch(activeVariant);
-    if (patch && needsShutterRoutePatch(design, patch)) {
-      applyShutterRoutePatch(patch, design, onUpdate);
+    if (patch && needsShutterRoutePatch(design, patch, authoritativeV2)) {
+      if (authoritativeV2) {
+        onUpdateFields(
+          buildAuthoritativeShutterRouteUpdate(
+            patch,
+            design,
+            field,
+            value,
+          ),
+        );
+      } else {
+        onUpdateFields(
+          buildLegacyShutterRouteUpdate(patch, workingDesign, field, value),
+        );
+      }
+      return;
     }
 
     if (authoritativeV2 && workingDesign.supplier === "Onyx") {
@@ -4944,7 +5676,12 @@ function ShutterDesignOptions({
 
   const handleDefiningStepSelect = (step: DefiningStep, value: string) => {
     if (step.field === "json:wood_route") {
-      applyShutterRoutePatch(getWoodShutterRoutePatch(value as WoodShutterRoute), design, onUpdate);
+      const patch = getWoodShutterRoutePatch(value as WoodShutterRoute);
+      if (authoritativeV2) {
+        applyShutterRoutePatch(patch, design, onUpdateFields);
+      } else {
+        onUpdateFields(buildLegacyShutterRouteUpdate(patch, workingDesign));
+      }
       return;
     }
 
@@ -5505,8 +6242,14 @@ function ShadesAndBlindsOptions({
 }) {
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const requestedOpenOptionFieldRef = useRef<string | null | undefined>(undefined);
+
+  const requestOpenOptionField = (field: string | null) => {
+    requestedOpenOptionFieldRef.current = field;
+  };
 
   const handleUpdate = (field: string, value: unknown) => {
+    requestedOpenOptionFieldRef.current = undefined;
     const currentJson = (design?.options_json as Record<string, unknown>) || {};
     const emptyValue = value === null || value === undefined || value === "";
 
@@ -5619,18 +6362,17 @@ function ShadesAndBlindsOptions({
             powerConfiguration: stringOption(nextJson, "power_configuration"),
           })
         : null;
+      const previousPower = stringOption(currentJson, "power_configuration");
+      let nextMotor = design?.motor_type ?? null;
       if (pruned) {
         nextJson.tube_class = pruned.tubeClass;
-        nextJson.power_configuration = pruned.powerConfiguration;
+        nextMotor = setRollerPowerConfiguration(nextJson, pruned.powerConfiguration);
       }
       onUpdateFields({
         shade_type: getRollerShadeTypeForApplication(application),
-        ...(pruned && pruned.liftSystem !== design?.lift_system
-          ? {
-              lift_system: pruned.liftSystem,
-              motor_type: null,
-              remote_type: null,
-            }
+        ...(pruned ? { lift_system: pruned.liftSystem, motor_type: nextMotor } : {}),
+        ...(pruned && previousPower !== pruned.powerConfiguration
+          ? { remote_type: null }
           : {}),
         ...(isLightGuardApplication ? { valance: "No Valance" } : {}),
         options_json: nextJson,
@@ -5670,14 +6412,17 @@ function ShadesAndBlindsOptions({
             powerConfiguration: stringOption(updatedJson, "power_configuration"),
           })
         : null;
+      const previousPower = stringOption(currentJson, "power_configuration");
+      let nextMotor = design?.motor_type ?? null;
       if (pruned) {
         updatedJson.tube_class = pruned.tubeClass;
-        updatedJson.power_configuration = pruned.powerConfiguration;
+        nextMotor = setRollerPowerConfiguration(updatedJson, pruned.powerConfiguration);
       }
       onUpdateFields({
         shade_type: isLightGuardTPost ? "LightGuard 360 with T-Post" : "Coupled Shades",
-        ...(pruned && pruned.liftSystem !== design?.lift_system
-          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
+        ...(pruned ? { lift_system: pruned.liftSystem, motor_type: nextMotor } : {}),
+        ...(pruned && previousPower !== pruned.powerConfiguration
+          ? { remote_type: null }
           : {}),
         options_json: updatedJson,
       });
@@ -5706,13 +6451,16 @@ function ShadesAndBlindsOptions({
             powerConfiguration: stringOption(nextJson, "power_configuration"),
           })
         : null;
+      const previousPower = stringOption(currentJson, "power_configuration");
+      let nextMotor = design?.motor_type ?? null;
       if (pruned) {
         nextJson.tube_class = pruned.tubeClass;
-        nextJson.power_configuration = pruned.powerConfiguration;
+        nextMotor = setRollerPowerConfiguration(nextJson, pruned.powerConfiguration);
       }
       onUpdateFields({
-        ...(pruned && pruned.liftSystem !== design?.lift_system
-          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
+        ...(pruned ? { lift_system: pruned.liftSystem, motor_type: nextMotor } : {}),
+        ...(pruned && previousPower !== pruned.powerConfiguration
+          ? { remote_type: null }
           : {}),
         options_json: nextJson,
       });
@@ -5721,57 +6469,105 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Roller Shades" && field === "json:top_treatment_class") {
       const topTreatment = typeof value === "string" ? value : null;
-      const mappedValance = getRollerValanceForTopTreatment(topTreatment);
-      const nextJson: Record<string, unknown> = {
-        ...currentJson,
-        top_treatment_class: topTreatment,
-      };
-      const pruned = authoritativeV2
-        ? pruneRollerV2UiSelection({
-            application: stringOption(nextJson, "roller_application"),
-            couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
-            componentCount:
-              Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
-            topTreatment,
-            liftSystem: design?.lift_system,
-            tubeClass: stringOption(nextJson, "tube_class"),
-            powerConfiguration: stringOption(nextJson, "power_configuration"),
-          })
-        : null;
-      if (pruned) {
-        nextJson.tube_class = pruned.tubeClass;
-        nextJson.power_configuration = pruned.powerConfiguration;
+      if (!authoritativeV2) {
+        onUpdateFields(
+          buildLegacyRollerTopTreatmentUpdate(currentJson, topTreatment),
+        );
+        return;
       }
+      const mappedValance = getRollerValanceForTopTreatment(topTreatment);
+      const transition = reconcileRollerTopTreatmentSelection(
+        currentJson,
+        topTreatment,
+        design?.lift_system,
+      );
       onUpdateFields({
         ...(mappedValance
           ? { valance: mappedValance }
           : topTreatment === "LightGuard 360 Housing"
             ? { valance: null }
             : {}),
-        ...(pruned && pruned.liftSystem !== design?.lift_system
-          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
-          : {}),
-        options_json: nextJson,
+        lift_system: transition.liftSystem,
+        motor_type: transition.motorType,
+        ...(transition.powerChanged ? { remote_type: null } : {}),
+        options_json: transition.optionsJson,
       });
       return;
     }
 
     if (productType === "Roller Shades" && field === "lift_system") {
-      const nextJson = { ...currentJson };
+      if (!authoritativeV2) {
+        onUpdateFields(
+          buildLegacyRollerLiftSystemUpdate(currentJson, design, value),
+        );
+        return;
+      }
+      let nextJson = { ...currentJson };
       if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
       if (value !== "Motorized") {
-        nextJson.hub_required = null;
-        nextJson.power_configuration = null;
+        nextJson = clearMotorizationOptions(nextJson);
       } else if (nextJson.tube_class === "All Tubes") {
         nextJson.tube_class = null;
       }
 
+      const nextLift = typeof value === "string" ? value : null;
+      const pruned = pruneRollerV2UiSelection({
+        application: stringOption(nextJson, "roller_application"),
+        couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+        componentCount:
+          Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
+        topTreatment: stringOption(nextJson, "top_treatment_class"),
+        liftSystem: nextLift,
+        tubeClass: stringOption(nextJson, "tube_class"),
+        powerConfiguration: stringOption(nextJson, "power_configuration"),
+      });
+      nextJson.tube_class =
+        pruned.tubeClass === "All Tubes" && nextLift === "Motorized"
+          ? null
+          : pruned.tubeClass;
+      if (
+        nextLift !== "Motorized" &&
+        pruned.facets?.tubeClasses.includes("All Tubes")
+      ) {
+        nextJson.tube_class = "All Tubes";
+      }
+      setRollerPowerConfiguration(nextJson, pruned.powerConfiguration);
+
+      if (nextLift === "Motorized") {
+        requestOpenOptionField(
+          stringOption(nextJson, "tube_class")
+            ? "json:power_configuration"
+            : "json:tube_class",
+        );
+      }
+
       onUpdateFields({
-        lift_system: typeof value === "string" ? value : null,
-        motor_type: value === "Motorized" ? design?.motor_type || null : null,
+        lift_system: nextLift,
+        motor_type:
+          nextLift === "Motorized"
+            ? expectedRollerMotorForPowerConfiguration(nextJson.power_configuration)
+            : null,
         remote_type: null,
         options_json: nextJson,
       });
+      return;
+    }
+
+    if (
+      productType === "Roller Shades" &&
+      authoritativeV2 &&
+      field === "json:tube_class"
+    ) {
+      const tubeClass = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson, tube_class: tubeClass };
+      if (
+        design?.lift_system === "Motorized" &&
+        tubeClass &&
+        !stringOption(nextJson, "power_configuration")
+      ) {
+        requestOpenOptionField("json:power_configuration");
+      }
+      onUpdateFields({ options_json: nextJson });
       return;
     }
 
@@ -5796,36 +6592,59 @@ function ShadesAndBlindsOptions({
       for (let componentIndex = 1; componentIndex <= 4; componentIndex += 1) {
         nextJson[`roller_component_width_${componentIndex}`] = null;
       }
-      onUpdateFields({ shade_type: shadeType, options_json: nextJson });
+      const previousPower = stringOption(currentJson, "power_configuration");
+      const pruned = pruneRollerV2UiSelection({
+        application: stringOption(nextJson, "roller_application"),
+        couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+        componentCount:
+          Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
+        topTreatment: stringOption(nextJson, "top_treatment_class"),
+        liftSystem: design?.lift_system,
+        tubeClass: stringOption(nextJson, "tube_class"),
+        powerConfiguration: previousPower,
+      });
+      nextJson.tube_class = pruned.tubeClass;
+      const nextMotor = setRollerPowerConfiguration(
+        nextJson,
+        pruned.powerConfiguration,
+      );
+      const powerChanged = previousPower !== pruned.powerConfiguration;
+      onUpdateFields({
+        shade_type: shadeType,
+        lift_system: pruned.liftSystem,
+        motor_type: nextMotor,
+        ...(powerChanged ? { remote_type: null } : {}),
+        options_json: nextJson,
+      });
       return;
     }
 
     if (productType === "Roller Shades" && authoritativeV2 && field === "valance") {
       const valance = typeof value === "string" ? value : null;
       const application = stringOption(currentJson, "roller_application");
+      const topTreatment = application?.startsWith("LightGuard 360")
+        ? "LightGuard 360 Housing"
+        : getRollerTopTreatmentForValance(valance);
+      const transition = reconcileRollerTopTreatmentSelection(
+        currentJson,
+        topTreatment,
+        design?.lift_system,
+      );
       onUpdateFields({
         valance,
-        options_json: {
-          ...currentJson,
-          top_treatment_class: application?.startsWith("LightGuard 360")
-            ? "LightGuard 360 Housing"
-            : getRollerTopTreatmentForValance(valance),
-        },
+        lift_system: transition.liftSystem,
+        motor_type: transition.motorType,
+        ...(transition.powerChanged ? { remote_type: null } : {}),
+        options_json: transition.optionsJson,
       });
       return;
     }
 
     if (productType === "Roller Shades" && authoritativeV2 && field === "motor_type") {
-      const expectedMotor = expectedRollerMotorForPowerConfiguration(
-        currentJson.power_configuration,
-      );
-      onUpdateFields({
-        motor_type: typeof value === "string" ? value : null,
-        options_json: {
-          ...currentJson,
-          ...(expectedMotor === value ? {} : { power_configuration: null }),
-        },
-      });
+      // The exact motor is derived from the documented operating-system row.
+      // It is not an independently editable price choice in V2.
+      const expectedMotor = expectedRollerMotorForPowerConfiguration(currentJson.power_configuration);
+      onUpdateFields({ motor_type: expectedMotor });
       return;
     }
 
@@ -5835,13 +6654,12 @@ function ShadesAndBlindsOptions({
       field === "json:power_configuration"
     ) {
       const powerConfiguration = typeof value === "string" ? value : null;
+      const nextJson = { ...currentJson };
+      const motorType = setRollerPowerConfiguration(nextJson, powerConfiguration);
       onUpdateFields({
-        motor_type: expectedRollerMotorForPowerConfiguration(powerConfiguration),
+        motor_type: motorType,
         remote_type: null,
-        options_json: {
-          ...currentJson,
-          power_configuration: powerConfiguration,
-        },
+        options_json: nextJson,
       });
       return;
     }
@@ -5859,7 +6677,7 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Mini Blinds" && field === "json:slat_size") {
       const slatSize = typeof value === "string" ? value : null;
-      if (slatSize) setOpenOptionField("json:color");
+      if (slatSize) requestOpenOptionField("json:color");
       onUpdateFields({
         options_json: {
           ...withoutProductColorDetails(currentJson),
@@ -5926,8 +6744,14 @@ function ShadesAndBlindsOptions({
     }
 
     if (productType === "Roman Shades" && field === "lift_system") {
+      if (!authoritativeV2) {
+        onUpdateFields(
+          buildLegacyRomanLiftSystemUpdate(currentJson, design, value),
+        );
+        return;
+      }
       const nextControl = typeof value === "string" ? value : null;
-      const nextJson = { ...currentJson };
+      let nextJson = { ...currentJson };
       if (!(nextControl === "Continuous Cord Loop" || nextControl === "SmartRelease")) {
         nextJson.chain_type = null;
         nextJson.chain_color = null;
@@ -5942,12 +6766,52 @@ function ShadesAndBlindsOptions({
         nextJson.pole_length = null;
       }
       if (nextControl !== "Motorized") {
-        nextJson.hub_required = null;
+        nextJson = clearMotorizationOptions(nextJson);
       }
       onUpdateFields({
         lift_system: nextControl,
         motor_type: nextControl === "Motorized" ? design?.motor_type || null : null,
         remote_type: nextControl === "Motorized" ? design?.remote_type || null : null,
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (
+      productType === "Sheer Shades" &&
+      authoritativeV2 &&
+      field === "lift_system"
+    ) {
+      const nextControl = typeof value === "string" ? value : null;
+      const nextJson =
+        nextControl === "Motorized"
+          ? { ...currentJson }
+          : clearMotorizationOptions(currentJson);
+      onUpdateFields({
+        lift_system: nextControl,
+        motor_type: nextControl === "Motorized" ? design?.motor_type ?? null : null,
+        remote_type: nextControl === "Motorized" ? design?.remote_type ?? null : null,
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (
+      productType === "Smart Drapes" &&
+      authoritativeV2 &&
+      field === "json:control_type"
+    ) {
+      const nextControl = typeof value === "string" ? value : null;
+      const nextJson =
+        nextControl === "Motorized"
+          ? { ...currentJson, control_type: nextControl }
+          : {
+              ...clearMotorizationOptions(currentJson),
+              control_type: nextControl,
+            };
+      onUpdateFields({
+        motor_type: nextControl === "Motorized" ? design?.motor_type ?? null : null,
+        remote_type: nextControl === "Motorized" ? design?.remote_type ?? null : null,
         options_json: nextJson,
       });
       return;
@@ -6018,7 +6882,7 @@ function ShadesAndBlindsOptions({
           back_fabric: typeof value === "string" ? value : null,
         },
       });
-      if (!emptyValue) setOpenOptionField("json:back_fabric_color");
+      if (!emptyValue) requestOpenOptionField("json:back_fabric_color");
       return;
     }
 
@@ -6183,29 +7047,18 @@ function ShadesAndBlindsOptions({
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
       }
-      if (!frameApplication) {
-        nextJson.honeycomb_frame_type = null;
-        nextJson.frame_qty = null;
-        nextJson.pre_drilled = null;
-        nextJson.frame_t_post_count = null;
-        nextJson.frame_t_post_1_location = null;
-        nextJson.frame_t_post_2_location = null;
-        nextJson.frame_t_post_3_location = null;
-        nextJson.sill_plate = null;
-        nextJson.frame_notch_out = null;
-        nextJson.frame_notch_a_inches = null;
-        nextJson.frame_notch_b_inches = null;
-        nextJson.honeycomb_actual_cell_size = null;
-        for (let panelIndex = 1; panelIndex <= 4; panelIndex += 1) {
-          nextJson[`honeycomb_panel_${panelIndex}_net_width`] = null;
-          nextJson[`honeycomb_panel_${panelIndex}_net_height`] = null;
-        }
-      }
-      if (application === "SmartFit for Sloped Windows with Frame") {
-        nextJson.frame_t_post_count = null;
-        nextJson.frame_t_post_1_location = null;
-        nextJson.frame_t_post_2_location = null;
-        nextJson.frame_t_post_3_location = null;
+      if (!authoritativeV2) {
+        nextJson = buildLegacyHoneycombApplicationFrameOptions(
+          nextJson,
+          application,
+          frameApplication,
+        );
+      } else if (!frameApplication) {
+        nextJson = resetHoneycombFrameOptions(nextJson, "none");
+      } else if (application === "SmartFit for Sloped Windows with Frame") {
+        nextJson = resetHoneycombFrameOptions(nextJson, "sloped");
+      } else {
+        nextJson = resetHoneycombFrameOptions(nextJson, "standard");
       }
       if (application === "Specialty Shapes") {
         const currentCellSize = String(nextJson.cell_size || "");
@@ -6238,9 +7091,6 @@ function ShadesAndBlindsOptions({
         nextJson.specialty_left_leg_height = null;
         nextJson.specialty_right_leg_height = null;
         nextJson.non_operable = null;
-      }
-      if (application !== "SmartFit for Sloped Windows with Frame") {
-        nextJson.slope_angle_degrees = null;
       }
       if (application !== "Patio Door Vertical") {
         nextJson.split_splice = null;
@@ -6306,10 +7156,12 @@ function ShadesAndBlindsOptions({
       const nextSize = typeof value === "string" ? value : null;
       let nextJson: Record<string, unknown> = { ...currentJson, cell_size: nextSize };
       const patch: Partial<SalesQuoteDesign> = {};
+      const inferredFrameApplication = authoritativeV2
+        ? getHoneycombApplicationForCellSize(nextSize)
+        : null;
       if (authoritativeV2) {
-        const frameApplication = getHoneycombApplicationForCellSize(nextSize);
-        if (frameApplication) {
-          nextJson.honeycomb_application = frameApplication;
+        if (inferredFrameApplication) {
+          nextJson.honeycomb_application = inferredFrameApplication;
         } else if (
           (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(
             String(nextJson.honeycomb_application || ""),
@@ -6334,14 +7186,15 @@ function ShadesAndBlindsOptions({
         nextJson.back_fabric = null;
       }
 
-      // Frame quantity / pre-drill only exist for the frame sizes.
-      if (!isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(nextSize))) {
-        nextJson.frame_qty = null;
-        nextJson.pre_drilled = null;
-        nextJson.frame_t_post_count = null;
-        nextJson.frame_t_post_1_location = null;
-        nextJson.frame_t_post_2_location = null;
-        nextJson.frame_t_post_3_location = null;
+      if (authoritativeV2) {
+        const frameMode = !isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(nextSize))
+          ? "none"
+          : inferredFrameApplication === "SmartFit for Sloped Windows with Frame"
+            ? "sloped"
+            : "standard";
+        nextJson = resetHoneycombFrameOptions(nextJson, frameMode);
+      } else {
+        nextJson = buildLegacyHoneycombCellSizeFrameOptions(nextJson, nextSize);
       }
 
       // The back (Day & Night) fabric list is per shade size.
@@ -6397,7 +7250,7 @@ function ShadesAndBlindsOptions({
         nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
       }
-      if (clearFabric) setOpenOptionField("fabric");
+      if (clearFabric) requestOpenOptionField("fabric");
 
       onUpdateFields({
         ...patch,
@@ -6632,6 +7485,39 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (
+      productType === "Faux Wood Blinds" &&
+      authoritativeV2 &&
+      field === "json:product_line"
+    ) {
+      const productLine = typeof value === "string" ? value : null;
+      const productId = productLine === "SmartPrivacy" ? "smartprivacy_faux" : "faux_wood";
+      const programId =
+        productId === "smartprivacy_faux"
+          ? "smartprivacy_faux_2in_and_2_1_2in_slats_cordless"
+          : "faux_wood_2in_and_2_1_2in_slats_cordless";
+      if (productLine) requestOpenOptionField("json:color");
+      onUpdateFields({
+        supplier: "Norman",
+        material: '2" & 2 1/2" Slats Cordless',
+        fabric: null,
+        motor_type: null,
+        remote_type: null,
+        options_json: {
+          ...withoutProductColorDetails(currentJson),
+          product_line: productLine,
+          color: null,
+          quote_lab_product_id: productId,
+          catalog_product_id: productId,
+          quote_lab_program_id: programId,
+          catalog_program_id: programId,
+          catalog_manufacturer: "Norman",
+          [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+        },
+      });
+      return;
+    }
+
     if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
       let nextJson = withoutProductColorDetails(currentJson);
       const jsonKey = getJsonFieldKey(field);
@@ -6647,7 +7533,7 @@ function ShadesAndBlindsOptions({
 
     const dependentProductColorField = getDependentProductColorField(productType, field);
     if (dependentProductColorField) {
-      if (!emptyValue) setOpenOptionField(dependentProductColorField);
+      if (!emptyValue) requestOpenOptionField(dependentProductColorField);
 
       let nextJson = withJsonField(withoutProductColorDetails(currentJson), field, value);
       if (productType === "Roman Shades" && field === "json:roman_fabric_category") {
@@ -6679,6 +7565,12 @@ function ShadesAndBlindsOptions({
         onUpdate("options_json", { ...currentJson, roman_fabric_category: category });
       }
     }
+  };
+
+  const commitOptionUpdate = (field: string, value: unknown) => {
+    handleUpdate(field, value);
+    const requestedField = requestedOpenOptionFieldRef.current;
+    setOpenOptionField(requestedField === undefined ? null : requestedField);
   };
 
   useEffect(() => {
@@ -6911,26 +7803,12 @@ function ShadesAndBlindsOptions({
 
         if (liftSystem === "Motorized") {
           if (authoritativeV2) {
-            const powerConfiguration = getFieldValue(
-              design,
-              "json:power_configuration",
-            );
-            const expectedMotor = expectedRollerMotorForPowerConfiguration(
-              powerConfiguration,
-            );
             options.push({
               key: "power_configuration",
-              label: "Power Configuration",
+              label: "Motor / Power System",
               field: "json:power_configuration",
               type: "select",
               options: rollerFacets?.powerConfigurations ?? ROLLER_POWER_CONFIGURATIONS,
-            });
-            options.push({
-              key: "motor_type",
-              label: "Motor Type",
-              field: "motor_type",
-              type: "select",
-              options: expectedMotor ? ([expectedMotor] as readonly string[]) : [],
             });
           } else {
             options.push({
@@ -8266,8 +9144,13 @@ function ShadesAndBlindsOptions({
     }
 
     if (productType === "Faux Wood Blinds") {
-      const inferredProductLine = getFauxWoodProductLineFromProductId(fabricColor.productId);
-      if (inferredProductLine) nextJson.product_line = inferredProductLine;
+      const identity = buildFauxWoodColorIdentityPatch(
+        nextJson,
+        fabricColor,
+        authoritativeV2,
+      );
+      nextJson = identity.optionsJson;
+      Object.assign(patch, identity.designFields);
     }
 
     if (productType === "Mini Blinds") {
@@ -8341,8 +9224,7 @@ function ShadesAndBlindsOptions({
           value={value}
           hideLabel
           onChange={(v) => {
-            handleUpdate(opt.field, v);
-            setOpenOptionField(null);
+            commitOptionUpdate(opt.field, v);
           }}
         />
       );
@@ -8431,8 +9313,7 @@ function ShadesAndBlindsOptions({
           grouped={fabricGroups}
           hideLabel
           onChange={(v) => {
-            handleUpdate(opt.field, v);
-            setOpenOptionField(null);
+            commitOptionUpdate(opt.field, v);
           }}
         />
       );
@@ -8450,8 +9331,7 @@ function ShadesAndBlindsOptions({
           unit={opt.unit}
           hideLabel
           onChange={(v) => {
-            handleUpdate(opt.field, v);
-            setOpenOptionField(null);
+            commitOptionUpdate(opt.field, v);
           }}
           onClear={authoritativeV2 ? () => handleUpdate(opt.field, null) : undefined}
         />
@@ -8465,8 +9345,7 @@ function ShadesAndBlindsOptions({
         noFirst={opt.noFirst}
         hideLabel
         onChange={(v) => {
-          handleUpdate(opt.field, v);
-          setOpenOptionField(null);
+          commitOptionUpdate(opt.field, v);
         }}
       />
     );
@@ -8515,6 +9394,15 @@ function ShadesAndBlindsOptions({
       (productType === "Vertical Blinds" &&
         Boolean(selectedSideBySidePosition) &&
         selectedSideBySidePosition !== "Not Side-by-Side"));
+  const rollerMotorized =
+    authoritativeV2 &&
+    productType === "Roller Shades" &&
+    design?.lift_system === "Motorized";
+  const rollerTubeClass = stringOption(optionsJson, "tube_class");
+  const rollerPowerConfiguration = stringOption(optionsJson, "power_configuration");
+  const rollerPricedMotor = expectedRollerMotorForPowerConfiguration(
+    rollerPowerConfiguration,
+  );
 
   return (
     <div className="space-y-3">
@@ -8523,6 +9411,28 @@ function ShadesAndBlindsOptions({
         editingField={openOptionField}
         onReset={handleConfirmedOptionReset}
       />
+
+      {rollerMotorized && (!rollerTubeClass || !rollerPowerConfiguration) ? (
+        <div
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          data-testid="roller-motorization-required"
+        >
+          <strong>Complete motorization:</strong>{" "}
+          {!rollerTubeClass
+            ? "Select Tube, then Motor / Power System."
+            : "Select Motor / Power System."}{" "}
+          The authoritative price updates automatically after both documented choices are complete.
+        </div>
+      ) : null}
+
+      {rollerMotorized && rollerTubeClass && rollerPowerConfiguration && rollerPricedMotor ? (
+        <div
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
+          data-testid="roller-motorization-complete"
+        >
+          <strong>Motorization complete:</strong> {rollerPowerConfiguration} · Priced motor: {rollerPricedMotor}
+        </div>
+      ) : null}
 
       {showSideBySidePairSelector ? (
         <SideBySidePairSelector

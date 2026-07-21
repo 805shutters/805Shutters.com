@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import {
+  priceExactQuoteBuilderDesign,
   repriceExactQuoteBuilderForQuoteLabPreview as repriceExactQuoteBuilder,
   repriceExactQuoteBuilderForServerDate,
 } from "./exact-backend";
@@ -361,6 +362,76 @@ describe("exact-interface V2 integration", () => {
     expect(unknownProduct.sendability.sendable).toBe(false);
   });
 
+  it("hard-blocks a legacy-picker surcharge ID instead of silently dropping it", () => {
+    const unsupportedId =
+      "roller-shades-roller-motorization-automate-hub-fixed-96-3";
+    const quote = priceOne(1, {
+      surcharges: [
+        {
+          id: unsupportedId,
+          name: "Automate: Hub",
+          type: "fixed",
+          value: 96.3,
+          quantity: 1,
+          category: "Roller Motorization Components",
+        },
+      ],
+    });
+    expect(quote.designs[0].result).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+      pricedSelectionFingerprint: null,
+    });
+    expect(
+      quote.designs[0].result.validationIssues.map((issue) => issue.ruleId),
+    ).toContain("engine.surcharge.unsupported");
+    expect(quote.total).toBe(0);
+    expect(quote.sendability.sendable).toBe(false);
+  });
+
+  it("prices an exact catalog surcharge ID and quantity in V2", () => {
+    const quote = priceOne(1, {
+      surcharges: [
+        {
+          id: "additional_fiberglass_pole",
+          quantity: 2,
+        },
+      ],
+    });
+    const result = quote.designs[0].result;
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "additional_fiberglass_pole",
+          amount: 42,
+          wholesaleAmount: 16.8,
+          detail: "28 x 2 units",
+        }),
+      ]),
+    );
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
+  it("preserves the legacy backend's historical unsupported-surcharge filtering", () => {
+    const quoteLine = line("line-legacy-surcharge");
+    const design = rollerDesign(quoteLine.id, "A", {
+      quote_v2_backend: false,
+      surcharges: [
+        {
+          id: "legacy-ui-only-surcharge-id",
+          quantity: 1,
+        },
+      ],
+    });
+    const result = priceExactQuoteBuilderDesign(quoteLine, design);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.surchargeLines).toEqual([]);
+  });
+
   it("rejects a fabric price-group mismatch and ignores a browser-supplied catalog identity", () => {
     const wrongProgram = priceOne(1, {
       fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
@@ -498,6 +569,28 @@ describe("exact-interface V2 integration", () => {
         }),
       ]),
     );
+    const costResult = quote.designs[0].costResult;
+    expect(costResult.ok).toBe(true);
+    if (costResult.ok) {
+      expect(costResult.wholesaleBase).toBe(result.wholesaleBase);
+      expect(costResult.wholesaleAddOns).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "motor:automate_home:motor_rechargeable_battery_pack",
+            amount: 204.6,
+          }),
+        ]),
+      );
+      expect(costResult.wholesaleUnitCost).toBe(
+        result.internalCost?.productCostUnit,
+      );
+      expect(costResult).toMatchObject({
+        freightAllocated: result.internalCost?.freightAllocated,
+        oversizeAllocated: result.internalCost?.oversizeAllocated,
+        landedCostTotal: result.internalCost?.landedCostTotal,
+        freightStatus: result.internalCost?.freightStatus,
+      });
+    }
 
     const undercharged = {
       ...design,
@@ -513,7 +606,124 @@ describe("exact-interface V2 integration", () => {
     expect(blocked.designs[0].result.ok).toBe(false);
     expect(
       blocked.designs[0].result.validationIssues.map((issue) => issue.ruleId),
-    ).toContain("roller.motor.price_configuration_mismatch");
+    ).toContain("roller.motorization.legacy_motor_mismatch");
+  });
+
+  it("gives a canonical Roller motor array precedence and prices one exact Hub", () => {
+    const quoteLine = line("line-canonical-motor");
+    const design = {
+      ...rollerDesign(quoteLine.id),
+      lift_system: "Motorized",
+      // These stale legacy strings must not be reconstructed once canonical
+      // identities are stored.
+      motor_type: "Mystery legacy motor",
+      remote_type: "Hub",
+      options_json: {
+        ...(rollerDesign(quoteLine.id).options_json as Record<string, unknown>),
+        roller_tube: '1 3/4" (43mm) Tube',
+        roller_power_configuration: "Norman Smart AC Adapter Plug-In 36W",
+        motorization_selections: [
+          {
+            groupId: "smart_motorization",
+            optionId: "motor",
+            role: "base_motor",
+            units: 1,
+          },
+          {
+            groupId: "smart_motorization",
+            optionId: "hub",
+            role: "hub",
+            units: 1,
+          },
+        ],
+      },
+    } as SalesQuoteDesign;
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [quoteLine],
+        designs: [design],
+        selectedVariantByLine: { [quoteLine.id]: "A" },
+      }),
+    );
+    const result = quote.designs[0].result;
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.surchargeLines.filter((line) => line.id.endsWith(":hub")),
+    ).toEqual([
+      expect.objectContaining({
+        id: "motor:smart_motorization:hub",
+        amount: 240.75,
+        wholesaleAmount: 96.3,
+      }),
+    ]);
+  });
+
+  it("hard-blocks ambiguous and unknown populated legacy Roller accessories", () => {
+    const quoteLine = line("line-legacy-accessory");
+    const base = {
+      ...rollerDesign(quoteLine.id),
+      lift_system: "Motorized",
+      motor_type: "Motor",
+      options_json: {
+        ...(rollerDesign(quoteLine.id).options_json as Record<string, unknown>),
+        roller_tube: '1 3/4" (43mm) Tube',
+        roller_power_configuration: "Norman Smart AC Adapter Plug-In 36W",
+      },
+    } as SalesQuoteDesign;
+    const price = (remote_type: string) =>
+      requireV2(
+        repriceExactQuoteBuilder({
+          lines: [quoteLine],
+          designs: [{ ...base, remote_type }],
+          selectedVariantByLine: { [quoteLine.id]: "A" },
+        }),
+      ).designs[0].result;
+
+    const ambiguous = price("Hub");
+    expect(ambiguous.ok).toBe(false);
+    expect(ambiguous.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "roller.motorization.legacy_option_ambiguous",
+    );
+
+    const unknown = price("Mystery Controller");
+    expect(unknown.ok).toBe(false);
+    expect(unknown.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "roller.motorization.legacy_option_unknown",
+    );
+  });
+
+  it("hard-blocks a canonical base motor that disagrees with the power configuration", () => {
+    const quoteLine = line("line-canonical-mismatch");
+    const design = {
+      ...rollerDesign(quoteLine.id),
+      lift_system: "Motorized",
+      motor_type: "Motor (Rechargeable Battery Pack)",
+      options_json: {
+        ...(rollerDesign(quoteLine.id).options_json as Record<string, unknown>),
+        roller_tube: '1 3/4" (43mm) Tube',
+        roller_power_configuration: "Automate ARC Motor",
+        motorization_selections: [
+          {
+            groupId: "automate_home",
+            optionId: "low_voltage_dc_motor",
+            role: "base_motor",
+            units: 1,
+          },
+        ],
+      },
+    } as SalesQuoteDesign;
+    const result = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [quoteLine],
+        designs: [design],
+        selectedVariantByLine: { [quoteLine.id]: "A" },
+      }),
+    ).designs[0].result;
+    expect(result.ok).toBe(false);
+    expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "roller.motorization.power_motor_mismatch",
+    );
   });
 
   it("projects selected retail without cost, freight, markup, or margin data", () => {

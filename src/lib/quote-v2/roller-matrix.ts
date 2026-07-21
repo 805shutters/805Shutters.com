@@ -121,6 +121,16 @@ const ROLLER_COMPONENT_COUNT_BY_SHEET: Readonly<Record<string, number>> = {
   "Coupled Shades(4)": 4,
 };
 
+export function rollerComponentOrderWidthsForPricing(
+  context: SelectionContext,
+): number[] | null {
+  const sheet = rollerSheetForSelection(context);
+  const expectedCount = sheet ? ROLLER_COMPONENT_COUNT_BY_SHEET[sheet] : undefined;
+  if (expectedCount === undefined) return null;
+  const widths = componentOrderWidths(context);
+  return widths.length === expectedCount ? widths : null;
+}
+
 export function rollerSheetForSelection(context: SelectionContext): string | null {
   const count = numberConfig(
     context,

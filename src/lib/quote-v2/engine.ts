@@ -1,4 +1,8 @@
-import { getProduct, getProgram } from "@/lib/quote/catalog";
+import {
+  findProductSurcharge,
+  getProduct,
+  getProgram,
+} from "@/lib/quote/catalog";
 import {
   priceDealerNetDesign,
   priceDesign,
@@ -6,7 +10,9 @@ import {
   type PriceFailure,
   type PriceInput,
   type PriceResult,
+  type SurchargeSelection,
 } from "@/lib/quote/pricing";
+import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import {
   createSelectionFingerprint,
   hasHardBlock,
@@ -18,6 +24,11 @@ import {
 import { productRuleStatusForSelection, validateSelection } from "./rules";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { rollerMotorChargeForPowerConfiguration } from "./roller-motor";
+import {
+  canonicalMotorizationPriceSelections,
+  canonicalMotorizationSelectionsFromConfiguration,
+} from "./roller-motor-contract";
+import { rollerComponentOrderWidthsForPricing } from "./roller-matrix";
 
 export type QuoteV2ValidationStatus = "valid" | "blocked";
 
@@ -114,10 +125,273 @@ function contractSourceId(productId: string): SourceManifestId {
   return "norman-retail-guide-2026-07";
 }
 
+type ContractSurchargeSelection = {
+  id: string;
+  units: number;
+};
+
+function positiveWholeUnits(value: unknown): number | null {
+  const units = value == null ? 1 : Number(value);
+  return Number.isInteger(units) && units > 0 ? units : null;
+}
+
+function normalizedAutomaticDetail(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Derive every configuration-implied surcharge from the same immutable V2
+ * selection the rule engine validates. UI adapters may not omit or invent
+ * these charges in a separate price payload.
+ */
+export function authoritativeAutomaticSurchargeSelections(
+  selection: SelectionContext,
+): SurchargeSelection[] {
+  const details: Record<string, unknown> = Object.fromEntries(
+    Object.entries(selection.configuration).map(([key, value]) => [
+      key,
+      normalizedAutomaticDetail(value),
+    ]),
+  );
+
+  if (selection.productId === "roller") {
+    const application = String(
+      details.roller_application ?? details.shade_type ?? "",
+    );
+    const componentCount =
+      details.roller_coupling_count ??
+      details.coupled_shade_count ??
+      details.lightguard_360_shade_count;
+    if (application === "dual_roller" || application === "dual_rollers") {
+      details.shade_type = "dual_rollers";
+    } else if (
+      application === "coupled_shades" ||
+      application === "independently_operated_coupled_shades"
+    ) {
+      details.shade_type = "coupled_shades";
+      details.coupled_shade_count = componentCount;
+    } else if (application === "lightguard_360_with_t_post") {
+      details.shade_type = "lightguard_360_with_t_post";
+      details.lightguard_360_shade_count = componentCount;
+    } else if (application === "lightguard_360") {
+      details.light_guard = "lightguard_360";
+    }
+
+    if (details.light_guard_rails === "yes" && !details.light_guard) {
+      details.light_guard = "basic_light_guard";
+    }
+    if (details.premium_hardware === "yes") {
+      details.hardware_type = "premium";
+    }
+
+    const topTreatment = String(details.roller_top_treatment ?? "");
+    if (!details.valance) {
+      if (topTreatment === "square_fascia") details.valance = "square_fascia";
+      else if (topTreatment === "curved_fascia") details.valance = "plain_curved_fascia";
+      else if (topTreatment === "fabric_valance") details.valance = "fabric_valance";
+      else if (topTreatment === "wood_valance") details.valance = "wood_valance";
+      else if (topTreatment === "cassette") details.valance = "cassette";
+    }
+  }
+
+  return deriveAutomaticSurcharges(selection.productId, details).map(
+    (entry) => ({ id: entry.id, units: entry.units ?? 1 }),
+  );
+}
+
+function surchargeContractIssues(
+  selection: SelectionContext,
+  input: PriceInput,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const source = sourceProvenance(contractSourceId(selection.productId));
+  const product = getProduct(selection.productId);
+  const automatic = authoritativeAutomaticSurchargeSelections(selection).map(
+    (entry) => ({ id: entry.id, units: positiveWholeUnits(entry.units) ?? 1 }),
+  );
+  const automaticIds = new Set(automatic.map((entry) => entry.id));
+  const actual: ContractSurchargeSelection[] = [];
+  const actualIds = new Set<string>();
+  const rawActual = input.surcharges as unknown;
+
+  if (rawActual != null && !Array.isArray(rawActual)) {
+    issues.push({
+      severity: "hard_block",
+      ruleId: "engine.surcharge.price_input_invalid",
+      source,
+      selectedValues: { surcharges: String(rawActual) },
+      explanation:
+        "The authoritative surcharge price input must be an array of exact catalog IDs and positive whole-number units.",
+    });
+  } else {
+    for (const [index, entry] of (rawActual ?? []).entries()) {
+      const id =
+        entry && typeof entry === "object" && typeof entry.id === "string"
+          ? entry.id.trim()
+          : "";
+      const units =
+        entry && typeof entry === "object"
+          ? positiveWholeUnits(entry.units)
+          : null;
+      if (!id || units === null) {
+        issues.push({
+          severity: "hard_block",
+          ruleId: "engine.surcharge.price_input_invalid",
+          source,
+          selectedValues: {
+            surchargeIndex: index,
+            surchargeId: id || null,
+            units:
+              entry && typeof entry === "object"
+                ? String(entry.units ?? 1)
+                : null,
+          },
+          explanation:
+            "Every priced surcharge must use one exact catalog ID and a positive whole-number unit count.",
+        });
+        continue;
+      }
+      if (actualIds.has(id)) {
+        issues.push({
+          severity: "hard_block",
+          ruleId: "engine.surcharge.duplicate",
+          source,
+          selectedValues: { surchargeId: id },
+          explanation:
+            `Surcharge '${id}' was supplied more than once. V2 requires one canonical charge with its complete unit count.`,
+        });
+      }
+      actualIds.add(id);
+      actual.push({ id, units });
+      if (product && !findProductSurcharge(product, id)) {
+        issues.push({
+          severity: "hard_block",
+          ruleId: "engine.surcharge.unsupported",
+          source,
+          selectedValues: { surchargeId: id, units },
+          explanation:
+            `Surcharge '${id}' is not a supported, source-priced option for ${product.name}. It cannot be silently omitted from a V2 quote.`,
+        });
+      }
+    }
+  }
+
+  const rawSelected = selection.options.surcharges;
+  if (rawSelected != null && !Array.isArray(rawSelected)) {
+    issues.push({
+      severity: "hard_block",
+      ruleId: "engine.surcharge.selection_invalid",
+      source,
+      selectedValues: { surcharges: String(rawSelected) },
+      explanation:
+        "The selected V2 surcharges are malformed and cannot be authoritatively priced.",
+    });
+    return issues;
+  }
+
+  const selected: ContractSurchargeSelection[] = [];
+  const selectedIds = new Set<string>();
+  for (const [index, entry] of (rawSelected ?? []).entries()) {
+    const id =
+      entry && typeof entry === "object" && !Array.isArray(entry) &&
+      typeof entry.id === "string"
+        ? entry.id.trim()
+        : "";
+    const rawUnits =
+      entry && typeof entry === "object" && !Array.isArray(entry)
+        ? entry.units ?? entry.quantity
+        : null;
+    const units = positiveWholeUnits(rawUnits);
+    if (!id || units === null) {
+      issues.push({
+        severity: "hard_block",
+        ruleId: "engine.surcharge.selection_invalid",
+        source,
+        selectedValues: {
+          surchargeIndex: index,
+          surchargeId: id || null,
+          units: rawUnits == null ? null : String(rawUnits),
+        },
+        explanation:
+          "Every selected V2 surcharge must use one exact catalog ID and a positive whole-number quantity.",
+      });
+      continue;
+    }
+    if (selectedIds.has(id)) {
+      issues.push({
+        severity: "hard_block",
+        ruleId: "engine.surcharge.duplicate",
+        source,
+        selectedValues: { surchargeId: id },
+        explanation:
+          `Surcharge '${id}' is selected more than once. V2 cannot merge duplicate option charges implicitly.`,
+      });
+    }
+    selectedIds.add(id);
+    selected.push({ id, units });
+    if (automaticIds.has(id)) {
+      issues.push({
+        severity: "hard_block",
+        ruleId: "engine.surcharge.automatic_manual_collision",
+        source,
+        selectedValues: { surchargeId: id, units },
+        explanation:
+          `Surcharge '${id}' is already required by the selected configuration and cannot also be entered manually.`,
+      });
+    }
+    if (product && !findProductSurcharge(product, id)) {
+      issues.push({
+        severity: "hard_block",
+        ruleId: "engine.surcharge.unsupported",
+        source,
+        selectedValues: { surchargeId: id, units },
+        explanation:
+          `Selected surcharge '${id}' is not supported by the source-priced ${product.name} catalog.`,
+      });
+    }
+  }
+
+  const normalized = (entries: readonly ContractSurchargeSelection[]) =>
+    [...entries].sort((left, right) =>
+      `${left.id}/${left.units}`.localeCompare(`${right.id}/${right.units}`),
+    );
+  const expected = normalized([
+    ...automatic,
+    ...selected.filter((entry) => !automaticIds.has(entry.id)),
+  ]);
+  const priced = normalized(actual);
+  if (JSON.stringify(expected) !== JSON.stringify(priced)) {
+    issues.push({
+      severity: "hard_block",
+      ruleId: "engine.surcharge.selection_price_input_mismatch",
+      source,
+      selectedValues: {
+        expectedSurcharges: expected.map(
+          (entry) => `${entry.id} x ${entry.units}`,
+        ),
+        pricedSurcharges: priced.map(
+          (entry) => `${entry.id} x ${entry.units}`,
+        ),
+      },
+      explanation:
+        "The authoritative price input does not exactly match the configuration-derived and explicitly selected V2 surcharges.",
+    });
+  }
+
+  return issues;
+}
+
 function priceInputContractIssues(
   selection: SelectionContext,
   input: PriceInput,
 ): ValidationIssue[] {
+  const surchargeIssues = surchargeContractIssues(selection, input);
   const inputQuantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const mismatches: Record<string, string | number | null> = {};
   if (input.productId !== selection.productId) {
@@ -132,10 +406,67 @@ function priceInputContractIssues(
   if (input.heightInches !== selection.heightInches) {
     mismatches.heightInches = `${selection.heightInches} != ${input.heightInches}`;
   }
+  if (selection.productId === "roller") {
+    const expectedComponentWidths =
+      rollerComponentOrderWidthsForPricing(selection) ?? [];
+    const actualComponentWidths = Array.isArray(input.componentWidthsInches)
+      ? input.componentWidthsInches.map(Number)
+      : [];
+    if (
+      JSON.stringify(actualComponentWidths) !==
+      JSON.stringify(expectedComponentWidths)
+    ) {
+      mismatches.componentWidthsInches = `expected [${expectedComponentWidths.join(
+        ", ",
+      )}], got [${actualComponentWidths.join(", ")}]`;
+    }
+  }
   if (inputQuantity !== selection.quantity) {
     mismatches.quantity = `${selection.quantity} != ${inputQuantity}`;
   }
-  if (
+  const canonicalRollerMotorization =
+    selection.productId === "roller"
+      ? canonicalMotorizationSelectionsFromConfiguration(
+          selection.configuration,
+        )
+      : null;
+  if (selection.productId === "roller" && canonicalRollerMotorization) {
+    const normalizedSelections = (
+      entries: readonly {
+        groupId: string;
+        optionId: string;
+        units?: number;
+      }[],
+    ) =>
+      entries
+        .map((entry) => ({
+          groupId: entry.groupId,
+          optionId: entry.optionId,
+          units: Number(entry.units ?? 1),
+        }))
+        .sort((left, right) =>
+          `${left.groupId}/${left.optionId}`.localeCompare(
+            `${right.groupId}/${right.optionId}`,
+          ),
+        );
+    const expectedMotorization = normalizedSelections(
+      canonicalMotorizationPriceSelections(
+        canonicalRollerMotorization.selections,
+      ),
+    );
+    const actualMotorization = normalizedSelections(input.motorization ?? []);
+    if (
+      JSON.stringify(actualMotorization) !==
+      JSON.stringify(expectedMotorization)
+    ) {
+      mismatches.motorization = `expected canonical ${expectedMotorization
+        .map(
+          (entry) =>
+            `${entry.groupId}/${entry.optionId} x ${entry.units}`,
+        )
+        .join(", ") || "none"}`;
+    }
+  } else if (
     selection.productId === "roller" &&
     String(selection.configuration.lift_system ?? "")
       .toLowerCase()
@@ -164,8 +495,9 @@ function priceInputContractIssues(
         : "unsupported power configuration";
     }
   }
-  if (Object.keys(mismatches).length === 0) return [];
+  if (Object.keys(mismatches).length === 0) return surchargeIssues;
   return [
+    ...surchargeIssues,
     {
       severity: "hard_block",
       ruleId: "engine.selection_price_input.mismatch",

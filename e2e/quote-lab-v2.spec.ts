@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+test.setTimeout(90_000);
+
 const accessCode = process.env.QUOTE_LAB_ACCESS_CODE;
 const productCategories = [
   "Shutters",
@@ -62,12 +64,43 @@ async function loadProtectedCatalog(page: import("@playwright/test").Page) {
   return (await response.json()) as {
     products: Array<{
       id: string;
+      name: string;
       manufacturer?: string | null;
+      system?: string | null;
       productType: string;
       priceBasis?: string;
-      programs: Array<{ id: string }>;
+      programs: Array<{
+        id: string;
+        name: string;
+        priceBasis?: string | null;
+      }>;
     }>;
   };
+}
+
+async function restoreQuoteLabState(
+  page: import("@playwright/test").Page,
+  state: Record<string, unknown>,
+) {
+  // Stop the mounted builder before restoring so a delayed autosave cannot race
+  // the test cleanup on a higher-latency preview deployment.
+  await page.goto("about:blank");
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const currentResponse = await page.request.get("/api/quote-lab/state");
+    expect(currentResponse.ok()).toBe(true);
+    const current = (await currentResponse.json()) as { revision: number };
+    const restoreResponse = await page.request.put("/api/quote-lab/state", {
+      data: { state, expectedRevision: current.revision },
+    });
+    if (restoreResponse.ok()) return;
+    if (restoreResponse.status() !== 409) {
+      throw new Error(
+        `Quote Lab cleanup failed (${restoreResponse.status()}): ${await restoreResponse.text()}`,
+      );
+    }
+    await page.waitForTimeout(100 * (attempt + 1));
+  }
+  throw new Error("Quote Lab cleanup could not obtain a stable revision.");
 }
 
 function productCategoryButton(
@@ -252,12 +285,7 @@ test("manufacturer stamp follows the persisted selected design after reload and 
     ).toHaveCount(1);
     await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();
   } finally {
-    const currentResponse = await page.request.get("/api/quote-lab/state");
-    const current = (await currentResponse.json()) as { revision: number };
-    const restoreResponse = await page.request.put("/api/quote-lab/state", {
-      data: { state: original.state, expectedRevision: current.revision },
-    });
-    expect(restoreResponse.ok()).toBe(true);
+    await restoreQuoteLabState(page, original.state);
   }
 });
 
@@ -415,14 +443,371 @@ test("Polar and Lotus stay available through familiar categories and the protect
   await expect(page.getByTestId("quote-lab-catalog-controls")).toHaveCount(0);
 });
 
+test("a Roller line chooses Polar and Lotus from the manufacturer stamp and persists exact catalog IDs", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await unlockQuoteLab(page);
+  const originalResponse = await page.request.get("/api/quote-lab/state");
+  expect(originalResponse.ok()).toBe(true);
+  const original = (await originalResponse.json()) as {
+    revision: number;
+    state: {
+      lineItems: Array<{ id: string; product_type: string }>;
+      designs: Array<Record<string, any>>;
+      selectedVariantByLine: Record<string, string>;
+    };
+  };
+  const catalog = await loadProtectedCatalog(page);
+  const norman = catalog.products.find((product) => product.id === "roller");
+  const polar = catalog.products.find(
+    (product) => product.id === "polar_interior_roller",
+  );
+  const lotus = catalog.products.find(
+    (product) => product.id === "lotus_roller_shades",
+  );
+  const normanProgram = norman?.programs.find(
+    (program) => program.priceBasis !== "unavailable",
+  );
+  const polarProgram = polar?.programs.find(
+    (program) => program.priceBasis !== "unavailable",
+  );
+  const lotusProgram = lotus?.programs.find(
+    (program) => program.priceBasis !== "unavailable",
+  );
+  if (
+    !norman ||
+    !polar ||
+    !lotus ||
+    !normanProgram ||
+    !polarProgram ||
+    !lotusProgram
+  ) {
+    throw new Error("The alternate Roller manufacturer fixture is incomplete.");
+  }
+
+  const fixture = structuredClone(original.state);
+  const firstLine = fixture.lineItems[0];
+  firstLine.product_type = "Roller Shades";
+  const firstDesign =
+    fixture.designs.find(
+      (design) =>
+        design.line_item_id === firstLine.id && design.variant === "A",
+    ) ??
+    fixture.designs.find((design) => design.line_item_id === firstLine.id);
+  if (!firstDesign) {
+    throw new Error("The alternate Roller manufacturer fixture has no design.");
+  }
+  fixture.selectedVariantByLine[firstLine.id] = firstDesign.variant;
+  Object.assign(firstDesign, {
+    product_type: "Roller Shades",
+    supplier: "Norman",
+    material: normanProgram.name,
+    louver_size: null,
+    tilt_type: null,
+    hinge_color: null,
+    panel_config: null,
+    mount_type: null,
+    shade_type: null,
+    lift_system: null,
+    valance: null,
+    fabric: null,
+    motor_type: null,
+    remote_type: null,
+    unit_price: 0,
+    options_json: {
+      quote_v2_backend: true,
+      quote_v2_catalog_version:
+        firstDesign.options_json?.quote_v2_catalog_version,
+      quote_v2_catalog_as_of:
+        firstDesign.options_json?.quote_v2_catalog_as_of,
+      catalog_product_id: norman.id,
+      quote_lab_product_id: norman.id,
+      catalog_program_id: normanProgram.id,
+      quote_lab_program_id: normanProgram.id,
+      catalog_manufacturer: "Norman",
+      surcharges: [],
+      motorization_selections: [],
+    },
+  });
+
+  const fixtureResponse = await page.request.put("/api/quote-lab/state", {
+    data: { state: fixture, expectedRevision: original.revision },
+  });
+  expect(fixtureResponse.ok()).toBe(true);
+
+  const persistedIdentity = async () => {
+    const response = await page.request.get("/api/quote-lab/state");
+    const payload = (await response.json()) as typeof original;
+    const design = payload.state.designs.find(
+      (candidate) =>
+        candidate.line_item_id === firstLine.id &&
+        candidate.variant === firstDesign.variant,
+    );
+    return {
+      productId: design?.options_json?.catalog_product_id ?? null,
+      programId: design?.options_json?.catalog_program_id ?? null,
+      quoteLabProductId: design?.options_json?.quote_lab_product_id ?? null,
+      quoteLabProgramId: design?.options_json?.quote_lab_program_id ?? null,
+      supplier: design?.supplier ?? null,
+      fabric: design?.fabric ?? null,
+      motorType: design?.motor_type ?? null,
+    };
+  };
+
+  try {
+    await page.reload();
+    const card = page.locator(`[data-quote-line-id="${firstLine.id}"]`);
+    const productChooser = card.locator(
+      '[data-testid="manufacturer-stamp"][data-catalog-chooser="product"]',
+    );
+    await expect(productChooser).toBeVisible({ timeout: 30_000 });
+
+    await productChooser.click();
+    await page
+      .locator(`[data-manufacturer-product-id="${polar.id}"]`)
+      .click();
+    await expect(
+      card.locator(
+        '[data-testid="manufacturer-stamp"][data-manufacturer="Polar"]',
+      ),
+    ).toBeVisible();
+    const programChooser = card.getByTestId("manufacturer-program-chooser");
+    await expect(programChooser).toBeVisible();
+    await expect(programChooser).toHaveAttribute("aria-invalid", "true");
+    await expect(
+      card.getByText("Authoritative pricing blocked", { exact: true }),
+    ).toBeVisible();
+    await expect(card).toContainText(
+      "An exact catalog price program is required",
+    );
+    await expect.poll(persistedIdentity, { timeout: 30_000 }).toMatchObject({
+      productId: polar.id,
+      programId: null,
+      quoteLabProductId: polar.id,
+      quoteLabProgramId: null,
+      supplier: "Polar",
+      fabric: null,
+      motorType: null,
+    });
+
+    await programChooser.click();
+    await page
+      .locator(`[data-manufacturer-program-id="${polarProgram.id}"]`)
+      .click();
+    await expect.poll(persistedIdentity, { timeout: 30_000 }).toMatchObject({
+      productId: polar.id,
+      programId: polarProgram.id,
+      quoteLabProductId: polar.id,
+      quoteLabProgramId: polarProgram.id,
+      supplier: "Polar",
+    });
+
+    await productChooser.click();
+    await page
+      .locator(`[data-manufacturer-product-id="${lotus.id}"]`)
+      .click();
+    await expect(
+      card.locator(
+        '[data-testid="manufacturer-stamp"][data-manufacturer="Lotus"]',
+      ),
+    ).toBeVisible();
+    await expect.poll(persistedIdentity, { timeout: 30_000 }).toMatchObject({
+      productId: lotus.id,
+      programId: null,
+      quoteLabProductId: lotus.id,
+      quoteLabProgramId: null,
+      supplier: "Lotus",
+    });
+
+    await programChooser.click();
+    await page
+      .locator(`[data-manufacturer-program-id="${lotusProgram.id}"]`)
+      .click();
+    await expect.poll(persistedIdentity, { timeout: 30_000 }).toMatchObject({
+      productId: lotus.id,
+      programId: lotusProgram.id,
+      quoteLabProductId: lotus.id,
+      quoteLabProgramId: lotusProgram.id,
+      supplier: "Lotus",
+    });
+
+    await page.reload();
+    await expect(
+      card.locator(
+        '[data-testid="manufacturer-stamp"][data-manufacturer="Lotus"]',
+      ),
+    ).toBeVisible();
+    await expect(card.getByTestId("manufacturer-program-chooser")).toBeVisible();
+  } finally {
+    await restoreQuoteLabState(page, original.state);
+  }
+});
+
+test("Roller Cordless to Motorized reprices, persists, explains cost, and clears cleanly", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await unlockQuoteLab(page);
+  const originalResponse = await page.request.get("/api/quote-lab/state");
+  expect(originalResponse.ok()).toBe(true);
+  const original = (await originalResponse.json()) as {
+    revision: number;
+    state: {
+      lineItems: Array<{ id: string }>;
+      designs: Array<Record<string, any>>;
+      selectedVariantByLine: Record<string, string>;
+    };
+  };
+  const fixture = structuredClone(original.state);
+  const firstLine = fixture.lineItems[0];
+  const firstDesign = fixture.designs.find(
+    (design) => design.line_item_id === firstLine.id && design.variant === "A",
+  );
+  if (!firstDesign) throw new Error("The Roller motorization fixture has no design A.");
+  fixture.selectedVariantByLine[firstLine.id] = "A";
+  firstDesign.lift_system = "Cordless";
+  firstDesign.motor_type = null;
+  firstDesign.remote_type = null;
+  firstDesign.options_json = {
+    ...firstDesign.options_json,
+    roller_application: "Single Shade",
+    tube_class: "All Tubes",
+    power_configuration: null,
+    motorization_selections: [],
+    hub_required: null,
+  };
+
+  const fixtureResponse = await page.request.put("/api/quote-lab/state", {
+    data: { state: fixture, expectedRevision: original.revision },
+  });
+  expect(fixtureResponse.ok()).toBe(true);
+
+  try {
+    await page.reload();
+    const card = page.locator(`[data-quote-line-id="${firstLine.id}"]`);
+    await expect(card).toBeVisible();
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("246");
+
+    await card.locator(".quote-confirmed-option-chip").filter({ hasText: "Lift SystemCordless" }).click();
+    await card.getByRole("button", { name: "Motorized", exact: true }).click();
+    await expect(card.getByTestId("roller-motorization-required")).toContainText(
+      "Select Tube, then Motor / Power System",
+    );
+
+    await card.getByRole("combobox", { name: "Tube" }).click();
+    await page.getByRole("option", { name: '1 3/4" (43mm) Tube', exact: true }).click();
+    await expect(card.getByTestId("roller-motorization-required")).toContainText(
+      "Select Motor / Power System",
+    );
+    await card.getByRole("combobox", { name: "Motor / Power System" }).click();
+    await page.getByRole("option", { name: "Automate ARC Motor", exact: true }).click();
+
+    await expect(card.getByTestId("roller-motorization-complete")).toContainText(
+      "Motor (Rechargeable Battery Pack)",
+    );
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("757.5", {
+      timeout: 30_000,
+    });
+    await card.getByText("Why this price?", { exact: false }).click();
+    await expect(card).toContainText("$511.50");
+    await expect(card).toContainText("$204.60");
+    await expect(card).not.toContainText("Stored price mismatch");
+    await expect(card).not.toContainText("Surcharge mismatch");
+    await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();
+
+    let stateResponse = await page.request.get("/api/quote-lab/state");
+    let persisted = (await stateResponse.json()) as typeof original;
+    let persistedDesign = persisted.state.designs.find(
+      (design) => design.line_item_id === firstLine.id && design.variant === "A",
+    );
+    expect(persistedDesign).toMatchObject({
+      lift_system: "Motorized",
+      motor_type: "Motor (Rechargeable Battery Pack)",
+      unit_price: 757.5,
+      options_json: {
+        tube_class: '1 3/4" (43mm) Tube',
+        power_configuration: "Automate ARC Motor",
+        motorization_selections: [{
+          groupId: "automate_home",
+          optionId: "motor_rechargeable_battery_pack",
+          role: "base_motor",
+          units: 1,
+        }],
+      },
+    });
+
+    await page.reload();
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("757.5");
+    await expect(card.getByTestId("roller-motorization-complete")).toBeVisible();
+    await card.locator(".quote-confirmed-option-chip").filter({ hasText: "Lift SystemMotorized" }).click();
+    await card.getByRole("button", { name: "Cordless", exact: true }).click();
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("246", {
+      timeout: 30_000,
+    });
+    await expect(card.getByTestId("roller-motorization-required")).toHaveCount(0);
+    await expect(card.getByTestId("roller-motorization-complete")).toHaveCount(0);
+
+    stateResponse = await page.request.get("/api/quote-lab/state");
+    persisted = (await stateResponse.json()) as typeof original;
+    persistedDesign = persisted.state.designs.find(
+      (design) => design.line_item_id === firstLine.id && design.variant === "A",
+    );
+    expect(persistedDesign?.motor_type).toBeNull();
+    expect(persistedDesign?.remote_type).toBeNull();
+    expect(persistedDesign?.options_json).toMatchObject({
+      power_configuration: null,
+      motorization_selections: [],
+      hub_required: null,
+    });
+  } finally {
+    await restoreQuoteLabState(page, original.state);
+  }
+});
+
 test("V2 existing-interface visual regression", async ({ page }) => {
+  test.setTimeout(60_000);
   await page.setViewportSize({ width: 1536, height: 960 });
   await unlockQuoteLab(page);
-  await expect(page.locator(".quote-line-card-header")).toHaveCount(40);
-  await expect(page).toHaveScreenshot("quote-lab-v2-existing-interface.png", {
-    animations: "disabled",
-    caret: "hide",
-    fullPage: false,
-    maxDiffPixelRatio: 0.01,
+  const originalResponse = await page.request.get("/api/quote-lab/state");
+  expect(originalResponse.ok()).toBe(true);
+  const original = (await originalResponse.json()) as {
+    revision: number;
+    state: {
+      designs: Array<Record<string, any>>;
+      [key: string]: unknown;
+    };
+  };
+  const fixture = structuredClone(original.state);
+  fixture.designs = fixture.designs.map((design) => ({
+    ...design,
+    lift_system: "Cordless",
+    motor_type: null,
+    remote_type: null,
+    options_json: {
+      ...design.options_json,
+      tube_class: "All Tubes",
+      power_configuration: null,
+      motorization_selections: [],
+      hub_required: null,
+    },
+  }));
+  const saveResponse = await page.request.put("/api/quote-lab/state", {
+    data: { state: fixture, expectedRevision: original.revision },
   });
+  expect(saveResponse.ok()).toBe(true);
+
+  try {
+    await page.reload();
+    await expect(page.locator(".quote-line-card-header")).toHaveCount(40);
+    await expect(page.locator('[data-line-number="1"] [aria-label="Authoritative price"]')).toHaveValue("246");
+    await expect(page).toHaveScreenshot("quote-lab-v2-existing-interface.png", {
+      animations: "disabled",
+      caret: "hide",
+      fullPage: false,
+      maxDiffPixelRatio: 0.01,
+    });
+  } finally {
+    await restoreQuoteLabState(page, original.state);
+  }
 });

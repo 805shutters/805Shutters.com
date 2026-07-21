@@ -43,6 +43,7 @@ describe("current Norman dealer-portal parity fixtures", () => {
         fabric_color_code: NORMAN_PORTAL_RR002.colorCode,
         roller_top_treatment: "No Top Treatment",
         roller_tube: '1 3/4" (43mm) Tube',
+        raceway: "Yes",
       },
       options: { schedule_discount_percent: 30 },
     };

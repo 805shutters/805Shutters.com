@@ -78,4 +78,66 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).not.toContain("Stored price mismatch");
     expect(html).not.toContain("No source-backed wholesale cost");
   });
+
+  it("uses the authoritative motor surcharge and landed cost without a false mismatch", () => {
+    const html = renderToStaticMarkup(createElement(PricingAuditPanel, {
+      productType: "Roller Shades",
+      supplier: "Norman",
+      programName: "Cordless Fabric - Price Group 2",
+      widthIn: 30,
+      heightIn: 48,
+      rawSqft: 10,
+      billableSqft: 10,
+      quantity: 1,
+      savedUnitPrice: 757.5,
+      options: {
+        authoritative_price_breakdown: {
+          ok: true,
+          base: 246,
+          surchargeLines: [{
+            id: "motor:automate_home:motor_rechargeable_battery_pack",
+            label: "Motor (Rechargeable Battery Pack)",
+            amount: 511.5,
+            kind: "flat",
+          }],
+          unitPrice: 757.5,
+          discountPercent: 0,
+          discountAmount: 0,
+          onceTotal: 0,
+          total: 757.5,
+        },
+      },
+      currentRetailPerSqft: null,
+      wholesaleRate: null,
+      tariffPercent: 0,
+      surcharges: [],
+      authoritativeWholesaleCost: {
+        ok: true,
+        basis: "catalog_factor",
+        matchedWidth: 30,
+        matchedHeight: 48,
+        wholesaleBase: 98.4,
+        wholesaleAddOns: [{
+          id: "motor:automate_home:motor_rechargeable_battery_pack",
+          label: "Motor (Rechargeable Battery Pack)",
+          amount: 204.6,
+        }],
+        wholesaleUnitCost: 303,
+        quantity: 1,
+        wholesaleTotal: 303,
+        freightAllocated: 25,
+        oversizeAllocated: 0,
+        landedCostTotal: 328,
+        freightStatus: "published",
+      },
+    }));
+
+    expect(html).toContain("Motor (Rechargeable Battery Pack)");
+    expect(html).toContain("$511.50");
+    expect(html).toContain("$204.60");
+    expect(html).toContain("Allocated freight");
+    expect(html).toContain("Landed line cost");
+    expect(html).not.toContain("Stored price mismatch");
+    expect(html).not.toContain("Surcharge mismatch");
+  });
 });
