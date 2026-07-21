@@ -34,7 +34,11 @@ export async function POST(request: NextRequest) {
   try {
     payload = (await request.json()) as Record<string, unknown>;
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    payload = {};
+  }
+
+  for (const [key, value] of request.nextUrl.searchParams.entries()) {
+    if (payload[key] == null) payload[key] = value;
   }
 
   const input: VoiceAgentOwnerAlertInput = {
