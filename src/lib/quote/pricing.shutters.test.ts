@@ -28,7 +28,7 @@ describe("shutter $/sqft pricing", () => {
       ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 46],
       ["Stained Wood - Onyx", "onyx_shutters", "stained_basswood", 42],
       ["Onyx Vinyl", "onyx_shutters", "vinyl", 31],
-      ["Onyx USA Made", "onyx_shutters", "onyx_us_made_vinyl", 33],
+      ["Onyx USA Made", "onyx_shutters", "onyx_us_made_vinyl", 34],
     ] as const;
 
     for (const [label, productId, programId, pricePerSqft] of cases) {

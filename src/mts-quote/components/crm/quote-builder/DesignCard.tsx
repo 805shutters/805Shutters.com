@@ -78,6 +78,11 @@ import {
   ROLLER_ROLL_TYPES,
   ROLLER_CORD_LOOP_RELEASES,
   ROLLER_PREMIUM_HARDWARE_COLORS,
+  ROLLER_APPLICATIONS,
+  ROLLER_COUPLING_ARRANGEMENTS,
+  ROLLER_TOP_TREATMENT_CLASSES,
+  ROLLER_TUBE_CLASSES,
+  ROLLER_POWER_CONFIGURATIONS,
   getRollerFabricPriceGroup,
   getRomanFabricPriceGroup,
   ROMAN_MOUNT_TYPES,
@@ -94,6 +99,9 @@ import {
   ROMAN_POLE_LENGTHS,
   ROMAN_LININGS,
   ROMAN_BACK_HEM_BARS,
+  ROMAN_FABRIC_ORIENTATIONS,
+  ROMAN_SEAMING_OPTIONS,
+  ROMAN_RIBBON_TAPE_COLORS,
   ROMAN_HOLD_DOWNS,
   ROMAN_MAGNET_COLORS,
   ROMAN_POWER_SOURCES,
@@ -117,6 +125,13 @@ import {
   HONEYCOMB_CHAIN_LOCATIONS,
   HONEYCOMB_CHAIN_LENGTHS,
   HONEYCOMB_AUTOMATE_POWER_SOURCES,
+  HONEYCOMB_APPLICATIONS,
+  HONEYCOMB_FRAME_APPLICATIONS,
+  HONEYCOMB_FRAME_TYPES,
+  HONEYCOMB_SLOPED_FRAME_TYPES,
+  HONEYCOMB_SPECIALTY_SHAPES,
+  HONEYCOMB_SPLIT_SPLICE_OPTIONS,
+  HONEYCOMB_SIDE_BY_SIDE_POSITIONS,
   canonicalizeHoneycombCellSize,
   getHoneycombMotorsFor,
   getHoneycombOperatingSystemsFor,
@@ -141,6 +156,8 @@ import {
   VERTICAL_FABRIC_GROUPS,
   VERTICAL_CONTROL_TYPES,
   VERTICAL_STACK_OPTIONS,
+  VERTICAL_DRAW_OPTIONS,
+  VERTICAL_SIDE_BY_SIDE_POSITIONS,
   getVerticalFabricPriceGroup,
   SMARTDRAPE_MOUNT_TYPES,
   SMARTDRAPE_SHADE_TYPES,
@@ -190,6 +207,9 @@ import {
   getMtsProductColorFieldLabel,
   getMtsProductColorProgramLabel,
   getMtsProductColorValue,
+  getV2HoneycombFabricFamiliesForCellSize,
+  getVerticalFabricGroupSelection,
+  isMtsProductColorSelectionAvailableForContext,
   productColorLabel,
   searchMtsProductColors,
   supportsMtsProductColorSearch,
@@ -197,6 +217,11 @@ import {
 } from "@mts/lib/productColorCatalog";
 import type { SpecialtyShape } from "@mts/lib/quoteConstants";
 import type { SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+import {
+  getRollerV2UiFacets,
+  pruneRollerV2UiSelection,
+} from "@/lib/quote-v2/roller-ui-facets";
+import { expectedRollerMotorForPowerConfiguration } from "@/lib/quote-v2/roller-motor";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
@@ -266,6 +291,12 @@ function loadQuoteLabCatalog() {
   return quoteLabCatalogPromise;
 }
 
+export interface SideBySideLineOption {
+  lineId: string;
+  label: string;
+  design: SalesQuoteDesign;
+}
+
 interface DesignCardProps {
   lineItem: SalesQuoteLineItem;
   lineNumber: number;
@@ -291,6 +322,7 @@ interface DesignCardProps {
   onChangeProductType?: (productType: string) => void;
   onUpdateRoomName?: (roomName: string) => void;
   onUpdateQuantity?: (quantity: number) => void;
+  sideBySideLineOptions?: readonly SideBySideLineOption[];
 }
 
 // --- Types ---
@@ -336,7 +368,19 @@ interface GridOptionYesNo {
   noFirst?: boolean;
 }
 
-type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo;
+interface GridOptionNumber {
+  key: string;
+  label: string;
+  field: string;
+  type: "number";
+  min?: number;
+  max?: number;
+  step?: string;
+  placeholder?: string;
+  unit?: string;
+}
+
+type GridOption = GridOptionButtons | GridOptionSelect | GridOptionYesNo | GridOptionNumber;
 type GridSelectGroup = { label: string; items: readonly string[] };
 type OptionSlotRequirement = "mandatory" | "optional";
 
@@ -367,6 +411,48 @@ const INSTALL_MORE_OPTIONS: GridOptionYesNo[] = [
 ];
 
 const BOOLEAN_FIELDS = new Set(["hard_surface_install", "ladder_over_15ft", "requires_takedown"]);
+type FabricMetadataKeys = {
+  id: string;
+  productId: string;
+  programId: string;
+  collection: string;
+  code: string;
+  name: string;
+  fabricType: string;
+  surchargeId: string;
+};
+
+const FRONT_FABRIC_METADATA_KEYS: FabricMetadataKeys = {
+  id: PRODUCT_COLOR_ID_DETAIL,
+  productId: PRODUCT_COLOR_PRODUCT_ID_DETAIL,
+  programId: PRODUCT_COLOR_PROGRAM_DETAIL,
+  collection: PRODUCT_COLOR_COLLECTION_DETAIL,
+  code: PRODUCT_COLOR_CODE_DETAIL,
+  name: PRODUCT_COLOR_NAME_DETAIL,
+  fabricType: PRODUCT_COLOR_TYPE_DETAIL,
+  surchargeId: PRODUCT_COLOR_SURCHARGE_DETAIL,
+};
+
+export const BACK_FABRIC_COLOR_ID_DETAIL = "back_fabric_color_id";
+export const BACK_FABRIC_PRODUCT_ID_DETAIL = "back_fabric_product_id";
+export const BACK_FABRIC_PROGRAM_DETAIL = "back_fabric_program_id";
+export const BACK_FABRIC_COLLECTION_DETAIL = "back_fabric_color_collection";
+export const BACK_FABRIC_CODE_DETAIL = "back_fabric_color_code";
+export const BACK_FABRIC_NAME_DETAIL = "back_fabric_color_name";
+export const BACK_FABRIC_TYPE_DETAIL = "back_fabric_color_type";
+export const BACK_FABRIC_SURCHARGE_DETAIL = "back_fabric_surcharge_id";
+
+const BACK_FABRIC_METADATA_KEYS: FabricMetadataKeys = {
+  id: BACK_FABRIC_COLOR_ID_DETAIL,
+  productId: BACK_FABRIC_PRODUCT_ID_DETAIL,
+  programId: BACK_FABRIC_PROGRAM_DETAIL,
+  collection: BACK_FABRIC_COLLECTION_DETAIL,
+  code: BACK_FABRIC_CODE_DETAIL,
+  name: BACK_FABRIC_NAME_DETAIL,
+  fabricType: BACK_FABRIC_TYPE_DETAIL,
+  surchargeId: BACK_FABRIC_SURCHARGE_DETAIL,
+};
+
 const ROLLER_MOTOR_TYPE_OPTIONS = [
   ...new Set(
     MOTORIZATION_OPTIONS.filter((option) => /motor|autowand/i.test(option.name)).map(
@@ -1168,7 +1254,9 @@ function getFieldValue(design: SalesQuoteDesign | undefined, field: string): str
   if (!design) return null;
   if (field.startsWith("json:")) {
     const jsonKey = field.slice(5);
-    return (design.options_json as Record<string, string>)?.[jsonKey] || null;
+    const value = (design.options_json as Record<string, unknown>)?.[jsonKey];
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    return typeof value === "string" && value ? value : null;
   }
   if (BOOLEAN_FIELDS.has(field)) {
     const val = design[field as keyof SalesQuoteDesign];
@@ -1251,6 +1339,66 @@ function getSmartDrapeShadeTypeFromProductColor(row: ProductColorOption): string
   return null;
 }
 
+function getRollerShadeTypeForApplication(application: string | null): string | null {
+  switch (application) {
+    case "Single Shade":
+    case "LightGuard 360":
+      return "Single Shade";
+    case "Dual Roller":
+      return "Dual Rollers";
+    case "Coupled Shades":
+    case "Independently Operated Coupled Shades":
+      return "Coupled Shades";
+    case "LightGuard 360 with T-Post":
+      return "LightGuard 360 with T-Post";
+    case "Common Valance":
+      return "Common Valance";
+    default:
+      return null;
+  }
+}
+
+function getRollerValanceForTopTreatment(topTreatment: string | null): string | null {
+  switch (topTreatment) {
+    case "No Top Treatment":
+      return "No Valance";
+    case "Square Fascia":
+      return "Square Fascia*";
+    case "Curved Fascia":
+      return "Plain Curved Fascia*";
+    case "Fabric Valance":
+      return '3 1/2" Fabric Valance*';
+    case "Wood Valance":
+      return '4 1/2" Modern Wood Valance*';
+    case "Cassette":
+      return "Cassette*";
+    default:
+      return null;
+  }
+}
+
+function getRollerApplicationForShadeType(
+  shadeType: string | null,
+  currentApplication?: string | null,
+): string | null {
+  if (shadeType === "Dual Rollers") return "Dual Roller";
+  if (shadeType === "Coupled Shades") {
+    return currentApplication?.includes("Coupled") ? currentApplication : "Coupled Shades";
+  }
+  return shadeType;
+}
+
+function getRollerTopTreatmentForValance(valance: string | null): string | null {
+  if (!valance) return null;
+  if (valance === "No Valance") return "No Top Treatment";
+  if (valance.includes("Square Fascia")) return "Square Fascia";
+  if (valance.includes("Curved Fascia")) return "Curved Fascia";
+  if (valance.includes("Fabric Valance")) return "Fabric Valance";
+  if (valance.includes("Wood Valance")) return "Wood Valance";
+  if (valance.includes("Cassette")) return "Cassette";
+  return null;
+}
+
 function getHoneycombCellSizeFromProgram(programId: string | null | undefined): string | null {
   switch (programId) {
     case "honeycomb_9_16in_cordless_single_cell":
@@ -1268,6 +1416,37 @@ function getHoneycombCellSizeFromProgram(programId: string | null | undefined): 
     default:
       return null;
   }
+}
+
+function getHoneycombCellSizeForApplication(application: string | null): string | null {
+  if (application === "SmartFit with Frame") return "SmartFit with Frame";
+  if (application === "SmartFit for Sloped Windows with Frame") {
+    return "SmartFit Sloped with Frame";
+  }
+  return null;
+}
+
+function getHoneycombApplicationForCellSize(cellSize: string | null): string | null {
+  const canonical = canonicalizeHoneycombCellSize(cellSize);
+  if (canonical === "SmartFit with Frame") return "SmartFit with Frame";
+  if (canonical === "SmartFit Sloped with Frame") {
+    return "SmartFit for Sloped Windows with Frame";
+  }
+  return null;
+}
+
+function getHoneycombFrameTypesForApplication(application: string): readonly string[] {
+  return application === "SmartFit for Sloped Windows with Frame"
+    ? HONEYCOMB_SLOPED_FRAME_TYPES
+    : HONEYCOMB_FRAME_TYPES;
+}
+
+function honeycombSpecialtyShapeNeedsLegHeight(shape: string): boolean {
+  return (
+    shape.startsWith("Arch on Top") ||
+    shape === "Elongated Eyebrow" ||
+    shape.startsWith("Half Eyebrow")
+  );
 }
 
 function getFauxWoodProductLineFromProductId(productId: string): string | null {
@@ -1326,19 +1505,42 @@ function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<stri
   return rest;
 }
 
+function withoutFabricMetadata(
+  options: Record<string, unknown>,
+  keys: FabricMetadataKeys,
+): Record<string, unknown> {
+  const next = { ...options };
+  for (const key of Object.values(keys)) delete next[key];
+  return next;
+}
+
 function withoutProductColorDetails(options: Record<string, unknown>): Record<string, unknown> {
-  const {
-    [ROLLER_FABRIC_COLOR_ID_DETAIL]: _fabricColorId,
-    [ROLLER_FABRIC_COLOR_COLLECTION_DETAIL]: _fabricColorCollection,
-    [ROLLER_FABRIC_COLOR_CODE_DETAIL]: _fabricColorCode,
-    [ROLLER_FABRIC_COLOR_NAME_DETAIL]: _fabricColorName,
-    [ROLLER_FABRIC_COLOR_TYPE_DETAIL]: _fabricColorType,
-    [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: _fabricProductId,
-    [PRODUCT_COLOR_PROGRAM_DETAIL]: _fabricProgramId,
-    [PRODUCT_COLOR_SURCHARGE_DETAIL]: _fabricSurchargeId,
-    ...rest
-  } = options;
-  return rest;
+  return withoutFabricMetadata(options, FRONT_FABRIC_METADATA_KEYS);
+}
+
+export function withoutBackFabricColorDetails(
+  options: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = withoutFabricMetadata(options, BACK_FABRIC_METADATA_KEYS);
+  delete next.back_fabric_color;
+  return next;
+}
+
+function optionsForFabricMetadataLookup(
+  options: Record<string, unknown>,
+  keys: FabricMetadataKeys,
+): Record<string, unknown> {
+  return {
+    ...options,
+    [PRODUCT_COLOR_ID_DETAIL]: options[keys.id],
+    [PRODUCT_COLOR_PRODUCT_ID_DETAIL]: options[keys.productId],
+    [PRODUCT_COLOR_PROGRAM_DETAIL]: options[keys.programId],
+    [PRODUCT_COLOR_COLLECTION_DETAIL]: options[keys.collection],
+    [PRODUCT_COLOR_CODE_DETAIL]: options[keys.code],
+    [PRODUCT_COLOR_NAME_DETAIL]: options[keys.name],
+    [PRODUCT_COLOR_TYPE_DETAIL]: options[keys.fabricType],
+    [PRODUCT_COLOR_SURCHARGE_DETAIL]: options[keys.surchargeId],
+  };
 }
 
 function stringOption(options: Record<string, unknown>, key: string): string | null {
@@ -1356,6 +1558,16 @@ function getFabricCompletedDisplayValue(
   return code && name ? `${value}: ${code} - ${name}` : value;
 }
 
+function getBackFabricCompletedDisplayValue(
+  design: SalesQuoteDesign | undefined,
+  value: string,
+): string {
+  const options = (design?.options_json as Record<string, unknown> | undefined) || {};
+  const code = stringOption(options, BACK_FABRIC_CODE_DETAIL);
+  const name = stringOption(options, BACK_FABRIC_NAME_DETAIL);
+  return code && name ? `${value}: ${code} - ${name}` : value;
+}
+
 function getCompletedDisplayValue(
   design: SalesQuoteDesign | undefined,
   field: string
@@ -1364,6 +1576,9 @@ function getCompletedDisplayValue(
   if (!value) return null;
   if (field === "fabric" || field === "json:color" || field === "json:vertical_color") {
     return getFabricCompletedDisplayValue(design, value);
+  }
+  if (field === "json:back_fabric_color") {
+    return getBackFabricCompletedDisplayValue(design, value);
   }
   return value;
 }
@@ -1396,6 +1611,7 @@ const OPTIONAL_SHUTTER_DETAIL_FIELDS = new Set([
   "json:extension_rod",
   "json:t_post",
   "json:astragal",
+  "json:offset_tilt_distance_inches",
 ]);
 const ROLLER_MORE_OPTION_FIELDS = new Set([
   "json:light_guard_rails",
@@ -1426,6 +1642,15 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
         "lift_system",
         "valance",
         "json:hem_bar",
+        "json:roller_application",
+        "json:coupling_arrangement",
+        "json:top_treatment_class",
+        "json:tube_class",
+        "json:power_configuration",
+        "json:roller_component_width_1",
+        "json:roller_component_width_2",
+        "json:roller_component_width_3",
+        "json:roller_component_width_4",
       ].filter((field) => allFields.includes(field));
     case "Roman Shades":
       return [
@@ -1440,7 +1665,14 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
         "json:fold_style",
         "json:roman_fabric_category",
         "fabric",
+        "json:fabric_orientation",
+        "json:seaming",
+        "json:banding_color",
         "json:back_fabric",
+        "json:back_fabric_color",
+        "json:common_valance_panel_1_width",
+        "json:common_valance_panel_2_width",
+        "json:common_valance_gap",
         "valance",
         "json:valance_returns",
         "json:lining",
@@ -1448,13 +1680,38 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
     case "Honeycomb Shades":
       return [
         "mount_type",
+        "json:honeycomb_application",
         "json:cell_size",
+        "json:honeycomb_actual_cell_size",
         "lift_system",
         "motor_type",
         "remote_type",
         "json:light_control",
         "fabric",
         "json:back_fabric",
+        "json:back_fabric_color",
+        "json:honeycomb_frame_type",
+        "json:frame_t_post_count",
+        "json:frame_t_post_1_location",
+        "json:frame_t_post_2_location",
+        "json:frame_t_post_3_location",
+        ...Array.from({ length: 4 }, (_, index) => `json:honeycomb_panel_${index + 1}_net_width`),
+        ...Array.from({ length: 4 }, (_, index) => `json:honeycomb_panel_${index + 1}_net_height`),
+        "json:specialty_shape",
+        "json:specialty_leg_height",
+        "json:specialty_left_leg_height",
+        "json:specialty_right_leg_height",
+        "json:non_operable",
+        "json:split_splice",
+        "json:vertical_left_width_inches",
+        "json:vertical_right_width_inches",
+        "json:side_by_side_position",
+        "json:rear_cell_size",
+        "json:cutout",
+        "json:cutout_type",
+        "json:cutout_width_inches",
+        "json:cutout_height_inches",
+        "json:vertical_cutout_rail",
       ].filter((field) => allFields.includes(field));
     case "Sheer Shades":
       return ["mount_type", "json:light_control", "lift_system", "fabric"].filter((field) =>
@@ -1479,6 +1736,9 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
         "json:vertical_color",
         "json:stack_option",
         "json:control_type",
+        "json:mount_depth_inches",
+        "json:draw_direction",
+        "json:side_by_side_position",
       ].filter((field) => allFields.includes(field));
     case "Smart Drapes":
       return [
@@ -1514,7 +1774,7 @@ function OptionSlot({
   const selected = hasOptionValue(value);
   const isYesNo = option.type === "yes-no";
   const isInlineChoice = isYesNo || (option.type === "buttons" && option.options.length <= 2);
-  const isDirectSelect = option.type === "select";
+  const isDirectSelect = option.type === "select" || option.type === "number";
   const showConfirmedCard = selected && !renderSelectedDirect && !isOpen;
 
   return (
@@ -1967,29 +2227,42 @@ function DeferredTextInput({
 function DeferredNumberInput({
   value,
   onCommit,
+  onClear,
   commitOnChange = false,
   placeholder,
   className,
   step = "0.01",
+  min,
+  max,
 }: {
   value: number | string | null | undefined;
   onCommit: (value: number) => void;
+  onClear?: () => void;
   commitOnChange?: boolean;
   placeholder?: string;
   className?: string;
   step?: string;
+  min?: number;
+  max?: number;
 }) {
   const committedValue = value === null || value === undefined ? "" : String(value);
   const [draft, setDraft] = useState(committedValue);
-  const lastCommittedRef = useRef(parseFloat(committedValue) || 0);
+  const lastCommittedRef = useRef<number | null>(
+    parseDeferredNumberDraft(committedValue) ?? null,
+  );
   const draftRef = useRef(committedValue);
   const editingRef = useRef(false);
   const onCommitRef = useRef(onCommit);
+  const onClearRef = useRef(onClear);
   const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     onCommitRef.current = onCommit;
   }, [onCommit]);
+
+  useEffect(() => {
+    onClearRef.current = onClear;
+  }, [onClear]);
 
   const clearSaveTimer = useCallback(() => {
     if (saveTimerRef.current !== null) {
@@ -2001,8 +2274,15 @@ function DeferredNumberInput({
   const commitDraft = useCallback(
     (draftValue: string = draftRef.current) => {
       clearSaveTimer();
-      const next = parseFloat(draftValue);
-      if (!Number.isFinite(next) || next < 0 || next === lastCommittedRef.current) return;
+      const next = parseDeferredNumberDraft(draftValue);
+      if (next === undefined || (next !== null && next < 0)) return;
+      if (next === null) {
+        if (lastCommittedRef.current === null || !onClearRef.current) return;
+        lastCommittedRef.current = null;
+        onClearRef.current();
+        return;
+      }
+      if (next === lastCommittedRef.current) return;
       lastCommittedRef.current = next;
       onCommitRef.current(next);
     },
@@ -2013,7 +2293,7 @@ function DeferredNumberInput({
     if (editingRef.current) return;
     setDraft(committedValue);
     draftRef.current = committedValue;
-    lastCommittedRef.current = parseFloat(committedValue) || 0;
+    lastCommittedRef.current = parseDeferredNumberDraft(committedValue) ?? null;
   }, [committedValue]);
 
   useEffect(
@@ -2031,8 +2311,13 @@ function DeferredNumberInput({
 
     if (!commitOnChange) return;
 
-    const next = parseFloat(nextDraft);
-    if (!Number.isFinite(next) || next < 0 || next === lastCommittedRef.current) return;
+    const next = parseDeferredNumberDraft(nextDraft);
+    if (
+      next === undefined ||
+      (next !== null && next < 0) ||
+      next === lastCommittedRef.current ||
+      (next === null && !onClearRef.current)
+    ) return;
     clearSaveTimer();
     saveTimerRef.current = window.setTimeout(() => commitDraft(nextDraft), 200);
   };
@@ -2041,6 +2326,8 @@ function DeferredNumberInput({
     <Input
       type="number"
       step={step}
+      min={min}
+      max={max}
       value={draft}
       onChange={handleChange}
       onFocus={() => {
@@ -2063,6 +2350,13 @@ function DeferredNumberInput({
       placeholder={placeholder}
     />
   );
+}
+
+/** Blank is distinct from zero; undefined means an incomplete/invalid draft. */
+export function parseDeferredNumberDraft(value: string): number | null | undefined {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 // --- Step/Grid logic for Standard Shutter ---
@@ -2126,7 +2420,10 @@ function isTrackedOrSpecialty(design: SalesQuoteDesign | undefined): boolean {
   return shutterType === "Tracked Shutter" || shutterType === "Specialty Shutter";
 }
 
-function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): GridOption[] {
+function getStandardShutterGridOptions(
+  design: SalesQuoteDesign | undefined,
+  authoritativeV2 = false,
+): GridOption[] {
   const invisibleTiltPanelRate = getInvisibleTiltPanelRate(design);
   const isOnyxPolyProgram =
     !!design?.material &&
@@ -2139,7 +2436,7 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
         : ONYX_WOOD_FRAME_TYPES;
 
   if (design?.supplier === "Onyx") {
-    return [
+    const options: GridOption[] = [
       {
         key: "onyx_order_type",
         label: "Shutter Type",
@@ -2173,14 +2470,24 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
         label: "Louver Size",
         field: "louver_size",
         type: "buttons",
-        options: SHUTTER_LOUVER_SIZES,
+        options: authoritativeV2
+          ? SHUTTER_LOUVER_SIZES.filter((size) =>
+              ['2 1/2"', '3 1/2"', '4 1/2"'].includes(size),
+            )
+          : SHUTTER_LOUVER_SIZES,
       },
       {
         key: "color",
         label: "Color",
         field: "json:color",
         type: "select",
-        options: ONYX_COLORS,
+        options: authoritativeV2
+          ? ONYX_COLORS.filter((color) =>
+              ["101_White", "105_Snow", "107_Swiss Coffee", "110_Creamy", "120_Butter"].includes(
+                color,
+              ),
+            )
+          : ONYX_COLORS,
       },
       {
         key: "hinge_color",
@@ -2196,7 +2503,11 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
           : "Panel Configuration",
         field: "panel_config",
         type: "select",
-        options: ONYX_PANEL_CONFIGS,
+        options: authoritativeV2
+          ? ONYX_PANEL_CONFIGS.filter((configuration) =>
+              ["L", "R", "LR", "LL", "RR", "LLRR"].includes(configuration),
+            )
+          : ONYX_PANEL_CONFIGS,
       },
       {
         key: "tilt_type",
@@ -2227,6 +2538,207 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
         options: ONYX_ASTRAGAL_OPTIONS,
       },
     ];
+
+    if (!authoritativeV2) return options;
+
+    const onyxOptions = (design.options_json as Record<string, unknown>) || {};
+    const panelConfiguration = String(design.panel_config || "");
+    const panelCount =
+      panelConfiguration === "L" || panelConfiguration === "R"
+        ? 1
+        : panelConfiguration === "LR" || panelConfiguration === "LL" || panelConfiguration === "RR"
+          ? 2
+          : panelConfiguration === "LLRR"
+            ? 4
+            : 0;
+    const onyxMount = String(onyxOptions.onyx_mount || design.mount_type || "");
+    const tiltType = String(design.tilt_type || "");
+    const hiddenTiltSectionCount = Math.min(
+      12,
+      Math.max(0, Number(onyxOptions.onyx_tilt_section_count) || 0),
+    );
+    const tPostCount = Math.min(
+      3,
+      Math.max(0, Number(onyxOptions.onyx_t_post_count) || 0),
+    );
+
+    options.push(
+      {
+        key: "frame_extension_inches",
+        label: "Frame Extension",
+        field: "json:frame_extension_inches",
+        type: "number",
+        min: 0,
+        max: 2,
+        step: "0.0625",
+        unit: '"',
+      },
+      {
+        key: "available_depth_inches",
+        label: "Available Depth",
+        field: "json:available_depth_inches",
+        type: "number",
+        min: 0,
+        max: 24,
+        step: "0.0625",
+        unit: '"',
+      },
+    );
+
+    if (onyxMount === "IM" || /inside/i.test(onyxMount)) {
+      options.push({
+        key: "opening_diagonal_difference_inches",
+        label: "Opening Diagonal Difference",
+        field: "json:opening_diagonal_difference_inches",
+        type: "number",
+        min: 0,
+        max: 0.375,
+        step: "0.0625",
+        unit: '"',
+      });
+    }
+
+    for (let panelIndex = 1; panelIndex <= panelCount; panelIndex += 1) {
+      options.push(
+        {
+          key: `onyx_panel_${panelIndex}_width_inches`,
+          label: `Panel ${panelIndex} Width`,
+          field: `json:onyx_panel_${panelIndex}_width_inches`,
+          type: "number",
+          min: 8,
+          max: panelCount === 1 ? 30 : 20,
+          step: "0.0625",
+          unit: '"',
+        },
+        {
+          key: `onyx_panel_${panelIndex}_height_inches`,
+          label: `Panel ${panelIndex} Height`,
+          field: `json:onyx_panel_${panelIndex}_height_inches`,
+          type: "number",
+          min: 16,
+          max: 84,
+          step: "0.0625",
+          unit: '"',
+        },
+      );
+    }
+
+    if (/offset/i.test(tiltType)) {
+      options.push({
+        key: "offset_tilt_distance_inches",
+        label: "Offset Tilt Distance",
+        field: "json:offset_tilt_distance_inches",
+        type: "number",
+        min: 0,
+        max: 40,
+        step: "0.0625",
+        unit: '"',
+      });
+    }
+
+    if (/hidden|^H[123]\b/i.test(tiltType)) {
+      options.push({
+        key: "onyx_tilt_section_count",
+        label: "Hidden Tilt Section Count",
+        field: "json:onyx_tilt_section_count",
+        type: "number",
+        min: 1,
+        max: 12,
+        step: "1",
+      });
+      for (let sectionIndex = 1; sectionIndex <= hiddenTiltSectionCount; sectionIndex += 1) {
+        options.push({
+          key: `onyx_tilt_section_${sectionIndex}_inches`,
+          label: `Hidden Tilt Section ${sectionIndex}`,
+          field: `json:onyx_tilt_section_${sectionIndex}_inches`,
+          type: "number",
+          min: 0.0625,
+          max: 40,
+          step: "0.0625",
+          unit: '"',
+        });
+      }
+    }
+
+    options.push({
+      key: "onyx_t_post_count",
+      label: "T-Post Count",
+      field: "json:onyx_t_post_count",
+      type: "number",
+      min: 0,
+      max: 3,
+      step: "1",
+    });
+    for (let tPostIndex = 1; tPostIndex <= tPostCount; tPostIndex += 1) {
+      options.push({
+        key: `onyx_t_post_${tPostIndex}_position_inches`,
+        label: `T-Post ${tPostIndex} Position`,
+        field: `json:onyx_t_post_${tPostIndex}_position_inches`,
+        type: "number",
+        min: 0.0625,
+        max: 250,
+        step: "0.0625",
+        unit: '"',
+      });
+    }
+
+    if (String(onyxOptions.onyx_order_type || "") === "French Door") {
+      options.push(
+        {
+          key: "flat_mounting_area_inches",
+          label: "Flat Mounting Area",
+          field: "json:flat_mounting_area_inches",
+          type: "number",
+          min: 0,
+          max: 24,
+          step: "0.0625",
+          unit: '"',
+        },
+        {
+          key: "hardware_clearance_inches",
+          label: "Hardware Clearance",
+          field: "json:hardware_clearance_inches",
+          type: "number",
+          min: 0,
+          max: 24,
+          step: "0.0625",
+          unit: '"',
+        },
+        {
+          key: "french_door_cutout",
+          label: "French Door Cut-Out",
+          field: "json:french_door_cutout",
+          type: "yes-no",
+          noFirst: true,
+        },
+      );
+      if (String(onyxOptions.french_door_cutout || "") === "Yes") {
+        options.push(
+          {
+            key: "handle_center_from_bottom_inches",
+            label: "Handle Center From Bottom",
+            field: "json:handle_center_from_bottom_inches",
+            type: "number",
+            min: 0,
+            max: 250,
+            step: "0.0625",
+            unit: '"',
+          },
+          {
+            key: "lock_center_from_bottom_inches",
+            label: "Lock Center From Bottom",
+            field: "json:lock_center_from_bottom_inches",
+            type: "number",
+            min: 0,
+            max: 250,
+            step: "0.0625",
+            unit: '"',
+          },
+        );
+      }
+    }
+
+    return options;
   }
 
   return [
@@ -2377,23 +2889,170 @@ function GridSelect({
   );
 }
 
+function GridNumberInput({
+  label,
+  value,
+  onChange,
+  onClear,
+  min,
+  max,
+  step,
+  placeholder,
+  unit,
+  hideLabel = false,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (value: number) => void;
+  onClear?: () => void;
+  min?: number;
+  max?: number;
+  step?: string;
+  placeholder?: string;
+  unit?: string;
+  hideLabel?: boolean;
+}) {
+  return (
+    <div className="quote-style-option-field space-y-1">
+      {!hideLabel && (
+        <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+          {label}
+        </Label>
+      )}
+      <div className="flex items-center gap-1.5">
+        <DeferredNumberInput
+          value={value}
+          onCommit={onChange}
+          onClear={onClear}
+          min={min}
+          max={max}
+          step={step}
+          placeholder={placeholder}
+          className="quote-style-input h-6 min-h-0 text-[11px] text-gray-900"
+        />
+        {unit ? <span className="text-[11px] font-medium text-muted-foreground">{unit}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+const NO_SIDE_BY_SIDE_PAIR = "__no_side_by_side_pair__";
+
+function oppositeSideBySidePosition(
+  productType: string,
+  position: string | null,
+): string | null {
+  if (productType === "Honeycomb Shades") {
+    if (position === "Left Shade") return "Right Shade";
+    if (position === "Right Shade") return "Left Shade";
+  }
+  if (productType === "Vertical Blinds") {
+    if (position === "Left Blind") return "Right Blind";
+    if (position === "Right Blind") return "Left Blind";
+  }
+  return null;
+}
+
+function SideBySidePairSelector({
+  value,
+  options,
+  onChange,
+}: {
+  value: string | null;
+  options: readonly SideBySideLineOption[];
+  onChange: (lineId: string | null) => void;
+}) {
+  const selectedIsAvailable = Boolean(
+    value && options.some((option) => option.lineId === value),
+  );
+
+  return (
+    <div className="quote-style-option-field space-y-1 rounded-lg border border-[#d6d5cf] bg-white p-2">
+      <Label className="quote-style-option-label text-[10px] font-bold uppercase tracking-[0.12em] text-[#77746d]">
+        Paired Quote Line
+      </Label>
+      <Select
+        value={value || NO_SIDE_BY_SIDE_PAIR}
+        onValueChange={(nextValue) =>
+          onChange(nextValue === NO_SIDE_BY_SIDE_PAIR ? null : nextValue)
+        }
+      >
+        <SelectTrigger
+          className="quote-style-select h-8 min-h-0 text-xs text-gray-900"
+          aria-label="Paired Quote Line"
+        >
+          <SelectValue placeholder="Select the exact matching quote line" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={NO_SIDE_BY_SIDE_PAIR}>Not paired yet</SelectItem>
+          {value && !selectedIsAvailable ? (
+            <SelectItem value={value} disabled>
+              Unavailable quote line • ID {value}
+            </SelectItem>
+          ) : null}
+          {options.map((option) => (
+            <SelectItem key={option.lineId} value={option.lineId}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {options.length === 0 ? (
+        <p className="text-[10px] font-medium text-amber-700">
+          Add and configure another matching product line before pairing.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function normalizeScopedFabricName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/room darkening|light filtering|blackout|natural/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function isAllowedScopedFabric(
+  collection: string,
+  fabricType: string,
+  allowedCollections: readonly string[] | undefined,
+): boolean {
+  if (!allowedCollections || allowedCollections.length === 0) return true;
+  const candidates = [collection, `${collection} ${fabricType}`].map(normalizeScopedFabricName);
+  return allowedCollections.some((allowed) => {
+    const normalizedAllowed = normalizeScopedFabricName(allowed);
+    return candidates.some(
+      (candidate) =>
+        candidate === normalizedAllowed ||
+        candidate.startsWith(`${normalizedAllowed} `) ||
+        normalizedAllowed.startsWith(`${candidate} `),
+    );
+  });
+}
+
 function RollerFabricAutocomplete({
   value,
   optionsJson,
   onSelect,
   onClear,
+  metadataKeys = FRONT_FABRIC_METADATA_KEYS,
+  allowedCollections,
   hideLabel = false,
 }: {
   value: string | null;
   optionsJson: Record<string, unknown>;
   onSelect: (fabricColor: MtsRollerFabricColor) => void;
   onClear: () => void;
+  metadataKeys?: FabricMetadataKeys;
+  allowedCollections?: readonly string[];
   hideLabel?: boolean;
 }) {
   const selectedColor = findMtsRollerFabricColorBySelection(
-    stringOption(optionsJson, ROLLER_FABRIC_COLOR_COLLECTION_DETAIL) || value,
-    stringOption(optionsJson, ROLLER_FABRIC_COLOR_CODE_DETAIL),
-    stringOption(optionsJson, ROLLER_FABRIC_COLOR_NAME_DETAIL)
+    stringOption(optionsJson, metadataKeys.collection) || value,
+    stringOption(optionsJson, metadataKeys.code),
+    stringOption(optionsJson, metadataKeys.name)
   );
   const selectedLabel = selectedColor?.label ?? value ?? "";
   const [query, setQuery] = useState(selectedLabel);
@@ -2405,8 +3064,11 @@ function RollerFabricAutocomplete({
   }, [hasDraft, selectedLabel]);
 
   const results = useMemo(
-    () => searchMtsRollerFabricColors(query, { limit: 400 }),
-    [query]
+    () =>
+      searchMtsRollerFabricColors(query, { limit: 400 }).filter((row) =>
+        isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+      ),
+    [allowedCollections, query]
   );
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -2506,6 +3168,8 @@ function ProductColorAutocomplete({
   optionsJson,
   onSelect,
   onClear,
+  metadataKeys = FRONT_FABRIC_METADATA_KEYS,
+  allowedCollections,
   hideLabel = false,
 }: {
   productType: string;
@@ -2514,16 +3178,22 @@ function ProductColorAutocomplete({
   optionsJson: Record<string, unknown>;
   onSelect: (fabricColor: ProductColorOption) => void;
   onClear: () => void;
+  metadataKeys?: FabricMetadataKeys;
+  allowedCollections?: readonly string[];
   hideLabel?: boolean;
 }) {
+  const lookupOptions = useMemo(
+    () => optionsForFabricMetadataLookup(optionsJson, metadataKeys),
+    [metadataKeys, optionsJson],
+  );
   const selectedColor =
-    findMtsProductColorById(productType, optionsJson, stringOption(optionsJson, PRODUCT_COLOR_ID_DETAIL)) ||
+    findMtsProductColorById(productType, lookupOptions, stringOption(optionsJson, metadataKeys.id)) ||
     findMtsProductColorBySelection(
       productType,
-      optionsJson,
-      stringOption(optionsJson, PRODUCT_COLOR_COLLECTION_DETAIL),
-      stringOption(optionsJson, PRODUCT_COLOR_CODE_DETAIL),
-      stringOption(optionsJson, PRODUCT_COLOR_NAME_DETAIL)
+      lookupOptions,
+      stringOption(optionsJson, metadataKeys.collection),
+      stringOption(optionsJson, metadataKeys.code),
+      stringOption(optionsJson, metadataKeys.name)
     );
   const selectedLabel = selectedColor ? getMtsProductColorValue(selectedColor) : value ?? "";
   const [query, setQuery] = useState(selectedLabel);
@@ -2535,8 +3205,16 @@ function ProductColorAutocomplete({
   }, [hasDraft, selectedLabel]);
 
   const results = useMemo(
-    () => searchMtsProductColors(productType, optionsJson, query, { includeUnavailable: true, limit: 60 }),
-    [optionsJson, productType, query]
+    () =>
+      searchMtsProductColors(productType, lookupOptions, query, {
+        includeUnavailable: true,
+        limit: 200,
+      })
+        .filter((row) =>
+          isAllowedScopedFabric(row.collection, row.fabricType, allowedCollections),
+        )
+        .slice(0, 60),
+    [allowedCollections, lookupOptions, productType, query]
   );
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -2706,8 +3384,9 @@ export function DesignCard({
   onChangeProductType,
   onUpdateRoomName,
   onUpdateQuantity,
+  sideBySideLineOptions = [],
 }: DesignCardProps) {
-  const { isolated } = useQuoteBuilderDatabase();
+  const { authoritativeV2, showLabCatalogControls } = useQuoteBuilderDatabase();
   const isShutters = lineItem.product_type === "Shutters";
   const variants = useMemo(
     () => (isShutters ? SHUTTER_AUTO_VARIANTS.map((v) => v.variant) : ["A"]),
@@ -2730,6 +3409,10 @@ export function DesignCard({
   const displayedLineTotal = Math.round(displayedUnitPrice * quantity * 100) / 100;
   const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const authoritativePriceError =
+    authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
+      ? currentOptions.authoritative_price_error.trim()
+      : "";
   const discountPercent = Number(currentOptions.discount_percent) || 0;
   const hasDiscount = Boolean(currentDesign && discountPercent > 0);
 
@@ -2764,6 +3447,13 @@ export function DesignCard({
   const handleVariantChange = (variant: string) => {
     userSelectedVariantRef.current = true;
     setActiveVariant(variant);
+    if (authoritativeV2 && designs.some((design) => design.variant === variant)) {
+      onUpdateDesign({
+        line_item_id: lineItem.id,
+        variant,
+        product_type: lineItem.product_type,
+      });
+    }
   };
 
   const startRoomNameEdit = () => {
@@ -2909,12 +3599,128 @@ export function DesignCard({
     });
   };
 
+  const clearReciprocalSideBySidePartner = (
+    partnerLineId: string | null,
+    ownerLineId: string = lineItem.id,
+  ) => {
+    if (!partnerLineId) return;
+    const partner = sideBySideLineOptions.find(
+      (candidate) => candidate.lineId === partnerLineId,
+    );
+    if (!partner) return;
+    const partnerOptions =
+      (partner.design.options_json as Record<string, unknown> | undefined) || {};
+    if (stringOption(partnerOptions, "side_by_side_match_line_id") !== ownerLineId) {
+      return;
+    }
+    onUpdateDesign({
+      line_item_id: partner.lineId,
+      variant: partner.design.variant,
+      product_type: lineItem.product_type,
+      options_json: {
+        ...partnerOptions,
+        ...(lineItem.product_type === "Roman Shades"
+          ? { side_by_side: "No" }
+          : {}),
+        side_by_side_match_line_id: null,
+        side_by_side_matches: null,
+      },
+    });
+  };
+
+  const handleClearSideBySidePartner = () => {
+    clearReciprocalSideBySidePartner(
+      stringOption(currentOptions, "side_by_side_match_line_id"),
+    );
+  };
+
+  const handleSideBySidePairChange = (
+    targetLineId: string | null,
+    requestedPosition?: string | null,
+  ) => {
+    if (!authoritativeV2 || !currentDesign) return;
+    const previousTargetLineId = stringOption(
+      currentOptions,
+      "side_by_side_match_line_id",
+    );
+
+    if (previousTargetLineId && previousTargetLineId !== targetLineId) {
+      clearReciprocalSideBySidePartner(previousTargetLineId);
+    }
+
+    if (!targetLineId) {
+      updateFields({
+        options_json: {
+          ...currentOptions,
+          side_by_side_match_line_id: null,
+          side_by_side_matches: null,
+        },
+      });
+      return;
+    }
+
+    const target = sideBySideLineOptions.find(
+      (candidate) => candidate.lineId === targetLineId,
+    );
+    if (!target || target.lineId === lineItem.id) return;
+    const targetOptions =
+      (target.design.options_json as Record<string, unknown> | undefined) || {};
+    const targetPreviousPartner = stringOption(
+      targetOptions,
+      "side_by_side_match_line_id",
+    );
+    if (targetPreviousPartner && targetPreviousPartner !== lineItem.id) {
+      clearReciprocalSideBySidePartner(targetPreviousPartner, target.lineId);
+    }
+
+    const romanPair = lineItem.product_type === "Roman Shades";
+    const defaultPosition =
+      lineItem.product_type === "Honeycomb Shades" ? "Left Shade" : null;
+    const sourcePosition =
+      requestedPosition ??
+      stringOption(currentOptions, "side_by_side_position") ??
+      defaultPosition;
+    const targetPosition = oppositeSideBySidePosition(
+      lineItem.product_type,
+      sourcePosition,
+    );
+    if (!romanPair && (!sourcePosition || !targetPosition)) return;
+
+    onUpdateDesign({
+      line_item_id: target.lineId,
+      variant: target.design.variant,
+      product_type: lineItem.product_type,
+      options_json: {
+        ...targetOptions,
+        ...(lineItem.product_type === "Honeycomb Shades"
+          ? { honeycomb_application: "Side-by-Side" }
+          : {}),
+        ...(romanPair
+          ? { side_by_side: "Yes" }
+          : { side_by_side_position: targetPosition }),
+        side_by_side_match_line_id: lineItem.id,
+        side_by_side_matches: null,
+      },
+    });
+    updateFields({
+      options_json: {
+        ...currentOptions,
+        ...(romanPair
+          ? { side_by_side: "Yes" }
+          : { side_by_side_position: sourcePosition }),
+        side_by_side_match_line_id: target.lineId,
+        side_by_side_matches: null,
+      },
+    });
+  };
+
   const handleRemoveDiscount = () => {
     if (!currentDesign || discountPercent <= 0) return;
     updateFields(removeQuoteDesignDiscount(currentDesign));
   };
 
   const handleRecalculateLockedPrice = () => {
+    if (authoritativeV2) return;
     if (!currentDesign || widthIn === 0 || heightIn === 0) return;
 
     const opts = (currentDesign.options_json as Record<string, unknown>) || {};
@@ -2996,6 +3802,7 @@ export function DesignCard({
 
   // Locked contract lines stay frozen unless motorization totals are stale or missing.
   useEffect(() => {
+    if (authoritativeV2) return;
     if (!currentDesign || !isPriceLocked) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
@@ -3127,10 +3934,12 @@ export function DesignCard({
     currentDesign?.options_json,
     currentRetailPerSqft,
     isPriceLocked,
+    authoritativeV2,
   ]);
 
   // Auto-calculate price when options or retail override change
   useEffect(() => {
+    if (authoritativeV2) return;
     if (!currentDesign) return;
 
     const widthInches = measurementToInches(lineItem.width_whole, lineItem.width_fraction);
@@ -3282,6 +4091,7 @@ export function DesignCard({
     currentDesign?.options_json,
     currentRetailPerSqft,
     isPriceLocked,
+    authoritativeV2,
   ]);
 
   const hasMeasurements = lineItem.width_whole > 0 || lineItem.height_whole > 0;
@@ -3368,7 +4178,7 @@ export function DesignCard({
                   {rawSqft !== null ? rawSqft.toFixed(1) : "—"} ft²
                   {sqft !== rawSqft && <span className="ml-1 text-[10px]">(min 8)</span>}
                 </span>
-                {editingRetail ? (
+                {editingRetail && !authoritativeV2 ? (
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="text-[10px]">$</span>
                     <input
@@ -3401,6 +4211,10 @@ export function DesignCard({
                     />
                     <span className="text-[10px]">/ft²</span>
                   </div>
+                ) : authoritativeV2 ? (
+                  <span className="font-medium" title="Authoritative catalog retail rate">
+                    ${currentRetailPerSqft.toFixed(2)}/ft²
+                  </span>
                 ) : (
                   <button
                     className="hover:text-primary transition-colors cursor-pointer font-medium"
@@ -3525,7 +4339,7 @@ export function DesignCard({
           </Tabs>
         )}
 
-        {isolated && (
+        {showLabCatalogControls && (
           <QuoteLabCatalogControls
             productType={lineItem.product_type}
             lineItem={lineItem}
@@ -3543,6 +4357,8 @@ export function DesignCard({
             onUpdate={updateField}
             onUpdateFields={updateFields}
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+            authoritativeV2={authoritativeV2}
+            allowManualPriceEditing={!authoritativeV2}
           />
         ) : (
           <ShadesAndBlindsOptions
@@ -3552,6 +4368,11 @@ export function DesignCard({
             onUpdate={updateField}
             onUpdateFields={updateFields}
             onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+            authoritativeV2={authoritativeV2}
+            allowManualPriceEditing={!authoritativeV2}
+            sideBySideLineOptions={sideBySideLineOptions}
+            onSideBySidePairChange={handleSideBySidePairChange}
+            onClearSideBySidePartner={handleClearSideBySidePartner}
           />
         )}
 
@@ -3571,6 +4392,19 @@ export function DesignCard({
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {authoritativePriceError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
+          >
+            <div className="flex items-center gap-2 font-bold">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Authoritative pricing blocked</span>
+            </div>
+            <p className="mt-1">{authoritativePriceError}</p>
           </div>
         )}
 
@@ -3941,6 +4775,8 @@ function ShutterDesignOptions({
   onUpdate,
   onUpdateFields,
   onRecalculatePrice,
+  authoritativeV2,
+  allowManualPriceEditing,
 }: {
   design: SalesQuoteDesign | undefined;
   activeVariant: string;
@@ -3948,6 +4784,8 @@ function ShutterDesignOptions({
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
+  authoritativeV2: boolean;
+  allowManualPriceEditing: boolean;
 }) {
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
@@ -3976,6 +4814,103 @@ function ShutterDesignOptions({
     const patch = getAutoShutterRoutePatch(activeVariant);
     if (patch && needsShutterRoutePatch(design, patch)) {
       applyShutterRoutePatch(patch, design, onUpdate);
+    }
+
+    if (authoritativeV2 && workingDesign.supplier === "Onyx") {
+      const currentJson =
+        (workingDesign.options_json as Record<string, unknown> | undefined) || {};
+      if (field === "panel_config") {
+        const nextJson = { ...currentJson };
+        for (let index = 1; index <= 4; index += 1) {
+          nextJson[`onyx_panel_${index}_width_inches`] = null;
+          nextJson[`onyx_panel_${index}_height_inches`] = null;
+        }
+        for (let index = 1; index <= 12; index += 1) {
+          nextJson[`onyx_tilt_section_${index}_inches`] = null;
+        }
+        nextJson.onyx_tilt_section_count = null;
+        onUpdateFields({ panel_config: value as string, options_json: nextJson });
+        return;
+      }
+      if (field === "tilt_type") {
+        const nextJson: Record<string, unknown> = {
+          ...currentJson,
+          offset_tilt_distance_inches: null,
+        };
+        for (let index = 1; index <= 12; index += 1) {
+          nextJson[`onyx_tilt_section_${index}_inches`] = null;
+        }
+        nextJson.onyx_tilt_section_count = null;
+        onUpdateFields({ tilt_type: value as string, options_json: nextJson });
+        return;
+      }
+      if (field === "json:onyx_tilt_section_count") {
+        const count = Math.min(12, Math.max(0, Number(value) || 0));
+        const nextJson: Record<string, unknown> = {
+          ...currentJson,
+          onyx_tilt_section_count: value,
+        };
+        for (let index = count + 1; index <= 12; index += 1) {
+          nextJson[`onyx_tilt_section_${index}_inches`] = null;
+        }
+        onUpdateFields({ options_json: nextJson });
+        return;
+      }
+      if (field === "json:onyx_mount") {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            onyx_mount: value,
+            ...(value === "IM" ? {} : { opening_diagonal_difference_inches: null }),
+          },
+        });
+        return;
+      }
+      if (field === "json:onyx_t_post_count") {
+        const count = Math.min(3, Math.max(0, Number(value) || 0));
+        const nextJson: Record<string, unknown> = {
+          ...currentJson,
+          onyx_t_post_count: value,
+        };
+        for (let index = count + 1; index <= 3; index += 1) {
+          nextJson[`onyx_t_post_${index}_position_inches`] = null;
+        }
+        onUpdateFields({ options_json: nextJson });
+        return;
+      }
+      if (field === "json:onyx_order_type") {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            onyx_order_type: value,
+            ...(value === "French Door"
+              ? {}
+              : {
+                  flat_mounting_area_inches: null,
+                  hardware_clearance_inches: null,
+                  french_door_cutout: null,
+                  handle_center_from_bottom_inches: null,
+                  lock_center_from_bottom_inches: null,
+                }),
+          },
+        });
+        return;
+      }
+      if (field === "json:french_door_cutout") {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            french_door_cutout: value,
+            ...(value === "Yes"
+              ? {}
+              : {
+                  handle_center_from_bottom_inches: null,
+                  lock_center_from_bottom_inches: null,
+                }),
+          },
+        });
+        return;
+      }
     }
     setFieldValue(field, value, workingDesign, onUpdate);
   };
@@ -4008,7 +4943,9 @@ function ShutterDesignOptions({
     });
   };
 
-  const gridOptions = standardComplete && !useOldSteps ? getStandardShutterGridOptions(workingDesign) : [];
+  const gridOptions = standardComplete && !useOldSteps
+    ? getStandardShutterGridOptions(workingDesign, authoritativeV2)
+    : [];
   const slotOptions = standardComplete && !useOldSteps ? [...definingOptions, ...gridOptions] : definingOptions;
   const optionRows = partitionOptionSlots(slotOptions, [
     ...definingOptions.map((option) => option.field),
@@ -4058,6 +4995,26 @@ function ShutterDesignOptions({
       );
     }
 
+    if (opt.type === "number") {
+      return (
+        <GridNumberInput
+          label={opt.label}
+          value={value}
+          min={opt.min}
+          max={opt.max}
+          step={opt.step}
+          placeholder={opt.placeholder}
+          unit={opt.unit}
+          hideLabel
+          onChange={(v) => {
+            handleUpdate(opt.field, v);
+            setOpenOptionField(null);
+          }}
+          onClear={authoritativeV2 ? () => handleUpdate(opt.field, null) : undefined}
+        />
+      );
+    }
+
     return (
       <GridYesNo
         label={opt.label}
@@ -4080,7 +5037,7 @@ function ShutterDesignOptions({
       requirement={requirement}
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
-      renderSelectedDirect={opt.type === "select"}
+      renderSelectedDirect={opt.type === "select" || opt.type === "number"}
     >
       {renderOptionControl(opt)}
     </OptionSlot>
@@ -4192,13 +5149,23 @@ function ShutterDesignOptions({
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
-              <DeferredNumberInput
-                value={design?.unit_price || ""}
-                onCommit={handleManualPriceChange}
-                commitOnChange
-                className="pl-5 h-8 text-sm"
-                placeholder="0.00"
-              />
+              {allowManualPriceEditing ? (
+                <DeferredNumberInput
+                  value={design?.unit_price || ""}
+                  onCommit={handleManualPriceChange}
+                  commitOnChange
+                  className="pl-5 h-8 text-sm"
+                  placeholder="0.00"
+                />
+              ) : (
+                <Input
+                  aria-label="Authoritative price"
+                  readOnly
+                  value={design?.unit_price || ""}
+                  className="pl-5 h-8 text-sm"
+                  placeholder="0.00"
+                />
+              )}
             </div>
             {onRecalculatePrice && (
               <Button
@@ -4488,6 +5455,11 @@ function ShadesAndBlindsOptions({
   onUpdate,
   onUpdateFields,
   onRecalculatePrice,
+  authoritativeV2,
+  allowManualPriceEditing,
+  sideBySideLineOptions,
+  onSideBySidePairChange,
+  onClearSideBySidePartner,
 }: {
   design: SalesQuoteDesign | undefined;
   productType: string;
@@ -4495,6 +5467,14 @@ function ShadesAndBlindsOptions({
   onUpdate: (field: string, value: unknown) => void;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   onRecalculatePrice?: () => void;
+  authoritativeV2: boolean;
+  allowManualPriceEditing: boolean;
+  sideBySideLineOptions: readonly SideBySideLineOption[];
+  onSideBySidePairChange: (
+    lineId: string | null,
+    position?: string | null,
+  ) => void;
+  onClearSideBySidePartner: () => void;
 }) {
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -4502,6 +5482,69 @@ function ShadesAndBlindsOptions({
   const handleUpdate = (field: string, value: unknown) => {
     const currentJson = (design?.options_json as Record<string, unknown>) || {};
     const emptyValue = value === null || value === undefined || value === "";
+
+    if (
+      authoritativeV2 &&
+      field === "json:side_by_side_position" &&
+      (productType === "Honeycomb Shades" || productType === "Vertical Blinds")
+    ) {
+      const nextPosition = typeof value === "string" ? value : null;
+      const activePosition =
+        nextPosition !== null &&
+        nextPosition !== "Not Side-by-Side" &&
+        nextPosition !== "None";
+      if (!activePosition) {
+        onClearSideBySidePartner();
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            side_by_side_position: nextPosition,
+            side_by_side_match_line_id: null,
+            side_by_side_matches: null,
+          },
+        });
+        return;
+      }
+
+      const pairedLineId = stringOption(
+        currentJson,
+        "side_by_side_match_line_id",
+      );
+      if (pairedLineId) {
+        onSideBySidePairChange(pairedLineId, nextPosition);
+      } else {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            side_by_side_position: nextPosition,
+            side_by_side_matches: null,
+          },
+        });
+      }
+      return;
+    }
+
+    if (
+      authoritativeV2 &&
+      productType === "Roman Shades" &&
+      field === "json:side_by_side"
+    ) {
+      const enabled = value === "Yes" || value === true;
+      if (!enabled) onClearSideBySidePartner();
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          side_by_side: enabled ? "Yes" : "No",
+          ...(!enabled
+            ? {
+                side_by_side_match_line_id: null,
+                side_by_side_matches: null,
+              }
+            : { side_by_side_matches: null }),
+        },
+      });
+      return;
+    }
 
     if (
       productType === "Roller Shades" &&
@@ -4515,16 +5558,263 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Roller Shades" && field === "json:roller_application") {
+      const application = typeof value === "string" ? value : null;
+      const nextJson: Record<string, unknown> = {
+        ...currentJson,
+        roller_application: application,
+      };
+      if (!application?.includes("Coupled")) {
+        nextJson.coupling_arrangement = null;
+        nextJson.coupled_shade_count = null;
+      }
+      if (application !== "LightGuard 360 with T-Post") {
+        nextJson.lightguard_360_shade_count = null;
+      }
+      for (let componentIndex = 1; componentIndex <= 4; componentIndex += 1) {
+        nextJson[`roller_component_width_${componentIndex}`] = null;
+      }
+      const isLightGuardApplication = Boolean(application?.startsWith("LightGuard 360"));
+      if (isLightGuardApplication) {
+        nextJson.top_treatment_class = "LightGuard 360 Housing";
+      } else if (nextJson.top_treatment_class === "LightGuard 360 Housing") {
+        nextJson.top_treatment_class = null;
+      }
+      const pruned = authoritativeV2
+        ? pruneRollerV2UiSelection({
+            application,
+            couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+            componentCount:
+              Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
+            topTreatment: stringOption(nextJson, "top_treatment_class"),
+            liftSystem: design?.lift_system,
+            tubeClass: stringOption(nextJson, "tube_class"),
+            powerConfiguration: stringOption(nextJson, "power_configuration"),
+          })
+        : null;
+      if (pruned) {
+        nextJson.tube_class = pruned.tubeClass;
+        nextJson.power_configuration = pruned.powerConfiguration;
+      }
+      onUpdateFields({
+        shade_type: getRollerShadeTypeForApplication(application),
+        ...(pruned && pruned.liftSystem !== design?.lift_system
+          ? {
+              lift_system: pruned.liftSystem,
+              motor_type: null,
+              remote_type: null,
+            }
+          : {}),
+        ...(isLightGuardApplication ? { valance: "No Valance" } : {}),
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roller Shades" && field === "json:coupling_arrangement") {
+      const nextJson = { ...currentJson };
+      for (let componentIndex = 1; componentIndex <= 4; componentIndex += 1) {
+        nextJson[`roller_component_width_${componentIndex}`] = null;
+      }
+      const currentApplication = stringOption(currentJson, "roller_application");
+      const isLightGuardTPost = currentApplication === "LightGuard 360 with T-Post";
+      const nextApplication = isLightGuardTPost
+        ? currentApplication
+        : value === "Independently Operated"
+          ? "Independently Operated Coupled Shades"
+          : "Coupled Shades";
+      const updatedJson: Record<string, unknown> = {
+        ...nextJson,
+        coupling_arrangement: value,
+        roller_application: nextApplication,
+      };
+      const pruned = authoritativeV2
+        ? pruneRollerV2UiSelection({
+            application: nextApplication,
+            couplingArrangement: typeof value === "string" ? value : null,
+            componentCount:
+              Number(
+                updatedJson.coupled_shade_count ??
+                  updatedJson.lightguard_360_shade_count,
+              ) || null,
+            topTreatment: stringOption(updatedJson, "top_treatment_class"),
+            liftSystem: design?.lift_system,
+            tubeClass: stringOption(updatedJson, "tube_class"),
+            powerConfiguration: stringOption(updatedJson, "power_configuration"),
+          })
+        : null;
+      if (pruned) {
+        updatedJson.tube_class = pruned.tubeClass;
+        updatedJson.power_configuration = pruned.powerConfiguration;
+      }
+      onUpdateFields({
+        shade_type: isLightGuardTPost ? "LightGuard 360 with T-Post" : "Coupled Shades",
+        ...(pruned && pruned.liftSystem !== design?.lift_system
+          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
+          : {}),
+        options_json: updatedJson,
+      });
+      return;
+    }
+
+    if (
+      productType === "Roller Shades" &&
+      (field === "json:coupled_shade_count" || field === "json:lightguard_360_shade_count")
+    ) {
+      const count = Math.min(4, Math.max(0, Number(value)));
+      const nextJson: Record<string, unknown> = { ...currentJson, [field.slice(5)]: value };
+      if (count !== 2) nextJson.coupling_arrangement = null;
+      if (count !== 3) nextJson.roller_coupled_grouping = null;
+      for (let componentIndex = count + 1; componentIndex <= 4; componentIndex += 1) {
+        nextJson[`roller_component_width_${componentIndex}`] = null;
+      }
+      const pruned = authoritativeV2
+        ? pruneRollerV2UiSelection({
+            application: stringOption(nextJson, "roller_application"),
+            couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+            componentCount: count,
+            topTreatment: stringOption(nextJson, "top_treatment_class"),
+            liftSystem: design?.lift_system,
+            tubeClass: stringOption(nextJson, "tube_class"),
+            powerConfiguration: stringOption(nextJson, "power_configuration"),
+          })
+        : null;
+      if (pruned) {
+        nextJson.tube_class = pruned.tubeClass;
+        nextJson.power_configuration = pruned.powerConfiguration;
+      }
+      onUpdateFields({
+        ...(pruned && pruned.liftSystem !== design?.lift_system
+          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
+          : {}),
+        options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roller Shades" && field === "json:top_treatment_class") {
+      const topTreatment = typeof value === "string" ? value : null;
+      const mappedValance = getRollerValanceForTopTreatment(topTreatment);
+      const nextJson: Record<string, unknown> = {
+        ...currentJson,
+        top_treatment_class: topTreatment,
+      };
+      const pruned = authoritativeV2
+        ? pruneRollerV2UiSelection({
+            application: stringOption(nextJson, "roller_application"),
+            couplingArrangement: stringOption(nextJson, "coupling_arrangement"),
+            componentCount:
+              Number(nextJson.coupled_shade_count ?? nextJson.lightguard_360_shade_count) || null,
+            topTreatment,
+            liftSystem: design?.lift_system,
+            tubeClass: stringOption(nextJson, "tube_class"),
+            powerConfiguration: stringOption(nextJson, "power_configuration"),
+          })
+        : null;
+      if (pruned) {
+        nextJson.tube_class = pruned.tubeClass;
+        nextJson.power_configuration = pruned.powerConfiguration;
+      }
+      onUpdateFields({
+        ...(mappedValance
+          ? { valance: mappedValance }
+          : topTreatment === "LightGuard 360 Housing"
+            ? { valance: null }
+            : {}),
+        ...(pruned && pruned.liftSystem !== design?.lift_system
+          ? { lift_system: pruned.liftSystem, motor_type: null, remote_type: null }
+          : {}),
+        options_json: nextJson,
+      });
+      return;
+    }
+
     if (productType === "Roller Shades" && field === "lift_system") {
       const nextJson = { ...currentJson };
       if (value !== "Continuous Cord Loop") nextJson.cord_loop_release = null;
-      if (value !== "Motorized") nextJson.hub_required = null;
+      if (value !== "Motorized") {
+        nextJson.hub_required = null;
+        nextJson.power_configuration = null;
+      } else if (nextJson.tube_class === "All Tubes") {
+        nextJson.tube_class = null;
+      }
 
       onUpdateFields({
         lift_system: typeof value === "string" ? value : null,
         motor_type: value === "Motorized" ? design?.motor_type || null : null,
         remote_type: null,
         options_json: nextJson,
+      });
+      return;
+    }
+
+    if (productType === "Roller Shades" && authoritativeV2 && field === "shade_type") {
+      const shadeType = typeof value === "string" ? value : null;
+      const nextJson: Record<string, unknown> = {
+        ...currentJson,
+        roller_application: getRollerApplicationForShadeType(
+          shadeType,
+          stringOption(currentJson, "roller_application"),
+        ),
+      };
+      if (shadeType !== "Coupled Shades") {
+        nextJson.coupling_arrangement = null;
+        nextJson.coupled_shade_count = null;
+        nextJson.roller_coupled_grouping = null;
+      }
+      if (shadeType !== "LightGuard 360 with T-Post") {
+        nextJson.lightguard_360_shade_count = null;
+        nextJson.roller_coupled_grouping = null;
+      }
+      for (let componentIndex = 1; componentIndex <= 4; componentIndex += 1) {
+        nextJson[`roller_component_width_${componentIndex}`] = null;
+      }
+      onUpdateFields({ shade_type: shadeType, options_json: nextJson });
+      return;
+    }
+
+    if (productType === "Roller Shades" && authoritativeV2 && field === "valance") {
+      const valance = typeof value === "string" ? value : null;
+      const application = stringOption(currentJson, "roller_application");
+      onUpdateFields({
+        valance,
+        options_json: {
+          ...currentJson,
+          top_treatment_class: application?.startsWith("LightGuard 360")
+            ? "LightGuard 360 Housing"
+            : getRollerTopTreatmentForValance(valance),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Roller Shades" && authoritativeV2 && field === "motor_type") {
+      const expectedMotor = expectedRollerMotorForPowerConfiguration(
+        currentJson.power_configuration,
+      );
+      onUpdateFields({
+        motor_type: typeof value === "string" ? value : null,
+        options_json: {
+          ...currentJson,
+          ...(expectedMotor === value ? {} : { power_configuration: null }),
+        },
+      });
+      return;
+    }
+
+    if (
+      productType === "Roller Shades" &&
+      authoritativeV2 &&
+      field === "json:power_configuration"
+    ) {
+      const powerConfiguration = typeof value === "string" ? value : null;
+      onUpdateFields({
+        motor_type: expectedRollerMotorForPowerConfiguration(powerConfiguration),
+        remote_type: null,
+        options_json: {
+          ...currentJson,
+          power_configuration: powerConfiguration,
+        },
       });
       return;
     }
@@ -4560,7 +5850,7 @@ function ShadesAndBlindsOptions({
     // wipes style + fabric unconditionally; we keep what still fits).
     if (productType === "Roman Shades" && field === "shade_type") {
       const nextShadeType = typeof value === "string" ? value : null;
-      const nextJson = { ...currentJson };
+      let nextJson = { ...currentJson };
       let clearFabric = false;
 
       const fold = String(nextJson.fold_style || "");
@@ -4578,8 +5868,24 @@ function ShadesAndBlindsOptions({
         clearFabric = true;
       }
       if (nextShadeType !== "Day & Night") {
+        nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
         nextJson.back_hem_bar = null;
+      }
+      if (nextShadeType !== "Common Valance") {
+        nextJson.common_valance_panel_1_width = null;
+        nextJson.common_valance_panel_2_width = null;
+        nextJson.common_valance_gap = null;
+      }
+      if (
+        authoritativeV2 &&
+        (nextShadeType === "Day & Night" || nextShadeType === "Common Valance") &&
+        (nextJson.side_by_side === true || nextJson.side_by_side === "Yes")
+      ) {
+        onClearSideBySidePartner();
+        nextJson.side_by_side = "No";
+        nextJson.side_by_side_match_line_id = null;
+        nextJson.side_by_side_matches = null;
       }
 
       onUpdateFields({
@@ -4601,6 +5907,9 @@ function ShadesAndBlindsOptions({
         nextJson.chain_location = null;
         nextJson.chain_length = null;
       }
+      if (nextControl !== "Continuous Cord Loop") {
+        nextJson.headrail_size = null;
+      }
       if (nextControl !== "Cordless") {
         nextJson.poles = null;
         nextJson.pole_length = null;
@@ -4620,6 +5929,21 @@ function ShadesAndBlindsOptions({
     if (productType === "Roman Shades" && field === "json:fold_style") {
       const nextStyle = typeof value === "string" ? value : null;
       const nextJson: Record<string, unknown> = { ...currentJson, fold_style: nextStyle };
+      if (nextStyle !== "Edge Banded" && nextStyle !== "Ribbon Banded") {
+        nextJson.banding_color = null;
+      } else if (currentJson.fold_style !== nextStyle) {
+        nextJson.banding_color = null;
+      }
+      if (
+        authoritativeV2 &&
+        /without seams|banded/i.test(nextStyle || "") &&
+        (nextJson.side_by_side === true || nextJson.side_by_side === "Yes")
+      ) {
+        onClearSideBySidePartner();
+        nextJson.side_by_side = "No";
+        nextJson.side_by_side_match_line_id = null;
+        nextJson.side_by_side_matches = null;
+      }
       const category = String(nextJson.roman_fabric_category || "");
       const allowed = getRomanFabricCategoryNamesFor(
         nextStyle,
@@ -4634,6 +5958,61 @@ function ShadesAndBlindsOptions({
       } else {
         onUpdateFields({ options_json: nextJson });
       }
+      return;
+    }
+
+    if (productType === "Roman Shades" && field === "json:fabric_orientation") {
+      const orientation = typeof value === "string" ? value : null;
+      const currentSeaming = stringOption(currentJson, "seaming");
+      const allowedSeaming =
+        orientation === "Railroaded"
+          ? (["No Seams", "Horizontal Seams"] as const)
+          : (["No Seams", "Vertical Seams"] as const);
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          fabric_orientation: orientation,
+          seaming:
+            currentSeaming && (allowedSeaming as readonly string[]).includes(currentSeaming)
+              ? currentSeaming
+              : null,
+        },
+      });
+      return;
+    }
+
+    if (
+      (productType === "Roman Shades" || productType === "Honeycomb Shades") &&
+      field === "json:back_fabric"
+    ) {
+      onUpdateFields({
+        options_json: {
+          ...withoutBackFabricColorDetails(currentJson),
+          back_fabric: typeof value === "string" ? value : null,
+        },
+      });
+      if (!emptyValue) setOpenOptionField("json:back_fabric_color");
+      return;
+    }
+
+    if (
+      productType === "Honeycomb Shades" &&
+      authoritativeV2 &&
+      field === "json:rear_cell_size"
+    ) {
+      const nextRearCell = typeof value === "string" ? value : null;
+      const allowedRearFabrics = getV2HoneycombFabricFamiliesForCellSize(nextRearCell);
+      const currentBackFabric = stringOption(currentJson, "back_fabric");
+      onUpdateFields({
+        options_json: {
+          ...withoutBackFabricColorDetails(currentJson),
+          rear_cell_size: nextRearCell,
+          back_fabric:
+            currentBackFabric && allowedRearFabrics.includes(currentBackFabric)
+              ? currentBackFabric
+              : null,
+        },
+      });
       return;
     }
 
@@ -4724,10 +6103,194 @@ function ShadesAndBlindsOptions({
 
     // Honeycomb Shades cascades — mirror Norman's dependency rules with
     // validity-based clearing (see docs/norman-honeycomb-order-map.md).
+    if (productType === "Honeycomb Shades" && field === "json:honeycomb_application") {
+      const application = typeof value === "string" ? value : null;
+      let nextJson: Record<string, unknown> = {
+        ...currentJson,
+        honeycomb_application: application,
+      };
+      const frameApplication = Boolean(
+        application && (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application),
+      );
+      const frameCellSize = getHoneycombCellSizeForApplication(application);
+      const allowedFrameTypes = getHoneycombFrameTypesForApplication(application || "");
+      const patch: Partial<SalesQuoteDesign> = {};
+      if (frameCellSize) nextJson.cell_size = frameCellSize;
+      if (frameCellSize) {
+        const previousCellSize = canonicalizeHoneycombCellSize(
+          typeof currentJson.cell_size === "string" ? currentJson.cell_size : null,
+        );
+        if (previousCellSize && !isHoneycombFrameCellSize(previousCellSize)) {
+          nextJson.honeycomb_actual_cell_size = previousCellSize;
+        }
+      }
+      if (
+        !frameApplication &&
+        isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(String(nextJson.cell_size || "")))
+      ) {
+        nextJson.cell_size = null;
+      }
+      if (
+        frameApplication &&
+        nextJson.honeycomb_frame_type &&
+        !allowedFrameTypes.includes(String(nextJson.honeycomb_frame_type))
+      ) {
+        nextJson.honeycomb_frame_type = null;
+      }
+      const effectiveCellSize =
+        frameCellSize ||
+        (typeof nextJson.cell_size === "string" ? nextJson.cell_size : null);
+      if (
+        application !== "Specialty Shapes" &&
+        design?.lift_system &&
+        !getHoneycombOperatingSystemsFor(effectiveCellSize).includes(design.lift_system)
+      ) {
+        patch.lift_system = null;
+        patch.motor_type = null;
+        patch.remote_type = null;
+        patch.shade_type = null;
+        nextJson.chain_location = null;
+        nextJson.chain_length = null;
+        nextJson.poles = null;
+        nextJson.hub_required = null;
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null;
+      }
+      if (!frameApplication) {
+        nextJson.honeycomb_frame_type = null;
+        nextJson.frame_qty = null;
+        nextJson.pre_drilled = null;
+        nextJson.frame_t_post_count = null;
+        nextJson.frame_t_post_1_location = null;
+        nextJson.frame_t_post_2_location = null;
+        nextJson.frame_t_post_3_location = null;
+        nextJson.sill_plate = null;
+        nextJson.frame_notch_out = null;
+        nextJson.frame_notch_a_inches = null;
+        nextJson.frame_notch_b_inches = null;
+        nextJson.honeycomb_actual_cell_size = null;
+        for (let panelIndex = 1; panelIndex <= 4; panelIndex += 1) {
+          nextJson[`honeycomb_panel_${panelIndex}_net_width`] = null;
+          nextJson[`honeycomb_panel_${panelIndex}_net_height`] = null;
+        }
+      }
+      if (application === "SmartFit for Sloped Windows with Frame") {
+        nextJson.frame_t_post_count = null;
+        nextJson.frame_t_post_1_location = null;
+        nextJson.frame_t_post_2_location = null;
+        nextJson.frame_t_post_3_location = null;
+      }
+      if (application === "Specialty Shapes") {
+        const currentCellSize = String(nextJson.cell_size || "");
+        const specialtyCellIsInvalid =
+          currentCellSize === '1 1/4" Single Cell' ||
+          currentCellSize === '3/4" Double Cell';
+        if (specialtyCellIsInvalid) {
+          nextJson.cell_size = null;
+          patch.fabric = null;
+          nextJson = withoutProductColorDetails(nextJson);
+          nextJson = withoutBackFabricColorDetails(nextJson);
+          nextJson.back_fabric = null;
+        }
+        patch.mount_type = "Inside Mount";
+        patch.lift_system = null;
+        patch.motor_type = null;
+        patch.remote_type = null;
+        patch.shade_type = null;
+        nextJson.chain_location = null;
+        nextJson.chain_length = null;
+        nextJson.poles = null;
+        nextJson.hub_required = null;
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null;
+        nextJson.rear_cell_size = null;
+        nextJson.non_operable = "Yes";
+      } else {
+        nextJson.specialty_shape = null;
+        nextJson.specialty_leg_height = null;
+        nextJson.specialty_left_leg_height = null;
+        nextJson.specialty_right_leg_height = null;
+        nextJson.non_operable = null;
+      }
+      if (application !== "SmartFit for Sloped Windows with Frame") {
+        nextJson.slope_angle_degrees = null;
+      }
+      if (application !== "Patio Door Vertical") {
+        nextJson.split_splice = null;
+        nextJson.split_location = null;
+        nextJson.vertical_left_width_inches = null;
+        nextJson.vertical_right_width_inches = null;
+        nextJson.vertical_cutout_rail = null;
+      }
+      if (application !== "Side-by-Side") {
+        if (authoritativeV2) onClearSideBySidePartner();
+        nextJson.side_by_side_position = null;
+        nextJson.side_by_side_match_line_id = null;
+        nextJson.side_by_side_matches = null;
+      }
+      const effectiveLiftSystem =
+        patch.lift_system !== undefined ? patch.lift_system : design?.lift_system ?? null;
+      const selectedFrontCode = stringOption(currentJson, PRODUCT_COLOR_CODE_DETAIL);
+      const selectedFrontCollection = stringOption(
+        currentJson,
+        PRODUCT_COLOR_COLLECTION_DETAIL,
+      );
+      if (
+        authoritativeV2 &&
+        selectedFrontCode &&
+        !isMtsProductColorSelectionAvailableForContext(
+          "Honeycomb Shades",
+          { ...nextJson, lift_system: effectiveLiftSystem },
+          selectedFrontCollection,
+          selectedFrontCode,
+        )
+      ) {
+        patch.fabric = null;
+        nextJson = withoutProductColorDetails(nextJson);
+      }
+      const selectedRearCode = stringOption(currentJson, BACK_FABRIC_CODE_DETAIL);
+      const selectedRearCollection = stringOption(
+        currentJson,
+        BACK_FABRIC_COLLECTION_DETAIL,
+      );
+      if (
+        authoritativeV2 &&
+        selectedRearCode &&
+        !isMtsProductColorSelectionAvailableForContext(
+          "Honeycomb Shades",
+          {
+            ...nextJson,
+            cell_size: nextJson.rear_cell_size ?? nextJson.cell_size,
+            light_control: null,
+            lift_system: effectiveLiftSystem,
+          },
+          selectedRearCollection,
+          selectedRearCode,
+        )
+      ) {
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null;
+      }
+      onUpdateFields({ ...patch, options_json: nextJson });
+      return;
+    }
+
     if (productType === "Honeycomb Shades" && field === "json:cell_size") {
       const nextSize = typeof value === "string" ? value : null;
-      const nextJson: Record<string, unknown> = { ...currentJson, cell_size: nextSize };
+      let nextJson: Record<string, unknown> = { ...currentJson, cell_size: nextSize };
       const patch: Partial<SalesQuoteDesign> = {};
+      if (authoritativeV2) {
+        const frameApplication = getHoneycombApplicationForCellSize(nextSize);
+        if (frameApplication) {
+          nextJson.honeycomb_application = frameApplication;
+        } else if (
+          (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(
+            String(nextJson.honeycomb_application || ""),
+          )
+        ) {
+          nextJson.honeycomb_application = "Standard";
+        }
+      }
 
       // Frame (SmartFit/Decoflex) sizes only take the SmartFit systems.
       const allowedSystems = getHoneycombOperatingSystemsFor(nextSize);
@@ -4740,6 +6303,7 @@ function ShadesAndBlindsOptions({
         nextJson.chain_length = null;
         nextJson.poles = null;
         nextJson.hub_required = null;
+        nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
       }
 
@@ -4747,23 +6311,65 @@ function ShadesAndBlindsOptions({
       if (!isHoneycombFrameCellSize(canonicalizeHoneycombCellSize(nextSize))) {
         nextJson.frame_qty = null;
         nextJson.pre_drilled = null;
+        nextJson.frame_t_post_count = null;
+        nextJson.frame_t_post_1_location = null;
+        nextJson.frame_t_post_2_location = null;
+        nextJson.frame_t_post_3_location = null;
       }
 
       // The back (Day & Night) fabric list is per shade size.
       const backFabric = String(nextJson.back_fabric || "");
-      if (backFabric && !getHoneycombDealerFabricTypesFor(nextSize).includes(backFabric)) {
+      const allowedBackFabrics = authoritativeV2
+        ? getV2HoneycombFabricFamiliesForCellSize(
+            String(nextJson.rear_cell_size || nextSize || ""),
+          )
+        : getHoneycombDealerFabricTypesFor(nextSize);
+      if (backFabric && !allowedBackFabrics.includes(backFabric)) {
+        nextJson = withoutBackFabricColorDetails(nextJson);
         nextJson.back_fabric = null;
       }
 
       // Clear the fabric only when its color is no longer offered for the
       // new size on the Norman dealer form.
       const fabricColorCode = stringOption(currentJson, PRODUCT_COLOR_CODE_DETAIL);
+      const fabricCollection = stringOption(currentJson, PRODUCT_COLOR_COLLECTION_DETAIL);
       const clearFabric = Boolean(
         design?.fabric &&
           fabricColorCode &&
           nextSize &&
-          !isHoneycombDealerColorAvailable(nextSize, fabricColorCode)
+          (authoritativeV2
+            ? !isMtsProductColorSelectionAvailableForContext(
+                "Honeycomb Shades",
+                { ...nextJson, lift_system: patch.lift_system ?? design?.lift_system ?? null },
+                fabricCollection,
+                fabricColorCode,
+              )
+            : !isHoneycombDealerColorAvailable(nextSize, fabricColorCode))
       );
+      const backFabricColorCode = stringOption(currentJson, BACK_FABRIC_CODE_DETAIL);
+      const backFabricCollection = stringOption(
+        currentJson,
+        BACK_FABRIC_COLLECTION_DETAIL,
+      );
+      if (
+        authoritativeV2 &&
+        backFabricColorCode &&
+        nextSize &&
+        !isMtsProductColorSelectionAvailableForContext(
+          "Honeycomb Shades",
+          {
+            ...nextJson,
+            cell_size: nextJson.rear_cell_size ?? nextSize,
+            light_control: null,
+            lift_system: patch.lift_system ?? design?.lift_system ?? null,
+          },
+          backFabricCollection,
+          backFabricColorCode,
+        )
+      ) {
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null;
+      }
       if (clearFabric) setOpenOptionField("fabric");
 
       onUpdateFields({
@@ -4774,9 +6380,24 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (
+      productType === "Honeycomb Shades" &&
+      authoritativeV2 &&
+      field === "json:honeycomb_actual_cell_size"
+    ) {
+      onUpdateFields({
+        fabric: null,
+        options_json: {
+          ...withoutProductColorDetails(currentJson),
+          honeycomb_actual_cell_size: value,
+        },
+      });
+      return;
+    }
+
     if (productType === "Honeycomb Shades" && field === "lift_system") {
       const nextOs = typeof value === "string" ? value : null;
-      const nextJson = { ...currentJson };
+      let nextJson = { ...currentJson };
       if (!isHoneycombChainOperatingSystem(nextOs)) {
         nextJson.chain_location = null;
         nextJson.chain_length = null;
@@ -4786,7 +6407,27 @@ function ShadesAndBlindsOptions({
       }
       const motorized = isHoneycombMotorizedOperatingSystem(nextOs);
       if (!motorized) nextJson.hub_required = null;
-      if (!isHoneycombDayNightOperatingSystem(nextOs)) nextJson.back_fabric = null;
+      if (!isHoneycombDayNightOperatingSystem(nextOs)) {
+        nextJson = withoutBackFabricColorDetails(nextJson);
+        nextJson.back_fabric = null;
+        nextJson.rear_cell_size = null;
+      }
+      const selectedFrontCode = stringOption(currentJson, PRODUCT_COLOR_CODE_DETAIL);
+      const selectedFrontCollection = stringOption(
+        currentJson,
+        PRODUCT_COLOR_COLLECTION_DETAIL,
+      );
+      const clearFrontFabric = Boolean(
+        authoritativeV2 &&
+          selectedFrontCode &&
+          !isMtsProductColorSelectionAvailableForContext(
+            "Honeycomb Shades",
+            { ...nextJson, lift_system: nextOs },
+            selectedFrontCollection,
+            selectedFrontCode,
+          )
+      );
+      if (clearFrontFabric) nextJson = withoutProductColorDetails(nextJson);
 
       // Keep the power source / remote only while they stay valid for the
       // new system's motor family.
@@ -4809,6 +6450,7 @@ function ShadesAndBlindsOptions({
 
       onUpdateFields({
         lift_system: nextOs,
+        ...(clearFrontFabric ? { fabric: null } : {}),
         motor_type: keepMotor ? design?.motor_type || null : null,
         remote_type: keepRemote ? design?.remote_type || null : null,
         ...(clearShadeType ? { shade_type: null } : {}),
@@ -4849,6 +6491,120 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (productType === "Honeycomb Shades" && field === "json:split_splice") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          split_splice: value,
+          ...(value === "Center Opening - Custom Split"
+            ? {}
+            : {
+                split_location: null,
+                vertical_left_width_inches: null,
+                vertical_right_width_inches: null,
+              }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "json:specialty_shape") {
+      const shape = typeof value === "string" ? value : "";
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          specialty_shape: value,
+          non_operable: authoritativeV2 ? "Yes" : currentJson.non_operable,
+          ...(honeycombSpecialtyShapeNeedsLegHeight(shape)
+            ? {}
+            : { specialty_leg_height: null }),
+          ...(shape === "Elongated Eyebrow"
+            ? {}
+            : {
+                specialty_left_leg_height: null,
+                specialty_right_leg_height: null,
+              }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "json:frame_t_post_count") {
+      const nextPanelCount = Math.min(4, Math.max(1, Number(value) + 1 || 1));
+      const panelClears: Record<string, null> = {};
+      for (let panelIndex = nextPanelCount + 1; panelIndex <= 4; panelIndex += 1) {
+        panelClears[`honeycomb_panel_${panelIndex}_net_width`] = null;
+        panelClears[`honeycomb_panel_${panelIndex}_net_height`] = null;
+      }
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          frame_t_post_count: value,
+          ...(Number(value) >= 1 ? {} : { frame_t_post_1_location: null }),
+          ...(Number(value) >= 2 ? {} : { frame_t_post_2_location: null }),
+          ...(Number(value) >= 3 ? {} : { frame_t_post_3_location: null }),
+          ...panelClears,
+        },
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "json:cutout") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          cutout: value,
+          ...(value === "Yes"
+            ? {}
+            : {
+                cutout_type: null,
+                cutout_width_inches: null,
+                cutout_height_inches: null,
+                vertical_cutout_rail: null,
+              }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Honeycomb Shades" && field === "json:frame_notch_out") {
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          frame_notch_out: value,
+          ...(value === "Yes"
+            ? {}
+            : { frame_notch_a_inches: null, frame_notch_b_inches: null }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Vertical Blinds" && authoritativeV2 && field === "mount_type") {
+      const mountType = typeof value === "string" ? value : null;
+      onUpdateFields({
+        mount_type: mountType,
+        options_json: {
+          ...currentJson,
+          ...(mountType === "Inside Mount" ? {} : { mount_depth_inches: null }),
+        },
+      });
+      return;
+    }
+
+    if (productType === "Vertical Blinds" && authoritativeV2 && field === "json:stack_option") {
+      const stack = typeof value === "string" ? value : null;
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          stack_option: stack,
+          draw_direction:
+            stack === "Stack Left" ? "Left Draw" : stack === "Stack Right" ? "Right Draw" : null,
+        },
+      });
+      return;
+    }
+
     if (supportsMtsProductColorSearch(productType, field, currentJson) && emptyValue) {
       let nextJson = withoutProductColorDetails(currentJson);
       const jsonKey = getJsonFieldKey(field);
@@ -4867,6 +6623,9 @@ function ShadesAndBlindsOptions({
       if (!emptyValue) setOpenOptionField(dependentProductColorField);
 
       let nextJson = withJsonField(withoutProductColorDetails(currentJson), field, value);
+      if (productType === "Roman Shades" && field === "json:roman_fabric_category") {
+        nextJson = { ...nextJson, banding_color: null };
+      }
       const dependentJsonKey = getJsonFieldKey(dependentProductColorField);
       if (dependentJsonKey) {
         nextJson = { ...nextJson, [dependentJsonKey]: null };
@@ -4918,7 +6677,22 @@ function ShadesAndBlindsOptions({
       case "Roller Shades": {
         const liftSystem = getFieldValue(design, "lift_system");
         const shadeType = getFieldValue(design, "shade_type");
+        const application = getFieldValue(design, "json:roller_application");
         const premiumHardware = getFieldValue(design, "json:premium_hardware");
+        const rollerComponentCount = Number(
+          application === "LightGuard 360 with T-Post"
+            ? (design?.options_json as Record<string, unknown> | null)
+                ?.lightguard_360_shade_count
+            : (design?.options_json as Record<string, unknown> | null)?.coupled_shade_count,
+        );
+        const rollerFacets = authoritativeV2
+          ? getRollerV2UiFacets({
+              application,
+              couplingArrangement: getFieldValue(design, "json:coupling_arrangement"),
+              componentCount: rollerComponentCount,
+              topTreatment: getFieldValue(design, "json:top_treatment_class"),
+            })
+          : null;
         const options: GridOption[] = [
           {
             key: "mount",
@@ -4946,14 +6720,17 @@ function ShadesAndBlindsOptions({
             label: "Lift System",
             field: "lift_system",
             type: "buttons",
-            options: ROLLER_LIFT_SYSTEMS,
+            options: rollerFacets?.liftSystems ?? ROLLER_LIFT_SYSTEMS,
           },
           {
             key: "valance",
             label: "Valance",
             field: "valance",
             type: "select",
-            options: ROLLER_VALANCES,
+            options:
+              authoritativeV2 && application?.startsWith("LightGuard 360")
+                ? (["No Valance"] as readonly string[])
+                : ROLLER_VALANCES,
           },
           {
             key: "hem_bar",
@@ -4985,6 +6762,54 @@ function ShadesAndBlindsOptions({
           },
         ];
 
+        if (authoritativeV2) {
+          options.splice(1, 0, {
+            key: "roller_application",
+            label: "Application",
+            field: "json:roller_application",
+            type: "select",
+            options: ROLLER_APPLICATIONS,
+          });
+          options.push(
+            {
+              key: "top_treatment_class",
+              label: "Top Treatment Class",
+              field: "json:top_treatment_class",
+              type: "select",
+              options: application?.startsWith("LightGuard 360")
+                ? (["LightGuard 360 Housing"] as readonly string[])
+                : ROLLER_TOP_TREATMENT_CLASSES.filter(
+                    (choice) => choice !== "LightGuard 360 Housing",
+                  ),
+            },
+            {
+              key: "tube_class",
+              label: "Tube",
+              field: "json:tube_class",
+              type: "select",
+              options:
+                authoritativeV2 && liftSystem === "Motorized"
+                  ? (rollerFacets?.tubeClasses ?? ROLLER_TUBE_CLASSES).filter(
+                      (tube) => tube !== "All Tubes",
+                    )
+                  : rollerFacets?.tubeClasses ?? ROLLER_TUBE_CLASSES,
+            },
+          );
+          if (
+            application?.includes("Coupled") ||
+            shadeType === "Coupled Shades" ||
+            (application === "LightGuard 360 with T-Post" && rollerComponentCount === 2)
+          ) {
+            options.push({
+              key: "coupling_arrangement",
+              label: "Coupling Arrangement",
+              field: "json:coupling_arrangement",
+              type: "select",
+              options: ROLLER_COUPLING_ARRANGEMENTS,
+            });
+          }
+        }
+
         if (shadeType === "Coupled Shades") {
           options.push({
             key: "coupled_shade_count",
@@ -5003,6 +6828,38 @@ function ShadesAndBlindsOptions({
             type: "buttons",
             options: ["2", "3", "4"],
           });
+        }
+
+        if (
+          authoritativeV2 &&
+          Number.isInteger(rollerComponentCount) &&
+          rollerComponentCount >= 2 &&
+          rollerComponentCount <= 4
+        ) {
+          for (let componentIndex = 1; componentIndex <= rollerComponentCount; componentIndex += 1) {
+            options.push({
+              key: `roller_component_width_${componentIndex}`,
+              label: `Shade ${componentIndex} Width`,
+              field: `json:roller_component_width_${componentIndex}`,
+              type: "number",
+              min: 1,
+              max: 250,
+              step: "0.0625",
+              unit: '"',
+            });
+          }
+          if (rollerComponentCount === 3) {
+            options.push({
+              key: "roller_coupled_grouping",
+              label: "Three-Shade Coupled Pair",
+              field: "json:roller_coupled_grouping",
+              type: "buttons",
+              options: [
+                "Coupled Left / Single Right",
+                "Single Left / Coupled Right",
+              ] as const,
+            });
+          }
         }
 
         if (premiumHardware === "Yes") {
@@ -5026,13 +6883,37 @@ function ShadesAndBlindsOptions({
         }
 
         if (liftSystem === "Motorized") {
-          options.push({
-            key: "motor_type",
-            label: "Motor Type",
-            field: "motor_type",
-            type: "select",
-            options: ROLLER_MOTOR_TYPE_OPTIONS,
-          });
+          if (authoritativeV2) {
+            const powerConfiguration = getFieldValue(
+              design,
+              "json:power_configuration",
+            );
+            const expectedMotor = expectedRollerMotorForPowerConfiguration(
+              powerConfiguration,
+            );
+            options.push({
+              key: "power_configuration",
+              label: "Power Configuration",
+              field: "json:power_configuration",
+              type: "select",
+              options: rollerFacets?.powerConfigurations ?? ROLLER_POWER_CONFIGURATIONS,
+            });
+            options.push({
+              key: "motor_type",
+              label: "Motor Type",
+              field: "motor_type",
+              type: "select",
+              options: expectedMotor ? ([expectedMotor] as readonly string[]) : [],
+            });
+          } else {
+            options.push({
+              key: "motor_type",
+              label: "Motor Type",
+              field: "motor_type",
+              type: "select",
+              options: ROLLER_MOTOR_TYPE_OPTIONS,
+            });
+          }
         }
 
         return options;
@@ -5046,6 +6927,8 @@ function ShadesAndBlindsOptions({
         const shadeType = getFieldValue(design, "shade_type");
         const controlType = getFieldValue(design, "lift_system");
         const foldStyle = String(opts.fold_style || "");
+        const fabricCategory = String(opts.roman_fabric_category || "");
+        const fabricOrientation = String(opts.fabric_orientation || "");
         const chainType = String(opts.chain_type || "");
         const poles = String(opts.poles || "");
         const powerSource = getFieldValue(design, "motor_type");
@@ -5082,6 +6965,15 @@ function ShadesAndBlindsOptions({
 
         // Chain controls — Continuous Cord Loop and SmartRelease only.
         if (isChainControl) {
+          if (authoritativeV2 && controlType === "Continuous Cord Loop") {
+            options.push({
+              key: "headrail_size",
+              label: "Headrail Size",
+              field: "json:headrail_size",
+              type: "buttons",
+              options: ['1 1/2" Headrail', '2" Headrail'] as const,
+            });
+          }
           options.push({
             key: "chain_type",
             label: "Chain Type",
@@ -5173,6 +7065,27 @@ function ShadesAndBlindsOptions({
           type: "select",
           options: getRomanFoldStylesFor(shadeType),
         });
+        if (authoritativeV2) {
+          options.push({
+            key: "fabric_orientation",
+            label: "Fabric Orientation",
+            field: "json:fabric_orientation",
+            type: "buttons",
+            options: ROMAN_FABRIC_ORIENTATIONS,
+          });
+          options.push({
+            key: "seaming",
+            label: "Seaming",
+            field: "json:seaming",
+            type: "select",
+            options:
+              fabricOrientation === "Railroaded"
+                ? (["No Seams", "Horizontal Seams"] as readonly string[])
+                : fabricOrientation === "Standard / Non-Railroaded"
+                  ? (["No Seams", "Vertical Seams"] as readonly string[])
+                  : ROMAN_SEAMING_OPTIONS,
+          });
+        }
         options.push({
           key: "roman_fabric_category",
           label: "Fabric Category",
@@ -5188,6 +7101,27 @@ function ShadesAndBlindsOptions({
           options: [] as readonly string[],
         });
 
+        if (authoritativeV2 && (foldStyle === "Edge Banded" || foldStyle === "Ribbon Banded")) {
+          options.push({
+            key: "banding_color",
+            label: foldStyle === "Ribbon Banded" ? "Ribbon Tape Color" : "Edge Band Color",
+            field: "json:banding_color",
+            type: "select",
+            options:
+              foldStyle === "Ribbon Banded"
+                ? ROMAN_RIBBON_TAPE_COLORS
+                : getRomanFabricColorsForCategory(fabricCategory).filter(
+                    (color) =>
+                      !stringOption(opts, PRODUCT_COLOR_CODE_DETAIL) ||
+                      !color
+                        .toUpperCase()
+                        .startsWith(
+                          `${stringOption(opts, PRODUCT_COLOR_CODE_DETAIL)!.toUpperCase()} `,
+                        ),
+                  ),
+          });
+        }
+
         // Day & Night adds the back roller shade.
         if (isDayNight) {
           options.push({
@@ -5197,6 +7131,15 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: ROMAN_BACK_SHADE_FABRICS,
           });
+          if (authoritativeV2 && String(opts.back_fabric || "")) {
+            options.push({
+              key: "back_fabric_color",
+              label: "Back Shade Color",
+              field: "json:back_fabric_color",
+              type: "select",
+              options: [] as readonly string[],
+            });
+          }
           options.push({
             key: "back_hem_bar",
             label: "Back Shade Hem Bar",
@@ -5234,6 +7177,41 @@ function ShadesAndBlindsOptions({
           });
         }
 
+        if (authoritativeV2 && isCommonValance) {
+          options.push(
+            {
+              key: "common_valance_panel_1_width",
+              label: "Left Panel Width",
+              field: "json:common_valance_panel_1_width",
+              type: "number",
+              min: 1,
+              max: 144,
+              step: "0.0625",
+              unit: '"',
+            },
+            {
+              key: "common_valance_panel_2_width",
+              label: "Right Panel Width",
+              field: "json:common_valance_panel_2_width",
+              type: "number",
+              min: 1,
+              max: 144,
+              step: "0.0625",
+              unit: '"',
+            },
+            {
+              key: "common_valance_gap",
+              label: "Panel Gap",
+              field: "json:common_valance_gap",
+              type: "number",
+              min: 0.125,
+              max: 6,
+              step: "0.0625",
+              unit: '"',
+            },
+          );
+        }
+
         options.push({
           key: "lining",
           label: "Lining",
@@ -5262,6 +7240,16 @@ function ShadesAndBlindsOptions({
           }
         }
 
+        if (authoritativeV2) {
+          options.push({
+            key: "side_by_side",
+            label: "Side-by-Side Match",
+            field: "json:side_by_side",
+            type: "yes-no",
+            noFirst: true,
+          });
+        }
+
         return options;
       }
 
@@ -5269,6 +7257,11 @@ function ShadesAndBlindsOptions({
         // Mirrors the Norman Portrait Honeycomb order form flow — see
         // docs/norman-honeycomb-order-map.md for the cascade source.
         const mountType = getFieldValue(design, "mount_type");
+        const honeycombOptions = (design?.options_json as Record<string, unknown>) || {};
+        const application = String(honeycombOptions.honeycomb_application || "");
+        const specialtyShapeApplication = authoritativeV2 && application === "Specialty Shapes";
+        const slopedFrameApplication =
+          authoritativeV2 && application === "SmartFit for Sloped Windows with Frame";
         const storedCellSize = getFieldValue(design, "json:cell_size");
         const cellSize = canonicalizeHoneycombCellSize(storedCellSize);
         const operatingSystem = getFieldValue(design, "lift_system");
@@ -5286,14 +7279,23 @@ function ShadesAndBlindsOptions({
             label: "Mount Type",
             field: "mount_type",
             type: "buttons",
-            options: HONEYCOMB_MOUNT_TYPES,
+            options: specialtyShapeApplication
+              ? (["Inside Mount"] as readonly string[])
+              : HONEYCOMB_MOUNT_TYPES,
           },
           {
             key: "cell_size",
             label: "Shade Size",
             field: "json:cell_size",
             type: "select",
-            options: withStoredValue(HONEYCOMB_CELL_SIZES, storedCellSize),
+            options: withStoredValue(
+              specialtyShapeApplication
+                ? HONEYCOMB_CELL_SIZES.filter(
+                    (size) => size !== '1 1/4" Single Cell' && size !== '3/4" Double Cell',
+                  )
+                : HONEYCOMB_CELL_SIZES,
+              storedCellSize,
+            ),
           },
           {
             key: "operating_system",
@@ -5304,8 +7306,27 @@ function ShadesAndBlindsOptions({
           },
         ];
 
+        if (authoritativeV2) {
+          options.splice(1, 0, {
+            key: "honeycomb_application",
+            label: "Application",
+            field: "json:honeycomb_application",
+            type: "select",
+            options: HONEYCOMB_APPLICATIONS,
+          });
+        }
+
+        // Specialty shapes are inside-mount and non-operable. The guide still
+        // requires an exact cell/fabric selection, but no operating system.
+        if (specialtyShapeApplication) {
+          const operatingSystemIndex = options.findIndex(
+            (option) => option.field === "lift_system",
+          );
+          if (operatingSystemIndex >= 0) options.splice(operatingSystemIndex, 1);
+        }
+
         // Chain controls — the Cord Loop family and SmartRelease.
-        if (isHoneycombChainOperatingSystem(operatingSystem)) {
+        if (!specialtyShapeApplication && isHoneycombChainOperatingSystem(operatingSystem)) {
           options.push({
             key: "chain_location",
             label: "Chain Location",
@@ -5323,7 +7344,7 @@ function ShadesAndBlindsOptions({
         }
 
         // Cordless and SmartFit systems take an operating pole.
-        if (isHoneycombCordlessPoleOperatingSystem(operatingSystem)) {
+        if (!specialtyShapeApplication && isHoneycombCordlessPoleOperatingSystem(operatingSystem)) {
           options.push({
             key: "poles",
             label: "Poles",
@@ -5334,7 +7355,7 @@ function ShadesAndBlindsOptions({
         }
 
         // Motorization — power source drives which remotes/hubs apply.
-        if (isHoneycombMotorizedOperatingSystem(operatingSystem)) {
+        if (!specialtyShapeApplication && isHoneycombMotorizedOperatingSystem(operatingSystem)) {
           options.push({
             key: "motor_type",
             label: "Power Source",
@@ -5363,18 +7384,71 @@ function ShadesAndBlindsOptions({
 
         // Day & Night systems add the back shade fabric (the rep records the
         // fabric line here; the front color comes from the fabric search).
-        if (isHoneycombDayNightOperatingSystem(operatingSystem)) {
+        if (!specialtyShapeApplication && isHoneycombDayNightOperatingSystem(operatingSystem)) {
+          if (authoritativeV2) {
+            options.push({
+              key: "rear_cell_size",
+              label: "Back Shade Cell Size",
+              field: "json:rear_cell_size",
+              type: "select",
+              options: HONEYCOMB_CELL_SIZES.filter((size) => !isHoneycombFrameCellSize(size)),
+            });
+          }
           options.push({
             key: "back_fabric",
             label: "Back Shade Fabric",
             field: "json:back_fabric",
             type: "select",
-            options: getHoneycombDealerFabricTypesFor(cellSize),
+            options: authoritativeV2
+              ? getV2HoneycombFabricFamiliesForCellSize(
+                  String(honeycombOptions.rear_cell_size || cellSize || ""),
+                )
+              : getHoneycombDealerFabricTypesFor(cellSize),
           });
+          if (authoritativeV2 && String(honeycombOptions.back_fabric || "")) {
+            options.push({
+              key: "back_fabric_color",
+              label: "Back Shade Color",
+              field: "json:back_fabric_color",
+              type: "select",
+              options: [] as readonly string[],
+            });
+          }
         }
 
         // SmartFit-with-Frame (Decoflex) sizes add the frame details.
-        if (isHoneycombFrameCellSize(cellSize)) {
+        if (
+          isHoneycombFrameCellSize(cellSize) ||
+          (HONEYCOMB_FRAME_APPLICATIONS as readonly string[]).includes(application)
+        ) {
+          if (authoritativeV2) {
+            options.push({
+              key: "honeycomb_actual_cell_size",
+              label: "Actual Cell Size",
+              field: "json:honeycomb_actual_cell_size",
+              type: "select",
+              options: HONEYCOMB_CELL_SIZES.filter((size) => !isHoneycombFrameCellSize(size)),
+            });
+            options.push({
+              key: "honeycomb_frame_type",
+              label: "Frame",
+              field: "json:honeycomb_frame_type",
+              type: "select",
+              options: getHoneycombFrameTypesForApplication(application),
+            });
+            if (slopedFrameApplication) {
+              options.push({
+                key: "slope_angle_degrees",
+                label: "Slope Angle",
+                field: "json:slope_angle_degrees",
+                type: "number",
+                min: 45,
+                max: 90,
+                step: "0.1",
+                unit: "°",
+              });
+            }
+          }
           options.push({
             key: "frame_qty",
             label: "Frame Quantity",
@@ -5389,10 +7463,204 @@ function ShadesAndBlindsOptions({
             type: "yes-no",
             noFirst: true,
           });
+          if (authoritativeV2 && !slopedFrameApplication) {
+            options.push({
+              key: "frame_t_post_count",
+              label: "T-Post Count",
+              field: "json:frame_t_post_count",
+              type: "number",
+              min: 0,
+              max: 3,
+              step: "1",
+            });
+            const tPostCount = Math.min(3, Math.max(0, Number(honeycombOptions.frame_t_post_count)));
+            for (let tPostIndex = 1; tPostIndex <= tPostCount; tPostIndex += 1) {
+              options.push({
+                key: `frame_t_post_${tPostIndex}_location`,
+                label: `T-Post ${tPostIndex} Location`,
+                field: `json:frame_t_post_${tPostIndex}_location`,
+                type: "number",
+                min: 0,
+                max: 250,
+                step: "0.0625",
+                unit: '"',
+              });
+            }
+          }
+          if (authoritativeV2) {
+            const panelCount = slopedFrameApplication
+              ? 1
+              : Math.min(
+                  4,
+                  Math.max(1, Number(honeycombOptions.frame_t_post_count) + 1 || 1),
+                );
+            for (let panelIndex = 1; panelIndex <= panelCount; panelIndex += 1) {
+              options.push(
+                {
+                  key: `honeycomb_panel_${panelIndex}_net_width`,
+                  label: `Panel ${panelIndex} Net Width`,
+                  field: `json:honeycomb_panel_${panelIndex}_net_width`,
+                  type: "number",
+                  min: 0.0625,
+                  max: 250,
+                  step: "0.0625",
+                  unit: '"',
+                },
+                {
+                  key: `honeycomb_panel_${panelIndex}_net_height`,
+                  label: `Panel ${panelIndex} Net Height`,
+                  field: `json:honeycomb_panel_${panelIndex}_net_height`,
+                  type: "number",
+                  min: 0.0625,
+                  max: 250,
+                  step: "0.0625",
+                  unit: '"',
+                },
+              );
+            }
+            if (!slopedFrameApplication) {
+              options.push({
+                key: "sill_plate",
+                label: "Sill Plate",
+                field: "json:sill_plate",
+                type: "yes-no",
+                noFirst: true,
+              });
+              options.push({
+                key: "frame_notch_out",
+                label: "Frame Notch-Out",
+                field: "json:frame_notch_out",
+                type: "yes-no",
+                noFirst: true,
+              });
+              if (String(honeycombOptions.frame_notch_out || "") === "Yes") {
+                options.push(
+                  {
+                    key: "frame_notch_a_inches",
+                    label: "Frame Notch A",
+                    field: "json:frame_notch_a_inches",
+                    type: "number",
+                    min: 0,
+                    max: 1.125,
+                    step: "0.0625",
+                    unit: '"',
+                  },
+                  {
+                    key: "frame_notch_b_inches",
+                    label: "Frame Notch B",
+                    field: "json:frame_notch_b_inches",
+                    type: "number",
+                    min: 0,
+                    max: 0.5,
+                    step: "0.0625",
+                    unit: '"',
+                  },
+                );
+              }
+            }
+          }
+        }
+
+        if (specialtyShapeApplication) {
+          const specialtyShape = String(honeycombOptions.specialty_shape || "");
+          options.push({
+            key: "specialty_shape",
+            label: "Specialty Shape",
+            field: "json:specialty_shape",
+            type: "select",
+            options: HONEYCOMB_SPECIALTY_SHAPES,
+          });
+          if (authoritativeV2) {
+            options.push({
+              key: "non_operable",
+              label: "Non-Operable",
+              field: "json:non_operable",
+              type: "yes-no",
+            });
+          }
+          if (authoritativeV2 && specialtyShape === "Elongated Eyebrow") {
+            options.push(
+              {
+                key: "specialty_left_leg_height",
+                label: "Left Leg Height",
+                field: "json:specialty_left_leg_height",
+                type: "number",
+                min: 1,
+                max: 250,
+                step: "0.0625",
+                unit: '"',
+              },
+              {
+                key: "specialty_right_leg_height",
+                label: "Right Leg Height",
+                field: "json:specialty_right_leg_height",
+                type: "number",
+                min: 1,
+                max: 250,
+                step: "0.0625",
+                unit: '"',
+              },
+            );
+          } else if (honeycombSpecialtyShapeNeedsLegHeight(specialtyShape)) {
+            options.push({
+              key: "specialty_leg_height",
+              label: "Leg Height",
+              field: "json:specialty_leg_height",
+              type: "number",
+              min: 1,
+              max: 250,
+              step: "0.0625",
+              unit: '"',
+            });
+          }
+        }
+
+        if (authoritativeV2 && application === "Patio Door Vertical") {
+          options.push({
+            key: "split_splice",
+            label: "Stack Configuration",
+            field: "json:split_splice",
+            type: "select",
+            options: HONEYCOMB_SPLIT_SPLICE_OPTIONS,
+          });
+          if (honeycombOptions.split_splice === "Center Opening - Custom Split") {
+            options.push(
+              {
+                key: "vertical_left_width_inches",
+                label: "Left Shade Width",
+                field: "json:vertical_left_width_inches",
+                type: "number",
+                min: 15,
+                max: 131,
+                step: "0.0625",
+                unit: '"',
+              },
+              {
+                key: "vertical_right_width_inches",
+                label: "Right Shade Width",
+                field: "json:vertical_right_width_inches",
+                type: "number",
+                min: 15,
+                max: 131,
+                step: "0.0625",
+                unit: '"',
+              },
+            );
+          }
+        }
+
+        if (authoritativeV2 && application === "Side-by-Side") {
+          options.push({
+            key: "side_by_side_position",
+            label: "Side-by-Side Position",
+            field: "json:side_by_side_position",
+            type: "buttons",
+            options: HONEYCOMB_SIDE_BY_SIDE_POSITIONS,
+          });
         }
 
         // "2 on 1" shades are only offered on a few operating systems.
-        if (honeycombOperatingSystemAllows2On1(operatingSystem)) {
+        if (!specialtyShapeApplication && honeycombOperatingSystemAllows2On1(operatingSystem)) {
           options.push({
             key: "shade_type",
             label: "Shade Type",
@@ -5400,6 +7668,69 @@ function ShadesAndBlindsOptions({
             type: "buttons",
             options: HONEYCOMB_SHADE_TYPES_2ON1,
           });
+        }
+
+        if (authoritativeV2 && !specialtyShapeApplication) {
+          options.push({
+            key: "cutout",
+            label: "Cut-Out",
+            field: "json:cutout",
+            type: "yes-no",
+            noFirst: true,
+          });
+          if (String(honeycombOptions.cutout || "") === "Yes") {
+            if (application === "Patio Door Vertical") {
+              options.push(
+                {
+                  key: "cutout_type",
+                  label: "Cut-Out Type",
+                  field: "json:cutout_type",
+                  type: "select",
+                  options: ["Baseboard"] as readonly string[],
+                },
+                {
+                  key: "cutout_height_inches",
+                  label: "Baseboard Cut-Out Height",
+                  field: "json:cutout_height_inches",
+                  type: "number",
+                  min: 0,
+                  max: 6,
+                  step: "0.0625",
+                  unit: '"',
+                },
+                {
+                  key: "vertical_cutout_rail",
+                  label: "Cut-Out Rail",
+                  field: "json:vertical_cutout_rail",
+                  type: "buttons",
+                  options: ["Stationary", "Movable"] as readonly string[],
+                },
+              );
+            } else {
+              options.push(
+                {
+                  key: "cutout_width_inches",
+                  label: "Cut-Out Width",
+                  field: "json:cutout_width_inches",
+                  type: "number",
+                  min: 0.125,
+                  max: 1,
+                  step: "0.0625",
+                  unit: '"',
+                },
+                {
+                  key: "cutout_height_inches",
+                  label: "Cut-Out Height",
+                  field: "json:cutout_height_inches",
+                  type: "number",
+                  min: 0.875,
+                  max: 250,
+                  step: "0.0625",
+                  unit: '"',
+                },
+              );
+            }
+          }
         }
 
         options.push({
@@ -5620,7 +7951,8 @@ function ShadesAndBlindsOptions({
         ];
 
       case "Vertical Blinds": {
-        return [
+        const mountType = getFieldValue(design, "mount_type");
+        const options: GridOption[] = [
           {
             key: "mount",
             label: "Mount Type",
@@ -5657,6 +7989,37 @@ function ShadesAndBlindsOptions({
             options: VERTICAL_CONTROL_TYPES,
           },
         ];
+        if (authoritativeV2) {
+          if (mountType === "Inside Mount") {
+            options.splice(1, 0, {
+              key: "mount_depth_inches",
+              label: "Mount Depth",
+              field: "json:mount_depth_inches",
+              type: "number",
+              min: 0,
+              max: 24,
+              step: "0.0625",
+              unit: '"',
+            });
+          }
+          options.push(
+            {
+              key: "draw_direction",
+              label: "Draw",
+              field: "json:draw_direction",
+              type: "buttons",
+              options: VERTICAL_DRAW_OPTIONS,
+            },
+            {
+              key: "side_by_side_position",
+              label: "Side-by-Side",
+              field: "json:side_by_side_position",
+              type: "select",
+              options: VERTICAL_SIDE_BY_SIDE_POSITIONS,
+            },
+          );
+        }
+        return options;
       }
 
       case "Smart Drapes": {
@@ -5774,6 +8137,49 @@ function ShadesAndBlindsOptions({
     });
   };
 
+  const handleBackRollerFabricSelect = (fabricColor: MtsRollerFabricColor) => {
+    setOpenOptionField(null);
+    onUpdateFields({
+      options_json: {
+        ...withoutBackFabricColorDetails(optionsJson),
+        back_fabric: String(optionsJson.back_fabric || fabricColor.collection),
+        back_fabric_color: fabricColor.label,
+        [BACK_FABRIC_COLOR_ID_DETAIL]: fabricColor.id,
+        [BACK_FABRIC_PRODUCT_ID_DETAIL]: "roller",
+        [BACK_FABRIC_PROGRAM_DETAIL]: fabricColor.programId,
+        [BACK_FABRIC_COLLECTION_DETAIL]: fabricColor.collection,
+        [BACK_FABRIC_CODE_DETAIL]: fabricColor.colorCode,
+        [BACK_FABRIC_NAME_DETAIL]: fabricColor.colorName,
+        [BACK_FABRIC_TYPE_DETAIL]: fabricColor.fabricType,
+      },
+    });
+  };
+
+  const handleBackProductColorSelect = (fabricColor: ProductColorOption) => {
+    setOpenOptionField(null);
+    const surchargeId = fabricColor.automaticDetails[PRODUCT_COLOR_SURCHARGE_DETAIL];
+    onUpdateFields({
+      options_json: {
+        ...withoutBackFabricColorDetails(optionsJson),
+        back_fabric: String(optionsJson.back_fabric || fabricColor.collection),
+        back_fabric_color: getMtsProductColorValue(fabricColor),
+        [BACK_FABRIC_COLOR_ID_DETAIL]: fabricColor.id,
+        [BACK_FABRIC_PRODUCT_ID_DETAIL]: fabricColor.productId,
+        [BACK_FABRIC_PROGRAM_DETAIL]: fabricColor.programId,
+        [BACK_FABRIC_COLLECTION_DETAIL]: fabricColor.collection,
+        [BACK_FABRIC_CODE_DETAIL]: fabricColor.colorCode,
+        [BACK_FABRIC_NAME_DETAIL]: fabricColor.colorName,
+        [BACK_FABRIC_TYPE_DETAIL]: fabricColor.fabricType,
+        ...(surchargeId ? { [BACK_FABRIC_SURCHARGE_DETAIL]: surchargeId } : {}),
+      },
+    });
+  };
+
+  const handleBackFabricColorClear = () => {
+    setOpenOptionField("json:back_fabric_color");
+    onUpdateFields({ options_json: withoutBackFabricColorDetails(optionsJson) });
+  };
+
   const handleProductColorSelect = (field: string, fabricColor: ProductColorOption) => {
     setOpenOptionField(null);
 
@@ -5800,6 +8206,15 @@ function ShadesAndBlindsOptions({
 
     if (productType === "Roman Shades") {
       nextJson.roman_fabric_category = fabricColor.collection;
+      if (
+        nextJson.fold_style === "Edge Banded" &&
+        typeof nextJson.banding_color === "string" &&
+        nextJson.banding_color
+          .toUpperCase()
+          .startsWith(`${fabricColor.colorCode.toUpperCase()} `)
+      ) {
+        nextJson.banding_color = null;
+      }
     }
 
     if (productType === "Honeycomb Shades") {
@@ -5820,7 +8235,7 @@ function ShadesAndBlindsOptions({
     }
 
     if (productType === "Vertical Blinds") {
-      nextJson.fabric_group = fabricColor.collection;
+      nextJson.fabric_group = getVerticalFabricGroupSelection(fabricColor.collection);
     }
 
     if (productType === "Faux Wood Blinds") {
@@ -5880,6 +8295,10 @@ function ShadesAndBlindsOptions({
   const moreEditableOptionRows = getEditableOptionRows(moreOptionRows, design, openOptionField);
   const confirmedOptions = getConfirmedOptionItems(design, gridOptions);
   const editableOptionRows = getEditableOptionRows(optionRows, design, openOptionField);
+  const productColorLookupOptions =
+    productType === "Honeycomb Shades"
+      ? { ...optionsJson, lift_system: design?.lift_system ?? null }
+      : optionsJson;
   const hasAnySelectedOption = gridOptions.some((option) =>
     hasOptionValue(getFieldValue(design, option.field))
   );
@@ -5903,13 +8322,48 @@ function ShadesAndBlindsOptions({
     }
 
     if (opt.type === "select") {
+      if (opt.field === "json:back_fabric_color" && productType === "Roman Shades") {
+        const backFabric = stringOption(optionsJson, "back_fabric");
+        return (
+          <RollerFabricAutocomplete
+            value={value}
+            optionsJson={optionsJson}
+            metadataKeys={BACK_FABRIC_METADATA_KEYS}
+            allowedCollections={backFabric ? [backFabric] : ROMAN_BACK_SHADE_FABRICS}
+            hideLabel
+            onSelect={handleBackRollerFabricSelect}
+            onClear={handleBackFabricColorClear}
+          />
+        );
+      }
+
+      if (opt.field === "json:back_fabric_color" && productType === "Honeycomb Shades") {
+        const backFabric = stringOption(optionsJson, "back_fabric");
+        return (
+          <ProductColorAutocomplete
+            productType={productType}
+            field={opt.field}
+            value={value}
+            optionsJson={{
+              ...productColorLookupOptions,
+              cell_size: optionsJson.rear_cell_size ?? optionsJson.cell_size,
+            }}
+            metadataKeys={BACK_FABRIC_METADATA_KEYS}
+            allowedCollections={backFabric ? [backFabric] : undefined}
+            hideLabel
+            onSelect={handleBackProductColorSelect}
+            onClear={handleBackFabricColorClear}
+          />
+        );
+      }
+
       if (supportsMtsProductColorSearch(productType, opt.field, optionsJson)) {
         return (
           <ProductColorAutocomplete
             productType={productType}
             field={opt.field}
             value={value}
-            optionsJson={optionsJson}
+            optionsJson={productColorLookupOptions}
             hideLabel
             onSelect={(fabricColor) => {
               handleProductColorSelect(opt.field, fabricColor);
@@ -5957,6 +8411,26 @@ function ShadesAndBlindsOptions({
       );
     }
 
+    if (opt.type === "number") {
+      return (
+        <GridNumberInput
+          label={opt.label}
+          value={value}
+          min={opt.min}
+          max={opt.max}
+          step={opt.step}
+          placeholder={opt.placeholder}
+          unit={opt.unit}
+          hideLabel
+          onChange={(v) => {
+            handleUpdate(opt.field, v);
+            setOpenOptionField(null);
+          }}
+          onClear={authoritativeV2 ? () => handleUpdate(opt.field, null) : undefined}
+        />
+      );
+    }
+
     return (
       <GridYesNo
         label={opt.label}
@@ -5980,9 +8454,11 @@ function ShadesAndBlindsOptions({
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
       renderSelectedDirect={
-        opt.type === "select" &&
-        !supportsMtsProductColorSearch(productType, opt.field, optionsJson) &&
-        !(productType === "Roller Shades" && opt.field === "fabric")
+        opt.type === "number" ||
+        (opt.type === "select" &&
+          opt.field !== "json:back_fabric_color" &&
+          !supportsMtsProductColorSearch(productType, opt.field, optionsJson) &&
+          !(productType === "Roller Shades" && opt.field === "fabric"))
       }
     >
       {renderOptionControl(opt)}
@@ -5995,6 +8471,24 @@ function ShadesAndBlindsOptions({
     setOpenOptionField(field);
   };
 
+  const selectedSideBySidePosition = stringOption(
+    optionsJson,
+    "side_by_side_position",
+  );
+  const romanSideBySideEnabled =
+    optionsJson.side_by_side === true ||
+    ["yes", "true", "1"].includes(
+      String(optionsJson.side_by_side || "").trim().toLowerCase(),
+    );
+  const showSideBySidePairSelector =
+    authoritativeV2 &&
+    ((productType === "Roman Shades" && romanSideBySideEnabled) ||
+      (productType === "Honeycomb Shades" &&
+      stringOption(optionsJson, "honeycomb_application") === "Side-by-Side") ||
+      (productType === "Vertical Blinds" &&
+        Boolean(selectedSideBySidePosition) &&
+        selectedSideBySidePosition !== "Not Side-by-Side"));
+
   return (
     <div className="space-y-3">
       <ConfirmedOptionStrip
@@ -6002,6 +8496,14 @@ function ShadesAndBlindsOptions({
         editingField={openOptionField}
         onReset={handleConfirmedOptionReset}
       />
+
+      {showSideBySidePairSelector ? (
+        <SideBySidePairSelector
+          value={stringOption(optionsJson, "side_by_side_match_line_id")}
+          options={sideBySideLineOptions}
+          onChange={(lineId) => onSideBySidePairChange(lineId)}
+        />
+      ) : null}
 
       {(editableOptionRows.mandatory.length > 0 || editableOptionRows.optional.length > 0) && (
         <OptionSlotRows
@@ -6061,13 +8563,23 @@ function ShadesAndBlindsOptions({
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
-              <DeferredNumberInput
-                value={design?.unit_price || ""}
-                onCommit={handleManualPriceChange}
-                commitOnChange
-                className="pl-5 h-8 text-sm"
-                placeholder="0.00"
-              />
+              {allowManualPriceEditing ? (
+                <DeferredNumberInput
+                  value={design?.unit_price || ""}
+                  onCommit={handleManualPriceChange}
+                  commitOnChange
+                  className="pl-5 h-8 text-sm"
+                  placeholder="0.00"
+                />
+              ) : (
+                <Input
+                  aria-label="Authoritative price"
+                  readOnly
+                  value={design?.unit_price || ""}
+                  className="pl-5 h-8 text-sm"
+                  placeholder="0.00"
+                />
+              )}
             </div>
             {onRecalculatePrice && (
               <Button

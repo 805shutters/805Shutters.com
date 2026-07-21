@@ -12,13 +12,13 @@ function compareFixture(id: string) {
 describe("Quote Lab isolation", () => {
   it("has no production-capable integrations", () => {
     expect(QUOTE_LAB_ISOLATION).toEqual({
-      database: "none",
+      database: "isolated_sqlite",
       productionWrites: false,
       email: false,
       sms: false,
       payments: false,
       manufacturerOrders: false,
-      persistence: "browser-session-only",
+      persistence: "server-test-database",
     });
   });
 

@@ -16,12 +16,87 @@ type Filter =
   | { kind: "in"; column: string; values: unknown[] }
   | { kind: "not-in"; column: string; values: unknown[] };
 
-type QuoteLabState = {
+export type QuoteLabState = {
   quotes: SalesQuote[];
   lineItems: SalesQuoteLineItem[];
   designs: SalesQuoteDesign[];
   selectedVariantByLine: Record<string, string>;
 };
+
+const QUOTE_LAB_V2_CATALOG_VERSION = "805-v2-norman-2026-07";
+const QUOTE_LAB_V2_ROLLER_CATALOG_VERSION = "805-v2-norman-roller-2026-08-01";
+const QUOTE_LAB_V2_PREVIEW_DATE = "2026-08-01";
+
+function v2SeedDesignDefaults(productId: string) {
+  if (productId !== "roller") return {};
+  return {
+    mount_type: "Inside Mount",
+    shade_type: "Single Shade",
+    lift_system: "Cordless",
+    valance: "No Valance",
+    fabric: "Amelia",
+    options_json: {
+      hem_bar: "Fabric Covered",
+      roller_application: "Single Shade",
+      top_treatment_class: "No Top Treatment",
+      tube_class: "All Tubes",
+      fabric_color_collection: "Amelia",
+      fabric_color_code: "F1484",
+      fabric_color_name: "Mist Gray",
+      fabric_product_id: "roller",
+      fabric_program_id: "roller_cordless_fabric_price_group_2_pg2",
+      roller_region_scope: "ca_ma",
+    },
+  } as const;
+}
+
+function withV2CatalogMarker(
+  productId: string,
+  options: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  return {
+    ...(productId === "roller" ? { roller_region_scope: "ca_ma" } : {}),
+    ...(options ?? {}),
+    quote_v2_backend: true,
+    quote_v2_catalog_version:
+      productId === "roller"
+        ? QUOTE_LAB_V2_ROLLER_CATALOG_VERSION
+        : QUOTE_LAB_V2_CATALOG_VERSION,
+    quote_v2_catalog_as_of: QUOTE_LAB_V2_PREVIEW_DATE,
+  };
+}
+
+function invalidateV2PriceOptions(
+  productId: string,
+  options: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const {
+    authoritative_price_breakdown: _retailBreakdown,
+    authoritative_cost_breakdown: _costBreakdown,
+    authoritative_once_total: _onceTotal,
+    authoritative_v2_snapshot: _snapshot,
+    priced_selection_fingerprint: _pricedFingerprint,
+    priced_catalog_version: _pricedCatalogVersion,
+    ...selectionOptions
+  } = withV2CatalogMarker(productId, options);
+  return {
+    ...selectionOptions,
+    authoritative_price_status: "stale",
+    authoritative_price_error: "Selection changed; authoritative repricing is required.",
+  };
+}
+
+function nonEmptyText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function immutableSnapshot(
+  value: unknown,
+): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? structuredClone(value as Record<string, unknown>)
+    : null;
+}
 
 function uniqueId(prefix: string) {
   return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`}`;
@@ -38,6 +113,21 @@ function fractionParts(value: number): { whole: number; fraction: string } {
   if (sixteenths >= 16) return { whole: whole + 1, fraction: "0" };
   const divisor = sixteenths % 8 === 0 ? 8 : sixteenths % 4 === 0 ? 4 : sixteenths % 2 === 0 ? 2 : 1;
   return { whole, fraction: `${sixteenths / divisor}/${16 / divisor}` };
+}
+
+function normalizePhysicalWindowQuantity(quantity: unknown): number {
+  return Math.max(1, Math.floor(Number(quantity) || 1));
+}
+
+export function quoteLineItemCount(lines: ReadonlyArray<unknown>): number {
+  return lines.length;
+}
+
+function assertLineItemLimit(lines: SalesQuoteLineItem[], quoteId: string) {
+  const count = quoteLineItemCount(lines.filter((line) => line.quote_id === quoteId));
+  if (count > QUOTE_LAB_MAX_LINES) {
+    throw new Error(`A quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+  }
 }
 
 function baseQuote(total: number): SalesQuote {
@@ -120,6 +210,7 @@ function seedState(
       const product = catalog.products.find((candidate) => candidate.id === sourceDesign.productId);
       const program = product?.programs.find((candidate) => candidate.id === sourceDesign.programId);
       const priced = comparedLine?.designs.find((candidate) => candidate.designId === sourceDesign.id)?.authoritative;
+      const defaults = v2SeedDesignDefaults(sourceDesign.productId);
       designs.push({
         id: `quote-lab-design-${index + 1}-${variant}`,
         line_item_id: lineId,
@@ -131,11 +222,11 @@ function seedState(
         tilt_type: null,
         hinge_color: null,
         panel_config: null,
-        mount_type: null,
-        shade_type: null,
-        lift_system: null,
-        valance: null,
-        fabric: sourceDesign.fabric ?? null,
+        mount_type: defaults.mount_type ?? null,
+        shade_type: defaults.shade_type ?? null,
+        lift_system: defaults.lift_system ?? null,
+        valance: defaults.valance ?? null,
+        fabric: sourceDesign.fabric ?? defaults.fabric ?? null,
         motor_type: null,
         remote_type: null,
         hard_surface_install: false,
@@ -143,14 +234,15 @@ function seedState(
         requires_takedown: false,
         unit_price: priced?.ok ? priced.unitPrice : 0,
         notes: null,
-        options_json: {
+        options_json: withV2CatalogMarker(sourceDesign.productId, {
+          ...(defaults.options_json ?? {}),
           quote_lab_product_id: sourceDesign.productId,
           quote_lab_program_id: sourceDesign.programId,
           catalog_program_id: sourceDesign.programId,
           discount_percent: sourceDesign.discountPercent,
           authoritative_price_status: priced?.ok ? "ok" : priced?.code ?? "unpriced",
           authoritative_once_total: priced?.ok ? priced.onceTotal : 0,
-        },
+        }),
         created_at: timestamp,
       });
     });
@@ -158,12 +250,14 @@ function seedState(
     selectedVariantByLine[lineId] = selected?.label ?? sourceLine.designs[0]?.label ?? "A";
   });
 
-  return {
+  const state = {
     quotes: [baseQuote(comparison.authoritativeTotal)],
     lineItems,
     designs,
     selectedVariantByLine,
   };
+  assertLineItemLimit(state.lineItems, "quote-lab-exact");
+  return state;
 }
 
 function parseNotInValues(value: unknown): unknown[] {
@@ -253,6 +347,7 @@ class QuoteLabQuery {
         this.filters,
         this.orderColumn,
       );
+      if (this.operation !== "select") await this.client.persistState();
       return { data: this.operation === "select" || this.returning ? data : null, error: null };
     } catch (error) {
       return { data: null, error: error instanceof Error ? error : new Error("Quote Lab operation failed.") };
@@ -267,7 +362,19 @@ class ExactQuoteLabDatabase {
     getSession: async () => ({ data: { session: null }, error: null }),
   };
 
-  constructor(private state: QuoteLabState) {}
+  constructor(
+    private state: QuoteLabState,
+    private readonly persist?: (state: QuoteLabState) => Promise<void>,
+  ) {}
+
+  async initializeV2() {
+    await this.repriceQuote("quote-lab-exact");
+    await this.persistState();
+  }
+
+  async persistState() {
+    if (this.persist) await this.persist(structuredClone(this.state));
+  }
 
   from(table: TableName) {
     return new QuoteLabQuery(this, table);
@@ -313,11 +420,15 @@ class ExactQuoteLabDatabase {
         width_fraction: source.width_fraction ?? "0",
         height_whole: Number(source.height_whole) || 0,
         height_fraction: source.height_fraction ?? "0",
-        quantity: Math.max(1, Math.floor(Number(source.quantity) || 1)),
+        quantity: normalizePhysicalWindowQuantity(source.quantity),
         sort_order: Number.isFinite(Number(source.sort_order)) ? Number(source.sort_order) : index,
         created_at: timestamp,
       } satisfies SalesQuoteLineItem;
     }
+    const productId =
+      typeof source.options_json?.quote_lab_product_id === "string"
+        ? source.options_json.quote_lab_product_id
+        : "";
     return {
       id: source.id ?? uniqueId("quote-lab-design"),
       line_item_id: source.line_item_id,
@@ -339,9 +450,9 @@ class ExactQuoteLabDatabase {
       hard_surface_install: Boolean(source.hard_surface_install),
       ladder_over_15ft: Boolean(source.ladder_over_15ft),
       requires_takedown: Boolean(source.requires_takedown),
-      unit_price: Number(source.unit_price) || 0,
+      unit_price: 0,
       notes: source.notes ?? null,
-      options_json: source.options_json ?? {},
+      options_json: invalidateV2PriceOptions(productId, source.options_json),
       created_at: source.created_at ?? timestamp,
     } satisfies SalesQuoteDesign;
   }
@@ -356,7 +467,16 @@ class ExactQuoteLabDatabase {
       body: JSON.stringify({ lines, designs, selectedVariantByLine: this.state.selectedVariantByLine }),
     });
     const body = (await response.json().catch(() => ({}))) as {
-      quote?: { total: number; designs: Array<{ lineItemId: string; variant: string; result: any; costResult: any }> };
+      quote?: {
+        total: number;
+        designs: Array<{
+          lineItemId: string;
+          variant: string;
+          result: any;
+          costResult: any;
+          snapshot?: Record<string, unknown> | null;
+        }>;
+      };
       error?: string;
     };
     if (!response.ok || !body.quote) throw new Error(body.error || "Authoritative quote pricing failed.");
@@ -366,19 +486,87 @@ class ExactQuoteLabDatabase {
       );
       if (!design) continue;
       const result = priced.result;
-      design.unit_price = result.ok ? Number(result.unitPrice) || 0 : 0;
+      const productId =
+        typeof design.options_json?.quote_lab_product_id === "string"
+          ? design.options_json.quote_lab_product_id
+          : "";
+      const selectionOptions = invalidateV2PriceOptions(
+        productId,
+        design.options_json,
+      );
+      const snapshot = immutableSnapshot(priced.snapshot);
+      const pricedSelectionFingerprint = nonEmptyText(
+        result.pricedSelectionFingerprint,
+      );
+      const pricedCatalogVersion = nonEmptyText(result.pricedCatalogVersion);
+      const snapshotSelectionFingerprint = nonEmptyText(
+        snapshot?.selectionFingerprint,
+      );
+      const snapshotCatalogVersion = nonEmptyText(snapshot?.catalogVersion);
+      const snapshotIsAuthoritative =
+        result.ok === true &&
+        result.validationStatus === "valid" &&
+        nonEmptyText(snapshot?.priceStatus) === "authoritative" &&
+        pricedSelectionFingerprint !== null &&
+        pricedSelectionFingerprint === nonEmptyText(result.selectionFingerprint) &&
+        pricedSelectionFingerprint === snapshotSelectionFingerprint &&
+        pricedCatalogVersion !== null &&
+        pricedCatalogVersion === nonEmptyText(result.catalogVersion) &&
+        pricedCatalogVersion === snapshotCatalogVersion;
+
+      design.unit_price = snapshotIsAuthoritative
+        ? Number(result.unitPrice) || 0
+        : 0;
       design.options_json = {
-        ...(design.options_json ?? {}),
-        authoritative_price_status: result.ok ? "ok" : result.code,
-        authoritative_price_error: result.ok ? null : result.error,
+        ...selectionOptions,
+        authoritative_price_status: snapshotIsAuthoritative
+          ? "authoritative"
+          : "unpriceable",
+        authoritative_price_error: snapshotIsAuthoritative
+          ? null
+          : result.ok
+            ? "Authoritative pricing did not return a complete immutable catalog snapshot."
+            : result.error,
         authoritative_price_breakdown: result,
         authoritative_cost_breakdown: priced.costResult,
-        authoritative_once_total: result.ok ? Number(result.onceTotal) || 0 : 0,
+        authoritative_once_total: snapshotIsAuthoritative
+          ? Number(result.onceTotal) || 0
+          : 0,
+        ...(snapshotIsAuthoritative
+          ? {
+              authoritative_v2_snapshot: snapshot,
+              priced_selection_fingerprint: pricedSelectionFingerprint,
+              priced_catalog_version: pricedCatalogVersion,
+            }
+          : {}),
       };
     }
     const quote = this.state.quotes.find((candidate) => candidate.id === quoteId);
     if (quote) {
-      quote.total_amount = body.quote.total;
+      quote.total_amount = Math.round(
+        lines.reduce((total, line) => {
+          const selectedVariant = this.state.selectedVariantByLine[line.id];
+          const selectedDesign = this.state.designs.find(
+            (design) =>
+              design.line_item_id === line.id &&
+              design.variant === selectedVariant,
+          );
+          if (
+            !selectedDesign ||
+            selectedDesign.options_json?.authoritative_price_status !==
+              "authoritative"
+          ) {
+            return total;
+          }
+          return (
+            total +
+            selectedDesign.unit_price * normalizePhysicalWindowQuantity(line.quantity) +
+            (Number(
+              selectedDesign.options_json?.authoritative_once_total,
+            ) || 0)
+          );
+        }, 0) * 100,
+      ) / 100;
       quote.updated_at = now();
     }
   }
@@ -387,7 +575,7 @@ class ExactQuoteLabDatabase {
     const pending = this.queuedReprices.get(quoteId);
     if (pending) return pending;
     const queued = new Promise<void>((resolve, reject) => {
-      window.setTimeout(() => {
+      globalThis.setTimeout(() => {
         void this.repriceQuote(quoteId).then(resolve, reject).finally(() => {
           this.queuedReprices.delete(quoteId);
         });
@@ -417,14 +605,19 @@ class ExactQuoteLabDatabase {
 
     if (operation === "insert") {
       const sourceRows = Array.isArray(payload) ? payload : [payload];
+      const inserted = sourceRows.map((source, index) => this.normalizeInserted(table, source, rows.length + index));
       if (table === "sales_quote_line_items") {
-        const quoteId = sourceRows[0]?.quote_id;
-        const existing = this.state.lineItems.filter((line) => line.quote_id === quoteId).length;
-        if (existing + sourceRows.length > QUOTE_LAB_MAX_LINES) {
-          throw new Error(`A quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+        const prospectiveLines = [
+          ...this.state.lineItems,
+          ...(inserted as SalesQuoteLineItem[]),
+        ];
+        const quoteIds = new Set(
+          (inserted as SalesQuoteLineItem[]).map((line) => line.quote_id),
+        );
+        for (const quoteId of quoteIds) {
+          assertLineItemLimit(prospectiveLines, quoteId);
         }
       }
-      const inserted = sourceRows.map((source, index) => this.normalizeInserted(table, source, rows.length + index));
       rows.push(...inserted);
       if (table === "sales_quote_line_items") {
         for (const line of inserted as SalesQuoteLineItem[]) this.state.selectedVariantByLine[line.id] = "A";
@@ -441,10 +634,72 @@ class ExactQuoteLabDatabase {
       const matched = rows.filter((row) => this.matches(row, filters));
       const updates = table === "sales_quotes"
         ? Object.fromEntries(Object.entries(payload ?? {}).filter(([key]) => key !== "total_amount"))
-        : payload;
-      for (const row of matched) Object.assign(row, updates, table === "sales_quotes" ? { updated_at: now() } : {});
+        : table === "sales_quote_line_items" && payload && "quantity" in payload
+          ? { ...payload, quantity: normalizePhysicalWindowQuantity(payload.quantity) }
+          : payload;
+      if (table === "sales_quote_line_items" && matched.length > 0) {
+        const matchedIds = new Set((matched as SalesQuoteLineItem[]).map((line) => line.id));
+        const prospectiveLines = this.state.lineItems.map((line) =>
+          matchedIds.has(line.id)
+            ? this.normalizeInserted(
+                "sales_quote_line_items",
+                { ...line, ...updates },
+                line.sort_order,
+              ) as SalesQuoteLineItem
+            : line,
+        );
+        const quoteIds = new Set([
+          ...(matched as SalesQuoteLineItem[]).map((line) => line.quote_id),
+          ...prospectiveLines
+            .filter((line) => matchedIds.has(line.id))
+            .map((line) => line.quote_id),
+        ]);
+        for (const quoteId of quoteIds) {
+          assertLineItemLimit(prospectiveLines, quoteId);
+        }
+      }
+      if (table === "sales_quote_designs") {
+        for (const row of matched as SalesQuoteDesign[]) {
+          const normalized = this.normalizeInserted(
+            "sales_quote_designs",
+            { ...row, ...updates },
+            this.state.designs.indexOf(row),
+          ) as SalesQuoteDesign;
+          Object.assign(row, normalized);
+        }
+      } else {
+        for (const row of matched) {
+          Object.assign(
+            row,
+            updates,
+            table === "sales_quotes" ? { updated_at: now() } : {},
+          );
+        }
+      }
       if (table === "sales_quote_line_items") {
+        const changedLineIds = new Set(
+          (matched as SalesQuoteLineItem[]).map((line) => line.id),
+        );
+        for (const design of this.state.designs) {
+          if (!changedLineIds.has(design.line_item_id)) continue;
+          const productId =
+            typeof design.options_json?.quote_lab_product_id === "string"
+              ? design.options_json.quote_lab_product_id
+              : "";
+          design.unit_price = 0;
+          design.options_json = invalidateV2PriceOptions(
+            productId,
+            design.options_json,
+          );
+        }
         const quoteIds = new Set((matched as SalesQuoteLineItem[]).map((line) => line.quote_id));
+        for (const quoteId of quoteIds) await this.queueReprice(quoteId);
+      } else if (table === "sales_quote_designs") {
+        const quoteIds = new Set(
+          (matched as SalesQuoteDesign[])
+            .map((design) => this.quoteIdForLine(design.line_item_id))
+            .filter(Boolean) as string[],
+        );
         for (const quoteId of quoteIds) await this.queueReprice(quoteId);
       }
       return structuredClone(matched);
@@ -465,7 +720,14 @@ class ExactQuoteLabDatabase {
       if (sourceRows.length === 1) this.state.selectedVariantByLine[sourceRows[0].line_item_id] = sourceRows[0].variant;
       const quoteIds = new Set(saved.map((design) => this.quoteIdForLine(design.line_item_id)).filter(Boolean) as string[]);
       for (const quoteId of quoteIds) await this.queueReprice(quoteId);
-      return structuredClone(saved);
+      const savedKeys = new Set(
+        saved.map((design) => `${design.line_item_id}\u0000${design.variant}`),
+      );
+      return structuredClone(
+        this.state.designs.filter((design) =>
+          savedKeys.has(`${design.line_item_id}\u0000${design.variant}`),
+        ),
+      );
     }
 
     const deleted = rows.filter((row) => this.matches(row, filters));
@@ -496,4 +758,23 @@ export function createExactQuoteLabDatabase(
   comparison: QuoteLabComparison,
 ): QuoteBuilderDatabase {
   return new ExactQuoteLabDatabase(seedState(catalog, fixture, comparison)) as unknown as QuoteBuilderDatabase;
+}
+
+export async function initializeExactQuoteLabDatabase(
+  catalog: QuoteLabCatalogResponse,
+  fixture: QuoteLabFixture,
+  comparison: QuoteLabComparison,
+  persistence?: {
+    state?: QuoteLabState | null;
+    save: (state: QuoteLabState) => Promise<void>;
+  },
+): Promise<QuoteBuilderDatabase> {
+  const database = new ExactQuoteLabDatabase(
+    persistence?.state
+      ? structuredClone(persistence.state)
+      : seedState(catalog, fixture, comparison),
+    persistence?.save,
+  );
+  await database.initializeV2();
+  return database as unknown as QuoteBuilderDatabase;
 }

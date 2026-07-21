@@ -13,13 +13,13 @@ import type {
 } from "./types";
 
 export const QUOTE_LAB_ISOLATION: QuoteLabComparison["isolation"] = {
-  database: "none",
+  database: "isolated_sqlite",
   productionWrites: false,
   email: false,
   sms: false,
   payments: false,
   manufacturerOrders: false,
-  persistence: "browser-session-only",
+  persistence: "server-test-database",
 };
 
 const LEGACY_PRODUCT_TYPES: Record<string, string> = {

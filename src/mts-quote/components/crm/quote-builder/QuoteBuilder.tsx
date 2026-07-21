@@ -11,6 +11,7 @@ import { DesignCard } from "./DesignCard";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
+import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
   Archive,
@@ -330,7 +331,12 @@ function StackedLineItemRow({
 }
 
 export function QuoteBuilder() {
-  const { database: supabase, isolated, preferStoredTotal } = useQuoteBuilderDatabase();
+  const {
+    database: supabase,
+    isolated,
+    authoritativeV2,
+    preferStoredTotal,
+  } = useQuoteBuilderDatabase();
   const {
     activeQuoteId,
     selectedProductType,
@@ -528,6 +534,9 @@ export function QuoteBuilder() {
       height_whole?: number;
       height_fraction?: string;
     }) => {
+      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+      }
       const { error } = await (supabase as any).from("sales_quote_line_items").insert({
         quote_id: activeQuoteId!,
         room_name: item.room_name,
@@ -626,6 +635,9 @@ export function QuoteBuilder() {
   // Copy line item
   const copyLineItem = useMutation({
     mutationFn: async (id: string) => {
+      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+      }
       const source = lineItems.find((i) => i.id === id);
       if (!source) return;
       const { error } = await (supabase as any).from("sales_quote_line_items").insert({
@@ -646,6 +658,9 @@ export function QuoteBuilder() {
         queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       toast.success("Line item copied");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Line item could not be copied");
     },
   });
 
@@ -879,6 +894,10 @@ export function QuoteBuilder() {
   const handleRoomSelect = (room: string) => {
     if (!selectedProductType) {
       toast.error("Select a product type first");
+      return;
+    }
+    if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+      toast.error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
       return;
     }
     addLineItem.mutate({
@@ -1384,7 +1403,11 @@ export function QuoteBuilder() {
           />
           <RoomPresetButtons
             onSelect={handleRoomSelect}
-            disabled={!selectedProductType || addLineItem.isPending}
+            disabled={
+              !selectedProductType ||
+              addLineItem.isPending ||
+              (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES)
+            }
             lineNumbers={roomLineNumbers}
           />
         </div>
@@ -1478,6 +1501,27 @@ export function QuoteBuilder() {
                   lineNumber={lineRange?.start ?? 0}
                   lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
+                  sideBySideLineOptions={lineItems.flatMap((candidate) => {
+                    if (
+                      candidate.id === item.id ||
+                      candidate.product_type !== item.product_type
+                    ) {
+                      return [];
+                    }
+                    const candidateDesign = designs.find(
+                      (design) =>
+                        design.line_item_id === candidate.id && design.variant === "A",
+                    );
+                    if (!candidateDesign) return [];
+                    const candidateRange = lineNumberRanges.get(candidate.id);
+                    return [
+                      {
+                        lineId: candidate.id,
+                        label: `${candidateRange?.label ?? "#?"} • ${candidate.room_name} • ID ${candidate.id}`,
+                        design: candidateDesign,
+                      },
+                    ];
+                  })}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}

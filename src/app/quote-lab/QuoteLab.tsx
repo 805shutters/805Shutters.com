@@ -5,7 +5,10 @@ import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuild
 import type { QuoteLabCatalogResponse, QuoteLabComparison } from "@/lib/quote-lab/types";
 import { QuoteLabAccessGate } from "./QuoteLabAccessGate";
 import { ExactQuoteLabWorkspace } from "./ExactQuoteLabWorkspace";
-import { createExactQuoteLabDatabase } from "./quoteLabDatabase";
+import {
+  initializeExactQuoteLabDatabase,
+  type QuoteLabState,
+} from "./quoteLabDatabase";
 import styles from "./QuoteLab.module.css";
 
 type AccessState = "loading" | "locked" | "ready" | "misconfigured";
@@ -45,7 +48,46 @@ export function QuoteLab() {
         throw new Error(comparisonBody.error || "The authoritative backend could not price the test quote.");
       }
 
-      setDatabase(createExactQuoteLabDatabase(catalogBody, fixture, comparisonBody.comparison));
+      const stateResponse = await fetch("/api/quote-lab/state", {
+        cache: "no-store",
+      });
+      const stateBody = (await stateResponse.json().catch(() => ({}))) as {
+        state?: QuoteLabState | null;
+        revision?: number;
+        error?: string;
+      };
+      if (!stateResponse.ok) {
+        throw new Error(
+          stateBody.error || "The isolated V2 test database could not load.",
+        );
+      }
+      let revision = Number(stateBody.revision) || 0;
+      const save = async (state: QuoteLabState) => {
+        const response = await fetch("/api/quote-lab/state", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state, expectedRevision: revision }),
+        });
+        const body = (await response.json().catch(() => ({}))) as {
+          revision?: number;
+          error?: string;
+        };
+        if (!response.ok || !Number.isInteger(body.revision)) {
+          throw new Error(
+            body.error || "The isolated V2 test database could not save.",
+          );
+        }
+        revision = body.revision as number;
+      };
+
+      setDatabase(
+        await initializeExactQuoteLabDatabase(
+          catalogBody,
+          fixture,
+          comparisonBody.comparison,
+          { state: stateBody.state ?? null, save },
+        ),
+      );
       setAccess("ready");
     } catch (error) {
       setConfigurationError(error instanceof Error ? error.message : "Quote Builder could not load.");

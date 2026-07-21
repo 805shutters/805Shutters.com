@@ -4,7 +4,7 @@ import {
   QuoteLabConfigurationError,
   quoteLabUnauthorizedResponse,
 } from "@/lib/quote-lab/auth";
-import { repriceExactQuoteBuilder } from "@/lib/quote-lab/exact-backend";
+import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Quote lines and designs are required." }, { status: 400 });
     }
     return NextResponse.json({
-      quote: repriceExactQuoteBuilder({
+      quote: repriceExactQuoteBuilderForQuoteLabPreview({
         lines: body.lines,
         designs: body.designs,
         selectedVariantByLine: body.selectedVariantByLine ?? {},

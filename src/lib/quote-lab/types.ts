@@ -85,13 +85,13 @@ export type QuoteLabComparison = {
   orderChargeTotal: number;
   lines: QuoteLabLineComparison[];
   isolation: {
-    database: "none";
+    database: "isolated_sqlite";
     productionWrites: false;
     email: false;
     sms: false;
     payments: false;
     manufacturerOrders: false;
-    persistence: "browser-session-only";
+    persistence: "server-test-database";
   };
 };
 
