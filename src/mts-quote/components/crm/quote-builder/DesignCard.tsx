@@ -222,6 +222,10 @@ import {
   pruneRollerV2UiSelection,
 } from "@/lib/quote-v2/roller-ui-facets";
 import { expectedRollerMotorForPowerConfiguration } from "@/lib/quote-v2/roller-motor";
+import {
+  isMarkedSelectedQuoteDesign,
+  preferredSavedQuoteVariant,
+} from "@/lib/quote-v2/selected-design";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
@@ -274,6 +278,7 @@ import {
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { resolveManufacturerStamp } from "./manufacturerStamp";
 import type {
   ManufacturerComparisonProgram,
   ManufacturerComparisonResponse,
@@ -3357,10 +3362,6 @@ function GridYesNo({
 
 // --- Main DesignCard ---
 
-function getPreferredSavedVariant(designs: SalesQuoteDesign[], variants: string[]): string {
-  return variants.find((variant) => designs.some((design) => design.variant === variant)) || "A";
-}
-
 export function DesignCard({
   lineItem,
   lineNumber,
@@ -3393,7 +3394,7 @@ export function DesignCard({
     [isShutters]
   );
   const [activeVariant, setActiveVariant] = useState(() =>
-    getPreferredSavedVariant(designs, variants)
+    preferredSavedQuoteVariant(designs, variants)
   );
   const userSelectedVariantRef = useRef(false);
   const lineItemIdRef = useRef(lineItem.id);
@@ -3409,6 +3410,7 @@ export function DesignCard({
   const displayedLineTotal = Math.round(displayedUnitPrice * quantity * 100) / 100;
   const displayedLineNumber = lineNumberLabel ?? (lineNumber > 0 ? `#${lineNumber}` : "");
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const manufacturerStamp = resolveManufacturerStamp(currentDesign);
   const authoritativePriceError =
     authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
       ? currentOptions.authoritative_price_error.trim()
@@ -3419,7 +3421,10 @@ export function DesignCard({
   const { getRetailPrice, setRetailPrice } = useRetailPriceStore();
 
   useEffect(() => {
-    const preferredVariant = getPreferredSavedVariant(designs, variants);
+    const preferredVariant = preferredSavedQuoteVariant(designs, variants);
+    const hasAuthoritativeSelection = designs.some(
+      isMarkedSelectedQuoteDesign,
+    );
     const isNewLineItem = lineItemIdRef.current !== lineItem.id;
 
     if (isNewLineItem) {
@@ -3429,7 +3434,11 @@ export function DesignCard({
       return;
     }
 
-    if (!userSelectedVariantRef.current && !currentDesign && activeVariant !== preferredVariant) {
+    if (
+      !userSelectedVariantRef.current &&
+      activeVariant !== preferredVariant &&
+      (hasAuthoritativeSelection || !currentDesign)
+    ) {
       setActiveVariant(preferredVariant);
     }
   }, [activeVariant, currentDesign, designs, lineItem.id, variants]);
@@ -4168,6 +4177,23 @@ export function DesignCard({
                   Add Size
                 </button>
               )}
+              {manufacturerStamp && (
+                <span
+                  aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+                  className={cn(
+                    "quote-line-manufacturer-stamp",
+                    `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+                  )}
+                  data-manufacturer={manufacturerStamp.label}
+                  data-testid="manufacturer-stamp"
+                  title={`Manufacturer: ${manufacturerStamp.label}`}
+                >
+                  <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+                  <span className="quote-line-manufacturer-stamp-name">
+                    {manufacturerStamp.label}
+                  </span>
+                </span>
+              )}
             </div>
           </div>
           <div className="quote-line-card-summary">
@@ -4527,6 +4553,7 @@ function QuoteLabCatalogControls({
         ...options,
         quote_lab_product_id: product.id,
         quote_lab_program_id: program?.id ?? null,
+        catalog_manufacturer: product.manufacturer ?? null,
         catalog_program_id: program?.id ?? null,
         surcharges: [],
       },

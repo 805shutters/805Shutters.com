@@ -4,6 +4,7 @@ import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuild
 import type { SalesQuote, SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
+import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import type {
   QuoteLabCatalogResponse,
   QuoteLabComparison,
@@ -216,7 +217,9 @@ function seedState(
         line_item_id: lineId,
         variant,
         product_type: productType ?? "Roller Shades",
-        supplier: sourceDesign.productId === "onyx_shutters" ? "Onyx" : "Norman",
+        supplier:
+          product?.manufacturer ??
+          (sourceDesign.productId === "onyx_shutters" ? "Onyx" : "Norman"),
         material: program?.name ?? null,
         louver_size: null,
         tilt_type: null,
@@ -238,6 +241,7 @@ function seedState(
           ...(defaults.options_json ?? {}),
           quote_lab_product_id: sourceDesign.productId,
           quote_lab_program_id: sourceDesign.programId,
+          catalog_manufacturer: product?.manufacturer ?? null,
           catalog_program_id: sourceDesign.programId,
           discount_percent: sourceDesign.discountPercent,
           authoritative_price_status: priced?.ok ? "ok" : priced?.code ?? "unpriced",
@@ -598,7 +602,17 @@ class ExactQuoteLabDatabase {
   ) {
     const rows = this.rows(table);
     if (operation === "select") {
-      const selected = rows.filter((row) => this.matches(row, filters)).map((row) => structuredClone(row));
+      const selected = rows
+        .filter((row) => this.matches(row, filters))
+        .map((row) => {
+          const clone = structuredClone(row);
+          if (table === "sales_quote_designs") {
+            clone[QUOTE_V2_SELECTED_DESIGN_MARKER] =
+              this.state.selectedVariantByLine[clone.line_item_id] ===
+              clone.variant;
+          }
+          return clone;
+        });
       if (orderColumn) selected.sort((a, b) => String(a[orderColumn] ?? "").localeCompare(String(b[orderColumn] ?? ""), undefined, { numeric: true }));
       return selected;
     }

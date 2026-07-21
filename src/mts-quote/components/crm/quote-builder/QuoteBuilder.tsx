@@ -8,10 +8,15 @@ import { ProductTypeButtons } from "./ProductTypeButtons";
 import { RoomPresetButtons } from "./RoomPresetButtons";
 import { MeasurementGridModal } from "./MeasurementGridModal";
 import { DesignCard } from "./DesignCard";
+import { resolveManufacturerStamp } from "./manufacturerStamp";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
+import {
+  QUOTE_V2_SELECTED_DESIGN_MARKER,
+  resolveSelectedQuoteDesign,
+} from "@/lib/quote-v2/selected-design";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
   Archive,
@@ -298,6 +303,8 @@ function StackedLineItemRow({
 }) {
   const details = buildStackedDesignSummary(designs);
   const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
+  const selectedDesign = resolveSelectedQuoteDesign(designs);
+  const manufacturerStamp = resolveManufacturerStamp(selectedDesign);
   const total = calculateLineItemDesignTotal(item, designs);
   const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
 
@@ -313,7 +320,28 @@ function StackedLineItemRow({
         {lineNumberLabel}
       </span>
       <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
-      <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
+      <span className="inline-flex min-w-0 items-center gap-1">
+        <span className="truncate font-mono text-[11px] font-bold text-slate-700">
+          {dimensions}
+        </span>
+        {manufacturerStamp && (
+          <span
+            aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+            className={cn(
+              "quote-line-manufacturer-stamp quote-line-manufacturer-stamp--stacked",
+              `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+            )}
+            data-manufacturer={manufacturerStamp.label}
+            data-testid="stacked-manufacturer-stamp"
+            title={`Manufacturer: ${manufacturerStamp.label}`}
+          >
+            <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+            <span className="quote-line-manufacturer-stamp-name">
+              {manufacturerStamp.label}
+            </span>
+          </span>
+        )}
+      </span>
       <span className={cn("quote-stacked-product-badge", getStackedProductTypeClass(item.product_type))}>
         <span className="quote-stacked-product-badge__label">
           {item.product_type}
@@ -706,11 +734,26 @@ export function QuoteBuilder() {
           (row) => row.line_item_id === design.line_item_id && row.variant === design.variant
         );
 
-        if (index === -1) return [...current, design as SalesQuoteDesign];
+        const markSelected = (rows: SalesQuoteDesign[]) =>
+          authoritativeV2
+            ? rows.map((row) =>
+                row.line_item_id === design.line_item_id
+                  ? {
+                      ...row,
+                      [QUOTE_V2_SELECTED_DESIGN_MARKER]:
+                        row.variant === design.variant,
+                    }
+                  : row,
+              )
+            : rows;
+
+        if (index === -1) {
+          return markSelected([...current, design as SalesQuoteDesign]);
+        }
 
         const next = [...current];
         next[index] = { ...next[index], ...design };
-        return next;
+        return markSelected(next);
       });
 
       return { previousDesigns };

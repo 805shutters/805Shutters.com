@@ -5,6 +5,7 @@ import type {
   QuoteLabFixture,
 } from "@/lib/quote-lab/types";
 import type { SalesQuoteDesign } from "@mts/types/quote";
+import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import {
   createExactQuoteLabDatabase,
   initializeExactQuoteLabDatabase,
@@ -170,6 +171,158 @@ describe("quoteLineItemCount", () => {
       .select();
     expect(result.data).toBeNull();
     expect(result.error?.message).toContain("no more than 40 line items");
+  });
+
+  it("seeds the exact catalog manufacturer for Polar and Lotus designs", async () => {
+    const manufacturerCatalog: QuoteLabCatalogResponse = {
+      ...catalog,
+      products: [
+        {
+          id: "polar_interior_roller",
+          name: "Interior Roller Shade",
+          productType: "Roller Shades",
+          manufacturer: "Polar",
+          provisional: false,
+          source: "Polar test source",
+          programs: [
+            {
+              id: "polar-program",
+              name: "Polar Program",
+              priceAxis: "wh",
+            },
+          ],
+          surcharges: [],
+          motorizationGroups: [],
+        },
+        {
+          id: "lotus_roller_shades",
+          name: "Roller Shades",
+          productType: "Roller Shades",
+          manufacturer: "Lotus",
+          provisional: false,
+          source: "Lotus test source",
+          programs: [
+            {
+              id: "lotus-program",
+              name: "Lotus Program",
+              priceAxis: "wh",
+            },
+          ],
+          surcharges: [],
+          motorizationGroups: [],
+        },
+      ],
+    };
+    const fixture: QuoteLabFixture = {
+      id: "manufacturer-stamps",
+      name: "manufacturer-stamps",
+      description: "manufacturer-stamps",
+      quote: {
+        id: "manufacturer-stamps",
+        name: "manufacturer-stamps",
+        lines: [
+          {
+            id: "polar-line",
+            room: "Living Room",
+            quantity: 1,
+            selectedDesignId: "polar-design",
+            designs: [
+              {
+                id: "polar-design",
+                label: "A",
+                productId: "polar_interior_roller",
+                programId: "polar-program",
+                widthInches: 36,
+                heightInches: 60,
+              },
+            ],
+          },
+          {
+            id: "lotus-line",
+            room: "Kitchen",
+            quantity: 1,
+            selectedDesignId: "lotus-design",
+            designs: [
+              {
+                id: "lotus-design",
+                label: "A",
+                productId: "lotus_roller_shades",
+                programId: "lotus-program",
+                widthInches: 36,
+                heightInches: 60,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const database = createExactQuoteLabDatabase(
+      manufacturerCatalog,
+      fixture,
+      comparison,
+    );
+    const result = await database.from("sales_quote_designs").select();
+    expect(result.error).toBeNull();
+    const saved = (result.data ?? []) as SalesQuoteDesign[];
+    expect(saved.map((design) => design.supplier)).toEqual(["Polar", "Lotus"]);
+    expect(
+      saved.map((design) => design.options_json.catalog_manufacturer),
+    ).toEqual(["Polar", "Lotus"]);
+  });
+
+  it("projects the persisted selected alternative onto design reads", async () => {
+    const fixture: QuoteLabFixture = {
+      id: "selected-alternative",
+      name: "selected-alternative",
+      description: "selected-alternative",
+      quote: {
+        id: "selected-alternative",
+        name: "selected-alternative",
+        lines: [
+          {
+            id: "line-1",
+            room: "Living Room",
+            quantity: 1,
+            selectedDesignId: "design-c",
+            designs: [
+              {
+                id: "design-a",
+                label: "A",
+                productId: "norman_shutters",
+                programId: "norman-program",
+                widthInches: 36,
+                heightInches: 60,
+              },
+              {
+                id: "design-c",
+                label: "C",
+                productId: "onyx_shutters",
+                programId: "onyx-program",
+                widthInches: 36,
+                heightInches: 60,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const database = createExactQuoteLabDatabase(catalog, fixture, comparison);
+    const result = await database.from("sales_quote_designs").select();
+    expect(result.error).toBeNull();
+    const saved = (result.data ?? []) as Array<
+      SalesQuoteDesign & { [QUOTE_V2_SELECTED_DESIGN_MARKER]?: boolean }
+    >;
+    expect(
+      saved.map((design) => [
+        design.variant,
+        design[QUOTE_V2_SELECTED_DESIGN_MARKER],
+      ]),
+    ).toEqual([
+      ["A", false],
+      ["C", true],
+    ]);
   });
 });
 

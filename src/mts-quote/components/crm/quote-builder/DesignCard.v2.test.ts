@@ -28,6 +28,27 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain("authoritativeV2 && designs.some");
   });
 
+  it("places the selected manufacturer stamp immediately after the measurements", () => {
+    const source = readFileSync(fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)), "utf8");
+    const measurement = source.indexOf("quote-line-card-size-value");
+    const stamp = source.indexOf("quote-line-manufacturer-stamp");
+    const summary = source.indexOf("quote-line-card-summary");
+    expect(measurement).toBeGreaterThan(-1);
+    expect(stamp).toBeGreaterThan(measurement);
+    expect(summary).toBeGreaterThan(stamp);
+    expect(source).toContain('data-testid="manufacturer-stamp"');
+    expect(source).toContain("{manufacturerStamp.label}");
+    const quoteBuilderSource = readFileSync(
+      fileURLToPath(new URL("./QuoteBuilder.tsx", import.meta.url)),
+      "utf8",
+    );
+    expect(quoteBuilderSource).toContain('data-testid="stacked-manufacturer-stamp"');
+    expect(quoteBuilderSource).toContain("resolveSelectedQuoteDesign(designs)");
+    expect(quoteBuilderSource).toContain(
+      "[QUOTE_V2_SELECTED_DESIGN_MARKER]",
+    );
+  });
+
   it("stores rear color evidence without deleting front color evidence", () => {
     const options = {
       fabric_color_id: "front-id",

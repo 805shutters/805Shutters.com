@@ -100,6 +100,24 @@ test("V2 preserves the existing workspace, real room presets, and 40-line capaci
   await expect(roomButtons.filter({ hasText: "Custom" })).toHaveCount(1);
 
   await expect(page.locator(".quote-line-card-header")).toHaveCount(40);
+  await expect(
+    page.locator(".quote-line-card-size + .quote-line-manufacturer-stamp"),
+  ).toHaveCount(40);
+  await expect(
+    page.locator(
+      '[data-testid="manufacturer-stamp"][data-manufacturer="Norman"]',
+    ),
+  ).toHaveCount(40);
+  await page.getByRole("button", { name: "Stack" }).first().click();
+  await expect(
+    page.locator(
+      '[data-testid="stacked-manufacturer-stamp"][data-manufacturer="Norman"]',
+    ),
+  ).toHaveCount(1);
+  await page
+    .getByRole("button", { name: /^Unstack line #1, Living Room$/ })
+    .click();
+  await expect(page.locator(".quote-line-card-header")).toHaveCount(40);
   expect(
     await roomButtons.evaluateAll((buttons) =>
       buttons.every((button) => button.hasAttribute("disabled")),
@@ -141,6 +159,106 @@ test("V2 preserves the existing workspace, real room presets, and 40-line capaci
   await expect(rejected.json()).resolves.toMatchObject({
     error: expect.stringContaining("40 line items"),
   });
+});
+
+test("manufacturer stamp follows the persisted selected design after reload and stacking", async ({
+  page,
+}) => {
+  await unlockQuoteLab(page);
+  const originalResponse = await page.request.get("/api/quote-lab/state");
+  expect(originalResponse.ok()).toBe(true);
+  const original = (await originalResponse.json()) as {
+    revision: number;
+    state: {
+      lineItems: Array<{ id: string; product_type: string }>;
+      designs: Array<Record<string, any>>;
+      selectedVariantByLine: Record<string, string>;
+    };
+  };
+  const catalog = await loadProtectedCatalog(page);
+  const norman = catalog.products.find(
+    (product) => product.id === "norman_shutters",
+  );
+  const onyx = catalog.products.find(
+    (product) => product.id === "onyx_shutters",
+  );
+  expect(norman?.programs[0]?.id).toBeTruthy();
+  expect(onyx?.programs[0]?.id).toBeTruthy();
+
+  const changed = structuredClone(original.state);
+  const firstLine = changed.lineItems[0];
+  const originalDesign = changed.designs.find(
+    (design) => design.line_item_id === firstLine.id,
+  );
+  if (!originalDesign || !norman?.programs[0] || !onyx?.programs[0]) {
+    throw new Error("The selected-manufacturer fixture could not be prepared.");
+  }
+  firstLine.product_type = "Shutters";
+  const normanDesign = {
+    ...originalDesign,
+    id: "quote-lab-selected-norman-a",
+    variant: "A",
+    product_type: "Shutters",
+    supplier: "Norman",
+    material: norman.programs[0].id,
+    options_json: {
+      ...originalDesign.options_json,
+      quote_lab_product_id: "norman_shutters",
+      quote_lab_program_id: norman.programs[0].id,
+      catalog_program_id: norman.programs[0].id,
+      catalog_manufacturer: "Norman",
+    },
+  };
+  const onyxDesign = {
+    ...normanDesign,
+    id: "quote-lab-selected-onyx-c",
+    variant: "C",
+    supplier: "Onyx",
+    material: onyx.programs[0].id,
+    options_json: {
+      ...normanDesign.options_json,
+      quote_lab_product_id: "onyx_shutters",
+      quote_lab_program_id: onyx.programs[0].id,
+      catalog_program_id: onyx.programs[0].id,
+      catalog_manufacturer: "Onyx",
+    },
+  };
+  changed.designs = [
+    ...changed.designs.filter(
+      (design) => design.line_item_id !== firstLine.id,
+    ),
+    normanDesign,
+    onyxDesign,
+  ];
+  changed.selectedVariantByLine[firstLine.id] = "C";
+
+  const saveResponse = await page.request.put("/api/quote-lab/state", {
+    data: { state: changed, expectedRevision: original.revision },
+  });
+  expect(saveResponse.ok()).toBe(true);
+
+  try {
+    await page.reload();
+    await expect(
+      page.locator(
+        '[data-testid="manufacturer-stamp"][data-manufacturer="Onyx"]',
+      ).first(),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Stack" }).first().click();
+    await expect(
+      page.locator(
+        '[data-testid="stacked-manufacturer-stamp"][data-manufacturer="Onyx"]',
+      ),
+    ).toHaveCount(1);
+    await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();
+  } finally {
+    const currentResponse = await page.request.get("/api/quote-lab/state");
+    const current = (await currentResponse.json()) as { revision: number };
+    const restoreResponse = await page.request.put("/api/quote-lab/state", {
+      data: { state: original.state, expectedRevision: current.revision },
+    });
+    expect(restoreResponse.ok()).toBe(true);
+  }
 });
 
 test("V2 mobile builder has no document overflow and keeps every product category visible", async ({
