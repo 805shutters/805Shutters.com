@@ -39,7 +39,9 @@ import type { SalesQuote } from "@mts/types/quote";
 
 type Channel = "email" | "sms" | "both";
 type EmailType = "quote_only" | "sold_contract";
+type TechnicalMeasureDecision = "needed" | "not_needed";
 type SendQuoteResult = { email?: boolean; sms?: boolean; errors: string[] };
+type SendQuoteVariables = { measureDecision?: TechnicalMeasureDecision };
 type SendQuoteResponse = {
   url?: string;
   status?: string;
@@ -86,8 +88,8 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   const contractEmailNeedsSignature =
     needsEmail && emailType === "sold_contract" && !quote.signed_at && !quote.customer_signature;
 
-  const sendQuote = useMutation<SendQuoteResult, Error>({
-    mutationFn: async (): Promise<SendQuoteResult> => {
+  const sendQuote = useMutation<SendQuoteResult, Error, SendQuoteVariables>({
+    mutationFn: async ({ measureDecision }: SendQuoteVariables): Promise<SendQuoteResult> => {
       // Validate channel-specific inputs
       if (needsEmail && cleanedEmails.length === 0) throw new Error("Customer email is required");
       if (needsPhone && !phone.trim()) throw new Error("Customer phone is required");
@@ -109,6 +111,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           note: customMessage.trim() || null,
           emailType,
           bypassHours,
+          measureDecision,
         }),
       });
       const data = (await response.json().catch(() => ({}))) as SendQuoteResponse;
@@ -164,6 +167,12 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   const emailSendLabel = emailType === "sold_contract" ? "Send Contract Email" : "Send Quote Email";
   const sendLabel =
     channel === "email" ? emailSendLabel : channel === "sms" ? "Send Text" : "Send Email + Text";
+  const measureChoiceRequired = !quote.signed_at && !quote.customer_signature && quote.status !== "sold";
+  const sendDisabled =
+    sendQuote.isPending ||
+    (needsEmail && cleanedEmails.length === 0) ||
+    (needsPhone && !phone.trim()) ||
+    contractEmailNeedsSignature;
 
   const updateEmailAt = (index: number, value: string) => {
     setEmails((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
@@ -424,19 +433,35 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           >
             Cancel
           </Button>
-          <Button
-            onClick={() => sendQuote.mutate()}
-            disabled={
-              sendQuote.isPending ||
-              (needsEmail && cleanedEmails.length === 0) ||
-              (needsPhone && !phone.trim()) ||
-              contractEmailNeedsSignature
-            }
-            className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
-          >
-            <Send className="h-4 w-4 mr-2" />
-            {sendQuote.isPending ? "Sending…" : sendLabel}
-          </Button>
+          {measureChoiceRequired ? (
+            <>
+              <Button
+                onClick={() => sendQuote.mutate({ measureDecision: "needed" })}
+                disabled={sendDisabled}
+                className="w-full bg-amber-600 text-white hover:bg-amber-700 sm:w-auto"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {sendQuote.isPending ? "Sending..." : "Send Contract - Measure Needed"}
+              </Button>
+              <Button
+                onClick={() => sendQuote.mutate({ measureDecision: "not_needed" })}
+                disabled={sendDisabled}
+                className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {sendQuote.isPending ? "Sending..." : "Send Contract - No Measure Needed"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={() => sendQuote.mutate({})}
+              disabled={sendDisabled}
+              className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {sendQuote.isPending ? "Sending..." : sendLabel}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

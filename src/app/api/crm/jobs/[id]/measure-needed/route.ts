@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { completeMeasureNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import { completeMeasureNeededForJob, markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 
 export const runtime = "nodejs";
@@ -20,6 +20,10 @@ export async function POST(
 
     if (!body.action || body.action === "request") {
       return NextResponse.json(await requestMeasureNeededForJob(supabase, id, actor, "manual"));
+    }
+
+    if (body.action === "not_needed") {
+      return NextResponse.json(await markMeasureNotNeededForJob(supabase, id, actor, "manual"));
     }
 
     throw new CrmAuthError(400, "Unsupported measure-needed action.");

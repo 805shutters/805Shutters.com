@@ -9,6 +9,7 @@ interface SoldQuoteSmsInput {
   total_amount: number | null;
   deposit_paid: number | null;
   share_token?: string | null;
+  technical_measure?: "needed" | "not_needed" | null;
 }
 
 interface Send805SoldQuoteNotificationArgs {
@@ -45,6 +46,10 @@ function optionalSmsLine(label: string, value?: string | null): string | null {
   return text ? `${label}: ${text}` : null;
 }
 
+function technicalMeasureSmsLine(value?: SoldQuoteSmsInput["technical_measure"]): string {
+  return `Technical Measure: ${value === "needed" ? "Needed" : "Not Needed"}`;
+}
+
 export function build805SoldQuoteSmsMessage(
   quote: SoldQuoteSmsInput,
   contractUrl = buildContractUrl(quote.share_token),
@@ -55,6 +60,7 @@ export function build805SoldQuoteSmsMessage(
     `Customer Name: ${customerName}`,
     `Total Sale Amount: ${money(Number(quote.total_amount) || 0)}`,
     `Deposit Amount: ${money(soldDepositAmount(quote))}`,
+    technicalMeasureSmsLine(quote.technical_measure),
     includeCustomerContact ? optionalSmsLine("Customer Phone", quote.customer_phone) : null,
     includeCustomerContact ? optionalSmsLine("Customer Address", quote.customer_address) : null,
   ].filter((line): line is string => Boolean(line));

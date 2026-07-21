@@ -21,16 +21,24 @@ describe("805 sold quote SMS notification", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
+        "Technical Measure: Not Needed",
       ].join("\n")
     );
   });
 
+  it("can flag technical measure needed", () => {
+    expect(build805SoldQuoteSmsMessage({ ...quote, technical_measure: "needed" }, null)).toContain(
+      "Technical Measure: Needed"
+    );
+  });
+
   it("adds customer phone and address for the primary recipient", () => {
-    expect(build805SoldQuoteSmsMessageForRecipient(SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT, quote, null)).toBe(
+    expect(build805SoldQuoteSmsMessageForRecipient(SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT, { ...quote, technical_measure: "needed" }, null)).toBe(
       [
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
+        "Technical Measure: Needed",
         "Customer Phone: 805-555-1212",
         "Customer Address: 123 Main St, Ventura, CA",
       ].join("\n")

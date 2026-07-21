@@ -208,6 +208,47 @@ export async function requestMeasureNeededForJob(
   return { job: finalJob as CrmJob, mts: mtsResult };
 }
 
+export async function markMeasureNotNeededForJob(
+  supabase: CrmSupabaseClient,
+  jobId: string,
+  actor: CrmActor,
+  source = "manual"
+) {
+  const existing = await fetchJob(supabase, jobId);
+  const currentMeasure = getMeasureNeededMeta(existing.meta);
+  const now = new Date().toISOString();
+  const meta = mergeMeasureMeta(existing.meta, {
+    status: "not_needed",
+    requested_at: currentMeasure.requested_at || now,
+    requested_by: currentMeasure.requested_by || actor.email,
+    request_source: currentMeasure.request_source || source,
+    measured_at: null,
+    measured_by: null,
+    mts_sync_status: currentMeasure.mts_sync_status || null,
+    mts_sync_error: currentMeasure.mts_sync_error || null
+  });
+
+  const { data, error } = await supabase
+    .from("crm_jobs")
+    .update({
+      meta,
+      next_action: existing.status === "sold" ? "Order product" : existing.next_action
+    })
+    .eq("id", jobId)
+    .select("*")
+    .maybeSingle();
+  if (error || !data) throw new CrmAuthError(502, "No-measure status could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: jobId,
+    action: "measure_needed.not_needed",
+    metadata: { source }
+  });
+
+  return { job: data as CrmJob };
+}
+
 export async function completeMeasureNeededForJob(
   supabase: CrmSupabaseClient,
   jobId: string,

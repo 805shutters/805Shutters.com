@@ -11,6 +11,13 @@ import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Label } from "@mts/components/ui/label";
 import { Switch } from "@mts/components/ui/switch";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@mts/components/ui/dialog";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -57,6 +64,8 @@ import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+
+type TechnicalMeasureDecision = "needed" | "not_needed";
 
 const paymentIcons: Record<string, typeof FileText> = {
   check: FileText,
@@ -111,6 +120,7 @@ export function QuoteContract() {
   const [editingInfo, setEditingInfo] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [showMeasurePrompt, setShowMeasurePrompt] = useState(false);
   const [adminControls, setAdminControls] = useState<QuoteAdminControls>({
     showExtras: false,
     showDiscount: false,
@@ -242,13 +252,17 @@ export function QuoteContract() {
 
   // Mark as sold
   const markAsSold = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (measureDecision: TechnicalMeasureDecision) => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
       const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/sold`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ measureDecision }),
       });
       const payload = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) throw new Error(payload.message || "The sold workflow failed.");
@@ -256,6 +270,7 @@ export function QuoteContract() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
       toast.success("Contract sold: CRM, bookkeeping, and notifications updated.");
+      setShowMeasurePrompt(false);
       setActiveTab("dashboard");
     },
     onError: (error: Error) => {
@@ -1276,7 +1291,7 @@ export function QuoteContract() {
 
         <Button
           size="lg"
-          onClick={() => markAsSold.mutate()}
+          onClick={() => setShowMeasurePrompt(true)}
           disabled={markAsSold.isPending}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
@@ -1294,6 +1309,43 @@ export function QuoteContract() {
         onClose={() => setShowSendDialog(false)}
         quote={quote}
       />
+
+      <Dialog open={showMeasurePrompt} onOpenChange={(open) => !markAsSold.isPending && setShowMeasurePrompt(open)}>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Technical measure?</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm leading-relaxed text-muted-foreground">
+            Choose one before finalizing this in-home sale.
+          </div>
+          <DialogFooter className="!grid gap-2 sm:!grid-cols-2">
+            <Button
+              type="button"
+              onClick={() => markAsSold.mutate("needed")}
+              disabled={markAsSold.isPending}
+              className="w-full bg-amber-600 text-white hover:bg-amber-700"
+            >
+              Measure Needed
+            </Button>
+            <Button
+              type="button"
+              onClick={() => markAsSold.mutate("not_needed")}
+              disabled={markAsSold.isPending}
+              className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a]"
+            >
+              No Measure Needed
+            </Button>
+          </DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setShowMeasurePrompt(false)}
+            disabled={markAsSold.isPending}
+          >
+            Cancel
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

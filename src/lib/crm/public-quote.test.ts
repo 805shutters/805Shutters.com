@@ -156,19 +156,26 @@ describe("signed SMS copy", () => {
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
+        "Technical Measure: Not Needed",
       ].join("\n")
     );
+  });
+  it("shop message can flag technical measure needed", () => {
+    const msg = buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "needed" });
+    expect(msg).toContain("Technical Measure: Needed");
   });
   it("primary shop recipient gets customer phone and address", () => {
     const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {
       customerPhone: "805-555-1212",
       customerAddress: "123 Main St, Ventura, CA",
+      technicalMeasure: "needed",
     });
     expect(msg).toBe(
       [
         "Customer Name: Jane Smith",
         "Total Sale Amount: $4,250.00",
         "Deposit Amount: $2,125.00",
+        "Technical Measure: Needed",
         "Customer Phone: 805-555-1212",
         "Customer Address: 123 Main St, Ventura, CA",
       ].join("\n")
@@ -178,8 +185,9 @@ describe("signed SMS copy", () => {
     const msg = buildSignedShopSmsForRecipient("805-630-0848", "Jane Smith", 4250, 2125, {
       customerPhone: "805-555-1212",
       customerAddress: "123 Main St, Ventura, CA",
+      technicalMeasure: "needed",
     });
-    expect(msg).toBe(buildSignedShopSms("Jane Smith", 4250, 2125));
+    expect(msg).toBe(buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "needed" }));
   });
   it("shop sale SMS always includes the required recipients", () => {
     expect(soldQuoteShopSmsRecipients()).toEqual([...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS]);

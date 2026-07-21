@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
+import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import {
+  getMeasureNeededMeta,
+  isTechnicalMeasureDecision,
+  MEASURE_NEEDED_META_KEY,
+  type TechnicalMeasureDecision,
+} from "@/lib/crm/measure-needed-state";
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
 import { sendSms } from "@/lib/notify/twilio";
@@ -22,13 +29,16 @@ export type SendSalesQuoteOptions = {
   note?: string | null;
   emailType?: "quote_only" | "sold_contract";
   bypassHours?: boolean;
+  measureDecision?: TechnicalMeasureDecision;
 };
 
 export async function markSalesQuoteSold(
   supabase: CrmSupabaseClient,
   salesQuoteId: string,
   actor: CrmActor,
+  options: { measureDecision?: unknown } = {},
 ) {
+  const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
   const signedAt = original.signed_at || new Date().toISOString();
   const { error } = await supabase
@@ -37,9 +47,15 @@ export async function markSalesQuoteSold(
     .eq("id", salesQuoteId);
   if (error) throw new CrmAuthError(502, "The contract could not be marked sold.");
 
-  const soldSource: AnyRow = { ...original, status: "sold", signed_at: signedAt };
+  const soldSource: AnyRow = withTechnicalMeasureDecision(
+    { ...original, status: "sold", signed_at: signedAt },
+    measureDecision,
+    actor,
+    "in_home_sold"
+  );
   const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
   const crmQuote = await advanceQuoteStatus(supabase, crmQuoteId, "sold", actor);
+  await syncTechnicalMeasureDecisionForSoldCrmQuote(supabase, crmQuote, actor, measureDecision, "in_home_sold");
 
   const contractUrl = soldSource.share_token
     ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`
@@ -57,6 +73,7 @@ export async function markSalesQuoteSold(
           total_amount: soldSource.total_amount,
           deposit_paid: soldSource.deposit_paid,
           share_token: soldSource.share_token,
+          technical_measure: measureDecision,
         }, contractUrl),
       }),
     })),
@@ -86,6 +103,69 @@ const LEGACY_INTERNAL_OPTION_KEYS = new Set([
   "sent_price_snapshot",
 ]);
 
+function requireTechnicalMeasureDecision(value: unknown): TechnicalMeasureDecision {
+  if (isTechnicalMeasureDecision(value)) return value;
+  throw new CrmAuthError(400, "Choose whether a technical measure is needed before marking this contract sold.");
+}
+
+function technicalMeasureDecisionFromSource(quote: AnyRow): TechnicalMeasureDecision | null {
+  const direct = quote.technical_measure_decision;
+  if (isTechnicalMeasureDecision(direct)) return direct;
+  const status = getMeasureNeededMeta(quote.meta).status;
+  return isTechnicalMeasureDecision(status) ? status : null;
+}
+
+function withTechnicalMeasureDecision(
+  quote: AnyRow,
+  decision: TechnicalMeasureDecision,
+  actor: CrmActor,
+  source: string
+): AnyRow {
+  return {
+    ...quote,
+    technical_measure_decision: decision,
+    technical_measure_actor: actor.email,
+    technical_measure_source: source,
+  };
+}
+
+function quoteMeasureMeta(quote: AnyRow): Record<string, unknown> {
+  const current = quote.meta && typeof quote.meta === "object" && !Array.isArray(quote.meta)
+    ? (quote.meta as Record<string, unknown>)
+    : {};
+  const decision = technicalMeasureDecisionFromSource(quote);
+  if (!decision) return current;
+  const existing = getMeasureNeededMeta(current);
+  return {
+    ...current,
+    [MEASURE_NEEDED_META_KEY]: {
+      ...existing,
+      status: decision,
+      requested_at: existing.requested_at || new Date().toISOString(),
+      requested_by: existing.requested_by || quote.technical_measure_actor || "automation:sales_quote_send",
+      request_source: existing.request_source || quote.technical_measure_source || "sales_quote_send",
+      measured_at: null,
+      measured_by: null,
+    },
+  };
+}
+
+async function syncTechnicalMeasureDecisionForSoldCrmQuote(
+  supabase: CrmSupabaseClient,
+  crmQuote: AnyRow,
+  actor: CrmActor,
+  decision: TechnicalMeasureDecision,
+  source: string
+) {
+  const jobId = typeof crmQuote.job_id === "string" ? crmQuote.job_id : null;
+  if (!jobId) return;
+  if (decision === "needed") {
+    await requestMeasureNeededForJob(supabase, jobId, actor, source);
+  } else {
+    await markMeasureNotNeededForJob(supabase, jobId, actor, source);
+  }
+}
+
 export async function sendSalesQuoteToCustomer(
   supabase: CrmSupabaseClient,
   salesQuoteId: string,
@@ -101,18 +181,25 @@ export async function sendSalesQuoteToCustomer(
   if (requestedPhone) contactPatch.customer_phone = requestedPhone;
 
   const quoteForSend = { ...quote, ...contactPatch };
+  const measureDecision = options.measureDecision && isTechnicalMeasureDecision(options.measureDecision)
+    ? options.measureDecision
+    : null;
+  const quoteForMirror = measureDecision
+    ? withTechnicalMeasureDecision(quoteForSend, measureDecision, actor, "contract_send")
+    : quoteForSend;
   if (Object.keys(contactPatch).length) {
     const { error } = await supabase.from("sales_quotes").update(contactPatch).eq("id", salesQuoteId);
     if (error) throw new CrmAuthError(502, "Customer contact could not be saved before sending.");
   }
 
-  const crmQuoteId = await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForSend);
+  const crmQuoteId = await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror);
   const result = await sendQuoteToCustomer(supabase, crmQuoteId, actor, {
     email: options.channels?.email,
     sms: options.channels?.sms,
     emailRecipients: requestedEmails,
     phone: requestedPhone,
     note: options.note,
+    measureDecision,
   });
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
@@ -133,7 +220,17 @@ async function mirrorSalesQuoteGroupForCustomerSend(
     groupQuotes = (data || []) as AnyRow[];
   }
 
-  const quotes = salesQuotesToMirror(activeQuote, groupQuotes);
+  const decision = technicalMeasureDecisionFromSource(activeQuote);
+  const quotes = salesQuotesToMirror(activeQuote, groupQuotes).map((quote) =>
+    decision
+      ? {
+          ...quote,
+          technical_measure_decision: decision,
+          technical_measure_actor: activeQuote.technical_measure_actor,
+          technical_measure_source: activeQuote.technical_measure_source,
+        }
+      : quote
+  );
   let activeCrmQuoteId = "";
   for (const quote of quotes) {
     const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, quote);
@@ -230,6 +327,7 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
   }
 
   const accountId = quote.account_id || DEFAULT_805_ACCOUNT_ID;
+  const importedMeta = quoteMeasureMeta(quoteForMirror);
   const job = await upsertOne(supabase, "crm_jobs", {
     external_source: IMPORT_SOURCE,
     external_id: `quote:${quote.id}`,
@@ -250,7 +348,7 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     estimated_total: money(quoteForMirror.total_amount),
     deposit_paid: money(quote.deposit_paid),
     notes: quote.installer_notes || null,
-    meta: { mts_quote_id: quote.id, account_id: accountId, source: "sales_quote_send" },
+    meta: { ...importedMeta, mts_quote_id: quote.id, account_id: accountId, source: "sales_quote_send" },
   });
 
   const importedQuote = await upsertOne(supabase, "crm_quotes", {
@@ -286,7 +384,10 @@ async function mirrorSalesQuoteForCustomerSend(supabase: CrmSupabaseClient, quot
     quote_group_id: quote.quote_group_id || null,
     quote_label: quote.quote_letter || null,
     notes: quote.installer_notes || null,
-    meta: buildImportedQuoteMeta(quoteForMirror, pricing.subtotal, accountId),
+    meta: {
+      ...buildImportedQuoteMeta(quoteForMirror, pricing.subtotal, accountId),
+      ...quoteMeasureMeta(quoteForMirror),
+    },
   });
 
   await upsertImportedQuoteStructure(supabase, importedQuote.id, lineRows, designsByLineItemId);

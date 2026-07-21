@@ -6,8 +6,14 @@ import { randomBytes } from "node:crypto";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
-import { requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
-import { shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
+import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
+import {
+  getMeasureNeededMeta,
+  isTechnicalMeasureDecision,
+  MEASURE_NEEDED_META_KEY,
+  technicalMeasureSmsLine,
+  type TechnicalMeasureDecision,
+} from "@/lib/crm/measure-needed-state";
 import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJob, CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
@@ -41,6 +47,7 @@ export const SOLD_QUOTE_CONTACT_SMS_RECIPIENT = "805-298-5555" as const;
 type SignedShopSmsContact = {
   customerPhone?: string | null;
   customerAddress?: string | null;
+  technicalMeasure?: TechnicalMeasureDecision | null;
 };
 
 export type PublicQuoteLine = {
@@ -643,6 +650,7 @@ export function buildSignedShopSms(
     `Customer Name: ${customerName}`,
     `Total Sale Amount: ${money(total)}`,
     `Deposit Amount: ${money(depositAmount)}`,
+    technicalMeasureSmsLine(contact.technicalMeasure),
     optionalSmsLine("Customer Phone", contact.customerPhone),
     optionalSmsLine("Customer Address", contact.customerAddress),
   ].filter((line): line is string => Boolean(line)).join("\n");
@@ -659,7 +667,7 @@ export function buildSignedShopSmsForRecipient(
     customerName,
     total,
     depositAmount,
-    recipient === SOLD_QUOTE_CONTACT_SMS_RECIPIENT ? contact : {},
+    recipient === SOLD_QUOTE_CONTACT_SMS_RECIPIENT ? contact : { technicalMeasure: contact.technicalMeasure },
   );
 }
 export function buildSignedCustomerSms(customerName: string): string {
@@ -857,19 +865,84 @@ async function syncSoldBookkeeping(
   return { customerPhone, job: soldJob };
 }
 
-async function requestMeasureForSoldJessicaJob(
+function technicalMeasureDecisionFromMeta(meta: unknown): TechnicalMeasureDecision | null {
+  const status = getMeasureNeededMeta(meta).status;
+  return isTechnicalMeasureDecision(status) ? status : null;
+}
+
+function metaWithTechnicalMeasureDecision(
+  meta: unknown,
+  decision: TechnicalMeasureDecision,
+  actor: CrmActor,
+  source: string,
+  now = new Date().toISOString()
+) {
+  const current = record(meta);
+  const existing = getMeasureNeededMeta(current);
+  return {
+    ...current,
+    [MEASURE_NEEDED_META_KEY]: {
+      ...existing,
+      status: decision,
+      requested_at: existing.requested_at || now,
+      requested_by: existing.requested_by || actor.email,
+      request_source: existing.request_source || source,
+      measured_at: null,
+      measured_by: null,
+    },
+  };
+}
+
+async function saveTechnicalMeasureDecisionForQuote(
+  supabase: CrmSupabaseClient,
+  quote: Pick<CrmQuote, "id" | "job_id" | "meta">,
+  actor: CrmActor,
+  decision: TechnicalMeasureDecision,
+  source: string
+) {
+  const now = new Date().toISOString();
+  const quoteMeta = metaWithTechnicalMeasureDecision(quote.meta, decision, actor, source, now);
+  const { error: quoteError } = await supabase
+    .from("crm_quotes")
+    .update({ meta: quoteMeta })
+    .eq("id", quote.id);
+  if (quoteError) throw new CrmAuthError(502, "Technical-measure decision could not be saved to the quote.");
+
+  if (quote.job_id) {
+    const { data: job } = await supabase.from("crm_jobs").select("meta").eq("id", quote.job_id).maybeSingle();
+    const jobMeta = metaWithTechnicalMeasureDecision((job as { meta?: unknown } | null)?.meta, decision, actor, source, now);
+    const { error: jobError } = await supabase
+      .from("crm_jobs")
+      .update({ meta: jobMeta })
+      .eq("id", quote.job_id);
+    if (jobError) throw new CrmAuthError(502, "Technical-measure decision could not be saved to the job.");
+  }
+}
+
+function technicalMeasureDecisionForSignedQuote(quote: CrmQuote, job: CrmJob | null): TechnicalMeasureDecision {
+  return technicalMeasureDecisionFromMeta(quote.meta) || technicalMeasureDecisionFromMeta(job?.meta) || "not_needed";
+}
+
+async function syncTechnicalMeasureDecisionForSoldJob(
   supabase: CrmSupabaseClient,
   quote: CrmQuote,
   job: CrmJob | null,
   source: string
 ) {
-  if (!job || !shouldRequestMeasureForSoldJessicaJob(job, quote)) return;
+  if (!job) return "not_needed";
+  const decision = technicalMeasureDecisionForSignedQuote(quote, job);
 
   try {
-    await requestMeasureNeededForJob(supabase, job.id, { email: "automation:quote_signed" }, source);
+    if (decision === "needed") {
+      await requestMeasureNeededForJob(supabase, job.id, { email: "automation:quote_signed" }, source);
+    } else {
+      await markMeasureNotNeededForJob(supabase, job.id, { email: "automation:quote_signed" }, source);
+    }
   } catch (error) {
-    console.error("measure-needed automation failed", error);
+    console.error("technical-measure decision sync failed", error);
   }
+
+  return decision;
 }
 
 export async function acceptPublicQuote(
@@ -902,7 +975,7 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      await requestMeasureForSoldJessicaJob(supabase, quote, soldSync.job, "quote_signed_retry");
+      await syncTechnicalMeasureDecisionForSoldJob(supabase, quote, soldSync.job, "quote_signed_retry");
     }
     return { ok: true, alreadySigned: true };
   }
@@ -1038,9 +1111,16 @@ export async function acceptPublicQuote(
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
   const soldSync = await syncSoldBookkeeping(supabase, signedQuote, soldTotal);
   const customerPhone = soldSync.customerPhone;
+  const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
+    supabase,
+    signedQuote,
+    soldSync.job,
+    "quote_signed"
+  );
   const shopSmsContact: SignedShopSmsContact = {
     customerPhone: quote.customer_phone || customerPhone,
     customerAddress: quote.customer_address || soldSync.job?.address || null,
+    technicalMeasure,
   };
 
   await syncSignedQuoteArtifacts(
@@ -1064,13 +1144,6 @@ export async function acceptPublicQuote(
     action: "customer.sign",
     metadata: { token, total: soldTotal },
   });
-
-  await requestMeasureForSoldJessicaJob(
-    supabase,
-    signedQuote,
-    soldSync.job,
-    "quote_signed"
-  );
 
   if (input.notify !== false) {
     // Notify the required sold-quote recipients, then customer.
@@ -1138,7 +1211,14 @@ export async function sendQuoteToCustomer(
   supabase: CrmSupabaseClient,
   quoteId: string,
   actor: CrmActor,
-  options: { email?: boolean; sms?: boolean; emailRecipients?: string[]; phone?: string | null; note?: string | null } = {},
+  options: {
+    email?: boolean;
+    sms?: boolean;
+    emailRecipients?: string[];
+    phone?: string | null;
+    note?: string | null;
+    measureDecision?: TechnicalMeasureDecision | null;
+  } = {},
 ): Promise<{ url: string; sms: { sent: boolean; skipped?: string; error?: string }; email: { sent: boolean; skipped?: string; error?: string }; status: string }> {
   const wantSms = options.sms !== false;
   const wantEmail = options.email !== false;
@@ -1154,10 +1234,19 @@ export async function sendQuoteToCustomer(
   }
   const { data: quote } = await supabase
     .from("crm_quotes")
-    .select("id, status, quote_total, job_id")
+    .select("id, status, quote_total, job_id, meta")
     .eq("id", quoteId)
     .maybeSingle();
   if (!quote) throw new CrmAuthError(404, "Quote was not found.");
+  if (options.measureDecision) {
+    await saveTechnicalMeasureDecisionForQuote(
+      supabase,
+      quote as Pick<CrmQuote, "id" | "job_id" | "meta">,
+      actor,
+      options.measureDecision,
+      "contract_send"
+    );
+  }
 
   let phone: string | null = null;
   let email: string | null = null;

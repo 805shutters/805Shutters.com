@@ -8,7 +8,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const result = await markSalesQuoteSold(supabase, id, { email, userId: user.id });
+    const body = (await request.json().catch(() => ({}))) as { measureDecision?: unknown };
+    const result = await markSalesQuoteSold(supabase, id, { email, userId: user.id }, {
+      measureDecision: body.measureDecision,
+    });
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);

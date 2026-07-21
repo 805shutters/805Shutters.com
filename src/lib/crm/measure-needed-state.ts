@@ -2,7 +2,8 @@ import type { CrmJob, CrmQuote } from "@/lib/crm/types";
 
 export const MEASURE_NEEDED_META_KEY = "measure_needed";
 
-export type CrmMeasureNeededStatus = "needed" | "measured";
+export type CrmMeasureNeededStatus = "needed" | "not_needed" | "measured";
+export type TechnicalMeasureDecision = Extract<CrmMeasureNeededStatus, "needed" | "not_needed">;
 
 export type CrmMeasureNeededMeta = {
   status?: CrmMeasureNeededStatus;
@@ -30,11 +31,20 @@ export function isMeasureNeededJob(job: Pick<CrmJob, "meta" | "status">) {
   return job.status === "sold" && getMeasureNeededMeta(job.meta).status === "needed";
 }
 
+export function isTechnicalMeasureDecision(value: unknown): value is TechnicalMeasureDecision {
+  return value === "needed" || value === "not_needed";
+}
+
+export function technicalMeasureSmsLine(status?: CrmMeasureNeededStatus | null): string {
+  return `Technical Measure: ${status === "needed" ? "Needed" : "Not Needed"}`;
+}
+
 export function measureNeededLabel(job: Pick<CrmJob, "meta">) {
   const measure = getMeasureNeededMeta(job.meta);
   if (measure.status === "needed") {
     return measure.mts_job_number ? `Measure needed - MTS ${measure.mts_job_number}` : "Measure needed";
   }
+  if (measure.status === "not_needed") return "No measure needed";
   if (measure.status === "measured") return "Measured";
   return "No measure flag";
 }

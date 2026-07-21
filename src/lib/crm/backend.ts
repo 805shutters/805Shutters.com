@@ -11,7 +11,7 @@ import {
 import { buildCommissionSummary } from "@/lib/crm/commissions";
 import { buildCustomerFiles } from "@/lib/crm/customer-files";
 import { buildDashboardSummaryMetrics } from "@/lib/crm/dashboard-metrics";
-import { MEASURE_NEEDED_META_KEY, getMeasureNeededMeta, shouldRequestMeasureForSoldJessicaJob } from "@/lib/crm/measure-needed-state";
+import { MEASURE_NEEDED_META_KEY, getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import {
   buildPartnerPaymentLedger,
   buildUnpaidPartnerPaymentItemForRow,
@@ -1763,21 +1763,7 @@ export async function updateCrmJob(
     await syncSaleOwnerForJob(supabase, id, patch.sales_owner, actor);
   }
 
-  let updatedJob = data as CrmJob;
-  const soldStatusChanged = Object.prototype.hasOwnProperty.call(patch, "status") && existing.status !== "sold" && data.status === "sold";
-  const ownerChangedToJessicaSold =
-    Object.prototype.hasOwnProperty.call(patch, "sales_owner") &&
-    data.status === "sold" &&
-    shouldRequestMeasureForSoldJessicaJob(updatedJob);
-  if ((soldStatusChanged || ownerChangedToJessicaSold) && shouldRequestMeasureForSoldJessicaJob(updatedJob) && !getMeasureNeededMeta(updatedJob.meta).status) {
-    try {
-      const { requestMeasureNeededForJob } = await import("@/lib/crm/measure-needed");
-      const result = await requestMeasureNeededForJob(supabase, id, actor, "job_update");
-      updatedJob = result.job;
-    } catch (error) {
-      console.error("measure-needed automation failed", error);
-    }
-  }
+  const updatedJob = data as CrmJob;
 
   if (Object.prototype.hasOwnProperty.call(patch, "status")) {
     try {
