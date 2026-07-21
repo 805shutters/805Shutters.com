@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(12);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(13);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(12);
+    ).toBe(13);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(12);
+    ).toBe(13);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -80,6 +80,8 @@ describe("quote V2 source manifest", () => {
         "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b",
       "NORMAN PRICING.pdf":
         "fdf0af921d137d778d6890b7afa97342045bd50d05a4838afc116b6c400f3044",
+      "Motorization Guide.pdf":
+        "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290",
       "Honeycomb Shade Guide (1).pdf":
         "94cba8c6b2bc7c73e134d8bfd4a4ccfbfba82392d220bfb6ec0bd5f4d210495b",
       "Roller Shade Guide (2).pdf":

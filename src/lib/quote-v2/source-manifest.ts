@@ -141,6 +141,23 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     pageCount: 3,
   },
   {
+    id: "norman-motorization-guide-2026-05",
+    manufacturer: "Norman",
+    kind: "product_guide",
+    format: "pdf",
+    fileName: "Motorization Guide.pdf",
+    title: "Shade Motorization Program Reference Guide",
+    revision: "May 2026; latest revision 2026-05-11",
+    effectiveDate: "2026-05-11",
+    effectiveDateEvidence:
+      "Revision summary: 5/11/2026 AutoWand and Roller motorization updates",
+    receivedDate: "2026-07-21",
+    modifiedDate: "2026-05-22",
+    sha256: "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290",
+    authorities: ["restrictions", "options"],
+    pageCount: 91,
+  },
+  {
     id: "norman-honeycomb-guide-2026-07",
     manufacturer: "Norman",
     kind: "product_guide",

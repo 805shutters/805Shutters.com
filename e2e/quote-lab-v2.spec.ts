@@ -696,27 +696,32 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     );
 
     await card.getByRole("combobox", { name: "Tube" }).click();
-    await page.getByRole("option", { name: '1 3/4" (43mm) Tube', exact: true }).click();
+    await page.getByRole("option", { name: '2" (52mm) Tube', exact: true }).click();
     await expect(card.getByTestId("roller-motorization-required")).toContainText(
       "Select Motor / Power System",
     );
     await card.getByRole("combobox", { name: "Motor / Power System" }).click();
-    await page.getByRole("option", { name: "Automate ARC Motor", exact: true }).click();
+    await page.getByRole("option", { name: "AutoWand", exact: true }).click();
 
-    await expect(card.getByTestId("roller-motorization-complete")).toContainText(
-      "Motor (Rechargeable Battery Pack)",
-    );
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("757.5", {
+    await expect(card.getByTestId("roller-motorization-complete")).toContainText(/AutoWand/i);
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("370.5", {
       timeout: 30_000,
     });
     await card.getByText("Why this price?", { exact: false }).click();
-    await expect(card).toContainText("$511.50");
-    await expect(card).toContainText("$204.60");
+    await expect(card).toContainText("Base $223.50");
+    await expect(card).toContainText("Fabric $22.50");
+    await expect(card).toContainText("Accessories $0");
+    await expect(card).toContainText("Operating $124.50");
+    await expect(card).toContainText("Actual selected grid");
+    await expect(card).toContainText("$328");
+    await expect(card).toContainText("AutoWand charging-kit allocation");
+    await expect(card).toContainText("Manufacturer suggested retail x 0.30");
     const wholesalePanel = card.locator('[aria-label="Wholesale cost"]');
     const highlightedWholesaleCosts = wholesalePanel.locator(
       '[data-wholesale-cost-value="true"]',
     );
-    await expect(highlightedWholesaleCosts).toHaveCount(6);
+    await expect(highlightedWholesaleCosts.first()).toBeVisible();
+    expect(await highlightedWholesaleCosts.count()).toBeGreaterThan(6);
     expect(
       await highlightedWholesaleCosts.evaluateAll((elements) =>
         elements.every(
@@ -728,7 +733,7 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
       card.locator('[aria-label="Retail pricing"] [data-wholesale-cost-value="true"]'),
     ).toHaveCount(0);
     await expect(
-      highlightedWholesaleCosts.filter({ hasText: "$511.50" }),
+      highlightedWholesaleCosts.filter({ hasText: "$124.50" }),
     ).toHaveCount(0);
     await expect(card).not.toContainText("Stored price mismatch");
     await expect(card).not.toContainText("Surcharge mismatch");
@@ -741,14 +746,14 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     );
     expect(persistedDesign).toMatchObject({
       lift_system: "Motorized",
-      motor_type: "Motor (Rechargeable Battery Pack)",
-      unit_price: 757.5,
+      motor_type: "Autowand",
+      unit_price: 370.5,
       options_json: {
-        tube_class: '1 3/4" (43mm) Tube',
-        power_configuration: "Automate ARC Motor",
+        tube_class: '2" (52mm) Tube',
+        power_configuration: "AutoWand",
         motorization_selections: [{
-          groupId: "automate_home",
-          optionId: "motor_rechargeable_battery_pack",
+          groupId: "autowand",
+          optionId: "autowand",
           role: "base_motor",
           units: 1,
         }],
@@ -756,7 +761,7 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     });
 
     await page.reload();
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("757.5");
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("370.5");
     await expect(card.getByTestId("roller-motorization-complete")).toBeVisible();
     await card.locator(".quote-confirmed-option-chip").filter({ hasText: "Lift SystemMotorized" }).click();
     await card.getByRole("button", { name: "Cordless", exact: true }).click();

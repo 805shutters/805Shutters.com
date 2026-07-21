@@ -78,6 +78,91 @@ function repriceOne(
 }
 
 describe("pricing assertions retained from the retired Quote Lab controls", () => {
+  it("represents every price stage for the exact 30x48 Amelia AutoWand line", () => {
+    const quoteLine = line("norman-autowand-line", "Roller Shades", 30, 48);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_2_pg2",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Motorized",
+          valance: "No Valance",
+          fabric: "Amelia",
+          motor_type: "AutoWand",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_2_pg2",
+          fabric_color_collection: "Amelia",
+          fabric_color_code: "F1484",
+          fabric_color_name: "Mist Gray",
+          roller_application: "Single Shade",
+          roller_top_treatment: "No Top Treatment",
+          roller_tube: '2" (52mm) Tube',
+          hem_bar: "Fabric Covered",
+          roller_power_configuration: "AutoWand",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const priced = quote.designs[0];
+    const result = priced.result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.programName).toBe("Cordless Fabric - Price Group 2");
+    expect(result.total).toBe(370.5);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 298,
+          wholesaleAmount: 89.4,
+          customerAmount: 223.5,
+        }),
+        expect.objectContaining({
+          category: "fabric_upgrade",
+          catalogAmount: 30,
+          wholesaleAmount: 9,
+          customerAmount: 22.5,
+        }),
+        expect.objectContaining({
+          category: "operating_system",
+          priceLineId: "motor:autowand:autowand",
+          catalogAmount: 166,
+          wholesaleAmount: 49.8,
+          customerAmount: 124.5,
+        }),
+        expect.objectContaining({
+          id: "accessory:autowand_included_charging_kit",
+          category: "accessory",
+          status: "included",
+          customerAmount: 0,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 494,
+      wholesalePerWindow: 148.2,
+      customerPerWindow: 370.5,
+    });
+    expect(priced.costResult).toMatchObject({
+      ok: true,
+      wholesaleUnitCost: 148.2,
+      freightAllocated: 25,
+      landedCostTotal: 173.2,
+    });
+
+    const customerSnapshot = JSON.stringify(priced.snapshot);
+    expect(customerSnapshot).toContain('"customerAmount":223.5');
+    expect(customerSnapshot).not.toMatch(/wholesaleAmount|catalogAmount|dealerFactor|landedCost/i);
+  });
+
   it("keeps Polar's $142 source cell but applies V2 retail to its $63.90 dealer cost", () => {
     const source = priceDesign({
       productId: "polar_interior_roller",

@@ -29,6 +29,13 @@
       "id": "polar_interior_roller",
       "productType": "Roller Shades",
       "name": "Polar Interior Roller",
+      "pricingFamilies": [
+        {
+          "id": "polar_interior_roller_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10", "group_11", "group_12", "group_13", "group_14"]
+        }
+      ],
       "manufacturer": "Polar",
       "system": "Interior Roller",
       "priceBasis": "suggested_retail",
@@ -10595,6 +10602,13 @@
       "id": "polar_elite_patio",
       "productType": "Roller Shades",
       "name": "Polar Elite Patio",
+      "pricingFamilies": [
+        {
+          "id": "polar_elite_patio_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
+        }
+      ],
       "manufacturer": "Polar",
       "system": "Elite Patio",
       "priceBasis": "suggested_retail",
@@ -12917,6 +12931,13 @@
       "id": "polar_titan_patio",
       "productType": "Roller Shades",
       "name": "Polar Titan Patio",
+      "pricingFamilies": [
+        {
+          "id": "polar_titan_patio_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
+        }
+      ],
       "manufacturer": "Polar",
       "system": "Titan Patio",
       "priceBasis": "suggested_retail",
@@ -16571,6 +16592,13 @@
       "id": "polar_mega_exterior",
       "productType": "Roller Shades",
       "name": "Polar Mega Exterior",
+      "pricingFamilies": [
+        {
+          "id": "polar_mega_exterior_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
+        }
+      ],
       "manufacturer": "Polar",
       "system": "Mega Exterior",
       "priceBasis": "suggested_retail",

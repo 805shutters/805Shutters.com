@@ -2118,6 +2118,8 @@
           "id": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "name": "3/4\" Cordless Single & 1 1/4\" Single",
           "priceGroup": "1",
+          "pricingFamilyId": "honeycomb_3_4in_single_1_1_4in_single",
+          "baselineProgramId": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -2342,6 +2344,8 @@
           "id": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2",
           "name": "3/4\" Cordless Single & 1 1/4\" Single",
           "priceGroup": "2",
+          "pricingFamilyId": "honeycomb_3_4in_single_1_1_4in_single",
+          "baselineProgramId": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -3536,6 +3540,8 @@
           "id": "roller_cordless_fabric_price_group_1_pg1",
           "name": "Cordless Fabric - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -3782,6 +3788,8 @@
           "id": "roller_cordless_fabric_price_group_2_pg2",
           "name": "Cordless Fabric - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -4045,6 +4053,8 @@
           "id": "roller_cordless_fabric_price_group_3_pg3",
           "name": "Cordless Fabric - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -4291,6 +4301,8 @@
           "id": "roller_cordless_solar_screen_price_group_1_pg1",
           "name": "Cordless Solar Screen - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -4523,6 +4535,8 @@
           "id": "roller_cordless_solar_screen_price_group_2_pg2",
           "name": "Cordless Solar Screen - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -4758,6 +4772,8 @@
           "id": "roller_cordless_solar_screen_price_group_3_pg3",
           "name": "Cordless Solar Screen - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -5455,6 +5471,8 @@
           "id": "roman_cordless_usa_price_group_1_pg1",
           "name": "Cordless USA - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -5637,6 +5655,8 @@
           "id": "roman_cordless_usa_price_group_2_pg2",
           "name": "Cordless USA - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -5842,6 +5862,8 @@
           "id": "roman_cordless_usa_price_group_3_pg3",
           "name": "Cordless USA - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -6795,6 +6817,8 @@
           "id": "smartdrape_smartdrape_lakeshore_stripe",
           "name": "SmartDrape - Lakeshore Stripe",
           "priceGroup": null,
+          "pricingFamilyId": "smartdrape_collection_grid",
+          "baselineProgramId": "smartdrape_smartdrape_lakeshore_stripe",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -7004,6 +7028,8 @@
           "id": "smartdrape_smartdrape_light_filtering",
           "name": "SmartDrape - Light Filtering",
           "priceGroup": null,
+          "pricingFamilyId": "smartdrape_collection_grid",
+          "baselineProgramId": "smartdrape_smartdrape_lakeshore_stripe",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -8308,6 +8334,8 @@
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "name": "Synchrony Vertical Blind - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -8411,6 +8439,8 @@
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_2_pg2",
           "name": "Synchrony Vertical Blind - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -8515,6 +8545,8 @@
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_3_pg3",
           "name": "Synchrony Vertical Blind - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -8620,6 +8652,8 @@
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
           "name": "Synchrony Vertical Blind - Price Group 4",
           "priceGroup": "4",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [

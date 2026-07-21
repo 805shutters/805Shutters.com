@@ -45,6 +45,17 @@ export type CatalogProgram = {
   id: string;
   name: string;
   priceGroup: string | null;
+  /**
+   * Stable identity for price-group programs that share one underlying product
+   * grid. V2 uses this explicit source metadata to separate the baseline grid
+   * from a higher fabric-group delta; it must never infer families from names.
+   */
+  pricingFamilyId?: string | null;
+  /**
+   * Exact lowest/base price-group program for this pricing family. Required
+   * whenever `priceGroup` represents a fabric upgrade above the base grid.
+   */
+  baselineProgramId?: string | null;
   priceAxis: CatalogPriceAxis;
   /** Optional program-level override for a product with mixed priceability. */
   priceBasis?: CatalogPriceBasis;
@@ -155,6 +166,16 @@ export type CatalogProduct = {
   source?: string;
   /** fabric name -> program id. null for products with a single program. */
   fabricRouting: Record<string, string> | null;
+  /**
+   * Explicit source-defined families whose program grids differ only by a
+   * fabric/collection tier. This product-level form avoids duplicating the
+   * same immutable family declaration across large vendor books.
+   */
+  pricingFamilies?: Array<{
+    id: string;
+    baselineProgramId: string;
+    memberProgramIds: string[];
+  }>;
   fabricMetadata?: CatalogFabricMetadata[];
   programs: CatalogProgram[];
   surcharges: CatalogSurcharge[];

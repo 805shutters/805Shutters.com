@@ -43,6 +43,12 @@
       "sha256": "fdf0af921d137d778d6890b7afa97342045bd50d05a4838afc116b6c400f3044"
     },
     {
+      "sourceId": "norman-motorization-guide-2026-05",
+      "fileName": "Motorization Guide.pdf",
+      "byteLength": 9323825,
+      "sha256": "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290"
+    },
+    {
       "sourceId": "norman-honeycomb-guide-2026-07",
       "fileName": "Honeycomb Shade Guide (1).pdf",
       "byteLength": 4861928,

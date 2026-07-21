@@ -46,6 +46,146 @@ function highlightedWholesaleValues(html: string): string[] {
 }
 
 describe("PricingAuditPanel authoritative wholesale cost", () => {
+  it("itemizes the exact Norman Roller base, fabric, accessories, and AutoWand prices", () => {
+    const retailComponents = [
+      {
+        id: "base-grid",
+        category: "base_grid",
+        label: "Cordless Fabric Price Group 1 base grid",
+        status: "priced",
+        basis: "grid_cell",
+        catalogAmount: 298,
+        customerAmount: 223.5,
+      },
+      {
+        id: "fabric-upgrade",
+        category: "fabric_upgrade",
+        label: "Amelia Price Group 2 grid upgrade",
+        status: "priced",
+        basis: "grid_delta",
+        catalogAmount: 30,
+        customerAmount: 22.5,
+      },
+      {
+        id: "top-treatment",
+        category: "accessory",
+        label: "No top treatment",
+        status: "included",
+        basis: "included",
+        catalogAmount: 0,
+        customerAmount: 0,
+      },
+      {
+        id: "hem-bar",
+        category: "accessory",
+        label: "Fabric-covered hem bar",
+        status: "included",
+        basis: "included",
+        catalogAmount: 0,
+        customerAmount: 0,
+      },
+      {
+        id: "tube",
+        category: "accessory",
+        label: '2" (52mm) tube',
+        status: "included",
+        basis: "included",
+        catalogAmount: 0,
+        customerAmount: 0,
+      },
+      {
+        id: "autowand",
+        category: "operating_system",
+        label: "AutoWand operating system",
+        status: "priced",
+        basis: "flat",
+        catalogAmount: 166,
+        customerAmount: 124.5,
+      },
+    ];
+    const wholesaleComponents: PricingAuditWholesaleCost["wholesaleComponents"] =
+      retailComponents.map((component) => ({
+        id: component.id,
+        category: component.category as NonNullable<
+          PricingAuditWholesaleCost["wholesaleComponents"]
+        >[number]["category"],
+        label: component.label,
+        status: component.status,
+        basis: component.basis,
+        catalogAmount: component.catalogAmount,
+        amount:
+          component.category === "base_grid"
+            ? 89.4
+            : component.category === "fabric_upgrade"
+              ? 9
+              : component.category === "operating_system"
+                ? 49.8
+                : 0,
+      }));
+
+    const html = renderToStaticMarkup(createElement(PricingAuditPanel, {
+      productType: "Roller Shades",
+      supplier: "Norman",
+      programName: "Cordless Fabric - Price Group 1",
+      widthIn: 30,
+      heightIn: 48,
+      rawSqft: 10,
+      billableSqft: 10,
+      quantity: 1,
+      savedUnitPrice: 370.5,
+      options: {
+        authoritative_price_breakdown: {
+          ok: true,
+          programName: "Cordless Fabric - Price Group 2",
+          components: retailComponents,
+          unitPrice: 370.5,
+          discountPercent: 0,
+          discountAmount: 0,
+          onceTotal: 0,
+          total: 370.5,
+        },
+      },
+      currentRetailPerSqft: null,
+      wholesaleRate: null,
+      tariffPercent: 0,
+      surcharges: [],
+      authoritativeWholesaleCost: {
+        ok: true,
+        basis: "catalog_factor",
+        matchedWidth: 30,
+        matchedHeight: 48,
+        wholesaleBase: 89.4,
+        wholesaleAddOns: [],
+        wholesaleComponents,
+        wholesaleUnitCost: 148.2,
+        quantity: 1,
+        wholesaleTotal: 148.2,
+        freightAllocated: 25,
+        oversizeAllocated: 0,
+        landedCostTotal: 173.2,
+        freightStatus: "published",
+      },
+    }));
+
+    expect(html).toContain("Base $223.50 · Fabric $22.50 · Accessories $0 · Operating $124.50");
+    expect(html).toContain("Cordless Fabric - Price Group 2");
+    expect(html).not.toContain("Program / material</span><span class=\"text-right text-slate-900\">Cordless Fabric - Price Group 1");
+    expect(html).toContain("Actual selected grid");
+    expect(html).toContain("$328");
+    expect(html).toContain("Amelia Price Group 2 grid upgrade");
+    expect(html).toContain("No top treatment");
+    expect(html).toContain("Included");
+    expect(html).toContain("AutoWand operating system");
+    expect(html).toContain("Manufacturer suggested retail x 0.30");
+    expect(highlightedWholesaleValues(html)).toContain("$89.40");
+    expect(highlightedWholesaleValues(html)).toContain("$9");
+    expect(highlightedWholesaleValues(html)).toContain("$49.80");
+    expect(highlightedWholesaleValues(html)).not.toContain("$223.50");
+    expect(highlightedWholesaleValues(html)).not.toContain("$22.50");
+    expect(highlightedWholesaleValues(html)).not.toContain("$124.50");
+    expect(html).not.toContain("Stored price mismatch");
+  });
+
   it("shows Norman retail-factor cost instead of the missing-cost warning", () => {
     const html = renderCost({
       ok: true,

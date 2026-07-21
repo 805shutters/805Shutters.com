@@ -1,8 +1,10 @@
 import {
+  catalog,
   findProductSurcharge,
   getProduct,
   getProgram,
 } from "@/lib/quote/catalog";
+import type { CatalogProduct, CatalogProgram } from "@/lib/quote/catalog/types";
 import {
   priceDealerNetDesign,
   priceDesign,
@@ -29,6 +31,14 @@ import {
   canonicalMotorizationSelectionsFromConfiguration,
 } from "./roller-motor-contract";
 import { rollerComponentOrderWidthsForPricing } from "./roller-matrix";
+import {
+  buildAuthoritativePriceComponents,
+  type AuthoritativePriceComponent,
+  type AuthoritativePriceComponentTotals,
+  type PriceComponentBaseline,
+  type PriceComponentBasis,
+  type PriceComponentOptionInput,
+} from "./price-components";
 
 export type QuoteV2ValidationStatus = "valid" | "blocked";
 
@@ -54,7 +64,11 @@ export type QuoteV2ResultMetadata = {
   internalCost?: QuoteV2InternalProductCost;
 };
 
-export type QuoteV2PriceSuccess = PriceBreakdown & QuoteV2ResultMetadata;
+export type QuoteV2PriceSuccess = PriceBreakdown &
+  QuoteV2ResultMetadata & {
+    components: readonly AuthoritativePriceComponent[];
+    componentTotals: AuthoritativePriceComponentTotals;
+  };
 export type QuoteV2PriceFailure = PriceFailure & QuoteV2ResultMetadata;
 export type QuoteV2PriceResult = QuoteV2PriceSuccess | QuoteV2PriceFailure;
 
@@ -511,23 +525,37 @@ function priceInputContractIssues(
 
 function dealerNetRetail(
   input: PriceInput,
-): { result: PriceResult; productCostUnit: number | null; productCostTotal: number | null } {
+): {
+  result: PriceResult;
+  sourceResult: PriceResult;
+  productCostUnit: number | null;
+  productCostTotal: number | null;
+} {
   if ((input.surcharges?.length ?? 0) > 0 || (input.motorization?.length ?? 0) > 0) {
+    const failure: PriceFailure = {
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      error:
+        "The dealer-net option charges for this configuration are not fully sourced. V2 will not mark up the base while silently omitting selected options.",
+      warnings: [],
+    };
     return {
-      result: {
-        ok: false,
-        code: "CONFIGURATION_INCOMPLETE",
-        error:
-          "The dealer-net option charges for this configuration are not fully sourced. V2 will not mark up the base while silently omitting selected options.",
-        warnings: [],
-      },
+      result: failure,
+      sourceResult: failure,
       productCostUnit: null,
       productCostTotal: null,
     };
   }
 
   const cost = priceDealerNetDesign(input);
-  if (!cost.ok) return { result: cost, productCostUnit: null, productCostTotal: null };
+  if (!cost.ok) {
+    return {
+      result: cost,
+      sourceResult: cost,
+      productCostUnit: null,
+      productCostTotal: null,
+    };
+  }
   const product = getProduct(cost.productId);
   const program = product ? getProgram(product, cost.programId) : undefined;
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
@@ -536,6 +564,28 @@ function dealerNetRetail(
   const discountAmount = roundMoney(undiscountedUnit * (discountPercent / 100));
   const unitPrice = roundMoney(undiscountedUnit - discountAmount);
   const productCostTotal = roundMoney(cost.dealerNetUnitCost * quantity);
+  const sourceResult: PriceBreakdown = {
+    ok: true,
+    productId: cost.productId,
+    programId: cost.programId,
+    programName: program?.name ?? cost.programId,
+    matchedWidth: cost.matchedWidth ?? input.widthInches,
+    matchedHeight: cost.matchedHeight,
+    base: cost.dealerNetUnitCost,
+    configurationUnits: 1,
+    wholesaleBase: cost.dealerNetUnitCost,
+    surchargeLines: [],
+    unitPrice: cost.dealerNetUnitCost,
+    discountPercent: 0,
+    discountAmount: 0,
+    wholesaleUnitPrice: cost.dealerNetUnitCost,
+    quantity,
+    onceTotal: 0,
+    total: productCostTotal,
+    wholesaleTotal: productCostTotal,
+    warnings: [],
+    costStatus: "complete",
+  };
   return {
     result: {
       ok: true,
@@ -559,6 +609,7 @@ function dealerNetRetail(
       warnings: ["Customer retail was calculated from the configured dealer pricing policy."],
       costStatus: "complete",
     },
+    sourceResult,
     productCostUnit: cost.dealerNetUnitCost,
     productCostTotal,
   };
@@ -630,6 +681,397 @@ function catalogCostRetail(
   };
 }
 
+type ProgramPriceComposition = {
+  familyId: string | null;
+  baselineProgramId: string | null;
+  standalone: boolean;
+};
+
+function programPriceComposition(
+  product: CatalogProduct,
+  program: CatalogProgram,
+): ProgramPriceComposition {
+  const directFamily = program.pricingFamilyId?.trim() || null;
+  const directBaseline = program.baselineProgramId?.trim() || null;
+  if (directFamily || directBaseline) {
+    return {
+      familyId: directFamily,
+      baselineProgramId: directBaseline,
+      standalone: false,
+    };
+  }
+
+  const families = (product.pricingFamilies ?? []).filter((family) =>
+    family.memberProgramIds.includes(program.id),
+  );
+  if (families.length === 1) {
+    return {
+      familyId: families[0].id,
+      baselineProgramId: families[0].baselineProgramId,
+      standalone: false,
+    };
+  }
+
+  // A source program with no price-group identity is one complete construction
+  // grid, not an inferred fabric family. Its selected grid is therefore the
+  // explicit base and its fabric-upgrade row is $0/not applicable.
+  if (families.length === 0 && program.priceGroup == null) {
+    return {
+      familyId: null,
+      baselineProgramId: program.id,
+      standalone: true,
+    };
+  }
+  return { familyId: null, baselineProgramId: null, standalone: false };
+}
+
+function priceComponentSource(
+  product: CatalogProduct,
+  program?: CatalogProgram,
+) {
+  const pages = program?.sourcePages?.length
+    ? program.sourcePages
+    : product.pages;
+  return sourceProvenance(
+    contractSourceId(product.id),
+    pages.length > 0 ? { pages } : {},
+  );
+}
+
+function motorPriceComponentSource(priceLineId: string) {
+  const [, groupId, optionId] = priceLineId.split(":");
+  const group = groupId ? catalog.motorization[groupId] : undefined;
+  const option = group?.options.find((entry) => entry.id === optionId);
+  const pages = option?.sourcePages?.length
+    ? option.sourcePages
+    : group?.sourcePages;
+  return sourceProvenance(
+    "norman-retail-guide-2026-07",
+    pages?.length ? { pages } : {},
+  );
+}
+
+function normalizedComponentIdentity(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function priceComponentBasis(
+  product: CatalogProduct,
+  priceLineId: string,
+  kind: "percent" | "flat",
+): Exclude<PriceComponentBasis, "grid_cell" | "grid_delta"> {
+  const surcharge = findProductSurcharge(product, priceLineId);
+  if (surcharge?.widthGraduated) return "width_ladder";
+  if (surcharge?.heightGraduated) return "height_ladder";
+  return kind === "percent" ? "percent" : "flat";
+}
+
+function baselinePriceComponent(
+  selection: SelectionContext,
+  priceInput: PriceInput,
+  product: CatalogProduct,
+  selectedProgram: CatalogProgram,
+  sourceResult: PriceBreakdown,
+  retailResult: PriceBreakdown,
+): PriceComponentBaseline | null {
+  const composition = programPriceComposition(product, selectedProgram);
+  const baselineProgramId = composition.baselineProgramId;
+  if (!baselineProgramId) return null;
+  const baselineProgram = getProgram(product, baselineProgramId);
+  if (!baselineProgram) return null;
+  const source = priceComponentSource(product, baselineProgram);
+
+  if (baselineProgramId === selectedProgram.id) {
+    if (
+      sourceResult.wholesaleBase == null ||
+      retailResult.wholesaleBase == null
+    ) {
+      return null;
+    }
+    return {
+      programId: baselineProgramId,
+      matchedWidth: sourceResult.matchedWidth,
+      matchedHeight: sourceResult.matchedHeight,
+      ...(sourceResult.componentMatchedWidths
+        ? { componentMatchedWidths: sourceResult.componentMatchedWidths }
+        : {}),
+      catalogAmount: sourceResult.base,
+      wholesaleAmount: retailResult.wholesaleBase,
+      customerAmount: retailResult.base,
+      source,
+    };
+  }
+
+  if (product.priceBasis === "dealer_net") {
+    const dealer = priceDealerNetDesign({
+      ...priceInput,
+      programId: baselineProgramId,
+    });
+    if (!dealer.ok) return null;
+    return {
+      programId: baselineProgramId,
+      matchedWidth: dealer.matchedWidth ?? priceInput.widthInches,
+      matchedHeight: dealer.matchedHeight,
+      catalogAmount: dealer.dealerNetUnitCost,
+      wholesaleAmount: dealer.dealerNetUnitCost,
+      customerAmount: roundMoney(dealer.dealerNetUnitCost * 2.5),
+      source,
+    };
+  }
+
+  const baselineSourceResult = priceDesign({
+    ...priceInput,
+    programId: baselineProgramId,
+  });
+  if (!baselineSourceResult.ok) return null;
+  const baselineRetailResult = catalogCostRetail(
+    baselineSourceResult,
+    selection,
+  );
+  if (
+    !baselineRetailResult.ok ||
+    baselineRetailResult.wholesaleBase == null
+  ) {
+    return null;
+  }
+  return {
+    programId: baselineProgramId,
+    matchedWidth: baselineSourceResult.matchedWidth,
+    matchedHeight: baselineSourceResult.matchedHeight,
+    ...(baselineSourceResult.componentMatchedWidths
+      ? {
+          componentMatchedWidths:
+            baselineSourceResult.componentMatchedWidths,
+        }
+      : {}),
+    catalogAmount: baselineSourceResult.base,
+    wholesaleAmount: baselineRetailResult.wholesaleBase,
+    customerAmount: baselineRetailResult.base,
+    source,
+  };
+}
+
+function priceComponentInputs(
+  selection: SelectionContext,
+  product: CatalogProduct,
+  sourceResult: PriceBreakdown,
+) {
+  const pricingSource = priceComponentSource(
+    product,
+    getProgram(product, sourceResult.programId),
+  );
+  const canonicalContract =
+    selection.productId === "roller"
+      ? canonicalMotorizationSelectionsFromConfiguration(
+          selection.configuration,
+        )
+      : null;
+  const canonicalMotorization = canonicalContract?.selections ?? [];
+  const canonicalLineIds = new Set(
+    canonicalMotorization.map(
+      (entry) => `motor:${entry.groupId}:${entry.optionId}`,
+    ),
+  );
+  const baseMotor = canonicalMotorization.find(
+    (entry) => entry.role === "base_motor",
+  );
+  const baseMotorLineId = baseMotor
+    ? `motor:${baseMotor.groupId}:${baseMotor.optionId}`
+    : null;
+  const liftSystem = selection.configuration.lift_system;
+  const motorized =
+    normalizedComponentIdentity(liftSystem).includes("motor") ||
+    Boolean(baseMotor);
+  const fallbackMotorLine = sourceResult.surchargeLines.find((line) =>
+    line.id.startsWith("motor:"),
+  );
+  const operatingPriceLineId =
+    baseMotorLineId ?? (motorized ? fallbackMotorLine?.id ?? null : null);
+  const operatingPriceLine = operatingPriceLineId
+    ? sourceResult.surchargeLines.find(
+        (line) => line.id === operatingPriceLineId,
+      )
+    : null;
+
+  const motorSources = Object.fromEntries(
+    sourceResult.surchargeLines
+      .filter((line) => line.id.startsWith("motor:"))
+      .map((line) => [line.id, motorPriceComponentSource(line.id)]),
+  );
+
+  const accessories: PriceComponentOptionInput[] = [];
+  for (const line of sourceResult.surchargeLines) {
+    if (line.id === operatingPriceLineId || canonicalLineIds.has(line.id)) {
+      continue;
+    }
+    const surcharge = findProductSurcharge(product, line.id);
+    const oncePerLine = surcharge?.per === "once";
+    const surchargeSource = surcharge?.sourcePages?.length
+      ? sourceProvenance(contractSourceId(product.id), {
+          pages: surcharge.sourcePages,
+        })
+      : pricingSource;
+    accessories.push({
+      id: `${oncePerLine ? "order" : "accessory"}:${line.id}`,
+      label: line.label,
+      category: oncePerLine ? "order_charge" : "accessory",
+      status: "priced",
+      basis: priceComponentBasis(product, line.id, line.kind),
+      selectionBindings: [
+        {
+          field: line.id.startsWith("motor:")
+            ? "motorization_selections"
+            : "surcharges",
+          value: line.id,
+        },
+      ],
+      source: line.id.startsWith("motor:")
+        ? motorPriceComponentSource(line.id)
+        : surchargeSource,
+      priceLineId: line.id,
+      billingScope: oncePerLine ? "once_per_line" : "per_window",
+    });
+  }
+
+  const includedSource =
+    selection.productId === "roller"
+      ? sourceProvenance("norman-roller-guide-2026-07")
+      : pricingSource;
+  const addIncluded = (
+    id: string,
+    label: string,
+    field: string,
+    value: string,
+    source = includedSource,
+  ) => {
+    accessories.push({
+      id,
+      label,
+      category: "accessory",
+      status: "included",
+      basis: "included",
+      selectionBindings: [{ field, value }],
+      source,
+      billingScope: "per_window",
+    });
+  };
+
+  if (selection.productId === "roller") {
+    const topTreatment = String(
+      selection.configuration.roller_top_treatment ??
+        selection.configuration.valance ??
+        "",
+    );
+    const normalizedTopTreatment = normalizedComponentIdentity(topTreatment);
+    if (
+      topTreatment &&
+      (normalizedTopTreatment.includes("no top treatment") ||
+        normalizedTopTreatment.includes("no valance") ||
+        normalizedTopTreatment === "none")
+    ) {
+      addIncluded(
+        "accessory:no_top_treatment",
+        "No top treatment — included",
+        "roller_top_treatment",
+        topTreatment,
+      );
+    }
+
+    const hemBar = String(selection.configuration.hem_bar ?? "");
+    if (normalizedComponentIdentity(hemBar).includes("fabric covered")) {
+      addIncluded(
+        "accessory:fabric_covered_hem_bar",
+        "Fabric-covered hem bar — included",
+        "hem_bar",
+        hemBar,
+      );
+    }
+
+    const tube = String(selection.configuration.roller_tube ?? "");
+    if (tube) {
+      addIncluded(
+        `accessory:tube:${normalizedComponentIdentity(tube).replace(/ /g, "_")}`,
+        `${tube} — included`,
+        "roller_tube",
+        tube,
+      );
+    }
+
+    if (baseMotor?.groupId === "autowand" && baseMotor.optionId === "autowand") {
+      addIncluded(
+        "accessory:autowand_included_charging_kit",
+        "AutoWand charging-kit allocation — included",
+        "motorization_selections",
+        "autowand/autowand",
+        sourceProvenance("norman-motorization-guide-2026-05", {
+          page: 83,
+        }),
+      );
+    }
+  }
+
+  if (!accessories.some((entry) => entry.category === "accessory")) {
+    addIncluded(
+      "accessory:none",
+      "Accessories — none selected",
+      "accessories",
+      "none",
+      pricingSource,
+    );
+  }
+
+  const operatingSystem: PriceComponentOptionInput | null = operatingPriceLine
+    ? {
+        id: `operating:${operatingPriceLine.id}`,
+        label: `${operatingPriceLine.label} operating system`,
+        category: "operating_system",
+        status: "priced",
+        basis: "flat",
+        selectionBindings: [
+          { field: "lift_system", value: String(liftSystem ?? "Motorized") },
+          {
+            field: "motorization_selection",
+            value: operatingPriceLine.id,
+          },
+        ],
+        source: motorPriceComponentSource(operatingPriceLine.id),
+        priceLineId: operatingPriceLine.id,
+        units: baseMotor?.units ?? 1,
+        billingScope: "per_window",
+      }
+    : motorized
+      ? null
+      : {
+          id: `operating:${normalizedComponentIdentity(liftSystem) || "standard"}`,
+          label: `${String(liftSystem ?? "Standard operation")} — included`,
+          category: "operating_system",
+          status: "included",
+          basis: "included",
+          selectionBindings: [
+            {
+              field: "lift_system",
+              value: String(liftSystem ?? "standard"),
+            },
+          ],
+          source: includedSource,
+          billingScope: "per_window",
+        };
+
+  return {
+    accessories,
+    operatingSystem,
+    canonicalMotorization,
+    motorSources,
+    selectedProgramSource: pricingSource,
+    contractSource: pricingSource,
+  };
+}
+
 function internalCostFromResult(
   result: PriceBreakdown,
   dealerCostOverride?: { unit: number | null; total: number | null },
@@ -674,16 +1116,50 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
 
   const product = getProduct(priceInput.productId);
   const dealer = product?.priceBasis === "dealer_net" ? dealerNetRetail(priceInput) : null;
-  const sourceResult = dealer?.result ?? priceDesign(priceInput);
-  const result =
-    !dealer && sourceResult.ok
-      ? catalogCostRetail(sourceResult, selection)
-      : sourceResult;
+  const sourceResult = dealer?.sourceResult ?? priceDesign(priceInput);
+  const result = dealer?.result ??
+    (sourceResult.ok ? catalogCostRetail(sourceResult, selection) : sourceResult);
   if (!result.ok) {
     return {
       ...result,
       ...metadata(selection, productStatus, issues, false),
     };
+  }
+  if (!sourceResult.ok || !product) {
+    return {
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      error:
+        "The authoritative source price could not be retained for component reconciliation.",
+      warnings: result.warnings,
+      ...metadata(selection, productStatus, issues, false),
+    };
+  }
+
+  const selectedProgram = getProgram(product, result.programId);
+  const componentInput = priceComponentInputs(selection, product, sourceResult);
+  const componentResult = buildAuthoritativePriceComponents({
+    selection,
+    sourceResult,
+    retailResult: result,
+    product,
+    baseline: selectedProgram
+      ? baselinePriceComponent(
+          selection,
+          priceInput,
+          product,
+          selectedProgram,
+          sourceResult,
+          result,
+        )
+      : null,
+    ...componentInput,
+  });
+  if (!componentResult.ok) {
+    return validationFailure(selection, productStatus, [
+      ...issues,
+      ...componentResult.issues,
+    ]);
   }
 
   const resultMetadata = metadata(selection, productStatus, issues, true);
@@ -692,6 +1168,8 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     : undefined;
   return {
     ...result,
+    components: componentResult.components,
+    componentTotals: componentResult.totals,
     ...resultMetadata,
     ...(internalCost ? { internalCost } : {}),
   };
@@ -720,6 +1198,20 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
       ? { billableSqft: result.billableSqft }
       : {}),
     base: result.base,
+    components: result.components.map((component) => ({
+      id: component.id,
+      category: component.category,
+      label: component.label,
+      status: component.status,
+      basis: component.basis,
+      customerAmount: component.customerAmount,
+      units: component.units,
+      billingScope: component.billingScope,
+    })),
+    componentTotals: {
+      customerPerWindow: result.componentTotals.customerPerWindow,
+      customerOncePerLine: result.componentTotals.customerOncePerLine,
+    },
     surchargeLines: result.surchargeLines.map(({ id, label, amount, kind, detail }) => ({
       id,
       label,
