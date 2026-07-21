@@ -39,6 +39,10 @@ import {
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import {
+  customerBookableSlotKeys,
+  type BookingAvailabilityResponse
+} from "@/lib/crm/calendar-availability";
+import {
   PAYMENT_PLAN_METHOD_LABELS,
   getPaymentPlanMeta,
   installmentChargeAmount,
@@ -12797,6 +12801,7 @@ function CalendarPlanner({
   const rangeEnd = view === "month" ? addCalendarDays(monthDays[monthDays.length - 1], 1) : addCalendarDays(timelineDays[timelineDays.length - 1], 1);
   const visibleEvents = calendarEventsForRange(events, rangeStart, rangeEnd);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlotRow[]>([]);
+  const [customerBookableSlots, setCustomerBookableSlots] = useState<string[]>([]);
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const availabilityMonths = useMemo(
@@ -12817,6 +12822,7 @@ function CalendarPlanner({
 
     if (!months.length) {
       setAvailabilitySlots([]);
+      setCustomerBookableSlots([]);
       setAvailabilityLoading(false);
       setAvailabilityError(null);
       return () => {
@@ -12828,17 +12834,33 @@ function CalendarPlanner({
     setAvailabilityError(null);
 
     Promise.all(
-      months.map((month) =>
-        crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`)
-      )
+      months.map(async (month) => {
+        const [managedAvailability, bookingResponse] = await Promise.all([
+          crmFetch<{ slots: AvailabilitySlotRow[] }>(session, `/api/crm/availability?month=${month}`),
+          fetch(`/api/booking/availability?month=${month}`, { cache: "no-store" })
+        ]);
+        const bookingAvailability = (await bookingResponse.json().catch(() => ({}))) as BookingAvailabilityResponse & {
+          message?: string;
+        };
+
+        if (!bookingResponse.ok) {
+          throw new Error(bookingAvailability.message || "Customer booking times could not be loaded.");
+        }
+
+        return { managedAvailability, bookingAvailability };
+      })
     )
       .then((results) => {
         if (!active) return;
-        setAvailabilitySlots(results.flatMap((result) => result.slots || []));
+        setAvailabilitySlots(results.flatMap((result) => result.managedAvailability.slots || []));
+        setCustomerBookableSlots([
+          ...customerBookableSlotKeys(results.map((result) => result.bookingAvailability))
+        ]);
       })
       .catch((error) => {
         if (!active) return;
         setAvailabilitySlots([]);
+        setCustomerBookableSlots([]);
         setAvailabilityError(error instanceof Error ? error.message : "Open times could not be loaded.");
       })
       .finally(() => {
@@ -12924,6 +12946,7 @@ function CalendarPlanner({
           days={timelineDays}
           events={visibleEvents}
           availabilitySlots={availabilitySlots}
+          customerBookableSlots={customerBookableSlots}
           availabilityLoading={availabilityLoading}
           canOverrideAvailability={canOverrideAvailability}
           onSelectSlot={onSelectSlot}
@@ -12940,6 +12963,7 @@ function CalendarTimelineGrid({
   days,
   events,
   availabilitySlots,
+  customerBookableSlots,
   availabilityLoading,
   canOverrideAvailability,
   onSelectSlot,
@@ -12950,6 +12974,7 @@ function CalendarTimelineGrid({
   days: string[];
   events: CrmCalendarEvent[];
   availabilitySlots: AvailabilitySlotRow[];
+  customerBookableSlots: string[];
   availabilityLoading: boolean;
   canOverrideAvailability: boolean;
   onSelectSlot: (slot: CalendarSlotSelection) => void;
@@ -12958,6 +12983,7 @@ function CalendarTimelineGrid({
   view: "day" | "week";
 }) {
   const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
+  const customerBookableLookup = useMemo(() => new Set(customerBookableSlots), [customerBookableSlots]);
 
   function availabilityOwnersForSlot(date: string, time: string) {
     return availabilityLookup.get(availabilitySlotKey(date, time)) || [];
@@ -13053,7 +13079,7 @@ function CalendarTimelineGrid({
               const event = findCalendarEventForSlot(events, day, time);
               const past = isPastCalendarSlot(day, time);
               const openOwners = availabilityOwnersForSlot(day, time);
-              const available = openOwners.length > 0;
+              const available = customerBookableLookup.has(availabilitySlotKey(day, time));
               const pending = availabilityLoading && !available;
               const slot = calendarSlotSelection(day, time);
               const overridable = canOverrideAvailability && !event && !past && !pending && !available && !availabilityLoading;
@@ -13066,7 +13092,9 @@ function CalendarTimelineGrid({
                   : pending
                     ? "Open times"
                     : available
-                      ? availabilityOwnersLabel(openOwners)
+                      ? openOwners.length
+                        ? availabilityOwnersLabel(openOwners)
+                        : "Open for online booking"
                       : overridable
                         ? "Admin: book anyway"
                         : "No open time";
