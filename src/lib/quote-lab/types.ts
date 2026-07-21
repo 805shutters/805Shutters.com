@@ -104,7 +104,12 @@ export type QuoteLabCatalogProduct = {
   priceBasis?: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
-  programs: Array<{ id: string; name: string; priceAxis: "wh" | "width" | "sqft" }>;
+  programs: Array<{
+    id: string;
+    name: string;
+    priceAxis: "wh" | "width" | "height" | "sqft";
+    priceBasis?: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable" | null;
+  }>;
   fabrics?: Array<{ name: string; programId: string }>;
   surcharges: Array<{
     id: string;

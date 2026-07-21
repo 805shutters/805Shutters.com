@@ -5,6 +5,7 @@ const categories = [
   "Shutters", "Roller Shades", "Roman Shades", "Honeycomb Shades", "Sheer Shades",
   "Mini Blinds", "Faux Wood Blinds", "Wood Blinds", "Vertical Blinds", "Smart Drapes",
   "Drapery Tracks", "Tension Shades", "Retractable Screens", "Awnings",
+  "Vinyl Blinds",
 ];
 
 test("protected Quote Lab renders Polar in the exact existing builder", async ({ page }, testInfo) => {
@@ -37,6 +38,40 @@ test("protected Quote Lab renders Polar in the exact existing builder", async ({
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
   await expect(page.locator('[aria-label="Add quote line item"]').getByRole("button", { name: "Awnings" }).first()).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("quote-lab-polar-mobile.png"), fullPage: false });
+});
+
+test("Lotus shares existing categories and adds Vinyl Blinds without exposing dealer cost", async ({ page }, testInfo) => {
+  test.skip(!accessCode, "Requires QUOTE_LAB_ACCESS_CODE for the isolated preview.");
+  const response = await page.request.post("/api/quote-lab/access", { data: { code: accessCode } });
+  expect(response.ok()).toBe(true);
+  await page.goto("/quote-lab");
+
+  const rollerControls = page.getByTestId("quote-lab-catalog-controls").first();
+  const rollerProduct = rollerControls.getByRole("combobox", { name: "Manufacturer and product" });
+  await rollerProduct.click();
+  await expect(page.getByRole("option", { name: "Lotus - Lotus Roller Shades", exact: true })).toBeVisible();
+  await page.getByRole("option", { name: "Lotus - Lotus Roller Shades", exact: true }).click();
+  await expect(rollerProduct).toContainText("Lotus - Lotus Roller Shades");
+  await expect(rollerControls.getByText("Dealer-net only; customer retail undefined", { exact: true })).toBeVisible();
+  await expect(rollerControls.getByRole("combobox", { name: "Price program" })).toContainText("1% Roller Shade - Custom Cut");
+
+  const firstLineCard = rollerControls.locator("xpath=ancestor::div[contains(@class, 'overflow-hidden')][1]");
+  await firstLineCard.getByRole("button", { name: "Roller Shades", exact: true }).click();
+  await firstLineCard.locator('[aria-label="Select line item product type"]').getByRole("button", { name: "Vinyl Blinds", exact: true }).click();
+  const vinylControls = page.getByTestId("quote-lab-catalog-controls").first();
+  const vinylProduct = vinylControls.getByRole("combobox", { name: "Manufacturer and product" });
+  await vinylProduct.click();
+  await page.getByRole("option", { name: "Lotus - Lotus Vinyl Blinds", exact: true }).click();
+  await expect(vinylProduct).toContainText("Lotus - Lotus Vinyl Blinds");
+  await expect(vinylControls.getByText("Dealer-net only; customer retail undefined", { exact: true })).toBeVisible();
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-lotus-desktop.png"), fullPage: false });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await expect(page.getByRole("button", { name: /^Vinyl Blinds/ }).first()).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-lotus-mobile.png"), fullPage: false });
 });
 
 test("Norman coupled quantity and SmartSense price through the existing builder", async ({ page }, testInfo) => {

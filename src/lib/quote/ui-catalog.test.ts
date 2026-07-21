@@ -100,6 +100,8 @@ describe("buildUiCatalog", () => {
   it("does not leak full price grids to the UI projection", () => {
     const json = JSON.stringify(ui);
     expect(json).not.toContain("\"prices\"");
+    expect(json).not.toContain("\"costs\"");
+    expect(json).not.toContain("dealerNetPrice");
     expect(json).not.toContain("\"grid\"");
     expect(json).not.toContain("dealerFactor");
     expect(json).not.toContain("wholesale");

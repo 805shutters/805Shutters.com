@@ -1,9 +1,10 @@
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
-import { catalog, findProductSurcharge, getProduct } from "@/lib/quote/catalog";
+import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
 import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
 import { priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { quoteLabProductType } from "./builder";
 
 const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   Shutters: "norman_shutters",
@@ -18,6 +19,7 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<string, string> = {
   "Drapery Tracks": "polar_drapery_track",
   "Tension Shades": "polar_tension_shade",
   "Retractable Screens": "polar_all_seasons_screen",
+  "Vinyl Blinds": "lotus_vinyl_blinds",
 };
 
 function decimalMeasurement(whole: unknown, fraction: unknown): number {
@@ -49,7 +51,8 @@ function resolveProductId(line: SalesQuoteLineItem, design: Partial<SalesQuoteDe
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
   const explicit = textOption(options, "quote_lab_product_id", "fabric_product_id");
   if (explicit && getProduct(explicit)) return explicit;
-  if (line.product_type === "Roller Shades" || line.product_type === "Awnings") return "";
+  const candidates = listProducts().filter((product) => quoteLabProductType(product.id) === line.product_type);
+  if (candidates.length > 1) return "";
   if (line.product_type === "Shutters" && slug(design.supplier)?.includes("onyx")) return "onyx_shutters";
   if (line.product_type === "Faux Wood Blinds" && slug(options.product_line)?.includes("smartprivacy")) {
     return "smartprivacy_faux";

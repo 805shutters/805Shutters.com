@@ -3641,6 +3641,7 @@ function QuoteLabCatalogControls({
   const productId = typeof options.quote_lab_product_id === "string" ? options.quote_lab_product_id : "";
   const programId = typeof options.quote_lab_program_id === "string" ? options.quote_lab_program_id : "";
   const selectedProduct = products.find((product) => product.id === productId);
+  const selectedProgram = selectedProduct?.programs.find((program) => program.id === programId);
   const availableProducts = products.filter((product) =>
     product.productType === productType || (productType === "Roller Shades" && product.id === "roller"),
   );
@@ -3683,7 +3684,9 @@ function QuoteLabCatalogControls({
     onUpdateFields({ options_json: { ...options, surcharges: [...selectedSurcharges, { id, quantity: 1 }] } });
   };
 
-  const statusText = selectedProduct?.priceBasis === "manual_required"
+  const statusText = selectedProgram?.priceBasis === "manual_required"
+    ? "Manual price required; source price is missing"
+    : selectedProduct?.priceBasis === "manual_required"
     ? "Manual price required by source"
     : selectedProduct?.priceBasis === "dealer_net"
       ? "Dealer-net only; customer retail undefined"
@@ -3714,7 +3717,7 @@ function QuoteLabCatalogControls({
               onUpdateFields({ material: program?.name ?? null, fabric: null, options_json: { ...options, quote_lab_program_id: next, catalog_program_id: next } });
             }}>
               <SelectTrigger aria-label="Price program"><SelectValue placeholder="Select required" /></SelectTrigger>
-              <SelectContent>{selectedProduct.programs.map((program) => <SelectItem key={program.id} value={program.id}>{program.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{selectedProduct.programs.map((program) => <SelectItem key={program.id} value={program.id}>{program.name}{program.priceBasis === "manual_required" ? " (manual price required)" : ""}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}

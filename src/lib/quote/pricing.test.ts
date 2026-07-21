@@ -221,13 +221,13 @@ describe("catalog integrity", () => {
           expect(prices.length, `${prog.id} sqft has no grid`).toBe(0);
           continue;
         }
-        if (prog.priceAxis === "wh") {
+        if (prog.priceAxis === "wh" || prog.priceAxis === "height") {
           expect(prices.length, `${prog.id} rows`).toBe(heights.length);
         } else {
           expect(prices.length, `${prog.id} width-only rows`).toBe(1);
         }
         for (const row of prices) {
-          expect(row.length, `${prog.id} cols`).toBe(widths.length);
+          expect(row.length, `${prog.id} cols`).toBe(prog.priceAxis === "height" ? 1 : widths.length);
         }
       }
     }
@@ -397,6 +397,7 @@ describe("fuzz sweep: no NaN, no negative, no silent wrong price ever escapes", 
       "AREA_EXCEEDS_MAX",
       "NA_CELL",
       "INVALID_DIMENSIONS",
+      "CUSTOMER_RETAIL_UNDEFINED",
     ]);
     let priced = 0;
     let errored = 0;

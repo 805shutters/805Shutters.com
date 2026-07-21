@@ -126,6 +126,17 @@ export type PriceFailure = {
 
 export type PriceResult = PriceBreakdown | PriceFailure;
 
+export type DealerNetCostBreakdown = {
+  ok: true;
+  productId: string;
+  programId: string;
+  matchedWidth: number | null;
+  matchedHeight: number | null;
+  dealerNetUnitCost: number;
+};
+
+export type DealerNetCostResult = DealerNetCostBreakdown | PriceFailure;
+
 // ---------- money helpers (integer cents) ----------
 
 function toCents(dollars: number): number {
@@ -266,6 +277,70 @@ function lookupBaseCents(
   return { cents: toCents(v), wholesaleCents: null, matchedWidth, matchedHeight };
 }
 
+/** Internal-only lookup for supplier cost books. This result is never returned by customer APIs. */
+export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
+  const warnings: string[] = [];
+  const product = getProduct(input.productId);
+  if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
+  const resolved = resolveProgram(product, input, warnings);
+  if ("ok" in resolved) return resolved;
+  const program = resolved;
+  if (program.priceBasis === "manual_required") {
+    return fail("MANUAL_PRICE_REQUIRED", `${program.name} requires a manual source price.`, warnings);
+  }
+  const width = Number(input.widthInches);
+  const height = Number(input.heightInches);
+  if (!Number.isFinite(width) || width <= 0) {
+    return fail("INVALID_DIMENSIONS", "Width must be a positive number.", warnings);
+  }
+  if (program.priceAxis !== "width" && (!Number.isFinite(height) || height <= 0)) {
+    return fail("INVALID_DIMENSIONS", "Height must be a positive number.", warnings);
+  }
+  const costs = program.grid.costs;
+  if (!costs?.length) {
+    return fail("CUSTOMER_RETAIL_UNDEFINED", `${program.name} has no dealer-net cost grid.`, warnings);
+  }
+  let widthIndex = 0;
+  let heightIndex = 0;
+  let matchedWidth: number | null = null;
+  let matchedHeight: number | null = null;
+  if (program.priceAxis !== "height") {
+    widthIndex = roundUpIndex(program.grid.widths, width);
+    if (widthIndex < 0) {
+      return fail("WIDTH_EXCEEDS_MAX", `Width ${width}" exceeds the largest source size for ${program.name}.`, warnings);
+    }
+    matchedWidth = program.grid.widths[widthIndex];
+  }
+  if (program.priceAxis !== "width") {
+    heightIndex = roundUpIndex(program.grid.heights, height);
+    if (heightIndex < 0) {
+      return fail("HEIGHT_EXCEEDS_MAX", `Height ${height}" exceeds the largest source size for ${program.name}.`, warnings);
+    }
+    matchedHeight = program.grid.heights[heightIndex];
+  }
+  const value = program.priceAxis === "height"
+    ? costs[heightIndex]?.[0]
+    : program.priceAxis === "width"
+      ? costs[0]?.[widthIndex]
+      : costs[heightIndex]?.[widthIndex];
+  if (value == null) {
+    const note = program.grid.cellNotes?.[heightIndex]?.[widthIndex];
+    return fail(
+      "NA_CELL",
+      `${program.name} is not priced at the matched source cell${note ? ` (${note})` : ""}.`,
+      warnings,
+    );
+  }
+  return {
+    ok: true,
+    productId: product.id,
+    programId: program.id,
+    matchedWidth,
+    matchedHeight,
+    dealerNetUnitCost: fromCents(toCents(value)),
+  };
+}
+
 export function priceDesign(input: PriceInput): PriceResult {
   const warnings: string[] = [];
 
@@ -274,9 +349,6 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
   if (product.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual price because the source does not provide a complete retail grid.`, warnings);
-  }
-  if (product.priceBasis === "dealer_net") {
-    return fail("CUSTOMER_RETAIL_UNDEFINED", `${product.name} publishes dealer-net pricing only; customer retail is undefined.`, warnings);
   }
   if (product.priceBasis === "unavailable") {
     return fail("PRODUCT_UNAVAILABLE", `${product.name} has no usable product or pricing section in the source.`, warnings);
@@ -291,6 +363,12 @@ export function priceDesign(input: PriceInput): PriceResult {
   const progOrFail = resolveProgram(product, input, warnings);
   if ("ok" in progOrFail) return progOrFail; // PriceFailure has ok:false
   const prog = progOrFail;
+  if (prog.priceBasis === "manual_required") {
+    return fail("MANUAL_PRICE_REQUIRED", `${prog.name} requires a manual price because the source does not provide a usable price.`, warnings);
+  }
+  if (product.priceBasis === "dealer_net" || prog.priceBasis === "dealer_net") {
+    return fail("CUSTOMER_RETAIL_UNDEFINED", `${product.name} publishes dealer-net pricing only; customer retail is undefined.`, warnings);
+  }
 
   const W = Number(input.widthInches);
   const H = Number(input.heightInches);

@@ -2,7 +2,7 @@
 // The catalog is generated from the Norman 2026 Retail Price Guide and every
 // price cell is verified against the source PDF text layer.
 
-export type CatalogPriceAxis = "wh" | "width" | "sqft";
+export type CatalogPriceAxis = "wh" | "width" | "height" | "sqft";
 export type CatalogPriceBasis =
   | "suggested_retail"
   | "dealer_net"
@@ -33,6 +33,12 @@ export type CatalogGrid = {
   heights: number[];
   /** prices[heightIndex][widthIndex] in whole dollars; null = not available (NA). */
   prices: (number | null)[][];
+  /** Internal dealer-net grid. Never include through customer-facing catalog projections. */
+  costs?: (number | null)[][];
+  /** Source order codes retained for audit and future manufacturer-order tooling. */
+  skuCodes?: string[][][];
+  /** Source directions such as "Use Two Blinds"; these cells remain unpriced. */
+  cellNotes?: (string | null)[][];
 };
 
 export type CatalogProgram = {
@@ -40,6 +46,8 @@ export type CatalogProgram = {
   name: string;
   priceGroup: string | null;
   priceAxis: CatalogPriceAxis;
+  /** Optional program-level override for a product with mixed priceability. */
+  priceBasis?: CatalogPriceBasis;
   grid: CatalogGrid;
   /** For priceAxis "sqft": retail price per square foot. */
   pricePerSqft?: number | null;
@@ -78,6 +86,8 @@ export type CatalogSurcharge = {
   kind: SurchargeKind;
   per: SurchargePer;
   value: number | null;
+  /** Internal supplier cost when the source does not define customer retail. */
+  dealerNetValue?: number | null;
   /** Optional dealer-cost multiplier override. `1` means no dealer discount. */
   dealerFactor?: number | null;
   autoUnits?: "width_foot" | "height_foot";
@@ -115,6 +125,19 @@ export type CatalogFabricByYard = {
   maxYards: number;
 };
 
+export type CatalogStockItem = {
+  sku: string;
+  programId: string;
+  description: string;
+  width: number;
+  height: number | null;
+  color: string;
+  cartonQty: number;
+  dealerNetPrice: number;
+  unit: "blind" | "shade" | "valance" | "headrail" | "casepack";
+  sourcePage: number;
+};
+
 export type CatalogProduct = {
   id: string;
   productType: string;
@@ -137,6 +160,8 @@ export type CatalogProduct = {
   surcharges: CatalogSurcharge[];
   fabricByYard: CatalogFabricByYard[];
   notes: string[];
+  /** Complete source stock assortment. Server-only; omitted from customer projections. */
+  stockItems?: CatalogStockItem[];
 };
 
 export type CatalogMotorizationOption = {

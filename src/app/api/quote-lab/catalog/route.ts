@@ -8,6 +8,7 @@ import { QUOTE_LAB_ISOLATION } from "@/lib/quote-lab/comparison";
 import { quoteLabFixtures } from "@/lib/quote-lab/fixtures";
 import type { QuoteLabCatalogResponse } from "@/lib/quote-lab/types";
 import { buildUiCatalog, resolveMotorizationOptionsForProduct } from "@/lib/quote/ui-catalog";
+import { quoteLabProductType } from "@/lib/quote-lab/builder";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
       products: catalog.products.map((product) => ({
         id: product.id,
         name: product.name,
-        productType: product.productType,
+        productType: quoteLabProductType(product.id) ?? product.productType,
         manufacturer: product.manufacturer,
         system: product.system,
         priceBasis: product.priceBasis,
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
           id: program.id,
           name: program.name,
           priceAxis: program.priceAxis,
+          priceBasis: program.priceBasis,
         })),
         fabrics: product.fabrics,
         surcharges: product.surcharges,

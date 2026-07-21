@@ -19,6 +19,7 @@ export const QUOTE_LAB_PRODUCT_TYPES = [
   "Tension Shades",
   "Retractable Screens",
   "Awnings",
+  "Vinyl Blinds",
 ] as const;
 
 export type QuoteLabProductType = (typeof QUOTE_LAB_PRODUCT_TYPES)[number];
@@ -38,6 +39,7 @@ const DEFAULT_PRODUCT_BY_TYPE: Record<QuoteLabProductType, string> = {
   "Tension Shades": "polar_tension_shade",
   "Retractable Screens": "polar_all_seasons_screen",
   Awnings: "polar_awning_premium_pro",
+  "Vinyl Blinds": "lotus_vinyl_blinds",
 };
 
 const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
@@ -68,6 +70,11 @@ const PRODUCT_TYPE_BY_ID: Record<string, QuoteLabProductType> = {
   polar_awning_premium: "Awnings",
   polar_awning_select: "Awnings",
   polar_awning_drop_arm: "Awnings",
+  lotus_vinyl_blinds: "Vinyl Blinds",
+  lotus_mini_blinds: "Mini Blinds",
+  lotus_faux_wood_blinds: "Faux Wood Blinds",
+  lotus_roller_shades: "Roller Shades",
+  lotus_vertical_blinds: "Vertical Blinds",
 };
 
 function uniqueId(prefix: string): string {

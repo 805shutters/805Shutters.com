@@ -11,7 +11,8 @@ export type UiProgram = {
   id: string;
   name: string;
   priceGroup: string | null;
-  priceAxis: "wh" | "width" | "sqft";
+  priceAxis: "wh" | "width" | "height" | "sqft";
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable" | null;
 };
 
 export type UiFabric = { name: string; programId: string };
@@ -117,7 +118,7 @@ export type UiPricingReferenceProgram = {
   programId: string;
   programName: string;
   priceGroup: string | null;
-  priceAxis: "wh" | "width" | "sqft";
+  priceAxis: "wh" | "width" | "height" | "sqft";
   maxWidth: number | null;
   maxHeight: number | null;
   minSqft: number | null;
@@ -192,6 +193,7 @@ export function buildUiCatalog(): UiCatalog {
       name: pr.name,
       priceGroup: pr.priceGroup,
       priceAxis: pr.priceAxis,
+      priceBasis: pr.priceBasis ?? null,
     })),
     fabrics: p.fabricRouting
       ? Object.entries(p.fabricRouting)
@@ -272,7 +274,7 @@ export function buildPricingReference(): UiPricingReference {
       widths: program.grid.widths,
       heights: program.grid.heights,
       prices: program.grid.prices,
-      costs: emptyCostGrid(program.grid.prices),
+      costs: program.grid.costs ?? emptyCostGrid(program.grid.prices),
       notes: program.notes,
     })),
   );
