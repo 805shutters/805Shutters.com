@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
+import { getQuoteBuilderNote } from "@mts/lib/quoteTotals";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
@@ -200,6 +201,7 @@ export function QuoteDashboard({
         quote_number: quote.quote_number || quote.quote_label || quote.id.slice(0, 8),
         customer_name: crmQuoteCustomerName(quote, job),
         customer_address: quote.customer_address || job?.address || null,
+        generalJobNote: (quote.notes || "").trim() || null,
         appointment_date: dateOnly(job?.appointment_start),
         total_amount: quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
         sent_at: quote.sent_at,
@@ -225,6 +227,7 @@ export function QuoteDashboard({
         source: "sales" as const,
         sourceQuoteId: quote.id,
         salesQuote: quote,
+        generalJobNote: getQuoteBuilderNote(quote) || null,
       }));
 
     return [...crmRows, ...salesRows].sort((a, b) => {

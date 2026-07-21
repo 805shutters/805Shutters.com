@@ -8,7 +8,7 @@ import {
   TableRow,
 } from "@mts/components/ui/table";
 import { Button } from "@mts/components/ui/button";
-import { Copy, ExternalLink, Images, Trash2 } from "lucide-react";
+import { Copy, ExternalLink, Images, MessageSquareText, Trash2 } from "lucide-react";
 import type { SalesQuote } from "@mts/types/quote";
 import { format } from "date-fns";
 import { QuoteStatusPill } from "./QuoteStatusPill";
@@ -24,6 +24,7 @@ export type QuoteTableRow = QuoteStatsSource & {
   source?: "sales" | "crm";
   sourceQuoteId?: string | null;
   salesQuote?: SalesQuote;
+  generalJobNote?: string | null;
 };
 
 interface QuotesTableProps {
@@ -110,6 +111,12 @@ export function QuotesTable({
                     <p className="font-medium">{quote.customer_name || "—"}</p>
                     {quote.customer_address && (
                       <p className="text-xs text-muted-foreground">{quote.customer_address}</p>
+                    )}
+                    {quote.generalJobNote && (
+                      <p className="mt-1 flex max-w-md items-start gap-1.5 text-xs text-amber-800">
+                        <MessageSquareText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="line-clamp-2">{quote.generalJobNote}</span>
+                      </p>
                     )}
                   </div>
                 </TableCell>

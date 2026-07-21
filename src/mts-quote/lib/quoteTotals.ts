@@ -180,10 +180,10 @@ export function getQuoteEmailNote(source: unknown): string {
 
 export function getQuoteBuilderNote(source: unknown): string {
   const meta = parseQuoteMeta(source);
-  if (typeof meta.__quoteBuilderNote === "string") return meta.__quoteBuilderNote;
+  if (typeof meta.__quoteBuilderNote === "string") return meta.__quoteBuilderNote.trim();
 
   const maybeQuote = source as { installer_notes?: string | null } | null;
-  return getQuoteCustomerNotes(maybeQuote?.installer_notes) || "";
+  return (getQuoteCustomerNotes(maybeQuote?.installer_notes) || "").trim();
 }
 
 export function getQuoteCustomerNotes(installerNotes: string | null | undefined): string | null {

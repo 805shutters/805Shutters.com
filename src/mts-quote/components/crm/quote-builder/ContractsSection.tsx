@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, ChevronUp, FileSignature, Eye } from "lucide-react";
+import { ChevronDown, ChevronUp, FileSignature, Eye, MessageSquareText } from "lucide-react";
 import { Badge } from "@mts/components/ui/badge";
 import { Button } from "@mts/components/ui/button";
 import { cn } from "@mts/lib/utils";
@@ -124,6 +124,12 @@ function ContractRow({
           <p className="font-medium text-sm">{quote.customer_name || "—"}</p>
           {quote.customer_address && (
             <p className="text-xs text-muted-foreground">{quote.customer_address}</p>
+          )}
+          {quote.generalJobNote && (
+            <p className="mt-1 flex max-w-lg items-start gap-1.5 text-xs text-amber-800">
+              <MessageSquareText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span className="line-clamp-2">{quote.generalJobNote}</span>
+            </p>
           )}
         </div>
       </div>

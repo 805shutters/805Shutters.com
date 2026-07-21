@@ -1343,7 +1343,7 @@ export function QuoteBuilder() {
                     htmlFor="quote-builder-note"
                     className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
                   >
-                    Quote Note
+                    General Job Notes
                   </label>
                   {updateQuote.isPending && (
                     <span className="text-xs font-semibold text-amber-700">Saving...</span>
@@ -1354,7 +1354,7 @@ export function QuoteBuilder() {
                   value={quoteNoteDraft}
                   onChange={(event) => setQuoteNoteDraft(event.target.value)}
                   onBlur={saveQuoteBuilderNote}
-                  placeholder="Add quote-level notes..."
+                  placeholder="Internal sales or ordering notes..."
                   className="min-h-16 max-h-28 resize-y border-slate-200 bg-white text-sm"
                 />
               </div>

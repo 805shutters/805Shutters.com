@@ -34,6 +34,7 @@ import {
   Pencil,
   User,
   Mail,
+  MessageSquareText,
   Phone,
   MapPin,
   Eye,
@@ -52,6 +53,7 @@ import {
   calculateQuoteDesignSubtotal,
   calculateQuoteTotalBreakdown,
   buildQuoteInstallerNotesMeta,
+  getQuoteBuilderNote,
   getQuoteEmailNote,
   parseQuoteAdminControls,
   shouldPersistQuoteDesignSubtotal,
@@ -475,6 +477,7 @@ export function QuoteContract() {
   const depositAmount = totalAmount * 0.5;
   const balanceAmount = totalAmount - depositAmount;
   const customerEmailNote = quote ? getQuoteEmailNote(quote) : "";
+  const generalJobNote = quote ? getQuoteBuilderNote(quote) : "";
 
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
@@ -747,11 +750,19 @@ export function QuoteContract() {
                 />
               </div>
               <div className="col-span-full space-y-1">
-                <Label>Installer Notes</Label>
-                <Input
-                  defaultValue={quote.installer_notes || ""}
-                  onBlur={(e) => updateQuote.mutate({ installer_notes: e.target.value })}
-                  placeholder="Optional notes..."
+                <Label htmlFor="contract-general-job-notes">General Job Notes</Label>
+                <textarea
+                  id="contract-general-job-notes"
+                  defaultValue={generalJobNote}
+                  onBlur={(e) =>
+                    updateQuote.mutate({
+                      installer_notes: buildQuoteInstallerNotesMeta(quote, {
+                        __quoteBuilderNote: e.target.value.trim(),
+                      }),
+                    })
+                  }
+                  placeholder="Internal sales or ordering notes..."
+                  className="min-h-[88px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
             </div>
@@ -785,6 +796,17 @@ export function QuoteContract() {
                   <p className="font-medium">{quote.customer_address || "—"}</p>
                 </div>
               </div>
+              {generalJobNote && (
+                <div className="flex items-start gap-2 md:col-span-2">
+                  <MessageSquareText className="h-4 w-4 mt-0.5 text-amber-700" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">General Job Notes</p>
+                    <p className="whitespace-pre-wrap text-sm font-medium text-amber-900">
+                      {generalJobNote}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
