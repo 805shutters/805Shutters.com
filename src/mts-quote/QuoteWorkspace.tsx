@@ -18,13 +18,17 @@ import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "l
 import { cn } from "@mts/lib/utils";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
-import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 
-// The builder and contract pull in the full product catalog, pricing engine,
+// The quote tools pull in the full product catalog, pricing engine,
 // and design controls. Loading them with the dashboard made older iPads parse
 // several hundred KB of JavaScript before the quote list could appear.
+const QuoteDashboard = lazy(() =>
+  import("@mts/components/crm/quote-builder/QuoteDashboard").then((module) => ({
+    default: module.QuoteDashboard,
+  }))
+);
 const QuoteBuilder = lazy(() =>
   import("@mts/components/crm/quote-builder/QuoteBuilder").then((module) => ({
     default: module.QuoteBuilder,
@@ -154,16 +158,18 @@ export function QuoteWorkspace({
           {/* Tab content */}
           <div>
             {effectiveTab === "dashboard" && (
-              <QuoteDashboard
-                quoteOperatorMode={false}
-                newQuoteRequest={newQuoteRequest}
-                crmJobs={crmJobs}
-                crmQuotes={crmQuotes}
-                crmCalendarEvents={crmCalendarEvents}
-                crmCustomers={crmCustomers}
-                onOpenCrmCalendarDate={onOpenCrmCalendarDate}
-                onOpenCrmQuote={onOpenCrmQuote}
-              />
+              <Suspense fallback={<QuoteTabLoading />}>
+                <QuoteDashboard
+                  quoteOperatorMode={false}
+                  newQuoteRequest={newQuoteRequest}
+                  crmJobs={crmJobs}
+                  crmQuotes={crmQuotes}
+                  crmCalendarEvents={crmCalendarEvents}
+                  crmCustomers={crmCustomers}
+                  onOpenCrmCalendarDate={onOpenCrmCalendarDate}
+                  onOpenCrmQuote={onOpenCrmQuote}
+                />
+              </Suspense>
             )}
             {effectiveTab === "builder" && (
               <Suspense fallback={<QuoteTabLoading />}>
