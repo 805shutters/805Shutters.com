@@ -52,6 +52,7 @@ type GmailAttachmentResponse = {
 type OrderCogsCandidate = {
   source: "entry" | "quote" | "job";
   customerName: string;
+  customerEmail: string | null;
   customerPhone: string | null;
   customerAddress: string | null;
   productInterest: string | null;
@@ -414,7 +415,7 @@ function stripProductSuffix(value: string) {
 
 /** The next Norman label after a field's value (used to bound a captured value). */
 const NORMAN_FIELD_STOP =
-  /WO\s*#|PO\s*#|Side\s*Mark|Ship\s*Via|Payment\s*Terms|Customer\s*ID|Company\s*Name|Owner\s*Name|Phone|Order\s*Date|Sales\s*Amount|Additional\s*Tariff|Freight\s*Handling|Processing\s*Fee|Tax\s*Amount|Miscellaneous\s*Fee|Total\s*Amount|Checked\s*Out|Ship\s*To|Special\s*Delivery|Pricing|Contact/;
+  /\||WO\s*#|PO\s*#|Side\s*Mark|Ship\s*Via|Payment\s*Terms|Customer\s*ID|Company\s*Name|Owner\s*Name|Phone|Order\s*Date|Sales\s*Amount|Additional\s*Tariff|Freight\s*Handling|Processing\s*Fee|Tax\s*Amount|Miscellaneous\s*Fee|Total\s*Amount|Checked\s*Out|Ship\s*To|Special\s*Delivery|Pricing|Contact|Online\s*Order\s*Confirmation/;
 
 /** Value of a labeled field on the whitespace-collapsed Norman email body. */
 function normanLabeledValue(text: string, label: RegExp) {
@@ -512,10 +513,20 @@ function normalizeTokens(value: string) {
     .filter((token) => token.length > 1);
 }
 
-function nameScore(extracted: string | null, candidateName: string) {
+function customerEmailTokens(value: string | null) {
+  const localPart = value?.split("@")[0] || "";
+  const ignored = new Set(["admin", "billing", "contact", "hello", "info", "office", "sales", "service", "support"]);
+  return normalizeTokens(localPart).filter((token) => token.length > 2 && !ignored.has(token));
+}
+
+function candidateNameTokens(candidate: Pick<OrderCogsCandidate, "customerName" | "customerEmail">) {
+  return Array.from(new Set([...normalizeTokens(candidate.customerName), ...customerEmailTokens(candidate.customerEmail)]));
+}
+
+function nameScore(extracted: string | null, candidate: Pick<OrderCogsCandidate, "customerName" | "customerEmail">) {
   if (!extracted) return 0;
   const extractedTokens = normalizeTokens(extracted);
-  const candidateTokens = normalizeTokens(candidateName);
+  const candidateTokens = candidateNameTokens(candidate);
   if (!extractedTokens.length || !candidateTokens.length) return 0;
   const matched = extractedTokens.filter((token) => candidateTokens.includes(token)).length;
   return matched / Math.max(extractedTokens.length, candidateTokens.length);
@@ -696,7 +707,7 @@ function matchOrderCogs(extraction: ExtractedOrderCogs, candidates: OrderCogsCan
 
   const ranked = candidates
     .map((candidate) => {
-      const score = nameScore(extraction.customerName, candidate.customerName);
+      const score = nameScore(extraction.customerName, candidate);
       return { candidate, confidence: score };
     })
     .filter((item) => item.confidence > 0)
@@ -757,7 +768,7 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
       .limit(500),
     supabase
       .from("crm_jobs")
-      .select("id,customer_name,status,estimated_total,phone,address,product_interest,meta")
+      .select("id,customer_name,status,estimated_total,phone,email,address,product_interest,meta")
       .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
       .limit(500)
   ]);
@@ -799,6 +810,7 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     customer_name: string;
     estimated_total: number;
     phone: string | null;
+    email: string | null;
     address: string | null;
     product_interest: string | null;
     meta?: Record<string, unknown> | null;
@@ -813,6 +825,7 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     candidates.push({
       source: "entry",
       customerName: entry.customer_name,
+      customerEmail: jobsById.get(String(entry.job_id || ""))?.email || null,
       customerPhone: jobsById.get(String(entry.job_id || ""))?.phone || null,
       customerAddress: jobsById.get(String(entry.job_id || ""))?.address || null,
       productInterest: jobsById.get(String(entry.job_id || ""))?.product_interest || null,
@@ -838,6 +851,7 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     candidates.push({
       source: "quote",
       customerName: job.customer_name,
+      customerEmail: job.email || null,
       customerPhone: job.phone || null,
       customerAddress: job.address || null,
       productInterest: job.product_interest || null,
@@ -861,6 +875,7 @@ async function loadOrderCogsCandidates(supabase: CrmSupabaseClient) {
     candidates.push({
       source: "job",
       customerName: job.customer_name,
+      customerEmail: job.email || null,
       customerPhone: job.phone || null,
       customerAddress: job.address || null,
       productInterest: job.product_interest || null,

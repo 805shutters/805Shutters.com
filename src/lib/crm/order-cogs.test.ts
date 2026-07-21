@@ -60,6 +60,27 @@ const NORMAN_SECOND_BODY = [
   "Total Amount: $312.40"
 ].join("\n");
 
+const NORMAN_FIRST_NAME_BODY = [
+  "Dear Customer, Thank you for your order!",
+  "Norman Window Fashions www.normanusa.com",
+  "Order Details",
+  "Order Date: 7/20/2026",
+  "WO#: 888097777",
+  "PO#: Jason Chappelle",
+  "Side Mark: Jason Chappelle",
+  "Ship Via: Air Freight to US",
+  "Payment Terms: NET 15 DAY",
+  "Customer ID: R00743",
+  "Company Name: SNS Interiors, Inc.",
+  "Owner Name: KEN HILL",
+  "Pricing",
+  "Sales Amount: $1,100.00",
+  "Freight Handling Fee: $25.00",
+  "Processing Fee: $10.00",
+  "Tax Amount: $98.45",
+  "Total Amount: $1,233.45"
+].join("\n");
+
 class FakeSupabaseQuery {
   private action: "select" | "update" | "upsert" | "insert" = "select";
   private patch: Record<string, unknown> | null = null;
@@ -172,6 +193,7 @@ class FakeSupabase {
       status: "sold",
       estimated_total: 5000,
       phone: "8051112222",
+      email: "jim.derenthal@example.com",
       address: "1 Main St",
       product_interest: "roller shades",
       meta: {}
@@ -372,6 +394,67 @@ describe("processOrderCogsInbox", () => {
 
     // Records: the Norman email auto-applied; the amount-less generic email needs review.
     expect(supabase.records.map((record) => record.match_status)).toEqual(["matched", "needs_review"]);
+  });
+
+  it("matches a Norman order to a first-name CRM record using the customer email surname", async () => {
+    vi.stubEnv("GMAIL_805_CLIENT_ID", "client");
+    vi.stubEnv("GMAIL_805_CLIENT_SECRET", "secret");
+    vi.stubEnv("GMAIL_805_REFRESH_TOKEN", "refresh");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.includes("oauth2.googleapis.com/token")) {
+          return jsonResponse({ access_token: "token" });
+        }
+        if (url.includes("/messages?")) {
+          return jsonResponse({ messages: [{ id: "msg-jason" }] });
+        }
+        if (url.includes("/modify")) {
+          return jsonResponse({ id: "archived" });
+        }
+        return jsonResponse({
+          id: "msg-jason",
+          threadId: "thread-jason",
+          historyId: "hist-jason",
+          snippet: "Online Order Confirmation",
+          payload: {
+            headers: [
+              { name: "From", value: "OrderConfirmation@normanusa.com" },
+              { name: "To", value: "805shutters@gmail.com" },
+              { name: "Subject", value: "Online Order Confirmation: R00743 | WO# 888097777 | PO#: Jason Chappelle" },
+              { name: "Date", value: "Mon, 20 Jul 2026 13:29:00 -0700" }
+            ],
+            mimeType: "text/plain",
+            body: { data: gmailTextBody(NORMAN_FIRST_NAME_BODY) }
+          }
+        });
+      })
+    );
+
+    const supabase = new FakeSupabase();
+    supabase.jobs[0].customer_name = "Jason";
+    supabase.jobs[0].email = "jason.chappelle@outlook.com";
+    supabase.entries[0].customer_name = "Jason";
+
+    const result = await processOrderCogsInbox(supabase as never, { maxResults: 1 });
+
+    expect(result.matched).toBe(1);
+    expect(result.needsReview).toBe(0);
+    expect(supabase.records[0]).toMatchObject({
+      extracted_customer_name: "Jason Chappelle",
+      match_status: "matched",
+      matched_job_id: "job-1"
+    });
+    expect(supabase.updates.find((u) => u.table === "crm_quote_bookkeeping_entries")).toMatchObject({
+      filters: { id: "entry-1" },
+      patch: expect.objectContaining({
+        cogs_amount: 1233.45,
+        manufacturer_order_ref: "888097777",
+        manufacturer_name: "Norman"
+      })
+    });
   });
 
   it("adds a second Norman order for the same customer to existing COGS", async () => {
