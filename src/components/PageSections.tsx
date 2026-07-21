@@ -274,12 +274,6 @@ const homeHeroSlides = (page: SitePage): HomeHeroSlide[] => [
     imageAlt: "Arched dining room windows fitted with white plantation shutters"
   },
   {
-    label: "Honeycomb Shades",
-    tagline: "True room darkening rest.",
-    image: "/images/editorial-scroll/room-darkening-honeycomb-shades.webp",
-    imageAlt: "Dark blackout honeycomb shades lowered in a warm bedroom"
-  },
-  {
     label: "Drapery",
     tagline: "Add softness, height, and a finished designer look.",
     image: "/images/homepage-flow/drapery.jpg",
