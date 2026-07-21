@@ -221,6 +221,7 @@ import {
 import {
   PricingAuditPanel,
   type PricingAuditSurcharge,
+  type PricingAuditWholesaleCost,
 } from "@mts/components/crm/quote-builder/PricingAuditPanel";
 import {
   FAUX_WOOD_SURCHARGES,
@@ -1107,6 +1108,13 @@ function PriceExplanation({
     ...item,
     automatic: automaticIds.has(item.id),
   }));
+  const storedWholesaleCost = options.authoritative_cost_breakdown;
+  const authoritativeWholesaleCost =
+    storedWholesaleCost &&
+    typeof storedWholesaleCost === "object" &&
+    (storedWholesaleCost as Record<string, unknown>).ok === true
+      ? (storedWholesaleCost as PricingAuditWholesaleCost)
+      : null;
 
   return (
     <PricingAuditPanel
@@ -1124,6 +1132,7 @@ function PriceExplanation({
       wholesaleRate={shutterProgram?.wholesalePrice ?? null}
       tariffPercent={shutterProgram?.tariff ?? 0}
       surcharges={auditSurcharges}
+      authoritativeWholesaleCost={authoritativeWholesaleCost}
     />
   );
 }

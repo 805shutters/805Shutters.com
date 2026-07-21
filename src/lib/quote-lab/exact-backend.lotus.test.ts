@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
-import { priceExactQuoteBuilderDesign, repriceExactQuoteBuilder } from "./exact-backend";
+import {
+  costExactQuoteBuilderDesign,
+  priceExactQuoteBuilderDesign,
+  repriceExactQuoteBuilder,
+} from "./exact-backend";
 
 const line = (product_type: string): SalesQuoteLineItem => ({
   id: "line-lotus",
@@ -37,10 +41,38 @@ describe("Quote Lab Lotus manufacturer selection", () => {
   );
 
   it("keeps Lotus customer retail blocked after explicit selection", () => {
-    expect(priceExactQuoteBuilderDesign(line("Mini Blinds"), design({
+    const quoteDesign = design({
       quote_lab_product_id: "lotus_mini_blinds",
       quote_lab_program_id: "lotus_amx_1in_aluminum_custom",
-    }))).toMatchObject({ ok: false, code: "CUSTOMER_RETAIL_UNDEFINED" });
+    });
+    expect(priceExactQuoteBuilderDesign(line("Mini Blinds"), quoteDesign)).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
+    expect(costExactQuoteBuilderDesign(line("Mini Blinds"), quoteDesign)).toMatchObject({
+      ok: true,
+      basis: "dealer_net",
+      matchedWidth: 30,
+      matchedHeight: 48,
+      wholesaleBase: 24.3,
+      wholesaleUnitCost: 24.3,
+      wholesaleTotal: 24.3,
+    }); // PDF p97
+  });
+
+  it("returns the source-backed dealer-net cost for a Lotus roller shade", () => {
+    const result = costExactQuoteBuilderDesign(line("Roller Shades"), design({
+      quote_lab_product_id: "lotus_roller_shades",
+      quote_lab_program_id: "lotus_rs_1pct_custom",
+    }));
+    expect(result).toMatchObject({
+      ok: true,
+      basis: "dealer_net",
+      matchedWidth: 30,
+      matchedHeight: 48,
+      wholesaleUnitCost: 35.02,
+      wholesaleTotal: 35.02,
+    }); // PDF p105
   });
 
   it("returns a manual-price error for the unpriced Blackout program", () => {
@@ -68,6 +100,11 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     expect(result.designs).toHaveLength(40);
     expect(result.designs.every((item) => !item.result.ok && item.result.code === "CUSTOMER_RETAIL_UNDEFINED")).toBe(true);
     expect(result.total).toBe(0);
-    expect(result.costSummary.status).toBe("incomplete");
+    expect(result.costSummary).toMatchObject({
+      status: "incomplete",
+      productCost: 972, // PDF p97: $24.30 x 40
+      dealerCostTotal: 972,
+    });
+    expect(result.designs.every((item) => item.costResult.ok)).toBe(true);
   });
 });

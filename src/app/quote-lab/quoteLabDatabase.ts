@@ -356,7 +356,7 @@ class ExactQuoteLabDatabase {
       body: JSON.stringify({ lines, designs, selectedVariantByLine: this.state.selectedVariantByLine }),
     });
     const body = (await response.json().catch(() => ({}))) as {
-      quote?: { total: number; designs: Array<{ lineItemId: string; variant: string; result: any }> };
+      quote?: { total: number; designs: Array<{ lineItemId: string; variant: string; result: any; costResult: any }> };
       error?: string;
     };
     if (!response.ok || !body.quote) throw new Error(body.error || "Authoritative quote pricing failed.");
@@ -372,6 +372,7 @@ class ExactQuoteLabDatabase {
         authoritative_price_status: result.ok ? "ok" : result.code,
         authoritative_price_error: result.ok ? null : result.error,
         authoritative_price_breakdown: result,
+        authoritative_cost_breakdown: priced.costResult,
         authoritative_once_total: result.ok ? Number(result.onceTotal) || 0 : 0,
       };
     }

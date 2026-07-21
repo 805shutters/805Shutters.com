@@ -22,6 +22,12 @@ test("protected Quote Lab renders Polar in the exact existing builder", async ({
   const firstControls = page.getByTestId("quote-lab-catalog-controls").first();
   const manufacturer = firstControls.getByRole("combobox", { name: "Manufacturer and product" });
   await expect(manufacturer).toContainText("Norman - Soluna Roller Shades");
+  const normanAudit = page.locator('details[aria-label="Internal pricing audit"]').first();
+  await normanAudit.locator("summary").click();
+  await expect(normanAudit.getByText("Retail x 0.30", { exact: true })).toBeVisible();
+  await expect(normanAudit.getByText("$89.40", { exact: true }).first()).toBeVisible();
+  await expect(normanAudit.getByText(/No source-backed wholesale cost/)).toHaveCount(0);
+  await normanAudit.screenshot({ path: testInfo.outputPath("quote-lab-norman-wholesale-audit.png") });
   await manufacturer.press("ArrowDown");
   await page.getByRole("option", { name: "Polar - Interior Roller", exact: true }).click();
   await expect(manufacturer).toContainText("Polar - Interior Roller");
@@ -54,6 +60,14 @@ test("Lotus shares existing categories and adds Vinyl Blinds without exposing de
   await expect(rollerProduct).toContainText("Lotus - Lotus Roller Shades");
   await expect(rollerControls.getByText("Dealer-net only; customer retail undefined", { exact: true })).toBeVisible();
   await expect(rollerControls.getByRole("combobox", { name: "Price program" })).toContainText("1% Roller Shade - Custom Cut");
+  const lotusAudit = page.locator('details[aria-label="Internal pricing audit"]').first();
+  await lotusAudit.locator("summary").click();
+  await expect(lotusAudit.getByText("Dealer-net source grid", { exact: true })).toBeVisible();
+  await expect(lotusAudit.getByText("$35.02", { exact: true }).first()).toBeVisible();
+  await expect(lotusAudit.getByText("Incomplete - customer retail undefined", { exact: true })).toBeVisible();
+  await expect(lotusAudit.getByText("Stored price mismatch", { exact: false })).toHaveCount(0);
+  await expect(lotusAudit.getByText(/No source-backed wholesale cost/)).toHaveCount(0);
+  await lotusAudit.screenshot({ path: testInfo.outputPath("quote-lab-lotus-wholesale-audit.png") });
 
   await rollerControls.getByRole("button", { name: "Compare manufacturers" }).click();
   const comparisonPanel = rollerControls.getByTestId("manufacturer-comparison-panel");

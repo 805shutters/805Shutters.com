@@ -1,7 +1,7 @@
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
 import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
-import { priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
+import { priceDealerNetDesign, priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { quoteLabProductType } from "./builder";
@@ -150,12 +150,97 @@ function motorizationSelections(productId: string, design: Partial<SalesQuoteDes
   return selections;
 }
 
+function exactPriceInput(
+  line: SalesQuoteLineItem,
+  design: Partial<SalesQuoteDesign>,
+  productId: string,
+): PriceInput {
+  const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
+  return {
+    productId,
+    programId: resolveProgramId(productId, design),
+    fabric: design.fabric ?? undefined,
+    widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
+    heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
+    quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
+    discountPercent: Math.min(100, Math.max(0, Number(options.discount_percent) || 0)),
+    surcharges: surchargeSelections(productId, design),
+    motorization: motorizationSelections(productId, design),
+  };
+}
+
+export type ExactWholesaleCostResult = {
+  ok: true;
+  productId: string;
+  programId: string;
+  basis: "catalog_factor" | "dealer_net";
+  matchedWidth: number | null;
+  matchedHeight: number | null;
+  wholesaleBase: number;
+  wholesaleAddOns: Array<{ id: string; label: string; amount: number }>;
+  wholesaleUnitCost: number;
+  quantity: number;
+  wholesaleTotal: number;
+} | PriceFailure;
+
+export function costExactQuoteBuilderDesign(
+  line: SalesQuoteLineItem,
+  design: Partial<SalesQuoteDesign>,
+): ExactWholesaleCostResult {
+  const productId = resolveProductId(line, design);
+  const product = getProduct(productId);
+  const input = exactPriceInput(line, design, productId);
+  if (product?.priceBasis === "dealer_net") {
+    const result = priceDealerNetDesign(input);
+    if (!result.ok) return result;
+    const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
+    return {
+      ok: true,
+      productId: result.productId,
+      programId: result.programId,
+      basis: "dealer_net",
+      matchedWidth: result.matchedWidth,
+      matchedHeight: result.matchedHeight,
+      wholesaleBase: result.dealerNetUnitCost,
+      wholesaleAddOns: [],
+      wholesaleUnitCost: result.dealerNetUnitCost,
+      quantity,
+      wholesaleTotal: roundMoney(result.dealerNetUnitCost * quantity),
+    };
+  }
+
+  const result = priceExactQuoteBuilderDesign(line, design);
+  if (!result.ok) return result;
+  if (result.wholesaleBase == null || result.wholesaleUnitPrice == null || result.wholesaleTotal == null) {
+    return {
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      error: `${product?.name ?? productId} has no source-backed wholesale cost.`,
+      warnings: result.warnings,
+    };
+  }
+  return {
+    ok: true,
+    productId: result.productId,
+    programId: result.programId,
+    basis: "catalog_factor",
+    matchedWidth: result.matchedWidth,
+    matchedHeight: result.matchedHeight,
+    wholesaleBase: result.wholesaleBase,
+    wholesaleAddOns: result.surchargeLines.flatMap((line) =>
+      line.wholesaleAmount == null ? [] : [{ id: line.id, label: line.label, amount: line.wholesaleAmount }],
+    ),
+    wholesaleUnitCost: result.wholesaleUnitPrice,
+    quantity: result.quantity,
+    wholesaleTotal: result.wholesaleTotal,
+  };
+}
+
 export function priceExactQuoteBuilderDesign(
   line: SalesQuoteLineItem,
   design: Partial<SalesQuoteDesign>,
 ) {
   const productId = resolveProductId(line, design);
-  const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
   const details = authoritativeDetails(design);
   if (productId === "roller") {
     const shadeType = textOption(details, "shade_type");
@@ -173,18 +258,7 @@ export function priceExactQuoteBuilderDesign(
       } satisfies PriceFailure;
     }
   }
-  const input: PriceInput = {
-    productId,
-    programId: resolveProgramId(productId, design),
-    fabric: design.fabric ?? undefined,
-    widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
-    heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
-    quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
-    discountPercent: Math.min(100, Math.max(0, Number(options.discount_percent) || 0)),
-    surcharges: surchargeSelections(productId, design),
-    motorization: motorizationSelections(productId, design),
-  };
-  return priceDesign(input);
+  return priceDesign(exactPriceInput(line, design, productId));
 }
 
 function roundMoney(value: number): number {
@@ -211,6 +285,9 @@ export function repriceExactQuoteBuilder(input: {
       result: line
         ? priceExactQuoteBuilderDesign(line, design)
         : ({ ok: false, code: "PRODUCT_NOT_FOUND", error: "Line item was not found.", warnings: [] } as const),
+      costResult: line
+        ? costExactQuoteBuilderDesign(line, design)
+        : ({ ok: false, code: "PRODUCT_NOT_FOUND", error: "Line item was not found.", warnings: [] } as const),
     };
   });
   const selected = input.lines.map((line) => {
@@ -236,22 +313,20 @@ export function repriceExactQuoteBuilder(input: {
 
   for (const entry of selected) {
     const result = entry.priced?.result;
-    if (!result?.ok) {
-      costComplete = false;
-      continue;
-    }
-    if (result.wholesaleTotal == null) {
+    const costResult = entry.priced?.costResult;
+    if (!costResult?.ok) {
       costComplete = false;
     } else {
-      productCost += result.wholesaleTotal;
+      productCost += costResult.wholesaleTotal;
     }
-    const product = getProduct(result.productId);
-    if (result.costStatus !== "complete" && product?.freightStatus !== "order_level") {
+    const productId = result?.ok ? result.productId : costResult?.ok ? costResult.productId : "";
+    const product = getProduct(productId);
+    if ((!result?.ok || result.costStatus !== "complete") && product?.freightStatus !== "order_level") {
       costComplete = false;
     }
     const options = (entry.design?.options_json as Record<string, unknown> | undefined) ?? {};
     const quantity = Math.max(1, Math.floor(Number(entry.line.quantity) || 1));
-    const componentsPerWindow = Math.max(1, result.configurationUnits);
+    const componentsPerWindow = Math.max(1, result?.ok ? result.configurationUnits : 1);
     const width = decimalMeasurement(entry.line.width_whole, entry.line.width_fraction);
     const height = decimalMeasurement(entry.line.height_whole, entry.line.height_fraction);
 
@@ -259,7 +334,7 @@ export function repriceExactQuoteBuilder(input: {
       shippingRegions.add(options.shipping_region === "hi_ak" ? "hi_ak" : "continental_us");
       const physicalUnits = componentsPerWindow * quantity;
       blindShadeFreightUnits += physicalUnits;
-      const surchargeIds = new Set(result.surchargeLines.map((item) => item.id));
+      const surchargeIds = new Set(result?.ok ? result.surchargeLines.map((item) => item.id) : []);
       const coupled = surchargeIds.has("coupled_shade");
       const billedComponents = coupled ? Math.min(2, componentsPerWindow) : componentsPerWindow;
       if (width >= 90) blindShadeOversizeUnits += billedComponents * quantity;

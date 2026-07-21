@@ -11,6 +11,18 @@ export type PricingAuditSurcharge = {
   automatic: boolean;
 };
 
+export type PricingAuditWholesaleCost = {
+  ok: true;
+  basis: "catalog_factor" | "dealer_net";
+  matchedWidth: number | null;
+  matchedHeight: number | null;
+  wholesaleBase: number;
+  wholesaleAddOns: Array<{ id: string; label: string; amount: number }>;
+  wholesaleUnitCost: number;
+  quantity: number;
+  wholesaleTotal: number;
+};
+
 type PricingAuditPanelProps = {
   productType: string;
   supplier: string | null;
@@ -26,6 +38,7 @@ type PricingAuditPanelProps = {
   wholesaleRate: number | null;
   tariffPercent: number;
   surcharges: PricingAuditSurcharge[];
+  authoritativeWholesaleCost: PricingAuditWholesaleCost | null;
 };
 
 function roundMoney(value: number): number {
@@ -94,15 +107,27 @@ export function PricingAuditPanel({
   wholesaleRate,
   tariffPercent,
   surcharges,
+  authoritativeWholesaleCost,
 }: PricingAuditPanelProps) {
   const isManual = options.manual_price_override === true;
+  const authoritativeRetailResult =
+    options.authoritative_price_breakdown &&
+    typeof options.authoritative_price_breakdown === "object"
+      ? (options.authoritative_price_breakdown as Record<string, unknown>)
+      : null;
+  const authoritativeRetailBlocked = authoritativeRetailResult?.ok === false;
   const hasStoredPricing =
-    options.base_price !== undefined ||
-    options.pricing_grid_width !== undefined ||
-    options.surcharge_total !== undefined ||
-    options.discount_percent !== undefined;
+    !authoritativeRetailBlocked &&
+    (options.base_price !== undefined ||
+      options.pricing_grid_width !== undefined ||
+      options.surcharge_total !== undefined ||
+      options.discount_percent !== undefined);
   const hasPrice = hasStoredPricing || isManual || savedUnitPrice > 0;
-  const basePrice = Number(options.base_price) || 0;
+  const basePrice = authoritativeRetailResult?.ok === true
+    ? Number(authoritativeRetailResult.base) || 0
+    : authoritativeRetailBlocked
+      ? 0
+      : Number(options.base_price) || 0;
   const discountPercent = Number(options.discount_percent) || 0;
   const discountAmount = Number(options.discount_amount) || 0;
   const itemizedRetailSurcharges = roundMoney(
@@ -126,30 +151,53 @@ export function PricingAuditPanel({
       ? roundMoney(basePrice / billableSqft)
       : currentRetailPerSqft;
 
-  const wholesaleBase =
+  const legacyWholesaleBase =
     wholesaleRate !== null && billableSqft !== null
       ? roundMoney(billableSqft * wholesaleRate * (1 + tariffPercent / 100))
       : null;
+  const wholesaleBase = authoritativeWholesaleCost?.wholesaleBase ?? legacyWholesaleBase;
   const wholesaleSurchargeLines =
     wholesaleBase === null
       ? []
-      : surcharges.map((surcharge) => ({
-          surcharge,
-          amount: surchargeAmount(wholesaleBase, surcharge),
-        }));
+      : authoritativeWholesaleCost
+        ? authoritativeWholesaleCost.wholesaleAddOns.map((line) => ({
+            id: line.id,
+            name: line.label,
+            amount: line.amount,
+            detail: "Source-backed wholesale add-on",
+          }))
+        : surcharges.map((surcharge) => ({
+            id: surcharge.id,
+            name: surcharge.name,
+            amount: surchargeAmount(wholesaleBase, surcharge),
+            detail: surchargeFormula(wholesaleBase, surcharge),
+          }));
   const wholesaleSurchargeTotal = roundMoney(
     wholesaleSurchargeLines.reduce((sum, line) => sum + line.amount, 0)
   );
-  const wholesaleUnitCost =
-    wholesaleBase === null ? null : roundMoney(wholesaleBase + wholesaleSurchargeTotal);
-  const wholesaleLineCost =
-    wholesaleUnitCost === null ? null : roundMoney(wholesaleUnitCost * quantity);
+  const wholesaleUnitCost = authoritativeWholesaleCost?.wholesaleUnitCost
+    ?? (wholesaleBase === null ? null : roundMoney(wholesaleBase + wholesaleSurchargeTotal));
+  const wholesaleLineCost = authoritativeWholesaleCost?.wholesaleTotal
+    ?? (wholesaleUnitCost === null ? null : roundMoney(wholesaleUnitCost * quantity));
   const grossProfit =
-    wholesaleLineCost === null ? null : roundMoney(retailLineTotal - wholesaleLineCost);
+    authoritativeRetailBlocked || wholesaleLineCost === null
+      ? null
+      : roundMoney(retailLineTotal - wholesaleLineCost);
   const grossMargin =
     grossProfit === null || retailLineTotal <= 0
       ? null
       : roundMoney((grossProfit / retailLineTotal) * 100);
+  const dealerFactor =
+    authoritativeWholesaleCost?.basis === "catalog_factor" && wholesaleBase !== null && basePrice > 0
+      ? wholesaleBase / basePrice
+      : null;
+  const costBasis = authoritativeWholesaleCost?.basis === "dealer_net"
+    ? "Dealer-net source grid"
+    : dealerFactor !== null
+      ? `Retail x ${dealerFactor.toFixed(2)}`
+      : wholesaleRate !== null
+        ? `${money(wholesaleRate)} / sq ft`
+        : null;
 
   const gridWidth = Number(options.pricing_grid_width);
   const gridHeight = Number(options.pricing_grid_height);
@@ -187,23 +235,29 @@ export function PricingAuditPanel({
             value={
               isManual
                 ? "Manual customer price"
+                : authoritativeRetailBlocked
+                  ? "Customer retail unavailable"
                 : String(
                     options.pricing_method ||
                       (productType === "Shutters" ? "Square foot" : "Saved catalog price")
                   )
             }
           />
-          {!hasPrice && <DetailRow label="Status" value="Waiting for selections and measurements" />}
-          {hasGridMatch && (
+          {authoritativeRetailBlocked ? (
+            <DetailRow label="Status" value="Customer retail blocked by source policy" />
+          ) : !hasPrice ? (
+            <DetailRow label="Status" value="Waiting for selections and measurements" />
+          ) : null}
+          {!authoritativeRetailBlocked && hasGridMatch && (
             <DetailRow label="Matched grid cell" value={`${gridWidth}\" W x ${gridHeight}\" H`} />
           )}
-          {!!options.pricing_grid_key && (
+          {!authoritativeRetailBlocked && !!options.pricing_grid_key && (
             <DetailRow label="Pricing grid" value={String(options.pricing_grid_key)} />
           )}
-          {options.pricing_grid_price !== undefined && (
+          {!authoritativeRetailBlocked && options.pricing_grid_price !== undefined && (
             <DetailRow label="Grid price" value={money(options.pricing_grid_price)} />
           )}
-          {options.pricing_built_in_adjustment !== undefined && (
+          {!authoritativeRetailBlocked && options.pricing_built_in_adjustment !== undefined && (
             <DetailRow
               label="Built-in adjustment"
               value={money(options.pricing_built_in_adjustment)}
@@ -222,6 +276,15 @@ export function PricingAuditPanel({
 
         <section className="rounded-lg border border-blue-200 bg-blue-50/50 p-3" aria-label="Retail pricing">
           <h4 className="mb-1 text-sm font-bold text-blue-950">Retail / customer price</h4>
+          {authoritativeRetailBlocked ? (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-950">
+              <strong>Customer retail is blocked.</strong>{" "}
+              {typeof authoritativeRetailResult?.error === "string"
+                ? authoritativeRetailResult.error
+                : "The source does not define a customer retail price for this configuration."}
+            </div>
+          ) : (
+            <>
           {productType === "Shutters" && effectiveRetailRate !== null && (
             <DetailRow label="Billed retail rate" value={`${money(effectiveRetailRate)} / sq ft`} />
           )}
@@ -281,6 +344,8 @@ export function PricingAuditPanel({
               Recalculate this line before sending it.
             </div>
           )}
+            </>
+          )}
         </section>
 
         <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 lg:col-span-2" aria-label="Wholesale cost">
@@ -290,30 +355,31 @@ export function PricingAuditPanel({
               Internal only · customer discounts never reduce cost
             </span>
           </div>
-          {wholesaleBase === null || wholesaleRate === null ? (
+          {wholesaleBase === null || costBasis === null ? (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-amber-950">
               No source-backed wholesale cost is loaded for this product/program yet.
             </div>
           ) : (
             <div className="grid gap-x-6 lg:grid-cols-2">
               <div>
-                <DetailRow label="Wholesale rate" value={`${money(wholesaleRate)} / sq ft`} />
-                {tariffPercent > 0 && <DetailRow label="Tariff" value={`${tariffPercent}%`} />}
-                <DetailRow
-                  label="Wholesale base"
-                  value={`${billableSqft?.toFixed(2)} sq ft x ${money(wholesaleRate)}${
-                    tariffPercent > 0 ? ` + ${tariffPercent}% tariff` : ""
-                  } = ${money(wholesaleBase)}`}
-                />
-                {wholesaleSurchargeLines.map(({ surcharge, amount }) => (
-                  <div key={surcharge.id} className="border-b border-emerald-200/70 py-2">
+                <DetailRow label="Cost basis" value={costBasis} />
+                {authoritativeWholesaleCost?.matchedWidth !== null && authoritativeWholesaleCost?.matchedWidth !== undefined && (
+                  <DetailRow
+                    label="Cost source cell"
+                    value={authoritativeWholesaleCost.matchedHeight == null
+                      ? `${authoritativeWholesaleCost.matchedWidth}\" W`
+                      : `${authoritativeWholesaleCost.matchedWidth}\" W x ${authoritativeWholesaleCost.matchedHeight}\" H`}
+                  />
+                )}
+                {tariffPercent > 0 && !authoritativeWholesaleCost && <DetailRow label="Tariff" value={`${tariffPercent}%`} />}
+                <DetailRow label="Wholesale base" value={money(wholesaleBase)} />
+                {wholesaleSurchargeLines.map((line) => (
+                  <div key={line.id} className="border-b border-emerald-200/70 py-2">
                     <div className="flex items-start justify-between gap-4">
-                      <span className="font-medium text-slate-900">{surcharge.name} cost</span>
-                      <strong className="text-right text-slate-950">{money(amount)}</strong>
+                      <span className="font-medium text-slate-900">{line.name} cost</span>
+                      <strong className="text-right text-slate-950">{money(line.amount)}</strong>
                     </div>
-                    <div className="mt-0.5 text-right text-[11px] text-slate-500">
-                      {surchargeFormula(wholesaleBase, surcharge)}
-                    </div>
+                    <div className="mt-0.5 text-right text-[11px] text-slate-500">{line.detail}</div>
                   </div>
                 ))}
                 <DetailRow label="Total wholesale add-ons" value={money(wholesaleSurchargeTotal)} />
@@ -327,13 +393,19 @@ export function PricingAuditPanel({
                     emphasized
                   />
                 )}
-                <DetailRow label="Retail line revenue" value={money(retailLineTotal)} />
-                <DetailRow label="Gross profit dollars" value={money(grossProfit)} emphasized />
-                <DetailRow
-                  label="Gross margin"
-                  value={grossMargin === null ? "—" : `${grossMargin.toFixed(1)}%`}
-                  emphasized
-                />
+                {authoritativeRetailBlocked ? (
+                  <DetailRow label="Margin status" value="Incomplete - customer retail undefined" />
+                ) : (
+                  <>
+                    <DetailRow label="Retail line revenue" value={money(retailLineTotal)} />
+                    <DetailRow label="Gross profit dollars" value={money(grossProfit)} emphasized />
+                    <DetailRow
+                      label="Gross margin"
+                      value={grossMargin === null ? "—" : `${grossMargin.toFixed(1)}%`}
+                      emphasized
+                    />
+                  </>
+                )}
               </div>
             </div>
           )}

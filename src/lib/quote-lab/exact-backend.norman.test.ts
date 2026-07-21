@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
-import { priceExactQuoteBuilderDesign, repriceExactQuoteBuilder } from "./exact-backend";
+import {
+  costExactQuoteBuilderDesign,
+  priceExactQuoteBuilderDesign,
+  repriceExactQuoteBuilder,
+} from "./exact-backend";
 
 function line(overrides: Partial<SalesQuoteLineItem> = {}): SalesQuoteLineItem {
   return {
@@ -35,6 +39,23 @@ function design(options: Record<string, unknown> = {}): SalesQuoteDesign {
 }
 
 describe("Norman exact Quote Builder rules", () => {
+  it("returns the source-backed 0.30 wholesale cost for a 30 x 48 roller shade", () => {
+    const quoteLine = line({ width_whole: 30, height_whole: 48 });
+    const retail = priceExactQuoteBuilderDesign(quoteLine, design());
+    const cost = costExactQuoteBuilderDesign(quoteLine, design());
+
+    expect(retail).toMatchObject({ ok: true, base: 298, total: 298 }); // PDF p18: 30 W x 48 H
+    expect(cost).toMatchObject({
+      ok: true,
+      basis: "catalog_factor",
+      matchedWidth: 30,
+      matchedHeight: 48,
+      wholesaleBase: 89.4,
+      wholesaleUnitCost: 89.4,
+      wholesaleTotal: 89.4,
+    });
+  });
+
   it("blocks a coupled shade until the physical shade count is selected", () => {
     const result = priceExactQuoteBuilderDesign(line(), { ...design(), shade_type: "Coupled Shades" });
     expect(result.ok).toBe(false);
