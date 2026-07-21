@@ -177,6 +177,22 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
+    image: "/images/portfolio-enhanced/split-tilt-shutters-living-room-card.jpg",
+    imageAlt: "White split tilt plantation shutters installed across a Ventura County living room"
+  },
+  {
+    image: "/images/portfolio-enhanced/split-tilt-shutters-open-card.jpg",
+    imageAlt: "Custom split tilt plantation shutters with the upper louvers open for daylight"
+  },
+  {
+    image: "/images/portfolio-enhanced/split-tilt-shutters-light-control-card.jpg",
+    imageAlt: "Split tilt plantation shutters showing independent upper and lower louver control"
+  },
+  {
+    image: "/images/portfolio-enhanced/split-tilt-shutters-detail-card.jpg",
+    imageAlt: "Close view of white split tilt plantation shutters with independently controlled louvers"
+  },
+  {
     image: "/images/portfolio-enhanced/top-down-bottom-up-shades-bathroom-wide-card.jpg",
     imageAlt: "Top-down bottom-up cellular shades bringing privacy and daylight control to a Ventura County bathroom remodel"
   },
