@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { CrmApp } from "@/components/crm/CrmApp";
+import { CrmMobileQuotesApp } from "@/components/crm/CrmMobileQuotesApp";
 
 export const metadata: Metadata = {
   title: "805 Quotes",
@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function MobileQuotesPage() {
-  return <CrmApp initialTab="quotes" loginRedirectPath="/crm/mobile/quotes" />;
+  return <CrmMobileQuotesApp />;
 }
