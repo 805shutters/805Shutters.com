@@ -133,3 +133,33 @@ export type QuoteLabCatalogResponse = {
   fixtures: QuoteLabFixture[];
   isolation: QuoteLabComparison["isolation"];
 };
+
+export type ManufacturerComparisonProgram = {
+  productId: string;
+  programId: string;
+  programName: string;
+  status: "priced" | "manual_required" | "unavailable";
+  customerRetail: { unit: number; total: number } | null;
+  dealerCost: { unit: number; total: number } | null;
+  matchedWidth: number | null;
+  matchedHeight: number | null;
+  errorCode: string | null;
+  message: string | null;
+};
+
+export type ManufacturerComparisonProduct = {
+  productId: string;
+  manufacturer: string;
+  productName: string;
+  system: string | null;
+  selected: boolean;
+  programs: ManufacturerComparisonProgram[];
+};
+
+export type ManufacturerComparisonResponse = {
+  productType: string;
+  widthInches: number;
+  heightInches: number;
+  quantity: number;
+  products: ManufacturerComparisonProduct[];
+};

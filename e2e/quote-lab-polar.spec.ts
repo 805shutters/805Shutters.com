@@ -55,6 +55,25 @@ test("Lotus shares existing categories and adds Vinyl Blinds without exposing de
   await expect(rollerControls.getByText("Dealer-net only; customer retail undefined", { exact: true })).toBeVisible();
   await expect(rollerControls.getByRole("combobox", { name: "Price program" })).toContainText("1% Roller Shade - Custom Cut");
 
+  await rollerControls.getByRole("button", { name: "Compare manufacturers" }).click();
+  const comparisonPanel = rollerControls.getByTestId("manufacturer-comparison-panel");
+  await expect(comparisonPanel.getByText("Norman - Soluna Roller Shades", { exact: true })).toBeVisible();
+  await expect(comparisonPanel.getByText("Polar - Interior Roller", { exact: true })).toBeVisible();
+  await expect(comparisonPanel.getByText("Lotus - Lotus Roller Shades", { exact: true })).toBeVisible();
+  await expect(comparisonPanel.getByText("Customer retail undefined", { exact: true }).first()).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-manufacturer-comparison-desktop.png"), fullPage: false });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+  await expect(comparisonPanel).toBeVisible();
+  await comparisonPanel.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath("quote-lab-manufacturer-comparison-mobile.png"), fullPage: false });
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  const normanComparison = comparisonPanel.locator("details").filter({ hasText: "Norman - Soluna Roller Shades" });
+  await normanComparison.locator("summary").click();
+  await normanComparison.getByTitle(/^Use Norman /).first().click();
+  await expect(rollerProduct).toContainText("Norman - Soluna Roller Shades");
+
   const firstLineCard = rollerControls.locator("xpath=ancestor::div[contains(@class, 'overflow-hidden')][1]");
   await firstLineCard.getByRole("button", { name: "Roller Shades", exact: true }).click();
   await firstLineCard.locator('[aria-label="Select line item product type"]').getByRole("button", { name: "Vinyl Blinds", exact: true }).click();

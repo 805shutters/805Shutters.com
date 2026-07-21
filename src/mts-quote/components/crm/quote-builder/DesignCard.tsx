@@ -23,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from "@mts/components/ui/tabs";
 import { Checkbox } from "@mts/components/ui/checkbox";
 import {
   AlertTriangle,
+  ArrowLeftRight,
   Archive,
   ChevronDown,
   Copy,
@@ -31,9 +32,11 @@ import {
   FileText,
   Lightbulb,
   Lock,
+  Loader2,
   Plus,
   Ruler,
   Search,
+  Scale,
   Trash2,
   X,
 } from "lucide-react";
@@ -245,7 +248,12 @@ import {
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
-import type { QuoteLabCatalogProduct, QuoteLabCatalogResponse } from "@/lib/quote-lab/types";
+import type {
+  ManufacturerComparisonProgram,
+  ManufacturerComparisonResponse,
+  QuoteLabCatalogProduct,
+  QuoteLabCatalogResponse,
+} from "@/lib/quote-lab/types";
 
 let quoteLabCatalogPromise: Promise<QuoteLabCatalogResponse> | null = null;
 
@@ -3511,6 +3519,7 @@ export function DesignCard({
         {isolated && (
           <QuoteLabCatalogControls
             productType={lineItem.product_type}
+            lineItem={lineItem}
             design={currentDesign}
             onUpdateFields={updateFields}
           />
@@ -3629,10 +3638,12 @@ export function DesignCard({
 
 function QuoteLabCatalogControls({
   productType,
+  lineItem,
   design,
   onUpdateFields,
 }: {
   productType: string;
+  lineItem: SalesQuoteLineItem;
   design: SalesQuoteDesign | undefined;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
 }) {
@@ -3659,25 +3670,27 @@ function QuoteLabCatalogControls({
 
   if (availableProducts.length === 0) return null;
 
-  const chooseProduct = (nextId: string) => {
+  const chooseProductProgram = (nextId: string, nextProgramId?: string) => {
     const product = products.find((candidate) => candidate.id === nextId);
     if (!product || product.priceBasis === "unavailable") return;
-    const firstProgram = product.programs[0];
+    const program = product.programs.find((candidate) => candidate.id === nextProgramId) ?? product.programs[0];
     onUpdateFields({
       supplier: product.manufacturer,
-      material: firstProgram?.name ?? product.system ?? product.name,
+      material: program?.name ?? product.system ?? product.name,
       fabric: null,
       motor_type: null,
       remote_type: null,
       options_json: {
         ...options,
         quote_lab_product_id: product.id,
-        quote_lab_program_id: firstProgram?.id ?? null,
-        catalog_program_id: firstProgram?.id ?? null,
+        quote_lab_program_id: program?.id ?? null,
+        catalog_program_id: program?.id ?? null,
         surcharges: [],
       },
     });
   };
+
+  const chooseProduct = (nextId: string) => chooseProductProgram(nextId);
 
   const addSurcharge = (id: string) => {
     if (!id || selectedSurcharges.some((entry) => entry.id === id)) return;
@@ -3694,7 +3707,9 @@ function QuoteLabCatalogControls({
 
   return (
     <div className="space-y-3 border-y border-slate-200 py-3" data-testid="quote-lab-catalog-controls">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <div className="space-y-1">
           <Label className="text-xs font-semibold">Manufacturer / product</Label>
           <Select value={productId} onValueChange={chooseProduct}>
@@ -3754,17 +3769,155 @@ function QuoteLabCatalogControls({
             </Select>
           </div>
         ) : null}
+          </div>
+          {selectedSurcharges.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {selectedSurcharges.map((entry) => {
+                const item = selectedProduct?.surcharges.find((candidate) => candidate.id === entry.id);
+                return <Button key={entry.id} type="button" variant="outline" size="sm" onClick={() => onUpdateFields({ options_json: { ...options, surcharges: selectedSurcharges.filter((candidate) => candidate.id !== entry.id) } })}>{item?.name ?? entry.id}<X className="ml-1 h-3 w-3" /></Button>;
+              })}
+            </div>
+          )}
+          {statusText && <div role="alert" className="text-sm font-semibold text-amber-800">{statusText}</div>}
+        </div>
+        {availableProducts.length > 1 && (
+          <ManufacturerComparisonPanel
+            productType={productType}
+            products={availableProducts}
+            selectedProductId={productId}
+            selectedProgramId={programId}
+            widthInches={measurementToInches(lineItem.width_whole, lineItem.width_fraction)}
+            heightInches={measurementToInches(lineItem.height_whole, lineItem.height_fraction)}
+            quantity={lineItem.quantity}
+            onChoose={chooseProductProgram}
+          />
+        )}
       </div>
-      {selectedSurcharges.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {selectedSurcharges.map((entry) => {
-            const item = selectedProduct?.surcharges.find((candidate) => candidate.id === entry.id);
-            return <Button key={entry.id} type="button" variant="outline" size="sm" onClick={() => onUpdateFields({ options_json: { ...options, surcharges: selectedSurcharges.filter((candidate) => candidate.id !== entry.id) } })}>{item?.name ?? entry.id}<X className="ml-1 h-3 w-3" /></Button>;
+    </div>
+  );
+}
+
+function comparisonRange(
+  programs: ManufacturerComparisonProgram[],
+  field: "customerRetail" | "dealerCost",
+): string | null {
+  const totals = programs.flatMap((program) => program[field]?.total ?? []);
+  if (totals.length === 0) return null;
+  const low = Math.min(...totals);
+  const high = Math.max(...totals);
+  const format = (value: number) => value.toLocaleString("en-US", { style: "currency", currency: "USD" });
+  return low === high ? format(low) : `${format(low)} - ${format(high)}`;
+}
+
+function ManufacturerComparisonPanel({
+  productType,
+  products,
+  selectedProductId,
+  selectedProgramId,
+  widthInches,
+  heightInches,
+  quantity,
+  onChoose,
+}: {
+  productType: string;
+  products: QuoteLabCatalogProduct[];
+  selectedProductId: string;
+  selectedProgramId: string;
+  widthInches: number;
+  heightInches: number;
+  quantity: number;
+  onChoose: (productId: string, programId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [comparison, setComparison] = useState<ManufacturerComparisonResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || widthInches <= 0 || heightInches <= 0) return;
+    const controller = new AbortController();
+    setComparison(null);
+    setError(null);
+    fetch("/api/quote-lab/manufacturer-comparison", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productType, widthInches, heightInches, quantity, selectedProductId }),
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Comparison unavailable");
+        setComparison(payload as ManufacturerComparisonResponse);
+      })
+      .catch((cause) => {
+        if (cause instanceof DOMException && cause.name === "AbortError") return;
+        setError(cause instanceof Error ? cause.message : "Comparison unavailable");
+      });
+    return () => controller.abort();
+  }, [heightInches, open, productType, quantity, selectedProductId, widthInches]);
+
+  const manufacturerCount = new Set(products.map((product) => product.manufacturer ?? "Norman")).size;
+  if (manufacturerCount < 2) return null;
+
+  return (
+    <aside className="border-t border-slate-200 pt-3 xl:border-l xl:border-t-0 xl:pl-4 xl:pt-0" aria-label="Manufacturer price comparison">
+      <Button type="button" variant="outline" className="w-full justify-between" onClick={() => setOpen((value) => !value)}>
+        <span className="flex items-center gap-2"><Scale className="h-4 w-4" />Compare manufacturers</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </Button>
+      {open && (
+        <div className="mt-3 space-y-3" data-testid="manufacturer-comparison-panel">
+          <div className="text-xs text-slate-600">
+            {widthInches}&quot; x {heightInches}&quot;, qty {quantity}. Base product only; add-ons are excluded.
+          </div>
+          {!comparison && !error && <div className="flex items-center gap-2 text-sm text-slate-600"><Loader2 className="h-4 w-4 animate-spin" />Calculating catalog prices</div>}
+          {error && <div role="alert" className="text-sm font-semibold text-red-700">{error}</div>}
+          {comparison?.products.map((product) => {
+            const retailRange = comparisonRange(product.programs, "customerRetail");
+            const costRange = comparisonRange(product.programs, "dealerCost");
+            return (
+              <details key={product.productId} className="border-b border-slate-200 pb-3" open={product.selected}>
+                <summary className="cursor-pointer list-none space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm font-bold">
+                    <span>{product.manufacturer} - {product.system ?? product.productName}</span>
+                    {product.selected && <span className="text-xs font-semibold text-blue-700">Current</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    <span>Retail: <strong>{retailRange ?? "Not defined"}</strong></span>
+                    <span>Dealer cost: <strong>{costRange ?? "Not available"}</strong></span>
+                  </div>
+                </summary>
+                <div className="mt-2 max-h-64 space-y-2 overflow-y-auto pr-1">
+                  {product.programs.map((program) => {
+                    const isCurrent = product.productId === selectedProductId && program.programId === selectedProgramId;
+                    return (
+                      <div key={program.programId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-slate-100 pt-2 text-xs">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-slate-900">{program.programName}</div>
+                          {program.customerRetail && <div>Retail {program.customerRetail.total.toLocaleString("en-US", { style: "currency", currency: "USD" })}</div>}
+                          {program.dealerCost && <div>Dealer cost {program.dealerCost.total.toLocaleString("en-US", { style: "currency", currency: "USD" })}</div>}
+                          {program.status !== "priced" && <div className="text-amber-800">{program.message ?? "Not priced at this size"}</div>}
+                          {program.status === "priced" && !program.customerRetail && <div className="text-amber-800">Customer retail undefined</div>}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          title={isCurrent ? "Current quote product" : `Use ${product.manufacturer} ${program.programName}`}
+                          disabled={isCurrent || program.status !== "priced"}
+                          onClick={() => onChoose(product.productId, program.programId)}
+                        >
+                          <ArrowLeftRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            );
           })}
         </div>
       )}
-      {statusText && <div role="alert" className="text-sm font-semibold text-amber-800">{statusText}</div>}
-    </div>
+    </aside>
   );
 }
 
