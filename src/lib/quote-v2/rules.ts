@@ -260,7 +260,7 @@ function validatePolarElitePortalConflict(
   );
   const exactObservedConfiguration =
     widthIsObserved &&
-    fabric.includes("suntex90") &&
+    fabric.replaceAll(" ", "").includes("suntex90") &&
     (operation.includes("manual") || operation.includes("gearcrank")) &&
     track.includes("standard") &&
     (track.includes("nonzipper") || track.includes("track"));
