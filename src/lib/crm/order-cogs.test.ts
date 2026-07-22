@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -278,6 +278,40 @@ describe("extractOnyxOrderCogs", () => {
     expect(result.orderNumber).toBe("52607181014");
     expect(result.orderAmount).toBe(1646.25);
     expect(result.manufacturer).toBe("Onyx");
+  });
+});
+
+describe("extractLotusOrderCogs", () => {
+  it("extracts the final total and order number without inventing a blank side mark", () => {
+    const result = extractLotusOrderCogs([
+      "Lotus & Windoware, Inc.",
+      "Sales Order #SO287277",
+      "Payment Method Customer PO # Freight Method Side Mark",
+      "#18289 UPS Ground",
+      "Qty Ordered Item Description Unit Price Extended Price",
+      "2 Custom 1-inch Aluminum Blind $105.00 $210.00",
+      "Subtotal $210.00",
+      "Tax (7.25%) $17.61",
+      "Total $260.54"
+    ].join("\n"));
+
+    expect(result).toMatchObject({
+      customerName: null,
+      orderAmount: 260.54,
+      orderNumber: "SO287277",
+      manufacturer: "Lotus & Windoware"
+    });
+  });
+
+  it("extracts a populated Lotus side mark", () => {
+    const result = extractLotusOrderCogs([
+      "Lotus & Windoware, Inc.: Sales Order #SO287278",
+      "Side Mark: Michael Lee",
+      "Qty Ordered 2",
+      "Subtotal $210.00 Tax $17.61 Total $260.54"
+    ].join("\n"));
+
+    expect(result.customerName).toBe("Michael Lee");
   });
 });
 

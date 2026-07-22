@@ -124,7 +124,7 @@ export type ProcessOrderCogsResult = {
 };
 
 function defaultQuery(mailbox: string) {
-  return `in:inbox to:${mailbox} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com)`;
+  return `in:inbox to:${mailbox} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
 }
 
 function envValue(keys: string[]) {
@@ -497,8 +497,46 @@ export function extractOnyxOrderCogs(text: string): ExtractedOrderCogs {
   };
 }
 
+export function isLotusOrderEmail(text: string, fromEmail: string | null) {
+  const haystack = `${fromEmail || ""} ${text}`.toLowerCase();
+  return haystack.includes("lotusblind.com") || haystack.includes("lotus & windoware");
+}
+
+function lotusSideMark(text: string) {
+  const explicit = text.match(/\bSide\s*Mark\s*[:#-]\s*([A-Za-z][A-Za-z&.' -]{2,80}?)(?=\s+(?:Qty\s+Ordered|Item|Description|Subtotal|Total)\b|$)/i)?.[1];
+  if (explicit) return cleanName(explicit);
+
+  const tableValue = text.match(/\bSide\s*Mark\b\s+(.+?)\s+(?=Qty\s+Ordered\b)/i)?.[1]
+    ?.replace(/^#?\d+\s+/, "")
+    .replace(/^(?:UPS|FedEx)\s+Ground\b/i, "")
+    .replace(/^(?:Will\s+Call|Customer\s+Pickup)\b/i, "")
+    .trim();
+  return tableValue ? cleanName(tableValue) : null;
+}
+
+/** Parse Lotus & Windoware sales-order PDFs. Total is the full dealer COGS. */
+export function extractLotusOrderCogs(text: string): ExtractedOrderCogs {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  const totalMatches = Array.from(normalized.matchAll(/\bTotal\s*[:#-]?\s*\$\s*([\d,]+(?:\.\d{2})?)/gi));
+  const orderAmount = moneyFrom(totalMatches.at(-1)?.[1]);
+  const orderNumber = normalized.match(/\bSales\s+Order(?:\s*[#:_-]|_)+\s*(SO\d{4,})\b/i)?.[1] || null;
+  const customerName = lotusSideMark(normalized);
+  const confidence = Math.min(1, (customerName ? 0.6 : 0) + (orderAmount ? 0.35 : 0) + (orderNumber ? 0.05 : 0));
+
+  return {
+    customerName,
+    orderAmount,
+    orderNumber,
+    confidence,
+    amountConfidence: orderAmount ? 0.98 : 0,
+    text: normalized,
+    manufacturer: "Lotus & Windoware"
+  };
+}
+
 /** Dispatch to a vendor-specific parser when recognised; else the generic parser. */
 export function extractOrderCogs(text: string, fromEmail: string | null): ExtractedOrderCogs {
+  if (isLotusOrderEmail(text, fromEmail)) return extractLotusOrderCogs(text);
   if (isOnyxOrderEmail(text, fromEmail)) return extractOnyxOrderCogs(text);
   if (isNormanOrderEmail(text, fromEmail)) return extractNormanOrderCogs(text);
   return extractOrderCogsFromText(text);
@@ -1169,7 +1207,10 @@ export async function processOrderCogsInbox(
       const bodyText = [message.snippet || "", ...collectMessageText(message.payload)].join("\n");
       const fromEmail = getHeader(headers, "From");
       const subject = getHeader(headers, "Subject") || "";
-      const pdf = accessToken && isNormanOrderEmail(`${subject} ${bodyText}`, fromEmail)
+      const orderIdentityText = `${subject} ${bodyText}`;
+      const pdf = accessToken && (
+        isNormanOrderEmail(orderIdentityText, fromEmail) || isLotusOrderEmail(orderIdentityText, fromEmail)
+      )
         ? await extractPdfText(accessToken, message)
         : { text: "", errors: [] as string[] };
       const text = [subject, bodyText, pdf.text].filter(Boolean).join("\n");
