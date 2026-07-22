@@ -53,3 +53,8 @@ remain blocked. Direct building low-voltage power and Roman Automate external
 battery packs are supported when explicitly selected. The shared-panel branch
 must not be enabled until a quote-level shared-accessory record can allocate one
 panel, validate its capacity/current requirements, and charge it once.
+
+Motorized Roman Common Valance also remains blocked. Page 19 documents two
+actual shades and two motors, while the current single-line pricing input cannot
+yet look up both panel widths independently and prove two motor charges. It must
+remain blocked until that two-panel price topology is authoritative.

@@ -624,6 +624,22 @@ function resolveHoneycomb(
     const rechargeable = config.powerSource.includes("charging wand");
     const acAdapter = config.powerSource.includes("ac adapter");
     const lowVoltage = config.powerSource.includes("dc low voltage");
+    const installation = normalized(
+      value(context, "installation_method", "bracket_installation"),
+    );
+    if (rechargeable && installation.includes("side mount")) {
+      issues.push(
+        issue(
+          "honeycomb.motorization.charging_wand.side_mount_incompatible",
+          9,
+          {
+            motor_type: config.powerSource,
+            installation_method: installation,
+          },
+          "Norman Smart rechargeable battery with a charging wand is not available for Side Mount installation.",
+        ),
+      );
+    }
     if (mode === "skylight" && !acAdapter && !lowVoltage) {
       issues.push(
         issue(
@@ -882,6 +898,21 @@ function resolveRoman(
   let limits: SourceBackedMotorLimits;
   let sourcePages: readonly number[];
   let derivedAdapterWattage: 36 | 65 | undefined;
+
+  if (shadeType.includes("common valance")) {
+    issues.push(
+      issue(
+        "roman.motorization.common_valance_price_topology_incomplete",
+        19,
+        {
+          shade_type: shadeType,
+          common_valance_panel_widths:
+            value(context, "common_valance_panel_widths") ?? null,
+        },
+        "Motorized Common Valance requires two actual panel-grid prices and two motor charges. The current one-line price topology cannot yet prove both components, so this branch remains blocked instead of underpricing it.",
+      ),
+    );
+  }
 
   if (family === "norman_smart") {
     sourcePages = [4, 18, 19, 20, 21, 22];

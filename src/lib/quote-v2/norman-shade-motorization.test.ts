@@ -324,6 +324,15 @@ describe("Norman May 2026 Honeycomb motorization normalization", () => {
     expect(ruleIds(sharedPanel)).toContain(
       "honeycomb.motorization.shared_dc_panel_allocation_incomplete",
     );
+
+    const chargingWandSideMount = materializeCanonical(
+      honeycomb({
+        installation_method: "Side Mount",
+      }),
+    );
+    expect(ruleIds(chargingWandSideMount)).toContain(
+      "honeycomb.motorization.charging_wand.side_mount_incompatible",
+    );
   });
 });
 
@@ -450,6 +459,11 @@ describe("Norman May 2026 Roman motorization normalization", () => {
         expect.objectContaining({
           ruleId: "roman.motorization.motor_position_derived",
           severity: "auto_derive",
+        }),
+        expect.objectContaining({
+          ruleId:
+            "roman.motorization.common_valance_price_topology_incomplete",
+          severity: "hard_block",
         }),
       ]),
     );
