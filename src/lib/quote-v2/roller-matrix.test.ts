@@ -260,4 +260,25 @@ describe("Norman Roller V2 exact restriction matrix", () => {
     }).map((issue) => issue.ruleId);
     expect(withGrouping).not.toContain("roller.matrix.coupled_grouping_required");
   });
+
+  it("uses the SmartRelease matrix profile for the Cord Loop Smart Release choice", () => {
+    const resolved = resolveRollerMatrixProfile(
+      context(
+        {
+          lift_system: "Continuous Cord Loop",
+          cord_loop_release: "Smart Release",
+          roller_tube: '1 3/4" (43mm) Tube',
+        },
+        { widthInches: 30, heightInches: 48 },
+      ),
+    );
+
+    expect(resolved.ok, JSON.stringify(resolved, null, 2)).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.offering).toMatchObject({
+      collection: "Amelia",
+      colorCode: "F1484",
+    });
+    expect(resolved.definition.operatingSystem).toBe("SmartRelease");
+  });
 });

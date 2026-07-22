@@ -152,7 +152,16 @@ export function rollerSheetForSelection(context: SelectionContext): string | nul
 
 function targetOperatingSystem(context: SelectionContext): string {
   const lift = compact(stringConfig(context, "lift_system"));
+  const cordLoopRelease = compact(
+    stringConfig(context, "cord_loop_release"),
+  );
   if (lift.includes("smartrelease")) return "smartrelease";
+  if (
+    (lift.includes("continuouscordloop") || lift === "cordloop") &&
+    cordLoopRelease.includes("smartrelease")
+  ) {
+    return "smartrelease";
+  }
   if (lift.includes("continuouscordloop") || lift === "cordloop") return "cordloop";
   if (lift.includes("cordless")) return "cordless";
   if (lift.includes("autowand")) return "autowand";

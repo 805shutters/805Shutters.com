@@ -445,6 +445,12 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(automatic("roller", { lift_system: "Smart Release" })).toEqual([
       { id: "smartrelease", units: 1 },
     ]);
+    expect(
+      automatic("roller", {
+        lift_system: "Continuous Cord Loop",
+        cord_loop_release: "Smart Release",
+      }),
+    ).toEqual([{ id: "smartrelease", units: 1 }]);
     expect(automatic("honeycomb", { lift_system: "Smart Release" })).toEqual([
       { id: "smartrelease", units: 1 },
     ]);

@@ -1199,11 +1199,20 @@ function priceComponentInputs(
   const liftSystem = selection.configuration.lift_system;
   const normalizedLiftSystem = normalizedComponentIdentity(liftSystem);
   const compactLiftSystem = normalizedLiftSystem.replace(/\s+/g, "");
+  const compactCordLoopRelease = normalizedComponentIdentity(
+    selection.configuration.cord_loop_release,
+  ).replace(/\s+/g, "");
+  const rollerSmartReleaseSelected =
+    selection.productId === "roller" &&
+    (compactLiftSystem === "smartrelease" ||
+      ((compactLiftSystem === "continuouscordloop" ||
+        compactLiftSystem === "cordloop") &&
+        compactCordLoopRelease === "smartrelease"));
   const motorized =
     normalizedLiftSystem.includes("motor") ||
     Boolean(baseMotor);
   const smartReleaseSurchargeId =
-    compactLiftSystem === "smartrelease"
+    compactLiftSystem === "smartrelease" || rollerSmartReleaseSelected
       ? selection.productId === "roman"
         ? "smartrelease_lift_system"
         : selection.productId === "roller" || selection.productId === "honeycomb"

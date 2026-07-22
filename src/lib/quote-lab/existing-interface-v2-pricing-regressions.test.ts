@@ -422,6 +422,65 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(quote.sendability.sendable).toBe(true);
   });
 
+  it("prices Cord Loop with Smart Release as the exact Amelia operating-system upgrade", () => {
+    const quoteLine = line("norman-cord-loop-smartrelease-line", "Roller Shades", 30, 48);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_2_pg2",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Continuous Cord Loop",
+          valance: "No Valance",
+          fabric: "Amelia",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_2_pg2",
+          fabric_color_collection: "Amelia",
+          fabric_color_code: "F1484",
+          fabric_color_name: "Mist Gray",
+          roller_application: "Single Shade",
+          top_treatment_class: "No Top Treatment",
+          roller_tube: '1 3/4" (43mm) Tube',
+          hem_bar: "Fabric Covered",
+          cord_loop_release: "Smart Release",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.validationStatus).toBe("valid");
+    expect(result.total).toBe(344.03);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "operating:smartrelease",
+          category: "operating_system",
+          priceLineId: "smartrelease",
+          catalogAmount: 89,
+          wholesaleAmount: 29.37,
+          customerAmount: 73.43,
+        }),
+      ]),
+    );
+    expect(
+      result.components.some(
+        (component) =>
+          component.category === "accessory" &&
+          component.priceLineId === "smartrelease",
+      ),
+    ).toBe(false);
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
   it("rounds a half-cent line discount from integer cents exactly once", () => {
     const quoteLine = line("norman-half-cent-discount-line", "Roller Shades", 36, 60);
     const quote = repriceOne(
