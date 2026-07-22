@@ -178,6 +178,7 @@ describe("partner payment row helpers", () => {
     expect(item).toMatchObject({
       itemKey: "jessica:manual:jessica-row",
       person: "jessica",
+      advertisingReserve: 70,
       remainingAmount: 300,
       paymentState: "unpaid"
     });

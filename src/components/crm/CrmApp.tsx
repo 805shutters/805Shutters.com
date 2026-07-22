@@ -7595,6 +7595,7 @@ function DrillDetailCard({
                 editor={cogsEditor}
               />
               <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
+              <DrillFact label="Advertising 7%" value={row ? toLedgerCurrency(row.advertisingReserve) : "No ledger row"} />
               <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
               {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
                 <DrillFact label="Jessica Profit" value={toLedgerCurrency(row.jessicaCommission)} tone="good" />
@@ -8496,6 +8497,9 @@ function DrillDetailEditForm({
             <span>
               Ken <strong>{row ? toLedgerCurrency(row.kenCut) : "No ledger row"}</strong>
             </span>
+          <span>
+            Advertising 7% <strong>{row ? toLedgerCurrency(row.advertisingReserve) : "No ledger row"}</strong>
+          </span>
           <span>
             Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
           </span>
@@ -10803,6 +10807,7 @@ function PartnerPaymentsView({
                   <th>Status</th>
                   <th>Sold By</th>
                   <th>Total</th>
+                  {activePerson === "mike" || activePerson === "jessica" ? <th>Advertising 7%</th> : null}
                   <th>Owed</th>
                   <th>Paid</th>
                   <th>Remaining</th>
@@ -10828,6 +10833,9 @@ function PartnerPaymentsView({
                     <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
                     <td>{saleOwnerDisplayName(item.salesOwner)}</td>
                     <td>{toLedgerCurrency(item.total)}</td>
+                    {activePerson === "mike" || activePerson === "jessica" ? (
+                      <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
+                    ) : null}
                     <td>{toLedgerCurrency(item.owedAmount)}</td>
                     <td>{toLedgerCurrency(item.paidAmount)}</td>
                     <td className="crm-ledger-money-warn">{toLedgerCurrency(item.remainingAmount)}</td>

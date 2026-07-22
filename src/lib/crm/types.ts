@@ -640,6 +640,7 @@ export type CrmPartnerPaymentLedgerItem = {
   sourceStatus: CrmBookkeepingStatus;
   salesOwner: CrmBookkeepingSalesOwner | null;
   total: number;
+  advertisingReserve: number;
   owedAmount: number;
   paidAmount: number;
   remainingAmount: number;

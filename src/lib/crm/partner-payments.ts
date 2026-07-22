@@ -146,6 +146,7 @@ function createEarnedItem({
     sourceStatus: row.liveStatus || row.status,
     salesOwner: row.salesOwner,
     total: roundCents(row.total),
+    advertisingReserve: roundCents(row.advertisingReserve),
     owedAmount
   };
 }
