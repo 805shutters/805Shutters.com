@@ -3,10 +3,13 @@ import { CrmAuthError } from "@/lib/crm/auth";
 
 type AnyRow = Record<string, unknown>;
 
+/** The additive atomic transaction exists in source and has focused tests. */
+export const V2_CUSTOMER_SEND_TRANSACTION_IMPLEMENTED = true as const;
+
 /**
- * Production persistence does not yet have the quote-level V2 marker or the
- * line-level selected_design_id required for an authoritative send. Keeping
- * this false documents the cutover dependency and prevents legacy mirroring.
+ * Source readiness is not deployment readiness. This remains false until the
+ * additive migrations are applied and the protected production cutover is
+ * separately approved, so the legacy send route can never mirror a V2 quote.
  */
 export const V2_PRODUCTION_SEND_PERSISTENCE_READY = false as const;
 
@@ -38,6 +41,6 @@ export async function guardV2SalesQuoteBeforeLegacySend(
 
   throw new CrmAuthError(
     409,
-    "V2 send blocked: production quote persistence and the dedicated customer-safe V2 mirror are not enabled.",
+    "V2 send blocked: the atomic customer-safe transaction is not enabled in production and external delivery remains disabled.",
   );
 }
