@@ -11,6 +11,10 @@ import {
 
 export const runtime = "nodejs";
 
+function useSecureCookies(request: NextRequest): boolean {
+  return request.nextUrl.protocol === "https:";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json().catch(() => ({}))) as { code?: unknown };
@@ -23,7 +27,7 @@ export async function POST(request: NextRequest) {
       name: QUOTE_LAB_COOKIE,
       value: quoteLabSessionToken(),
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecureCookies(request),
       sameSite: "strict",
       path: "/",
       maxAge: QUOTE_LAB_COOKIE_MAX_AGE,
@@ -32,7 +36,7 @@ export async function POST(request: NextRequest) {
       name: QUOTE_LAB_WORKSPACE_COOKIE,
       value: createQuoteLabWorkspaceNonce(),
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecureCookies(request),
       sameSite: "strict",
       path: "/",
       maxAge: QUOTE_LAB_COOKIE_MAX_AGE,
@@ -46,14 +50,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const response = NextResponse.json({ ok: true });
   for (const name of [QUOTE_LAB_COOKIE, QUOTE_LAB_WORKSPACE_COOKIE]) {
     response.cookies.set({
       name,
       value: "",
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: useSecureCookies(request),
       sameSite: "strict",
       path: "/",
       maxAge: 0,

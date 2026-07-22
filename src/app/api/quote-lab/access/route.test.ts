@@ -24,6 +24,10 @@ function unlock(code: string) {
   );
 }
 
+function lock(url = "http://localhost/api/quote-lab/access") {
+  return DELETE(new NextRequest(url, { method: "DELETE" }));
+}
+
 describe("Quote Lab unlock workspace isolation", () => {
   it("sets stable auth and a different random HttpOnly workspace nonce per unlock", async () => {
     process.env.QUOTE_LAB_ACCESS_CODE = "local-route-test-code";
@@ -44,10 +48,24 @@ describe("Quote Lab unlock workspace isolation", () => {
     expect(setCookie.match(/HttpOnly/gi)).toHaveLength(2);
     expect(setCookie.match(/SameSite=strict/gi)).toHaveLength(2);
     expect(setCookie.match(/Path=\//gi)).toHaveLength(2);
+    expect(setCookie).not.toMatch(/; Secure/i);
+  });
+
+  it("marks both cookies Secure only when the protected preview uses HTTPS", async () => {
+    process.env.QUOTE_LAB_ACCESS_CODE = "local-route-test-code";
+    const response = await POST(
+      new NextRequest("https://preview.example/api/quote-lab/access", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code: "local-route-test-code" }),
+      }),
+    );
+    const setCookie = response.headers.get("set-cookie") ?? "";
+    expect(setCookie.match(/; Secure/gi)).toHaveLength(2);
   });
 
   it("clears both auth and workspace cookies on lock", async () => {
-    const response = await DELETE();
+    const response = await lock();
     expect(response.status).toBe(200);
     expect(response.cookies.get(QUOTE_LAB_COOKIE)?.value).toBe("");
     expect(response.cookies.get(QUOTE_LAB_WORKSPACE_COOKIE)?.value).toBe("");
