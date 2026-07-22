@@ -11,12 +11,17 @@ import type {
   SalesQuoteDesign,
   SalesQuoteLineItem,
 } from "@mts/types/quote";
+import {
+  customerConfigurationFromSelection,
+  type V2CustomerConfiguration,
+} from "@/lib/crm/sales-quote-v2-customer-configuration";
 
 type AnyRow = Record<string, any>;
 type V2PersistedLine = SalesQuoteLineItem & {
   selected_design_id?: string | null;
 };
 type V2PersistedDesign = SalesQuoteDesign & {
+  quote_v2_selection?: unknown;
   quote_v2_price_status?: string | null;
   quote_v2_selection_fingerprint?: string | null;
   quote_v2_priced_catalog_version?: string | null;
@@ -64,6 +69,7 @@ export type PreparedV2CustomerQuote = {
     widthInches: number;
     heightInches: number;
     quantity: number;
+    configuration: V2CustomerConfiguration;
     price: V2CustomerRetailPrice;
   }>;
 };
@@ -443,12 +449,13 @@ export function prepareV2CustomerSendPayload(
     return {
       lineItemId: line.id,
       selectedDesignId,
-      selectedVariant: design.variant,
+      selectedVariant: design.variant.trim(),
       room: text(line.room_name),
       productType: text(line.product_type),
       widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
       heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
       quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
+      configuration: customerConfigurationFromSelection(priced.selection),
       price: customerPrice,
     };
   });
@@ -478,7 +485,11 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     .eq("quote_id", quote.id)
     .order("sort_order", { ascending: true });
   if (lineError) fail("V2 line items could not be loaded for authoritative validation.");
-  const lines = (lineItems || []) as unknown as V2PersistedLine[];
+  const lines = ([...(lineItems || [])] as unknown as V2PersistedLine[]).sort(
+    (left, right) =>
+      Number(left.sort_order) - Number(right.sort_order) ||
+      left.id.localeCompare(right.id),
+  );
   const selectedDesignIds = lines.map((line) => {
     const selectedDesignId = text(line.selected_design_id);
     if (!selectedDesignId) fail(`Line item ${line.id} is missing selected_design_id.`);

@@ -11,7 +11,7 @@ import { sendSalesQuoteToCustomer } from "./sales-quote-send";
 import {
   guardV2SalesQuoteBeforeLegacySend,
   isServerMarkedV2SalesQuote,
-  V2_CUSTOMER_SEND_TRANSACTION_IMPLEMENTED,
+  V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED,
   V2_PRODUCTION_SEND_PERSISTENCE_READY,
 } from "./sales-quote-v2-send-guard";
 import {
@@ -270,7 +270,7 @@ beforeEach(() => {
 
 describe("V2 production send boundary", () => {
   it("keeps production V2 sending disabled while preparation is hardened", () => {
-    expect(V2_CUSTOMER_SEND_TRANSACTION_IMPLEMENTED).toBe(true);
+    expect(V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED).toBe(true);
     expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(false);
   });
 

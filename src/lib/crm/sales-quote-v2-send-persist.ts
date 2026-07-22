@@ -5,6 +5,7 @@ import {
   projectV2CustomerRetailPrice,
   type PreparedV2CustomerQuote,
 } from "@/lib/crm/sales-quote-v2-send";
+import { parseV2CustomerConfiguration } from "@/lib/crm/sales-quote-v2-customer-configuration";
 
 type JsonRecord = Record<string, unknown>;
 type SentVia = "email" | "sms" | "both";
@@ -19,7 +20,7 @@ type PersistedQuoteIdentity = JsonRecord & {
   quote_v2_revision: number | string;
 };
 
-export type PersistSalesQuoteV2CustomerSendInput = Readonly<{
+export type PrepareSalesQuoteV2CustomerSendInput = Readonly<{
   quoteId: string;
   expectedRevision: number;
   idempotencyKey: string;
@@ -27,24 +28,23 @@ export type PersistSalesQuoteV2CustomerSendInput = Readonly<{
   sentVia: SentVia;
 }>;
 
-export type PersistSalesQuoteV2CustomerSendResponse = Readonly<{
+export type PrepareSalesQuoteV2CustomerSendResponse = Readonly<{
   backend: "authoritative_v2";
   quoteId: string;
-  sendSnapshotId: string;
+  sendPreparationId: string;
   crmQuoteId: string;
-  previousRevision: number;
-  revision: number;
+  quoteRevision: number;
   catalogVersion: string;
   total: number;
-  sentAt: string;
-  sentVia: SentVia;
+  preparedAt: string;
+  preparedVia: SentVia;
   customerPayload: PreparedV2CustomerQuote;
 }>;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/;
-const RUNTIME_ENABLE_VALUE = "enabled-after-v2-send-migration";
+const RUNTIME_ENABLE_VALUE = "enabled-after-v2-send-preparation-migration";
 
 function plainRecord(value: unknown): JsonRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -239,17 +239,17 @@ export function parseSalesQuoteV2CustomerSendBody(value: unknown): Readonly<{
 }
 
 /**
- * Production stays fail-closed until the migration is applied and cutover is
+ * Preparation stays fail-closed until the migration is applied and preview is
  * explicitly enabled. The unusual value prevents a generic truthy env var from
- * activating a lifecycle mutation accidentally.
+ * activating a protected write accidentally.
  */
-export function assertV2CustomerSendPersistenceRuntimeEnabled(): void {
+export function assertV2CustomerSendPreparationRuntimeEnabled(): void {
   if (
-    process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE !== RUNTIME_ENABLE_VALUE
+    process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION !== RUNTIME_ENABLE_VALUE
   ) {
     throw new CrmAuthError(
       409,
-      "V2 customer-send persistence is implemented but disabled until its migration and production cutover are explicitly approved.",
+      "V2 customer-send preparation is implemented but disabled until its migration and protected preview are explicitly approved.",
     );
   }
 }
@@ -296,6 +296,7 @@ function parseCustomerPayload(value: unknown): PreparedV2CustomerQuote {
         "widthInches",
         "heightInches",
         "quantity",
+        "configuration",
         "price",
       ],
       `customerPayload.lines[${index}]`,
@@ -345,6 +346,21 @@ function parseCustomerPayload(value: unknown): PreparedV2CustomerQuote {
         `Customer line ${index + 1} retail projection contains unsupported fields.`,
       );
     }
+    let configuration;
+    try {
+      configuration = parseV2CustomerConfiguration(line.configuration);
+    } catch {
+      throw new CrmAuthError(
+        502,
+        `Customer line ${index + 1} has an invalid configuration projection.`,
+      );
+    }
+    if (!samePayload(line.configuration, configuration)) {
+      throw new CrmAuthError(
+        502,
+        `Customer line ${index + 1} configuration contains unsupported fields.`,
+      );
+    }
     return {
       lineItemId: persistedUuid(line.lineItemId, "lineItemId"),
       selectedDesignId: persistedUuid(
@@ -360,6 +376,7 @@ function parseCustomerPayload(value: unknown): PreparedV2CustomerQuote {
       widthInches,
       heightInches,
       quantity,
+      configuration,
       price,
     };
   });
@@ -401,13 +418,13 @@ function isConflict(error: unknown): boolean {
 
 /**
  * Revalidates through the authoritative engine, then asks one service-role RPC
- * to lock/recheck/persist the allow-listed mirror and lifecycle transition.
- * This function performs no email, SMS, notification, or payment action.
+ * to lock/recheck and persist an allow-listed draft mirror plus immutable send
+ * preparation. It deliberately does not claim delivery or mutate lifecycle.
  */
-export async function persistSalesQuoteV2CustomerSend(
+export async function prepareSalesQuoteV2CustomerSend(
   supabase: SupabaseClient,
-  input: PersistSalesQuoteV2CustomerSendInput,
-): Promise<PersistSalesQuoteV2CustomerSendResponse> {
+  input: PrepareSalesQuoteV2CustomerSendInput,
+): Promise<PrepareSalesQuoteV2CustomerSendResponse> {
   const quoteId = requiredUuid(input.quoteId, "quoteId");
   const actorId = requiredUuid(input.actorId, "actorId");
   const expected = positiveRevision(input.expectedRevision);
@@ -429,27 +446,19 @@ export async function persistSalesQuoteV2CustomerSend(
     quote.quote_v2_revision,
     "Quote load",
   );
-  const idempotentRetry =
-    quote.status === "sent" &&
-    quote.quote_v2_status === "sent" &&
-    storedRevision === expected + 1;
-  if (!idempotentRetry) {
-    if (
-      quote.status !== "draft" ||
-      quote.quote_v2_status !== "priced" ||
-      storedRevision !== expected
-    ) {
-      throw new CrmAuthError(
-        409,
-        "The quote lifecycle, revision, or catalog changed before customer-send persistence.",
-      );
-    }
+  if (
+    quote.status !== "draft" ||
+    quote.quote_v2_status !== "priced" ||
+    storedRevision !== expected
+  ) {
+    throw new CrmAuthError(
+      409,
+      "The quote lifecycle, revision, or catalog changed before customer-send preparation.",
+    );
   }
 
-  const prepared = idempotentRetry
-    ? null
-    : await prepareV2CustomerSendPayloadFromDatabase(supabase, quote);
-  if (prepared) assertV2CustomerPayloadHasNoProtectedFields(prepared);
+  const prepared = await prepareV2CustomerSendPayloadFromDatabase(supabase, quote);
+  assertV2CustomerPayloadHasNoProtectedFields(prepared);
 
   const rpcInput = {
     p_quote_id: quoteId,
@@ -457,112 +466,107 @@ export async function persistSalesQuoteV2CustomerSend(
     p_expected_catalog_version: catalogVersion,
     p_idempotency_key: requestKey,
     p_actor_id: actorId,
-    p_sent_via: channel,
+    p_prepared_via: channel,
     p_customer_payload: prepared,
   };
   assertV2CustomerPayloadHasNoProtectedFields(rpcInput.p_customer_payload);
 
   const { data, error } = await supabase.rpc(
-    "persist_quote_v2_customer_send",
+    "prepare_quote_v2_customer_send",
     rpcInput,
   );
   if (error) {
     if (isConflict(error)) {
       throw new CrmAuthError(
         409,
-        "This quote changed while customer-send persistence was running. Reload it before trying again.",
+        "This quote changed while customer-send preparation was running. Reload it before trying again.",
       );
     }
     const source = plainRecord(error);
     if (source?.code === "42501") {
       throw new CrmAuthError(
         403,
-        "This CRM user is not authorized for V2 customer-send persistence.",
+        "This CRM user is not authorized for V2 customer-send preparation.",
       );
     }
     throw new CrmAuthError(
       502,
-      "The customer-safe V2 send mirror could not be saved.",
+      "The customer-safe V2 send preparation could not be saved.",
     );
   }
 
   const saved = rpcRow(data);
   const payload = parseCustomerPayload(saved.customer_payload);
-  if (prepared && !samePayload(payload, prepared)) {
+  if (!samePayload(payload, prepared)) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned a payload that drifted after revalidation.",
+      "V2 customer-send preparation returned a payload that drifted after revalidation.",
     );
   }
   if (saved.quote_id !== quoteId) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned mismatched quote identity.",
+      "V2 customer-send preparation returned mismatched quote identity.",
     );
   }
-  const previousRevision = persistedRevision(
-    saved.previous_revision,
-    "V2 customer-send persistence",
+  const quoteRevision = persistedRevision(
+    saved.quote_revision,
+    "V2 customer-send preparation",
   );
-  const revision = persistedRevision(
-    saved.new_revision,
-    "V2 customer-send persistence",
-  );
-  if (previousRevision !== expected || revision !== expected + 1) {
+  if (quoteRevision !== expected) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned mismatched revision identity.",
+      "V2 customer-send preparation returned mismatched revision identity.",
     );
   }
   const returnedCatalog = nonemptyText(
     saved.catalog_version,
-    "V2 persisted catalog identity",
+    "V2 prepared catalog identity",
   );
   if (returnedCatalog !== catalogVersion) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned mismatched catalog identity.",
+      "V2 customer-send preparation returned mismatched catalog identity.",
     );
   }
-  const total = money(saved.quote_total, "V2 customer-send persistence");
+  const total = money(saved.quote_total, "V2 customer-send preparation");
   if (Math.abs(total - payload.total) >= 0.005) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned mismatched retail totals.",
+      "V2 customer-send preparation returned mismatched retail totals.",
     );
   }
-  const returnedChannel = persistedSentVia(saved.persisted_sent_via);
+  const returnedChannel = persistedSentVia(saved.prepared_via);
   if (returnedChannel !== channel) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned a mismatched delivery channel.",
+      "V2 customer-send preparation returned a mismatched intended delivery channel.",
     );
   }
-  const sentAt = nonemptyText(
-    saved.persisted_sent_at,
-    "V2 persisted sent timestamp",
+  const preparedAt = nonemptyText(
+    saved.prepared_at,
+    "V2 prepared timestamp",
   );
-  if (Number.isNaN(Date.parse(sentAt))) {
+  if (Number.isNaN(Date.parse(preparedAt))) {
     throw new CrmAuthError(
       502,
-      "V2 customer-send persistence returned an invalid sent timestamp.",
+      "V2 customer-send preparation returned an invalid preparation timestamp.",
     );
   }
 
   return {
     backend: "authoritative_v2",
     quoteId,
-    sendSnapshotId: persistedUuid(
-      saved.send_snapshot_id,
-      "sendSnapshotId",
+    sendPreparationId: persistedUuid(
+      saved.send_preparation_id,
+      "sendPreparationId",
     ),
     crmQuoteId: persistedUuid(saved.crm_quote_id, "crmQuoteId"),
-    previousRevision,
-    revision,
+    quoteRevision,
     catalogVersion: returnedCatalog,
     total,
-    sentAt,
-    sentVia: returnedChannel,
+    preparedAt,
+    preparedVia: returnedChannel,
     customerPayload: payload,
   };
 }

@@ -31,6 +31,10 @@ import {
   PRODUCT_COLOR_NAME_DETAIL,
 } from "@/lib/quote/product-color-options";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
+import {
+  QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL,
+  v2CustomerConfigurationOptions,
+} from "@/lib/crm/sales-quote-v2-customer-configuration";
 import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
@@ -323,11 +327,18 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   if (fabricColorOption && (colorRow?.selectionMode === "fabric" || !styleName)) styleName = fabricColorOption;
   if (!styleName && design.fabric) styleName = design.fabric;
   const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];
+  const v2ConfigurationOptions = v2CustomerConfigurationOptions(
+    details[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL],
+  );
   const surchargeOptions = (design.surcharges ?? [])
     .map((s) => product?.surcharges.find((x) => x.id === s.id)?.name)
     .filter((n): n is string => Boolean(n));
   const detailOptions = Object.entries(design.details ?? {})
-    .filter(([fieldId]) => isCustomerVisibleDetail(design.product_id, fieldId))
+    .filter(
+      ([fieldId]) =>
+        fieldId !== QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL &&
+        isCustomerVisibleDetail(design.product_id, fieldId),
+    )
     .map(([fieldId, value]) => detailDisplayValue(design.product_id, fieldId, value))
     .filter((n): n is string => Boolean(n));
   const motorizationOptions = (design.motorization ?? [])
@@ -338,7 +349,15 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
     })
     .filter((n): n is string => Boolean(n));
   const colorOptions = fabricColorOption && styleName !== fabricColorOption ? [`Color: ${fabricColorOption}`] : [];
-  const options = legacyOptions.length ? legacyOptions : [...colorOptions, ...detailOptions, ...surchargeOptions, ...motorizationOptions];
+  const options = legacyOptions.length
+    ? legacyOptions
+    : [
+        ...v2ConfigurationOptions,
+        ...colorOptions,
+        ...detailOptions,
+        ...surchargeOptions,
+        ...motorizationOptions,
+      ];
   return { productName, styleName, options };
 }
 

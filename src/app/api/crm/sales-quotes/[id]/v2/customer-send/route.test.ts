@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   requireCrmUser: vi.fn(),
   runtimeGate: vi.fn(),
   parseBody: vi.fn(),
-  persist: vi.fn(),
+  prepare: vi.fn(),
 }));
 
 vi.mock("@/lib/crm/auth", () => {
@@ -31,9 +31,9 @@ vi.mock("@/lib/crm/auth", () => {
 });
 
 vi.mock("@/lib/crm/sales-quote-v2-send-persist", () => ({
-  assertV2CustomerSendPersistenceRuntimeEnabled: mocks.runtimeGate,
+  assertV2CustomerSendPreparationRuntimeEnabled: mocks.runtimeGate,
   parseSalesQuoteV2CustomerSendBody: mocks.parseBody,
-  persistSalesQuoteV2CustomerSend: mocks.persist,
+  prepareSalesQuoteV2CustomerSend: mocks.prepare,
 }));
 
 import { POST } from "./route";
@@ -41,7 +41,7 @@ import { POST } from "./route";
 const QUOTE_ID = "11111111-1111-4111-8111-111111111111";
 const ACTOR_ID = "44444444-4444-4444-8444-444444444444";
 
-describe("POST sales quote V2 customer-send persistence", () => {
+describe("POST sales quote V2 customer-send preparation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.runtimeGate.mockReset();
@@ -55,17 +55,16 @@ describe("POST sales quote V2 customer-send persistence", () => {
       idempotencyKey: "v2-send:route-test",
       sentVia: "email",
     });
-    mocks.persist.mockResolvedValue({
+    mocks.prepare.mockResolvedValue({
       backend: "authoritative_v2",
       quoteId: QUOTE_ID,
-      sendSnapshotId: "55555555-5555-4555-8555-555555555555",
+      sendPreparationId: "55555555-5555-4555-8555-555555555555",
       crmQuoteId: "66666666-6666-4666-8666-666666666666",
-      previousRevision: 7,
-      revision: 8,
+      quoteRevision: 7,
       catalogVersion: "norman-roller-minmax-2026-08-01",
       total: 358,
-      sentAt: "2026-07-22T20:00:00.000Z",
-      sentVia: "email",
+      preparedAt: "2026-07-22T20:00:00.000Z",
+      preparedVia: "email",
       customerPayload: {
         backend: "authoritative_v2",
         total: 358,
@@ -103,7 +102,7 @@ describe("POST sales quote V2 customer-send persistence", () => {
     expect(mocks.requireCrmUser).toHaveBeenCalledWith(req);
     expect(mocks.runtimeGate).toHaveBeenCalledTimes(1);
     expect(mocks.parseBody).toHaveBeenCalledWith(rawBody);
-    expect(mocks.persist).toHaveBeenCalledWith(
+    expect(mocks.prepare).toHaveBeenCalledWith(
       { service: true },
       {
         quoteId: QUOTE_ID,
@@ -117,7 +116,7 @@ describe("POST sales quote V2 customer-send persistence", () => {
     expect(payload).toMatchObject({
       backend: "authoritative_v2",
       quoteId: QUOTE_ID,
-      revision: 8,
+      quoteRevision: 7,
       total: 358,
     });
     expect(JSON.stringify(payload)).not.toMatch(
@@ -136,7 +135,7 @@ describe("POST sales quote V2 customer-send persistence", () => {
 
     expect(response.status).toBe(409);
     expect(mocks.parseBody).not.toHaveBeenCalled();
-    expect(mocks.persist).not.toHaveBeenCalled();
+    expect(mocks.prepare).not.toHaveBeenCalled();
   });
 
   it("never reaches persistence when authentication fails", async () => {
@@ -150,7 +149,7 @@ describe("POST sales quote V2 customer-send persistence", () => {
 
     expect(response.status).toBe(401);
     expect(mocks.runtimeGate).not.toHaveBeenCalled();
-    expect(mocks.persist).not.toHaveBeenCalled();
+    expect(mocks.prepare).not.toHaveBeenCalled();
   });
 
   it("returns a safe client error for malformed JSON", async () => {
@@ -169,6 +168,6 @@ describe("POST sales quote V2 customer-send persistence", () => {
       params: Promise.resolve({ id: QUOTE_ID }),
     });
     expect(response.status).toBe(400);
-    expect(mocks.persist).not.toHaveBeenCalled();
+    expect(mocks.prepare).not.toHaveBeenCalled();
   });
 });

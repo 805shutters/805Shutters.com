@@ -3,8 +3,8 @@ import { CrmAuthError } from "@/lib/crm/auth";
 
 type AnyRow = Record<string, unknown>;
 
-/** The additive atomic transaction exists in source and has focused tests. */
-export const V2_CUSTOMER_SEND_TRANSACTION_IMPLEMENTED = true as const;
+/** The additive atomic preparation transaction exists in source and has focused tests. */
+export const V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED = true as const;
 
 /**
  * Source readiness is not deployment readiness. This remains false until the
@@ -41,6 +41,6 @@ export async function guardV2SalesQuoteBeforeLegacySend(
 
   throw new CrmAuthError(
     409,
-    "V2 send blocked: the atomic customer-safe transaction is not enabled in production and external delivery remains disabled.",
+    "V2 send blocked: customer-safe preparation exists, but external delivery and the sent lifecycle transition remain disabled.",
   );
 }

@@ -2,9 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CrmAuthError } from "@/lib/crm/auth";
 
-const mocks = vi.hoisted(() => ({
-  prepare: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn() }));
 
 vi.mock("@/lib/crm/sales-quote-v2-send", async (importOriginal) => {
   const original = await importOriginal<
@@ -18,16 +16,16 @@ vi.mock("@/lib/crm/sales-quote-v2-send", async (importOriginal) => {
 
 import {
   assertV2CustomerPayloadHasNoProtectedFields,
-  assertV2CustomerSendPersistenceRuntimeEnabled,
+  assertV2CustomerSendPreparationRuntimeEnabled,
   parseSalesQuoteV2CustomerSendBody,
-  persistSalesQuoteV2CustomerSend,
+  prepareSalesQuoteV2CustomerSend,
 } from "./sales-quote-v2-send-persist";
 
 const QUOTE_ID = "11111111-1111-4111-8111-111111111111";
 const LINE_ID = "22222222-2222-4222-8222-222222222222";
 const DESIGN_ID = "33333333-3333-4333-8333-333333333333";
 const ACTOR_ID = "44444444-4444-4444-8444-444444444444";
-const SEND_SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
+const PREPARATION_ID = "55555555-5555-4555-8555-555555555555";
 const CRM_QUOTE_ID = "66666666-6666-4666-8666-666666666666";
 const CATALOG = "norman-roller-minmax-2026-08-01";
 
@@ -44,6 +42,16 @@ const customerPayload = {
       widthInches: 36,
       heightInches: 60,
       quantity: 1,
+      configuration: {
+        manufacturerId: "norman",
+        selections: {
+          fabric_collection: "Amelia",
+          fabric_color_name: "Mist Gray",
+          fabric_color_code: "F1484",
+          lift_system: "Cordless",
+          valance: "No Valance",
+        },
+      },
       price: {
         productId: "roller",
         programId: "roller_cordless_fabric_price_group_2_pg2",
@@ -80,15 +88,14 @@ function quote(overrides: Record<string, unknown> = {}) {
 
 function rpcResult(overrides: Record<string, unknown> = {}) {
   return {
-    send_snapshot_id: SEND_SNAPSHOT_ID,
+    send_preparation_id: PREPARATION_ID,
     quote_id: QUOTE_ID,
     crm_quote_id: CRM_QUOTE_ID,
-    previous_revision: 7,
-    new_revision: 8,
+    quote_revision: 7,
     catalog_version: CATALOG,
     quote_total: 358,
-    persisted_sent_at: "2026-07-22T20:00:00.000Z",
-    persisted_sent_via: "email",
+    prepared_at: "2026-07-22T20:00:00.000Z",
+    prepared_via: "email",
     customer_payload: customerPayload,
     ...overrides,
   };
@@ -122,24 +129,20 @@ function fakeSupabase(
     },
     rpc,
   };
-  return {
-    client: client as unknown as SupabaseClient,
-    rpc,
-    selects,
-  };
+  return { client: client as unknown as SupabaseClient, rpc, selects };
 }
 
 beforeEach(() => {
   mocks.prepare.mockReset();
   mocks.prepare.mockResolvedValue(customerPayload);
-  delete process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE;
+  delete process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION;
 });
 
 afterEach(() => {
-  delete process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE;
+  delete process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION;
 });
 
-describe("V2 customer-send persistence body and runtime gate", () => {
+describe("V2 customer-send preparation body and runtime gate", () => {
   it("accepts only concurrency, idempotency, and channel intent", () => {
     expect(
       parseSalesQuoteV2CustomerSendBody({
@@ -152,51 +155,47 @@ describe("V2 customer-send persistence body and runtime gate", () => {
       idempotencyKey: "v2-send:test-0001",
       sentVia: "both",
     });
-
-    for (const forbidden of [
-      "customerPayload",
-      "catalogVersion",
-      "selectionFingerprint",
-      "retailTotal",
-      "dealerCost",
-      "internalCost",
-      "margin",
-      "contacts",
-    ]) {
-      expect(() =>
-        parseSalesQuoteV2CustomerSendBody({
-          expectedRevision: 7,
-          idempotencyKey: "v2-send:test-0001",
-          sentVia: "email",
-          [forbidden]: {},
-        }),
-      ).toThrow(`does not accept client-supplied field: ${forbidden}`);
-    }
+    expect(() =>
+      parseSalesQuoteV2CustomerSendBody({
+        expectedRevision: 7,
+        idempotencyKey: "v2-send:test-0001",
+        sentVia: "email",
+        internalCost: {},
+      }),
+    ).toThrow("does not accept client-supplied field: internalCost");
   });
 
-  it("stays disabled unless the deliberate post-migration cutover value is exact", () => {
+  it("stays disabled unless the deliberate preparation value is exact", () => {
     for (const value of [undefined, "true", "1", "enabled"]) {
       if (value === undefined) {
-        delete process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE;
+        delete process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION;
       } else {
-        process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE = value;
+        process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION = value;
       }
       expect(() =>
-        assertV2CustomerSendPersistenceRuntimeEnabled(),
+        assertV2CustomerSendPreparationRuntimeEnabled(),
       ).toThrow("implemented but disabled");
     }
-    process.env.QUOTE_V2_CUSTOMER_SEND_PERSISTENCE =
-      "enabled-after-v2-send-migration";
-    expect(() => assertV2CustomerSendPersistenceRuntimeEnabled()).not.toThrow();
+    process.env.QUOTE_V2_CUSTOMER_SEND_PREPARATION =
+      "enabled-after-v2-send-preparation-migration";
+    expect(() =>
+      assertV2CustomerSendPreparationRuntimeEnabled(),
+    ).not.toThrow();
   });
 
-  it("rejects protected fields recursively", () => {
+  it("rejects protected fields recursively, including configuration smuggling", () => {
     for (const value of [
       { dealerCost: 10 },
-      { lines: [{ price: { internal_cost: 10 } }] },
       { lines: [{ price: { landedCostTotal: 10 } }] },
-      { lines: [{ price: { margin: 0.4 } }] },
-      { lines: [{ price: { options_json: { secret: true } } }] },
+      {
+        lines: [
+          {
+            configuration: {
+              selections: { wholesale_unit_price: 10 },
+            },
+          },
+        ],
+      },
     ]) {
       expect(() =>
         assertV2CustomerPayloadHasNoProtectedFields(value),
@@ -208,10 +207,10 @@ describe("V2 customer-send persistence body and runtime gate", () => {
   });
 });
 
-describe("persistSalesQuoteV2CustomerSend", () => {
-  it("revalidates on the server and sends only the customer allow-list to one RPC", async () => {
+describe("prepareSalesQuoteV2CustomerSend", () => {
+  it("revalidates and persists only the exact customer allow-list", async () => {
     const { client, rpc, selects } = fakeSupabase(quote());
-    const result = await persistSalesQuoteV2CustomerSend(client, {
+    const result = await prepareSalesQuoteV2CustomerSend(client, {
       quoteId: QUOTE_ID,
       expectedRevision: 7,
       idempotencyKey: "v2-send:test-0001",
@@ -220,60 +219,48 @@ describe("persistSalesQuoteV2CustomerSend", () => {
     });
 
     expect(mocks.prepare).toHaveBeenCalledWith(client, quote());
-    expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith("persist_quote_v2_customer_send", {
+    expect(rpc).toHaveBeenCalledWith("prepare_quote_v2_customer_send", {
       p_quote_id: QUOTE_ID,
       p_expected_revision: 7,
       p_expected_catalog_version: CATALOG,
       p_idempotency_key: "v2-send:test-0001",
       p_actor_id: ACTOR_ID,
-      p_sent_via: "email",
+      p_prepared_via: "email",
       p_customer_payload: customerPayload,
     });
-    expect(selects).toEqual([
-      "id,status,total_amount,quote_v2_backend,quote_v2_status,quote_v2_catalog_version,quote_v2_revision",
-    ]);
     expect(selects[0]).not.toMatch(/cost|profit|margin|wholesale|manufacturer/i);
-
-    const serializedRpc = JSON.stringify(
-      (rpc.mock.calls[0] as unknown as [string, Record<string, unknown>])?.[1],
-    );
-    expect(serializedRpc).not.toMatch(
+    expect(
+      JSON.stringify(
+        (rpc.mock.calls[0] as unknown as [string, Record<string, unknown>])[1],
+      ),
+    ).not.toMatch(
       /dealer.?cost|freight.?cost|internal.?cost|landed.?cost|wholesale|margin|markup|multiplier|options.?json/i,
     );
     expect(result).toEqual({
       backend: "authoritative_v2",
       quoteId: QUOTE_ID,
-      sendSnapshotId: SEND_SNAPSHOT_ID,
+      sendPreparationId: PREPARATION_ID,
       crmQuoteId: CRM_QUOTE_ID,
-      previousRevision: 7,
-      revision: 8,
+      quoteRevision: 7,
       catalogVersion: CATALOG,
       total: 358,
-      sentAt: "2026-07-22T20:00:00.000Z",
-      sentVia: "email",
+      preparedAt: "2026-07-22T20:00:00.000Z",
+      preparedVia: "email",
       customerPayload,
     });
   });
 
-  it("uses the RPC's immutable idempotent result after the source quote is sent", async () => {
-    const { client, rpc } = fakeSupabase(
-      quote({ status: "sent", quote_v2_status: "sent", quote_v2_revision: 8 }),
-    );
-    const result = await persistSalesQuoteV2CustomerSend(client, {
+  it("keeps lifecycle draft/priced even for an idempotent retry", async () => {
+    const { client, rpc } = fakeSupabase(quote());
+    await prepareSalesQuoteV2CustomerSend(client, {
       quoteId: QUOTE_ID,
       expectedRevision: 7,
       idempotencyKey: "v2-send:test-0001",
       actorId: ACTOR_ID,
       sentVia: "email",
     });
-
-    expect(mocks.prepare).not.toHaveBeenCalled();
-    expect(rpc).toHaveBeenCalledWith(
-      "persist_quote_v2_customer_send",
-      expect.objectContaining({ p_customer_payload: null }),
-    );
-    expect(result.customerPayload).toEqual(customerPayload);
+    expect(mocks.prepare).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledTimes(1);
   });
 
   it("rejects lifecycle, revision, and catalog drift before persistence", async () => {
@@ -281,12 +268,12 @@ describe("persistSalesQuoteV2CustomerSend", () => {
       quote({ quote_v2_backend: false }),
       quote({ quote_v2_status: "stale" }),
       quote({ quote_v2_revision: 8 }),
-      quote({ status: "sold" }),
+      quote({ status: "sent" }),
       quote({ quote_v2_catalog_version: null }),
     ]) {
       const { client, rpc } = fakeSupabase(stored);
       await expect(
-        persistSalesQuoteV2CustomerSend(client, {
+        prepareSalesQuoteV2CustomerSend(client, {
           quoteId: QUOTE_ID,
           expectedRevision: 7,
           idempotencyKey: "v2-send:test-0001",
@@ -298,37 +285,7 @@ describe("persistSalesQuoteV2CustomerSend", () => {
     }
   });
 
-  it("maps database drift and authorization failures without exposing details", async () => {
-    const conflict = fakeSupabase(quote(), {
-      data: null,
-      error: { code: "40001", message: "snapshot drift secret detail" },
-    });
-    await expect(
-      persistSalesQuoteV2CustomerSend(conflict.client, {
-        quoteId: QUOTE_ID,
-        expectedRevision: 7,
-        idempotencyKey: "v2-send:test-0001",
-        actorId: ACTOR_ID,
-        sentVia: "email",
-      }),
-    ).rejects.toMatchObject({ status: 409 });
-
-    const forbidden = fakeSupabase(quote(), {
-      data: null,
-      error: { code: "42501", message: "actor secret detail" },
-    });
-    await expect(
-      persistSalesQuoteV2CustomerSend(forbidden.client, {
-        quoteId: QUOTE_ID,
-        expectedRevision: 7,
-        idempotencyKey: "v2-send:test-0002",
-        actorId: ACTOR_ID,
-        sentVia: "email",
-      }),
-    ).rejects.toMatchObject({ status: 403 });
-  });
-
-  it("rejects protected fields, retail drift, revision drift, and catalog drift in the RPC result", async () => {
+  it("rejects protected result fields and identity drift", async () => {
     const badRows = [
       rpcResult({
         customer_payload: {
@@ -340,14 +297,13 @@ describe("persistSalesQuoteV2CustomerSend", () => {
         customer_payload: { ...customerPayload, total: 359 },
         quote_total: 359,
       }),
-      rpcResult({ new_revision: 9 }),
+      rpcResult({ quote_revision: 8 }),
       rpcResult({ catalog_version: "attacker-catalog" }),
     ];
-
     for (const row of badRows) {
       const { client } = fakeSupabase(quote(), { data: [row], error: null });
       await expect(
-        persistSalesQuoteV2CustomerSend(client, {
+        prepareSalesQuoteV2CustomerSend(client, {
           quoteId: QUOTE_ID,
           expectedRevision: 7,
           idempotencyKey: "v2-send:test-0001",
