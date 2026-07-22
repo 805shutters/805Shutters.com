@@ -523,13 +523,25 @@ function candidateNameTokens(candidate: Pick<OrderCogsCandidate, "customerName" 
   return Array.from(new Set([...normalizeTokens(candidate.customerName), ...customerEmailTokens(candidate.customerEmail)]));
 }
 
-function nameScore(extracted: string | null, candidate: Pick<OrderCogsCandidate, "customerName" | "customerEmail">) {
-  if (!extracted) return 0;
-  const extractedTokens = normalizeTokens(extracted);
-  const candidateTokens = candidateNameTokens(candidate);
+function tokenOverlapScore(extractedTokens: string[], candidateTokens: string[]) {
   if (!extractedTokens.length || !candidateTokens.length) return 0;
   const matched = extractedTokens.filter((token) => candidateTokens.includes(token)).length;
   return matched / Math.max(extractedTokens.length, candidateTokens.length);
+}
+
+function nameScore(extracted: string | null, candidate: Pick<OrderCogsCandidate, "customerName" | "customerEmail">) {
+  if (!extracted) return 0;
+  const extractedTokens = normalizeTokens(extracted);
+  const customerNameTokens = normalizeTokens(candidate.customerName);
+  const identityTokens = candidateNameTokens(candidate);
+
+  // Email tokens may fill in a missing surname (for example, a CRM name of
+  // "Jason" plus jason.chappelle@...), but an unrelated or joined local part
+  // such as lplasmyer@... must not weaken an exact "Jack Plasmyer" name match.
+  return Math.max(
+    tokenOverlapScore(extractedTokens, customerNameTokens),
+    tokenOverlapScore(extractedTokens, identityTokens)
+  );
 }
 
 function roundMoney(value: number) {

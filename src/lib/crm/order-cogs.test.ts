@@ -363,6 +363,9 @@ describe("processOrderCogsInbox", () => {
     );
 
     const supabase = new FakeSupabase();
+    // A joined email local part is an additional identity signal, not an extra
+    // required name token. It must not lower an otherwise exact name match.
+    supabase.jobs[0].email = "jderenthal@example.com";
     const result = await processOrderCogsInbox(supabase as never, { maxResults: 2 });
 
     expect(result.scanned).toBe(2);
