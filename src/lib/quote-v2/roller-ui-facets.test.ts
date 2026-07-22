@@ -83,4 +83,62 @@ describe("Roller V2 client facets", () => {
       facets: { sheet: "Coupled Shades(3)" },
     });
   });
+
+  it("derives the documented Smart Release tube and removes stale All Tubes", () => {
+    const pruned = pruneRollerV2UiSelection({
+      application: "Single Shade",
+      topTreatment: "No Top Treatment",
+      liftSystem: "Smart Release",
+      tubeClass: "All Tubes",
+      powerConfiguration: "Automate ARC Motor",
+    });
+
+    expect(pruned).toMatchObject({
+      liftSystem: "Smart Release",
+      tubeClass: '1 3/4" (43mm) Tube',
+      powerConfiguration: null,
+      facets: {
+        sheet: "Single(Non-LG360)&Common",
+        tubeClasses: ['1 3/4" (43mm) Tube', '2" (52mm) Tube'],
+      },
+    });
+
+    const sourceTubes = normanRollerV2Source.profileDefinitions
+      .filter(
+        (definition) =>
+          definition.sheet === "Single(Non-LG360)&Common" &&
+          definition.operatingSystem === "SmartRelease" &&
+          definition.usable,
+      )
+      .map((definition) => definition.tube ?? "All Tubes");
+    expect(new Set(pruned.facets?.tubeClasses)).toEqual(new Set(sourceTubes));
+  });
+
+  it("preserves a valid Smart Release tube and reconciles it when Cassette changes the matrix", () => {
+    expect(
+      pruneRollerV2UiSelection({
+        application: "Single Shade",
+        topTreatment: "No Top Treatment",
+        liftSystem: "Smart Release",
+        tubeClass: '2" (52mm) Tube',
+      }),
+    ).toMatchObject({
+      tubeClass: '2" (52mm) Tube',
+    });
+
+    expect(
+      pruneRollerV2UiSelection({
+        application: "Single Shade",
+        topTreatment: "Cassette",
+        liftSystem: "Smart Release",
+        tubeClass: '2" (52mm) Tube',
+      }),
+    ).toMatchObject({
+      tubeClass: "All Tubes",
+      facets: {
+        sheet: "Cassette",
+        tubeClasses: ["All Tubes"],
+      },
+    });
+  });
 });

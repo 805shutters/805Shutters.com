@@ -12,6 +12,7 @@ import {
   toCustomerQuotePriceResult,
   type QuoteV2PriceSuccess,
 } from "./engine";
+import { pruneRollerV2UiSelection } from "./roller-ui-facets";
 
 function selection(
   productId: string,
@@ -371,6 +372,58 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(customer).not.toMatch(
       /wholesale|catalogAmount|dealerFactor|effectiveDealerFactor|freight|landedCost|margin/i,
     );
+  });
+
+  it("prices the fresh Smart Release portal case after the UI replaces stale All Tubes", () => {
+    const uiSelection = pruneRollerV2UiSelection({
+      application: "Single Shade",
+      topTreatment: "No Top Treatment",
+      liftSystem: "Smart Release",
+      tubeClass: "All Tubes",
+    });
+    expect(uiSelection.tubeClass).toBe('1 3/4" (43mm) Tube');
+
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_1_pg1",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single Shade",
+        lift_system: uiSelection.liftSystem,
+        fabric_collection: "Brook",
+        fabric_color_code: "F1120",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: uiSelection.tubeClass,
+        shim: true,
+      },
+      {
+        manufacturerId: "norman",
+        widthInches: 24,
+        heightInches: 36,
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        surcharges: [{ id: "smartrelease" }, { id: "shim" }],
+      },
+      includeInternalCost: true,
+    });
+
+    expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
+    if (!result.ok) return;
+    expect(result.unitPrice).toBe(350);
+    expect(result.wholesaleUnitPrice).toBe(115.5);
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 350,
+      customerPerWindow: 350,
+      wholesalePerWindow: 115.5,
+    });
   });
 
   it("fails closed instead of omitting unsupported dealer-net option charges", () => {

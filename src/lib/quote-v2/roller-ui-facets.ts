@@ -20,6 +20,14 @@ export type RollerUiFacets = {
 
 const ALL_TUBES = ["All Tubes", '1 3/4" (43mm) Tube', '2" (52mm) Tube'] as const;
 const LARGE_TUBES = ['1 3/4" (43mm) Tube', '2" (52mm) Tube'] as const;
+const SMART_RELEASE_TUBES_BY_SHEET: Readonly<Record<string, readonly string[]>> = {
+  // The Single/Common appendix has distinct SmartRelease profiles for these
+  // two tubes. `All Tubes` only labels their shared minimum-size columns and
+  // is not itself a complete profile identity.
+  "Single(Non-LG360)&Common": LARGE_TUBES,
+  // Cassette's SmartRelease profile does not split by tube.
+  Cassette: ["All Tubes"],
+};
 const STANDARD_MOTORS = [
   "Automate ARC Motor",
   "Automate Low Voltage DC Motor",
@@ -176,17 +184,31 @@ export function pruneRollerV2UiSelection(
   tubeClass: string | null;
   powerConfiguration: string | null;
 } {
-  const facets = getRollerV2UiFacets(selection);
+  const baseFacets = getRollerV2UiFacets(selection);
   const keep = (
     value: string | null | undefined,
     allowed: readonly string[] | undefined,
   ) =>
-    !value || !facets || allowed?.includes(value) ? value ?? null : null;
-  const liftSystem = keep(selection.liftSystem, facets?.liftSystems);
+    !value || !baseFacets || allowed?.includes(value) ? value ?? null : null;
+  const liftSystem = keep(selection.liftSystem, baseFacets?.liftSystems);
+  const smartReleaseTubes =
+    liftSystem === "Smart Release" && baseFacets
+      ? SMART_RELEASE_TUBES_BY_SHEET[baseFacets.sheet]
+      : undefined;
+  const facets =
+    baseFacets && smartReleaseTubes
+      ? { ...baseFacets, tubeClasses: smartReleaseTubes }
+      : baseFacets;
+  const selectedTube = selection.tubeClass ?? null;
+  const tubeClass = smartReleaseTubes
+    ? smartReleaseTubes.includes(selectedTube ?? "")
+      ? selectedTube
+      : smartReleaseTubes[0] ?? null
+    : keep(selectedTube, facets?.tubeClasses);
   return {
     facets,
     liftSystem,
-    tubeClass: keep(selection.tubeClass, facets?.tubeClasses),
+    tubeClass,
     powerConfiguration:
       liftSystem === "Motorized"
         ? keep(selection.powerConfiguration, facets?.powerConfigurations)
