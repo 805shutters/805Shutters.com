@@ -10,6 +10,7 @@ import {
   dealerPolicySnapshotFromPriceResult,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
+  type QuoteV2InternalProductCost,
   type QuoteV2PriceResult,
 } from "@/lib/quote-v2/engine";
 import { quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
@@ -458,8 +459,115 @@ function assertV2LineItemLimit(lines: readonly SalesQuoteLineItem[]): void {
   }
 }
 
-function v2CostResult(result: QuoteV2PriceResult) {
+type ValidationGatedDealerNetCost = {
+  productId: string;
+  programId: string;
+  matchedWidth: number | null;
+  matchedHeight: number | null;
+  wholesaleBase: number;
+  quantity: number;
+  wholesaleTotal: number;
+  internalCost: QuoteV2InternalProductCost;
+};
+
+/**
+ * Recover only the source-backed dealer cost that remains knowable when a
+ * dealer-net catalog intentionally has no customer-retail price. The V2 engine
+ * must have completed validation without a hard block, and both the product
+ * and selected program must prove that dealer-net is the effective basis.
+ */
+function validationGatedDealerNetCost(
+  result: QuoteV2PriceResult,
+  selection: SelectionContext,
+  priceInput: PriceInput,
+): ValidationGatedDealerNetCost | null {
+  if (
+    result.ok ||
+    result.code !== "CUSTOMER_RETAIL_UNDEFINED" ||
+    result.validationIssues.some((issue) => issue.severity === "hard_block") ||
+    (priceInput.surcharges?.length ?? 0) > 0 ||
+    (priceInput.motorization?.length ?? 0) > 0
+  ) {
+    return null;
+  }
+
+  const product = getProduct(selection.productId);
+  const programId = priceInput.programId ?? selection.programId ?? null;
+  const program = product?.programs.find((candidate) => candidate.id === programId);
+  if (
+    !product ||
+    !programId ||
+    !program ||
+    (program.priceBasis ?? product.priceBasis) !== "dealer_net"
+  ) {
+    return null;
+  }
+
+  const dealerNet = priceDealerNetDesign({
+    ...priceInput,
+    productId: selection.productId,
+    programId,
+  });
+  if (!dealerNet.ok) return null;
+
+  const quantity = selection.quantity;
+  const wholesaleBase = roundMoney(dealerNet.dealerNetUnitCost);
+  const wholesaleTotal = roundMoney(wholesaleBase * quantity);
+  const freightStatus: QuoteV2InternalProductCost["freightStatus"] =
+    product.freightStatus === "order_level"
+      ? "published"
+      : product.freightStatus === "unresolved"
+        ? "unresolved"
+        : "not_applicable";
+  const internalCost: QuoteV2InternalProductCost = {
+    basis: "dealer_net",
+    productCostUnit: wholesaleBase,
+    productCostTotal: wholesaleTotal,
+    freightAllocated: 0,
+    oversizeAllocated: 0,
+    processingFeeAllocated: 0,
+    landedCostTotal: wholesaleTotal,
+    freightStatus,
+  };
+
+  return {
+    productId: dealerNet.productId,
+    programId: dealerNet.programId,
+    matchedWidth: dealerNet.matchedWidth,
+    matchedHeight: dealerNet.matchedHeight,
+    wholesaleBase,
+    quantity,
+    wholesaleTotal,
+    internalCost,
+  };
+}
+
+function v2CostResult(
+  result: QuoteV2PriceResult,
+  dealerNetCost: ValidationGatedDealerNetCost | null = null,
+) {
   if (!result.ok) {
+    if (dealerNetCost && result.internalCost) {
+      return {
+        ok: true as const,
+        productId: dealerNetCost.productId,
+        programId: dealerNetCost.programId,
+        basis: result.internalCost.basis,
+        matchedWidth: dealerNetCost.matchedWidth,
+        matchedHeight: dealerNetCost.matchedHeight,
+        wholesaleBase: dealerNetCost.wholesaleBase,
+        wholesaleAddOns: [],
+        wholesaleComponents: [],
+        wholesaleUnitCost: result.internalCost.productCostUnit,
+        quantity: dealerNetCost.quantity,
+        wholesaleTotal: result.internalCost.productCostTotal,
+        freightAllocated: result.internalCost.freightAllocated,
+        oversizeAllocated: result.internalCost.oversizeAllocated,
+        processingFeeAllocated: result.internalCost.processingFeeAllocated,
+        landedCostTotal: result.internalCost.landedCostTotal,
+        freightStatus: result.internalCost.freightStatus,
+      };
+    }
     return {
       ok: false as const,
       code: result.code,
@@ -806,12 +914,13 @@ function repriceExactQuoteBuilderV2(
       priceInput,
       motorizationIssues,
     }) => {
+    const authoritativePriceInput: PriceInput = {
+      ...priceInput,
+      programId: programId ?? undefined,
+    };
     const result = priceQuoteV2Selection({
       selection,
-      priceInput: {
-        ...priceInput,
-        programId: programId ?? undefined,
-      },
+      priceInput: authoritativePriceInput,
       includeInternalCost: true,
       additionalValidationIssues: [
         ...motorizationIssues,
@@ -820,13 +929,24 @@ function repriceExactQuoteBuilderV2(
           : []),
       ],
     });
+    const dealerNetCost = validationGatedDealerNetCost(
+      result,
+      selection,
+      authoritativePriceInput,
+    );
+    const protectedResult: QuoteV2PriceResult = dealerNetCost
+      ? { ...result, internalCost: dealerNetCost.internalCost }
+      : result;
     return {
       lineItemId: design.line_item_id,
       designId: design.id,
       variant: design.variant,
-      result,
-      costResult: v2CostResult(result),
-      snapshot: result.ok ? createImmutablePriceSnapshot(result) : null,
+      result: protectedResult,
+      dealerNetCost,
+      costResult: v2CostResult(protectedResult, dealerNetCost),
+      snapshot: protectedResult.ok
+        ? createImmutablePriceSnapshot(protectedResult)
+        : null,
     };
     },
   );
@@ -860,12 +980,12 @@ function repriceExactQuoteBuilderV2(
 
   for (const entry of selected) {
     const result = entry.priced.result;
-    if (!result.ok || !result.internalCost) {
+    if (!result.internalCost) {
       costComplete = false;
       continue;
     }
     productCost += result.internalCost.productCostTotal;
-    const product = getProduct(result.productId);
+    const product = getProduct(entry.prepared.productId);
     if (result.internalCost.freightStatus === "unresolved") costComplete = false;
     if (
       (product?.freightStatus === "order_level" && product.id !== "palladian_shelf") ||
@@ -926,10 +1046,12 @@ function repriceExactQuoteBuilderV2(
 
   for (const entry of selected) {
     const result = entry.priced.result;
-    if (!result.ok || !result.internalCost) continue;
-    const product = getProduct(result.productId);
+    if (!result.internalCost) continue;
+    const product = getProduct(entry.prepared.productId);
     const quantity = entry.prepared.selection.quantity;
-    const componentsPerWindow = Math.max(1, result.configurationUnits);
+    const componentsPerWindow = result.ok
+      ? Math.max(1, result.configurationUnits)
+      : 1;
     const width = entry.prepared.selection.widthInches;
     const height = entry.prepared.selection.heightInches;
     let freightAllocated = 0;
@@ -977,7 +1099,7 @@ function repriceExactQuoteBuilderV2(
       blindFreightUnits += physicalUnits;
 
       const surchargeIds = new Set(
-        result.surchargeLines.map((item) => item.id),
+        result.ok ? result.surchargeLines.map((item) => item.id) : [],
       );
       const coupled = surchargeIds.has("coupled_shade");
       const billedComponents = coupled
@@ -1080,7 +1202,7 @@ function repriceExactQuoteBuilderV2(
   }
 
   for (const priced of pricedDesigns) {
-    priced.costResult = v2CostResult(priced.result);
+    priced.costResult = v2CostResult(priced.result, priced.dealerNetCost);
     priced.snapshot = priced.result.ok && priced.result.validationStatus === "valid"
       ? createImmutablePriceSnapshot(priced.result)
       : null;

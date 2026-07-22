@@ -277,7 +277,7 @@ function isSelected(value: unknown): boolean {
 }
 
 export function isPriceableCatalogSurcharge(surcharge: CatalogSurcharge): boolean {
-  return surcharge.value != null || surcharge.widthGraduated != null;
+  return surcharge.value != null || surcharge.dealerNetValue != null || surcharge.widthGraduated != null;
 }
 
 export function findPriceableProductSurcharge(productId: string, surchargeId: string): CatalogSurcharge | null {

@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { priceDesign, type PriceResult } from "./pricing";
+import {
+  priceDealerNetDesign,
+  priceDesign,
+  type DealerNetCostResult,
+  type PriceResult,
+} from "./pricing";
 import { getProduct, catalog } from "./catalog";
 import { deriveAutomaticSurcharges } from "./automatic-surcharges";
 
@@ -12,6 +17,11 @@ function ok(r: PriceResult) {
   return r;
 }
 
+function dealerOk(r: DealerNetCostResult) {
+  if (!r.ok) throw new Error(`expected dealer cost, got ${r.code}: ${r.error}`);
+  return r;
+}
+
 function line(r: ReturnType<typeof ok>, id: string) {
   const surchargeLine = r.surchargeLines.find((item) => item.id === id);
   if (!surchargeLine) throw new Error(`surcharge line ${id} not found`);
@@ -19,16 +29,11 @@ function line(r: ReturnType<typeof ok>, id: string) {
 }
 
 describe("shutter $/sqft pricing", () => {
-  it("uses the configured shutter retail square-foot rates", () => {
+  it("uses the configured manufacturer-retail shutter square-foot rates", () => {
     const cases = [
-      ["Poly", "onyx_shutters", "poly_composite", 31],
       ["Composite", "norman_shutters", "woodlore", 35],
       ["Painted Wood - Norman", "norman_shutters", "normandy_painted", 42],
-      ["Painted Wood - Onyx", "onyx_shutters", "painted_basswood", 38],
       ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 46],
-      ["Stained Wood - Onyx", "onyx_shutters", "stained_basswood", 42],
-      ["Onyx Vinyl", "onyx_shutters", "vinyl", 31],
-      ["Onyx USA Made", "onyx_shutters", "onyx_us_made_vinyl", 34],
     ] as const;
 
     for (const [label, productId, programId, pricePerSqft] of cases) {
@@ -57,27 +62,23 @@ describe("shutter $/sqft pricing", () => {
     expect(r.base).toBe(280);
   });
 
-  it("Onyx Painted Basswood ($38/sqft): 30x60 = $475", () => {
-    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
-    expect(r.base).toBe(475);
-    expect(r.wholesaleBase).toBe(168.75);
-    expect(r.wholesaleUnitPrice).toBe(168.75);
+  it("prices Onyx Basswood dealer cost without inventing customer retail", () => {
+    const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
+    expect(r.sqft).toBe(12.5);
+    expect(r.billableSqft).toBe(12.5);
+    expect(r.dealerNetUnitCost).toBe(168.75);
   });
 
   it("uses the $12/sqft Onyx Poly Composite wholesale rate with the 8 sq ft minimum", () => {
-    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "poly_composite", widthInches: 24, heightInches: 24 }));
+    const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "poly_composite", widthInches: 24, heightInches: 24 }));
     expect(r.sqft).toBe(4);
     expect(r.billableSqft).toBe(8);
-    expect(r.wholesaleBase).toBe(96);
-    expect(r.wholesaleUnitPrice).toBe(96);
+    expect(r.dealerNetUnitCost).toBe(96);
   });
 
-  it("Onyx Stained Basswood keeps retail and portal-supported wholesale separate", () => {
-    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
-    expect(r.base).toBe(525);
-    expect(r.wholesaleBase).toBe(206.25);
-    expect(r.unitPrice).toBe(525);
-    expect(r.wholesaleUnitPrice).toBe(206.25);
+  it("prices Onyx Basswood Stain as dealer cost only", () => {
+    const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
+    expect(r.dealerNetUnitCost).toBe(206.25);
   });
 
   it("percent surcharge (Cafe Shutters 30%) applies off the sqft base", () => {
@@ -88,10 +89,11 @@ describe("shutter $/sqft pricing", () => {
     expect(r.wholesaleUnitPrice).toBe(212.88);
   });
 
-  it("real per-sqft surcharge (Onyx Hidden Tilt Rod $1.20/sqft) — fixes the legacy 'set quantity to sqft' hack", () => {
-    const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges: [{ id: "hidden_tilt_rod" }] }));
-    expect(r.surchargeLines[0].amount).toBe(15); // 1.20 * 12.5 sqft
-    expect(r.unitPrice).toBe(490); // 475 + 15
+  it("does not convert Onyx H3 dealer cost into customer retail", () => {
+    expect(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges: [{ id: "hidden_tilt_rod" }] })).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
   });
 
   it("prices Norman bypass/bifold track selections from the visible detail options", () => {
@@ -134,7 +136,7 @@ describe("shutter $/sqft pricing", () => {
     }
   });
 
-  it("prices Onyx bypass/bifold, specialty, French door, and custom work selections", () => {
+  it("keeps Onyx option mappings but blocks their unsupported customer retail", () => {
     const cases = [
       [{ panel_config: "bypass" }, "close_by_pass_2_tracks", 220],
       [{ panel_config: "bifold" }, "bi_fold", 220],
@@ -156,11 +158,13 @@ describe("shutter $/sqft pricing", () => {
       [{ custom_work: "scribe_large" }, "scribe_greater_than_54_cubic_inches_per_piece", 15],
     ] as const;
 
-    for (const [details, surchargeId, expectedAmount] of cases) {
+    for (const [details, surchargeId] of cases) {
       const surcharges = deriveAutomaticSurcharges("onyx_shutters", details);
       expect(surcharges, surchargeId).toEqual([{ id: surchargeId }]);
-      const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges }));
-      expect(line(r, surchargeId).amount, surchargeId).toBe(expectedAmount);
+      expect(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges })).toMatchObject({
+        ok: false,
+        code: "CUSTOMER_RETAIL_UNDEFINED",
+      });
     }
   });
 
@@ -186,12 +190,15 @@ describe("shutter fuzz sweep: no NaN / negative ever escapes", () => {
       if (product.productType !== "shutter") continue;
       for (const prog of product.programs) {
         for (const [w, h] of sizes) {
-          const r = priceDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
+          const dealerNet = product.priceBasis === "dealer_net" || prog.priceBasis === "dealer_net";
+          const r = dealerNet
+            ? priceDealerNetDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h })
+            : priceDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
           expect(r.ok, `${product.id}/${prog.id} ${w}x${h}`).toBe(true);
           if (r.ok) {
-            expect(Number.isFinite(r.total)).toBe(true);
-            expect(r.total).toBeGreaterThan(0);
-            // 8 sqft floor: never priced below 8 * pricePerSqft
+            const amount = "dealerNetUnitCost" in r ? r.dealerNetUnitCost : r.total;
+            expect(Number.isFinite(amount)).toBe(true);
+            expect(amount).toBeGreaterThan(0);
             expect(r.billableSqft).toBeGreaterThanOrEqual(8);
             priced += 1;
           }

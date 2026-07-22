@@ -246,13 +246,18 @@ describe("portal parity BEFORE source arithmetic", () => {
 
     const onyx = getProduct("onyx_shutters");
     const program = onyx ? getProgram(onyx, "onyx_us_made_vinyl") : undefined;
-    expect(program).toMatchObject({ costPerSqft: 13.6, pricePerSqft: 34, minSqft: 8 });
-    expect(cents(retail(
+    expect(program).toMatchObject({
+      priceBasis: "dealer_net",
+      costPerSqft: 13.6,
+      pricePerSqft: null,
+      minSqft: 8,
+    });
+    expect(cents(dealer(
       "onyx_shutters",
       "onyx_us_made_vinyl",
       36,
       48,
-    ).wholesaleTotal!)).toBe(16320);
+    ).dealerNetUnitCost)).toBe(16320);
   });
 });
 

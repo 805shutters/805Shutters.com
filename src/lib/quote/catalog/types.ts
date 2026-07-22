@@ -59,6 +59,8 @@ export type CatalogProgram = {
   priceAxis: CatalogPriceAxis;
   /** Optional program-level override for a product with mixed priceability. */
   priceBasis?: CatalogPriceBasis;
+  /** Immutable source-manifest identity for this program's price evidence. */
+  sourceId?: string;
   grid: CatalogGrid;
   /** For priceAxis "sqft": retail price per square foot. */
   pricePerSqft?: number | null;
@@ -99,6 +101,8 @@ export type CatalogSurcharge = {
   value: number | null;
   /** Internal supplier cost when the source does not define customer retail. */
   dealerNetValue?: number | null;
+  /** Immutable source-manifest identity for this option's price evidence. */
+  sourceId?: string;
   /** Optional dealer-cost multiplier override. `1` means no dealer discount. */
   dealerFactor?: number | null;
   autoUnits?: "width_foot" | "height_foot";
@@ -156,6 +160,8 @@ export type CatalogProduct = {
   manufacturer?: string;
   system?: string;
   priceBasis?: CatalogPriceBasis;
+  /** Explicit evidence status; `unverified` forbids treating a stored cost as MSRP. */
+  customerRetailStatus?: "verified" | "unverified";
   /** Server-only cost policy. Never include this field in customer projections. */
   dealerFactor?: number | null;
   freightStatus?: "defined" | "order_level" | "unresolved" | "not_applicable";

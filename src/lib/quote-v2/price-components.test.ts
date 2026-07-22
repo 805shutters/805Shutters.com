@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getProduct } from "@/lib/quote/catalog";
 import type { CatalogProduct } from "@/lib/quote/catalog/types";
-import type { PriceBreakdown } from "@/lib/quote/pricing";
+import { priceDesign, type PriceBreakdown } from "@/lib/quote/pricing";
 import type { SelectionContext } from "./core";
 import { sourceProvenance } from "./source-manifest";
 import {
@@ -440,6 +440,108 @@ describe("authoritative V2 price components", () => {
         }),
       ]),
     );
+  });
+
+  it("accepts the source-declared standalone Polar Drapery and Premium Pro grids", () => {
+    const cases = [
+      {
+        productId: "polar_drapery_track",
+        programId: "pinch_split_white",
+        widthInches: 48,
+        heightInches: 48,
+        page: 74,
+      },
+      {
+        productId: "polar_awning_premium_pro",
+        programId: "standard",
+        widthInches: 120,
+        heightInches: 83,
+        page: 165,
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const product = getProduct(testCase.productId);
+      if (!product) throw new Error(`${testCase.productId} catalog fixture is missing.`);
+      const sourceResult = priceDesign({
+        productId: testCase.productId,
+        programId: testCase.programId,
+        widthInches: testCase.widthInches,
+        heightInches: testCase.heightInches,
+      });
+      if (!sourceResult.ok || sourceResult.wholesaleBase == null) {
+        throw new Error(`${testCase.productId} source grid did not price.`);
+      }
+      const source = sourceProvenance(
+        "polar-shades-dealer-book-current-2026-07-18",
+        { page: testCase.page },
+      );
+      const result = buildAuthoritativePriceComponents({
+        selection: {
+          manufacturerId: "polar",
+          productId: testCase.productId,
+          programId: testCase.programId,
+          catalogVersion: "805-v2-polar-standalone-test",
+          catalogAsOf: "2026-07-22",
+          widthInches: testCase.widthInches,
+          heightInches: testCase.heightInches,
+          quantity: 1,
+          configuration: { lift_system: "Standard" },
+          options: {},
+        },
+        sourceResult,
+        retailResult: sourceResult,
+        product,
+        baseline: {
+          programId: testCase.programId,
+          matchedWidth: sourceResult.matchedWidth,
+          matchedHeight: sourceResult.matchedHeight,
+          catalogAmount: sourceResult.base,
+          wholesaleAmount: sourceResult.wholesaleBase,
+          customerAmount: sourceResult.base,
+          source,
+        },
+        selectedProgramSource: source,
+        contractSource: source,
+        accessories: [
+          {
+            id: "accessory:none",
+            label: "Accessories — none selected",
+            category: "accessory",
+            status: "included",
+            basis: "included",
+            selectionBindings: [{ field: "accessories", value: "none" }],
+            source,
+            billingScope: "per_window",
+          },
+        ],
+        operatingSystem: {
+          id: "operating:standard",
+          label: "Standard operation — included",
+          category: "operating_system",
+          status: "included",
+          basis: "included",
+          selectionBindings: [{ field: "lift_system", value: "Standard" }],
+          source,
+          billingScope: "per_window",
+        },
+      });
+
+      expect(result.ok, testCase.productId).toBe(true);
+      if (!result.ok) continue;
+      expect(result.components).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: `base_grid:${testCase.programId}`,
+          customerAmount: sourceResult.base,
+        }),
+        expect.objectContaining({
+          id: `fabric_upgrade:${testCase.programId}`,
+          label: "Fabric upgrade — not applicable",
+          status: "included",
+          customerAmount: 0,
+        }),
+      ]));
+    }
   });
 
   it("uses exactly one explicit product-level pricing family when program fields are absent", () => {

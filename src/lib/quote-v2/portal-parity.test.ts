@@ -81,10 +81,10 @@ describe("Norman dealer-portal parity fixtures", () => {
     });
     expect(result.wholesaleBase).not.toBe(NORMAN_PORTAL_RR002.baseDealerNet);
 
-    // Customer retail follows the V2 2.5 policy and is deliberately not the
-    // dealer portal's net subtotal.
-    expect(result.base).toBe(316.8);
-    expect(result.surchargeLines[0]?.amount).toBe(55.28);
-    expect(result.total).toBe(372.08);
+    // Customer retail remains the source-book suggested retail. The current
+    // account schedule changes protected dealer cost only.
+    expect(result.base).toBe(384);
+    expect(result.surchargeLines[0]?.amount).toBe(67);
+    expect(result.total).toBe(451);
   });
 });

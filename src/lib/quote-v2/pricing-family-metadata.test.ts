@@ -59,4 +59,31 @@ describe("authoritative pricing-family metadata", () => {
       );
     }
   });
+
+  it("marks Polar Drapery and every Awning source grid as standalone, not inferred families", () => {
+    const drapery = listProducts().find(
+      (entry) => entry.id === "polar_drapery_track",
+    );
+    const awnings = listProducts().filter(
+      (entry) => entry.manufacturer === "Polar" && entry.productType === "Awnings",
+    );
+
+    expect(drapery?.programs).toHaveLength(28);
+    expect(drapery?.programs.every((program) =>
+      program.priceGroup === null &&
+      !program.pricingFamilyId &&
+      !program.baselineProgramId &&
+      Boolean(program.sourcePages?.length)
+    )).toBe(true);
+    expect(awnings).toHaveLength(5);
+    expect(awnings.every((product) =>
+      product.programs.length === 1 &&
+      product.programs[0].id === "standard" &&
+      product.programs[0].priceGroup === null &&
+      Boolean(product.programs[0].sourcePages?.length)
+    )).toBe(true);
+
+    expect(drapery?.freightStatus).toBe("unresolved");
+    expect(awnings.every((product) => product.freightStatus === "unresolved")).toBe(true);
+  });
 });

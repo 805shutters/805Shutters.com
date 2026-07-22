@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
 import {
   priceExactQuoteBuilderDesign,
   repriceExactQuoteBuilderForQuoteLabPreview as repriceExactQuoteBuilder,
@@ -99,6 +100,27 @@ function honeycombDesign(
         cell_size: true,
       },
       shipping_region: "continental_us",
+      ...options,
+    },
+  } as unknown as SalesQuoteDesign;
+}
+
+function lotusDesign(
+  lineItemId: string,
+  options: Record<string, unknown> = {},
+): SalesQuoteDesign {
+  return {
+    id: `${lineItemId}-design-A`,
+    line_item_id: lineItemId,
+    variant: "A",
+    product_type: "Mini Blinds",
+    supplier: "Lotus",
+    mount_type: "Inside Mount",
+    unit_price: 0,
+    options_json: {
+      quote_v2_backend: true,
+      quote_lab_product_id: "lotus_mini_blinds",
+      fabric_program_id: "lotus_amx_1in_aluminum_custom",
       ...options,
     },
   } as unknown as SalesQuoteDesign;
@@ -429,7 +451,7 @@ describe("exact-interface V2 integration", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "additional_fiberglass_pole",
-          amount: 46.2,
+          amount: 56,
           wholesaleAmount: 18.48,
           detail: "28 x 2 units",
         }),
@@ -441,14 +463,14 @@ describe("exact-interface V2 integration", () => {
           id: "accessory:additional_fiberglass_pole",
           catalogAmount: 56,
           wholesaleAmount: 18.48,
-          customerAmount: 46.2,
+          customerAmount: 56,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 440,
       wholesalePerWindow: 145.2,
-      customerPerWindow: 363,
+      customerPerWindow: 440,
     });
     expect(quote.sendability.sendable).toBe(true);
   });
@@ -652,7 +674,7 @@ describe("exact-interface V2 integration", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:automate_home:motor_rechargeable_battery_pack",
-          amount: 562.65,
+          amount: 682,
           wholesaleAmount: 225.06,
         }),
       ]),
@@ -688,14 +710,14 @@ describe("exact-interface V2 integration", () => {
           category: "operating_system",
           catalogAmount: 682,
           wholesaleAmount: 225.06,
-          customerAmount: 562.65,
+          customerAmount: 682,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 1_066,
       wholesalePerWindow: 351.78,
-      customerPerWindow: 879.45,
+      customerPerWindow: 1_066,
     });
 
     const undercharged = {
@@ -759,7 +781,7 @@ describe("exact-interface V2 integration", () => {
     ).toEqual([
       expect.objectContaining({
         id: "motor:smart_motorization:hub",
-        amount: 264.83,
+        amount: 321,
         wholesaleAmount: 105.93,
       }),
     ]);
@@ -770,14 +792,177 @@ describe("exact-interface V2 integration", () => {
           category: "accessory",
           catalogAmount: 321,
           wholesaleAmount: 105.93,
-          customerAmount: 264.83,
+          customerAmount: 321,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 1_187,
       wholesalePerWindow: 391.71,
-      customerPerWindow: 979.28,
+      customerPerWindow: 1_187,
+    });
+  });
+
+  it("keeps validated Lotus dealer cost protected when customer retail is undefined", () => {
+    const quoteLine = line("line-lotus-cost", {
+      product_type: "Mini Blinds",
+      width_whole: 30,
+      height_whole: 48,
+      quantity: 2,
+    });
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [quoteLine],
+        designs: [lotusDesign(quoteLine.id)],
+        selectedVariantByLine: { [quoteLine.id]: "A" },
+      }),
+    );
+    const priced = quote.designs[0];
+
+    expect(priced.result).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      pricedSelectionFingerprint: null,
+      pricedCatalogVersion: null,
+      internalCost: {
+        basis: "dealer_net",
+        productCostUnit: 24.3,
+        productCostTotal: 48.6,
+        freightAllocated: 0,
+        oversizeAllocated: 0,
+        processingFeeAllocated: 0,
+        landedCostTotal: 48.6,
+        freightStatus: "unresolved",
+      },
+    });
+    expect(priced.costResult).toMatchObject({
+      ok: true,
+      productId: "lotus_mini_blinds",
+      programId: "lotus_amx_1in_aluminum_custom",
+      basis: "dealer_net",
+      matchedWidth: 30,
+      matchedHeight: 48,
+      wholesaleBase: 24.3,
+      wholesaleAddOns: [],
+      wholesaleUnitCost: 24.3,
+      quantity: 2,
+      wholesaleTotal: 48.6,
+      landedCostTotal: 48.6,
+      freightStatus: "unresolved",
+    });
+    expect(quote.costSummary).toMatchObject({
+      status: "incomplete",
+      productCost: 48.6,
+      dealerCostTotal: 48.6,
+    });
+    expect(quote.total).toBe(0);
+    expect(quote.sendability.sendable).toBe(false);
+    expect(priced.snapshot).toBeNull();
+
+    const customerProjections = [
+      toCustomerQuotePriceResult(priced.result),
+      quote.customerQuote,
+    ];
+    for (const customerProjection of customerProjections) {
+      const serialized = JSON.stringify(customerProjection);
+      expect(serialized).not.toMatch(
+        /wholesale|internalCost|costStatus|landedCost|freightAllocated|oversizeAllocated|processingFeeAllocated|productCost|dealerCost|effectiveDealerFactor|multiplier|margin|2\.5/i,
+      );
+    }
+    expect(customerProjections[0]).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
+    expect(quote.customerQuote.lines[0].price).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
+  });
+
+  it("does not preserve Lotus dealer cost when authoritative validation hard-blocks", () => {
+    const quoteLine = line("line-lotus-hard-block", {
+      product_type: "Mini Blinds",
+      width_whole: 30,
+      height_whole: 48,
+    });
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [quoteLine],
+        designs: [
+          lotusDesign(quoteLine.id, {
+            surcharges: [{ id: "unsupported-lotus-charge", quantity: 1 }],
+          }),
+        ],
+        selectedVariantByLine: { [quoteLine.id]: "A" },
+      }),
+    );
+    const priced = quote.designs[0];
+
+    expect(priced.result).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+    });
+    expect(priced.result).not.toHaveProperty("internalCost");
+    expect(priced.costResult).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+    });
+    expect(quote.costSummary).toMatchObject({
+      status: "incomplete",
+      productCost: 0,
+      dealerCostTotal: 0,
+    });
+  });
+
+  it("does not preserve a base-only dealer cost when a valid option is selected", () => {
+    const quoteLine = line("line-polar-dealer-option", {
+      product_type: "Retractable Screens",
+      width_whole: 48,
+      height_whole: 96,
+    });
+    const design = {
+      id: `${quoteLine.id}-design-A`,
+      line_item_id: quoteLine.id,
+      variant: "A",
+      product_type: "Retractable Screens",
+      supplier: "Polar",
+      mount_type: "Inside Mount",
+      unit_price: 0,
+      options_json: {
+        quote_v2_backend: true,
+        quote_lab_product_id: "polar_all_seasons_screen",
+        fabric_program_id: "single_48x96",
+        surcharges: [{ id: "sliding_glass_door", quantity: 1 }],
+      },
+    } as unknown as SalesQuoteDesign;
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [quoteLine],
+        designs: [design],
+        selectedVariantByLine: { [quoteLine.id]: "A" },
+      }),
+    );
+    const priced = quote.designs[0];
+
+    expect(priced.result).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
+    expect(priced.result.validationIssues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ severity: "hard_block" }),
+      ]),
+    );
+    expect(priced.result).not.toHaveProperty("internalCost");
+    expect(priced.costResult).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
+    expect(quote.costSummary).toMatchObject({
+      status: "incomplete",
+      productCost: 0,
+      dealerCostTotal: 0,
     });
   });
 

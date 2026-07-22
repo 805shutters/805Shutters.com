@@ -54,6 +54,12 @@ describe("deriveAutomaticSurcharges", () => {
     expect(deriveAutomaticSurcharges("wood_blinds", { color: "designer" })).toEqual([{ id: "designer_color" }]);
   });
 
+  it("retains dealer-only Onyx options without inventing customer retail", () => {
+    expect(deriveAutomaticSurcharges("onyx_shutters", { tilt_type: "hidden_tilt" })).toEqual([
+      { id: "hidden_tilt_rod" },
+    ]);
+  });
+
   it("does not derive unpriced or unsupported catalog entries", () => {
     expect(deriveAutomaticSurcharges("honeycomb", { light_guard: "lightguard_360" })).toEqual([]);
     expect(deriveAutomaticSurcharges("smartfold", { light_guard: "lightguard_360" })).toEqual([]);

@@ -88,13 +88,13 @@ Source precedence is explicit:
 - Dealer websites are read-only parity evidence, never a runtime dependency.
 - A source conflict quarantines only the affected option until resolved.
 
-The current Norman Roller ordering portal was also checked with a temporary,
-non-submitted fixture: Amelia RD `F1774` Mist Gray at 36 by 60 inches with a
-Raceway. The portal showed a $115.20 dealer-net base plus a $20.10 Raceway
-charge, for a $135.30 dealer-net subtotal, and the V2 parity test matches all
-three amounts to the cent. This verifies one representative fixture only; the
-required comprehensive pricing and allow/block portal parity remains a
-production-cutover gate.
+The current 805 Norman account was checked with a temporary, non-submitted
+Roller fixture: Brook `F1120` Pewter at 24 by 36 inches with SmartRelease and
+one shim. The portal showed $350 configured list/MSRP, $115.50 standard-schedule
+dealer merchandise, $25 freight, and $2.81 processing. A separate historical
+Amelia/Raceway fixture belongs to another dealer account and remains
+quarantined. These fixtures verify only their exact configurations; broad
+pricing and allow/block portal parity remains a production-cutover gate.
 
 ## Authoritative pricing lifecycle
 
@@ -110,10 +110,16 @@ motor, or configuration edit clears the current authoritative price until
 repricing succeeds. Historical quotes retain immutable snapshots; they are not
 silently repriced.
 
-Retail is eligible dealer-net product and option charges multiplied by 2.5.
-Published shipping, freight, and oversize charges are allocated into internal
-line-item landed cost and are not added again as customer retail. An estimated
-freight value is internal-only and must be explicitly labeled estimated.
+Customer retail follows the effective source price basis for the selected
+manufacturer program. `suggested_retail` programs preserve the price-book or
+portal MSRP components and apply customer discounts to that retail ledger.
+`dealer_net` programs do not invent customer retail; they fail with
+`CUSTOMER_RETAIL_UNDEFINED` until an explicit, authoritative retail policy is
+versioned for that manufacturer. Dealer factors are used only for the protected
+internal merchandise-cost ledger. Published shipping, freight, and oversize
+charges are allocated into internal line-item landed cost and are not added
+again as customer retail. An estimated freight value is internal-only and must
+be explicitly labeled estimated.
 
 ## Intentional fail-closed areas
 

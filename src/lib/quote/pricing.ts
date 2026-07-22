@@ -140,6 +140,10 @@ export type DealerNetCostBreakdown = {
   programId: string;
   matchedWidth: number | null;
   matchedHeight: number | null;
+  /** Actual square footage when the source is priced per square foot. */
+  sqft?: number;
+  /** Source minimum applied to actual square footage. */
+  billableSqft?: number;
   dealerNetUnitCost: number;
 };
 
@@ -221,7 +225,11 @@ function resolveProgram(
   // Single-program product: only one priceable program. (sqft programs price off
   // pricePerSqft with an empty grid, so gate them the same way lookupBaseCents does.)
   const priceable = product.programs.filter((p) =>
-    p.priceAxis === "sqft" ? p.pricePerSqft != null : p.grid.prices.length > 0 && p.grid.widths.length > 0,
+    p.priceAxis === "sqft"
+      ? (p.priceBasis ?? product.priceBasis) === "dealer_net"
+        ? p.costPerSqft != null
+        : p.pricePerSqft != null
+      : p.grid.prices.length > 0 && p.grid.widths.length > 0,
   );
   if (priceable.length === 1) return priceable[0];
   return fail(
@@ -303,6 +311,29 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   }
   if (program.priceAxis !== "width" && (!Number.isFinite(height) || height <= 0)) {
     return fail("INVALID_DIMENSIONS", "Height must be a positive number.", warnings);
+  }
+  if (program.priceAxis === "sqft") {
+    if (program.costPerSqft == null) {
+      return fail(
+        "CUSTOMER_RETAIL_UNDEFINED",
+        `${program.name} has no dealer-net cost per square foot.`,
+        warnings,
+      );
+    }
+    const sqft = squareFeet(width, height);
+    const billableSqft = Math.max(sqft, program.minSqft ?? 0);
+    return {
+      ok: true,
+      productId: product.id,
+      programId: program.id,
+      matchedWidth: width,
+      matchedHeight: height,
+      sqft,
+      billableSqft,
+      dealerNetUnitCost: fromCents(
+        Math.round(billableSqft * toCents(program.costPerSqft)),
+      ),
+    };
   }
   const costs = program.grid.costs;
   if (!costs?.length) {

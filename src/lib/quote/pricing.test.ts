@@ -217,7 +217,13 @@ describe("catalog integrity", () => {
       for (const prog of product.programs) {
         const { widths, heights, prices } = prog.grid;
         if (prog.priceAxis === "sqft") {
-          expect(typeof prog.pricePerSqft, `${prog.id} pricePerSqft`).toBe("number");
+          const dealerNet = (prog.priceBasis ?? product.priceBasis) === "dealer_net";
+          if (dealerNet) {
+            expect(prog.pricePerSqft, `${prog.id} customer retail`).toBeNull();
+            expect(typeof prog.costPerSqft, `${prog.id} costPerSqft`).toBe("number");
+          } else {
+            expect(typeof prog.pricePerSqft, `${prog.id} pricePerSqft`).toBe("number");
+          }
           expect(prices.length, `${prog.id} sqft has no grid`).toBe(0);
           continue;
         }

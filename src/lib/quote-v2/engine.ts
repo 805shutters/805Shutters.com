@@ -6,7 +6,6 @@ import {
 } from "@/lib/quote/catalog";
 import type { CatalogProduct, CatalogProgram } from "@/lib/quote/catalog/types";
 import {
-  priceDealerNetDesign,
   priceDesign,
   type PriceBreakdown,
   type PriceFailure,
@@ -111,10 +110,6 @@ function moneyFromCents(value: number): number {
 
 function multiplyMoney(value: number, multiplier: number): number {
   return moneyFromCents(Math.round(moneyCents(value) * multiplier));
-}
-
-function percentOfMoney(value: number, percent: number): number {
-  return moneyFromCents(Math.round((moneyCents(value) * percent) / 100));
 }
 
 function sumMoney(values: readonly number[]): number {
@@ -228,13 +223,9 @@ function catalogLinesWithPortalGroupedRounding(
     });
   }
 
-  // Customer retail is also one rounded group, then allocated back to the
-  // exact source identities so Base/Fabric/Accessories/Operating always sum.
-  const customerAmounts = allocateRoundedMoneyGroup(wholesaleAmounts, 2.5);
   return lines.map((line, index) => ({
     ...line,
     wholesaleAmount: wholesaleAmounts[index],
-    amount: customerAmounts[index],
   }));
 }
 
@@ -773,102 +764,6 @@ function priceInputContractIssues(
   ];
 }
 
-function dealerNetRetail(
-  input: PriceInput,
-): {
-  result: PriceResult;
-  sourceResult: PriceResult;
-  productCostUnit: number | null;
-  productCostTotal: number | null;
-} {
-  if ((input.surcharges?.length ?? 0) > 0 || (input.motorization?.length ?? 0) > 0) {
-    const failure: PriceFailure = {
-      ok: false,
-      code: "CONFIGURATION_INCOMPLETE",
-      error:
-        "The dealer-net option charges for this configuration are not fully sourced. V2 will not mark up the base while silently omitting selected options.",
-      warnings: [],
-    };
-    return {
-      result: failure,
-      sourceResult: failure,
-      productCostUnit: null,
-      productCostTotal: null,
-    };
-  }
-
-  const cost = priceDealerNetDesign(input);
-  if (!cost.ok) {
-    return {
-      result: cost,
-      sourceResult: cost,
-      productCostUnit: null,
-      productCostTotal: null,
-    };
-  }
-  const product = getProduct(cost.productId);
-  const program = product ? getProgram(product, cost.programId) : undefined;
-  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
-  const discountPercent = Math.min(100, Math.max(0, Number(input.discountPercent) || 0));
-  const undiscountedUnit = multiplyMoney(cost.dealerNetUnitCost, 2.5);
-  const discountAmount = percentOfMoney(undiscountedUnit, discountPercent);
-  const unitPrice = moneyFromCents(
-    moneyCents(undiscountedUnit) - moneyCents(discountAmount),
-  );
-  const productCostTotal = moneyFromCents(
-    moneyCents(cost.dealerNetUnitCost) * quantity,
-  );
-  const sourceResult: PriceBreakdown = {
-    ok: true,
-    productId: cost.productId,
-    programId: cost.programId,
-    programName: program?.name ?? cost.programId,
-    matchedWidth: cost.matchedWidth ?? input.widthInches,
-    matchedHeight: cost.matchedHeight,
-    base: cost.dealerNetUnitCost,
-    configurationUnits: 1,
-    wholesaleBase: cost.dealerNetUnitCost,
-    surchargeLines: [],
-    unitPrice: cost.dealerNetUnitCost,
-    discountPercent: 0,
-    discountAmount: 0,
-    wholesaleUnitPrice: cost.dealerNetUnitCost,
-    quantity,
-    onceTotal: 0,
-    total: productCostTotal,
-    wholesaleTotal: productCostTotal,
-    warnings: [],
-    costStatus: "complete",
-  };
-  return {
-    result: {
-      ok: true,
-      productId: cost.productId,
-      programId: cost.programId,
-      programName: program?.name ?? cost.programId,
-      matchedWidth: cost.matchedWidth ?? input.widthInches,
-      matchedHeight: cost.matchedHeight,
-      base: undiscountedUnit,
-      configurationUnits: 1,
-      wholesaleBase: cost.dealerNetUnitCost,
-      surchargeLines: [],
-      unitPrice,
-      discountPercent,
-      discountAmount,
-      wholesaleUnitPrice: cost.dealerNetUnitCost,
-      quantity,
-      onceTotal: 0,
-      total: moneyFromCents(moneyCents(unitPrice) * quantity),
-      wholesaleTotal: productCostTotal,
-      warnings: ["Customer retail was calculated from the configured dealer pricing policy."],
-      costStatus: "complete",
-    },
-    sourceResult,
-    productCostUnit: cost.dealerNetUnitCost,
-    productCostTotal,
-  };
-}
-
 function selectedNormanDealerFactor(
   selection: SelectionContext,
   product: CatalogProduct,
@@ -881,7 +776,10 @@ function selectedNormanDealerFactor(
   );
 }
 
-/** Convert every source-backed product and option cost into V2 retail policy. */
+/**
+ * Preserve authoritative source MSRP/list dollars while deriving protected
+ * dealer cost with the selected manufacturer/account schedule.
+ */
 function catalogCostRetail(
   source: PriceBreakdown,
   selection: SelectionContext,
@@ -924,7 +822,6 @@ function catalogCostRetail(
         ? lines.map((line) => ({
             ...line,
             wholesaleAmount: line.wholesaleAmount ?? 0,
-            amount: multiplyMoney(line.wholesaleAmount ?? 0, 2.5),
           }))
         : catalogLinesWithPortalGroupedRounding(
             lines,
@@ -961,35 +858,15 @@ function catalogCostRetail(
     moneyCents(productCostUnit) * source.quantity +
       moneyCents(productCostOnce),
   );
-  const base = multiplyMoney(productCostBase, 2.5);
-  const undiscountedUnit = sumMoney([
-    base,
-    ...perWindowLines.map((line) => line.amount),
-  ]);
-  const discountAmount = percentOfMoney(
-    undiscountedUnit,
-    source.discountPercent,
-  );
-  const unitPrice = moneyFromCents(
-    moneyCents(undiscountedUnit) - moneyCents(discountAmount),
-  );
-  const onceTotal = sumMoney(onceLines.map((line) => line.amount));
   return {
     ...source,
-    base,
     wholesaleBase: productCostBase,
     surchargeLines,
-    unitPrice,
-    discountAmount,
     wholesaleUnitPrice: productCostUnit,
-    onceTotal,
-    total: moneyFromCents(
-      moneyCents(unitPrice) * source.quantity + moneyCents(onceTotal),
-    ),
     wholesaleTotal: productCostTotal,
     warnings: [
       ...source.warnings,
-      "Customer retail was calculated from the configured dealer pricing policy.",
+      "Customer retail uses the authoritative manufacturer suggested-retail/list amounts.",
     ],
   };
 }
@@ -1120,21 +997,8 @@ function baselinePriceComponent(
     };
   }
 
-  if (product.priceBasis === "dealer_net") {
-    const dealer = priceDealerNetDesign({
-      ...priceInput,
-      programId: baselineProgramId,
-    });
-    if (!dealer.ok) return null;
-    return {
-      programId: baselineProgramId,
-      matchedWidth: dealer.matchedWidth ?? priceInput.widthInches,
-      matchedHeight: dealer.matchedHeight,
-      catalogAmount: dealer.dealerNetUnitCost,
-      wholesaleAmount: dealer.dealerNetUnitCost,
-      customerAmount: multiplyMoney(dealer.dealerNetUnitCost, 2.5),
-      source,
-    };
+  if ((baselineProgram.priceBasis ?? product.priceBasis) === "dealer_net") {
+    return null;
   }
 
   const baselineSourceResult = priceDesign({
@@ -1488,10 +1352,17 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   const product = getProduct(priceInput.productId);
-  const dealer = product?.priceBasis === "dealer_net" ? dealerNetRetail(priceInput) : null;
-  const sourceResult = dealer?.sourceResult ?? priceDesign(priceInput);
-  const result = dealer?.result ??
-    (sourceResult.ok ? catalogCostRetail(sourceResult, selection) : sourceResult);
+  const selectedProgram = product
+    ? getProgram(product, priceInput.programId ?? selection.programId ?? "")
+    : undefined;
+  const effectivePriceBasis = selectedProgram?.priceBasis ?? product?.priceBasis;
+  const sourceResult = priceDesign(priceInput);
+  const result =
+    effectivePriceBasis === "dealer_net"
+      ? sourceResult
+      : sourceResult.ok
+        ? catalogCostRetail(sourceResult, selection)
+        : sourceResult;
   if (!result.ok) {
     return {
       ...result,
@@ -1509,19 +1380,19 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     };
   }
 
-  const selectedProgram = getProgram(product, result.programId);
+  const pricedProgram = getProgram(product, result.programId);
   const componentInput = priceComponentInputs(selection, product, sourceResult);
   const componentResult = buildAuthoritativePriceComponents({
     selection,
     sourceResult,
     retailResult: result,
     product,
-    baseline: selectedProgram
+    baseline: pricedProgram
       ? baselinePriceComponent(
           selection,
           priceInput,
           product,
-          selectedProgram,
+          pricedProgram,
           sourceResult,
           result,
         )
@@ -1545,9 +1416,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   const internalCost = request.includeInternalCost
     ? internalCostFromResult(
         result,
-        dealer
-          ? { unit: dealer.productCostUnit, total: dealer.productCostTotal }
-          : undefined,
+        undefined,
         normanSchedule
           ? {
               effectiveDealerFactor:

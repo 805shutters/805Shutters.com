@@ -1,6 +1,6 @@
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuoteSurchargeSelection } from "@/lib/crm/types";
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
-import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
+import { priceDealerNetDesign, priceDesign, type PriceInput } from "@/lib/quote/pricing";
 
 export function round2(value: number): number {
   return Math.round((Number(value) || 0) * 100) / 100;
@@ -206,6 +206,32 @@ export function priceDesignFields(
       price_status: "ok",
       priced_at: now,
     };
+  }
+  // Dealer-only books intentionally have no customer retail. Preserve a
+  // validated base dealer cost for authorized CRM users, but never convert it
+  // into customer retail. Add-ons and motorization remain fail-closed because
+  // priceDealerNetDesign only establishes the base product cost.
+  if (
+    result.code === "CUSTOMER_RETAIL_UNDEFINED" &&
+    surcharges.length === 0 &&
+    (design.motorization?.length ?? 0) === 0
+  ) {
+    const dealerCost = priceDealerNetDesign(input);
+    if (dealerCost.ok) {
+      return {
+        surcharges,
+        unit_price: 0,
+        wholesale_unit_price: round2(dealerCost.dealerNetUnitCost),
+        price_breakdown: {
+          error: result.error,
+          code: result.code,
+          warnings: result.warnings,
+          internalDealerCost: dealerCost,
+        },
+        price_status: result.code,
+        priced_at: now,
+      };
+    }
   }
   return {
     surcharges,

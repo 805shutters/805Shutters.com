@@ -172,18 +172,26 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       for (const program of product.programs.filter((candidate) => candidate.priceAxis === "sqft")) {
         sqftPrograms += 1;
         for (const [widthInches, heightInches] of [[12, 12], [36, 60], [96, 96]]) {
-          const result = priceDesign({ productId: product.id, programId: program.id, widthInches, heightInches, quantity: 40 });
+          const dealerNet = isDealerNet(product, program);
+          const result = dealerNet
+            ? priceDealerNetDesign({ productId: product.id, programId: program.id, widthInches, heightInches, quantity: 40 })
+            : priceDesign({ productId: product.id, programId: program.id, widthInches, heightInches, quantity: 40 });
           expect(result.ok, `${product.id}/${program.id} sqft`).toBe(true);
           if (!result.ok) continue;
           const sqft = (widthInches * heightInches) / 144;
           const billableSqft = Math.max(sqft, program.minSqft ?? 0);
-          const expectedUnit = Math.round(billableSqft * Math.round((program.pricePerSqft ?? 0) * 100)) / 100;
-          expect(result.unitPrice).toBe(expectedUnit);
-          expect(result.total).toBe(Math.round(expectedUnit * 40 * 100) / 100);
-          if (program.costPerSqft != null) {
-            const expectedCost = Math.round(billableSqft * Math.round(program.costPerSqft * 100)) / 100;
-            expect(result.wholesaleUnitPrice).toBe(expectedCost);
-            expect(result.wholesaleTotal).toBe(Math.round(expectedCost * 40 * 100) / 100);
+          if ("dealerNetUnitCost" in result) {
+            const expectedCost = Math.round(billableSqft * Math.round((program.costPerSqft ?? 0) * 100)) / 100;
+            expect(result.dealerNetUnitCost).toBe(expectedCost);
+          } else {
+            const expectedUnit = Math.round(billableSqft * Math.round((program.pricePerSqft ?? 0) * 100)) / 100;
+            expect(result.unitPrice).toBe(expectedUnit);
+            expect(result.total).toBe(Math.round(expectedUnit * 40 * 100) / 100);
+            if (program.costPerSqft != null) {
+              const expectedCost = Math.round(billableSqft * Math.round(program.costPerSqft * 100)) / 100;
+              expect(result.wholesaleUnitPrice).toBe(expectedCost);
+              expect(result.wholesaleTotal).toBe(Math.round(expectedCost * 40 * 100) / 100);
+            }
           }
         }
       }

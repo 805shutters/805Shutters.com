@@ -249,14 +249,40 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
   });
 
-  it("prices internal wholesale for shutter designs", () => {
+  it("preserves dealer cost but blocks customer retail for dealer-only shutter books", () => {
     const fields = priceDesignFields(
       { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },
       { width_in: 30, height_in: 60 },
     );
-    expect(fields.price_status).toBe("ok");
-    expect(fields.unit_price).toBe(475);
+    expect(fields.price_status).toBe("CUSTOMER_RETAIL_UNDEFINED");
+    expect(fields.unit_price).toBe(0);
     expect(fields.wholesale_unit_price).toBe(168.75);
+    expect(fields.price_breakdown).toMatchObject({
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      internalDealerCost: {
+        ok: true,
+        programId: "painted_basswood",
+        billableSqft: 12.5,
+        dealerNetUnitCost: 168.75,
+      },
+    });
+  });
+
+  it("does not preserve an incomplete base-only dealer cost when add-ons are selected", () => {
+    const fields = priceDesignFields(
+      {
+        product_id: "onyx_shutters",
+        program_id: "painted_basswood",
+        fabric: null,
+        surcharges: [],
+        details: { tilt_type: "hidden_tilt" },
+        motorization: [],
+      },
+      { width_in: 30, height_in: 60 },
+    );
+    expect(fields.price_status).toBe("CUSTOMER_RETAIL_UNDEFINED");
+    expect(fields.unit_price).toBe(0);
+    expect(fields.wholesale_unit_price).toBeNull();
   });
 
   it("marks an out-of-range design with the error code and zero price", () => {

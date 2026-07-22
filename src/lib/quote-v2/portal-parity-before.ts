@@ -187,7 +187,7 @@ function nullableCents(value: unknown, label: string): number | null {
 }
 
 function componentTotal(value: unknown, label: string): number {
-  return array(value, label).reduce((total, entry, index) => {
+  return array(value, label).reduce<number>((total, entry, index) => {
     const component = record(entry, `${label}[${index}]`);
     text(component.id, `${label}[${index}].id`);
     text(component.label, `${label}[${index}].label`);

@@ -61,9 +61,10 @@ def height_surcharge(id_, name, heights, prices, page, *, notes=""):
     return item
 
 
-def program(id_, name, widths, heights, prices, page, *, min_width=None, min_height=None, max_width=None, max_height=None, notes=None):
+def program(id_, name, widths, heights, prices, page, *, min_width=None, min_height=None, max_width=None, max_height=None, notes=None, standalone=False):
     return {
-        "id": id_, "name": name, "priceGroup": name.removeprefix("Price Group "),
+        "id": id_, "name": name,
+        "priceGroup": None if standalone else name.removeprefix("Price Group "),
         "priceAxis": "wh" if heights else "width",
         "grid": {"widths": widths, "heights": heights, "prices": prices},
         "minWidth": min_width, "minHeight": min_height,
@@ -73,14 +74,21 @@ def program(id_, name, widths, heights, prices, page, *, min_width=None, min_hei
     }
 
 
-def product(id_, product_type, name, pages, programs, surcharges, *, system=None, basis="suggested_retail", factor=.45, freight="unresolved", routing=None, fabrics=None, notes=None):
-    return {
+def product(id_, product_type, name, pages, programs, surcharges, *, system=None, basis="suggested_retail", factor=.45, freight="unresolved", routing=None, fabrics=None, notes=None, pricing_family=None):
+    item = {
         "id": id_, "productType": product_type, "name": name, "manufacturer": "Polar",
         "system": system, "priceBasis": basis, "dealerFactor": factor,
         "freightStatus": freight, "pages": pages, "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
         "fabricRouting": routing, "fabricMetadata": fabrics or [], "programs": programs,
         "surcharges": surcharges, "fabricByYard": [], "notes": notes or [],
     }
+    if pricing_family is not None:
+        item["pricingFamilies"] = [{
+            "id": pricing_family,
+            "baselineProgramId": "group_1",
+            "memberProgramIds": [entry["id"] for entry in programs],
+        }]
+    return item
 
 
 def parse_group_pages(pages, widths, heights, count, *, override=None):
@@ -167,7 +175,7 @@ def parse_awning(pdf, page, id_, name, start_col, *, max_technical=None):
         minima.append(inches(minimum_cell) if minimum_cell else widths[0])
         values = [money(v) for v in row[start_col:start_col + len(widths)]]
         matrix.append(values + [None] * (len(widths) - len(values)))
-    p = program("standard", name, widths, heights, matrix, page, min_width=min(v for v in minima if v), min_height=min(heights), max_width=max_technical or widths[-1], max_height=max(heights), notes=["Height field represents awning projection.", "Each dimension rounds independently to the next listed grid value."])
+    p = program("standard", name, widths, heights, matrix, page, min_width=min(v for v in minima if v), min_height=min(heights), max_width=max_technical or widths[-1], max_height=max(heights), notes=["Height field represents awning projection.", "Each dimension rounds independently to the next listed grid value."], standalone=True)
     return p
 
 
@@ -179,7 +187,7 @@ def parse_drapery():
         if row:
             vals = [money(v) for v in re.findall(r"\$[\d,]+", row.group(2))]
             for key, value in zip(pinch, vals): pinch[key].append(value)
-    programs = [program(f"pinch_{key}", f"Pinch Pleat {key.replace('_', ' ').title()}", widths, [], [values], 74, max_width=432, notes=["Irismo motors are limited to 396 inches."]) for key, values in pinch.items()]
+    programs = [program(f"pinch_{key}", f"Pinch Pleat {key.replace('_', ' ').title()}", widths, [], [values], 74, max_width=432, notes=["Irismo motors are limited to 396 inches."], standalone=True) for key, values in pinch.items()]
     ripple_labels = [f"{master}_{pct}_{draw}" for master in ("overlap", "butt") for pct in (80, 100, 120) for draw in ("split", "side")]
     for page, color in ((75, "white"), (76, "bronze")):
         columns = [[] for _ in ripple_labels]
@@ -189,7 +197,7 @@ def parse_drapery():
                 vals = [money(v) for v in re.findall(r"\$[\d,]+", row.group(2))]
                 for column, value in zip(columns, vals): column.append(value)
         for label, values in zip(ripple_labels, columns):
-            programs.append(program(f"ripple_{color}_{label}", f"Ripple Fold {color.title()} {label.replace('_', ' ').title()}", widths, [], [values], page, max_width=432, notes=["Irismo motors are limited to 396 inches."]))
+            programs.append(program(f"ripple_{color}_{label}", f"Ripple Fold {color.title()} {label.replace('_', ' ').title()}", widths, [], [values], page, max_width=432, notes=["Irismo motors are limited to 396 inches."], standalone=True))
     return programs
 
 
@@ -266,7 +274,8 @@ with pdfplumber.open(str(PDF)) as pdf:
         surcharge("ral_light_channels_pair", "Light Channels Pair RAL Custom Color", 40, 157, per="foot", auto_units="height_foot", dealer_factor=1, minimum_charge=250),
         surcharge("ral_hang_strip", "Hang Strip RAL Custom Color", 40, 157, per="foot", auto_units="width_foot", dealer_factor=1, minimum_charge=250),
     ]
-    products = [product("polar_interior_roller", "Roller Shades", "Polar Interior Roller", list(range(12,54)), parse_interior(), interior_surcharges, system="Interior Roller", routing=interior_routing, fabrics=interior_fabrics, notes=["Retail grids are for manual shades before options (p20).", "Dimensions round up independently (p20).", "Spring assist is included starting at 120 inches wide (p26).", "Freight and residential/out-of-area delivery amounts are not defined (p5)."])]
+    interior_programs = parse_interior()
+    products = [product("polar_interior_roller", "Roller Shades", "Polar Interior Roller", list(range(12,54)), interior_programs, interior_surcharges, system="Interior Roller", routing=interior_routing, fabrics=interior_fabrics, notes=["Retail grids are for manual shades before options (p20).", "Dimensions round up independently (p20).", "Spring assist is included starting at 120 inches wide (p26).", "Freight and residential/out-of-area delivery amounts are not defined (p5)."], pricing_family="polar_interior_roller_fabric_group")]
 
     ext_specs = [
         ("polar_elite_patio", "Elite Patio", range(96,101), [48,54,60,66,72,78,84,96,108,120,132,144,156], [36,48,60,72,84,96,108,120], 13, None),
@@ -283,7 +292,7 @@ with pdfplumber.open(str(PDF)) as pdf:
         else:
             valances = [width_surcharge("patriot_hood", "Patriot Hood", widths[1:], [891,941,990,1040,1089,1139,1188,1238], 147), width_surcharge("mega_cassette", "Mega Cassette Box", widths[1:], [2500]*8, 147)]
         valances += [surcharge("vortex_36_96", "Vortex Option 36-96 inch height", 500, pages.start), surcharge("vortex_108_plus", "Vortex Option 108+ inch height", 650, pages.start), surcharge("u_channel", "U Channel Inside Mount", 22, pages.start, per="foot", auto_units="height_foot", notes="Published table increments $22 per vertical foot."), surcharge("ral_custom_color", f"{name} RAL Custom Color", {"Elite Patio":1500,"Titan Patio":2000,"Mega Exterior":2500}[name], 157, dealer_factor=1)]
-        products.append(product(id_, "Roller Shades", f"Polar {name}", list(range(pages.start-6, pages.stop+7)), programs, valances, system=name, routing=exterior_routing, fabrics=exterior_fabrics, notes=["Tracks, rod, and cable guide configurations are included in grid pricing.", "Rod guide maximum shade height is 120 inches.", "Vortex dimensional limits are source-defined and must be validated.", "Freight amount is unresolved."]))
+        products.append(product(id_, "Roller Shades", f"Polar {name}", list(range(pages.start-6, pages.stop+7)), programs, valances, system=name, routing=exterior_routing, fabrics=exterior_fabrics, notes=["Tracks, rod, and cable guide configurations are included in grid pricing.", "Rod guide maximum shade height is 120 inches.", "Vortex dimensional limits are source-defined and must be validated.", "Freight amount is unresolved."], pricing_family=f"{id_}_fabric_group"))
 
     drapery_surcharges = [
         surcharge("bracket_one_touch", "One Touch Ceiling Bracket", 6.70, 74), surcharge("bracket_swivel", "Swivel Ceiling Bracket", 3.15, 74),
@@ -292,7 +301,7 @@ with pdfplumber.open(str(PDF)) as pdf:
         surcharge("silent_master_side", "Silent Master Carrier - Side Opening", 40, 74), surcharge("silent_master_split", "Silent Master Carrier - Split Draw", 20, 74),
         surcharge("silent_runner", "Silent Runner Upgrade", 3.50, 74), surcharge("custom_bend", "Custom Curving/Bending", 700, 74), surcharge("curved_packaging", "Curved Track Special Packaging", 400, 74),
     ]
-    products.append(product("polar_drapery_track", "Drapery Tracks", "Polar Motorized Drapery Track", [74,75,76,77], parse_drapery(), drapery_surcharges, system="Motorized Drapery Track", notes=["Track price excludes motor and brackets.", "Irismo motor maximum track length is 396 inches."]))
+    products.append(product("polar_drapery_track", "Drapery Tracks", "Polar Motorized Drapery Track", [74,75,76,77], parse_drapery(), drapery_surcharges, system="Motorized Drapery Track", notes=["Each named drapery program is a complete standalone source grid, not a fabric price-group tier.", "Track price excludes motor and brackets.", "Irismo motor maximum track length is 396 inches."]))
     products.append(product("polar_tension_shade", "Tension Shades", "Polar Motorized Tension Shade", [84,85,86], [], [], system="Motorized Tension Shade", basis="manual_required", factor=None, notes=["Specifications are published but the source has no complete retail price grid."]))
     all_seasons_programs = [program("single_48x96", "Single Door 48 x 96", [48], [96], [[375]], 88, min_width=48, min_height=96), program("double_72x96", "Double Door 72 x 96", [72], [96], [[700]], 88, min_width=72, min_height=96)]
     products.append(product("polar_all_seasons_screen", "Retractable Screens", "Polar All Seasons Retractable Screen", [88], all_seasons_programs, [surcharge("sliding_glass_door", "Sliding Glass Door", 25, 88)], system="All Seasons Single / Double", basis="dealer_net", factor=None, notes=["NET PRICING - NO DEALER DISCOUNTS APPLY.", "Customer retail is not defined; customer totals are blocked."]))
@@ -319,7 +328,7 @@ with pdfplumber.open(str(PDF)) as pdf:
         if name == "Premium":
             table = pdf.pages[168].extract_tables()[0]; widths=p["grid"]["widths"]
             surcharges.append(width_surcharge("drop_valance", "Standard Drop Valance", widths, [money(v) for v in table[6][2:2 + len(widths)]], 169))
-        products.append(product(id_, "Awnings", f"Polar {name} Awning", [page,173,176,177], [p], surcharges, system=name, notes=["Grid width and projection round up independently.", "Standard wall brackets are included.", "Freight amount is unresolved."] + (["Technical maximum is 480 inches; customer pricing above 276 inches is contact-for-price and blocked."] if name=="Select" else [])))
+        products.append(product(id_, "Awnings", f"Polar {name} Awning", [page,173,176,177], [p], surcharges, system=name, notes=[f"{name} is one complete standalone source grid, not a fabric price-group tier.", "Grid width and projection round up independently.", "Standard wall brackets are included.", "Freight amount is unresolved."] + (["Technical maximum is 480 inches; customer pricing above 276 inches is contact-for-price and blocked."] if name=="Select" else [])))
 
     products.append(product("polar_exterior_clutch_unavailable", "Roller Shades", "Polar Exterior Clutch Roller Shade", [8,9], [], [], system="Exterior Clutch", basis="unavailable", factor=None, notes=["Only a stale bookmark and warranty reference exist; no usable product/pricing section is present."]))
 

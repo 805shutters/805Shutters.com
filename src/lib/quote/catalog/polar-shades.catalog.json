@@ -29,13 +29,6 @@
       "id": "polar_interior_roller",
       "productType": "Roller Shades",
       "name": "Polar Interior Roller",
-      "pricingFamilies": [
-        {
-          "id": "polar_interior_roller_fabric_group",
-          "baselineProgramId": "group_1",
-          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10", "group_11", "group_12", "group_13", "group_14"]
-        }
-      ],
       "manufacturer": "Polar",
       "system": "Interior Roller",
       "priceBasis": "suggested_retail",
@@ -10596,19 +10589,34 @@
         "Dimensions round up independently (p20).",
         "Spring assist is included starting at 120 inches wide (p26).",
         "Freight and residential/out-of-area delivery amounts are not defined (p5)."
+      ],
+      "pricingFamilies": [
+        {
+          "id": "polar_interior_roller_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": [
+            "group_1",
+            "group_2",
+            "group_3",
+            "group_4",
+            "group_5",
+            "group_6",
+            "group_7",
+            "group_8",
+            "group_9",
+            "group_10",
+            "group_11",
+            "group_12",
+            "group_13",
+            "group_14"
+          ]
+        }
       ]
     },
     {
       "id": "polar_elite_patio",
       "productType": "Roller Shades",
       "name": "Polar Elite Patio",
-      "pricingFamilies": [
-        {
-          "id": "polar_elite_patio_fabric_group",
-          "baselineProgramId": "group_1",
-          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
-        }
-      ],
       "manufacturer": "Polar",
       "system": "Elite Patio",
       "priceBasis": "suggested_retail",
@@ -12925,19 +12933,30 @@
         "Rod guide maximum shade height is 120 inches.",
         "Vortex dimensional limits are source-defined and must be validated.",
         "Freight amount is unresolved."
+      ],
+      "pricingFamilies": [
+        {
+          "id": "polar_elite_patio_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": [
+            "group_1",
+            "group_2",
+            "group_3",
+            "group_4",
+            "group_5",
+            "group_6",
+            "group_7",
+            "group_8",
+            "group_9",
+            "group_10"
+          ]
+        }
       ]
     },
     {
       "id": "polar_titan_patio",
       "productType": "Roller Shades",
       "name": "Polar Titan Patio",
-      "pricingFamilies": [
-        {
-          "id": "polar_titan_patio_fabric_group",
-          "baselineProgramId": "group_1",
-          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
-        }
-      ],
       "manufacturer": "Polar",
       "system": "Titan Patio",
       "priceBasis": "suggested_retail",
@@ -16586,19 +16605,30 @@
         "Rod guide maximum shade height is 120 inches.",
         "Vortex dimensional limits are source-defined and must be validated.",
         "Freight amount is unresolved."
+      ],
+      "pricingFamilies": [
+        {
+          "id": "polar_titan_patio_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": [
+            "group_1",
+            "group_2",
+            "group_3",
+            "group_4",
+            "group_5",
+            "group_6",
+            "group_7",
+            "group_8",
+            "group_9",
+            "group_10"
+          ]
+        }
       ]
     },
     {
       "id": "polar_mega_exterior",
       "productType": "Roller Shades",
       "name": "Polar Mega Exterior",
-      "pricingFamilies": [
-        {
-          "id": "polar_mega_exterior_fabric_group",
-          "baselineProgramId": "group_1",
-          "memberProgramIds": ["group_1", "group_2", "group_3", "group_4", "group_5", "group_6", "group_7", "group_8", "group_9", "group_10"]
-        }
-      ],
       "manufacturer": "Polar",
       "system": "Mega Exterior",
       "priceBasis": "suggested_retail",
@@ -19255,6 +19285,24 @@
         "Rod guide maximum shade height is 120 inches.",
         "Vortex dimensional limits are source-defined and must be validated.",
         "Freight amount is unresolved."
+      ],
+      "pricingFamilies": [
+        {
+          "id": "polar_mega_exterior_fabric_group",
+          "baselineProgramId": "group_1",
+          "memberProgramIds": [
+            "group_1",
+            "group_2",
+            "group_3",
+            "group_4",
+            "group_5",
+            "group_6",
+            "group_7",
+            "group_8",
+            "group_9",
+            "group_10"
+          ]
+        }
       ]
     },
     {
@@ -19279,7 +19327,7 @@
         {
           "id": "pinch_split_white",
           "name": "Pinch Pleat Split White",
-          "priceGroup": "Pinch Pleat Split White",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19372,7 +19420,7 @@
         {
           "id": "pinch_split_bronze",
           "name": "Pinch Pleat Split Bronze",
-          "priceGroup": "Pinch Pleat Split Bronze",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19465,7 +19513,7 @@
         {
           "id": "pinch_side_white",
           "name": "Pinch Pleat Side White",
-          "priceGroup": "Pinch Pleat Side White",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19558,7 +19606,7 @@
         {
           "id": "pinch_side_bronze",
           "name": "Pinch Pleat Side Bronze",
-          "priceGroup": "Pinch Pleat Side Bronze",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19651,7 +19699,7 @@
         {
           "id": "ripple_white_overlap_80_split",
           "name": "Ripple Fold White Overlap 80 Split",
-          "priceGroup": "Ripple Fold White Overlap 80 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19744,7 +19792,7 @@
         {
           "id": "ripple_white_overlap_80_side",
           "name": "Ripple Fold White Overlap 80 Side",
-          "priceGroup": "Ripple Fold White Overlap 80 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19837,7 +19885,7 @@
         {
           "id": "ripple_white_overlap_100_split",
           "name": "Ripple Fold White Overlap 100 Split",
-          "priceGroup": "Ripple Fold White Overlap 100 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -19930,7 +19978,7 @@
         {
           "id": "ripple_white_overlap_100_side",
           "name": "Ripple Fold White Overlap 100 Side",
-          "priceGroup": "Ripple Fold White Overlap 100 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20023,7 +20071,7 @@
         {
           "id": "ripple_white_overlap_120_split",
           "name": "Ripple Fold White Overlap 120 Split",
-          "priceGroup": "Ripple Fold White Overlap 120 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20116,7 +20164,7 @@
         {
           "id": "ripple_white_overlap_120_side",
           "name": "Ripple Fold White Overlap 120 Side",
-          "priceGroup": "Ripple Fold White Overlap 120 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20209,7 +20257,7 @@
         {
           "id": "ripple_white_butt_80_split",
           "name": "Ripple Fold White Butt 80 Split",
-          "priceGroup": "Ripple Fold White Butt 80 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20302,7 +20350,7 @@
         {
           "id": "ripple_white_butt_80_side",
           "name": "Ripple Fold White Butt 80 Side",
-          "priceGroup": "Ripple Fold White Butt 80 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20395,7 +20443,7 @@
         {
           "id": "ripple_white_butt_100_split",
           "name": "Ripple Fold White Butt 100 Split",
-          "priceGroup": "Ripple Fold White Butt 100 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20488,7 +20536,7 @@
         {
           "id": "ripple_white_butt_100_side",
           "name": "Ripple Fold White Butt 100 Side",
-          "priceGroup": "Ripple Fold White Butt 100 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20581,7 +20629,7 @@
         {
           "id": "ripple_white_butt_120_split",
           "name": "Ripple Fold White Butt 120 Split",
-          "priceGroup": "Ripple Fold White Butt 120 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20674,7 +20722,7 @@
         {
           "id": "ripple_white_butt_120_side",
           "name": "Ripple Fold White Butt 120 Side",
-          "priceGroup": "Ripple Fold White Butt 120 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20767,7 +20815,7 @@
         {
           "id": "ripple_bronze_overlap_80_split",
           "name": "Ripple Fold Bronze Overlap 80 Split",
-          "priceGroup": "Ripple Fold Bronze Overlap 80 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20860,7 +20908,7 @@
         {
           "id": "ripple_bronze_overlap_80_side",
           "name": "Ripple Fold Bronze Overlap 80 Side",
-          "priceGroup": "Ripple Fold Bronze Overlap 80 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -20953,7 +21001,7 @@
         {
           "id": "ripple_bronze_overlap_100_split",
           "name": "Ripple Fold Bronze Overlap 100 Split",
-          "priceGroup": "Ripple Fold Bronze Overlap 100 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21046,7 +21094,7 @@
         {
           "id": "ripple_bronze_overlap_100_side",
           "name": "Ripple Fold Bronze Overlap 100 Side",
-          "priceGroup": "Ripple Fold Bronze Overlap 100 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21139,7 +21187,7 @@
         {
           "id": "ripple_bronze_overlap_120_split",
           "name": "Ripple Fold Bronze Overlap 120 Split",
-          "priceGroup": "Ripple Fold Bronze Overlap 120 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21232,7 +21280,7 @@
         {
           "id": "ripple_bronze_overlap_120_side",
           "name": "Ripple Fold Bronze Overlap 120 Side",
-          "priceGroup": "Ripple Fold Bronze Overlap 120 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21325,7 +21373,7 @@
         {
           "id": "ripple_bronze_butt_80_split",
           "name": "Ripple Fold Bronze Butt 80 Split",
-          "priceGroup": "Ripple Fold Bronze Butt 80 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21418,7 +21466,7 @@
         {
           "id": "ripple_bronze_butt_80_side",
           "name": "Ripple Fold Bronze Butt 80 Side",
-          "priceGroup": "Ripple Fold Bronze Butt 80 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21511,7 +21559,7 @@
         {
           "id": "ripple_bronze_butt_100_split",
           "name": "Ripple Fold Bronze Butt 100 Split",
-          "priceGroup": "Ripple Fold Bronze Butt 100 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21604,7 +21652,7 @@
         {
           "id": "ripple_bronze_butt_100_side",
           "name": "Ripple Fold Bronze Butt 100 Side",
-          "priceGroup": "Ripple Fold Bronze Butt 100 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21697,7 +21745,7 @@
         {
           "id": "ripple_bronze_butt_120_split",
           "name": "Ripple Fold Bronze Butt 120 Split",
-          "priceGroup": "Ripple Fold Bronze Butt 120 Split",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -21790,7 +21838,7 @@
         {
           "id": "ripple_bronze_butt_120_side",
           "name": "Ripple Fold Bronze Butt 120 Side",
-          "priceGroup": "Ripple Fold Bronze Butt 120 Side",
+          "priceGroup": null,
           "priceAxis": "width",
           "grid": {
             "widths": [
@@ -22028,6 +22076,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Each named drapery program is a complete standalone source grid, not a fabric price-group tier.",
         "Track price excludes motor and brackets.",
         "Irismo motor maximum track length is 396 inches."
       ]
@@ -22174,7 +22223,7 @@
         {
           "id": "standard",
           "name": "Premium Pro",
-          "priceGroup": "Premium Pro",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -22526,6 +22575,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Premium Pro is one complete standalone source grid, not a fabric price-group tier.",
         "Grid width and projection round up independently.",
         "Standard wall brackets are included.",
         "Freight amount is unresolved."
@@ -22553,7 +22603,7 @@
         {
           "id": "standard",
           "name": "Premium Plus",
-          "priceGroup": "Premium Plus",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -22878,6 +22928,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Premium Plus is one complete standalone source grid, not a fabric price-group tier.",
         "Grid width and projection round up independently.",
         "Standard wall brackets are included.",
         "Freight amount is unresolved."
@@ -22905,7 +22956,7 @@
         {
           "id": "standard",
           "name": "Premium",
-          "priceGroup": "Premium",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -23295,6 +23346,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Premium is one complete standalone source grid, not a fabric price-group tier.",
         "Grid width and projection round up independently.",
         "Standard wall brackets are included.",
         "Freight amount is unresolved."
@@ -23322,7 +23374,7 @@
         {
           "id": "standard",
           "name": "Select",
-          "priceGroup": "Select",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -23800,6 +23852,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Select is one complete standalone source grid, not a fabric price-group tier.",
         "Grid width and projection round up independently.",
         "Standard wall brackets are included.",
         "Freight amount is unresolved.",
@@ -23828,7 +23881,7 @@
         {
           "id": "standard",
           "name": "Drop Arm Window",
-          "priceGroup": "Drop Arm Window",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -24211,6 +24264,7 @@
       ],
       "fabricByYard": [],
       "notes": [
+        "Drop Arm Window is one complete standalone source grid, not a fabric price-group tier.",
         "Grid width and projection round up independently.",
         "Standard wall brackets are included.",
         "Freight amount is unresolved."

@@ -116,27 +116,27 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.programName).toBe("Cordless Fabric - Price Group 2");
-    expect(result.total).toBe(407.55);
+    expect(result.total).toBe(494);
     expect(result.components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 298,
           wholesaleAmount: 98.34,
-          customerAmount: 245.85,
+          customerAmount: 298,
         }),
         expect.objectContaining({
           category: "fabric_upgrade",
           catalogAmount: 30,
           wholesaleAmount: 9.9,
-          customerAmount: 24.75,
+          customerAmount: 30,
         }),
         expect.objectContaining({
           category: "operating_system",
           priceLineId: "motor:autowand:autowand",
           catalogAmount: 166,
           wholesaleAmount: 54.78,
-          customerAmount: 136.95,
+          customerAmount: 166,
         }),
         expect.objectContaining({
           id: "accessory:autowand_included_charging_kit",
@@ -149,7 +149,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 494,
       wholesalePerWindow: 163.02,
-      customerPerWindow: 407.55,
+      customerPerWindow: 494,
     });
     expect(priced.costResult).toMatchObject({
       ok: true,
@@ -163,7 +163,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       effectiveDealerFactor: 0.33,
     });
     const customerRetailSnapshot = JSON.stringify(priced.snapshot?.retail);
-    expect(customerRetailSnapshot).toContain('"customerAmount":245.85');
+    expect(customerRetailSnapshot).toContain('"customerAmount":298');
     expect(customerRetailSnapshot).not.toMatch(
       /wholesaleAmount|catalogAmount|dealerFactor|processingFee|landedCost/i,
     );
@@ -204,7 +204,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
-    expect(result.total).toBe(709.5);
+    expect(result.total).toBe(860);
     expect(result.internalCost?.productCostTotal).toBe(283.8);
     expect(result.components).toEqual(
       expect.arrayContaining([
@@ -212,7 +212,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           category: "base_grid",
           catalogAmount: 628,
           wholesaleAmount: 207.24,
-          customerAmount: 518.1,
+          customerAmount: 628,
         }),
         expect.objectContaining({
           id: "accessory:fabric_valance_3_1_2in_4_1_2in_and_6in",
@@ -220,14 +220,14 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           basis: "width_ladder",
           catalogAmount: 232,
           wholesaleAmount: 76.56,
-          customerAmount: 191.4,
+          customerAmount: 232,
         }),
       ]),
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 860,
       wholesalePerWindow: 283.8,
-      customerPerWindow: 709.5,
+      customerPerWindow: 860,
     });
     expect(quote.sendability.sendable).toBe(true);
   });
@@ -267,17 +267,23 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
-    expect(result.total).toBe(791.18);
+    expect(result.total).toBe(959);
     expect(result.internalCost?.productCostTotal).toBe(316.47);
     expect(result.components).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 628,
+          wholesaleAmount: 207.24,
+          customerAmount: 628,
+        }),
         expect.objectContaining({
           id: "accessory:8in_fabric_valance_and_cassette",
           category: "accessory",
           basis: "width_ladder",
           catalogAmount: 331,
           wholesaleAmount: 109.23,
-          customerAmount: 273.08,
+          customerAmount: 331,
         }),
       ]),
     );
@@ -291,7 +297,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 959,
       wholesalePerWindow: 316.47,
-      customerPerWindow: 791.18,
+      customerPerWindow: 959,
     });
     expect(quote.sendability.sendable).toBe(true);
   });
@@ -331,17 +337,23 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
-    expect(result.total).toBe(709.5);
+    expect(result.total).toBe(860);
     expect(result.internalCost?.productCostTotal).toBe(283.8);
     expect(result.components).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 628,
+          wholesaleAmount: 207.24,
+          customerAmount: 628,
+        }),
         expect.objectContaining({
           id: "accessory:fabric_valance_3_1_2in_4_1_2in_and_6in",
           category: "accessory",
           basis: "width_ladder",
           catalogAmount: 232,
           wholesaleAmount: 76.56,
-          customerAmount: 191.4,
+          customerAmount: 232,
         }),
       ]),
     );
@@ -355,7 +367,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 860,
       wholesalePerWindow: 283.8,
-      customerPerWindow: 709.5,
+      customerPerWindow: 860,
     });
     expect(quote.sendability.sendable).toBe(true);
   });
@@ -394,16 +406,28 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
-    expect(result.total).toBe(380.33);
+    expect(result.total).toBe(461);
     expect(result.components).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 298,
+          wholesaleAmount: 98.34,
+          customerAmount: 298,
+        }),
+        expect.objectContaining({
+          category: "fabric_upgrade",
+          catalogAmount: 74,
+          wholesaleAmount: 24.42,
+          customerAmount: 74,
+        }),
         expect.objectContaining({
           id: "operating:smartrelease",
           category: "operating_system",
           priceLineId: "smartrelease",
           catalogAmount: 89,
           wholesaleAmount: 29.37,
-          customerAmount: 73.43,
+          customerAmount: 89,
         }),
       ]),
     );
@@ -417,7 +441,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 461,
       wholesalePerWindow: 152.13,
-      customerPerWindow: 380.33,
+      customerPerWindow: 461,
     });
     expect(quote.sendability.sendable).toBe(true);
   });
@@ -458,16 +482,28 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.validationStatus).toBe("valid");
-    expect(result.total).toBe(344.03);
+    expect(result.total).toBe(417);
     expect(result.components).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 298,
+          wholesaleAmount: 98.34,
+          customerAmount: 298,
+        }),
+        expect.objectContaining({
+          category: "fabric_upgrade",
+          catalogAmount: 30,
+          wholesaleAmount: 9.9,
+          customerAmount: 30,
+        }),
         expect.objectContaining({
           id: "operating:smartrelease",
           category: "operating_system",
           priceLineId: "smartrelease",
           catalogAmount: 89,
           wholesaleAmount: 29.37,
-          customerAmount: 73.43,
+          customerAmount: 89,
         }),
       ]),
     );
@@ -478,6 +514,11 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
           component.priceLineId === "smartrelease",
       ),
     ).toBe(false);
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 417,
+      wholesalePerWindow: 137.61,
+      customerPerWindow: 417,
+    });
     expect(quote.sendability.sendable).toBe(true);
   });
 
@@ -519,15 +560,25 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 346,
       wholesalePerWindow: 114.18,
-      customerPerWindow: 285.45,
+      customerPerWindow: 346,
     });
-    expect(result.discountAmount).toBe(42.82);
-    expect(result.unitPrice).toBe(242.63);
-    expect(result.total).toBe(242.63);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 346,
+          wholesaleAmount: 114.18,
+          customerAmount: 346,
+        }),
+      ]),
+    );
+    expect(result.discountAmount).toBe(51.9);
+    expect(result.unitPrice).toBe(294.1);
+    expect(result.total).toBe(294.1);
     expect(quote.sendability.sendable).toBe(true);
   });
 
-  it("keeps Polar's $142 source cell but applies V2 retail to its $63.90 dealer cost", () => {
+  it("keeps Polar's $142 source cell as retail and its $63.90 dealer cost internal", () => {
     const source = priceDesign({
       productId: "polar_interior_roller",
       programId: "group_1",
@@ -554,9 +605,9 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     const result = quote.designs[0].result;
     expect(result).toMatchObject({
       ok: true,
-      base: 159.75,
+      base: 142,
       wholesaleBase: 63.9,
-      total: 159.75,
+      total: 142,
       productStatus: "restriction_source_incomplete",
       validationStatus: "blocked",
       internalCost: {
@@ -564,13 +615,24 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         productCostTotal: 63.9,
       },
     });
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 142,
+          wholesaleAmount: 63.9,
+          customerAmount: 142,
+        }),
+      ]),
+    );
     expect(quote.sendability.sendable).toBe(false);
     expect(quote.sendability.lines[0].reasons.map((reason) => reason.code)).toContain(
       "product_status_not_sendable",
     );
   });
 
-  it("marks up the exact Lotus $35.02 roller cost by 2.5 but remains fail-closed for sending", () => {
+  it("keeps the exact Lotus $35.02 dealer cost internal and blocks undefined retail", () => {
     expect(
       priceDealerNetDesign({
         productId: "lotus_roller_shades",
@@ -595,25 +657,32 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         "lotus_rs_1pct_custom",
       ),
     );
-    expect(quote.designs[0].result).toMatchObject({
-      ok: true,
-      base: 87.55,
-      wholesaleBase: 35.02,
-      total: 87.55,
+    const result = quote.designs[0].result;
+    expect(result).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
       productStatus: "restriction_source_incomplete",
       validationStatus: "blocked",
-      internalCost: {
-        basis: "dealer_net",
-        productCostUnit: 35.02,
-        productCostTotal: 35.02,
-      },
+      pricedSelectionFingerprint: null,
     });
+    expect(result).not.toHaveProperty("base");
+    expect(result).not.toHaveProperty("total");
+    expect(result.internalCost).toMatchObject({
+      basis: "dealer_net",
+      productCostUnit: 35.02,
+      productCostTotal: 35.02,
+      landedCostTotal: 35.02,
+      freightStatus: "unresolved",
+    });
+    expect(JSON.stringify(quote.customerQuote)).not.toMatch(
+      /wholesale|internalCost|landedCost|productCost|dealerCost|margin/i,
+    );
     expect(quote.sendability.sendable).toBe(false);
   });
 
-  it("pins Onyx U.S. Made Vinyl at $13.60 cost/$34 retail per square foot and refuses an unsupported send", () => {
+  it("pins Onyx U.S. Made Vinyl at $13.60 dealer cost and blocks unverified customer retail", () => {
     expect(
-      priceDesign({
+      priceDealerNetDesign({
         productId: "onyx_shutters",
         programId: "onyx_us_made_vinyl",
         widthInches: 24,
@@ -622,8 +691,18 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     ).toMatchObject({
       ok: true,
       billableSqft: 8,
-      base: 272,
-      wholesaleBase: 108.8,
+      dealerNetUnitCost: 108.8,
+    });
+    expect(
+      priceDesign({
+        productId: "onyx_shutters",
+        programId: "onyx_us_made_vinyl",
+        widthInches: 24,
+        heightInches: 36,
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
     });
 
     const quoteLine = line("onyx-line", "Shutters", 24, 36);
@@ -654,7 +733,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(quote.sendability.sendable).toBe(false);
   });
 
-  it("prices a validated three-shade motorized Norman assembly and SmartSense from dealer cost", () => {
+  it("prices a validated three-shade Norman assembly at source MSRP while retaining dealer cost", () => {
     const quoteLine = line("norman-coupled-line", "Roller Shades", 72, 60);
     const baseOptions = {
       fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
@@ -694,10 +773,10 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       throw new Error(JSON.stringify(motorOnlyResult, null, 2));
     }
     expect(motorOnlyResult).toMatchObject({
-      base: 732.6,
+      base: 888,
       wholesaleBase: 293.04,
       configurationUnits: 3,
-      total: 1_720.95,
+      total: 2_086,
       productStatus: "documented_limited",
       validationStatus: "valid",
     });
@@ -705,12 +784,12 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       expect.arrayContaining([
         expect.objectContaining({
           id: "coupled_shade",
-          amount: 193.05,
+          amount: 234,
           wholesaleAmount: 77.22,
         }),
         expect.objectContaining({
           id: "motor:smart_motorization:motor",
-          amount: 795.3,
+          amount: 964,
           wholesaleAmount: 318.12,
           detail: "482 x 2",
         }),
@@ -719,7 +798,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(motorOnlyResult.componentTotals).toMatchObject({
       catalogPerWindow: 2_086,
       wholesalePerWindow: 688.38,
-      customerPerWindow: 1_720.95,
+      customerPerWindow: 2_086,
     });
     expect(motorOnly.sendability.sendable).toBe(true);
 
@@ -734,7 +813,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:smart_motorization:smartsense",
-          amount: 49.5,
+          amount: 60,
           wholesaleAmount: 19.8,
         }),
       ]),
@@ -742,9 +821,9 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(smartResult.componentTotals).toMatchObject({
       catalogPerWindow: 2_146,
       wholesalePerWindow: 708.18,
-      customerPerWindow: 1_770.45,
+      customerPerWindow: 2_146,
     });
-    expect(smartResult.total - motorOnlyResult.total).toBe(49.5);
+    expect(smartResult.total - motorOnlyResult.total).toBe(60);
     expect(
       Math.round(
         ((smartResult.internalCost?.productCostTotal ?? 0) -

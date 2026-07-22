@@ -32,7 +32,6 @@ const MOTOR_GUIDE_SHA256 =
   "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290";
 const QUOTE_COUNT = 20;
 const ITEMS_PER_QUOTE = 20;
-const MARKUP = 2.5;
 // Literal current-account values captured from the live, unsubmitted dealer
 // drafts. Keep these independent of the runtime policy object so changing the
 // implementation cannot silently rewrite the oracle's expected arithmetic.
@@ -380,10 +379,6 @@ function eligibleWholesaleCents(
   return Math.round((catalogCents * numerator) / FACTOR_DENOMINATOR);
 }
 
-function customerCents(wholesaleCents: number): number {
-  return Math.round(wholesaleCents * MARKUP);
-}
-
 function processingFeeCents(basisCents: number): number {
   return Math.round(
     (basisCents * PROCESSING_FEE_BASIS_POINTS) / 10_000,
@@ -453,16 +448,10 @@ function allocatePortalGroup(
     factor.numerator,
     factor.denominator,
   );
-  const customerAllocations = largestRemainderAllocation(
-    wholesaleAllocations,
-    5,
-    2,
-  );
-
   return components.map((component, index) => ({
     ...component,
     wholesaleCents: wholesaleAllocations[index],
-    customerCents: customerAllocations[index],
+    customerCents: component.catalogCents,
   }));
 }
 
@@ -604,8 +593,8 @@ function expectedForStage(
     .filter((component) => component.category === "operating_system")
     .reduce((sum, component) => sum + component.wholesaleCents, 0);
 
-  const baseCustomerCents = customerCents(baseWholesaleCents);
-  const selectedGridCustomerCents = customerCents(selectedGridWholesaleCents);
+  const baseCustomerCents = baseCatalogCents;
+  const selectedGridCustomerCents = selectedGridCatalogCents;
   const fabricCustomerCents = selectedGridCustomerCents - baseCustomerCents;
   const accessoryCustomerCents = pricedComponents
     .filter((component) => component.category === "accessory")
@@ -1588,7 +1577,7 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
       operating: 4_088_500,
       total: 20_768_700,
     });
-    expect(aggregateCustomerCents).toBe(30_136_338);
+    expect(aggregateCustomerCents).toBe(37_601_165);
     expect(aggregateWholesaleCents).toBe(13_308_877);
     expect(aggregateFreightCents).toBe(908_000);
     expect(aggregateProcessingFeeCents).toBe(284_339);

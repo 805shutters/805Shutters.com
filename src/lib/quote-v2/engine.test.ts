@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { priceDesign } from "@/lib/quote/pricing";
+import { priceDealerNetDesign, priceDesign } from "@/lib/quote/pricing";
 import type { SelectionContext, SelectionRecord } from "./core";
 import {
   authoritativeAutomaticSurchargeSelections,
@@ -72,7 +72,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result).not.toHaveProperty("unitPrice");
   });
 
-  it("marks up eligible dealer-net products by exactly 2.5", () => {
+  it("fails closed when a dealer-net product has no authoritative customer retail", () => {
     const context = selection(
       "lotus_mini_blinds",
       "lotus_amx_1in_aluminum_custom",
@@ -95,19 +95,15 @@ describe("Quote V2 authoritative pricing engine", () => {
       },
       includeInternalCost: true,
     });
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.base).toBe(60.75); // $24.30 dealer net x 2.5
-    expect(result.unitPrice).toBe(60.75);
-    expect(result.total).toBe(121.5);
-    expect(result.internalCost).toMatchObject({
-      basis: "dealer_net",
-      productCostUnit: 24.3,
-      productCostTotal: 48.6,
-      processingFeeAllocated: 0,
-      landedCostTotal: 48.6,
+    expect(result).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      pricedSelectionFingerprint: null,
+      pricedCatalogVersion: null,
     });
-    expect(result.internalCost).not.toHaveProperty("effectiveDealerFactor");
+    expect(result).not.toHaveProperty("base");
+    expect(result).not.toHaveProperty("total");
+    expect(result).not.toHaveProperty("internalCost");
   });
 
   it("does not apply Norman policy to a non-Norman catalog product with a forged label", () => {
@@ -129,13 +125,14 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
     if (!result.ok) return;
     expect(result).toMatchObject({
-      base: 159.75,
+      base: 142,
       wholesaleBase: 63.9,
+      total: 142,
     });
     expect(result.internalCost).not.toHaveProperty("effectiveDealerFactor");
   });
 
-  it("prices Norman catalog products from dealer cost instead of published suggested retail", () => {
+  it("preserves Norman suggested retail while deriving current dealer cost", () => {
     const context = selection(
       "roller",
       "roller_cordless_fabric_price_group_1_pg1",
@@ -168,8 +165,9 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.wholesaleBase).toBe(83.82); // $254 list x current portal factor .33
-    expect(result.base).toBe(209.55); // $83.82 eligible dealer cost x 2.5
-    expect(result.unitPrice).toBe(209.55);
+    expect(result.base).toBe(254);
+    expect(result.unitPrice).toBe(254);
+    expect(result.total).toBe(254);
     expect(result.internalCost?.productCostTotal).toBe(83.82);
     expect(result.internalCost?.effectiveDealerFactor).toBe(0.33);
   });
@@ -248,7 +246,9 @@ describe("Quote V2 authoritative pricing engine", () => {
     if (!standardResult.ok || !slowerResult.ok) return;
     expect(standardResult.wholesaleBase).toBe(83.82);
     expect(slowerResult.wholesaleBase).toBe(75.44);
-    expect(slowerResult.base).toBe(188.6);
+    expect(standardResult.base).toBe(254);
+    expect(slowerResult.base).toBe(254);
+    expect(slowerResult.total).toBe(standardResult.total);
   });
 
   it("matches the live slow-schedule portal rounding groups and allocates every component cent", () => {
@@ -296,21 +296,21 @@ describe("Quote V2 authoritative pricing engine", () => {
           category: "base_grid",
           catalogAmount: 254,
           wholesaleAmount: 75.44,
-          customerAmount: 188.6,
+          customerAmount: 254,
         }),
         expect.objectContaining({
           id: "operating:smartrelease",
           category: "operating_system",
           catalogAmount: 89,
           wholesaleAmount: 26.43,
-          customerAmount: 66.08,
+          customerAmount: 89,
         }),
         expect.objectContaining({
           id: "accessory:shim",
           category: "accessory",
           catalogAmount: 7,
           wholesaleAmount: 2.08,
-          customerAmount: 5.2,
+          customerAmount: 7,
         }),
       ]),
     );
@@ -340,9 +340,9 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
     expect(result.componentTotals).toMatchObject({
       wholesalePerWindow: 103.95,
-      customerPerWindow: 259.88,
+      customerPerWindow: 350,
     });
-    expect(result.unitPrice).toBe(259.88);
+    expect(result.unitPrice).toBe(350);
 
     const customer = JSON.stringify(toCustomerQuotePriceResult(result));
     expect(customer).not.toMatch(
@@ -856,7 +856,7 @@ describe("Quote V2 authoritative pricing engine", () => {
       "onyx.source.current_effective_revision_missing",
     );
 
-    const pinnedRate = priceDesign({
+    const pinnedRate = priceDealerNetDesign({
       productId: context.productId,
       programId: context.programId ?? undefined,
       widthInches: context.widthInches,
@@ -864,15 +864,24 @@ describe("Quote V2 authoritative pricing engine", () => {
     });
     expect(pinnedRate).toMatchObject({
       ok: true,
-      base: 272,
-      wholesaleBase: 108.8,
-    }); // 8 sq ft minimum x $13.60; its retail policy remains $272 / $34 per sq ft.
+      billableSqft: 8,
+      dealerNetUnitCost: 108.8,
+    });
+    expect(priceDesign({
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+    })).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+    });
   });
 
   it("keeps retail component fields but removes source-dollar formulas from customer payloads", () => {
     const context = selection(
-      "lotus_mini_blinds",
-      "lotus_amx_1in_aluminum_custom",
+      "polar_interior_roller",
+      "group_1",
       {},
       { widthInches: 30, heightInches: 48 },
     );
@@ -1053,8 +1062,8 @@ describe("Quote V2 authoritative pricing engine", () => {
 
   it("excludes every internal-cost field from customer projections and snapshots", () => {
     const context = selection(
-      "lotus_mini_blinds",
-      "lotus_amx_1in_aluminum_custom",
+      "polar_interior_roller",
+      "group_1",
       {},
       { widthInches: 30, heightInches: 48 },
     );
@@ -1075,7 +1084,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(serialized).not.toMatch(
       /wholesale|internalCost|costStatus|freightAllocated|processingFee|landedCost/i,
     );
-    expect(serialized).not.toContain("24.3");
+    expect(serialized).not.toContain("63.9");
     expect(serialized).not.toContain("2.5");
 
     const snapshot = createImmutablePriceSnapshot(result);
