@@ -94,8 +94,17 @@ export type ProcessOrderCogsOptions = {
   maxResults?: number;
   messageIds?: string[];
   actorEmail?: string;
+  days?: number;
+  target?: ProcessOrderCogsTarget;
   /** Archive (remove from inbox) each recognized order email after processing. Default on. */
   archive?: boolean;
+};
+
+export type ProcessOrderCogsTarget = {
+  customerName: string;
+  jobId?: string | null;
+  quoteId?: string | null;
+  entryId?: string | null;
 };
 
 export type ProcessOrderCogsResult = {
@@ -114,17 +123,33 @@ export type ProcessOrderCogsResult = {
   telegramErrors: number;
   /** Emails whose job was actually marked ordered + COGS written. */
   applied?: number;
+  /** Sum added by this pull, even when the optional audit-log write fails. */
+  addedCogs?: number;
   /** Emails whose audit-log record could not be saved (core job update still applied). */
   recordErrors?: number;
   /** First processing error (diagnostic), if any. */
   lastError?: string;
   /** First audit-log insert failure (diagnostic), if any. */
   lastInsertError?: string;
+  targetCogsTotal?: number | null;
   emails: CrmOrderCogsEmail[];
 };
 
 function defaultQuery(mailbox: string) {
   return `in:inbox to:${mailbox} newer_than:30d -label:Processed (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
+}
+
+export function customerOrderCogsQuery(mailbox: string, customerName: string, days = 14) {
+  const safeDays = Math.min(Math.max(Math.trunc(days) || 14, 1), 60);
+  const nameTerms = customerName
+    .replace(/[^a-z0-9&.' -]/gi, " ")
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1)
+    .map((token) => `"${token.replace(/"/g, "")}"`)
+    .join(" ");
+  const vendorTerms = `(from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware")`;
+  return `in:anywhere to:${mailbox} newer_than:${safeDays}d ${vendorTerms}${nameTerms ? ` ${nameTerms}` : ""}`;
 }
 
 function envValue(keys: string[]) {
@@ -1157,11 +1182,27 @@ export async function processOrderCogsInbox(
   options: ProcessOrderCogsOptions = {}
 ): Promise<ProcessOrderCogsResult> {
   const mailbox = normalizedMailbox(options.mailbox);
-  const query = options.query || process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox);
+  const query = options.query || (options.target?.customerName
+    ? customerOrderCogsQuery(mailbox, options.target.customerName, options.days)
+    : process.env.ORDER_COGS_GMAIL_QUERY || defaultQuery(mailbox));
   const maxResults = maxResultsValue(options.maxResults);
   const actor: CrmActor = { email: options.actorEmail || "order-cogs" };
   const archiveEnabled = options.archive ?? process.env.ORDER_COGS_ARCHIVE !== "false";
-  const candidates = await loadOrderCogsCandidates(supabase);
+  const allCandidates = await loadOrderCogsCandidates(supabase);
+  const targetName = options.target?.customerName.trim().toLowerCase() || "";
+  const candidates = options.target
+    ? allCandidates.filter((candidate) => {
+        const hasTargetId = Boolean(options.target?.jobId || options.target?.quoteId || options.target?.entryId);
+        if (hasTargetId) {
+          return Boolean(
+            (options.target?.jobId && candidate.jobId === options.target.jobId) ||
+            (options.target?.quoteId && candidate.quoteId === options.target.quoteId) ||
+            (options.target?.entryId && candidate.entryId === options.target.entryId)
+          );
+        }
+        return candidate.customerName.trim().toLowerCase() === targetName;
+      })
+    : allCandidates;
   const accessToken = options.messageIds?.length ? null : await getGmailAccessToken(mailbox);
   const processedLabelId = archiveEnabled && accessToken ? await ensureProcessedLabel(accessToken) : null;
   const messages = options.messageIds?.length
@@ -1308,6 +1349,9 @@ export async function processOrderCogsInbox(
       if (status === "skipped") result.skipped += 1;
       if (status === "error") result.errors += 1;
       if (review.canApply && cogsApplied) result.applied = (result.applied || 0) + 1;
+      if (review.canApply && cogsApplied && extraction.orderAmount) {
+        result.addedCogs = addMoney(result.addedCogs || 0, extraction.orderAmount);
+      }
 
       // Archive ONLY emails we actually applied or proved were already applied.
       // needs_review / unmatched stay in the inbox so a human can act on them — never
@@ -1362,6 +1406,10 @@ export async function processOrderCogsInbox(
         }
       }
     }
+  }
+
+  if (options.target) {
+    result.targetCogsTotal = candidates.length ? roundMoney(candidates[0].cogsAmount) : null;
   }
 
   return result;

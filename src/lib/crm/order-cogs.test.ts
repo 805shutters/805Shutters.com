@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
+import { customerOrderCogsQuery, extractLotusOrderCogs, extractNormanOrderCogs, extractOnyxOrderCogs, extractOrderCogsFromText, orderCogsTelegramText, processOrderCogsInbox } from "@/lib/crm/order-cogs";
 
 function jsonResponse(body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -315,6 +315,14 @@ describe("extractLotusOrderCogs", () => {
   });
 });
 
+describe("customerOrderCogsQuery", () => {
+  it("searches the selected mailbox, recent date range, vendors, and every customer-name token", () => {
+    expect(customerOrderCogsQuery("805shutters@gmail.com", "Jack Plasmyer", 14)).toBe(
+      'in:anywhere to:805shutters@gmail.com newer_than:14d (from:normanusa.com OR from:orders@onyxshutters.com OR from:lotusblind.com OR subject:"Lotus & Windoware") "Jack" "Plasmyer"'
+    );
+  });
+});
+
 describe("orderCogsTelegramText", () => {
   it("reports the exact extracted amount and resulting CRM COGS total", () => {
     expect(orderCogsTelegramText({
@@ -551,14 +559,23 @@ describe("processOrderCogsInbox", () => {
     );
 
     const supabase = new FakeSupabase();
-    const result = await processOrderCogsInbox(supabase as never, { maxResults: 2 });
+    const result = await processOrderCogsInbox(supabase as never, {
+      mailbox: "805shutters@gmail.com",
+      days: 14,
+      maxResults: 2,
+      target: { customerName: "Jim Derenthal", jobId: "job-1", entryId: "entry-1" }
+    });
 
     expect(result.scanned).toBe(2);
     expect(result.processed).toBe(2);
     expect(result.matched).toBe(2);
     expect(result.needsReview).toBe(0);
     expect(result.applied).toBe(2);
+    expect(result.addedCogs).toBe(929.66);
     expect(result.archived).toBe(2);
+    expect(result.targetCogsTotal).toBe(929.66);
+    expect(result.query).toContain('newer_than:14d');
+    expect(result.query).toContain('"Jim" "Derenthal"');
 
     const cogsUpdates = supabase.updates.filter((u) => u.table === "crm_quote_bookkeeping_entries");
     expect(cogsUpdates).toHaveLength(2);

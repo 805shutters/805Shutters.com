@@ -724,6 +724,8 @@ type OrderCogsPullResult = {
   skipped: number;
   errors: number;
   applied?: number;
+  addedCogs?: number;
+  targetCogsTotal?: number | null;
   emails?: CrmOrderCogsEmail[];
 };
 
@@ -1591,6 +1593,67 @@ export function CrmApp({
       ...fallbackPatch,
       message: fallbackMessage
     });
+  }
+
+  async function findCogsFromDrill(entry: DrillEntry) {
+    if (!session) return false;
+
+    const row = entry.row;
+    const customerName = entry.job?.customer_name || row?.customerName || entry.customerName || entry.name;
+    const target = {
+      customerName,
+      jobId: entry.job?.id || entry.jobId || row?.jobId || null,
+      quoteId: row?.quoteId || null,
+      entryId: row?.id || null
+    };
+
+    setBusy(true);
+    setMessage(`Searching recent manufacturer orders for ${customerName}...`);
+    try {
+      const result = await crmFetch<OrderCogsPullResult>(session, "/api/crm/order-cogs/pull", {
+        method: "POST",
+        body: JSON.stringify({ mailbox: "805shutters@gmail.com", days: 14, maxResults: 100, target })
+      });
+      const dashboardResult = await refresh();
+      if (dashboardResult && drill) {
+        setDrill(
+          rebuildDrillPayload(
+            drill,
+            dashboardResult.jobs,
+            dashboardResult.quotes,
+            dashboardResult.bookkeepingRows,
+            dashboardResult.customerFiles,
+            dashboardResult.installationInvoiceEmails,
+            dashboardResult.orderCogsEmails
+          )
+        );
+      }
+
+      const appliedCount = result.applied || 0;
+      const addedCogs = result.addedCogs || 0;
+      const total = result.targetCogsTotal == null ? null : toLedgerCurrency(result.targetCogsTotal);
+      if (appliedCount) {
+        setMessage(
+          `Found ${appliedCount} new manufacturer order${appliedCount === 1 ? "" : "s"} for ${customerName}. Added ${toLedgerCurrency(addedCogs)}; COGS total ${total || "updated"}.`
+        );
+        return true;
+      }
+      if (result.needsReview || result.unmatched) {
+        setMessage(`Found manufacturer paperwork for ${customerName}, but ${result.needsReview + result.unmatched} email${result.needsReview + result.unmatched === 1 ? " needs" : "s need"} review before COGS can be recorded.`);
+        return false;
+      }
+      if (result.skipped) {
+        setMessage(`No new COGS for ${customerName}; ${result.skipped} recent order${result.skipped === 1 ? " was" : "s were"} already recorded. COGS total ${total || "unchanged"}.`);
+        return true;
+      }
+      setMessage(`No manufacturer order paperwork was found for ${customerName} in the last 14 days.`);
+      return false;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Recent manufacturer orders could not be searched.");
+      return false;
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveDrillField(entry: DrillEntry, patch: DrillFieldPatch) {
@@ -2703,6 +2766,7 @@ export function CrmApp({
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
             onMarkOrdered={markOrderedFromDrill}
+            onFindCogs={findCogsFromDrill}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
@@ -2766,6 +2830,7 @@ export function CrmApp({
             onReassignSale={reassignSale}
             onMeasureNeededAction={updateMeasureNeededEntry}
             onMarkOrdered={markOrderedFromDrill}
+            onFindCogs={findCogsFromDrill}
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
@@ -5355,6 +5420,7 @@ function CommandDashboard({
   onReassignSale,
   onMeasureNeededAction,
   onMarkOrdered,
+  onFindCogs,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -5377,6 +5443,7 @@ function CommandDashboard({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
+  onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -5502,6 +5569,8 @@ function CommandDashboard({
         onOpenCustomer={onOpenCustomer}
         onReassignSale={onReassignSale}
         onMeasureNeededAction={onMeasureNeededAction}
+        onMarkOrdered={onMarkOrdered}
+        onFindCogs={onFindCogs}
         onSaveField={onSaveField}
         onLedgerLineAction={onLedgerLineAction}
         onPaymentPlanAction={onPaymentPlanAction}
@@ -5528,6 +5597,8 @@ function CommandDashboard({
           onOpenCustomer={onOpenCustomer}
           onReassignSale={onReassignSale}
           onMeasureNeededAction={onMeasureNeededAction}
+          onMarkOrdered={onMarkOrdered}
+          onFindCogs={onFindCogs}
           onSaveField={onSaveField}
           onLedgerLineAction={onLedgerLineAction}
         onPaymentPlanAction={onPaymentPlanAction}
@@ -5885,6 +5956,7 @@ type DrillPanelProps = {
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
+  onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -5901,6 +5973,7 @@ function DrillSearchResultsPanel({
   onReassignSale,
   onMeasureNeededAction,
   onMarkOrdered,
+  onFindCogs,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6000,6 +6073,7 @@ function DrillSearchResultsPanel({
                 onReassignSale={onReassignSale}
                 onMeasureNeededAction={onMeasureNeededAction}
                 onMarkOrdered={onMarkOrdered}
+                onFindCogs={onFindCogs}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
                 onPaymentPlanAction={onPaymentPlanAction}
@@ -6445,6 +6519,7 @@ function GlobalCustomerSearchPanel({
   onReassignSale,
   onMeasureNeededAction,
   onMarkOrdered,
+  onFindCogs,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6462,6 +6537,7 @@ function GlobalCustomerSearchPanel({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
+  onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -6648,6 +6724,7 @@ function GlobalCustomerSearchPanel({
                 onReassignSale={onReassignSale}
                 onMeasureNeededAction={onMeasureNeededAction}
                 onMarkOrdered={onMarkOrdered}
+                onFindCogs={onFindCogs}
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
                 onPaymentPlanAction={onPaymentPlanAction}
@@ -6692,6 +6769,7 @@ function DrillDetailPanel({
   onReassignSale,
   onMeasureNeededAction,
   onMarkOrdered,
+  onFindCogs,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6723,6 +6801,7 @@ function DrillDetailPanel({
             onReassignSale={onReassignSale}
             onMeasureNeededAction={onMeasureNeededAction}
             onMarkOrdered={onMarkOrdered}
+            onFindCogs={onFindCogs}
             onSaveField={onSaveField}
             onLedgerLineAction={onLedgerLineAction}
             onPaymentPlanAction={onPaymentPlanAction}
@@ -6742,6 +6821,7 @@ function DrillDetailCard({
   onReassignSale,
   onMeasureNeededAction,
   onMarkOrdered,
+  onFindCogs,
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction
@@ -6753,6 +6833,7 @@ function DrillDetailCard({
   onReassignSale?: (entry: DrillEntry, owner: string) => void;
   onMeasureNeededAction?: (entry: DrillEntry, action: MeasureNeededAction) => void;
   onMarkOrdered?: (entry: DrillEntry) => Promise<boolean>;
+  onFindCogs?: (entry: DrillEntry) => Promise<boolean>;
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
@@ -7412,6 +7493,16 @@ function DrillDetailCard({
         }
       ]
     : [];
+  const findCogsCommand: DrillCommandButton | null = onFindCogs && (row || canEditJob)
+    ? {
+        key: "find-cogs",
+        label: "Find COGS",
+        detail: "Search recent orders",
+        tone: cogsMissingHighlight ? "missing" : undefined,
+        disabled: busy,
+        onClick: () => void onFindCogs(entry)
+      }
+    : null;
   const orderCommands: DrillTextCommand[] = row
     ? [
         {
@@ -7491,7 +7582,12 @@ function DrillDetailCard({
             <span>Editable Amounts</span>
             <div className="crm-drill-command-grid crm-drill-command-grid--editable">
               {amountCommands.map((command) => (
-                <DrillAmountCommandControl command={command} key={command.key} />
+                command.key === "write-cogs" && findCogsCommand ? (
+                  <div className="crm-drill-cogs-command-stack" key={command.key}>
+                    <DrillAmountCommandControl command={command} />
+                    <DrillCommandButtonControl command={findCogsCommand} />
+                  </div>
+                ) : <DrillAmountCommandControl command={command} key={command.key} />
               ))}
             </div>
           </section>

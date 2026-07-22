@@ -13868,6 +13868,13 @@ html.mobile-menu-open {
   grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
 }
 
+.crm-drill-cogs-command-stack {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+}
+
 .crm-drill-command-button {
   display: grid;
   align-content: center;
