@@ -2,7 +2,7 @@
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, Check, FileSignature, Loader2, Mail, Ruler, Save, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
 import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
@@ -134,6 +134,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [signerName, setSignerName] = useState("");
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
+  const [activeLineIndex, setActiveLineIndex] = useState(0);
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return; }
@@ -150,6 +151,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(activeSession, `/api/crm/technical-measures/${formId}`);
       setForm(result.form);
       setLines(result.form.lines);
+      setActiveLineIndex((current) => Math.min(current, Math.max(result.form.lines.length - 1, 0)));
       setSignerName(result.form.customer_snapshot.name || "");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Technical measure could not be loaded.");
@@ -248,6 +250,12 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const pendingWidth = activePickerLine ? wholeFraction(activePickerLine.current_values.width_in) : null;
   const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
   const readOnly = form?.status === "submitted";
+  const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
+
+  function showLine(index: number) {
+    setActiveLineIndex(Math.min(Math.max(index, 0), Math.max(lines.length - 1, 0)));
+    document.getElementById("technical-measure-progress")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   if (authLoading || loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /><p>Loading technical measure...</p></main>;
   if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in with an approved CRM account.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(`/crm/technical-measures/${formId}`)}`}>Continue with Google</a></main>;
@@ -262,6 +270,12 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         <strong data-status={form.status}>{form.status.replaceAll("_", " ")}</strong>
       </header>
 
+      <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
+        <a href="/crm/mobile"><CalendarDays />Appointments</a>
+        <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
+        <a href="/crm/mobile/quotes"><FileText />Quotes</a>
+      </nav>
+
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
 
       <section className="technical-measure-customer">
@@ -271,13 +285,23 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         <div><span>Project</span><strong>{[form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || "Not provided"}</strong></div>
       </section>
 
+      <section className="technical-measure-progress" id="technical-measure-progress">
+        <div>
+          <span>Measure progress</span>
+          <strong>Line {activeLineNumber} of {lines.length}</strong>
+        </div>
+        <div className="technical-measure-progress-track" aria-hidden="true">
+          <span style={{ width: `${lines.length ? (activeLineNumber / lines.length) * 100 : 0}%` }} />
+        </div>
+      </section>
+
       <section className="technical-measure-lines">
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]));
           return (
-            <article className="technical-measure-line" key={line.id}>
+            <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
               <div className="technical-measure-line-head"><div><span>Line {index + 1}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
               <div className="technical-measure-dimensions">
                 <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
@@ -299,6 +323,11 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   );
                 })}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
+              </div>
+              <div className="technical-measure-line-navigation">
+                <button type="button" disabled={index === 0} onClick={() => showLine(index - 1)}><ChevronLeft />Previous</button>
+                <span>{current.width_in && current.height_in ? "Measurements entered" : "Width and height required"}</span>
+                <button type="button" disabled={index === lines.length - 1} onClick={() => showLine(index + 1)}>Next<ChevronRight /></button>
               </div>
             </article>
           );
@@ -349,6 +378,7 @@ export function TechnicalMeasureList() {
   const [session, setSession] = useState<Session | null>(null);
   const [forms, setForms] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(async ({ data }) => {
@@ -356,11 +386,51 @@ export function TechnicalMeasureList() {
       if (data.session) {
         const jobId = new URLSearchParams(window.location.search).get("jobId");
         const path = jobId ? `/api/crm/technical-measures?jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures";
-        try { setForms((await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms); } finally { setLoading(false); }
+        try {
+          setLoadError(null);
+          setForms((await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms);
+        } catch (error) {
+          setLoadError(error instanceof Error ? error.message : "Technical measures could not be loaded.");
+        } finally {
+          setLoading(false);
+        }
       } else setLoading(false);
     });
   }, [supabase]);
   if (loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /></main>;
   if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
-  return <main className="mts-quote-scope technical-measure-shell"><header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Technical Measures</h1><p>{forms.length} measure sheet{forms.length === 1 ? "" : "s"}</p></div></header><section className="technical-measure-list">{forms.map((form) => { const customer = form.customer_snapshot as Record<string, unknown>; return <a href={`/crm/technical-measures/${form.id}`} key={String(form.id)}><div><strong>{String(customer?.name || "Customer")}</strong><span>{String(customer?.address || "Address not provided")}</span></div><em data-status={String(form.status)}>{String(form.status).replaceAll("_", " ")}</em></a>; })}{!forms.length ? <p>No technical measure sheets yet.</p> : null}</section></main>;
+  const pendingForms = forms.filter((form) => form.status !== "submitted");
+  const completedForms = forms.filter((form) => form.status === "submitted");
+  const formLink = (form: Record<string, unknown>) => {
+    const customer = form.customer_snapshot as Record<string, unknown>;
+    const quote = form.quote_snapshot as Record<string, unknown>;
+    const status = String(form.status);
+    return (
+      <a href={`/crm/technical-measures/${form.id}`} key={String(form.id)}>
+        <div>
+          <strong>{String(customer?.name || "Customer")}</strong>
+          <span>{String(customer?.address || "Address not provided")}</span>
+          <small>{quote?.quoteNumber ? `Contract ${quote.quoteNumber}` : "Sold contract"}</small>
+        </div>
+        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : "Needs measure"}</em>
+        <ChevronRight aria-hidden="true" />
+      </a>
+    );
+  };
+  return (
+    <main className="mts-quote-scope technical-measure-shell technical-measure-queue">
+      <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{pendingForms.length} job{pendingForms.length === 1 ? "" : "s"} need attention</p></div></header>
+      <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
+        <a href="/crm/mobile"><CalendarDays />Appointments</a>
+        <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
+        <a href="/crm/mobile/quotes"><FileText />Quotes</a>
+      </nav>
+      {loadError ? <div className="technical-measure-alert" role="alert">{loadError}</div> : null}
+      <section className="technical-measure-list-section">
+        <div className="technical-measure-list-heading"><div><span>Sold jobs</span><h2>Needs Measure</h2></div><strong>{pendingForms.length}</strong></div>
+        <div className="technical-measure-list">{pendingForms.map(formLink)}{!pendingForms.length ? <p>All required technical measures are complete.</p> : null}</div>
+      </section>
+      {completedForms.length ? <section className="technical-measure-list-section technical-measure-list-section--completed"><div className="technical-measure-list-heading"><div><span>Customer file</span><h2>Completed</h2></div><strong>{completedForms.length}</strong></div><div className="technical-measure-list">{completedForms.map(formLink)}</div></section> : null}
+    </main>
+  );
 }

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { ArrowLeft, CalendarDays, FileText, Ruler } from "lucide-react";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail } from "@/lib/crm/allowed-users";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
@@ -363,7 +364,13 @@ export function CrmMobileQuotesApp() {
 
   return (
     <section className="crm-mobile-quotes-shell">
+      <nav className="mobile-crm-workspaces" aria-label="Mobile CRM workspaces">
+        <a href="/crm/mobile"><CalendarDays />Appointments</a>
+        <a href="/crm/technical-measures"><Ruler />Measures</a>
+        <a className="active" href="/crm/mobile/quotes" aria-current="page"><FileText />Quotes</a>
+      </nav>
       <header className="crm-mobile-quotes-header">
+        <a className="crm-mobile-quotes-back" href="/crm/mobile" aria-label="Back to mobile workspaces"><ArrowLeft /></a>
         <div>
           <p className="eyebrow">805 Quotes</p>
           <h1>Quote workspace</h1>

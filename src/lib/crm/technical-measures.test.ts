@@ -3,6 +3,7 @@ import {
   buildTechnicalMeasureAddendumPdf,
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
+  soldJobNeedsTechnicalMeasureForm,
   technicalMeasureLineChanges,
   type TechnicalMeasureAddendum,
   type TechnicalMeasureForm,
@@ -52,6 +53,28 @@ describe("technical measure change classification", () => {
     const changes = technicalMeasureLineChanges("line-1", original, current);
     expect(changes.every((change) => change.kind === "internal")).toBe(true);
     expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
+  });
+});
+
+describe("technical measure sold-job recovery", () => {
+  const neededMeta = { measure_needed: { status: "needed" } };
+
+  it("identifies a sold required measure with no form", () => {
+    expect(soldJobNeedsTechnicalMeasureForm(
+      { id: "job-1", status: "sold", meta: neededMeta },
+      new Set(),
+    )).toBe(true);
+  });
+
+  it("does not recreate an existing form or create one for an unsold job", () => {
+    expect(soldJobNeedsTechnicalMeasureForm(
+      { id: "job-1", status: "sold", meta: neededMeta },
+      new Set(["job-1"]),
+    )).toBe(false);
+    expect(soldJobNeedsTechnicalMeasureForm(
+      { id: "job-2", status: "quoted", meta: neededMeta },
+      new Set(),
+    )).toBe(false);
   });
 });
 

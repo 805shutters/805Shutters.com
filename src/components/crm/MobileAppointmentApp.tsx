@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
+  ArrowLeft,
+  ArrowRight,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -25,7 +27,7 @@ import { productInterestOptions } from "@/lib/product-interest-options";
 import { leadSourceOptions } from "@/lib/lead-source";
 import type { CrmCalendarEvent } from "@/lib/crm/types";
 
-type CalendarView = "month" | "week" | "day";
+type CalendarView = "list" | "month" | "week" | "day";
 
 type MobileAppointment = CrmCalendarEvent & {
   window_count?: number | null;
@@ -63,7 +65,7 @@ type MobileEtaResponse = {
   appointment: MobileAppointment;
 };
 
-const calendarViews: CalendarView[] = ["month", "week", "day"];
+const calendarViews: CalendarView[] = ["list", "week", "day"];
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const productOptions = [...productInterestOptions, "Mixed"];
 const appointmentDurations = [60, 90, 120, 180];
@@ -154,6 +156,9 @@ function todayLosAngelesDate() {
 }
 
 function rangeForView(anchorDate: string, view: CalendarView) {
+  if (view === "list") {
+    return { start: anchorDate, end: addDays(anchorDate, 30) };
+  }
   if (view === "month") {
     const days = monthDays(anchorDate);
     return { start: days[0], end: addDays(days[days.length - 1], 1) };
@@ -266,6 +271,7 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
 }
 
 function moveAnchorDate(anchorDate: string, view: CalendarView, direction: -1 | 1) {
+  if (view === "list") return addDays(anchorDate, direction * 30);
   if (view === "month") return addMonths(anchorDate, direction);
   if (view === "week") return addDays(anchorDate, direction * 7);
   return addDays(anchorDate, direction);
@@ -404,6 +410,40 @@ function DayView({
           <CalendarDays />
           <p>No appointments for {longDayFormatter.format(dateToUtcNoon(anchorDate))}</p>
         </div>
+      )}
+    </div>
+  );
+}
+
+function UpcomingView({
+  events,
+  onSelectEvent
+}: {
+  events: MobileAppointment[];
+  onSelectEvent: (event: MobileAppointment) => void;
+}) {
+  const days = Array.from(new Set(events.map(eventDay))).sort();
+  return (
+    <div className="mobile-crm-upcoming-list">
+      {days.length ? days.map((day) => (
+        <section className="mobile-crm-upcoming-day" key={day}>
+          <div className="mobile-crm-upcoming-date">
+            <span>{shortWeekdayFormatter.format(dateToUtcNoon(day))}</span>
+            <strong>{longDayFormatter.format(dateToUtcNoon(day))}</strong>
+          </div>
+          <div className="mobile-crm-day-list">
+            {eventsForDay(events, day).map((event) => (
+              <button type="button" className="mobile-crm-day-card" key={event.id} onClick={() => onSelectEvent(event)}>
+                <span>{formatEventTime(event)}</span>
+                <strong>{eventTitle(event)}</strong>
+                <small>{assignedPerson(event)}</small>
+                <em>{cleanText(event.customer_address || event.location) || "Address not set"}</em>
+              </button>
+            ))}
+          </div>
+        </section>
+      )) : (
+        <div className="mobile-crm-empty-day"><CalendarDays /><p>No upcoming appointments.</p></div>
       )}
     </div>
   );
@@ -590,7 +630,8 @@ export function MobileAppointmentApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [appointments, setAppointments] = useState<MobileAppointment[]>([]);
-  const [view, setView] = useState<CalendarView>("week");
+  const [view, setView] = useState<CalendarView>("list");
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(true);
   const [anchorDate, setAnchorDate] = useState(() => todayLosAngelesDate());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -791,32 +832,65 @@ export function MobileAppointmentApp() {
   }
 
   const rangeLabel =
-    view === "month"
+    view === "list"
+      ? `Upcoming 30 days`
+      : view === "month"
       ? monthLabelFormatter.format(dateToUtcNoon(startOfMonth(anchorDate)))
       : view === "week"
         ? `${longDayFormatter.format(dateToUtcNoon(activeRange.start))} - ${longDayFormatter.format(dateToUtcNoon(addDays(activeRange.end, -1)))}`
         : longDayFormatter.format(dateToUtcNoon(anchorDate));
 
+  if (showWorkspaceMenu) {
+    return (
+      <div className="mobile-crm-app mobile-crm-home">
+        <header className="mobile-crm-home-header">
+          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width="220" height="60" />
+          <div><span>Mobile CRM</span><h1>Choose a workspace</h1><p>{userLabel || "805 Shutters"}</p></div>
+        </header>
+        <main className="mobile-crm-category-stack">
+          <button type="button" onClick={() => setShowWorkspaceMenu(false)}>
+            <CalendarDays />
+            <div><strong>Appointments</strong><span>{appointments.length} upcoming</span></div>
+            <ArrowRight />
+          </button>
+          <a href="/crm/technical-measures">
+            <Ruler />
+            <div><strong>Technical Measures</strong><span>Sold jobs awaiting measure</span></div>
+            <ArrowRight />
+          </a>
+          <a href="/crm/mobile/quotes">
+            <FileText />
+            <div><strong>Quotes</strong><span>Create and manage customer quotes</span></div>
+            <ArrowRight />
+          </a>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="mobile-crm-app">
       <header className="mobile-crm-topbar">
+        <button type="button" className="mobile-crm-back-button" aria-label="Back to workspaces" onClick={() => setShowWorkspaceMenu(true)}>
+          <ArrowLeft />
+        </button>
         <div>
           <span>805 Shutters</span>
           <h1>Appointments</h1>
           <p>All appointments</p>
         </div>
         <div className="mobile-crm-topbar-actions">
-          <a href="/crm/technical-measures" aria-label="Open technical measures" title="Technical measures">
-            <Ruler />
-          </a>
-          <a href="/crm/mobile/quotes" aria-label="Open quotes" title="Quotes">
-            <FileText />
-          </a>
           <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
             <Plus />
           </button>
         </div>
       </header>
+
+      <nav className="mobile-crm-workspaces" aria-label="Mobile CRM workspaces">
+        <button type="button" className="active" aria-current="page"><CalendarDays />Appointments</button>
+        <a href="/crm/technical-measures"><Ruler />Measures</a>
+        <a href="/crm/mobile/quotes"><FileText />Quotes</a>
+      </nav>
 
       <section className="mobile-crm-controls">
         <div className="mobile-crm-segment" aria-label="Calendar view">
@@ -849,7 +923,15 @@ export function MobileAppointmentApp() {
             <span>Loading appointments...</span>
           </div>
         ) : null}
-        {view === "month" ? (
+        {view === "list" ? (
+          <UpcomingView
+            events={appointments}
+            onSelectEvent={(event) => {
+              setEtaMessage(null);
+              setSelectedAppointment(event);
+            }}
+          />
+        ) : view === "month" ? (
           <MonthView
             events={appointments}
             anchorDate={anchorDate}

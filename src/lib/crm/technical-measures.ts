@@ -379,6 +379,66 @@ export async function listTechnicalMeasureForms(supabase: SupabaseClient, jobId?
   return data || [];
 }
 
+export function soldJobNeedsTechnicalMeasureForm(
+  job: Pick<CrmJob, "id" | "status" | "meta">,
+  formJobIds: ReadonlySet<string>,
+) {
+  return job.status === "sold" &&
+    getMeasureNeededMeta(job.meta).status === "needed" &&
+    !formJobIds.has(job.id);
+}
+
+export async function reconcileSoldTechnicalMeasureForms(
+  supabase: SupabaseClient,
+  actor: CrmActor,
+  jobId?: string | null,
+) {
+  let jobsQuery = supabase.from("crm_jobs").select("id,status,meta").eq("status", "sold").limit(250);
+  if (jobId) jobsQuery = jobsQuery.eq("id", jobId);
+  const [jobsResult, formsResult] = await Promise.all([
+    jobsQuery,
+    supabase.from("crm_technical_measure_forms").select("job_id"),
+  ]);
+  if (jobsResult.error || formsResult.error) return { created: 0, failed: 0 };
+
+  const formJobIds = new Set((formsResult.data || []).map((row) => String(row.job_id)));
+  const candidates = ((jobsResult.data || []) as Array<Pick<CrmJob, "id" | "status" | "meta">>)
+    .filter((job) => soldJobNeedsTechnicalMeasureForm(job, formJobIds));
+  if (!candidates.length) return { created: 0, failed: 0 };
+
+  const { data: quotes, error: quotesError } = await supabase
+    .from("crm_quotes")
+    .select("id,job_id,signed_at,created_at")
+    .in("job_id", candidates.map((job) => job.id))
+    .in("status", ["sold", "approved"])
+    .order("signed_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (quotesError) return { created: 0, failed: candidates.length };
+
+  const quoteByJobId = new Map<string, string>();
+  for (const quote of quotes || []) {
+    if (!quoteByJobId.has(String(quote.job_id))) quoteByJobId.set(String(quote.job_id), String(quote.id));
+  }
+
+  let created = 0;
+  let failed = 0;
+  for (const job of candidates) {
+    const quoteId = quoteByJobId.get(job.id);
+    if (!quoteId) {
+      failed += 1;
+      continue;
+    }
+    try {
+      await ensureTechnicalMeasureForm(supabase, { jobId: job.id, quoteId }, actor);
+      created += 1;
+    } catch (error) {
+      failed += 1;
+      console.error("technical measure reconciliation failed", { jobId: job.id, error });
+    }
+  }
+  return { created, failed };
+}
+
 function revisedContractTotal(form: TechnicalMeasureForm, lines: TechnicalMeasureLine[]) {
   const subtotal = lines.reduce((sum, line) => {
     const unit = line.current_unit_price;
