@@ -7679,6 +7679,13 @@ function ShadesAndBlindsOptions({
             type: "yes-no",
             noFirst: true,
           },
+          {
+            key: "shim",
+            label: "Shim",
+            field: "json:shim",
+            type: "yes-no",
+            noFirst: true,
+          },
         ];
 
         if (authoritativeV2) {

@@ -31,8 +31,10 @@ export const ONYX_US_MADE_VINYL_PRICE_SOURCE = sourceProvenance(
 export const ONYX_US_MADE_VINYL_PRICE = Object.freeze({
   programId: "onyx_us_made_vinyl",
   dealerCostPerSquareFoot: 13.6,
-  customerRetailPerSquareFoot: 34,
-  retailMultiplier: 2.5,
+  customerRetailPerSquareFoot: null,
+  retailMultiplier: null,
+  legacyUserDirectedCustomerRetailPerSquareFoot: 34,
+  legacyUserDirectedRetailMultiplier: 2.5,
   source: ONYX_US_MADE_VINYL_PRICE_SOURCE,
 });
 

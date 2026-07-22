@@ -1115,7 +1115,7 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
   it("pins the live portal grouping, freight, and processing fixture", () => {
     expect(portalFixture).toMatchObject({
       captureMode: "read_only_unsubmitted_draft",
-      accountId: "R00459",
+      accountIdRedacted: true,
       verifiedFacts: expect.arrayContaining([
         "roller_standard_factor",
         "roller_shutter_lead_time_factor",
@@ -1281,7 +1281,7 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
       (entry) => entry.id === "norman-dealer-pricing-snapshot-2026-07-20",
     );
     expect(dealerPortalSource).toMatchObject({
-      revision: "Dealer R00646 portal print dated 2026-07-20",
+      revision: "Other-dealer portal print dated 2026-07-20",
       pageCount: 3,
       authorities: [],
     });
@@ -1298,7 +1298,7 @@ describe("Norman Roller 20-quote x 20-item source-grid acceptance", () => {
       },
       quarantinedEvidence: {
         sourceId: "norman-dealer-pricing-snapshot-2026-07-20",
-        dealer: "R00646",
+        dealer: "redacted_non_805_account",
         runtimeAuthority: false,
       },
       dealerFactors: {

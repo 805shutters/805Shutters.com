@@ -53,6 +53,9 @@ const ROMAN_GUIDE: RuleSource = {
 const VERTICAL_GUIDE: RuleSource = {
   sourceId: "norman-vertical-blinds-guide-2026-06",
 };
+const POLAR_DEALER_BOOK: RuleSource = {
+  sourceId: "polar-shades-dealer-book-current-2026-07-18",
+};
 
 function programMatchesGroup(programId: string | null, priceGroup: string): boolean {
   const groupNumber = priceGroup.match(/(\d+)/)?.[1];
@@ -233,6 +236,57 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
     );
   }
   return issues;
+}
+
+/**
+ * The only current Polar portal/list-price conflict is proven for three exact
+ * Elite configurations. Keep the quarantine as narrow as the evidence: do not
+ * infer that every Group 4 size or fabric has the same portal/book mismatch.
+ */
+function validatePolarElitePortalConflict(
+  context: SelectionContext,
+): ValidationIssue[] {
+  if (context.programId !== "group_4" || context.heightInches !== 67) return [];
+
+  const widthIsObserved = [88, 92, 85.5].includes(context.widthInches);
+  const fabric = normalized(
+    configValue(context, "fabric_collection", "fabric", "material"),
+  );
+  const operation = normalized(
+    configValue(context, "operating_system", "lift_system", "operation"),
+  );
+  const track = normalized(
+    configValue(context, "track_type", "guides", "guide_type"),
+  );
+  const exactObservedConfiguration =
+    widthIsObserved &&
+    fabric.includes("suntex90") &&
+    (operation.includes("manual") || operation.includes("gearcrank")) &&
+    track.includes("standard") &&
+    (track.includes("nonzipper") || track.includes("track"));
+
+  if (!exactObservedConfiguration) return [];
+
+  return [
+    issue(
+      "hard_block",
+      "polar.elite.portal_book_price_conflict",
+      { ...POLAR_DEALER_BOOK, page: 97 },
+      {
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        programId: context.programId,
+        fabric: text(configValue(context, "fabric_collection", "fabric", "material")),
+        operation: text(
+          configValue(context, "operating_system", "lift_system", "operation"),
+        ),
+        track_type: text(
+          configValue(context, "track_type", "guides", "guide_type"),
+        ),
+      },
+      "The exact saved Polar portal quote lists this Elite selection at $905 per unit, while the pinned dealer book produces $961; the option stays quarantined until Polar resolves the source conflict.",
+    ),
+  ];
 }
 
 function validateRoller(context: SelectionContext): ValidationIssue[] {
@@ -1252,6 +1306,9 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       break;
     case "onyx_shutters":
       issues.push(...validateOnyxShutterRestrictions(context));
+      break;
+    case "polar_elite_patio":
+      issues.push(...validatePolarElitePortalConflict(context));
       break;
     default:
       break;

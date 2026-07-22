@@ -2,7 +2,7 @@
   "id": "norman-805-live-portal-2026-07-21",
   "capturedOn": "2026-07-21",
   "captureMode": "read_only_unsubmitted_draft",
-  "accountId": "R00459",
+  "accountIdRedacted": true,
   "verifiedFacts": [
     "roller_standard_factor",
     "roller_shutter_lead_time_factor",

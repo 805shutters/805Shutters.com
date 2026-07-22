@@ -57,14 +57,15 @@ const matching = (issues: ReturnType<typeof validateOnyxShutterRestrictions>, ru
   issues.filter((candidate) => candidate.ruleId === ruleId);
 
 describe("Onyx source identity and safe status", () => {
-  it("pins the audited binder and preserves the separate 13.60 x 2.5 = 34.00 price", () => {
+  it("pins the audited binder, keeps dealer evidence, and does not call the legacy 2.5 policy MSRP", () => {
     expect(ONYX_BINDER_SOURCE.sha256).toBe(
       "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b",
     );
     expect(ONYX_US_MADE_VINYL_PRICE.dealerCostPerSquareFoot).toBe(13.6);
-    expect(ONYX_US_MADE_VINYL_PRICE.retailMultiplier).toBe(2.5);
-    expect(ONYX_US_MADE_VINYL_PRICE.dealerCostPerSquareFoot * 2.5).toBe(34);
-    expect(ONYX_US_MADE_VINYL_PRICE.customerRetailPerSquareFoot).toBe(34);
+    expect(ONYX_US_MADE_VINYL_PRICE.retailMultiplier).toBeNull();
+    expect(ONYX_US_MADE_VINYL_PRICE.customerRetailPerSquareFoot).toBeNull();
+    expect(ONYX_US_MADE_VINYL_PRICE.legacyUserDirectedRetailMultiplier).toBe(2.5);
+    expect(ONYX_US_MADE_VINYL_PRICE.legacyUserDirectedCustomerRetailPerSquareFoot).toBe(34);
   });
 
   it("keeps U.S. Made Vinyl restriction_source_incomplete and explains the product-identity gap", () => {

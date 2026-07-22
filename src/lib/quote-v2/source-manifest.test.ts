@@ -130,14 +130,14 @@ describe("quote V2 source manifest", () => {
     }
   });
 
-  it("quarantines the R00646 portal PDF from every runtime authority", () => {
+  it("quarantines the other-dealer portal PDF from every runtime authority", () => {
     expect(
       getSourceManifestEntry("norman-dealer-pricing-snapshot-2026-07-20"),
     ).toMatchObject({
       authorities: [],
       runtimeAuthority: false,
-      accountScope: "Norman dealer R00646 (not the current 805 account)",
-      quarantineReason: expect.stringMatching(/R00646.*must never drive current 805 pricing/i),
+      accountScope: "Other Norman dealer account (not the current 805 account; identifier redacted)",
+      quarantineReason: expect.stringMatching(/different dealer account.*must never drive current 805 pricing/i),
     });
   });
 

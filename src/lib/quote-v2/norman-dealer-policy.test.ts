@@ -5,7 +5,7 @@ import {
 } from "./norman-dealer-policy";
 
 describe("805 Norman dealer policy", () => {
-  it("pins current 805 costs without trusting the quarantined R00646 PDF", () => {
+  it("pins current 805 costs without trusting the quarantined other-account PDF", () => {
     expect(NORMAN_805_DEALER_POLICY).toMatchObject({
       id: "norman-805-dealer-policy-2026-07-21",
       verifiedOn: "2026-07-21",
@@ -14,7 +14,7 @@ describe("805 Norman dealer policy", () => {
         channel: "authenticated_live_dealer_portal",
         verifiedOn: "2026-07-21",
         fixtureId: "norman-805-live-portal-2026-07-21",
-        accountId: "R00459",
+        accountVerified: true,
         verifiedFacts: [
           "roller_standard_factor",
           "roller_shutter_lead_time_factor",
@@ -38,7 +38,7 @@ describe("805 Norman dealer policy", () => {
       },
       quarantinedEvidence: {
         sourceId: "norman-dealer-pricing-snapshot-2026-07-20",
-        dealer: "R00646",
+        dealer: "redacted_non_805_account",
         runtimeAuthority: false,
       },
       schedules: {

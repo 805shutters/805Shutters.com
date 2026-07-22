@@ -21,7 +21,7 @@ export type NormanDealerSchedule = Readonly<{
  * that fee remains unverified, so oversize configurations fail closed.
  *
  * `NORMAN PRICING.pdf` is retained only as quarantined evidence because it
- * belongs to dealer R00646, not 805. Nothing in this runtime policy derives
+ * belongs to a different dealer account, not 805. Nothing in this runtime policy derives
  * from that artifact.
  */
 export const NORMAN_805_DEALER_POLICY = Object.freeze({
@@ -32,7 +32,7 @@ export const NORMAN_805_DEALER_POLICY = Object.freeze({
     channel: "authenticated_live_dealer_portal",
     verifiedOn: "2026-07-21",
     fixtureId: portalFixture.id,
-    accountId: portalFixture.accountId,
+    accountVerified: portalFixture.accountIdRedacted,
     verifiedFacts: Object.freeze([...portalFixture.verifiedFacts]),
     notVerified: Object.freeze([...portalFixture.notVerified]),
   }),
@@ -41,10 +41,10 @@ export const NORMAN_805_DEALER_POLICY = Object.freeze({
   }),
   quarantinedEvidence: Object.freeze({
     sourceId: "norman-dealer-pricing-snapshot-2026-07-20",
-    dealer: "R00646",
+    dealer: "redacted_non_805_account",
     runtimeAuthority: false,
     reason:
-      "This portal PDF belongs to dealer R00646 and its $8 additional-unit freight rate is not valid for 805.",
+      "This portal PDF belongs to a different dealer account and its $8 additional-unit freight rate is not valid for 805.",
   }),
   schedules: Object.freeze({
     standard: Object.freeze({
