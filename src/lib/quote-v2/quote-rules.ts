@@ -8,6 +8,7 @@ import { normalizeIdentity } from "./catalog";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import {
   motorFamilyForNormanShadeSelection,
+  resolveNormanShadeMotorization,
   type NormanShadeMotorFamily,
 } from "./norman-shade-motorization";
 
@@ -256,6 +257,62 @@ function validateMotorizationOrderControls(
       },
       explanation:
         "At least one compatible controller is required for this motor family on the order unless an existing compatible remote is evidenced by its prior work-order number.",
+    });
+  }
+  return issues;
+}
+
+function validateOrderAdapterWattage(
+  lines: readonly QuoteSelectedDesignLine[],
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const productId of ["honeycomb", "roman"] as const) {
+    const resolved = lines
+      .filter((line) => line.selectedDesign.productId === productId)
+      .map((line) => ({
+        line,
+        resolution: resolveNormanShadeMotorization(line.selectedDesign),
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is typeof entry & {
+          resolution: NonNullable<typeof entry.resolution> & { ok: true };
+        } => Boolean(entry.resolution?.ok),
+      )
+      .filter((entry) => entry.resolution.derivedAdapterWattage !== undefined);
+
+    if (!resolved.some((entry) => entry.resolution.derivedAdapterWattage === 65)) {
+      continue;
+    }
+    const mustUpgrade = resolved.filter((entry) => {
+      if (entry.resolution.derivedAdapterWattage !== 36) return false;
+      return !(
+        productId === "honeycomb" &&
+        (entry.resolution.mode === "tdbu" ||
+          entry.resolution.mode === "day_night") &&
+        entry.line.selectedDesign.widthInches < 26.5
+      );
+    });
+    if (mustUpgrade.length === 0) continue;
+
+    const first = mustUpgrade[0].line;
+    issues.push({
+      severity: "hard_block",
+      ruleId: `${productId}.motorization.quote.ac_adapter_wattage_not_persisted`,
+      source: sourceProvenance("norman-motorization-guide-2026-05", {
+        page: productId === "honeycomb" ? 9 : 19,
+      }),
+      selectedValues: {
+        lineId: first.lineId.trim() || null,
+        productId,
+        orderRequiresWatts: 65,
+        linesRequiringPersisted65W: mustUpgrade.map((entry) =>
+          entry.line.lineId.trim(),
+        ),
+      },
+      explanation:
+        "Another shade in this product order requires 65W, so the documented order-wide 65W adapter derivation must be persisted for these otherwise-36W lines before pricing or sending.",
     });
   }
   return issues;
@@ -653,5 +710,6 @@ export function validateQuoteSelectionRelationships(
   }
 
   issues.push(...validateMotorizationOrderControls(lines));
+  issues.push(...validateOrderAdapterWattage(lines));
   return issues;
 }

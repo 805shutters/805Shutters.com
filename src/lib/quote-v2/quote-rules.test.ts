@@ -416,4 +416,63 @@ describe("Quote V2 cross-line side-by-side rules", () => {
       "norman.motorization.quote.controller_required",
     );
   });
+
+  it("fails closed until mixed Roman 36W/65W order derivation is persisted", () => {
+    const motor = {
+      groupId: "smart_motorization",
+      optionId: "motor",
+      role: "base_motor",
+      units: 1,
+    } as const;
+    const lowConfiguration: SelectionRecord = {
+      lift_system: "Motorized",
+      shade_type: "Single",
+      fold_style: "Flat Fold without Seams",
+      motor_type: "Norman Smart AC Adapter Plug-In",
+      motor_position: "Right",
+      hub_required: false,
+      remote_type: "Basic Remote",
+      motorization_selections: [
+        motor,
+        {
+          groupId: "smart_motorization",
+          optionId: "basic_remote_black",
+          role: "controller",
+          units: 1,
+        },
+      ],
+    };
+    const highConfiguration: SelectionRecord = {
+      lift_system: "Motorized",
+      shade_type: "Single",
+      fold_style: "Flat Fold without Seams",
+      motor_type: "Norman Smart AC Adapter Plug-In",
+      motor_position: "Right",
+      hub_required: false,
+      motorization_selections: [motor],
+    };
+    const low = line("roman-36", "roman", lowConfiguration);
+    const high = line("roman-65", "roman", highConfiguration);
+    const lines: QuoteSelectedDesignLine[] = [
+      {
+        ...low,
+        selectedDesign: {
+          ...low.selectedDesign,
+          widthInches: 36,
+          heightInches: 60,
+        },
+      },
+      {
+        ...high,
+        selectedDesign: {
+          ...high.selectedDesign,
+          widthInches: 96,
+          heightInches: 78,
+        },
+      },
+    ];
+    expect(ruleIds(lines)).toContain(
+      "roman.motorization.quote.ac_adapter_wattage_not_persisted",
+    );
+  });
 });

@@ -58,3 +58,9 @@ Motorized Roman Common Valance also remains blocked. Page 19 documents two
 actual shades and two motors, while the current single-line pricing input cannot
 yet look up both panel widths independently and prove two motor charges. It must
 remain blocked until that two-panel price topology is authoritative.
+
+Mixed 36W/65W AC-adapter orders fail closed until the quote snapshot persists
+the documented order-wide 65W derivation (pages 9 and 19). Honeycomb TDBU/Day &
+Night shades below the 26.5-inch 65W minimum retain their documented 36W
+exception. This guard prevents correct per-line limits from producing an
+incorrect multi-line manufacturing payload.
