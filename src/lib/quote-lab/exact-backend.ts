@@ -954,6 +954,9 @@ function repriceExactQuoteBuilderV2(
       lineItemId: design.line_item_id,
       designId: design.id,
       variant: design.variant,
+      // Server persistence needs the exact immutable selection that produced
+      // this result. It is never included in customerQuote below.
+      selection,
       result: protectedResult,
       dealerNetCost,
       costResult: v2CostResult(protectedResult, dealerNetCost),
