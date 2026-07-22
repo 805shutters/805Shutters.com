@@ -8,6 +8,36 @@ const outputDir = path.join(root, "public/images/portfolio-enhanced");
 
 const photos = [
   {
+    base: "exterior-patio-shades-detail",
+    source: "2026-07-21-exterior-patio-shades-detail.jpg",
+    category: "Shades",
+    title: "Exterior Patio Shade Detail",
+    alt: "Exterior patio shades installed across a Ventura County pergola for sun and glare control",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "exterior-patio-shades-wide",
+    source: "2026-07-21-exterior-patio-shades-wide.jpg",
+    category: "Shades",
+    title: "Exterior Patio Shades",
+    alt: "Custom exterior shades installed beneath a Ventura County backyard pergola",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
+    base: "exterior-patio-shades-pergola",
+    source: "2026-07-21-exterior-patio-shades-pergola.jpg",
+    category: "Shades",
+    title: "Pergola Exterior Shades",
+    alt: "Exterior shades lowering across a custom wood pergola patio in Ventura County",
+    position: "center",
+    grade: "phone",
+    fullFrame: true
+  },
+  {
     base: "bedroom-sliding-door-shutters",
     source: "ventura-county-bedroom-sliding-door-shutters-jpg.jpg",
     category: "Shutters",

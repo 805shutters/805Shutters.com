@@ -177,6 +177,18 @@ const recentJobGallery: NonNullable<SitePage["gallery"]> = [
 
 const oldWebsitePortfolioGallery: NonNullable<SitePage["gallery"]> = [
   {
+    image: "/images/portfolio-enhanced/exterior-patio-shades-detail-card.jpg",
+    imageAlt: "Exterior patio shades installed across a Ventura County pergola for sun and glare control"
+  },
+  {
+    image: "/images/portfolio-enhanced/exterior-patio-shades-wide-card.jpg",
+    imageAlt: "Custom exterior shades installed beneath a Ventura County backyard pergola"
+  },
+  {
+    image: "/images/portfolio-enhanced/exterior-patio-shades-pergola-card.jpg",
+    imageAlt: "Exterior shades lowering across a custom wood pergola patio in Ventura County"
+  },
+  {
     image: "/images/portfolio-enhanced/split-tilt-shutters-living-room-card.jpg",
     imageAlt: "White split tilt plantation shutters installed across a Ventura County living room"
   },
