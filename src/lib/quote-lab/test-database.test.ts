@@ -63,4 +63,34 @@ describe("isolated Quote V2 test database", () => {
     expect(database.load("workspace")?.state.lineItems).toHaveLength(1);
     database.close();
   });
+
+  it("revision-safely resets only the requested workspace", () => {
+    const database = new QuoteV2TestDatabase(databasePath());
+    database.save("workspace-a", state(1), 0);
+    database.save("workspace-b", state(2), 0);
+
+    const reset = database.reset("workspace-a", state(0), 1);
+    expect(reset.revision).toBe(2);
+    expect(reset.state.lineItems).toEqual([]);
+    expect(database.load("workspace-a")?.revision).toBe(2);
+    expect(database.load("workspace-b")).toMatchObject({
+      revision: 1,
+      state: { lineItems: [{ id: "line-1" }, { id: "line-2" }] },
+    });
+    expect(() => database.reset("workspace-a", state(0), 1)).toThrow(
+      QuoteLabRevisionConflictError,
+    );
+    database.close();
+  });
+
+  it("does not let reset bypass the 40-line or empty-workspace contracts", () => {
+    const database = new QuoteV2TestDatabase(databasePath());
+    expect(() => database.reset("workspace", state(41), 0)).toThrow(
+      "no more than 40 line items",
+    );
+    expect(() => database.reset("workspace", state(1), 0)).toThrow(
+      "exactly one empty quote",
+    );
+    database.close();
+  });
 });

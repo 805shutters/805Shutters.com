@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   QUOTE_LAB_COOKIE,
   QUOTE_LAB_COOKIE_MAX_AGE,
+  QUOTE_LAB_WORKSPACE_COOKIE,
   QuoteLabConfigurationError,
+  createQuoteLabWorkspaceNonce,
   quoteLabSessionToken,
   verifyQuoteLabAccessCode,
 } from "@/lib/quote-lab/auth";
@@ -26,6 +28,15 @@ export async function POST(request: NextRequest) {
       path: "/",
       maxAge: QUOTE_LAB_COOKIE_MAX_AGE,
     });
+    response.cookies.set({
+      name: QUOTE_LAB_WORKSPACE_COOKIE,
+      value: createQuoteLabWorkspaceNonce(),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: QUOTE_LAB_COOKIE_MAX_AGE,
+    });
     return response;
   } catch (error) {
     if (error instanceof QuoteLabConfigurationError) {
@@ -37,14 +48,16 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
-  response.cookies.set({
-    name: QUOTE_LAB_COOKIE,
-    value: "",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: 0,
-  });
+  for (const name of [QUOTE_LAB_COOKIE, QUOTE_LAB_WORKSPACE_COOKIE]) {
+    response.cookies.set({
+      name,
+      value: "",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 0,
+    });
+  }
   return response;
 }

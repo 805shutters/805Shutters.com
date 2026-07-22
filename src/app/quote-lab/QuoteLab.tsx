@@ -56,6 +56,10 @@ export function QuoteLab() {
         revision?: number;
         error?: string;
       };
+      if (stateResponse.status === 401) {
+        setAccess("locked");
+        return;
+      }
       if (!stateResponse.ok) {
         throw new Error(
           stateBody.error || "The isolated V2 test database could not load.",

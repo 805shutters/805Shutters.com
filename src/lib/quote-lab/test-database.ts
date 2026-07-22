@@ -86,11 +86,38 @@ export class QuoteV2TestDatabase {
     state: PersistedQuoteLabState,
     expectedRevision: number,
   ): PersistedQuoteLabEnvelope {
+    assertState(state);
+    return this.replaceWorkspace(workspaceId, state, expectedRevision);
+  }
+
+  reset(
+    workspaceId: string,
+    state: PersistedQuoteLabState,
+    expectedRevision: number,
+  ): PersistedQuoteLabEnvelope {
+    assertState(state);
+    if (
+      state.quotes.length !== 1 ||
+      state.lineItems.length !== 0 ||
+      state.designs.length !== 0 ||
+      Object.keys(state.selectedVariantByLine).length !== 0
+    ) {
+      throw new TypeError(
+        "A fresh Quote Lab reset requires exactly one empty quote and no saved selections.",
+      );
+    }
+    return this.replaceWorkspace(workspaceId, state, expectedRevision);
+  }
+
+  private replaceWorkspace(
+    workspaceId: string,
+    state: PersistedQuoteLabState,
+    expectedRevision: number,
+  ): PersistedQuoteLabEnvelope {
     if (!workspaceId.trim()) throw new TypeError("A workspace ID is required.");
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) {
       throw new TypeError("Expected revision must be a non-negative integer.");
     }
-    assertState(state);
     const serialized = JSON.stringify(state);
     const updatedAt = new Date().toISOString();
 

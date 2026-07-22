@@ -13,6 +13,8 @@ backed by protected server-authoritative pricing. See
 - No email, SMS, payment-link, signature, or manufacturer-order actions.
 - Test quote state persists across refreshes in the isolated test database and
   never enters production Supabase.
+- Each successful unlock receives a random HttpOnly workspace nonce, so a new
+  browser context cannot inherit another test run's saved quote state.
 - The UI and API both enforce a maximum of 40 measured-window line items.
   Quantity remains independent, and a 41st line item is rejected.
 - The catalog and comparison endpoints require the `QUOTE_LAB_ACCESS_CODE`
@@ -37,6 +39,9 @@ payment, or manufacturer-order modules.
 - `PUT /api/quote-lab/state` - saves the authenticated preview session's whole
   workspace state with an expected revision; stale concurrent writes are
   rejected with HTTP 409, and the 40-line limit is enforced again server-side.
+- `POST /api/quote-lab/state` - revision-safely replaces only the authenticated
+  workspace with a server-generated empty quote carrying a unique test-run ID.
+  It accepts only `expectedRevision`; clients cannot inject reset-state rows.
 - `POST /api/quote-lab/price-exact` - accepts the existing builder's line/design
   payload, discards its submitted price, and returns a fresh authoritative
   catalog price.

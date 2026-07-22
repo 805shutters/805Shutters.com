@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { openFreshQuoteLab } from "./helpers/fresh-quote-lab";
 
 test.setTimeout(90_000);
 
@@ -112,6 +113,77 @@ function productCategoryButton(
     has: page.getByText(category, { exact: true }),
   });
 }
+
+test("fresh workspace builds a brand-new measured line without seeded quote state", async ({
+  page,
+}) => {
+  test.skip(
+    !accessCode,
+    "Requires QUOTE_LAB_ACCESS_CODE for the isolated preview.",
+  );
+  const fresh = await openFreshQuoteLab(page, accessCode as string);
+  const addControls = page.locator('[aria-label="Add quote line item"]');
+  await productCategoryButton(page, addControls, "Roller Shades").click();
+  await addControls
+    .locator("button.quote-room-option")
+    .filter({ hasText: /^Living Room$/ })
+    .click();
+
+  const card = page.locator(".quote-line-card");
+  await expect(card).toHaveCount(1);
+  const lineId = await card.getAttribute("data-quote-line-id");
+  expect(lineId).toMatch(
+    /^quote-lab-line-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+  expect(lineId).not.toBe("quote-lab-line-1");
+
+  await card.getByRole("button", { name: "Add Size", exact: true }).click();
+  await page.getByLabel("Width in inches").fill("24");
+  await page.getByLabel("Height in inches").fill("36");
+  await page.getByRole("button", { name: "Use measurements", exact: true }).click();
+  await expect(card.locator(".quote-line-card-size-value")).toHaveText('24" × 36"');
+  await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();
+
+  const stateResponse = await page.request.get("/api/quote-lab/state");
+  expect(stateResponse.ok()).toBe(true);
+  const persisted = (await stateResponse.json()) as {
+    revision: number;
+    state: {
+      quotes: Array<{ quote_number: string; installer_notes: string }>;
+      lineItems: Array<{
+        id: string;
+        room_name: string;
+        width_whole: number;
+        width_fraction: string;
+        height_whole: number;
+        height_fraction: string;
+        created_at: string;
+      }>;
+      designs: unknown[];
+      selectedVariantByLine: Record<string, string>;
+    };
+  };
+  expect(persisted.revision).toBeGreaterThan(fresh.revision);
+  expect(persisted.state.quotes[0].quote_number).toBe(fresh.quoteNumber);
+  expect(JSON.parse(persisted.state.quotes[0].installer_notes)).toMatchObject({
+    __quoteLabRunId: fresh.runId,
+  });
+  expect(persisted.state.lineItems).toEqual([
+    expect.objectContaining({
+      id: lineId,
+      room_name: "Living Room",
+      width_whole: 24,
+      width_fraction: "0",
+      height_whole: 36,
+      height_fraction: "0",
+    }),
+  ]);
+  expect(Date.parse(persisted.state.lineItems[0].created_at)).toBeGreaterThanOrEqual(
+    Date.parse(fresh.createdAt),
+  );
+  expect(persisted.state.designs).toEqual([]);
+  expect(persisted.state.selectedVariantByLine).toEqual({ [lineId as string]: "A" });
+});
 
 test("V2 preserves the existing workspace, real room presets, and 40-line capacity", async ({
   page,
