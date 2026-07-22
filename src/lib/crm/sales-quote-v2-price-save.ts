@@ -382,6 +382,151 @@ function isRevisionConflict(error: unknown): boolean {
   return code === "40001" || /revision|concurrent|stale/i.test(message);
 }
 
+export type PreparedSalesQuoteV2PricingLine = Readonly<{
+  lineItemId: string;
+  designId: string;
+  priceStatus: V2PriceStatus;
+  customerPrice: JsonRecord;
+  rpcResult: JsonRecord;
+}>;
+
+export type PreparedSalesQuoteV2PricingBatch = Readonly<{
+  repriced: Extract<
+    ReturnType<typeof repriceExactQuoteBuilderForServerDate>,
+    { backend: "v2" }
+  >;
+  prepared: readonly PreparedSalesQuoteV2PricingLine[];
+}>;
+
+/**
+ * Pure server-side quote-wide pricing preparation shared by normal V2 saves
+ * and the explicit legacy-draft preview/apply workflow. Nothing is persisted
+ * here. Callers must use an atomic, service-role-only RPC for any mutation.
+ */
+export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
+  lines: readonly PersistedV2Line[];
+  selectedDesigns: readonly SalesQuoteDesign[];
+  serverDate: string;
+  missingPersistedSelection?: ReadonlySet<string>;
+}>): PreparedSalesQuoteV2PricingBatch {
+  const selectedVariantByLine = Object.fromEntries(
+    input.selectedDesigns.map((design) => [design.line_item_id, design.variant]),
+  );
+  let repriced: ReturnType<typeof repriceExactQuoteBuilderForServerDate>;
+  try {
+    repriced = repriceExactQuoteBuilderForServerDate(
+      {
+        lines: [...input.lines],
+        designs: [...input.selectedDesigns],
+        selectedVariantByLine,
+      },
+      input.serverDate,
+    );
+  } catch (error) {
+    throw new CrmAuthError(
+      422,
+      `Authoritative V2 pricing could not interpret the saved selection: ${error instanceof Error ? error.message : "unknown error"}`,
+    );
+  }
+  if (!("backend" in repriced) || repriced.backend !== "v2") {
+    throw new CrmAuthError(
+      500,
+      "The server-authoritative V2 engine did not handle this quote.",
+    );
+  }
+  if (repriced.designs.length !== input.lines.length) {
+    throw new CrmAuthError(
+      500,
+      "The server-authoritative V2 engine did not return exactly one result per quote line.",
+    );
+  }
+
+  const missingPersistedSelection =
+    input.missingPersistedSelection ?? new Set<string>();
+  const prepared = input.lines.map((line) => {
+    const selected = input.selectedDesigns.find(
+      (design) => design.line_item_id === line.id,
+    );
+    if (!selected) {
+      throw new CrmAuthError(
+        500,
+        `Selected design resolution failed for line ${line.id}.`,
+      );
+    }
+    const priced = repriced.designs.find(
+      (entry) =>
+        entry.lineItemId === line.id && entry.designId === selected.id,
+    );
+    if (!priced) {
+      throw new CrmAuthError(
+        500,
+        `The server-authoritative V2 engine returned no result for line ${line.id}.`,
+      );
+    }
+    const result = priced.result;
+    const internalSnapshot = protectedInternalSnapshot(
+      result,
+      priced.costResult,
+      repriced.costSummary,
+    );
+    const forcedBlocked = missingPersistedSelection.has(line.id);
+    const authoritative =
+      !forcedBlocked &&
+      result.ok &&
+      result.validationStatus === "valid" &&
+      result.internalCost?.freightStatus !== "unresolved" &&
+      internalSnapshot !== null &&
+      priced.snapshot !== null;
+    const priceStatus: V2PriceStatus = authoritative
+      ? "authoritative"
+      : forcedBlocked || result.validationStatus === "blocked"
+        ? "blocked"
+        : "unpriceable";
+    const provenanceSnapshot = {
+      catalogVersion: result.catalogVersion,
+      catalogAsOf: result.catalogAsOf,
+      sources: uniqueProvenance(result, priced.selection),
+    };
+    return {
+      lineItemId: line.id,
+      designId: selected.id,
+      priceStatus,
+      customerPrice: authoritative
+        ? (toCustomerQuotePriceResult(result) as JsonRecord)
+        : customerSafeFailure(result),
+      rpcResult: {
+        lineItemId: line.id,
+        designId: selected.id,
+        selectDesign: !forcedBlocked,
+        selection: priced.selection,
+        selectionFingerprint: result.selectionFingerprint,
+        catalogVersion: result.catalogVersion,
+        priceStatus,
+        authoritativeSnapshot: authoritative ? priced.snapshot : null,
+        internalCostSnapshot: authoritative ? internalSnapshot : null,
+        validationSnapshot: validationSnapshot(
+          result,
+          repriced.costSummary.status,
+          repriced.costSummary.warnings,
+          forcedBlocked
+            ? {
+                lineItemId: line.id,
+                designId: selected.id,
+                source: selectedPriceSource(priced.selection),
+              }
+            : null,
+        ),
+        provenanceSnapshot,
+      },
+    } satisfies PreparedSalesQuoteV2PricingLine;
+  });
+
+  return {
+    repriced: repriced as PreparedSalesQuoteV2PricingBatch["repriced"],
+    prepared,
+  };
+}
+
 /**
  * Server-only quote-wide authoritative pricing + atomic batch persistence.
  * Every price-affecting value is loaded from the database; the client cannot
@@ -477,113 +622,12 @@ export async function saveSalesQuoteV2AuthoritativePrice(
       },
     };
   });
-  const selectedVariantByLine = Object.fromEntries(
-    selectedDesigns.map((design) => [design.line_item_id, design.variant]),
-  );
   const serverDate = input.serverDate ?? quoteV2ServerCatalogDate();
-
-  let repriced: ReturnType<typeof repriceExactQuoteBuilderForServerDate>;
-  try {
-    repriced = repriceExactQuoteBuilderForServerDate(
-      {
-        lines,
-        designs: selectedDesigns,
-        selectedVariantByLine,
-      },
-      serverDate,
-    );
-  } catch (error) {
-    throw new CrmAuthError(
-      422,
-      `Authoritative V2 pricing could not interpret the saved selection: ${error instanceof Error ? error.message : "unknown error"}`,
-    );
-  }
-  if (!("backend" in repriced) || repriced.backend !== "v2") {
-    throw new CrmAuthError(
-      500,
-      "The server-authoritative V2 engine did not handle this quote.",
-    );
-  }
-  if (repriced.designs.length !== lines.length) {
-    throw new CrmAuthError(
-      500,
-      "The server-authoritative V2 engine did not return exactly one result per quote line.",
-    );
-  }
-
-  const prepared = lines.map((line) => {
-    const selected = selectedDesigns.find(
-      (design) => design.line_item_id === line.id,
-    );
-    if (!selected) {
-      throw new CrmAuthError(500, `Selected design resolution failed for line ${line.id}.`);
-    }
-    const priced = repriced.designs.find(
-      (entry) =>
-        entry.lineItemId === line.id && entry.designId === selected.id,
-    );
-    if (!priced) {
-      throw new CrmAuthError(
-        500,
-        `The server-authoritative V2 engine returned no result for line ${line.id}.`,
-      );
-    }
-    const result = priced.result;
-    const internalSnapshot = protectedInternalSnapshot(
-      result,
-      priced.costResult,
-      repriced.costSummary,
-    );
-    const forcedBlocked = missingPersistedSelection.has(line.id);
-    const authoritative =
-      !forcedBlocked &&
-      result.ok &&
-      result.validationStatus === "valid" &&
-      result.internalCost?.freightStatus !== "unresolved" &&
-      internalSnapshot !== null &&
-      priced.snapshot !== null;
-    const priceStatus: V2PriceStatus = authoritative
-      ? "authoritative"
-      : forcedBlocked || result.validationStatus === "blocked"
-        ? "blocked"
-        : "unpriceable";
-    const provenanceSnapshot = {
-      catalogVersion: result.catalogVersion,
-      catalogAsOf: result.catalogAsOf,
-      sources: uniqueProvenance(result, priced.selection),
-    };
-    return {
-      lineItemId: line.id,
-      designId: selected.id,
-      priceStatus,
-      customerPrice: authoritative
-        ? toCustomerQuotePriceResult(result)
-        : customerSafeFailure(result),
-      rpcResult: {
-        lineItemId: line.id,
-        designId: selected.id,
-        selectDesign: !forcedBlocked,
-        selection: priced.selection,
-        selectionFingerprint: result.selectionFingerprint,
-        catalogVersion: result.catalogVersion,
-        priceStatus,
-        authoritativeSnapshot: authoritative ? priced.snapshot : null,
-        internalCostSnapshot: authoritative ? internalSnapshot : null,
-        validationSnapshot: validationSnapshot(
-          result,
-          repriced.costSummary.status,
-          repriced.costSummary.warnings,
-          forcedBlocked
-            ? {
-                lineItemId: line.id,
-                designId: selected.id,
-                source: selectedPriceSource(priced.selection),
-              }
-            : null,
-        ),
-        provenanceSnapshot,
-      },
-    };
+  const { prepared } = prepareSalesQuoteV2PricingBatch({
+    lines,
+    selectedDesigns,
+    serverDate,
+    missingPersistedSelection,
   });
 
   const { data, error } = await supabase.rpc("save_quote_v2_pricing_batch", {
