@@ -715,7 +715,7 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     await expect(card).toContainText("Actual selected grid");
     await expect(card).toContainText("$328");
     await expect(card).toContainText("AutoWand charging-kit allocation");
-    await expect(card).toContainText("Manufacturer suggested retail x 0.30");
+    await expect(card).toContainText("Manufacturer suggested retail x 0.330");
     const wholesalePanel = card.locator('[aria-label="Wholesale cost"]');
     const highlightedWholesaleCosts = wholesalePanel.locator(
       '[data-wholesale-cost-value="true"]',
