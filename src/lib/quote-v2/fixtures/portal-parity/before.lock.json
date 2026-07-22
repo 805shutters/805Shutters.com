@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "captureId": "quote-v2-portal-parity-before-2026-07-22",
+  "policy": "append_only_before_correction_evidence",
+  "engineRevision": "0dd77d068746874ce8326a1350fe9eeb1947cf09",
+  "artifacts": [
+    {
+      "path": "src/lib/quote-v2/fixtures/portal-parity/before-cases.json",
+      "byteLength": 41839,
+      "sha256": "5f1f20fca3eecd29c5526a8d74eb383491676c0bd910e5ffb8979c34b0d73e06"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/polar-elite-portal-capture-2026-07-22.md",
+      "byteLength": 1559,
+      "sha256": "6c064b1068098662cc4e6999b2c8bfb8123087d683963630e40b67f39bd2ef58"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/lotus-three-product-cart-2026-07-22.md",
+      "byteLength": 1622,
+      "sha256": "01c9f02fd4c40ff93daa10c7021207f16081c2ef4de90f9c04f2eb4771c9be28"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/before-audit-2026-07-22.md",
+      "byteLength": 24757,
+      "sha256": "36817f47ac1f1e89e87d7cfa060f9b0ad7cac3715e39e84db98f3a8fbcfeb7ba"
+    }
+  ]
+}

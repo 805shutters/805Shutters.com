@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "binaryRetention": "external_immutable_source_vault",
+    "reason": "The supplied vendor set is approximately 150 MB and includes a 109 MB Polar PDF. The repository retains this machine-readable lock, generated catalog data, and provenance instead of duplicating licensed vendor binaries.",
+    "verificationCommand": "npm run quote-v2:sources:verify -- --source-dir /absolute/path/to/source-vault"
+  },
+  "artifacts": [
+    {
+      "sourceId": "norman-retail-guide-2026-07",
+      "fileName": "2026Jul Retail Price Guide (1).pdf",
+      "byteLength": 16583230,
+      "sha256": "ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3"
+    },
+    {
+      "sourceId": "lotus-west-a26-v1",
+      "fileName": "Lotus.pdf",
+      "byteLength": 8986712,
+      "sha256": "4e9aba91a601e1212a3e8a1531c361caf033c28ef6ca1fdac3ad6247502a982f"
+    },
+    {
+      "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+      "fileName": "_Polar Shades Dealer Book - CURRENT.pdf",
+      "byteLength": 109423623,
+      "sha256": "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e"
+    },
+    {
+      "sourceId": "onyx-reference-guide-2020-2021",
+      "fileName": "OnyxProgramBinder2020 (1).pdf",
+      "byteLength": 1943076,
+      "sha256": "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b"
+    },
+    {
+      "sourceId": "onyx-price-screenshot-2026-07-20",
+      "fileName": "Onyx U.S. Made Vinyl Pricing 2026-07-20.png",
+      "byteLength": 45282,
+      "sha256": "ffd0dc5d5a337a7a6a4a3ec55446119cb596445b04816afa095af4b0e9e94500"
+    },
+    {
+      "sourceId": "norman-dealer-pricing-snapshot-2026-07-20",
+      "fileName": "NORMAN PRICING.pdf",
+      "byteLength": 264572,
+      "sha256": "fdf0af921d137d778d6890b7afa97342045bd50d05a4838afc116b6c400f3044"
+    },
+    {
+      "sourceId": "norman-motorization-guide-2026-05",
+      "fileName": "Motorization Guide.pdf",
+      "byteLength": 9323825,
+      "sha256": "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290"
+    },
+    {
+      "sourceId": "norman-honeycomb-guide-2026-07",
+      "fileName": "Honeycomb Shade Guide (1).pdf",
+      "byteLength": 4861928,
+      "sha256": "94cba8c6b2bc7c73e134d8bfd4a4ccfbfba82392d220bfb6ec0bd5f4d210495b"
+    },
+    {
+      "sourceId": "norman-roller-guide-2026-07",
+      "fileName": "Roller Shade Guide (2).pdf",
+      "byteLength": 6871279,
+      "sha256": "ec8f0521adaabe04d6a156f603b3ee1a409e59211b4f4b0a7b6569dda3886f87"
+    },
+    {
+      "sourceId": "norman-roman-guide-2026-05",
+      "fileName": "Roman Shade Guide.pdf",
+      "byteLength": 3702816,
+      "sha256": "6973ff6c97c13a68e62308bbe131273f164a7ebed58b4d71513a223a7081afdc"
+    },
+    {
+      "sourceId": "norman-vertical-blinds-guide-2026-06",
+      "fileName": "Vertical Blinds Guide.pdf",
+      "byteLength": 4980390,
+      "sha256": "3d77bce8fa7d621898cb2f2dbb64db3c48fd1584a059d165b7786a43dc8b6245"
+    },
+    {
+      "sourceId": "norman-honeycomb-color-coordination-2026-07",
+      "fileName": "HC Color Coordination.xlsx",
+      "byteLength": 131900,
+      "sha256": "56676b753c0255618439c77cf837ee93de579b555fe0bee33dada1e0f9b521e4"
+    },
+    {
+      "sourceId": "norman-roller-minmax-appendix-2026-08",
+      "fileName": "Roller MinMax Appendix.xls",
+      "byteLength": 696832,
+      "sha256": "ba286767b6c4d760bf480434312678f6c35b229e9763ddd6fcda9f7cd18b9cc3"
+    }
+  ],
+  "derivedArtifacts": [
+    {
+      "id": "norman-roller-minmax-appendix-2026-08-libreoffice-xlsx",
+      "fromSourceId": "norman-roller-minmax-appendix-2026-08",
+      "fileName": "Roller MinMax Appendix.xlsx",
+      "byteLength": 384538,
+      "sha256": "f076f92a2f9f5032c78c48487afb86464b8197d567822efd7d8dbb79dd18e253",
+      "method": "LibreOffice headless conversion from the pinned original XLS file"
+    }
+  ]
+}

@@ -217,17 +217,30 @@ describe("catalog integrity", () => {
       for (const prog of product.programs) {
         const { widths, heights, prices } = prog.grid;
         if (prog.priceAxis === "sqft") {
-          expect(typeof prog.pricePerSqft, `${prog.id} pricePerSqft`).toBe("number");
+          const effectiveBasis = prog.priceBasis ?? product.priceBasis;
+          const dealerNet = effectiveBasis === "dealer_net";
+          if (dealerNet) {
+            expect(prog.pricePerSqft, `${prog.id} customer retail`).toBeNull();
+            expect(typeof prog.costPerSqft, `${prog.id} costPerSqft`).toBe("number");
+          } else if (
+            effectiveBasis === "manual_required" ||
+            effectiveBasis === "unavailable"
+          ) {
+            expect(prog.pricePerSqft, `${prog.id} quarantined retail`).toBeNull();
+            expect(prog.costPerSqft, `${prog.id} quarantined cost`).toBeNull();
+          } else {
+            expect(typeof prog.pricePerSqft, `${prog.id} pricePerSqft`).toBe("number");
+          }
           expect(prices.length, `${prog.id} sqft has no grid`).toBe(0);
           continue;
         }
-        if (prog.priceAxis === "wh") {
+        if (prog.priceAxis === "wh" || prog.priceAxis === "height") {
           expect(prices.length, `${prog.id} rows`).toBe(heights.length);
         } else {
           expect(prices.length, `${prog.id} width-only rows`).toBe(1);
         }
         for (const row of prices) {
-          expect(row.length, `${prog.id} cols`).toBe(widths.length);
+          expect(row.length, `${prog.id} cols`).toBe(prog.priceAxis === "height" ? 1 : widths.length);
         }
       }
     }
@@ -295,11 +308,11 @@ describe("motorization per-product pricing (Norman 2026 Retail Guide p7)", () =>
     if (!r.ok) expect(r.code).toBe("MOTORIZATION_UNKNOWN");
   });
 
-  it("never leaks wholesale/cost on Norman motorization (retail-only source)", () => {
+  it("applies the supplied 0.30 dealer factor to Norman motorization", () => {
     const r = ok(priceDesign({ productId: "smartdrape", programId: SMARTDRAPE, widthInches: 36, heightInches: 48, motorization: [{ groupId: "smart_motorization", optionId: "motor" }] }));
-    expect(motorLine(r)?.wholesaleAmount ?? null).toBe(null);
-    expect(r.wholesaleUnitPrice).toBe(null);
-    expect(r.wholesaleTotal).toBe(null);
+    expect(motorLine(r)?.wholesaleAmount).toBe(192.6);
+    expect(r.wholesaleUnitPrice).toBe(Math.round(r.unitPrice * 0.3 * 100) / 100);
+    expect(r.wholesaleTotal).toBe(r.wholesaleUnitPrice);
   });
 });
 
@@ -397,6 +410,7 @@ describe("fuzz sweep: no NaN, no negative, no silent wrong price ever escapes", 
       "AREA_EXCEEDS_MAX",
       "NA_CELL",
       "INVALID_DIMENSIONS",
+      "CUSTOMER_RETAIL_UNDEFINED",
     ]);
     let priced = 0;
     let errored = 0;

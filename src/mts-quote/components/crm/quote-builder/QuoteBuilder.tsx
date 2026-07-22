@@ -1,16 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { ProductTypeButtons } from "./ProductTypeButtons";
 import { RoomPresetButtons } from "./RoomPresetButtons";
 import { MeasurementGridModal } from "./MeasurementGridModal";
 import { DesignCard } from "./DesignCard";
+import { resolveManufacturerStamp } from "./manufacturerStamp";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
+import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
+import {
+  QUOTE_V2_SELECTED_DESIGN_MARKER,
+  resolveSelectedQuoteDesign,
+} from "@/lib/quote-v2/selected-design";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
   Archive,
@@ -40,8 +46,9 @@ import {
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 import {
-  buildCopiedDesignRows,
+  buildCopiedDesignSet,
   buildCopiedLineItemPatch,
+  buildExternalRelationshipCleanupRows,
   getMatchingCopyTargetIds,
   lineItemsHaveMatchingProductType,
 } from "@mts/lib/quoteDesignCopy";
@@ -106,6 +113,132 @@ const STACK_OPTION_EXCLUDED_KEYS = new Set([
   "discount_amount",
   "manual_price_override",
 ]);
+
+const V2_OPTIMISTIC_PRICE_KEYS = new Set([
+  "authoritative_price_breakdown",
+  "authoritative_cost_breakdown",
+  "authoritative_once_total",
+  "authoritative_v2_snapshot",
+  "priced_selection_fingerprint",
+  "priced_catalog_version",
+  "base_price",
+  "surcharge_total",
+  "discount_amount",
+]);
+
+export function invalidateOptimisticV2Design(
+  current: Partial<SalesQuoteDesign> | undefined,
+  patch: Partial<SalesQuoteDesign>
+): SalesQuoteDesign {
+  // Supabase replaces a provided JSON column; mirror that exact behavior in
+  // the optimistic row. Merging a deliberately clean product/program payload
+  // back into the previous JSON resurrects hidden fabric, motor, and catalog
+  // identities long enough for a fast follow-up edit to save them again.
+  const options = patch.options_json !== undefined
+    ? { ...(patch.options_json as Record<string, unknown>) }
+    : { ...((current?.options_json as Record<string, unknown> | undefined) ?? {}) };
+  for (const key of V2_OPTIMISTIC_PRICE_KEYS) delete options[key];
+  return {
+    ...(current ?? {}),
+    ...patch,
+    unit_price: 0,
+    options_json: {
+      ...options,
+      authoritative_price_status: "stale",
+      authoritative_price_error: "Repricing the latest selection…",
+    },
+  } as SalesQuoteDesign;
+}
+
+export class ProductTypeChangeRollbackError extends Error {
+  readonly cleanupError: unknown;
+  readonly rollbackError: unknown;
+
+  constructor(
+    lineItemId: string,
+    previousProductType: string,
+    cleanupError: unknown,
+    rollbackError: unknown,
+  ) {
+    const describe = (error: unknown) => {
+      if (error instanceof Error) return error.message;
+      if (
+        error &&
+        typeof error === "object" &&
+        "message" in error &&
+        typeof error.message === "string"
+      ) {
+        return error.message;
+      }
+      return String(error || "Unknown error");
+    };
+    super(
+      `Design cleanup failed for line ${lineItemId}: ${describe(cleanupError)} ` +
+        `Rollback to ${previousProductType} also failed: ${describe(rollbackError)}`,
+    );
+    this.name = "ProductTypeChangeRollbackError";
+    this.cleanupError = cleanupError;
+    this.rollbackError = rollbackError;
+    this.cause = cleanupError;
+  }
+}
+
+type ProductTypeChangeOperation = () => Promise<unknown | null>;
+
+async function captureProductTypeChangeError(
+  operation: ProductTypeChangeOperation,
+): Promise<unknown | null> {
+  try {
+    return (await operation()) ?? null;
+  } catch (error) {
+    return error;
+  }
+}
+
+/**
+ * Supabase cannot make the line update and design deletion one browser-side
+ * transaction. Compensate immediately if cleanup fails so the old designs are
+ * never intentionally left attached to a different product category.
+ */
+export async function changeLineItemProductTypeWithRollback({
+  lineItemId,
+  previousProductType,
+  nextProductType,
+  updateProductType,
+  deleteDesigns,
+}: {
+  lineItemId: string;
+  previousProductType: string;
+  nextProductType: string;
+  updateProductType: (productType: string) => Promise<unknown | null>;
+  deleteDesigns: ProductTypeChangeOperation;
+}): Promise<void> {
+  if (previousProductType === nextProductType) return;
+
+  const updateError = await captureProductTypeChangeError(() =>
+    updateProductType(nextProductType),
+  );
+  if (updateError) throw updateError;
+
+  const cleanupError = await captureProductTypeChangeError(deleteDesigns);
+  if (!cleanupError) return;
+
+  const rollbackError = await captureProductTypeChangeError(() =>
+    updateProductType(previousProductType),
+  );
+  if (rollbackError) {
+    throw new ProductTypeChangeRollbackError(
+      lineItemId,
+      previousProductType,
+      cleanupError,
+      rollbackError,
+    );
+  }
+
+  // Preserve the exact cleanup error for callers and telemetry when rollback
+  // restored the prior category successfully.
+  throw cleanupError;
+}
 
 const STACK_OPTION_LABELS: Record<string, string> = {
   catalog_program_id: "Program",
@@ -288,16 +421,22 @@ function StackedLineItemRow({
   item,
   lineNumberLabel,
   designs,
+  authoritativeV2,
   onUnstack,
 }: {
   item: SalesQuoteLineItem;
   lineNumberLabel: string;
   designs: SalesQuoteDesign[];
+  authoritativeV2: boolean;
   onUnstack: () => void;
 }) {
   const details = buildStackedDesignSummary(designs);
   const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
-  const total = calculateLineItemDesignTotal(item, designs);
+  const selectedDesign = resolveSelectedQuoteDesign(designs);
+  const manufacturerStamp = resolveManufacturerStamp(selectedDesign);
+  const total = calculateLineItemDesignTotal(item, designs, {
+    mode: authoritativeV2 ? "authoritative_v2" : "legacy",
+  });
   const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
 
   return (
@@ -312,7 +451,28 @@ function StackedLineItemRow({
         {lineNumberLabel}
       </span>
       <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
-      <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
+      <span className="inline-flex min-w-0 items-center gap-1">
+        <span className="truncate font-mono text-[11px] font-bold text-slate-700">
+          {dimensions}
+        </span>
+        {manufacturerStamp && (
+          <span
+            aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+            className={cn(
+              "quote-line-manufacturer-stamp quote-line-manufacturer-stamp--stacked",
+              `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+            )}
+            data-manufacturer={manufacturerStamp.label}
+            data-testid="stacked-manufacturer-stamp"
+            title={`Manufacturer: ${manufacturerStamp.label}`}
+          >
+            <span className="quote-line-manufacturer-stamp-caption">MFR</span>
+            <span className="quote-line-manufacturer-stamp-name">
+              {manufacturerStamp.label}
+            </span>
+          </span>
+        )}
+      </span>
       <span className={cn("quote-stacked-product-badge", getStackedProductTypeClass(item.product_type))}>
         <span className="quote-stacked-product-badge__label">
           {item.product_type}
@@ -330,6 +490,12 @@ function StackedLineItemRow({
 }
 
 export function QuoteBuilder() {
+  const {
+    database: supabase,
+    isolated,
+    authoritativeV2,
+    preferStoredTotal,
+  } = useQuoteBuilderDatabase();
   const {
     activeQuoteId,
     selectedProductType,
@@ -386,19 +552,25 @@ export function QuoteBuilder() {
     if (lineItemsError) throw lineItemsError;
 
     const latestLineItemIds = (latestLineItems ?? []).map((item: SalesQuoteLineItem) => item.id);
-    let latestDesigns: Pick<SalesQuoteDesign, "line_item_id" | "unit_price">[] = [];
+    let latestDesigns: Pick<
+      SalesQuoteDesign,
+      "line_item_id" | "variant" | "unit_price" | "options_json"
+    >[] = [];
 
     if (latestLineItemIds.length > 0) {
       const { data: designRows, error: designsError } = await (supabase as any)
         .from("sales_quote_designs")
-        .select("line_item_id, unit_price")
+        .select("line_item_id, variant, unit_price, options_json")
         .in("line_item_id", latestLineItemIds);
       if (designsError) throw designsError;
       latestDesigns = designRows ?? [];
     }
 
-    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns);
-    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, options)) return;
+    const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
+    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
+      mode: totalMode,
+    });
+    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, { ...options, mode: totalMode })) return;
 
     const { error: quoteError } = await (supabase as any)
       .from("sales_quotes")
@@ -527,6 +699,9 @@ export function QuoteBuilder() {
       height_whole?: number;
       height_fraction?: string;
     }) => {
+      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+      }
       const { error } = await (supabase as any).from("sales_quote_line_items").insert({
         quote_id: activeQuoteId!,
         room_name: item.room_name,
@@ -548,6 +723,9 @@ export function QuoteBuilder() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Line item could not be added");
     },
   });
 
@@ -572,19 +750,34 @@ export function QuoteBuilder() {
   });
 
   const changeLineItemProductType = useMutation({
-    mutationFn: async ({ id, productType }: { id: string; productType: string }) => {
-      const { error: updateError } = await (supabase as any)
-        .from("sales_quote_line_items")
-        .update({ product_type: productType })
-        .eq("id", id);
-      if (updateError) throw updateError;
-
-      const { error: deleteDesignsError } = await (supabase as any)
-        .from("sales_quote_designs")
-        .delete()
-        .eq("line_item_id", id);
-      if (deleteDesignsError) throw deleteDesignsError;
-    },
+    mutationFn: async ({
+      id,
+      productType,
+      previousProductType,
+    }: {
+      id: string;
+      productType: string;
+      previousProductType: string;
+    }) =>
+      changeLineItemProductTypeWithRollback({
+        lineItemId: id,
+        previousProductType,
+        nextProductType: productType,
+        updateProductType: async (nextProductType) => {
+          const { error } = await (supabase as any)
+            .from("sales_quote_line_items")
+            .update({ product_type: nextProductType })
+            .eq("id", id);
+          return error;
+        },
+        deleteDesigns: async () => {
+          const { error } = await (supabase as any)
+            .from("sales_quote_designs")
+            .delete()
+            .eq("line_item_id", id);
+          return error;
+        },
+      }),
     onSuccess: async () => {
       await syncQuoteTotal();
       queryClient.invalidateQueries({
@@ -619,29 +812,96 @@ export function QuoteBuilder() {
     },
   });
 
+  const upsertCopiedDesignSet = async (
+    sourceDesigns: SalesQuoteDesign[],
+    targetLineItemId: string
+  ) => {
+    const copied = buildCopiedDesignSet(sourceDesigns, targetLineItemId, {
+      invalidateAuthoritativePrice: authoritativeV2,
+    });
+    if (copied.rows.length === 0) return copied;
+
+    const { error } = await (supabase as any)
+      .from("sales_quote_designs")
+      .upsert(copied.rows, { onConflict: "line_item_id,variant" });
+    if (error) throw error;
+
+    // The isolated V2 database records the selected alternative when it sees a
+    // single-row upsert. Re-upserting just the source selection also remains a
+    // harmless normal upsert for the legacy Supabase adapter.
+    if (copied.rows.length > 1 && copied.selectedVariant) {
+      const selectedRow = copied.rows.find(
+        (row) => row.variant === copied.selectedVariant
+      );
+      if (selectedRow) {
+        const { error: selectionError } = await (supabase as any)
+          .from("sales_quote_designs")
+          .upsert(selectedRow, { onConflict: "line_item_id,variant" });
+        if (selectionError) throw selectionError;
+      }
+    }
+
+    return copied;
+  };
+
   // Copy line item
   const copyLineItem = useMutation({
     mutationFn: async (id: string) => {
+      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
+      }
       const source = lineItems.find((i) => i.id === id);
       if (!source) return;
-      const { error } = await (supabase as any).from("sales_quote_line_items").insert({
-        quote_id: activeQuoteId!,
-        room_name: source.room_name,
-        product_type: source.product_type,
-        width_whole: source.width_whole,
-        width_fraction: source.width_fraction,
-        height_whole: source.height_whole,
-        height_fraction: source.height_fraction,
-        quantity: source.quantity,
-        sort_order: lineItems.length,
-      });
-      if (error) throw error;
+      const sourceDesigns = designs.filter((design) => design.line_item_id === id);
+      let copiedLineId: string | null = null;
+
+      try {
+        const { data: copiedLine, error } = await (supabase as any)
+          .from("sales_quote_line_items")
+          .insert({
+            quote_id: activeQuoteId!,
+            room_name: source.room_name,
+            product_type: source.product_type,
+            width_whole: source.width_whole,
+            width_fraction: source.width_fraction,
+            height_whole: source.height_whole,
+            height_fraction: source.height_fraction,
+            quantity: source.quantity,
+            sort_order: lineItems.length,
+          })
+          .select("*")
+          .single();
+        if (error) throw error;
+        if (!copiedLine?.id) throw new Error("The copied line item did not return an ID.");
+        copiedLineId = copiedLine.id;
+
+        await upsertCopiedDesignSet(sourceDesigns, copiedLine.id);
+        return copiedLine.id;
+      } catch (error) {
+        if (copiedLineId) {
+          await (supabase as any)
+            .from("sales_quote_line_items")
+            .delete()
+            .eq("id", copiedLineId);
+        }
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await syncQuoteTotal({ allowZero: true });
       queryClient.invalidateQueries({
         queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+      });
       toast.success("Line item copied");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Line item could not be copied");
     },
   });
 
@@ -687,11 +947,33 @@ export function QuoteBuilder() {
           (row) => row.line_item_id === design.line_item_id && row.variant === design.variant
         );
 
-        if (index === -1) return [...current, design as SalesQuoteDesign];
+        const markSelected = (rows: SalesQuoteDesign[]) =>
+          authoritativeV2
+            ? rows.map((row) =>
+                row.line_item_id === design.line_item_id
+                  ? {
+                      ...row,
+                      [QUOTE_V2_SELECTED_DESIGN_MARKER]:
+                        row.variant === design.variant,
+                    }
+                  : row,
+              )
+            : rows;
+
+        if (index === -1) {
+          return markSelected([
+            ...current,
+            authoritativeV2
+              ? invalidateOptimisticV2Design(undefined, design)
+              : design as SalesQuoteDesign,
+          ]);
+        }
 
         const next = [...current];
-        next[index] = { ...next[index], ...design };
-        return next;
+        next[index] = authoritativeV2
+          ? invalidateOptimisticV2Design(next[index], design)
+          : { ...next[index], ...design };
+        return markSelected(next);
       });
 
       return { previousDesigns };
@@ -741,6 +1023,18 @@ export function QuoteBuilder() {
       const sourceVariants = sourceDesigns.map((sd) => sd.variant);
       const sourceVariantFilter = `(${sourceVariants.map((variant) => `"${variant}"`).join(",")})`;
 
+      const relationshipCleanupRows = authoritativeV2
+        ? buildExternalRelationshipCleanupRows(designs, targets)
+        : [];
+      if (relationshipCleanupRows.length > 0) {
+        const { error: relationshipCleanupError } = await (supabase as any)
+          .from("sales_quote_designs")
+          .upsert(relationshipCleanupRows, {
+            onConflict: "line_item_id,variant",
+          });
+        if (relationshipCleanupError) throw relationshipCleanupError;
+      }
+
       for (const targetId of targets) {
         const { error: lineItemError } = await (supabase as any)
           .from("sales_quote_line_items")
@@ -748,12 +1042,7 @@ export function QuoteBuilder() {
           .eq("id", targetId);
         if (lineItemError) throw lineItemError;
 
-        const clonedDesigns = buildCopiedDesignRows(sourceDesigns, targetId);
-
-        const { error } = await (supabase as any)
-          .from("sales_quote_designs")
-          .upsert(clonedDesigns, { onConflict: "line_item_id,variant" });
-        if (error) throw error;
+        await upsertCopiedDesignSet(sourceDesigns, targetId);
 
         const { error: staleVariantError } = await (supabase as any)
           .from("sales_quote_designs")
@@ -875,6 +1164,10 @@ export function QuoteBuilder() {
   const handleRoomSelect = (room: string) => {
     if (!selectedProductType) {
       toast.error("Select a product type first");
+      return;
+    }
+    if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
+      toast.error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
       return;
     }
     addLineItem.mutate({
@@ -1134,9 +1427,14 @@ export function QuoteBuilder() {
                 {quote && (
                   <Button
                     size="sm"
-                    onClick={() => setShowSendDialog(true)}
+                    onClick={() =>
+                      isolated
+                        ? toast.info("Testing mode: sending is safely disabled.")
+                        : setShowSendDialog(true)
+                    }
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                    title="Email or text the quote link to the customer"
+                    disabled={isolated}
+                    title={isolated ? "Disabled in isolated Quote Lab" : "Email or text the quote link to the customer"}
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quote
@@ -1146,9 +1444,14 @@ export function QuoteBuilder() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowPaymentLinkDialog(true)}
+                    onClick={() =>
+                      isolated
+                        ? toast.info("Testing mode: payment links are safely disabled.")
+                        : setShowPaymentLinkDialog(true)
+                    }
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
-                    title="Email the deposit payment link to the customer"
+                    disabled={isolated}
+                    title={isolated ? "Disabled in isolated Quote Lab" : "Email the deposit payment link to the customer"}
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Send Payment Link
@@ -1370,7 +1673,11 @@ export function QuoteBuilder() {
           />
           <RoomPresetButtons
             onSelect={handleRoomSelect}
-            disabled={!selectedProductType || addLineItem.isPending}
+            disabled={
+              !selectedProductType ||
+              addLineItem.isPending ||
+              (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES)
+            }
             lineNumbers={roomLineNumbers}
           />
         </div>
@@ -1391,6 +1698,7 @@ export function QuoteBuilder() {
                   item={item}
                   lineNumberLabel={lineNumberRanges.get(item.id)?.label ?? "#0"}
                   designs={designsByLineItemId.get(item.id) ?? []}
+                  authoritativeV2={authoritativeV2}
                   onUnstack={() => handleUnstackLineItem(item.id)}
                 />
               ))}
@@ -1464,6 +1772,27 @@ export function QuoteBuilder() {
                   lineNumber={lineRange?.start ?? 0}
                   lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
+                  sideBySideLineOptions={lineItems.flatMap((candidate) => {
+                    if (
+                      candidate.id === item.id ||
+                      candidate.product_type !== item.product_type
+                    ) {
+                      return [];
+                    }
+                    const candidateDesign = designs.find(
+                      (design) =>
+                        design.line_item_id === candidate.id && design.variant === "A",
+                    );
+                    if (!candidateDesign) return [];
+                    const candidateRange = lineNumberRanges.get(candidate.id);
+                    return [
+                      {
+                        lineId: candidate.id,
+                        label: `${candidateRange?.label ?? "#?"} • ${candidate.room_name} • ID ${candidate.id}`,
+                        design: candidateDesign,
+                      },
+                    ];
+                  })}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}
@@ -1480,7 +1809,11 @@ export function QuoteBuilder() {
                   onDelete={() => deleteLineItem.mutate(item.id)}
                   onCopyItem={() => copyLineItem.mutate(item.id)}
                   onChangeProductType={(productType) =>
-                    changeLineItemProductType.mutate({ id: item.id, productType })
+                    changeLineItemProductType.mutate({
+                      id: item.id,
+                      productType,
+                      previousProductType: item.product_type,
+                    })
                   }
                   onUpdateRoomName={(roomName) =>
                     updateLineItem.mutate({ id: item.id, room_name: roomName })
@@ -1544,6 +1877,8 @@ export function QuoteBuilder() {
           lineItems={lineItems}
           designs={designs}
           storedTotal={quote.total_amount}
+          preferStoredTotal={preferStoredTotal}
+          authoritativeV2={authoritativeV2}
         />
       )}
     </div>

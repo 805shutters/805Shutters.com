@@ -207,7 +207,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
     expect(fields.price_status).toBe("ok");
     expect(fields.unit_price).toBe(212);
-    expect(fields.wholesale_unit_price).toBeNull();
+    expect(fields.wholesale_unit_price).toBe(63.6);
   });
 
   it("derives canonical surcharges from details and ignores client-provided manual surcharges", () => {
@@ -225,7 +225,7 @@ describe("priceDesignFields (server-side engine integration)", () => {
     expect(fields.price_status).toBe("ok");
     expect(fields.surcharges).toEqual([{ id: "lightguard_360" }]);
     expect((fields.price_breakdown as { surchargeLines?: Array<{ id: string; amount: number }> }).surchargeLines).toEqual([
-      { id: "lightguard_360", label: "LightGuard 360", amount: 375, kind: "flat" },
+      expect.objectContaining({ id: "lightguard_360", label: "LightGuard 360", amount: 375, wholesaleAmount: 112.5, kind: "flat" }),
     ]);
     expect(fields.unit_price).toBe(629);
   });
@@ -249,14 +249,14 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
   });
 
-  it("prices internal wholesale for shutter designs", () => {
+  it("blocks customer retail for dealer-only shutter books", () => {
     const fields = priceDesignFields(
       { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },
       { width_in: 30, height_in: 60 },
     );
-    expect(fields.price_status).toBe("ok");
-    expect(fields.unit_price).toBe(475);
-    expect(fields.wholesale_unit_price).toBe(168.75);
+    expect(fields.price_status).toBe("CUSTOMER_RETAIL_UNDEFINED");
+    expect(fields.unit_price).toBe(0);
+    expect(fields.wholesale_unit_price).toBeNull();
   });
 
   it("marks an out-of-range design with the error code and zero price", () => {

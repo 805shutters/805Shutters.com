@@ -1121,8 +1121,8 @@ export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   },
   {
     name: "Onyx US Made Vinyl",
-    wholesalePrice: 13.65,
-    retailPrice: 33.0,
+    wholesalePrice: 13.6,
+    retailPrice: 34.0,
     tariff: 0,
   },
   {

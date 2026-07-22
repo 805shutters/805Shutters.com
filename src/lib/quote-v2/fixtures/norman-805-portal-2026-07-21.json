@@ -1,0 +1,78 @@
+{
+  "id": "norman-805-live-portal-2026-07-21",
+  "capturedOn": "2026-07-21",
+  "captureMode": "read_only_unsubmitted_draft",
+  "accountIdRedacted": true,
+  "verifiedFacts": [
+    "roller_standard_factor",
+    "roller_shutter_lead_time_factor",
+    "continental_blinds_shades_freight",
+    "processing_fee_on_merchandise_plus_freight",
+    "portal_surcharge_group_rounding"
+  ],
+  "notVerified": [
+    "oversize_processing_fee_basis",
+    "hi_ak_freight",
+    "shutter_freight"
+  ],
+  "product": "Roller Shades",
+  "configuration": {
+    "widthInches": 24,
+    "heightInches": 36,
+    "collection": "Brook",
+    "sourceGridProgramId": "roller_cordless_fabric_price_group_1_pg1",
+    "liftSystem": "Smart Release",
+    "surcharges": [
+      {
+        "id": "smartrelease",
+        "listDollars": 89
+      },
+      {
+        "id": "shim",
+        "units": 1,
+        "listDollars": 7
+      }
+    ]
+  },
+  "list": {
+    "baseDollars": 254,
+    "groupedSurchargeDollars": 96,
+    "subtotalDollars": 350
+  },
+  "standard": {
+    "selectedSchedulePercent": 30,
+    "effectivePortalFactor": 0.33,
+    "baseDealerNetDollars": 83.82,
+    "groupedSurchargeDealerNetDollars": 31.68,
+    "productSubtotalDealerNetDollars": 115.5,
+    "oneUnit": {
+      "merchandiseDollars": 115.5,
+      "freightDollars": 25,
+      "processingDollars": 2.81,
+      "grandTotalDollars": 143.31
+    },
+    "twoUnits": {
+      "merchandiseDollars": 231,
+      "freightDollars": 36,
+      "processingDollars": 5.34,
+      "grandTotalDollars": 272.34
+    }
+  },
+  "shutterLeadTime": {
+    "selectedSchedulePercent": 28.5,
+    "effectivePortalFactor": 0.297,
+    "baseDealerNetDollars": 75.44,
+    "groupedSurchargeDealerNetDollars": 28.51,
+    "productSubtotalDealerNetDollars": 103.95,
+    "oneUnit": {
+      "freightDollars": 25,
+      "processingDollars": 2.58,
+      "grandTotalDollars": 131.53
+    },
+    "twoUnits": {
+      "freightDollars": 36,
+      "processingDollars": 4.88,
+      "grandTotalDollars": 248.78
+    }
+  }
+}

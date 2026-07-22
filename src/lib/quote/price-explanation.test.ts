@@ -11,6 +11,7 @@ function breakdown(over: Partial<PriceBreakdown>): PriceBreakdown {
     matchedWidth: 24,
     matchedHeight: 36,
     base: 212,
+    configurationUnits: 1,
     wholesaleBase: null,
     surchargeLines: [],
     unitPrice: 212,

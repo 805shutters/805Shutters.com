@@ -11,7 +11,8 @@ export type UiProgram = {
   id: string;
   name: string;
   priceGroup: string | null;
-  priceAxis: "wh" | "width" | "sqft";
+  priceAxis: "wh" | "width" | "height" | "sqft";
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable" | null;
 };
 
 export type UiFabric = { name: string; programId: string };
@@ -61,6 +62,9 @@ export type UiProduct = {
   id: string;
   name: string;
   productType: string;
+  manufacturer: string | null;
+  system: string | null;
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
   image: string;
@@ -93,6 +97,18 @@ export type UiCatalog = {
   motorization: UiMotorizationGroup[];
 };
 
+export function resolveMotorizationOptionsForProduct(
+  group: UiMotorizationGroup,
+  productId: string,
+): Array<{ id: string; name: string; price: number | null }> {
+  return group.options.flatMap((option) => {
+    const hasProductPrice = Boolean(option.priceByProduct && productId in option.priceByProduct);
+    const mapped = hasProductPrice ? option.priceByProduct?.[productId] : option.price;
+    if (hasProductPrice && mapped == null) return [];
+    return [{ id: option.id, name: option.name, price: mapped ?? null }];
+  });
+}
+
 export type UiPricingReferenceProgram = {
   productId: string;
   productName: string;
@@ -102,7 +118,7 @@ export type UiPricingReferenceProgram = {
   programId: string;
   programName: string;
   priceGroup: string | null;
-  priceAxis: "wh" | "width" | "sqft";
+  priceAxis: "wh" | "width" | "height" | "sqft";
   maxWidth: number | null;
   maxHeight: number | null;
   minSqft: number | null;
@@ -166,6 +182,9 @@ export function buildUiCatalog(): UiCatalog {
     id: p.id,
     name: p.name,
     productType: p.productType,
+    manufacturer: p.manufacturer ?? (p.id.startsWith("polar_") ? "Polar" : "Norman"),
+    system: p.system ?? null,
+    priceBasis: p.priceBasis ?? "suggested_retail",
     provisional: p.provisional === true,
     source: p.source ?? null,
     image: productImage(p.productType),
@@ -174,6 +193,7 @@ export function buildUiCatalog(): UiCatalog {
       name: pr.name,
       priceGroup: pr.priceGroup,
       priceAxis: pr.priceAxis,
+      priceBasis: pr.priceBasis ?? null,
     })),
     fabrics: p.fabricRouting
       ? Object.entries(p.fabricRouting)
@@ -254,7 +274,7 @@ export function buildPricingReference(): UiPricingReference {
       widths: program.grid.widths,
       heights: program.grid.heights,
       prices: program.grid.prices,
-      costs: emptyCostGrid(program.grid.prices),
+      costs: program.grid.costs ?? emptyCostGrid(program.grid.prices),
       notes: program.notes,
     })),
   );

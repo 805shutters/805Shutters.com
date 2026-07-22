@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 1,
+  "captureId": "quote-v2-portal-parity-after-2026-07-22",
+  "capturePhase": "after_correction",
+  "capturedAt": "2026-07-22T10:50:00-07:00",
+  "correctionRevision": "fe4c1e7802a394929d8a17cf37592b51ea73c492",
+  "beforeCaptureId": "quote-v2-portal-parity-before-2026-07-22",
+  "engine": {
+    "route": "/quote-lab/",
+    "interfaceMarker": "exact-existing-builder",
+    "adapter": "repriceExactQuoteBuilderForQuoteLabPreview",
+    "backend": "v2",
+    "catalogVersion": "805-v2-norman-2026-07-msrp-r1",
+    "rollerPreviewCatalogVersion": "805-v2-norman-roller-2026-08-01-msrp-r1"
+  },
+  "safety": {
+    "draftLabel": "CODEX PRICING TEST — DO NOT ORDER",
+    "submitted": false,
+    "customerData": "neutral_test_only",
+    "productionWrites": false,
+    "customerQuotesSent": false,
+    "manufacturerOrdersPlaced": false
+  },
+  "sourceVerification": {
+    "command": "npm run quote-v2:sources:verify -- --source-dir <source-vault>",
+    "status": "blocked",
+    "verifiedArtifactCount": 10,
+    "unresolved": [
+      {
+        "sourceId": "onyx-price-screenshot-2026-07-20",
+        "fileName": "Onyx U.S. Made Vinyl Pricing 2026-07-20.png",
+        "reason": "missing"
+      },
+      {
+        "sourceId": "norman-honeycomb-color-coordination-2026-07",
+        "fileName": "HC Color Coordination.xlsx",
+        "reason": "missing"
+      },
+      {
+        "sourceId": "norman-roller-minmax-appendix-2026-08",
+        "fileName": "Roller MinMax Appendix.xls",
+        "reason": "hash_mismatch",
+        "expectedByteLength": 696832,
+        "expectedSha256": "ba286767b6c4d760bf480434312678f6c35b229e9763ddd6fcda9f7cd18b9cc3",
+        "foundByteLength": 706560,
+        "foundSha256": "cbbe9d156414ed7e1fd687bc23931b04e70210a1ad801d848d66cf5d0dd20c56"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "id": "norman-current-account-portal-fixture-2026-07-21",
+      "classification": "portal_verified_exact_case",
+      "sha256": "ce2ae5ebc7713113ea7eab24cfb208a8f71ef9a3e61d8dd656ea4e1c527d8b7d",
+      "path": "docs/quote-v2/portal-parity/evidence/norman-roller-portal-capture-2026-07-21.md",
+      "byteLength": 140404,
+      "exactCaseIds": ["norman-roller-smartrelease-24x36"],
+      "redacted": true,
+      "note": "Private authenticated configuration capture plus the source-controlled redacted portal ledger; exact Roller case only."
+    },
+    {
+      "id": "polar-elite-private-capture-2026-07-22",
+      "classification": "portal_verified_exact_case",
+      "sha256": "bca8fe340b1afad3838302ce3f734b04a9128824059152cb043860b0dae6a1a2",
+      "path": "docs/quote-v2/portal-parity/evidence/polar-elite-portal-capture-2026-07-22.md",
+      "byteLength": 239424,
+      "exactCaseIds": ["polar-elite-suntex90-manual-three-line"],
+      "redacted": true,
+      "note": "Private user-supplied saved-quote evidence; exact three-line Elite case only."
+    },
+    {
+      "id": "lotus-three-product-cart-private-capture-2026-07-22",
+      "classification": "portal_dealer_observation_not_customer_msrp",
+      "sha256": "74d2088c10e7317b5e3614c74242f4d9648ed4d8ef35f621bbfbde1641d04915",
+      "path": "docs/quote-v2/portal-parity/evidence/lotus-three-product-cart-2026-07-22.md",
+      "byteLength": 133336,
+      "exactCaseIds": [],
+      "redacted": true,
+      "note": "Authenticated three-product DO NOT ORDER cart. It exposes dealer amounts, not customer MSRP, and is not reused as MSRP evidence."
+    }
+  ],
+  "systemEvidence": [
+    {
+      "id": "805-norman-roller-after-ui-2026-07-22",
+      "classification": "local_ui_verified_exact_case",
+      "path": "docs/quote-v2/portal-parity/evidence/805-norman-roller-after-ui-2026-07-22.md",
+      "route": "/quote-lab/",
+      "exactCaseIds": ["norman-roller-smartrelease-24x36"],
+      "redacted": true,
+      "captures": [
+        {
+          "id": "completed_line_item",
+          "sha256": "8ee4a3c50549e9545ebe759640c028ba50ed3ca0c7c91a0eef40b6ff3d2b17b5",
+          "byteLength": 133810
+        },
+        {
+          "id": "protected_wholesale_ledger",
+          "sha256": "c175dfe106da06c35e97eeea11d75fa317b37cd265bb1c0e58b24a7b4afa3d5b",
+          "byteLength": 111865
+        }
+      ],
+      "note": "Actual existing-interface V2 result at $350.00, with the four retail components and red protected wholesale values visibly confirmed."
+    }
+  ],
+  "corrections": [
+    {
+      "title": "Manufacturer retail basis",
+      "detail": "Suggested-retail/list programs now preserve the source MSRP components. Dealer schedules affect protected cost only; the universal cost-times-2.5 customer calculation was removed."
+    },
+    {
+      "title": "Dealer-only catalogs",
+      "detail": "Lotus no longer invents customer retail and returns CUSTOMER_RETAIL_UNDEFINED. Onyx remains fail-closed before customer pricing because current restriction evidence is incomplete; its source-backed dealer cost remains authorization-protected."
+    },
+    {
+      "title": "Price components",
+      "detail": "Base grid, fabric delta, accessories, and operating-system charges reconcile independently and sum to the exact customer total."
+    },
+    {
+      "title": "Polar standalone grids",
+      "detail": "Drapery and awning programs are explicitly standalone grids instead of being misread as price-group upgrades."
+    },
+    {
+      "title": "Stored-price migration",
+      "detail": "The MSRP policy uses new catalog identities; snapshots from the prior markup policy are stale even when their selection fingerprint is unchanged."
+    },
+    {
+      "title": "Dealer-only option ledger",
+      "detail": "Onyx H2/H3 and Polar All Seasons option costs are itemized; incomplete or unproven dealer-cost options fail closed."
+    },
+    {
+      "title": "Source integrity",
+      "detail": "The Polar generator accepts only the pinned SHA-256 and structural anchors, validates catalog inventory, and writes atomically."
+    },
+    {
+      "title": "Customer data boundary",
+      "detail": "Customer failure projections use neutral wording and exclude dealer-net, margin, schedule, freight-cost, and landed-cost diagnostics."
+    }
+  ],
+  "cases": [
+    {
+      "id": "norman-roller-smartrelease-24x36",
+      "systemAfter": {
+        "status": "priced",
+        "productStatus": "documented_limited",
+        "validationStatus": "valid",
+        "sendable": true,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "24 x 36 PG1 base", "amountCents": 25400 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "Brook PG1 fabric included", "amountCents": 0 },
+          { "id": "smartrelease", "category": "operating_system", "label": "SmartRelease", "amountCents": 8900 },
+          { "id": "shim", "category": "accessory", "label": "Shim", "amountCents": 700 }
+        ],
+        "customerRetailSubtotalCents": 35000,
+        "displayedTotalCents": 35000,
+        "internalCost": { "productCents": 11550, "freightCents": 2500, "oversizeCents": 0, "processingCents": 281, "landedCents": 14331 },
+        "blockCodes": [],
+        "error": null
+      },
+      "comparisonAfter": { "manufacturerCents": 35000, "systemCents": 35000, "differenceCents": 0, "percentageBasisPoints": 0, "result": "pass" },
+      "resolution": {
+        "rootCause": "805 began with dealer merchandise cost and multiplied it by 2.5, so the discrepancy started at the base and repeated on SmartRelease and the shim.",
+        "change": "Preserve Norman's $254 + $89 + $7 suggested-retail components; apply the account schedule only to the protected $115.50 dealer merchandise ledger.",
+        "remainingLimitation": null
+      }
+    },
+    {
+      "id": "norman-synchrony-vertical-24x48",
+      "systemAfter": {
+        "status": "priced",
+        "productStatus": "complete",
+        "validationStatus": "valid",
+        "sendable": true,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "24 x 48 PG1 base", "amountCents": 20400 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "Classic PG1 fabric included", "amountCents": 0 },
+          { "id": "standard_operation", "category": "operating_system", "label": "Standard operation included", "amountCents": 0 }
+        ],
+        "customerRetailSubtotalCents": 20400,
+        "displayedTotalCents": 20400,
+        "internalCost": { "productCents": 6732, "freightCents": 2500, "oversizeCents": 0, "processingCents": 185, "landedCents": 9417 },
+        "blockCodes": [],
+        "error": null
+      },
+      "comparisonAfter": { "manufacturerCents": 20400, "systemCents": 20400, "differenceCents": 0, "percentageBasisPoints": 0, "result": "pass" },
+      "resolution": {
+        "rootCause": "The base $204 suggested retail was replaced by a cost-derived $168.30 customer amount.",
+        "change": "Use the exact $204 source retail grid cell and keep $67.32 merchandise cost separate.",
+        "remainingLimitation": null
+      }
+    },
+    {
+      "id": "norman-roman-large-96x72",
+      "systemAfter": {
+        "status": "priced_but_send_blocked",
+        "productStatus": "documented_limited",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "96 x 72 PG1 base", "amountCents": 230600 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "Scarlett PG1 fabric included", "amountCents": 0 },
+          { "id": "continuous_loop", "category": "operating_system", "label": "Continuous Cord Loop included", "amountCents": 0 }
+        ],
+        "customerRetailSubtotalCents": 230600,
+        "displayedTotalCents": 230600,
+        "internalCost": { "productCents": 76098, "freightCents": 2500, "oversizeCents": 8000, "processingCents": 1572, "landedCents": 88170 },
+        "blockCodes": ["norman.processing_fee.oversize_scope_unverified"],
+        "error": "Norman processing-fee treatment for an oversize charge is not source-verified."
+      },
+      "comparisonAfter": { "manufacturerCents": 230600, "systemCents": 230600, "differenceCents": 0, "percentageBasisPoints": 0, "result": "pass" },
+      "resolution": {
+        "rootCause": "The $2,306 retail grid cell was converted to a cost-derived $1,902.45 customer amount.",
+        "change": "Preserve the official $2,306 retail cell; keep dealer cost, freight, oversize, and processing in the protected ledger.",
+        "remainingLimitation": "Price parity passes, but sending stays blocked until Norman's processing-fee treatment of oversize charges is source-verified."
+      }
+    },
+    {
+      "id": "polar-elite-suntex90-manual-three-line",
+      "systemAfter": {
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [
+          { "id": "shade_1_base", "category": "base_grid", "label": "Shade 1 Group 1 baseline", "amountCents": 76600 },
+          { "id": "shade_1_fabric", "category": "fabric_upgrade", "label": "Shade 1 SunTex 90 Group 4 upgrade", "amountCents": 19500 },
+          { "id": "shade_2_base", "category": "base_grid", "label": "Shade 2 Group 1 baseline", "amountCents": 76600 },
+          { "id": "shade_2_fabric", "category": "fabric_upgrade", "label": "Shade 2 SunTex 90 Group 4 upgrade", "amountCents": 19500 },
+          { "id": "shade_3_base", "category": "base_grid", "label": "Shade 3 Group 1 baseline", "amountCents": 76600 },
+          { "id": "shade_3_fabric", "category": "fabric_upgrade", "label": "Shade 3 SunTex 90 Group 4 upgrade", "amountCents": 19500 }
+        ],
+        "customerRetailSubtotalCents": 288300,
+        "displayedTotalCents": 288300,
+        "internalCost": { "productCents": 129735, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 129735 },
+        "blockCodes": ["product_status_not_sendable", "polar.elite.portal_book_price_conflict"],
+        "error": "The pinned Polar book and the exact saved portal quote disagree; the configuration remains quarantined."
+      },
+      "comparisonAfter": { "manufacturerCents": 271500, "systemCents": 288300, "differenceCents": 16800, "percentageBasisPoints": 619, "result": "fail" },
+      "resolution": {
+        "rootCause": "The old engine multiplied the $432.45 book-derived dealer cost by 2.5. The portal itself also conflicts with the pinned book: $839 base + $66 tracks = $905 portal list versus $961 Group 4 book price.",
+        "change": "Remove the 2.5 conversion and preserve the $961 book cell, while retaining the exact portal ledger separately.",
+        "remainingLimitation": "Portal versus book remains +$168.00 across three lines (+6.19%); this exact option is quarantined rather than hard-coded to either source."
+      }
+    },
+    {
+      "id": "polar-drapery-pinch-split-white-48",
+      "systemAfter": {
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "48-inch Pinch Pleat Split White", "amountCents": 47200 }
+        ],
+        "customerRetailSubtotalCents": 47200,
+        "displayedTotalCents": 47200,
+        "internalCost": { "productCents": 21240, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 21240 },
+        "blockCodes": ["product_status_not_sendable"],
+        "error": "Pricing is source-backed, but restrictions and freight evidence remain incomplete."
+      },
+      "comparisonAfter": { "manufacturerCents": 47200, "systemCents": 47200, "differenceCents": 0, "percentageBasisPoints": 0, "result": "pass" },
+      "resolution": {
+        "rootCause": "A standalone drapery construction was misclassified as a price-group member, so the component engine rejected the base.",
+        "change": "Declare every named Drapery program as a standalone source grid and preserve the $472 list cell.",
+        "remainingLimitation": "Official-price-book verified only; no exact portal result, and customer sending remains blocked for incomplete restrictions/freight."
+      }
+    },
+    {
+      "id": "polar-premium-pro-awning-120x83",
+      "systemAfter": {
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "120 x 83 Premium Pro", "amountCents": 490000 }
+        ],
+        "customerRetailSubtotalCents": 490000,
+        "displayedTotalCents": 490000,
+        "internalCost": { "productCents": 220500, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 220500 },
+        "blockCodes": ["product_status_not_sendable"],
+        "error": "Pricing is source-backed, but restrictions and freight evidence remain incomplete."
+      },
+      "comparisonAfter": { "manufacturerCents": 490000, "systemCents": 490000, "differenceCents": 0, "percentageBasisPoints": 0, "result": "pass" },
+      "resolution": {
+        "rootCause": "The standalone awning grid had an inferred price-group identity, so the component engine rejected it before returning a customer price.",
+        "change": "Mark the awning construction as a standalone source grid and preserve its $4,900 list cell.",
+        "remainingLimitation": "Official-price-book verified only; no exact portal result, and customer sending remains blocked for incomplete restrictions/freight."
+      }
+    },
+    {
+      "id": "lotus-mini-aluminum-17x36",
+      "systemAfter": {
+        "status": "customer_retail_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": { "productCents": 2148, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 2148 },
+        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
+        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+      },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "resolution": {
+        "rootCause": "The prior $53.70 customer amount was $21.48 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
+        "change": "Block customer retail and retain $21.48 only in the protected dealer-cost ledger.",
+        "remainingLimitation": "The supplied book and portal expose dealer cost, not customer MSRP."
+      }
+    },
+    {
+      "id": "lotus-faux-wood-bright-white-17x36",
+      "systemAfter": {
+        "status": "customer_retail_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": { "productCents": 2357, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 2357 },
+        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
+        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+      },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "resolution": {
+        "rootCause": "The prior $58.93 customer amount was $23.57 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
+        "change": "Block customer retail and retain $23.57 only in the protected dealer-cost ledger.",
+        "remainingLimitation": "The supplied book exposes dealer cost only. A different 48 x 72 portal item also conflicts with the book and remains quarantined."
+      }
+    },
+    {
+      "id": "lotus-steel-vertical-35x48",
+      "systemAfter": {
+        "status": "customer_retail_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": { "productCents": 3197, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 3197 },
+        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
+        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+      },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "resolution": {
+        "rootCause": "The prior $79.93 customer amount was $31.97 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
+        "change": "Block customer retail and retain $31.97 only in the protected dealer-cost ledger.",
+        "remainingLimitation": "The supplied book and portal expose dealer cost, not customer MSRP."
+      }
+    },
+    {
+      "id": "onyx-us-made-vinyl-36x48",
+      "systemAfter": {
+        "status": "unpriceable",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": { "productCents": 0, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 0 },
+        "blockCodes": ["onyx.us_made_vinyl.restriction_identity_unverified", "product_status_not_sendable", "CUSTOMER_RETAIL_UNDEFINED"],
+        "error": "The available evidence establishes dealer cost but not customer MSRP or current U.S. Made Vinyl restrictions."
+      },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "resolution": {
+        "rootCause": "The supplied evidence proves $13.60 per square foot dealer cost, but did not prove the prior $34 per square foot customer amount or current product restrictions.",
+        "change": "Store $13.60 only as dealer cost, remove $34 as source-backed MSRP, and fail closed on customer retail.",
+        "remainingLimitation": "Onyx exposes one product family, so three genuinely different Onyx product types cannot be tested; current U.S. Made Vinyl restriction and MSRP evidence are still missing."
+      }
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 {
   "source": "Norman 2026 Retail Price Guide",
-  "effectiveDate": "2026-03-30",
+  "effectiveDate": "2026-07-01",
   "currency": "USD",
-  "generatedFrom": "2026Mar Retail Price Guide.pdf (40pp, text-layer verified)",
+  "generatedFrom": "2026Jul Retail Price Guide (1).pdf (40 pages; SHA-256 ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3; all 321 grid rows verified)",
   "globalRules": {
     "surcharges": [
       {
@@ -13,7 +13,11 @@
         "value": 25,
         "appliesTo": "blinds and shades, first unit",
         "notes": "Net. $25 for 1st unit. For HI & AK: $100 for 1st unit (see note 1).",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "freight_handling_blinds_and_shades_each_additional_unit",
@@ -23,7 +27,11 @@
         "value": 11,
         "appliesTo": "blinds and shades, each additional unit",
         "notes": "Net. $11 for each additional unit. For HI & AK: $15 for each additional (see note 1).",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "freight_handling_shutters_1st_shutter",
@@ -33,7 +41,11 @@
         "value": 75,
         "appliesTo": "shutters, first shutter",
         "notes": "Net. $75 for 1st shutter. For HI & AK: $75 for 1st unit, $100 min per order (see note 1).",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "freight_handling_shutters_each_additional_shutter",
@@ -43,7 +55,11 @@
         "value": 25,
         "appliesTo": "shutters, each additional shutter",
         "notes": "Net. $25 for each additional shutter. For HI & AK: $25 for each additional (see note 1).",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "oversize_surcharge_blinds_and_shades_1st_unit",
@@ -53,7 +69,11 @@
         "value": 80,
         "appliesTo": "blinds and shades with widths 90\" or over, first unit",
         "notes": "Net. For widths 90\" or over, $80 for 1st unit. See note 2 for products where surcharge applies to both width and height.",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "oversize_surcharge_blinds_and_shades_each_additional_unit",
@@ -63,7 +83,11 @@
         "value": 50,
         "appliesTo": "blinds and shades with widths 90\" or over, each additional unit",
         "notes": "Net. For widths 90\" or over, $50 for each additional unit. See note 2.",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "oversize_surcharge_shutters_1st_unit",
@@ -73,7 +97,11 @@
         "value": 80,
         "appliesTo": "shutters with height 90\" or over, first unit",
         "notes": "Net. For height 90\" or over, $80 for 1st unit. See note 3 for special exclusions.",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       },
       {
         "id": "oversize_surcharge_shutters_each_additional_unit",
@@ -83,7 +111,11 @@
         "value": 50,
         "appliesTo": "shutters with height 90\" or over, each additional unit",
         "notes": "Net. For height 90\" or over, $50 for each additional unit. See note 3.",
-        "sourceType": "fixed_each"
+        "sourceType": "fixed_each",
+        "dealerFactor": 1,
+        "sourcePages": [
+          4
+        ]
       }
     ],
     "notes": [
@@ -312,6 +344,9 @@
             "For 1/2\" and 1\" slats, max width is 78\".",
             "Header row label is USA; columns are width in inches, rows are height in inches.",
             "NA cells represented as null."
+          ],
+          "sourcePages": [
+            35
           ]
         }
       ],
@@ -324,7 +359,10 @@
           "value": 10,
           "appliesTo": "blind base price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            35
+          ]
         },
         {
           "id": "micro_1_2in_slats",
@@ -334,7 +372,10 @@
           "value": 10,
           "appliesTo": "blind base price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            35
+          ]
         },
         {
           "id": "privacy",
@@ -344,7 +385,10 @@
           "value": 10,
           "appliesTo": "blind base price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            35
+          ]
         },
         {
           "id": "2in_slats_smartprivacy_included_textured_slats",
@@ -354,7 +398,10 @@
           "value": 20,
           "appliesTo": "blind base price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            35
+          ]
         },
         {
           "id": "side_mount_bracket_available_in_2in_only",
@@ -364,7 +411,10 @@
           "value": 25,
           "appliesTo": "blind",
           "notes": "Available in 2\" slats only",
-          "sourceType": "per_blind"
+          "sourceType": "per_blind",
+          "sourcePages": [
+            35
+          ]
         },
         {
           "id": "shim",
@@ -374,14 +424,23 @@
           "value": 7,
           "appliesTo": "each",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            35
+          ]
         }
       ],
       "fabricByYard": [],
       "notes": [
         "For 1/2\" and 1\" slats, max width is 78\".",
         "Prices are suggested retail."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "faux_wood",
@@ -618,6 +677,9 @@
             "2\" & 2 1/2\" slats",
             "IMPORTANT: Faux Wood Cordless blinds have a max area of 48 sqft.",
             "NO EXTRA CHARGE: Best for Kids Certified Cordless; Wand Location Change"
+          ],
+          "sourcePages": [
+            30
           ]
         }
       ],
@@ -663,7 +725,10 @@
           },
           "appliesTo": "valance, varies by width",
           "notes": "Width-based surcharge. Widths [24,28,32,36,42,48,54,60,66,72,78,84,96] map to prices [28,28,34,40,51,56,61,73,78,84,94,100,106]. For every additional foot, please add $18 (retail).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            30
+          ]
         },
         {
           "id": "printed_color",
@@ -673,7 +738,10 @@
           "value": 20,
           "appliesTo": "blind price",
           "notes": "20%",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            30
+          ]
         },
         {
           "id": "shim",
@@ -683,7 +751,10 @@
           "value": 7,
           "appliesTo": "each",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            30
+          ]
         },
         {
           "id": "side_mount_bracket",
@@ -693,7 +764,10 @@
           "value": 23,
           "appliesTo": "blind",
           "notes": "$23 per blind",
-          "sourceType": "per_blind"
+          "sourceType": "per_blind",
+          "sourcePages": [
+            30
+          ]
         },
         {
           "id": "keystone",
@@ -703,7 +777,10 @@
           "value": 73,
           "appliesTo": "blind",
           "notes": "$73",
-          "sourceType": "flat"
+          "sourceType": "flat",
+          "sourcePages": [
+            30
+          ]
         },
         {
           "id": "cut_out",
@@ -713,7 +790,10 @@
           "value": 89,
           "appliesTo": "side",
           "notes": "$89 per side",
-          "sourceType": "per_side"
+          "sourceType": "per_side",
+          "sourcePages": [
+            30
+          ]
         }
       ],
       "fabricByYard": [],
@@ -721,7 +801,13 @@
         "General Specifications: Modern, valance-free, color coordinated PolyDeco headrail; Engineered bottom rail; SmartPrivacy; Wand tilt (Standard left, optional right).",
         "Suggested Retail price guide.",
         "Valance surcharge: For every additional foot, please add $18 (retail)."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "honeycomb",
@@ -995,6 +1081,9 @@
           "fabricCollections": [],
           "notes": [
             "IMPORTANT: Honeycomb Cordless shades have a max width of 96\"."
+          ],
+          "sourcePages": [
+            10
           ]
         },
         {
@@ -1253,6 +1342,9 @@
           "fabricCollections": [],
           "notes": [
             "IMPORTANT: For 3/4\" single cordless, the max width is 108\". For 3/8\" single, the max width is 96\"."
+          ],
+          "sourcePages": [
+            10
           ]
         },
         {
@@ -1511,6 +1603,9 @@
           "fabricCollections": [],
           "notes": [
             "IMPORTANT: Cordless max width is 108\"."
+          ],
+          "sourcePages": [
+            11
           ]
         },
         {
@@ -1769,6 +1864,9 @@
           "fabricCollections": [],
           "notes": [
             "IMPORTANT: Cordless max width is 108\"."
+          ],
+          "sourcePages": [
+            11
           ]
         },
         {
@@ -2011,12 +2109,17 @@
           "fabricCollections": [],
           "notes": [
             "IMPORTANT: Cordless max width is 108\". For 3/8\" single, the max width is 96\"."
+          ],
+          "sourcePages": [
+            11
           ]
         },
         {
           "id": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "name": "3/4\" Cordless Single & 1 1/4\" Single",
           "priceGroup": "1",
+          "pricingFamilyId": "honeycomb_3_4in_single_1_1_4in_single",
+          "baselineProgramId": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -2232,12 +2335,17 @@
           ],
           "notes": [
             "Price Group 1 fabric: Windsong."
+          ],
+          "sourcePages": [
+            12
           ]
         },
         {
           "id": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg2",
           "name": "3/4\" Cordless Single & 1 1/4\" Single",
           "priceGroup": "2",
+          "pricingFamilyId": "honeycomb_3_4in_single_1_1_4in_single",
+          "baselineProgramId": "honeycomb_3_4in_cordless_single_and_1_1_4in_single_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -2454,6 +2562,9 @@
           ],
           "notes": [
             "Price Group 2 fabrics: Breeze, Ashton."
+          ],
+          "sourcePages": [
+            12
           ]
         }
       ],
@@ -2466,7 +2577,11 @@
           "value": 73,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge (pages 9 and 11).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "smartrelease",
@@ -2476,7 +2591,11 @@
           "value": 89,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge (pages 9 and 11).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "tdbu_td",
@@ -2486,7 +2605,11 @@
           "value": 89,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge (page 9). On page 11 listed as 'TDBU' at $89.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "smartfit",
@@ -2496,7 +2619,11 @@
           "value": 89,
           "appliesTo": "smartfit",
           "notes": "SmartFit Surcharge (pages 9 and 11).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "smartfit_with_frame",
@@ -2506,7 +2633,11 @@
           "value": 293,
           "appliesTo": "smartfit",
           "notes": "SmartFit Surcharge (page 9).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "smartfit_dual_shade",
@@ -2516,7 +2647,12 @@
           "value": 178,
           "appliesTo": "smartfit",
           "notes": "SmartFit Surcharge (pages 9 and 11). For SmartFit Dual Shade, price as 2 individual shades.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ],
+          "baseQuantityMultiplier": 2
         },
         {
           "id": "smartfit_dual_shade_with_frame",
@@ -2526,7 +2662,12 @@
           "value": 382,
           "appliesTo": "smartfit",
           "notes": "SmartFit Surcharge (page 9). For SmartFit Dual Shade, price as 2 individual shades.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ],
+          "baseQuantityMultiplier": 2
         },
         {
           "id": "shim",
@@ -2536,7 +2677,11 @@
           "value": 7,
           "appliesTo": "miscellaneous",
           "notes": "$7 each (page 9).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "side_mount_bracket",
@@ -2546,7 +2691,11 @@
           "value": 23,
           "appliesTo": "miscellaneous",
           "notes": "$23 per shade (page 9).",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "lightguard_pole_attachment_only",
@@ -2556,7 +2705,11 @@
           "value": 45,
           "appliesTo": "miscellaneous",
           "notes": "$45 (page 9).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "magnetic_hold_down",
@@ -2566,7 +2719,11 @@
           "value": 28,
           "appliesTo": "miscellaneous",
           "notes": "$28 per shade (page 9).",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "cut_out_cordless_operating_pole",
@@ -2576,7 +2733,11 @@
           "value": 89,
           "appliesTo": "miscellaneous",
           "notes": "$89 (page 9).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "specialty_shapes",
@@ -2586,7 +2747,11 @@
           "value": 117,
           "appliesTo": "miscellaneous",
           "notes": "$117 (page 9).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "room_darkening_sheer_solus_fr_essentials",
@@ -2596,7 +2761,11 @@
           "value": 20,
           "appliesTo": "fabric (single shade)",
           "notes": "20% (single shade) \u2014 Fabric Surcharge on page 9.",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            10,
+            12
+          ]
         },
         {
           "id": "room_darkening",
@@ -2606,7 +2775,11 @@
           "value": 20,
           "appliesTo": "fabric",
           "notes": "20% \u2014 Fabric Surcharge on page 11.",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            10,
+            12
+          ]
         }
       ],
       "fabricByYard": [],
@@ -2617,7 +2790,13 @@
         "For 3/4\" single cordless the max width is 108\"; for 3/8\" single the max width is 96\".",
         "Cordless max width is 108\" for 1/2\" Cordless Double, 3/4\" Cordless Double & 1 1/4\" Single, and Flame Resistant Fabrics.",
         "For SmartFit Dual Shade, price as 2 individual shades."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "palladian_shelf",
@@ -2676,6 +2855,9 @@
           "notes": [
             "Priced by width only (single price row).",
             "For all faux wood blinds and Synchrony vertical blinds, please use the Palladian Shelf without Product pricing."
+          ],
+          "sourcePages": [
+            37
           ]
         },
         {
@@ -2725,6 +2907,9 @@
           "notes": [
             "Priced by width only (single price row).",
             "Use this pricing for all faux wood blinds and Synchrony vertical blinds."
+          ],
+          "sourcePages": [
+            37
           ]
         }
       ],
@@ -2737,7 +2922,13 @@
         "Available Colors (painted): Pure White, Extra White, Silk White, Bright White, Pearl, Ivory Lace, Creamy, Crisp Linen, Bisque, Gray Black, String, Sea Mist, Ice, Clay, Decorator's White, Winchester White 2010, Aura White, Taupe Gray, TS White, True White, Chiffon, Natural Linen, Chateau Brown, Classic Black, Rustic Gray, Limed White, Natural.",
         "Available Colors (stain): Golden Oak, Goldenrod, Black Walnut, Red Oak, Rich Walnut, Old Teak, Wenge, Auburn, Matte Black, Pretzel, Sumatra, Toffee, Driftwood, Silver Gray, French Oak.",
         "Page 35 (Roller Shades with Palladian Shelf) is a lifestyle photo page with no pricing."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "unresolved",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "perfectsheer",
@@ -3035,6 +3226,9 @@
           "notes": [
             "Light Filtering fabric.",
             "NO EXTRA CHARGE: Continuous cord loop - standard; Curved fascia with fabric; Fabric covered hem bar."
+          ],
+          "sourcePages": [
+            22
           ]
         }
       ],
@@ -3047,7 +3241,10 @@
           "value": 20,
           "appliesTo": "base shade price",
           "notes": "Fabric Surcharge",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "basic_light_guard",
@@ -3057,7 +3254,10 @@
           "value": 45,
           "appliesTo": "shade",
           "notes": "Light Control Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "premium_wood_light_guard",
@@ -3067,7 +3267,10 @@
           "value": 117,
           "appliesTo": "shade",
           "notes": "Light Control Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "shim",
@@ -3077,7 +3280,10 @@
           "value": 7,
           "appliesTo": "each",
           "notes": "Miscellaneous",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "magnetic_hold_down",
@@ -3087,7 +3293,10 @@
           "value": 28,
           "appliesTo": "shade",
           "notes": "Miscellaneous",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "keystone",
@@ -3097,7 +3306,10 @@
           "value": 73,
           "appliesTo": "shade",
           "notes": "Miscellaneous",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "wood_valance",
@@ -3144,7 +3356,10 @@
               304
             ],
             "additionalFootRate": 28
-          }
+          },
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "3_1_2in_and_4_1_2in_fabric_valance",
@@ -3191,7 +3406,10 @@
               349
             ],
             "additionalFootRate": 28
-          }
+          },
+          "sourcePages": [
+            22
+          ]
         },
         {
           "id": "valance_additional_foot",
@@ -3201,20 +3419,31 @@
           "value": 28,
           "appliesTo": "valance",
           "notes": "For every additional foot, please add $28 (retail).",
-          "sourceType": "per_foot"
+          "sourceType": "per_foot",
+          "sourcePages": [
+            22
+          ]
         }
       ],
       "fabricByYard": [],
       "notes": [
         "For motorization surcharges, please refer to the motorization section.",
         "Valance widths header: 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, 90, 98, 104, 110."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "roller",
       "productType": "roller_shade",
       "name": "Soluna Roller Shades",
       "pages": [
+        15,
+        16,
         17,
         18,
         19,
@@ -3311,6 +3540,8 @@
           "id": "roller_cordless_fabric_price_group_1_pg1",
           "name": "Cordless Fabric - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -3548,12 +3779,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            18
+          ]
         },
         {
           "id": "roller_cordless_fabric_price_group_2_pg2",
           "name": "Cordless Fabric - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -3808,12 +4044,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            18
+          ]
         },
         {
           "id": "roller_cordless_fabric_price_group_3_pg3",
           "name": "Cordless Fabric - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roller_cordless_fabric",
+          "baselineProgramId": "roller_cordless_fabric_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -4051,12 +4292,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            19
+          ]
         },
         {
           "id": "roller_cordless_solar_screen_price_group_1_pg1",
           "name": "Cordless Solar Screen - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -4280,12 +4526,17 @@
                 1309
               ]
             ]
-          }
+          },
+          "sourcePages": [
+            15
+          ]
         },
         {
           "id": "roller_cordless_solar_screen_price_group_2_pg2",
           "name": "Cordless Solar Screen - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -4512,12 +4763,17 @@
                 1488
               ]
             ]
-          }
+          },
+          "sourcePages": [
+            16
+          ]
         },
         {
           "id": "roller_cordless_solar_screen_price_group_3_pg3",
           "name": "Cordless Solar Screen - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roller_cordless_solar_screen",
+          "baselineProgramId": "roller_cordless_solar_screen_price_group_1_pg1",
           "priceAxis": "wh",
           "maxWidth": 120,
           "maxHeight": 144,
@@ -4740,7 +4996,10 @@
                 1888
               ]
             ]
-          }
+          },
+          "sourcePages": [
+            16
+          ]
         }
       ],
       "surcharges": [
@@ -4752,7 +5011,11 @@
           "value": 73,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge. For Dual Shades, price as 2 individual shades.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ],
+          "baseQuantityMultiplier": 2
         },
         {
           "id": "smartrelease",
@@ -4762,7 +5025,10 @@
           "value": 89,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "coupled_shade",
@@ -4772,7 +5038,11 @@
           "value": 117,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge. 2 shades: add once; 3 shades: add twice; 4 shades: add 3 times.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ],
+          "baseQuantityFromUnits": "units_plus_one"
         },
         {
           "id": "basic_light_guard",
@@ -4782,7 +5052,10 @@
           "value": 45,
           "appliesTo": "light control",
           "notes": "Light Control Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "premium_wood_light_guard",
@@ -4792,7 +5065,10 @@
           "value": 117,
           "appliesTo": "light control",
           "notes": "Light Control Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "lightguard_360",
@@ -4802,7 +5078,11 @@
           "value": 375,
           "appliesTo": "light control",
           "notes": "Light Control Surcharge. For LightGuard 360 with T-Post and Split Housing (2,3,or 4 shades), price by total individual shades plus the LG360 surcharge applied per shade (2x,3x,or 4x).",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ],
+          "baseQuantityFromUnits": "units"
         },
         {
           "id": "t_post_for_lg_360",
@@ -4812,7 +5092,10 @@
           "value": 150,
           "appliesTo": "light control",
           "notes": "Light Control Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "shim",
@@ -4822,7 +5105,10 @@
           "value": 7,
           "appliesTo": "miscellaneous",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "additional_fiberglass_pole",
@@ -4832,7 +5118,10 @@
           "value": 28,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "magnetic_hold_down",
@@ -4842,7 +5131,10 @@
           "value": 28,
           "appliesTo": "miscellaneous",
           "notes": "$28 per shade",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "pole_attachment_only",
@@ -4852,7 +5144,10 @@
           "value": 40,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "keystone",
@@ -4862,7 +5157,10 @@
           "value": 73,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "cordless_operating_pole_premium_hardware",
@@ -4872,7 +5170,10 @@
           "value": 89,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "premium_hem_bar",
@@ -4882,7 +5183,10 @@
           "value": 16,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
@@ -4933,7 +5237,10 @@
               375
             ],
             "additionalFootRate": 28
-          }
+          },
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "fabric_valance_3_1_2in_4_1_2in_and_6in",
@@ -4984,7 +5291,10 @@
               431
             ],
             "additionalFootRate": 28
-          }
+          },
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "8in_fabric_valance_and_cassette",
@@ -5035,7 +5345,10 @@
               612
             ],
             "additionalFootRate": 28
-          }
+          },
+          "sourcePages": [
+            20
+          ]
         },
         {
           "id": "raceway",
@@ -5086,7 +5399,10 @@
               null
             ],
             "additionalFootRate": 0
-          }
+          },
+          "sourcePages": [
+            20
+          ]
         }
       ],
       "fabricByYard": [],
@@ -5099,7 +5415,13 @@
         "For fabric valance & wood valance, please add $28 (retail) for every additional foot.",
         "Fascia/Wood Valance and Fabric Valance: *Raceway included.",
         "8\" Fabric Valance & Cassette: **Magnetic hold downs included."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "roman",
@@ -5149,6 +5471,8 @@
           "id": "roman_cordless_usa_price_group_1_pg1",
           "name": "Cordless USA - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -5322,12 +5646,17 @@
           ],
           "notes": [
             "Fabric by the yard: $115 per yard (maximum of 10 yards)"
+          ],
+          "sourcePages": [
+            26
           ]
         },
         {
           "id": "roman_cordless_usa_price_group_2_pg2",
           "name": "Cordless USA - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -5524,12 +5853,17 @@
           ],
           "notes": [
             "Fabric by the yard: $150 per yard (maximum of 10 yards)"
+          ],
+          "sourcePages": [
+            26
           ]
         },
         {
           "id": "roman_cordless_usa_price_group_3_pg3",
           "name": "Cordless USA - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "roman_cordless_usa",
+          "baselineProgramId": "roman_cordless_usa_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -5708,6 +6042,9 @@
           ],
           "notes": [
             "Fabric by the yard: $173 per yard (maximum of 10 yards)"
+          ],
+          "sourcePages": [
+            27
           ]
         },
         {
@@ -5762,6 +6099,9 @@
           "fabricCollections": [],
           "notes": [
             "ROMAN SHADES ONLY. Fabric Valance surcharge priced by width. The single price row maps to widths[]; heights[] is a placeholder ([0]) since this is a width-only add-on, not a height x width grid."
+          ],
+          "sourcePages": [
+            27
           ]
         }
       ],
@@ -5774,7 +6114,11 @@
           "value": 89,
           "appliesTo": "lift system",
           "notes": "Lift System Surcharge",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "magnetic_hold_down",
@@ -5784,7 +6128,11 @@
           "value": 28,
           "appliesTo": "shade",
           "notes": "Miscellaneous",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "pole_attachment_only",
@@ -5794,7 +6142,11 @@
           "value": 40,
           "appliesTo": "shade",
           "notes": "Miscellaneous",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "cordless_operating_pole",
@@ -5804,7 +6156,11 @@
           "value": 89,
           "appliesTo": "shade",
           "notes": "Miscellaneous",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "shim",
@@ -5814,7 +6170,11 @@
           "value": 7,
           "appliesTo": "each",
           "notes": "Miscellaneous; $7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "blackout_lining",
@@ -5824,7 +6184,11 @@
           "value": 10,
           "appliesTo": "shade price",
           "notes": "Fabric Style Surcharge",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "ribbon_banding",
@@ -5834,7 +6198,11 @@
           "value": 15,
           "appliesTo": "shade price",
           "notes": "Fabric Style Surcharge",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "soft_fold_edge_banding_border",
@@ -5844,7 +6212,11 @@
           "value": 30,
           "appliesTo": "shade price",
           "notes": "Fabric Style Surcharge",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "day_and_night",
@@ -5854,7 +6226,11 @@
           "value": 425,
           "appliesTo": "shade",
           "notes": "Fabric Style Surcharge; includes roller shade",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "piping",
@@ -5864,7 +6240,11 @@
           "value": 15,
           "appliesTo": "decorative pillow cover",
           "notes": "Decorative Pillow Cover section",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_14inx14in",
@@ -5874,7 +6254,11 @@
           "value": 83,
           "appliesTo": "pillow cover",
           "notes": "Group A: Alma, Caroline, Windsor, Lakeside, Lorraine, Seabreeze, Taylor, Patterns*, Francis, Valencia, Ella, Solids, Sierra, Ashley, Whispering Willow, Impressions, Louise",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_16inx16in",
@@ -5884,7 +6268,11 @@
           "value": 90,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_18inx18in",
@@ -5894,7 +6282,11 @@
           "value": 98,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_20inx20in",
@@ -5904,7 +6296,11 @@
           "value": 107,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_24inx24in",
@@ -5914,7 +6310,11 @@
           "value": 130,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_10inx14in",
@@ -5924,7 +6324,11 @@
           "value": 75,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_10inx16in",
@@ -5934,7 +6338,11 @@
           "value": 83,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_10inx18in",
@@ -5944,7 +6352,11 @@
           "value": 86,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_12inx22in",
@@ -5954,7 +6366,11 @@
           "value": 90,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_14inx24in",
@@ -5964,7 +6380,11 @@
           "value": 102,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_a_14inx18in",
@@ -5974,7 +6394,11 @@
           "value": 90,
           "appliesTo": "pillow cover",
           "notes": "Group A",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_14inx14in",
@@ -5984,7 +6408,11 @@
           "value": 147,
           "appliesTo": "pillow cover",
           "notes": "Group B: Libeco (F1055, F1057, F1058), Rochelle, Breeze, Ellie",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_16inx16in",
@@ -5994,7 +6422,11 @@
           "value": 154,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_18inx18in",
@@ -6004,7 +6436,11 @@
           "value": 202,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_20inx20in",
@@ -6014,7 +6450,11 @@
           "value": 226,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_24inx24in",
@@ -6024,7 +6464,11 @@
           "value": 258,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_10inx14in",
@@ -6034,7 +6478,11 @@
           "value": 122,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_10inx16in",
@@ -6044,7 +6492,11 @@
           "value": 139,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_10inx18in",
@@ -6054,7 +6506,11 @@
           "value": 150,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_12inx22in",
@@ -6064,7 +6520,11 @@
           "value": 154,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_14inx24in",
@@ -6074,7 +6534,11 @@
           "value": 189,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_b_14inx18in",
@@ -6084,7 +6548,11 @@
           "value": 154,
           "appliesTo": "pillow cover",
           "notes": "Group B",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_14inx14in",
@@ -6094,7 +6562,11 @@
           "value": 179,
           "appliesTo": "pillow cover",
           "notes": "Group C: Libeco (F1050, F1051, F1061)",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_16inx16in",
@@ -6104,7 +6576,11 @@
           "value": 218,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_18inx18in",
@@ -6114,7 +6590,11 @@
           "value": 243,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_20inx20in",
@@ -6124,7 +6604,11 @@
           "value": 306,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_24inx24in",
@@ -6134,7 +6618,11 @@
           "value": 338,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_10inx14in",
@@ -6144,7 +6632,11 @@
           "value": 147,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_10inx16in",
@@ -6154,7 +6646,11 @@
           "value": 162,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_10inx18in",
@@ -6164,7 +6660,11 @@
           "value": 170,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_12inx22in",
@@ -6174,7 +6674,11 @@
           "value": 186,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_14inx24in",
@@ -6184,7 +6688,11 @@
           "value": 221,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "decorative_pillow_cover_group_c_14inx18in",
@@ -6194,7 +6702,11 @@
           "value": 186,
           "appliesTo": "pillow cover",
           "notes": "Group C",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            26,
+            27
+          ]
         },
         {
           "id": "roman_fabric_valance_surcharge",
@@ -6241,7 +6753,11 @@
           },
           "appliesTo": "valance",
           "notes": "ROMAN SHADES ONLY. Fabric Valance surcharge priced by width from the page 27 table.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            26,
+            27
+          ]
         }
       ],
       "fabricByYard": [
@@ -6271,7 +6787,13 @@
         "Pillow Cover Group C fabrics: Libeco (F1050, F1051, F1061).",
         "*Reverse pattern not available (Patterns).",
         "Fabric Valance surcharge applies to Roman Shades only."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "smartdrape",
@@ -6295,6 +6817,8 @@
           "id": "smartdrape_smartdrape_lakeshore_stripe",
           "name": "SmartDrape - Lakeshore Stripe",
           "priceGroup": null,
+          "pricingFamilyId": "smartdrape_collection_grid",
+          "baselineProgramId": "smartdrape_smartdrape_lakeshore_stripe",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -6495,12 +7019,17 @@
           "notes": [
             "Best for Kids Certified cordless; sleek valance-free metal headrail with contemporary finishes.",
             "'For every additional foot, add' surcharge per height row (per foot of track width beyond table max): height 48 +217, 60 +224, 72 +252, 84 +264, 100 +273, 120 +293, 132 +304, 144 +321."
+          ],
+          "sourcePages": [
+            24
           ]
         },
         {
           "id": "smartdrape_smartdrape_light_filtering",
           "name": "SmartDrape - Light Filtering",
           "priceGroup": null,
+          "pricingFamilyId": "smartdrape_collection_grid",
+          "baselineProgramId": "smartdrape_smartdrape_lakeshore_stripe",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -6706,6 +7235,9 @@
           "notes": [
             "Light Filtering collection covers fabrics: Plain, Net, Pacific, Circle, Coronado, Teardrop.",
             "'For every additional foot, add' surcharge per height row (per foot of track width beyond table max): height 48 +255, 60 +263, 72 +296, 84 +309, 100 +320, 120 +345, 132 +350, 144 +369."
+          ],
+          "sourcePages": [
+            24
           ]
         }
       ],
@@ -6718,7 +7250,10 @@
           "value": 10,
           "appliesTo": "shade base price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "room_darkening",
@@ -6728,7 +7263,10 @@
           "value": 20,
           "appliesTo": "shade base price",
           "notes": "Room Darkening vane pack also carries a 20% surcharge.",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "aluminum_shim",
@@ -6738,7 +7276,10 @@
           "value": 28,
           "appliesTo": "each",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "long_l_bracket",
@@ -6748,7 +7289,10 @@
           "value": 61,
           "appliesTo": "per shade",
           "notes": "",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "keystone",
@@ -6758,7 +7302,10 @@
           "value": 73,
           "appliesTo": "each",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_wand",
@@ -6768,7 +7315,10 @@
           "value": 89,
           "appliesTo": "each",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_48",
@@ -6778,7 +7328,10 @@
           "value": 230,
           "appliesTo": "vane pack",
           "notes": "Used when ordered with a shade or on its own. Room Darkening vane pack carries a 20% surcharge.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_60",
@@ -6788,7 +7341,10 @@
           "value": 270,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_72",
@@ -6798,7 +7354,10 @@
           "value": 310,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_84",
@@ -6808,7 +7367,10 @@
           "value": 350,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_100",
@@ -6818,7 +7380,10 @@
           "value": 390,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_120",
@@ -6828,7 +7393,10 @@
           "value": 460,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_132",
@@ -6838,7 +7406,10 @@
           "value": 500,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         },
         {
           "id": "additional_vanes_pack_of_6_length_144",
@@ -6848,7 +7419,10 @@
           "value": 540,
           "appliesTo": "vane pack",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            24
+          ]
         }
       ],
       "fabricByYard": [],
@@ -6857,7 +7431,13 @@
         "For motorization surcharges, please refer to the motorization section.",
         "Red Dot Award winner 2020 (best of the best).",
         "Each height row includes a 'For every additional foot, add' value used to price track widths beyond the largest tabulated width (184)."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "smartfold",
@@ -6996,6 +7576,9 @@
           "fabricCollections": [],
           "notes": [
             "Raceway included"
+          ],
+          "sourcePages": [
+            21
           ]
         },
         {
@@ -7047,6 +7630,9 @@
           "notes": [
             "Valance surcharge priced by width.",
             "For every additional foot, please add $28 (retail)."
+          ],
+          "sourcePages": [
+            21
           ]
         },
         {
@@ -7098,6 +7684,9 @@
           "notes": [
             "Valance surcharge priced by width.",
             "For every additional foot, please add $28 (retail)."
+          ],
+          "sourcePages": [
+            21
           ]
         },
         {
@@ -7149,6 +7738,9 @@
           "notes": [
             "Valance surcharge priced by width.",
             "For every additional foot, please add $28 (retail)."
+          ],
+          "sourcePages": [
+            21
           ]
         }
       ],
@@ -7161,7 +7753,10 @@
           "value": 45,
           "appliesTo": "light control",
           "notes": "Light Control Surcharges",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "shim",
@@ -7171,7 +7766,10 @@
           "value": 7,
           "appliesTo": "miscellaneous",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "additional_fiberglass_pole",
@@ -7181,7 +7779,10 @@
           "value": 28,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "magnetic_hold_down",
@@ -7191,7 +7792,10 @@
           "value": 28,
           "appliesTo": "miscellaneous",
           "notes": "$28 per shade",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "pole_attachment_only",
@@ -7201,7 +7805,10 @@
           "value": 40,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "keystone",
@@ -7211,7 +7818,10 @@
           "value": 73,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "cordless_operating_pole",
@@ -7221,7 +7831,10 @@
           "value": 89,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "premium_hem_bar",
@@ -7231,7 +7844,10 @@
           "value": 16,
           "appliesTo": "miscellaneous",
           "notes": "",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "smartfold_fascia_wood_valance",
@@ -7274,7 +7890,10 @@
           },
           "appliesTo": "valance",
           "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "smartfold_3_1_2in_4_1_2in_and_6in_fabric_valance",
@@ -7317,7 +7936,10 @@
           },
           "appliesTo": "valance",
           "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "smartfold_8in_fabric_valance",
@@ -7360,7 +7982,10 @@
           },
           "appliesTo": "valance",
           "notes": "Valance surcharge priced by width. For every additional foot, please add $28 (retail). Raceway included.",
-          "sourceType": "per_shade"
+          "sourceType": "per_shade",
+          "sourcePages": [
+            21
+          ]
         },
         {
           "id": "additional_valance_foot",
@@ -7370,7 +7995,10 @@
           "value": 28,
           "appliesTo": "valance",
           "notes": "For every additional foot, please add $28 (retail).",
-          "sourceType": "per_foot"
+          "sourceType": "per_foot",
+          "sourcePages": [
+            21
+          ]
         }
       ],
       "fabricByYard": [],
@@ -7378,7 +8006,13 @@
         "Raceway included.",
         "Prices are suggested retail.",
         "Valance surcharges (Fascia/Wood Valance, 3 1/2\" 4 1/2\" & 6\" Fabric Valance, 8\" Fabric Valance) are priced by width with $28 per additional foot."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "smartprivacy_faux",
@@ -7576,6 +8210,9 @@
             "NO EXTRA CHARGE: Impact resistant, modern, valance free, PolyDeco headrail",
             "SmartPrivacy for better light & privacy control",
             "Co-extruded high HDT slat"
+          ],
+          "sourcePages": [
+            31
           ]
         }
       ],
@@ -7588,7 +8225,10 @@
           "value": 20,
           "appliesTo": "blind price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            31
+          ]
         },
         {
           "id": "shim",
@@ -7598,7 +8238,10 @@
           "value": 7,
           "appliesTo": "shim",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            31
+          ]
         },
         {
           "id": "side_mount_bracket",
@@ -7608,7 +8251,10 @@
           "value": 23,
           "appliesTo": "blind",
           "notes": "$23 per blind",
-          "sourceType": "per_blind"
+          "sourceType": "per_blind",
+          "sourcePages": [
+            31
+          ]
         },
         {
           "id": "valance",
@@ -7645,7 +8291,10 @@
           },
           "appliesTo": "valance, by width",
           "notes": "Valance surcharge by blind width (inches): 24=>28, 28=>28, 32=>34, 36=>40, 42=>51, 48=>56, 54=>61, 60=>73, 66=>78, 72=>84. For every additional foot, please add $18 (retail). Valance styles: Designer Crown Valance, Modern Curved Valance.",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            31
+          ]
         }
       ],
       "fabricByYard": [],
@@ -7653,7 +8302,13 @@
         "Section: SMARTPRIVACY CORDLESS FAUX WOOD BLINDS, 2\" & 2 1/2\" slats.",
         "General Specifications: Modern, valance-free, color coordinated PolyDeco headrail; Engineered trapezoid bottom rail; SmartPrivacy; Wand tilt (Standard left).",
         "Prices are suggested retail."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "synchrony_vertical",
@@ -7679,6 +8334,8 @@
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "name": "Synchrony Vertical Blind - Price Group 1",
           "priceGroup": "1",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -7773,12 +8430,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            34
+          ]
         },
         {
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_2_pg2",
           "name": "Synchrony Vertical Blind - Price Group 2",
           "priceGroup": "2",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -7874,12 +8536,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            34
+          ]
         },
         {
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_3_pg3",
           "name": "Synchrony Vertical Blind - Price Group 3",
           "priceGroup": "3",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -7976,12 +8643,17 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            34
+          ]
         },
         {
           "id": "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
           "name": "Synchrony Vertical Blind - Price Group 4",
           "priceGroup": "4",
+          "pricingFamilyId": "synchrony_vertical_blind",
+          "baselineProgramId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -8079,7 +8751,10 @@
               ]
             }
           ],
-          "notes": []
+          "notes": [],
+          "sourcePages": [
+            34
+          ]
         }
       ],
       "surcharges": [
@@ -8091,13 +8766,22 @@
           "value": 7,
           "appliesTo": "blind",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            34
+          ]
         }
       ],
       "fabricByYard": [],
       "notes": [
         "Suggested Retail pricing."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "vertical_honeycomb",
@@ -8105,9 +8789,7 @@
       "name": "Portrait Vertical Honeycomb Shades",
       "pages": [
         13,
-        14,
-        15,
-        16
+        14
       ],
       "fabricRouting": null,
       "programs": [
@@ -8394,6 +9076,9 @@
           "notes": [
             "Day & Night - Price as 2 individual shades.",
             "For sheer & RD fabrics, the 20% fabric surcharge applies."
+          ],
+          "sourcePages": [
+            14
           ]
         },
         {
@@ -8640,6 +9325,9 @@
           "fabricCollections": [],
           "notes": [
             "Flame Resistant fabrics available on 3/4\" Single only."
+          ],
+          "sourcePages": [
+            14
           ]
         }
       ],
@@ -8652,7 +9340,10 @@
           "value": 7,
           "appliesTo": "shim",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            14
+          ]
         },
         {
           "id": "room_darkening_sheer_fr_essentials_fabric_surcharge",
@@ -8662,7 +9353,10 @@
           "value": 20,
           "appliesTo": "fabric",
           "notes": "Applies to Room Darkening, Sheer, and FR Essentials fabrics.",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            14
+          ]
         }
       ],
       "fabricByYard": [],
@@ -8670,7 +9364,13 @@
         "Day & Night - Price as 2 individual shades.",
         "For sheer & RD fabrics, the 20% fabric surcharge applies.",
         "Only page 13 of the supplied range (PDF page numbered 13) contains Portrait Vertical Honeycomb pricing; PDF pages 14-15 (png p15/p16) are SOLUNA ROLLER SHADES, a different product, and were excluded."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     },
     {
       "id": "wood_blinds",
@@ -8921,6 +9621,9 @@
             "USA-made (USA column header).",
             "No extra charge for: Best for Kids Certified cordless; wand location change.",
             "Height row 66 label appears separately in text layer with prices on the next line (layout artifact); verified against rendered image."
+          ],
+          "sourcePages": [
+            33
           ]
         }
       ],
@@ -8933,7 +9636,10 @@
           "value": 10,
           "appliesTo": "blind price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "premium_color",
@@ -8943,7 +9649,10 @@
           "value": 50,
           "appliesTo": "blind price",
           "notes": "",
-          "sourceType": "percent"
+          "sourceType": "percent",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "shim",
@@ -8953,7 +9662,10 @@
           "value": 7,
           "appliesTo": "each",
           "notes": "$7 each",
-          "sourceType": "fixed_each"
+          "sourceType": "fixed_each",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "side_mount_bracket",
@@ -8963,7 +9675,10 @@
           "value": 25,
           "appliesTo": "per blind",
           "notes": "$25 per blind",
-          "sourceType": "per_blind"
+          "sourceType": "per_blind",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "keystone",
@@ -8973,7 +9688,10 @@
           "value": 81,
           "appliesTo": "blind",
           "notes": "$81",
-          "sourceType": "flat"
+          "sourceType": "flat",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "cut_out",
@@ -8983,7 +9701,10 @@
           "value": 99,
           "appliesTo": "per side",
           "notes": "$99 per side",
-          "sourceType": "per_side"
+          "sourceType": "per_side",
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "valance_surcharge_designer_crown",
@@ -9028,7 +9749,10 @@
               186
             ],
             "additionalFootRate": 25
-          }
+          },
+          "sourcePages": [
+            33
+          ]
         },
         {
           "id": "valance_surcharge_contempo",
@@ -9073,7 +9797,10 @@
               223
             ],
             "additionalFootRate": 25
-          }
+          },
+          "sourcePages": [
+            33
+          ]
         }
       ],
       "fabricByYard": [],
@@ -9082,7 +9809,13 @@
         "General Specifications: Modern, valance-free, color-coordinated PolyDeco headrail; SmartPrivacy; Wand tilt (standard left, optional right).",
         "Page 32 is the section lifestyle/cover image and contains no pricing.",
         "Valance surcharge note: For every additional foot, please add $25 (retail)."
-      ]
+      ],
+      "manufacturer": "Norman",
+      "priceBasis": "suggested_retail",
+      "dealerFactor": 0.3,
+      "freightStatus": "order_level",
+      "source": "2026Jul Retail Price Guide (1).pdf",
+      "provisional": false
     }
   ],
   "motorization": {
@@ -9099,7 +9832,10 @@
             "roller": null,
             "roman": null,
             "perfectsheer": null
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "motor_rechargeable_battery_pack",
@@ -9111,7 +9847,10 @@
             "roller": 682,
             "roman": 682,
             "perfectsheer": 682
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "low_voltage_dc_motor",
@@ -9123,7 +9862,10 @@
             "roller": 814,
             "roman": 814,
             "perfectsheer": 814
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "dc_connection_harness",
@@ -9135,7 +9877,10 @@
             "roller": 19,
             "roman": 19,
             "perfectsheer": 19
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "power_distribution_panel",
@@ -9147,7 +9892,10 @@
             "roller": 1133,
             "roman": 1133,
             "perfectsheer": 1133
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "external_battery_pack",
@@ -9159,7 +9907,10 @@
             "roller": 230,
             "roman": 230,
             "perfectsheer": 230
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "repeater",
@@ -9171,7 +9922,10 @@
             "roller": 272,
             "roman": 272,
             "perfectsheer": 272
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "15_channel_remote",
@@ -9183,7 +9937,10 @@
             "roller": 140,
             "roman": 140,
             "perfectsheer": 140
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "5_channel_wall_switch",
@@ -9195,7 +9952,10 @@
             "roller": 163,
             "roman": 163,
             "perfectsheer": 163
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "hub",
@@ -9207,7 +9967,10 @@
             "roller": 483,
             "roman": 483,
             "perfectsheer": 483
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "charging_kit_5v_1a_charging_box_adapter_charging_cable",
@@ -9219,7 +9982,10 @@
             "roller": 103,
             "roman": 103,
             "perfectsheer": 103
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         },
         {
           "id": "solar_panel",
@@ -9231,7 +9997,10 @@
             "roller": 242,
             "roman": 242,
             "perfectsheer": 242
-          }
+          },
+          "sourcePages": [
+            28
+          ]
         }
       ],
       "surcharges": [],
@@ -9242,6 +10011,9 @@
         "Repeater, 15-Channel Remote, 5-Channel Wall switch, Hub, Charging kit, and Solar Panel are priced identically across all four product types.",
         "Prices are SUGGESTED RETAIL.",
         "Page 29 ('INDUSTRY'S NO. 1 BLIND') is a marketing/feature page with no pricing data: features listed are 1. SmartPrivacy Closure, 2. Performance Cordless (smooth operation, reliable performance, larger max. sizes), 3. Co-Extruded Slats (QUV 500H, 125 deg HDT, lighter/easy to lift), 4. Poly Deco Headrail (modern impact resistant, valance-free, built-in light block), 5. Pivoting Bottom Rail, 6. Self-Leveling Technology. Shows Front Closure and Back Closure illustrations."
+      ],
+      "sourcePages": [
+        28
       ]
     },
     "autowand": {
@@ -9251,19 +10023,28 @@
           "id": "autowand",
           "name": "Autowand",
           "price": 166,
-          "notes": "Rechargeable li-ion battery, no remote/programming needed, multiple wand lengths"
+          "notes": "Rechargeable li-ion battery, no remote/programming needed, multiple wand lengths",
+          "sourcePages": [
+            8
+          ]
         },
         {
           "id": "charging_kit",
           "name": "Charging Kit",
           "price": 45,
-          "notes": ""
+          "notes": "",
+          "sourcePages": [
+            8
+          ]
         },
         {
           "id": "extension_cable",
           "name": "Extension Cable",
           "price": 43,
-          "notes": ""
+          "notes": "",
+          "sourcePages": [
+            8
+          ]
         }
       ],
       "surcharges": [
@@ -9305,6 +10086,9 @@
         "Rechargeable li-ion battery",
         "Budget-friendly motorization",
         "Multiple wand lengths to choose from"
+      ],
+      "sourcePages": [
+        8
       ]
     },
     "smart_motorization": {
@@ -9322,7 +10106,10 @@
             "smartfold": 482,
             "smartdrape": 642
           },
-          "notes": "Portrait Honeycomb $482, Soluna Roller $482, Centerpiece Roman $482, PerfectSheer & SmartFold $482, SmartDrape $642"
+          "notes": "Portrait Honeycomb $482, Soluna Roller $482, Centerpiece Roman $482, PerfectSheer & SmartFold $482, SmartDrape $642",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "dual_motor_for_honeycomb",
@@ -9336,7 +10123,10 @@
             "smartfold": null,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb only ($642); NA for all others. For honeycomb Day & Night or TDBU."
+          "notes": "Portrait Honeycomb only ($642); NA for all others. For honeycomb Day & Night or TDBU.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "single_motor_for_skylights",
@@ -9350,7 +10140,10 @@
             "smartfold": null,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb only ($611); NA for all others. Used for Motorized Honeycomb for Skylights."
+          "notes": "Portrait Honeycomb only ($611); NA for all others. Used for Motorized Honeycomb for Skylights.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "wired_charging_wand",
@@ -9364,7 +10157,10 @@
             "smartfold": null,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb $161, Soluna Roller $161; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
+          "notes": "Portrait Honeycomb $161, Soluna Roller $161; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "wireless_charging_wand",
@@ -9378,7 +10174,10 @@
             "smartfold": null,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb $428, Soluna Roller $428; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
+          "notes": "Portrait Honeycomb $428, Soluna Roller $428; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "dc_connection_harness",
@@ -9392,7 +10191,10 @@
             "smartfold": 11,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb $11, Soluna Roller $11, Centerpiece Roman $11, PerfectSheer & SmartFold $11; NA for SmartDrape."
+          "notes": "Portrait Honeycomb $11, Soluna Roller $11, Centerpiece Roman $11, PerfectSheer & SmartFold $11; NA for SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "power_distribution_panel",
@@ -9406,37 +10208,55 @@
             "smartfold": 931,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb $931, Soluna Roller $931, Centerpiece Roman $931, PerfectSheer & SmartFold $931; NA for SmartDrape."
+          "notes": "Portrait Honeycomb $931, Soluna Roller $931, Centerpiece Roman $931, PerfectSheer & SmartFold $931; NA for SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "hub",
           "name": "Hub",
           "price": 321,
-          "notes": "$321 for all product types."
+          "notes": "$321 for all product types.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "repeater",
           "name": "Repeater",
           "price": 107,
-          "notes": "$107 for all product types."
+          "notes": "$107 for all product types.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "smartdial_g2_remote",
           "name": "SmartDial G2 Remote",
           "price": 268,
-          "notes": "$268 for all product types."
+          "notes": "$268 for all product types.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "color_rings_for_smartdial_g2_remote",
           "name": "Color Rings for SmartDial G2 Remote",
           "price": 43,
-          "notes": "$43 for all product types."
+          "notes": "$43 for all product types.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "basic_remote_black",
           "name": "Basic Remote (black)",
           "price": 75,
-          "notes": "$75 for all product types."
+          "notes": "$75 for all product types.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "extension_pole_for_charging_wand",
@@ -9450,7 +10270,10 @@
             "smartfold": null,
             "smartdrape": null
           },
-          "notes": "Portrait Honeycomb $75, Soluna Roller $75; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape."
+          "notes": "Portrait Honeycomb $75, Soluna Roller $75; NA for Centerpiece Roman, PerfectSheer & SmartFold, SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "charging_extension_wand",
@@ -9464,7 +10287,10 @@
             "smartfold": null,
             "smartdrape": 75
           },
-          "notes": "SmartDrape only ($75); NA for all others."
+          "notes": "SmartDrape only ($75); NA for all others.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "extension_cable",
@@ -9478,13 +10304,36 @@
             "smartfold": 43,
             "smartdrape": null
           },
-          "notes": "Soluna Roller $43, Centerpiece Roman $43, PerfectSheer & SmartFold $43; NA for Portrait Honeycomb and SmartDrape."
+          "notes": "Soluna Roller $43, Centerpiece Roman $43, PerfectSheer & SmartFold $43; NA for Portrait Honeycomb and SmartDrape.",
+          "sourcePages": [
+            7
+          ]
         },
         {
           "id": "charging_kit",
           "name": "Charging Kit",
           "price": 43,
-          "notes": "$43 for all product types."
+          "notes": "$43 for all product types.",
+          "sourcePages": [
+            7
+          ]
+        },
+        {
+          "id": "smartsense",
+          "name": "SmartSense",
+          "price": 60,
+          "priceByProduct": {
+            "honeycomb": null,
+            "roller": 60,
+            "roman": null,
+            "smartfold": 60,
+            "perfectsheer": null,
+            "smartdrape": null
+          },
+          "notes": "Soluna Roller and SmartFold only; all other product columns are NA.",
+          "sourcePages": [
+            7
+          ]
         }
       ],
       "surcharges": [
@@ -9717,7 +10566,22 @@
         "Page 6 is the Power Source / Accessories compatibility matrix (AutoWand, Rechargeable Battery with Charging Wand, Rechargeable Battery with AC Adapter Charger, Permanent AC Adapter Plug-in, DC Low Voltage Hard Wire, Standard Remote, SmartDial Remote, Power Distribution Panel, Repeater, ShadeAuto Hub & App) across product types Portrait Honeycomb Shades, Soluna Roller Shades, SmartFold Roman Shades, Centerpiece Roman Shades, PerfectSheer, SmartDrape; checkmarks indicate compatibility, no pricing on this page.",
         "The free ShadeAuto app is available for download in App Store or Google Play.",
         "App Control supports Voice Control and Smart Home Integration."
+      ],
+      "sourcePages": [
+        7
       ]
     }
-  }
+  },
+  "sources": [
+    {
+      "file": "2026Jul Retail Price Guide (1).pdf",
+      "title": "2026 Retail Guide Effective July 1st, 2026",
+      "revision": "2026-07",
+      "effectiveDate": "2026-07-01",
+      "receivedDate": "2026-07-20",
+      "modifiedDate": "2026-06-15",
+      "pages": 40,
+      "sha256": "ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3"
+    }
+  ]
 }
