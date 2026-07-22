@@ -12384,6 +12384,11 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   font-weight: 800;
 }
 
+.crm-bookkeeping-table .crm-payables-profit {
+  color: #167a3f !important;
+  font-weight: 900;
+}
+
 .crm-payment-review-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;

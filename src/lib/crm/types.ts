@@ -625,6 +625,25 @@ export type CrmCommissionPaymentAllocation = {
 
 export type CrmPartnerPaymentState = "unpaid" | "partial" | "paid";
 
+export type CrmPartnerJobLedgerItem = {
+  id: string;
+  itemKey: string;
+  person: Exclude<CrmPaymentPerson, "ken">;
+  customerName: string;
+  quoteNumber: string | null;
+  soldDate: string | null;
+  closedAt: string | null;
+  sourceStatus: CrmBookkeepingStatus;
+  total: number;
+  advertisingReserve: number;
+  profitAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  paymentState: CrmPartnerPaymentState;
+  payableReady: boolean;
+  holdReason: "customer_payment" | "installer_invoice" | "no_profit" | null;
+};
+
 export type CrmPartnerPaymentLedgerItem = {
   id: string;
   itemKey: string;
@@ -714,6 +733,7 @@ export type CrmPartnerPaymentLedgerPerson = {
   activeJobCount: number;
   items: CrmPartnerPaymentLedgerItem[];
   activeItems: CrmPartnerPaymentLedgerItem[];
+  jobItems: CrmPartnerJobLedgerItem[];
 };
 
 export type CrmPartnerPaymentLedger = {

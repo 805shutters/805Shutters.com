@@ -11,6 +11,7 @@ import {
   CrmKenPayment,
   CrmKenPaymentAllocation,
   CrmKenBuyoutLedger,
+  CrmPartnerJobLedgerItem,
   CrmPartnerPaymentHistoryAllocation,
   CrmPartnerPaymentHistoryBatch,
   CrmPartnerPaymentLedger,
@@ -43,6 +44,7 @@ const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
   "installed",
   "invoiced",
   "paid",
+  "closed",
   "legacy",
   "manual"
 ]);
@@ -482,6 +484,8 @@ export function buildPartnerPaymentLedger({
   const explicitTotalsByPayment = new Map<string, number>();
 
   for (const allocation of kenAllocations) {
+    const batch = history.get(allocation.payment_id);
+    if (batch?.isAdvance) continue;
     const amount = roundCents(allocation.amount);
     explicitTotalsByPayment.set(allocation.payment_id, roundCents((explicitTotalsByPayment.get(allocation.payment_id) || 0) + amount));
     const item = workingByKey.get(allocation.item_key);
@@ -493,6 +497,8 @@ export function buildPartnerPaymentLedger({
   }
 
   for (const allocation of commissionAllocations) {
+    const batch = history.get(allocation.payment_id);
+    if (batch?.isAdvance) continue;
     const amount = roundCents(allocation.amount);
     explicitTotalsByPayment.set(allocation.payment_id, roundCents((explicitTotalsByPayment.get(allocation.payment_id) || 0) + amount));
     const item = workingByKey.get(allocation.item_key);
@@ -504,6 +510,7 @@ export function buildPartnerPaymentLedger({
   }
 
   for (const batch of history.values()) {
+    if (batch.isAdvance) continue;
     if (batch.allocations.length) continue;
     for (const allocation of paymentMetadataAllocations(batch.id, batch.person, paymentMetaById.get(batch.id))) {
       explicitTotalsByPayment.set(
@@ -520,6 +527,11 @@ export function buildPartnerPaymentLedger({
   }
 
   const applyLegacyRemainder = (batch: CrmPartnerPaymentHistoryBatch) => {
+    if (batch.isAdvance) {
+      batch.allocations = [];
+      batch.unappliedAmount = roundCents(batch.amount);
+      return;
+    }
     let remaining = roundCents(batch.amount - (explicitTotalsByPayment.get(batch.id) || 0));
     if (remaining <= 0) return;
 
@@ -572,6 +584,64 @@ export function buildPartnerPaymentLedger({
   });
 
   const activeItems = ledgerItems.filter((item) => item.remainingAmount > 0).sort(compareEarnedItems);
+  const ledgerItemsByKey = new Map(ledgerItems.map((item) => [item.itemKey, item]));
+
+  const buildJobItems = (person: "mike" | "jessica"): CrmPartnerJobLedgerItem[] =>
+    rows
+      .filter((row) => row.salesOwner === person && row.total > 0)
+      .filter((row) => SOLD_EARNING_STATUSES.has(effectiveBookkeepingStatus(row)))
+      .map((row) => {
+        const itemKey = partnerPaymentItemKeyForRow(person, row);
+        const payableItem = ledgerItemsByKey.get(itemKey);
+        const profitAmount = partnerPaymentAmountForRow(person, row);
+        const paidAmount = roundCents(payableItem?.paidAmount || 0);
+        const remainingAmount = roundCents(Math.max(profitAmount - paidAmount, 0));
+        const paymentState =
+          profitAmount > 0 && remainingAmount <= 0
+            ? "paid"
+            : paidAmount > 0
+              ? "partial"
+              : "unpaid";
+        const closedAt = paidInFullDate(row);
+        const holdReason =
+          profitAmount <= 0
+            ? "no_profit"
+            : !closedAt
+              ? "customer_payment"
+              : row.isMissingInstallerInvoice
+                ? "installer_invoice"
+                : null;
+
+        return {
+          id: itemKey,
+          itemKey,
+          person,
+          customerName: row.customerName,
+          quoteNumber: row.quoteNumber,
+          soldDate: row.soldDate,
+          closedAt,
+          sourceStatus: effectiveBookkeepingStatus(row),
+          total: roundCents(row.total),
+          advertisingReserve: roundCents(row.advertisingReserve),
+          profitAmount,
+          paidAmount,
+          remainingAmount,
+          paymentState,
+          payableReady: Boolean(payableItem),
+          holdReason
+        } satisfies CrmPartnerJobLedgerItem;
+      })
+      .sort((left, right) => {
+        const sold = paymentSortValue(right.soldDate) - paymentSortValue(left.soldDate);
+        if (sold) return sold;
+        return left.customerName.localeCompare(right.customerName);
+      });
+
+  const jobItemsByPerson = {
+    ken: [],
+    mike: buildJobItems("mike"),
+    jessica: buildJobItems("jessica")
+  } satisfies Record<CrmPaymentPerson, CrmPartnerJobLedgerItem[]>;
 
   const people = (["ken", "mike", "jessica"] as const).reduce(
     (record, person) => {
@@ -597,7 +667,8 @@ export function buildPartnerPaymentLedger({
         jobCount: personItems.length,
         activeJobCount: personActive.length,
         items: personItems.sort(compareEarnedItems),
-        activeItems: personActive
+        activeItems: personActive,
+        jobItems: jobItemsByPerson[person]
       };
       return record;
     },

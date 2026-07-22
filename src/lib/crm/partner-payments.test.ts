@@ -219,10 +219,95 @@ describe("buildPartnerPaymentLedger", () => {
       ]
     });
 
-    expect(ledger.people.jessica.advanceBalance).toBe(5979.14);
+    expect(ledger.people.jessica.advanceBalance).toBe(8000);
     expect(ledger.people.jessica.owed).toBe(-5979.14);
-    expect(ledger.people.jessica.activeItems).toHaveLength(0);
-    expect(ledger.history[0]).toMatchObject({ isAdvance: true, unappliedAmount: 5979.14 });
+    expect(ledger.people.jessica.activeItems).toHaveLength(1);
+    expect(ledger.people.jessica.activeItems[0]).toMatchObject({
+      itemKey: "jessica:manual:row-1",
+      paidAmount: 0,
+      remainingAmount: 2020.86,
+      paymentState: "unpaid"
+    });
+    expect(ledger.history[0]).toMatchObject({ isAdvance: true, unappliedAmount: 8000, allocations: [] });
+  });
+
+  it("keeps advance allocations out of Jessica job payment status and history groups", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row({ salesOwner: "jessica", mikeProfit: 300, jessicaCommission: 300 })],
+      kenPayments: [],
+      commissionPayments: [
+        commissionPayment({ recipient: "jessica", amount: 8000, meta: { advancePayment: true } })
+      ],
+      commissionAllocations: [
+        commissionAllocation({ recipient: "jessica", item_key: "jessica:manual:row-1", amount: 300 })
+      ]
+    });
+
+    expect(ledger.people.jessica).toMatchObject({
+      earned: 300,
+      paid: 0,
+      owed: -7700,
+      advanceBalance: 8000,
+      activeJobCount: 1
+    });
+    expect(ledger.people.jessica.items[0]).toMatchObject({ paidAmount: 0, paymentState: "unpaid" });
+    expect(ledger.history[0]).toMatchObject({ isAdvance: true, allocations: [], unappliedAmount: 8000 });
+  });
+
+  it("lists every Jessica-sold job and excludes jobs sold by Mike", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "jessica-open",
+          customerName: "Jessica Open",
+          salesOwner: "jessica",
+          status: "ordered",
+          isPaidInFull: false,
+          balance: 500,
+          paidTotal: 500,
+          payments: [bookkeepingPayment({ amount: 500 })],
+          mikeProfit: 150,
+          jessicaCommission: 150
+        }),
+        row({
+          id: "jessica-paid",
+          customerName: "Jessica Paid",
+          salesOwner: "jessica",
+          mikeProfit: 300,
+          jessicaCommission: 300
+        }),
+        row({ id: "mike-job", customerName: "Mike Job", salesOwner: "mike" })
+      ],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ recipient: "jessica", amount: 300 })],
+      commissionAllocations: [
+        commissionAllocation({
+          recipient: "jessica",
+          bookkeeping_entry_id: "jessica-paid",
+          item_key: "jessica:manual:jessica-paid",
+          customer_name: "Jessica Paid",
+          amount: 300
+        })
+      ]
+    });
+
+    expect(ledger.people.jessica.jobItems).toHaveLength(2);
+    expect(ledger.people.jessica.jobItems.map((item) => item.customerName)).toEqual([
+      "Jessica Open",
+      "Jessica Paid"
+    ]);
+    expect(ledger.people.jessica.jobItems[0]).toMatchObject({
+      paymentState: "unpaid",
+      payableReady: false,
+      holdReason: "customer_payment",
+      profitAmount: 150
+    });
+    expect(ledger.people.jessica.jobItems[1]).toMatchObject({
+      paymentState: "paid",
+      payableReady: true,
+      paidAmount: 300,
+      remainingAmount: 0
+    });
   });
 
   it("creates active payable rows only for paid-in-full jobs", () => {

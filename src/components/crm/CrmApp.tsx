@@ -10570,6 +10570,15 @@ function paymentStateDisplay(state: CrmPartnerPaymentLedgerItem["paymentState"])
   return "Unpaid";
 }
 
+function jobPaymentStateDisplay(item: CrmDashboardData["partnerPaymentLedger"]["people"]["jessica"]["jobItems"][number]) {
+  if (item.paymentState === "partial") return "Partially paid";
+  if (item.paymentState === "paid") return "Paid";
+  if (item.holdReason === "customer_payment") return "Not paid - job open";
+  if (item.holdReason === "installer_invoice") return "Not paid - installer invoice needed";
+  if (item.holdReason === "no_profit") return "No profit payable";
+  return "Not paid";
+}
+
 function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
   return Math.round(items.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
 }
@@ -10704,8 +10713,13 @@ function PartnerPaymentsView({
   const activePersonLedger = ledger?.people[activePerson];
   const activeHistory = (ledger?.history || []).filter((batch) => batch.person === activePerson);
   const selectedItems = activeItems.filter((item) => selectedItemKeys.has(item.itemKey));
-  const selectedTotal = sumPartnerRemaining(selectedItems);
+  const amountDue = Math.max(activePersonLedger?.owed || 0, 0);
+  const paymentAmountForItems = (items: CrmPartnerPaymentLedgerItem[]) =>
+    Math.min(sumPartnerRemaining(items), amountDue);
+  const selectedTotal = paymentAmountForItems(selectedItems);
   const allSelected = activeItems.length > 0 && selectedItems.length === activeItems.length;
+  const activeItemKeys = new Set(activeItems.map((item) => item.itemKey));
+  const jobItems = activePersonLedger?.jobItems || [];
 
   useEffect(() => {
     setSelectedItemKeys(new Set());
@@ -10731,11 +10745,11 @@ function PartnerPaymentsView({
   };
 
   const openReview = () => {
-    if (!activeItems.length) return;
+    if (!activeItems.length || amountDue <= 0) return;
     const reviewItems = selectedItems.length ? selectedItems : activeItems;
     setReview({
       itemKeys: reviewItems.map((item) => item.itemKey),
-      amount: sumPartnerRemaining(reviewItems),
+      amount: paymentAmountForItems(reviewItems),
       count: reviewItems.length
     });
     setReviewDate(todayInputValue());
@@ -10748,6 +10762,7 @@ function PartnerPaymentsView({
     try {
       await onPay({
         person: activePerson,
+        amount: review.amount,
         paid_on: reviewDate,
         note: reviewNote,
         item_ids: review.itemKeys
@@ -10764,12 +10779,13 @@ function PartnerPaymentsView({
     const form = event.currentTarget;
     const formData = new FormData(form);
     const manualSelectedItems = selectedItems.length ? selectedItems : activeItems;
-    if (!manualSelectedItems.length) return;
+    const manualAmount = paymentAmountForItems(manualSelectedItems);
+    if (!manualSelectedItems.length || manualAmount <= 0) return;
 
     try {
       await onPay({
         person: activePerson,
-        amount: sumPartnerRemaining(manualSelectedItems),
+        amount: manualAmount,
         paid_on: formString(formData, "paid_on") || null,
         note: formString(formData, "note"),
         item_ids: manualSelectedItems.map((item) => item.itemKey)
@@ -10803,7 +10819,7 @@ function PartnerPaymentsView({
             <p className="eyebrow">Internal Payables</p>
             <h2>Payables</h2>
           </div>
-          <button type="button" disabled={busy || !activeItems.length} onClick={openReview}>
+          <button type="button" disabled={busy || !activeItems.length || amountDue <= 0} onClick={openReview}>
             Process {paymentPersonDisplayName(activePerson)} Payment
           </button>
         </div>
@@ -10830,7 +10846,7 @@ function PartnerPaymentsView({
                   {personLedger?.activeJobCount || 0} active / {toLedgerCurrency(personLedger?.earned)} earned
                 </em>
                 {soldEarningDetail ? <em className="crm-payment-person-sold-earning">{soldEarningDetail}</em> : null}
-                {personLedger?.advanceBalance ? <em>{toLedgerCurrency(personLedger.advanceBalance)} advance credit</em> : null}
+                {personLedger?.advanceBalance ? <em>{toLedgerCurrency(personLedger.advanceBalance)} advances recorded</em> : null}
               </button>
             );
           })}
@@ -10878,7 +10894,7 @@ function PartnerPaymentsView({
               Note
               <textarea name="note" rows={3} placeholder="Check #, Zelle, adjustment..." />
             </label>
-            <button type="submit" disabled={busy}>
+            <button type="submit" disabled={busy || amountDue <= 0}>
               Save Group Payment & Email PDF
             </button>
           </form>
@@ -10886,14 +10902,63 @@ function PartnerPaymentsView({
 
         <div className="crm-payoff-payments">
           <div className="crm-payment-ledger-head">
-            <h3>{paymentPersonDisplayName(activePerson)} Active Payables</h3>
-            {activeItems.length ? (
+            <h3>{activePerson === "jessica" ? "Jessica Job Ledger" : `${paymentPersonDisplayName(activePerson)} Active Payables`}</h3>
+            {activeItems.length && activePerson !== "jessica" ? (
               <button type="button" className="crm-ghost-button" onClick={toggleAll}>
                 {allSelected ? "Clear Selection" : "Select All"}
               </button>
             ) : null}
           </div>
           <div className="crm-bookkeeping-table-wrap">
+            {activePerson === "jessica" ? (
+            <table className="crm-bookkeeping-table crm-jessica-job-ledger">
+              <thead>
+                <tr>
+                  <th aria-label="Select job" />
+                  <th>Customer</th>
+                  <th>Sold</th>
+                  <th>Job Status</th>
+                  <th>Total</th>
+                  <th>Advertising 7%</th>
+                  <th className="crm-payables-profit">Jessica Profit</th>
+                  <th>Paid To Jessica</th>
+                  <th>Remaining</th>
+                  <th>Payment Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobItems.map((item) => {
+                  const selectable = activeItemKeys.has(item.itemKey) && amountDue > 0;
+                  return (
+                    <tr key={item.itemKey}>
+                      <td>
+                        {selectable ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedItemKeys.has(item.itemKey)}
+                            onChange={() => toggleItem(item.itemKey)}
+                            aria-label={`Select ${item.customerName}`}
+                          />
+                        ) : null}
+                      </td>
+                      <td>
+                        <strong>{item.customerName}</strong>
+                        <span>{item.quoteNumber || "No quote number"}</span>
+                      </td>
+                      <td>{formatShortDate(item.soldDate)}</td>
+                      <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
+                      <td>{toLedgerCurrency(item.total)}</td>
+                      <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
+                      <td className="crm-payables-profit">{toLedgerCurrency(item.profitAmount)}</td>
+                      <td>{toLedgerCurrency(item.paidAmount)}</td>
+                      <td>{toLedgerCurrency(item.remainingAmount)}</td>
+                      <td>{jobPaymentStateDisplay(item)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            ) : (
             <table className="crm-bookkeeping-table">
               <thead>
                 <tr>
@@ -10903,7 +10968,7 @@ function PartnerPaymentsView({
                   <th>Status</th>
                   <th>Sold By</th>
                   <th>Total</th>
-                  {activePerson === "mike" || activePerson === "jessica" ? <th>Advertising 7%</th> : null}
+                  {activePerson === "mike" ? <th>Advertising 7%</th> : null}
                   <th>Owed</th>
                   <th>Paid</th>
                   <th>Remaining</th>
@@ -10929,7 +10994,7 @@ function PartnerPaymentsView({
                     <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
                     <td>{saleOwnerDisplayName(item.salesOwner)}</td>
                     <td>{toLedgerCurrency(item.total)}</td>
-                    {activePerson === "mike" || activePerson === "jessica" ? (
+                    {activePerson === "mike" ? (
                       <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
                     ) : null}
                     <td>{toLedgerCurrency(item.owedAmount)}</td>
@@ -10940,7 +11005,9 @@ function PartnerPaymentsView({
                 ))}
               </tbody>
             </table>
-            {!activeItems.length ? <p className="crm-empty">No active unpaid jobs for {paymentPersonDisplayName(activePerson)}.</p> : null}
+            )}
+            {activePerson === "jessica" && !jobItems.length ? <p className="crm-empty">No Jessica-sold jobs found.</p> : null}
+            {activePerson !== "jessica" && !activeItems.length ? <p className="crm-empty">No active unpaid jobs for {paymentPersonDisplayName(activePerson)}.</p> : null}
           </div>
         </div>
 
@@ -10951,6 +11018,7 @@ function PartnerPaymentsView({
               <thead>
                 <tr>
                   <th>Date</th>
+                  <th>Payment Period</th>
                   <th>Amount</th>
                   <th>Jobs</th>
                   <th>Note</th>
@@ -11021,6 +11089,7 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
   return (
     <tr>
       <td>{formatShortDate(batch.paidOn)}</td>
+      <td>{formatShortDate(batch.periodMonth)}</td>
       <td>{toLedgerCurrency(batch.amount)}</td>
       <td>{batch.allocations.length || "-"}</td>
       <td>{batch.note || (batch.isAdvance ? "Payment advance" : batch.isLegacy ? "Legacy unallocated payment" : "")}</td>
