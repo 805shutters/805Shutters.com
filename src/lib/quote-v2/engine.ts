@@ -34,6 +34,7 @@ import {
   canonicalMotorizationPriceSelections,
   canonicalMotorizationSelectionsFromConfiguration,
 } from "./roller-motor-contract";
+import { canonicalNormanShadeMotorizationSelectionsFromConfiguration } from "./norman-shade-motorization";
 import { rollerComponentOrderWidthsForPricing } from "./roller-matrix";
 import {
   buildAuthoritativePriceComponents,
@@ -688,7 +689,14 @@ function priceInputContractIssues(
           selection.configuration,
         )
       : null;
-  if (selection.productId === "roller" && canonicalRollerMotorization) {
+  const canonicalShadeMotorization =
+    selection.productId === "honeycomb" || selection.productId === "roman"
+      ? canonicalNormanShadeMotorizationSelectionsFromConfiguration(selection)
+      : null;
+  if (
+    (selection.productId === "roller" && canonicalRollerMotorization) ||
+    canonicalShadeMotorization
+  ) {
     const normalizedSelections = (
       entries: readonly {
         groupId: string;
@@ -709,7 +717,7 @@ function priceInputContractIssues(
         );
     const expectedMotorization = normalizedSelections(
       canonicalMotorizationPriceSelections(
-        canonicalRollerMotorization.selections,
+        canonicalShadeMotorization ?? canonicalRollerMotorization!.selections,
       ),
     );
     const actualMotorization = normalizedSelections(input.motorization ?? []);
@@ -1051,7 +1059,10 @@ function priceComponentInputs(
           selection.configuration,
         )
       : null;
-  const canonicalMotorization = canonicalContract?.selections ?? [];
+  const canonicalMotorization =
+    canonicalContract?.selections ??
+    canonicalNormanShadeMotorizationSelectionsFromConfiguration(selection) ??
+    [];
   const canonicalLineIds = new Set(
     canonicalMotorization.map(
       (entry) => `motor:${entry.groupId}:${entry.optionId}`,
@@ -1208,17 +1219,24 @@ function priceComponentInputs(
       );
     }
 
-    if (baseMotor?.groupId === "autowand" && baseMotor.optionId === "autowand") {
-      addIncluded(
-        "accessory:autowand_included_charging_kit",
-        "AutoWand charging-kit allocation — included",
-        "motorization_selections",
-        "autowand/autowand",
-        sourceProvenance("norman-motorization-guide-2026-05", {
-          page: 83,
-        }),
-      );
-    }
+  }
+
+  if (baseMotor?.groupId === "autowand" && baseMotor.optionId === "autowand") {
+    const sourcePage =
+      selection.productId === "honeycomb"
+        ? 76
+        : selection.productId === "roman"
+          ? 80
+          : 83;
+    addIncluded(
+      "accessory:autowand_included_charging_kit",
+      "AutoWand charging-kit allocation — included",
+      "motorization_selections",
+      "autowand/autowand",
+      sourceProvenance("norman-motorization-guide-2026-05", {
+        page: sourcePage,
+      }),
+    );
   }
 
   if (!accessories.some((entry) => entry.category === "accessory")) {

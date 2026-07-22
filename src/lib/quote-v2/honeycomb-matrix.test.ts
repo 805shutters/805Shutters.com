@@ -260,7 +260,7 @@ describe("Norman Honeycomb authoritative dimension matrix", () => {
     ).toMatchObject({ ok: true, profile: { id: "smartrise-fr-3-8" } });
   });
 
-  it("fails closed for unknown/incompatible configurations and all motorized size branches", () => {
+  it("fails closed for unknown/incompatible configurations and resolves only exact motorized evidence", () => {
     expect(
       resolveHoneycombMatrixProfile(selection({ cell_size: "mystery" })),
     ).toMatchObject({ ok: false, code: "CELL_REQUIRED" });
@@ -280,6 +280,24 @@ describe("Norman Honeycomb authoritative dimension matrix", () => {
         }),
       ),
     ).toMatchObject({ ok: false, code: "MOTORIZATION_SOURCE_INCOMPLETE" });
+    expect(
+      resolveHoneycombMatrixProfile(
+        selection({
+          lift_system: "Norman Smart Motorized Bottom Up",
+          motor_type:
+            "Norman Smart Rechargeable Battery with Wireless Charging Wand",
+          motor_position: "Right",
+          hub_required: false,
+        }),
+      ),
+    ).toMatchObject({
+      ok: true,
+      profile: {
+        id: "norman-smart-bottom-up",
+        sourceId: "norman-motorization-guide-2026-05",
+        limits: { minWidth: 24, maxWidth: 120, maxAreaSqFt: 90 },
+      },
+    });
     expect(
       ruleIds(selection({ fabric_collection: "Unknown collection" })),
     ).toContain("honeycomb.matrix.fabric_class_required");

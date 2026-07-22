@@ -853,6 +853,184 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
   });
 
+  it("requires and prices the complete source-derived Honeycomb Smart motor BOM", () => {
+    const motorization = [
+      {
+        groupId: "smart_motorization",
+        optionId: "motor",
+        role: "base_motor" as const,
+        units: 1,
+      },
+      {
+        groupId: "smart_motorization",
+        optionId: "wireless_charging_wand",
+        role: "power_supply" as const,
+        units: 1,
+      },
+      {
+        groupId: "smart_motorization",
+        optionId: "basic_remote_black",
+        role: "controller" as const,
+        units: 1,
+      },
+    ];
+    const context = selection(
+      "honeycomb",
+      "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      {
+        mount_type: "Inside Mount",
+        application: "Standard Horizontal",
+        lift_system: "Norman Smart Motorized Bottom Up",
+        cell_size: '3/8" Single Cell',
+        fabric_collection: "Light Filtering",
+        fabric_color_code: "C7015K",
+        motor_type:
+          "Norman Smart Rechargeable Battery with Wireless Charging Wand",
+        motor_position: "Right",
+        remote_type: "Basic Remote",
+        hub_required: false,
+        motorization_selections: motorization,
+      },
+    );
+
+    const omittedWand = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        motorization: [
+          { groupId: "smart_motorization", optionId: "motor", units: 1 },
+          {
+            groupId: "smart_motorization",
+            optionId: "basic_remote_black",
+            units: 1,
+          },
+        ],
+      },
+    });
+    expect(omittedWand.ok).toBe(false);
+    expect(omittedWand.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "engine.selection_price_input.mismatch",
+    );
+
+    const priced = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        motorization: motorization.map(({ groupId, optionId, units }) => ({
+          groupId,
+          optionId,
+          units,
+        })),
+      },
+    });
+    expect(priced.ok, JSON.stringify(priced, null, 2)).toBe(true);
+    if (!priced.ok) return;
+    expect(priced.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "motor:smart_motorization:motor",
+          amount: 482,
+        }),
+        expect.objectContaining({
+          id: "motor:smart_motorization:wireless_charging_wand",
+          amount: 428,
+        }),
+        expect.objectContaining({
+          id: "motor:smart_motorization:basic_remote_black",
+          amount: 75,
+        }),
+      ]),
+    );
+    expect(priced.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "operating_system",
+          priceLineId: "motor:smart_motorization:motor",
+        }),
+        expect.objectContaining({
+          category: "accessory",
+          priceLineId: "motor:smart_motorization:wireless_charging_wand",
+        }),
+        expect.objectContaining({
+          category: "accessory",
+          priceLineId: "motor:smart_motorization:basic_remote_black",
+        }),
+      ]),
+    );
+  });
+
+  it("represents Roman AutoWand as the operating charge and its allocated charging kit as included", () => {
+    const canonical = [
+      {
+        groupId: "autowand",
+        optionId: "autowand",
+        role: "base_motor" as const,
+        units: 1,
+      },
+    ];
+    const context = selection(
+      "roman",
+      "roman_cordless_usa_price_group_2_pg2",
+      {
+        mount_type: "Inside Mount",
+        shade_type: "Single",
+        lift_system: "Motorized",
+        fold_style: "Flat Fold without Seams",
+        fabric_collection: "Alma",
+        fabric_color_code: "F1621",
+        lining: "Translucent",
+        fabric_orientation: "Standard / Non-Railroaded",
+        seaming: "No Seams",
+        motor_type: "AutoWand",
+        motor_position: "Right",
+        hub_required: false,
+        motorization_selections: canonical,
+      },
+    );
+    const priced = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        motorization: [
+          { groupId: "autowand", optionId: "autowand", units: 1 },
+        ],
+      },
+    });
+    expect(priced.ok, JSON.stringify(priced, null, 2)).toBe(true);
+    if (!priced.ok) return;
+    expect(priced.surchargeLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "motor:autowand:autowand",
+          amount: 166,
+        }),
+      ]),
+    );
+    expect(priced.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "operating_system",
+          priceLineId: "motor:autowand:autowand",
+        }),
+        expect.objectContaining({
+          id: "accessory:autowand_included_charging_kit",
+          status: "included",
+          customerAmount: 0,
+          source: expect.objectContaining({ page: 80 }),
+        }),
+      ]),
+    );
+  });
+
   it("preserves the separate Onyx U.S. Made Vinyl rate but fails closed on incomplete restrictions", () => {
     const context = selection(
       "onyx_shutters",

@@ -25,6 +25,7 @@ import { canonicalMotorizationSelectionsFromConfiguration } from "./roller-motor
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
+import { validateNormanShadeMotorization } from "./norman-shade-motorization";
 
 type RuleSource = {
   sourceId: SourceManifestId;
@@ -512,17 +513,6 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
   const shadeType = normalized(configValue(context, "shade_type"));
   const lift = normalized(configValue(context, "lift_system"));
   const motorized = lift.includes("motor");
-  if (motorized) {
-    issues.push(
-      issue(
-        "hard_block",
-        "roman.motorization.source_incomplete",
-        { ...ROMAN_GUIDE, pages: [14, 15] },
-        { lift_system: text(configValue(context, "lift_system")), motor_type: configValue(context, "motor_type") ?? null },
-        "Roman motorization remains blocked until the separate Norman Motorization Guide is audited.",
-      ),
-    );
-  }
 
   const isDayNight = shadeType === "day night";
   const isCommonValance = shadeType === "common valance";
@@ -554,38 +544,40 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
     maxArea = 52;
   }
 
-  if (context.widthInches < minWidth || context.widthInches > maxWidth) {
-    issues.push(
-      issue(
-        "hard_block",
-        "roman.dimension.width",
-        { ...ROMAN_GUIDE, pages: [11, 12] },
-        { widthInches: context.widthInches, minWidthInches: minWidth, maxWidthInches: maxWidth, lift_system: lift },
-        `Roman width must be between ${minWidth} and ${maxWidth} inches for the selected control/headrail configuration.`,
-      ),
-    );
-  }
-  if (context.heightInches < minHeight || context.heightInches > maxHeight) {
-    issues.push(
-      issue(
-        "hard_block",
-        "roman.dimension.height",
-        { ...ROMAN_GUIDE, pages: [11, 12] },
-        { heightInches: context.heightInches, minHeightInches: minHeight, maxHeightInches: maxHeight, lift_system: lift },
-        `Roman height must be between ${minHeight} and ${maxHeight} inches for the selected control.`,
-      ),
-    );
-  }
-  if (area > maxArea) {
-    issues.push(
-      issue(
-        "hard_block",
-        "roman.dimension.area",
-        { ...ROMAN_GUIDE, pages: [11, 12] },
-        { areaSqft: area, maxAreaSqft: maxArea, lift_system: lift },
-        `Roman area exceeds the ${maxArea}-square-foot limit for this configuration.`,
-      ),
-    );
+  if (!motorized) {
+    if (context.widthInches < minWidth || context.widthInches > maxWidth) {
+      issues.push(
+        issue(
+          "hard_block",
+          "roman.dimension.width",
+          { ...ROMAN_GUIDE, pages: [11, 12] },
+          { widthInches: context.widthInches, minWidthInches: minWidth, maxWidthInches: maxWidth, lift_system: lift },
+          `Roman width must be between ${minWidth} and ${maxWidth} inches for the selected control/headrail configuration.`,
+        ),
+      );
+    }
+    if (context.heightInches < minHeight || context.heightInches > maxHeight) {
+      issues.push(
+        issue(
+          "hard_block",
+          "roman.dimension.height",
+          { ...ROMAN_GUIDE, pages: [11, 12] },
+          { heightInches: context.heightInches, minHeightInches: minHeight, maxHeightInches: maxHeight, lift_system: lift },
+          `Roman height must be between ${minHeight} and ${maxHeight} inches for the selected control.`,
+        ),
+      );
+    }
+    if (area > maxArea) {
+      issues.push(
+        issue(
+          "hard_block",
+          "roman.dimension.area",
+          { ...ROMAN_GUIDE, pages: [11, 12] },
+          { areaSqft: area, maxAreaSqft: maxArea, lift_system: lift },
+          `Roman area exceeds the ${maxArea}-square-foot limit for this configuration.`,
+        ),
+      );
+    }
   }
 
   if (isDayNight) {
@@ -908,6 +900,7 @@ function validateRoman(context: SelectionContext): ValidationIssue[] {
     }
   }
 
+  issues.push(...validateNormanShadeMotorization(context));
   return issues;
 }
 
@@ -1039,17 +1032,6 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
     );
   }
 
-  if (lift.includes("motor")) {
-    issues.push(
-      issue(
-        "hard_block",
-        "honeycomb.motorization.source_incomplete",
-        { ...HONEYCOMB_GUIDE, pages: [18, 19] },
-        { lift_system: text(configValue(context, "lift_system")), motor_type: configValue(context, "motor_type") ?? null },
-        "Honeycomb motorization remains blocked until the separate Norman Motorization Guide is audited.",
-      ),
-    );
-  }
   if (dayNight) {
     const rearCollection = text(configValue(context, "rear_fabric_collection"));
     const rearCode = text(configValue(context, "rear_fabric_color_code"));
@@ -1077,6 +1059,7 @@ function validateHoneycomb(context: SelectionContext): ValidationIssue[] {
       );
     }
   }
+  issues.push(...validateNormanShadeMotorization(context));
   return issues;
 }
 
@@ -1267,12 +1250,10 @@ function validateSynchronyVertical(context: SelectionContext): ValidationIssue[]
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
-  if (
-    (context.productId === "honeycomb" || context.productId === "roman") &&
-    normalized(configValue(context, "lift_system")).includes("motor")
-  ) {
-    return "restriction_source_incomplete";
-  }
+  // The pinned May 2026 Motorization Guide now supplies exact motor-family,
+  // power, control, accessory, and size rules. Unsupported or incomplete
+  // configurations remain fail-closed through structured hard blocks rather
+  // than downgrading every motorized selection to a blanket product status.
   if (
     context.productId === "honeycomb" &&
     normalizeIdentity(text(configValue(context, "fabric_collection"))) === "whispers"

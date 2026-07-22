@@ -6,6 +6,10 @@ import type {
 } from "./core";
 import { normalizeIdentity } from "./catalog";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
+import {
+  motorFamilyForNormanShadeSelection,
+  type NormanShadeMotorFamily,
+} from "./norman-shade-motorization";
 
 /**
  * One quote line and its one explicitly selected design. The caller must build
@@ -107,7 +111,11 @@ function evidenceValue(
       return configurationValue;
     }
     const optionValue = context.options[candidate];
-    if (optionValue !== undefined && optionValue !== null && optionValue !== "") {
+    if (
+      optionValue !== undefined &&
+      optionValue !== null &&
+      optionValue !== ""
+    ) {
       return optionValue;
     }
   }
@@ -179,6 +187,78 @@ function referenceId(line: QuoteSelectedDesignLine): string {
 
 function sideBySideEnabled(line: QuoteSelectedDesignLine): boolean {
   return enabled(evidenceValue(line.selectedDesign, "side_by_side"));
+}
+
+function compatibleMotorControllerSelected(
+  family: Exclude<NormanShadeMotorFamily, "autowand">,
+  context: SelectionContext,
+): boolean {
+  const remote = normalizeIdentity(
+    evidenceValue(context, "remote_type", ["motor_remote_type"]),
+  );
+  if (family === "norman_smart") {
+    return remote.includes("smartdial") || remote.includes("basic remote");
+  }
+  return (
+    remote.includes("15 channel") ||
+    remote.includes("5 channel") ||
+    remote.includes("wall switch")
+  );
+}
+
+function validateMotorizationOrderControls(
+  lines: readonly QuoteSelectedDesignLine[],
+): ValidationIssue[] {
+  const grouped = new Map<
+    Exclude<NormanShadeMotorFamily, "autowand">,
+    QuoteSelectedDesignLine[]
+  >();
+
+  for (const line of lines) {
+    const family = motorFamilyForNormanShadeSelection(line.selectedDesign);
+    if (!family || family === "autowand") continue;
+    const current = grouped.get(family) ?? [];
+    current.push(line);
+    grouped.set(family, current);
+  }
+
+  const issues: ValidationIssue[] = [];
+  for (const [family, familyLines] of grouped) {
+    const hasController = familyLines.some((line) =>
+      compatibleMotorControllerSelected(family, line.selectedDesign),
+    );
+    const hasExistingRemoteEvidence = familyLines.some((line) =>
+      Boolean(
+        text(
+          evidenceValue(
+            line.selectedDesign,
+            "existing_remote_work_order_number",
+            ["existing_remote_wo"],
+          ),
+        ),
+      ),
+    );
+    if (hasController || hasExistingRemoteEvidence) continue;
+
+    const firstLine = familyLines[0];
+    issues.push({
+      severity: "hard_block",
+      ruleId: "norman.motorization.quote.controller_required",
+      source: sourceProvenance("norman-motorization-guide-2026-05", {
+        page: 4,
+      }),
+      selectedValues: {
+        lineId: firstLine.lineId.trim() || null,
+        motor_family: family,
+        motorized_line_ids: familyLines.map((line) => line.lineId.trim()),
+        remote_type: null,
+        existing_remote_work_order_number: null,
+      },
+      explanation:
+        "At least one compatible controller is required for this motor family on the order unless an existing compatible remote is evidenced by its prior work-order number.",
+    });
+  }
+  return issues;
 }
 
 function validateMatchingEvidence(
@@ -572,5 +652,6 @@ export function validateQuoteSelectionRelationships(
     );
   }
 
+  issues.push(...validateMotorizationOrderControls(lines));
   return issues;
 }

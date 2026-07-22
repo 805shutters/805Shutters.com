@@ -307,13 +307,13 @@ describe("Quote V2 authoritative manufacturer rules", () => {
     ).not.toContain("roman.continuous_loop.headrail_required");
   });
 
-  it("quarantines Caroline F1090 and incomplete Roman motorization", () => {
+  it("quarantines Caroline F1090 and fails closed on incomplete Roman motorization evidence", () => {
     const f1090 = { ...romanConfiguration, fabric_collection: "Caroline", fabric_color_code: "F1090" };
     expect(ruleIds(selection("roman", f1090))).toContain("roman.fabric.f1090.quarantined");
 
     const motorized = selection("roman", { ...romanConfiguration, lift_system: "Motorized" });
-    expect(productRuleStatusForSelection(motorized)).toBe("restriction_source_incomplete");
-    expect(ruleIds(motorized)).toContain("roman.motorization.source_incomplete");
+    expect(productRuleStatusForSelection(motorized)).toBe("documented_limited");
+    expect(ruleIds(motorized)).toContain("roman.motorization.power_source_required");
   });
 
   it("requires actual Common Valance panels and enforces gap and total width boundaries", () => {

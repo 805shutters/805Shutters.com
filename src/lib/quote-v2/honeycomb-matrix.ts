@@ -4,7 +4,11 @@ import type {
   SelectionValue,
   ValidationIssue,
 } from "./core";
-import { sourceProvenance } from "./source-manifest";
+import { sourceProvenance, type SourceManifestId } from "./source-manifest";
+import {
+  NORMAN_MOTORIZATION_SOURCE_ID,
+  resolveNormanShadeMotorization,
+} from "./norman-shade-motorization";
 
 export const HONEYCOMB_GUIDE_SOURCE_ID =
   "norman-honeycomb-guide-2026-07" as const;
@@ -78,6 +82,7 @@ export interface HoneycombDimensionProfile {
   readonly fabricClasses?: readonly HoneycombFabricClass[];
   readonly limits: HoneycombDimensionLimits;
   readonly sourcePage: number;
+  readonly sourceId?: SourceManifestId;
 }
 
 const ALL_CELLS = HONEYCOMB_CELL_SIZES;
@@ -792,6 +797,9 @@ export function normalizeHoneycombSystem(
   const lift = compact(
     stringConfig(context, "honeycomb_operating_system", "lift_system"),
   );
+  const powerSource = compact(
+    stringConfig(context, "motor_type", "power_source"),
+  );
   const combined = `${application} ${lift}`;
   if (application.includes("specialty shape")) return "specialty_shape";
   if (
@@ -820,8 +828,26 @@ export function normalizeHoneycombSystem(
     return "smartfit_dual";
   if (combined.includes("smartfit")) return "smartfit";
   if (combined.includes("motorized skylight")) return "motorized_skylight";
-  if (combined.includes("autowand") && combined.includes("motor"))
+  if (
+    combined.includes("motor") &&
+    (combined.includes("autowand") || powerSource.includes("autowand"))
+  )
     return "autowand_motorized_bottom_up";
+  if (combined.includes("motor") && powerSource.includes("automate")) {
+    return combined.includes("top down") || combined.endsWith(" td")
+      ? "motorized_top_down"
+      : "motorized_bottom_up";
+  }
+  if (
+    combined.includes("motor") &&
+    (powerSource.includes("charging wand") ||
+      powerSource.includes("ac adapter") ||
+      powerSource.includes("dc low voltage"))
+  ) {
+    if (combined.includes("day night")) return "smart_motorized_day_night";
+    if (combined.includes("tdbu")) return "smart_motorized_tdbu";
+    return "smart_motorized_bottom_up";
+  }
   if (
     combined.includes("norman smart motorized") &&
     combined.includes("day night")
@@ -892,6 +918,7 @@ export type HoneycombMatrixResolution =
         | "MOTORIZATION_SOURCE_INCOMPLETE";
       readonly message: string;
       readonly page: number;
+      readonly sourceId?: SourceManifestId;
     };
 
 export function resolveHoneycombMatrixProfile(
@@ -955,12 +982,42 @@ export function resolveHoneycombMatrixProfile(
     system === "motorized_skylight" ||
     system === "autowand_motorized_bottom_up"
   ) {
+    const motorization = resolveNormanShadeMotorization(context);
+    const motorLimits = motorization?.limits?.[0];
+    if (motorLimits) {
+      return {
+        ok: true,
+        system,
+        cell,
+        fabricClass,
+        profile: {
+          id: motorLimits.id,
+          system,
+          cells: [cell],
+          fabricClasses: [fabricClass],
+          limits: {
+            minWidth: motorLimits.minWidth,
+            maxWidth: motorLimits.maxWidth,
+            minHeight: motorLimits.minHeight,
+            maxHeight: motorLimits.maxHeight,
+            ...(motorLimits.maxAreaSqFt === undefined
+              ? {}
+              : { maxAreaSqFt: motorLimits.maxAreaSqFt }),
+          },
+          sourcePage: motorLimits.sourcePage,
+          sourceId: NORMAN_MOTORIZATION_SOURCE_ID,
+        },
+      };
+    }
     return {
       ok: false,
       code: "MOTORIZATION_SOURCE_INCOMPLETE",
       message:
-        "The product guide delegates motorized size limitations to the separate Motorization Guide, so this branch cannot be priced from the pinned Honeycomb guide alone.",
-      page: 5,
+        motorization && !motorization.ok && motorization.issues[0]
+          ? motorization.issues[0].explanation
+          : "Select an exact Motorization Guide-backed power and control configuration before this Honeycomb branch can be priced.",
+      page: 9,
+      sourceId: NORMAN_MOTORIZATION_SOURCE_ID,
     };
   }
   if (system === "specialty_shape") {
@@ -1028,12 +1085,13 @@ function issue(
   explanation: string,
   severity: ValidationIssue["severity"] = "hard_block",
   derivedValues?: SelectionRecord,
+  sourceId: SourceManifestId = HONEYCOMB_GUIDE_SOURCE_ID,
 ): ValidationIssue {
   const location = typeof page === "number" ? { page } : { pages: page };
   return {
     severity,
     ruleId,
-    source: sourceProvenance(HONEYCOMB_GUIDE_SOURCE_ID, location),
+    source: sourceProvenance(sourceId, location),
     selectedValues,
     explanation,
     ...(derivedValues ? { derivedValues } : {}),
@@ -1072,6 +1130,9 @@ function validateDimensionProfile(
       profile.sourcePage,
       { ...baseSelected(context), profileId: profile.id, ...profile.limits },
       labels[failure],
+      "hard_block",
+      undefined,
+      profile.sourceId,
     );
   });
 }
@@ -2553,6 +2614,9 @@ export function validateHoneycombMatrix(
         resolved.page,
         baseSelected(context),
         resolved.message,
+        "hard_block",
+        undefined,
+        resolved.sourceId,
       ),
     ];
   const issues =

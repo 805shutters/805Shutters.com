@@ -359,4 +359,61 @@ describe("Quote V2 cross-line side-by-side rules", () => {
       ]),
     ).toEqual([]);
   });
+
+  it("requires one compatible controller per Norman Smart or Automate motor family", () => {
+    const motorized = [
+      line("smart-a", "honeycomb", {
+        lift_system: "Norman Smart Motorized Bottom Up",
+        motor_type: "Norman Smart AC Adapter Plug-In",
+      }),
+      line("smart-b", "roman", {
+        lift_system: "Motorized",
+        motor_type: "Norman Smart Rechargeable Battery (AC Charger)",
+      }),
+      line("automate-a", "roman", {
+        lift_system: "Motorized",
+        motor_type: "Automate ARC Internal Rechargeable Battery",
+      }),
+    ];
+    const issues = validateQuoteSelectionRelationships(motorized).filter(
+      (entry) =>
+        entry.ruleId === "norman.motorization.quote.controller_required",
+    );
+    expect(issues).toHaveLength(2);
+    expect(issues.map((entry) => entry.selectedValues.motor_family)).toEqual(
+      expect.arrayContaining(["norman_smart", "automate_home"]),
+    );
+    expect(issues[0]?.source).toMatchObject({
+      sourceId: "norman-motorization-guide-2026-05",
+      fileName: "Motorization Guide.pdf",
+      revision: "May 2026; latest revision 2026-05-11",
+      page: 4,
+    });
+  });
+
+  it("accepts a compatible order controller, prior-remote work-order evidence, and AutoWand without a remote", () => {
+    const lines = [
+      line("smart-a", "honeycomb", {
+        lift_system: "Norman Smart Motorized Bottom Up",
+        motor_type: "Norman Smart AC Adapter Plug-In",
+        remote_type: "SmartDial G2 Remote",
+      }),
+      line("smart-b", "roman", {
+        lift_system: "Motorized",
+        motor_type: "Norman Smart Rechargeable Battery (AC Charger)",
+      }),
+      line("automate-a", "roman", {
+        lift_system: "Motorized",
+        motor_type: "Automate ARC Internal Rechargeable Battery",
+        existing_remote_work_order_number: "WO-805-123",
+      }),
+      line("wand-a", "honeycomb", {
+        lift_system: "AutoWand Motorized Bottom Up",
+        motor_type: "AutoWand",
+      }),
+    ];
+    expect(ruleIds(lines)).not.toContain(
+      "norman.motorization.quote.controller_required",
+    );
+  });
 });
