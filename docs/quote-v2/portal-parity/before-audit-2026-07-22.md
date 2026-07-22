@@ -2,10 +2,10 @@
 
 Generated from `quote-v2-portal-parity-before-2026-07-22`. This report preserves the untouched output from Git revision `0dd77d068746874ce8326a1350fe9eeb1947cf09`; it contains no AFTER values and documents no pricing correction.
 
-Route: `/quote-lab/`
-Interface marker: `exact-existing-builder`
-Backend adapter: `repriceExactQuoteBuilderForQuoteLabPreview`
-Injected catalog date: `2026-08-01`
+Route: `/quote-lab/`  
+Interface marker: `exact-existing-builder`  
+Backend adapter: `repriceExactQuoteBuilderForQuoteLabPreview`  
+Injected catalog date: `2026-08-01`  
 Capture time: `2026-07-22T16:25:00Z`
 
 No customer quote was sent, no manufacturer order was submitted, and no production data was written.
@@ -31,9 +31,9 @@ Failure threshold: more than $1.00 or 0.25%. MSRP-unverified cases are never lab
 
 ### Norman — Soluna Roller Shades
 
-Test: `norman-roller-smartrelease-24x36`
-Classification: `portal_verified`
-Product/program: `roller` / `roller_cordless_fabric_price_group_1_pg1`
+Test: `norman-roller-smartrelease-24x36`  
+Classification: `portal_verified`  
+Product/program: `roller` / `roller_cordless_fabric_price_group_1_pg1`  
 Source: `norman-retail-guide-2026-07`, page(s) 18, 20
 
 Selections:
@@ -84,9 +84,9 @@ DIFFERENCE
 
 ### Norman — Synchrony Vertical Blinds
 
-Test: `norman-synchrony-vertical-24x48`
-Classification: `official_price_book_verified`
-Product/program: `synchrony_vertical` / `synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1`
+Test: `norman-synchrony-vertical-24x48`  
+Classification: `official_price_book_verified`  
+Product/program: `synchrony_vertical` / `synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1`  
 Source: `norman-retail-guide-2026-07`, page(s) 34
 
 Selections:
@@ -129,9 +129,9 @@ DIFFERENCE
 
 ### Norman — Centerpiece Roman Shades
 
-Test: `norman-roman-large-96x72`
-Classification: `official_price_book_verified`
-Product/program: `roman` / `roman_cordless_usa_price_group_1_pg1`
+Test: `norman-roman-large-96x72`  
+Classification: `official_price_book_verified`  
+Product/program: `roman` / `roman_cordless_usa_price_group_1_pg1`  
 Source: `norman-retail-guide-2026-07`, page(s) 26
 
 Selections:
@@ -175,9 +175,9 @@ DIFFERENCE
 
 ### Polar — Polar Elite Patio
 
-Test: `polar-elite-suntex90-manual-three-line`
-Classification: `portal_verified_with_official_book_conflict`
-Product/program: `polar_elite_patio` / `group_4`
+Test: `polar-elite-suntex90-manual-three-line`  
+Classification: `portal_verified_with_official_book_conflict`  
+Product/program: `polar_elite_patio` / `group_4`  
 Source: `polar-shades-dealer-book-current-2026-07-18`, page(s) 97
 
 Selections:
@@ -255,9 +255,9 @@ DIFFERENCE
 
 ### Polar — Polar Motorized Drapery Track
 
-Test: `polar-drapery-pinch-split-white-48`
-Classification: `official_price_book_verified`
-Product/program: `polar_drapery_track` / `pinch_split_white`
+Test: `polar-drapery-pinch-split-white-48`  
+Classification: `official_price_book_verified`  
+Product/program: `polar_drapery_track` / `pinch_split_white`  
 Source: `polar-shades-dealer-book-current-2026-07-18`, page(s) 74
 
 Selections:
@@ -305,9 +305,9 @@ DIFFERENCE
 
 ### Polar — Polar Premium Pro Awning
 
-Test: `polar-premium-pro-awning-120x83`
-Classification: `official_price_book_verified`
-Product/program: `polar_awning_premium_pro` / `standard`
+Test: `polar-premium-pro-awning-120x83`  
+Classification: `official_price_book_verified`  
+Product/program: `polar_awning_premium_pro` / `standard`  
 Source: `polar-shades-dealer-book-current-2026-07-18`, page(s) 165
 
 Selections:
@@ -355,9 +355,9 @@ DIFFERENCE
 
 ### Lotus — Lotus Aluminum Mini Blinds
 
-Test: `lotus-mini-aluminum-17x36`
-Classification: `official_dealer_book_verified_msrp_unverified`
-Product/program: `lotus_mini_blinds` / `lotus_amx_1in_aluminum_custom`
+Test: `lotus-mini-aluminum-17x36`  
+Classification: `official_dealer_book_verified_msrp_unverified`  
+Product/program: `lotus_mini_blinds` / `lotus_amx_1in_aluminum_custom`  
 Source: `lotus-west-a26-v1`, page(s) 97
 
 Selections:
@@ -398,9 +398,9 @@ DIFFERENCE
 
 ### Lotus — Lotus Faux Wood Blinds
 
-Test: `lotus-faux-wood-bright-white-17x36`
-Classification: `official_dealer_book_verified_msrp_unverified`
-Product/program: `lotus_faux_wood_blinds` / `lotus_flx_2in_bright_white_custom`
+Test: `lotus-faux-wood-bright-white-17x36`  
+Classification: `official_dealer_book_verified_msrp_unverified`  
+Product/program: `lotus_faux_wood_blinds` / `lotus_flx_2in_bright_white_custom`  
 Source: `lotus-west-a26-v1`, page(s) 99
 
 Selections:
@@ -442,9 +442,9 @@ DIFFERENCE
 
 ### Lotus — Lotus Vertical Blinds
 
-Test: `lotus-steel-vertical-35x48`
-Classification: `official_dealer_book_verified_msrp_unverified`
-Product/program: `lotus_vertical_blinds` / `lotus_cv_steel_complete_custom`
+Test: `lotus-steel-vertical-35x48`  
+Classification: `official_dealer_book_verified_msrp_unverified`  
+Product/program: `lotus_vertical_blinds` / `lotus_cv_steel_complete_custom`  
 Source: `lotus-west-a26-v1`, page(s) 106
 
 Selections:
@@ -486,9 +486,9 @@ DIFFERENCE
 
 ### Onyx — Onyx Shutters
 
-Test: `onyx-us-made-vinyl-36x48`
-Classification: `dealer_evidence_verified_msrp_unverified`
-Product/program: `onyx_shutters` / `onyx_us_made_vinyl`
+Test: `onyx-us-made-vinyl-36x48`  
+Classification: `dealer_evidence_verified_msrp_unverified`  
+Product/program: `onyx_shutters` / `onyx_us_made_vinyl`  
 Source: `onyx-price-screenshot-2026-07-20`
 
 Selections:
@@ -538,3 +538,4 @@ DIFFERENCE
 ## Evidence boundary
 
 The tracked fixture and evidence receipt contain no credentials, customer PII, dealer-account number, portal session data, or full authenticated portal URL. The private Polar image is represented by its SHA-256 and a non-PII fact receipt. It is attached only to the exact Elite case and is not reused as evidence for unrelated Polar products.
+
