@@ -11,10 +11,15 @@ import { sendSalesQuoteToCustomer } from "./sales-quote-send";
 import {
   guardV2SalesQuoteBeforeLegacySend,
   isServerMarkedV2SalesQuote,
+  V2_PRODUCTION_SEND_PERSISTENCE_READY,
 } from "./sales-quote-v2-send-guard";
 import {
   prepareV2CustomerSendPayload,
+  prepareV2CustomerSendPayloadFromDatabase,
 } from "./sales-quote-v2-send";
+
+const SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
+const QUOTE_REVISION = 7;
 
 const sendQuoteToCustomerMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/crm/public-quote", () => ({
@@ -97,7 +102,7 @@ function authoritativeRollerFixture() {
   const result = repriced.designs[0]?.result;
   if (!result?.ok) throw new Error(result?.error || "Expected authoritative pricing.");
   const snapshot = createImmutablePriceSnapshot(result);
-  const design: SalesQuoteDesign = {
+  const design = {
     ...unpriced,
     unit_price: result.unitPrice,
     options_json: {
@@ -118,8 +123,55 @@ function authoritativeRollerFixture() {
         },
       },
     },
+    quote_v2_price_status: "authoritative",
+    quote_v2_selection_fingerprint: result.selectionFingerprint,
+    quote_v2_priced_catalog_version: result.catalogVersion,
+    current_v2_snapshot_id: SNAPSHOT_ID,
+  } satisfies SalesQuoteDesign & {
+    quote_v2_price_status: string;
+    quote_v2_selection_fingerprint: string;
+    quote_v2_priced_catalog_version: string;
+    current_v2_snapshot_id: string;
   };
-  return { line, design, total: result.total };
+  const storedSnapshot = {
+    id: SNAPSHOT_ID,
+    quote_id: "quote-v2",
+    line_item_id: line.id,
+    design_id: design.id,
+    quote_revision: QUOTE_REVISION,
+    selection_fingerprint: result.selectionFingerprint,
+    catalog_version: result.catalogVersion,
+    retail_total: result.total,
+    retail_snapshot: {
+      ...snapshot,
+      retail: {
+        ...snapshot.retail,
+        dealer_cost: 999,
+        freight_cost: 55,
+        multiplier: 2.5,
+        margin: 0.6,
+        internalCost: { landedCostTotal: 1_054 },
+        options_json: { secret: "must-not-leak" },
+      },
+    },
+  };
+  return { line, design, storedSnapshot, total: result.total };
+}
+
+function authoritativeQuote(
+  total: number,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: "quote-v2",
+    status: "draft",
+    quote_v2_backend: true,
+    quote_v2_status: "priced",
+    quote_v2_revision: QUOTE_REVISION,
+    quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    total_amount: total,
+    ...overrides,
+  };
 }
 
 function invalidV2Supabase(
@@ -159,11 +211,67 @@ function invalidV2Supabase(
   } as unknown as SupabaseClient;
 }
 
+function persistedV2Supabase(
+  rows: Record<string, Array<Record<string, unknown>>>,
+) {
+  const selects: Array<{ table: string; columns: string }> = [];
+  const client = {
+    from(table: string) {
+      const filters: Array<
+        | { kind: "eq"; column: string; value: unknown }
+        | { kind: "in"; column: string; values: unknown[] }
+      > = [];
+      const evaluate = () =>
+        (rows[table] ?? []).filter((row) =>
+          filters.every((filter) =>
+            filter.kind === "eq"
+              ? row[filter.column] === filter.value
+              : filter.values.includes(row[filter.column]),
+          ),
+        );
+      const query = {
+        select(columns: string) {
+          selects.push({ table, columns });
+          return query;
+        },
+        eq(column: string, value: unknown) {
+          filters.push({ kind: "eq", column, value });
+          return query;
+        },
+        async in(column: string, values: unknown[]) {
+          filters.push({ kind: "in", column, values });
+          return { data: evaluate(), error: null };
+        },
+        async order(column: string, options: { ascending?: boolean } = {}) {
+          const direction = options.ascending === false ? -1 : 1;
+          const data = [...evaluate()].sort((left, right) =>
+            Number(left[column] ?? 0) > Number(right[column] ?? 0)
+              ? direction
+              : Number(left[column] ?? 0) < Number(right[column] ?? 0)
+                ? -direction
+                : 0,
+          );
+          return { data, error: null };
+        },
+        async maybeSingle() {
+          return { data: evaluate()[0] ?? null, error: null };
+        },
+      };
+      return query;
+    },
+  };
+  return { client: client as unknown as SupabaseClient, selects };
+}
+
 beforeEach(() => {
   sendQuoteToCustomerMock.mockReset();
 });
 
 describe("V2 production send boundary", () => {
+  it("keeps production V2 sending disabled while preparation is hardened", () => {
+    expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(false);
+  });
+
   it("opts in only from a strict server quote-row marker", () => {
     expect(isServerMarkedV2SalesQuote({ quote_v2_backend: true })).toBe(true);
     expect(isServerMarkedV2SalesQuote({ quote_v2_backend: "true" })).toBe(false);
@@ -188,7 +296,11 @@ describe("V2 production send boundary", () => {
     const mutations: string[] = [];
     const quote = {
       id: "quote-v2",
+      status: "draft",
       quote_v2_backend: true,
+      quote_v2_status: "priced",
+      quote_v2_revision: QUOTE_REVISION,
+      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       total_amount: 100,
       customer_email: null,
       customer_phone: null,
@@ -209,13 +321,9 @@ describe("V2 production send boundary", () => {
   });
 
   it("revalidates selected-only snapshots and emits a retail-only customer payload", () => {
-    const { line, design, total } = authoritativeRollerFixture();
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
     const payload = prepareV2CustomerSendPayload({
-      quote: {
-        id: "quote-v2",
-        quote_v2_backend: true,
-        total_amount: total,
-      },
+      quote: authoritativeQuote(total),
       lineItems: [line],
       designs: [
         design,
@@ -226,6 +334,7 @@ describe("V2 production send boundary", () => {
           unit_price: 99_999,
         },
       ],
+      snapshots: [storedSnapshot],
       serverDate: "2026-08-01",
     });
 
@@ -256,46 +365,186 @@ describe("V2 production send boundary", () => {
   });
 
   it("cannot activate the future Roller appendix before its production effective date", () => {
-    const { line, design, total } = authoritativeRollerFixture();
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
     expect(() =>
       prepareV2CustomerSendPayload({
-        quote: {
-          id: "quote-v2",
-          quote_v2_backend: true,
-          total_amount: total,
-        },
+        quote: authoritativeQuote(total),
         lineItems: [line],
         designs: [design],
+        snapshots: [storedSnapshot],
         serverDate: "2026-07-31",
       }),
     ).toThrow("Authoritative V2 validation blocked sending");
   });
 
+  it("uses the Los Angeles midnight boundary when the default send date is derived", () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-08-01T06:59:59.999Z"));
+      expect(() =>
+        prepareV2CustomerSendPayload({
+          quote: authoritativeQuote(total),
+          lineItems: [line],
+          designs: [design],
+          snapshots: [storedSnapshot],
+        }),
+      ).toThrow("Authoritative V2 validation blocked sending");
+
+      vi.setSystemTime(new Date("2026-08-01T07:00:00.000Z"));
+      expect(
+        prepareV2CustomerSendPayload({
+          quote: authoritativeQuote(total),
+          lineItems: [line],
+          designs: [design],
+          snapshots: [storedSnapshot],
+        }).total,
+      ).toBe(total);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("rejects a stale fingerprint and a quote total that includes alternatives", () => {
-    const { line, design, total } = authoritativeRollerFixture();
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
     const stale = {
       ...design,
-      options_json: {
-        ...design.options_json,
-        priced_selection_fingerprint: `sha256:${"0".repeat(64)}`,
-      },
+      quote_v2_selection_fingerprint: `sha256:${"0".repeat(64)}`,
     };
     expect(() =>
       prepareV2CustomerSendPayload({
-        quote: { quote_v2_backend: true, total_amount: total },
+        quote: authoritativeQuote(total),
         lineItems: [line],
         designs: [stale],
+        snapshots: [storedSnapshot],
         serverDate: "2026-08-01",
       }),
     ).toThrow("stale selection fingerprint");
 
     expect(() =>
       prepareV2CustomerSendPayload({
-        quote: { quote_v2_backend: true, total_amount: total + 99_999 },
+        quote: authoritativeQuote(total + 99_999),
         lineItems: [line],
         designs: [design],
+        snapshots: [storedSnapshot],
         serverDate: "2026-08-01",
       }),
     ).toThrow("stored quote total does not match");
+  });
+
+  it("rejects lifecycle, quote-revision, catalog, snapshot-pointer, and row-identity tampering", () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    const prepare = (
+      quote: Record<string, unknown>,
+      selectedDesign = design,
+      snapshot = storedSnapshot,
+    ) =>
+      prepareV2CustomerSendPayload({
+        quote,
+        lineItems: [line],
+        designs: [selectedDesign],
+        snapshots: [snapshot],
+        serverDate: "2026-08-01",
+      });
+
+    expect(() =>
+      prepare(authoritativeQuote(total, { quote_v2_status: "stale" })),
+    ).toThrow("priced draft lifecycle state");
+    expect(() =>
+      prepare(authoritativeQuote(total, { quote_v2_revision: QUOTE_REVISION + 1 })),
+    ).toThrow("current quote revision");
+    expect(() =>
+      prepare(
+        authoritativeQuote(total, {
+          quote_v2_catalog_version: "805-v2-base-2026-07",
+        }),
+      ),
+    ).toThrow("quote catalog identity");
+    expect(() =>
+      prepare(authoritativeQuote(total), {
+        ...design,
+        current_v2_snapshot_id: "66666666-6666-4666-8666-666666666666",
+      }),
+    ).toThrow("exactly one current snapshot");
+    expect(() =>
+      prepare(authoritativeQuote(total), design, {
+        ...storedSnapshot,
+        design_id: "design-v2-b",
+      }),
+    ).toThrow("current snapshot identity is inconsistent");
+    expect(() =>
+      prepare(authoritativeQuote(total), design, {
+        ...storedSnapshot,
+        retail_total: total + 0.01,
+      }),
+    ).toThrow("retail snapshot does not match authoritative repricing");
+    expect(() =>
+      prepare(authoritativeQuote(total), design, {
+        ...storedSnapshot,
+        retail_total: undefined as unknown as number,
+      }),
+    ).toThrow("snapshot retail total is missing");
+    expect(() =>
+      prepare(authoritativeQuote(total, { total_amount: undefined })),
+    ).toThrow("Stored quote total is missing");
+  });
+
+  it("loads only selected designs and customer-safe snapshot columns from the database", async () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    const quote = authoritativeQuote(total);
+    const { client, selects } = persistedV2Supabase({
+      sales_quotes: [quote],
+      sales_quote_line_items: [{ ...line }],
+      sales_quote_designs: [
+        design,
+        { ...design, id: "design-v2-b", variant: "B", unit_price: 99_999 },
+      ],
+      sales_quote_v2_price_snapshots: [
+        {
+          ...storedSnapshot,
+          internal_landed_cost_total: 1_054,
+          internal_cost_snapshot: { landedCostTotal: 1_054, secret: "cost-secret" },
+        },
+      ],
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T07:00:00.000Z"));
+    let payload: Awaited<ReturnType<typeof prepareV2CustomerSendPayloadFromDatabase>>;
+    try {
+      payload = await prepareV2CustomerSendPayloadFromDatabase(client, quote);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(payload.total).toBe(total);
+    expect(payload.lines.map((entry) => entry.selectedDesignId)).toEqual([
+      "design-v2-a",
+    ]);
+
+    const snapshotSelect = selects.find(
+      (entry) => entry.table === "sales_quote_v2_price_snapshots",
+    );
+    expect(snapshotSelect?.columns).toContain("retail_snapshot");
+    expect(snapshotSelect?.columns).not.toMatch(/internal|cost/i);
+    const serialized = JSON.stringify(payload);
+    expect(serialized).not.toContain("cost-secret");
+    expect(serialized).not.toMatch(/dealer_cost|freight_cost|internalCost|margin/);
+  });
+
+  it("fails closed when the quote revision changes during database preparation", async () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    const initialQuote = authoritativeQuote(total);
+    const { client } = persistedV2Supabase({
+      sales_quotes: [
+        authoritativeQuote(total, { quote_v2_revision: QUOTE_REVISION + 1 }),
+      ],
+      sales_quote_line_items: [{ ...line }],
+      sales_quote_designs: [design],
+      sales_quote_v2_price_snapshots: [storedSnapshot],
+    });
+
+    await expect(
+      prepareV2CustomerSendPayloadFromDatabase(client, initialQuote),
+    ).rejects.toThrow("quote changed while send preparation was running");
   });
 });

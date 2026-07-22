@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isServerMarkedV2SalesQuote } from "@/lib/crm/sales-quote-v2-send-guard";
+import { quoteV2ServerCatalogDate } from "@/lib/crm/sales-quote-v2-price-save";
 import { repriceExactQuoteBuilderForServerDate } from "@/lib/quote-lab/exact-backend";
 import {
   QUOTE_V2_CATALOG_VERSION,
@@ -14,6 +15,23 @@ import type {
 type AnyRow = Record<string, any>;
 type V2PersistedLine = SalesQuoteLineItem & {
   selected_design_id?: string | null;
+};
+type V2PersistedDesign = SalesQuoteDesign & {
+  quote_v2_price_status?: string | null;
+  quote_v2_selection_fingerprint?: string | null;
+  quote_v2_priced_catalog_version?: string | null;
+  current_v2_snapshot_id?: string | null;
+};
+type V2RetailSnapshotRow = {
+  id?: unknown;
+  quote_id?: unknown;
+  line_item_id?: unknown;
+  design_id?: unknown;
+  quote_revision?: unknown;
+  selection_fingerprint?: unknown;
+  catalog_version?: unknown;
+  retail_total?: unknown;
+  retail_snapshot?: unknown;
 };
 
 export type V2CustomerRetailPrice = {
@@ -53,7 +71,9 @@ export type PreparedV2CustomerQuote = {
 type PrepareV2CustomerSendInput = {
   quote: AnyRow;
   lineItems: V2PersistedLine[];
-  designs: SalesQuoteDesign[];
+  designs: V2PersistedDesign[];
+  /** Customer-safe columns from the append-only authoritative snapshot table. */
+  snapshots: V2RetailSnapshotRow[];
   /** Injectable only so catalog cutover boundaries can be tested deterministically. */
   serverDate?: string;
 };
@@ -95,6 +115,20 @@ function money(value: unknown): number {
   return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
 }
 
+function persistedMoney(value: unknown, label: string): number {
+  if (
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    return fail(`${label} is missing from authoritative persistence.`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fail(`${label} is invalid in authoritative persistence.`);
+  }
+  return Math.round(parsed * 100) / 100;
+}
+
 function sameMoney(left: unknown, right: unknown): boolean {
   return Math.abs(money(left) - money(right)) < 0.005;
 }
@@ -114,10 +148,6 @@ function validIsoDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
-}
-
-function currentServerDate(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /** Resolve catalog identity from server code and date, never from client JSON. */
@@ -186,29 +216,96 @@ export function projectV2CustomerRetailPrice(value: unknown): V2CustomerRetailPr
   return projected;
 }
 
-function requireStoredSnapshot(design: SalesQuoteDesign) {
-  const options = record(design.options_json);
-  if (!options || options.quote_v2_backend !== true) {
-    return fail(`Selected design ${design.id} is not authoritatively marked V2.`);
+type RequiredQuoteIdentity = {
+  id: string;
+  revision: number;
+  catalogVersions: string[];
+};
+
+function quoteCatalogVersions(value: unknown): string[] {
+  const raw = text(value);
+  if (!raw) return [];
+  const values = raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return [...new Set(values)].sort();
+}
+
+function requireQuoteIdentity(quote: AnyRow): RequiredQuoteIdentity {
+  if (!isServerMarkedV2SalesQuote(quote)) {
+    return fail("The quote row is not authoritatively marked V2.");
   }
-  if (options.authoritative_price_status !== "authoritative") {
+  const id = text(quote.id);
+  if (!id) fail("The authoritative V2 quote ID is missing.");
+  if (quote.status !== "draft" || quote.quote_v2_status !== "priced") {
+    fail("The authoritative V2 quote is not in the priced draft lifecycle state.");
+  }
+  const revision = Number(quote.quote_v2_revision);
+  if (!Number.isSafeInteger(revision) || revision < 1) {
+    fail("The authoritative V2 quote revision is invalid.");
+  }
+  const catalogVersions = quoteCatalogVersions(quote.quote_v2_catalog_version);
+  if (!catalogVersions.length) {
+    fail("The authoritative V2 quote catalog identity is missing.");
+  }
+  return { id, revision, catalogVersions };
+}
+
+function sameStrings(left: string[], right: string[]): boolean {
+  return (
+    left.length === right.length &&
+    left.every((entry, index) => entry === right[index])
+  );
+}
+
+function requireStoredSnapshot(
+  design: V2PersistedDesign,
+  lineItemId: string,
+  quoteIdentity: RequiredQuoteIdentity,
+  snapshots: V2RetailSnapshotRow[],
+) {
+  if (design.quote_v2_price_status !== "authoritative") {
     return fail(`Selected design ${design.id} does not have an authoritative price.`);
   }
-  const snapshot = record(options.authoritative_v2_snapshot);
-  if (!snapshot || snapshot.priceStatus !== "authoritative") {
+  const currentSnapshotId = text(design.current_v2_snapshot_id);
+  const fingerprint = text(design.quote_v2_selection_fingerprint);
+  const catalogVersion = text(design.quote_v2_priced_catalog_version);
+  if (!currentSnapshotId || !fingerprint || !catalogVersion) {
     return fail(`Selected design ${design.id} is missing its immutable authoritative snapshot.`);
   }
-  const fingerprint = text(snapshot.selectionFingerprint);
-  const catalogVersion = text(snapshot.catalogVersion);
-  const pricedFingerprint = text(options.priced_selection_fingerprint);
-  const pricedCatalogVersion = text(options.priced_catalog_version);
-  if (!fingerprint || !pricedFingerprint || fingerprint !== pricedFingerprint) {
+  const matches = snapshots.filter((snapshot) => text(snapshot.id) === currentSnapshotId);
+  if (matches.length !== 1) {
+    return fail(`Selected design ${design.id} does not resolve to exactly one current snapshot.`);
+  }
+  const snapshotRow = matches[0];
+  if (
+    text(snapshotRow.quote_id) !== quoteIdentity.id ||
+    text(snapshotRow.line_item_id) !== lineItemId ||
+    text(snapshotRow.design_id) !== design.id
+  ) {
+    return fail(`Selected design ${design.id} current snapshot identity is inconsistent.`);
+  }
+  if (Number(snapshotRow.quote_revision) !== quoteIdentity.revision) {
+    return fail(`Selected design ${design.id} is not priced at the current quote revision.`);
+  }
+  if (text(snapshotRow.selection_fingerprint) !== fingerprint) {
     return fail(`Selected design ${design.id} has a stale selection fingerprint.`);
   }
-  if (!catalogVersion || !pricedCatalogVersion || catalogVersion !== pricedCatalogVersion) {
+  if (text(snapshotRow.catalog_version) !== catalogVersion) {
     return fail(`Selected design ${design.id} has a stale catalog snapshot.`);
   }
-  return { options, snapshot, fingerprint, catalogVersion };
+  const snapshot = record(snapshotRow.retail_snapshot);
+  if (
+    !snapshot ||
+    snapshot.priceStatus !== "authoritative" ||
+    text(snapshot.selectionFingerprint) !== fingerprint ||
+    text(snapshot.catalogVersion) !== catalogVersion ||
+    !record(snapshot.retail)
+  ) {
+    return fail(`Selected design ${design.id} immutable retail snapshot is inconsistent.`);
+  }
+  return { snapshotRow, snapshot, fingerprint, catalogVersion };
 }
 
 /**
@@ -219,12 +316,11 @@ function requireStoredSnapshot(design: SalesQuoteDesign) {
 export function prepareV2CustomerSendPayload(
   input: PrepareV2CustomerSendInput,
 ): PreparedV2CustomerQuote {
-  if (!isServerMarkedV2SalesQuote(input.quote)) {
-    return fail("The quote row is not authoritatively marked V2.");
-  }
+  const quoteIdentity = requireQuoteIdentity(input.quote);
   if (!input.lineItems.length) fail("A V2 quote must contain at least one line item.");
+  if (input.lineItems.length > 40) fail("A V2 quote cannot contain more than 40 line items.");
 
-  const selectedDesigns: SalesQuoteDesign[] = [];
+  const selectedDesigns: V2PersistedDesign[] = [];
   const selectedVariantByLine: Record<string, string> = {};
   const seenLineIds = new Set<string>();
   const storedByDesignId = new Map<
@@ -247,10 +343,25 @@ export function prepareV2CustomerSendPayload(
     const selected = selectedMatches[0];
     selectedDesigns.push(selected);
     selectedVariantByLine[line.id] = selected.variant;
-    storedByDesignId.set(selected.id, requireStoredSnapshot(selected));
+    storedByDesignId.set(
+      selected.id,
+      requireStoredSnapshot(
+        selected,
+        line.id,
+        quoteIdentity,
+        input.snapshots,
+      ),
+    );
   }
 
-  const serverDate = input.serverDate ?? currentServerDate();
+  const selectedCatalogVersions = [...new Set(
+    [...storedByDesignId.values()].map((stored) => stored.catalogVersion),
+  )].sort();
+  if (!sameStrings(quoteIdentity.catalogVersions, selectedCatalogVersions)) {
+    fail("The quote catalog identity does not match its selected current snapshots.");
+  }
+
+  const serverDate = input.serverDate ?? quoteV2ServerCatalogDate();
   let repriced: ReturnType<typeof repriceExactQuoteBuilderForServerDate>;
   try {
     repriced = repriceExactQuoteBuilderForServerDate(
@@ -314,7 +425,17 @@ export function prepareV2CustomerSendPayload(
     const currentCustomerPrice = projectV2CustomerRetailPrice(priced.result);
     if (
       JSON.stringify(customerPrice) !== JSON.stringify(currentCustomerPrice) ||
-      !sameMoney(design.unit_price, customerPrice.unitPrice)
+      !sameMoney(
+        persistedMoney(design.unit_price, `Selected design ${selectedDesignId} unit price`),
+        customerPrice.unitPrice,
+      ) ||
+      !sameMoney(
+        persistedMoney(
+          stored.snapshotRow.retail_total,
+          `Selected design ${selectedDesignId} snapshot retail total`,
+        ),
+        customerPrice.total,
+      )
     ) {
       return fail(`Selected design ${selectedDesignId} retail snapshot does not match authoritative repricing.`);
     }
@@ -335,7 +456,12 @@ export function prepareV2CustomerSendPayload(
   const total = money(
     customerLines.reduce((sum, line) => sum + line.price.total, 0),
   );
-  if (!sameMoney(input.quote.total_amount, total)) {
+  if (
+    !sameMoney(
+      persistedMoney(input.quote.total_amount, "Stored quote total"),
+      total,
+    )
+  ) {
     fail("The stored quote total does not match the selected authoritative V2 designs.");
   }
   return { backend: "authoritative_v2", total, lines: customerLines };
@@ -345,6 +471,7 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
   supabase: SupabaseClient,
   quote: AnyRow,
 ): Promise<PreparedV2CustomerQuote> {
+  requireQuoteIdentity(quote);
   const { data: lineItems, error: lineError } = await supabase
     .from("sales_quote_line_items")
     .select("*")
@@ -352,14 +479,62 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     .order("sort_order", { ascending: true });
   if (lineError) fail("V2 line items could not be loaded for authoritative validation.");
   const lines = (lineItems || []) as unknown as V2PersistedLine[];
-  const lineIds = lines.map((line) => line.id).filter(Boolean);
-  const { data: designs, error: designError } = lineIds.length
-    ? await supabase.from("sales_quote_designs").select("*").in("line_item_id", lineIds)
+  const selectedDesignIds = lines.map((line) => {
+    const selectedDesignId = text(line.selected_design_id);
+    if (!selectedDesignId) fail(`Line item ${line.id} is missing selected_design_id.`);
+    return selectedDesignId;
+  });
+  const { data: designs, error: designError } = selectedDesignIds.length
+    ? await supabase.from("sales_quote_designs").select("*").in("id", selectedDesignIds)
     : { data: [], error: null };
   if (designError) fail("V2 designs could not be loaded for authoritative validation.");
+  const selectedDesigns = (designs || []) as unknown as V2PersistedDesign[];
+  const snapshotIds = selectedDesigns.map((design) => {
+    const snapshotId = text(design.current_v2_snapshot_id);
+    if (!snapshotId) {
+      fail(`Selected design ${design.id} is missing its immutable authoritative snapshot.`);
+    }
+    return snapshotId;
+  });
+  const { data: snapshots, error: snapshotError } = snapshotIds.length
+    ? await supabase
+        .from("sales_quote_v2_price_snapshots")
+        .select(
+          "id,quote_id,line_item_id,design_id,quote_revision,selection_fingerprint,catalog_version,retail_total,retail_snapshot",
+        )
+        .in("id", snapshotIds)
+    : { data: [], error: null };
+  if (snapshotError) fail("V2 current retail snapshots could not be loaded for authoritative validation.");
+
+  // Re-read the server-owned quote identity after loading its children. A
+  // concurrent repricing or lifecycle transition invalidates this preparation
+  // rather than mixing revisions. The actual production send remains disabled
+  // until the dedicated atomic send transition exists.
+  const { data: currentQuote, error: quoteError } = await supabase
+    .from("sales_quotes")
+    .select(
+      "id,status,total_amount,quote_v2_backend,quote_v2_status,quote_v2_catalog_version,quote_v2_revision",
+    )
+    .eq("id", quote.id)
+    .maybeSingle();
+  if (quoteError || !currentQuote) fail("The V2 quote identity could not be reloaded before sending.");
+  const initialIdentity = requireQuoteIdentity(quote);
+  const currentIdentity = requireQuoteIdentity(currentQuote as AnyRow);
+  if (
+    initialIdentity.id !== currentIdentity.id ||
+    initialIdentity.revision !== currentIdentity.revision ||
+    !sameStrings(initialIdentity.catalogVersions, currentIdentity.catalogVersions) ||
+    !sameMoney(
+      persistedMoney(quote.total_amount, "Initial quote total"),
+      persistedMoney((currentQuote as AnyRow).total_amount, "Current quote total"),
+    )
+  ) {
+    fail("The authoritative V2 quote changed while send preparation was running.");
+  }
   return prepareV2CustomerSendPayload({
-    quote,
+    quote: currentQuote as AnyRow,
     lineItems: lines,
-    designs: (designs || []) as unknown as SalesQuoteDesign[],
+    designs: selectedDesigns,
+    snapshots: (snapshots || []) as unknown as V2RetailSnapshotRow[],
   });
 }
