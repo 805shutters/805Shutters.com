@@ -25,8 +25,11 @@ incomplete, future-dated, stale, or unpriceable line returns `canApply: false`
 and no applicable preview identity.
 
 A successful preview records append-only proof containing hashes, identities,
-the legacy and proposed retail totals, and a 30-minute expiry. It does not alter
-the quote, its selected designs, totals, lifecycle, or legacy ownership.
+the legacy and proposed retail totals, a strictly allow-listed customer-safe
+line projection, and a 30-minute expiry. It does not alter the quote, its
+selected designs, totals, lifecycle, or legacy ownership. Reusing an expired
+preview key or one whose legacy database state drifted fails closed; the caller
+must create a new preview.
 
 ## 2. Apply
 
@@ -58,12 +61,25 @@ protected-cost snapshots, recompute selected-design-only totals, append the
 pricing event, and append the preview-to-event conversion audit. Any failure
 rolls the complete transaction back to the unchanged legacy draft.
 
+A matching retry after a successful application reads the append-only audit's
+original customer-safe payload. It does not reload or reprice the current quote,
+so later quote edits, catalog code, or preview expiry cannot change the replayed
+lines or totals.
+
 Customer/API responses are allow-list projections. Dealer cost, landed cost,
 freight cost, factors, multiplier, and margin are excluded.
 
 ## Rollout boundary
 
 The migration is source-controlled only. It has not been applied to production,
-and the existing production-send cutover guard remains disabled. Apply the V2
-persistence migrations only after the full catalog, portal-parity, backup, and
-rollback gates are approved.
+and both repricing routes are disabled by default. After the migration and
+cutover are separately approved, the runtime must be deliberately set to the
+exact value below; ordinary truthy values do not activate it:
+
+```text
+QUOTE_V2_LEGACY_REPRICE=enabled-after-v2-legacy-reprice-migration
+```
+
+The existing production-send cutover guard remains disabled. Apply the V2
+persistence migrations and enable this runtime only after the full catalog,
+portal-parity, backup, and rollback gates are approved.

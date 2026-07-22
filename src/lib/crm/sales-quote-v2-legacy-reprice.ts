@@ -37,8 +37,24 @@ type PreviewRecordRow = JsonRecord & {
   server_catalog_date: string;
   selection_map: unknown;
   line_count: number | string;
+  customer_payload: unknown;
   expires_at: string;
   created_by: string;
+};
+
+type ApplyAuditRow = JsonRecord & {
+  quote_id: string;
+  preview_id: string;
+  previous_revision: number | string;
+  new_revision: number | string;
+  preview_digest: string;
+  quote_status: string;
+  quote_total: number | string;
+  priced_design_count: number | string;
+  blocked_design_count: number | string;
+  actor_id: string;
+  idempotency_key: string;
+  customer_payload: unknown;
 };
 
 export type LegacyV2SelectedDesign = Readonly<{
@@ -111,11 +127,46 @@ export type LegacyV2RepriceApplyResult = Readonly<{
   lines: readonly LegacyV2CustomerPreviewLine[];
 }>;
 
+type StoredLegacyV2CustomerPreview = Readonly<{
+  backend: "authoritative_v2";
+  mode: "legacy_reprice_preview_proof";
+  quoteId: string;
+  expectedRevision: number;
+  serverCatalogDate: string;
+  legacyStoredTotal: number;
+  proposedSelectedDesignTotal: number;
+  difference: number;
+  lineCount: number;
+  lines: readonly LegacyV2CustomerPreviewLine[];
+}>;
+
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/;
 const PREVIEW_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
 const MAX_QUOTE_LINES = 40;
+const LEGACY_REPRICE_RUNTIME_ENABLE_VALUE =
+  "enabled-after-v2-legacy-reprice-migration";
+const PROTECTED_CUSTOMER_KEY_PATTERN =
+  /(cost|dealer|wholesale|freight|oversize|margin|multiplier|factor|processingfee)/;
+
+export const V2_LEGACY_REPRICE_WORKFLOW_IMPLEMENTED = true as const;
+
+/**
+ * The routes remain unavailable unless the additive migration and cutover are
+ * both deliberately enabled with this exact, workflow-specific value.
+ */
+export function assertLegacyV2RepriceRuntimeEnabled(): void {
+  if (
+    process.env.QUOTE_V2_LEGACY_REPRICE !==
+    LEGACY_REPRICE_RUNTIME_ENABLE_VALUE
+  ) {
+    throw new CrmAuthError(
+      409,
+      "Legacy V2 repricing is implemented but disabled until its migration and production cutover are explicitly approved.",
+    );
+  }
+}
 
 function plainRecord(value: unknown): JsonRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -123,6 +174,40 @@ function plainRecord(value: unknown): JsonRecord | null {
   return prototype === Object.prototype || prototype === null
     ? (value as JsonRecord)
     : null;
+}
+
+function normalizedCustomerKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** Defense-in-depth for every stored or returned customer-facing payload. */
+export function assertLegacyV2CustomerPayloadHasNoProtectedFields(
+  value: unknown,
+  path = "customerPayload",
+): void {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) =>
+      assertLegacyV2CustomerPayloadHasNoProtectedFields(
+        entry,
+        `${path}[${index}]`,
+      ),
+    );
+    return;
+  }
+  const source = plainRecord(value);
+  if (!source) return;
+  for (const [key, child] of Object.entries(source)) {
+    if (PROTECTED_CUSTOMER_KEY_PATTERN.test(normalizedCustomerKey(key))) {
+      throw new CrmAuthError(
+        502,
+        `The stored legacy repricing customer payload contains a protected field at ${path}.${key}.`,
+      );
+    }
+    assertLegacyV2CustomerPayloadHasNoProtectedFields(
+      child,
+      `${path}.${key}`,
+    );
+  }
 }
 
 function requiredUuid(value: unknown, label: string): string {
@@ -275,6 +360,218 @@ function rpcRow(value: unknown, label: string): JsonRecord {
 
 function databaseFailure(message: string): CrmAuthError {
   return new CrmAuthError(502, message);
+}
+
+function storedExactKeys(
+  source: JsonRecord,
+  allowed: readonly string[],
+  label: string,
+): void {
+  const allowedSet = new Set(allowed);
+  const unexpected = Object.keys(source).filter((key) => !allowedSet.has(key));
+  const missing = allowed.filter((key) => !(key in source));
+  if (unexpected.length || missing.length) {
+    throw databaseFailure(`${label} does not match the customer-safe schema.`);
+  }
+}
+
+function storedUuid(value: unknown, label: string): string {
+  if (typeof value !== "string" || !UUID_PATTERN.test(value.trim())) {
+    throw databaseFailure(`${label} is invalid in the stored customer payload.`);
+  }
+  return value.trim().toLowerCase();
+}
+
+function storedMoney(value: unknown, label: string): number {
+  if (
+    (typeof value !== "number" && typeof value !== "string") ||
+    (typeof value === "string" && !value.trim())
+  ) {
+    throw databaseFailure(`${label} is missing from the stored customer payload.`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw databaseFailure(`${label} is invalid in the stored customer payload.`);
+  }
+  return Math.round(parsed * 100) / 100;
+}
+
+function sameMoney(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.005;
+}
+
+function parseStoredLegacyV2CustomerPreview(
+  value: unknown,
+): StoredLegacyV2CustomerPreview {
+  assertLegacyV2CustomerPayloadHasNoProtectedFields(value);
+  const source = plainRecord(value);
+  if (!source) {
+    throw databaseFailure("The stored legacy repricing customer payload is malformed.");
+  }
+  storedExactKeys(
+    source,
+    [
+      "backend",
+      "mode",
+      "quoteId",
+      "expectedRevision",
+      "serverCatalogDate",
+      "legacyStoredTotal",
+      "proposedSelectedDesignTotal",
+      "difference",
+      "lineCount",
+      "lines",
+    ],
+    "The stored legacy repricing customer payload",
+  );
+  if (
+    source.backend !== "authoritative_v2" ||
+    source.mode !== "legacy_reprice_preview_proof"
+  ) {
+    throw databaseFailure("The stored legacy repricing customer payload identity is invalid.");
+  }
+  const quoteId = storedUuid(source.quoteId, "Stored customer quoteId");
+  const expectedRevision = numericRevision(
+    source.expectedRevision,
+    "Stored customer preview",
+  );
+  if (
+    typeof source.serverCatalogDate !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(source.serverCatalogDate) ||
+    !Number.isFinite(Date.parse(`${source.serverCatalogDate}T00:00:00.000Z`))
+  ) {
+    throw databaseFailure("The stored customer preview catalog date is invalid.");
+  }
+  const legacyStoredTotal = storedMoney(
+    source.legacyStoredTotal,
+    "Stored legacy total",
+  );
+  const proposedSelectedDesignTotal = storedMoney(
+    source.proposedSelectedDesignTotal,
+    "Stored proposed total",
+  );
+  const difference = Number(source.difference);
+  if (
+    !Number.isFinite(difference) ||
+    !sameMoney(
+      Math.round(difference * 100) / 100,
+      Math.round((proposedSelectedDesignTotal - legacyStoredTotal) * 100) / 100,
+    )
+  ) {
+    throw databaseFailure("The stored customer preview difference is inconsistent.");
+  }
+  const lineCount = numericRevision(source.lineCount, "Stored customer preview");
+  if (
+    lineCount < 1 ||
+    lineCount > MAX_QUOTE_LINES ||
+    !Array.isArray(source.lines) ||
+    source.lines.length !== lineCount
+  ) {
+    throw databaseFailure("The stored customer preview line count is invalid.");
+  }
+  const lines = source.lines.map((value, index) => {
+    const line = plainRecord(value);
+    if (!line) {
+      throw databaseFailure(`Stored customer preview line ${index + 1} is malformed.`);
+    }
+    storedExactKeys(
+      line,
+      ["lineItemId", "selectedDesignId", "priceStatus", "price"],
+      `Stored customer preview line ${index + 1}`,
+    );
+    if (line.priceStatus !== "authoritative") {
+      throw databaseFailure(
+        `Stored customer preview line ${index + 1} is not authoritative.`,
+      );
+    }
+    const priceSource = plainRecord(line.price);
+    if (!priceSource) {
+      throw databaseFailure(
+        `Stored customer preview line ${index + 1} has a malformed retail projection.`,
+      );
+    }
+    const allowedPriceKeys = new Set([
+      "productId",
+      "programId",
+      "programName",
+      "matchedWidth",
+      "matchedHeight",
+      "sqft",
+      "billableSqft",
+      "base",
+      "surchargeLines",
+      "unitPrice",
+      "discountPercent",
+      "discountAmount",
+      "quantity",
+      "onceTotal",
+      "total",
+    ]);
+    if (Object.keys(priceSource).some((key) => !allowedPriceKeys.has(key))) {
+      throw databaseFailure(
+        `Stored customer preview line ${index + 1} has unexpected retail fields.`,
+      );
+    }
+    if (Array.isArray(priceSource.surchargeLines)) {
+      priceSource.surchargeLines.forEach((entry) => {
+        const surcharge = plainRecord(entry);
+        if (
+          !surcharge ||
+          Object.keys(surcharge).some(
+            (key) => !new Set(["id", "label", "amount"]).has(key),
+          )
+        ) {
+          throw databaseFailure(
+            `Stored customer preview line ${index + 1} has an invalid retail surcharge.`,
+          );
+        }
+      });
+    }
+    let price: V2CustomerRetailPrice;
+    try {
+      price = projectV2CustomerRetailPrice({ ok: true, ...priceSource });
+    } catch {
+      throw databaseFailure(
+        `Stored customer preview line ${index + 1} has an invalid retail projection.`,
+      );
+    }
+    return {
+      lineItemId: storedUuid(
+        line.lineItemId,
+        `Stored customer preview line ${index + 1} lineItemId`,
+      ),
+      selectedDesignId: storedUuid(
+        line.selectedDesignId,
+        `Stored customer preview line ${index + 1} selectedDesignId`,
+      ),
+      priceStatus: "authoritative" as const,
+      price,
+    };
+  });
+  if (new Set(lines.map((line) => line.lineItemId)).size !== lines.length) {
+    throw databaseFailure("The stored customer preview repeats a quote line.");
+  }
+  const lineTotal = Math.round(
+    lines.reduce((sum, line) => sum + (line.price as V2CustomerRetailPrice).total, 0) *
+      100,
+  ) / 100;
+  if (!sameMoney(lineTotal, proposedSelectedDesignTotal)) {
+    throw databaseFailure(
+      "The stored customer preview line totals do not match its proposed total.",
+    );
+  }
+  return {
+    backend: "authoritative_v2",
+    mode: "legacy_reprice_preview_proof",
+    quoteId,
+    expectedRevision,
+    serverCatalogDate: source.serverCatalogDate,
+    legacyStoredTotal,
+    proposedSelectedDesignTotal,
+    difference: Math.round(difference * 100) / 100,
+    lineCount,
+    lines,
+  };
 }
 
 async function loadQuote(
@@ -478,7 +775,7 @@ async function loadPreview(
   const { data, error } = await supabase
     .from("sales_quote_v2_legacy_reprice_previews")
     .select(
-      "id,quote_id,quote_revision,preview_digest,server_catalog_date,selection_map,line_count,expires_at,created_by",
+      "id,quote_id,quote_revision,preview_digest,server_catalog_date,selection_map,line_count,customer_payload,expires_at,created_by",
     )
     .eq("id", input.previewId)
     .maybeSingle();
@@ -498,10 +795,102 @@ async function loadPreview(
   if (!Number.isFinite(Date.parse(preview.expires_at))) {
     throw databaseFailure("The saved legacy repricing preview expiry is invalid.");
   }
-  // The atomic RPC owns expiry enforcement. That lets a completed request be
-  // retried idempotently after the preview's original expiry without allowing
-  // an unconsumed expired preview to mutate anything.
+  if (Date.parse(preview.expires_at) <= Date.now()) {
+    throw new CrmAuthError(
+      409,
+      "The saved legacy repricing preview expired. Create a new preview.",
+    );
+  }
+  parseStoredLegacyV2CustomerPreview(preview.customer_payload);
   return preview;
+}
+
+function applyResultFromAudit(
+  audit: ApplyAuditRow,
+  input: Readonly<{
+    quoteId: string;
+    previewId: string;
+    previewDigest: string;
+    expectedRevision: number;
+    actorId: string;
+    idempotencyKey: string;
+  }>,
+): LegacyV2RepriceApplyResult {
+  if (
+    audit.quote_id !== input.quoteId ||
+    audit.preview_id !== input.previewId ||
+    audit.preview_digest !== input.previewDigest ||
+    audit.actor_id !== input.actorId ||
+    audit.idempotency_key !== input.idempotencyKey ||
+    numericRevision(audit.previous_revision, "Legacy repricing audit") !==
+      input.expectedRevision
+  ) {
+    throw new CrmAuthError(
+      409,
+      "The apply idempotency key was already used for different legacy repricing inputs.",
+    );
+  }
+  const customer = parseStoredLegacyV2CustomerPreview(audit.customer_payload);
+  const revision = numericRevision(audit.new_revision, "Legacy repricing audit");
+  const quoteTotal = money(audit.quote_total, "Legacy repricing audit");
+  const pricedDesignCount = numericRevision(
+    audit.priced_design_count,
+    "Legacy repricing audit",
+  );
+  const blockedDesignCount = numericRevision(
+    audit.blocked_design_count,
+    "Legacy repricing audit",
+  );
+  if (
+    customer.quoteId !== input.quoteId ||
+    customer.expectedRevision !== input.expectedRevision ||
+    !sameMoney(customer.proposedSelectedDesignTotal, quoteTotal) ||
+    customer.lineCount !== pricedDesignCount ||
+    blockedDesignCount !== 0 ||
+    audit.quote_status !== "priced"
+  ) {
+    throw databaseFailure(
+      "The immutable legacy repricing audit and customer payload are inconsistent.",
+    );
+  }
+  return {
+    backend: "authoritative_v2",
+    mode: "legacy_reprice_applied",
+    quoteId: input.quoteId,
+    previewId: input.previewId,
+    revision,
+    quoteStatus: "priced",
+    quoteTotal,
+    pricedDesignCount,
+    blockedDesignCount,
+    lines: customer.lines,
+  };
+}
+
+async function loadCompletedApplyReplay(
+  supabase: SupabaseClient,
+  input: Readonly<{
+    quoteId: string;
+    previewId: string;
+    previewDigest: string;
+    expectedRevision: number;
+    actorId: string;
+    idempotencyKey: string;
+  }>,
+): Promise<LegacyV2RepriceApplyResult | null> {
+  const { data, error } = await supabase
+    .from("sales_quote_v2_legacy_reprice_audits")
+    .select(
+      "quote_id,preview_id,previous_revision,new_revision,preview_digest,quote_status,quote_total,priced_design_count,blocked_design_count,actor_id,idempotency_key,customer_payload",
+    )
+    .eq("quote_id", input.quoteId)
+    .eq("idempotency_key", input.idempotencyKey)
+    .maybeSingle();
+  if (error) {
+    throw databaseFailure("The legacy repricing replay audit could not be loaded.");
+  }
+  if (!data) return null;
+  return applyResultFromAudit(data as unknown as ApplyAuditRow, input);
 }
 
 export async function previewLegacySalesQuoteV2Reprice(
@@ -563,6 +952,20 @@ export async function previewLegacySalesQuoteV2Reprice(
     };
   }
 
+  const customerPayload = parseStoredLegacyV2CustomerPreview({
+    backend: "authoritative_v2",
+    mode: "legacy_reprice_preview_proof",
+    quoteId,
+    expectedRevision: input.expectedRevision,
+    serverCatalogDate,
+    legacyStoredTotal,
+    proposedSelectedDesignTotal,
+    difference:
+      Math.round((proposedSelectedDesignTotal - legacyStoredTotal) * 100) / 100,
+    lineCount: lines.length,
+    lines: linesForCustomer,
+  });
+
   const { data, error } = await supabase.rpc(
     "record_quote_v2_legacy_reprice_preview",
     {
@@ -574,6 +977,7 @@ export async function previewLegacySalesQuoteV2Reprice(
       p_selection_map: input.selectedDesigns,
       p_legacy_total: legacyStoredTotal,
       p_proposed_total: proposedSelectedDesignTotal,
+      p_customer_payload: customerPayload,
       p_results: batch.prepared.map((entry) => entry.rpcResult),
     },
   );
@@ -599,6 +1003,27 @@ export async function previewLegacySalesQuoteV2Reprice(
   if (typeof saved.expires_at !== "string" || !Number.isFinite(Date.parse(saved.expires_at))) {
     throw databaseFailure("Legacy repricing preview persistence returned an invalid expiry.");
   }
+  if (Date.parse(saved.expires_at) <= Date.now()) {
+    throw new CrmAuthError(
+      409,
+      "The recorded legacy repricing preview is already expired. Create a new preview.",
+    );
+  }
+  const savedCustomer = parseStoredLegacyV2CustomerPreview(saved.customer_payload);
+  if (
+    savedCustomer.quoteId !== quoteId ||
+    savedCustomer.expectedRevision !== input.expectedRevision ||
+    savedCustomer.serverCatalogDate !== serverCatalogDate ||
+    !sameMoney(savedCustomer.legacyStoredTotal, legacyStoredTotal) ||
+    !sameMoney(
+      savedCustomer.proposedSelectedDesignTotal,
+      proposedSelectedDesignTotal,
+    )
+  ) {
+    throw databaseFailure(
+      "Legacy repricing preview persistence returned a mismatched customer payload.",
+    );
+  }
   return {
     backend: "authoritative_v2",
     mode: "legacy_reprice_preview",
@@ -608,12 +1033,12 @@ export async function previewLegacySalesQuoteV2Reprice(
     previewId,
     previewDigest: saved.preview_digest,
     expiresAt: saved.expires_at,
-    serverCatalogDate,
-    legacyStoredTotal,
-    proposedSelectedDesignTotal,
-    difference: Math.round((proposedSelectedDesignTotal - legacyStoredTotal) * 100) / 100,
-    lineCount: lines.length,
-    lines: linesForCustomer,
+    serverCatalogDate: savedCustomer.serverCatalogDate,
+    legacyStoredTotal: savedCustomer.legacyStoredTotal,
+    proposedSelectedDesignTotal: savedCustomer.proposedSelectedDesignTotal,
+    difference: savedCustomer.difference,
+    lineCount: savedCustomer.lineCount,
+    lines: savedCustomer.lines,
     blockingReasons: [],
   };
 }
@@ -627,6 +1052,17 @@ export async function applyLegacySalesQuoteV2Reprice(
 ): Promise<LegacyV2RepriceApplyResult> {
   const quoteId = requiredUuid(input.quoteId, "quoteId");
   const actorId = requiredUuid(input.actorId, "actorId");
+  const replayInput = {
+    quoteId,
+    previewId: input.previewId,
+    previewDigest: input.previewDigest,
+    expectedRevision: input.expectedRevision,
+    actorId,
+    idempotencyKey: input.idempotencyKey,
+  } as const;
+  const completedReplay = await loadCompletedApplyReplay(supabase, replayInput);
+  if (completedReplay) return completedReplay;
+
   const preview = await loadPreview(supabase, {
     quoteId,
     previewId: input.previewId,
@@ -649,14 +1085,18 @@ export async function applyLegacySalesQuoteV2Reprice(
   const quote = await loadQuote(supabase, quoteId);
   const alreadyAppliedV2 =
     quote.quote_v2_backend === true && quote.quote_v2_status !== "legacy";
-  if (!alreadyAppliedV2) {
-    requireLegacyDraft(quote, input.expectedRevision);
-  } else if (
-    numericRevision(quote.quote_v2_revision, "Authoritative quote") <
-    input.expectedRevision + 1
-  ) {
-    throw new CrmAuthError(409, "The prior V2 application result is inconsistent.");
+  if (alreadyAppliedV2) {
+    // A concurrent request can complete between the first audit lookup and the
+    // quote read. Once the V2 transition is visible, its append-only audit must
+    // also be visible and is the only valid retry result.
+    const racedReplay = await loadCompletedApplyReplay(supabase, replayInput);
+    if (racedReplay) return racedReplay;
+    throw new CrmAuthError(
+      409,
+      "This quote was converted by a different operation. Reload it before continuing.",
+    );
   }
+  requireLegacyDraft(quote, input.expectedRevision);
   const lines = await loadLines(supabase, quoteId);
   const designs = await loadDesigns(
     supabase,
@@ -702,23 +1142,21 @@ export async function applyLegacySalesQuoteV2Reprice(
   if (saved.quote_id !== quoteId || saved.preview_id !== input.previewId) {
     throw databaseFailure("Legacy V2 repricing persistence returned mismatched identities.");
   }
-  return {
-    backend: "authoritative_v2",
-    mode: "legacy_reprice_applied",
-    quoteId,
-    previewId: input.previewId,
-    revision: numericRevision(saved.new_revision, "Legacy V2 repricing persistence"),
-    quoteStatus:
-      typeof saved.quote_status === "string" ? saved.quote_status : "priced",
-    quoteTotal: money(saved.quote_total, "Legacy V2 repricing persistence"),
-    pricedDesignCount: numericRevision(
-      saved.priced_design_count,
-      "Legacy V2 repricing persistence",
-    ),
-    blockedDesignCount: numericRevision(
-      saved.blocked_design_count,
-      "Legacy V2 repricing persistence",
-    ),
-    lines: customerLines(batch),
-  };
+  return applyResultFromAudit(
+    {
+      quote_id: String(saved.quote_id),
+      preview_id: String(saved.preview_id),
+      previous_revision: input.expectedRevision,
+      new_revision: saved.new_revision as number | string,
+      preview_digest: input.previewDigest,
+      quote_status: String(saved.quote_status),
+      quote_total: saved.quote_total as number | string,
+      priced_design_count: saved.priced_design_count as number | string,
+      blocked_design_count: saved.blocked_design_count as number | string,
+      actor_id: actorId,
+      idempotency_key: input.idempotencyKey,
+      customer_payload: saved.customer_payload,
+    },
+    replayInput,
+  );
 }

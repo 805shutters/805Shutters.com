@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
   applyLegacySalesQuoteV2Reprice,
+  assertLegacyV2CustomerPayloadHasNoProtectedFields,
+  assertLegacyV2RepriceRuntimeEnabled,
   parseLegacyV2RepriceApplyBody,
   parseLegacyV2RepricePreviewBody,
   previewLegacySalesQuoteV2Reprice,
@@ -13,6 +15,7 @@ const QUOTE_ID = "11111111-1111-4111-8111-111111111111";
 const ACTOR_ID = "44444444-4444-4444-8444-444444444444";
 const PREVIEW_ID = "55555555-5555-4555-8555-555555555555";
 const PREVIEW_DIGEST = `sha256:${"a".repeat(64)}`;
+const ORIGINAL_REPRICE_GATE = process.env.QUOTE_V2_LEGACY_REPRICE;
 
 type FakeRows = Record<string, Array<Record<string, unknown>>>;
 
@@ -108,6 +111,7 @@ function quoteRows(count = 1, overrides: {
     sales_quote_line_items: lines,
     sales_quote_designs: designs,
     sales_quote_v2_legacy_reprice_previews: [],
+    sales_quote_v2_legacy_reprice_audits: [],
   };
 }
 
@@ -116,6 +120,41 @@ function selections(count = 1): LegacyV2SelectedDesign[] {
     lineItemId: lineId(index),
     designId: designId(index),
   }));
+}
+
+function customerPayload(selected = selections()): Record<string, unknown> {
+  const proposedTotal = selected.length * 432;
+  return {
+    backend: "authoritative_v2",
+    mode: "legacy_reprice_preview_proof",
+    quoteId: QUOTE_ID,
+    expectedRevision: 0,
+    serverCatalogDate: "2026-08-01",
+    legacyStoredTotal: 999,
+    proposedSelectedDesignTotal: proposedTotal,
+    difference: proposedTotal - 999,
+    lineCount: selected.length,
+    lines: selected.map((entry) => ({
+      lineItemId: entry.lineItemId,
+      selectedDesignId: entry.designId,
+      priceStatus: "authoritative",
+      price: {
+        productId: "roller",
+        programId: "roller_cordless_fabric_price_group_2_pg2",
+        programName: "Cordless Fabric - Price Group 2",
+        matchedWidth: 36,
+        matchedHeight: 60,
+        base: 432,
+        surchargeLines: [],
+        unitPrice: 432,
+        discountPercent: 0,
+        discountAmount: 0,
+        quantity: 1,
+        onceTotal: 0,
+        total: 432,
+      },
+    })),
+  };
 }
 
 function previewRow(selected = selections()): Record<string, unknown> {
@@ -127,8 +166,29 @@ function previewRow(selected = selections()): Record<string, unknown> {
     server_catalog_date: "2026-08-01",
     selection_map: selected,
     line_count: selected.length,
+    customer_payload: customerPayload(selected),
     expires_at: "2999-01-01T00:00:00.000Z",
     created_by: ACTOR_ID,
+  };
+}
+
+function auditRow(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    quote_id: QUOTE_ID,
+    preview_id: PREVIEW_ID,
+    previous_revision: 0,
+    new_revision: 1,
+    preview_digest: PREVIEW_DIGEST,
+    quote_status: "priced",
+    quote_total: 432,
+    priced_design_count: 1,
+    blocked_design_count: 0,
+    actor_id: ACTOR_ID,
+    idempotency_key: "legacy-apply:test-1",
+    customer_payload: customerPayload(),
+    ...overrides,
   };
 }
 
@@ -192,7 +252,8 @@ function fakeSupabase(
             {
               preview_id: PREVIEW_ID,
               preview_digest: PREVIEW_DIGEST,
-              expires_at: "2026-07-22T20:30:00.000Z",
+              expires_at: "2999-01-01T00:00:00.000Z",
+              customer_payload: args.p_customer_payload,
             },
           ],
           error: null,
@@ -208,6 +269,9 @@ function fakeSupabase(
             quote_total: 432,
             priced_design_count: 1,
             blocked_design_count: 0,
+            customer_payload:
+              rows.sales_quote_v2_legacy_reprice_previews[0]?.customer_payload ??
+              customerPayload(),
             product_cost_total: 142.56,
             dealer_margin: 289.44,
           },
@@ -243,6 +307,39 @@ function applyInput() {
 }
 
 describe("explicit legacy sales-quote V2 repricing", () => {
+  afterEach(() => {
+    if (ORIGINAL_REPRICE_GATE === undefined) {
+      delete process.env.QUOTE_V2_LEGACY_REPRICE;
+    } else {
+      process.env.QUOTE_V2_LEGACY_REPRICE = ORIGINAL_REPRICE_GATE;
+    }
+  });
+
+  it("keeps the repricing workflow strictly disabled unless the exact cutover value is present", () => {
+    for (const value of [undefined, "1", "true", "enabled"]) {
+      if (value === undefined) delete process.env.QUOTE_V2_LEGACY_REPRICE;
+      else process.env.QUOTE_V2_LEGACY_REPRICE = value;
+      expect(() => assertLegacyV2RepriceRuntimeEnabled()).toThrow(
+        "disabled until its migration and production cutover",
+      );
+    }
+    process.env.QUOTE_V2_LEGACY_REPRICE =
+      "enabled-after-v2-legacy-reprice-migration";
+    expect(() => assertLegacyV2RepriceRuntimeEnabled()).not.toThrow();
+  });
+
+  it("recursively rejects protected cost keys from immutable customer replay payloads", () => {
+    expect(() =>
+      assertLegacyV2CustomerPayloadHasNoProtectedFields(customerPayload()),
+    ).not.toThrow();
+    expect(() =>
+      assertLegacyV2CustomerPayloadHasNoProtectedFields({
+        ...customerPayload(),
+        lines: [{ safe: { internal_cost_snapshot: 1 } }],
+      }),
+    ).toThrow("contains a protected field");
+  });
+
   it("strictly rejects prices/costs and requires an exact explicit apply phrase", () => {
     expect(() =>
       parseLegacyV2RepricePreviewBody({
@@ -295,6 +392,15 @@ describe("explicit legacy sales-quote V2 repricing", () => {
     expect(record).toBeDefined();
     expect(record?.args.p_selection_map).toEqual(selections());
     expect(record?.args.p_results).toHaveLength(1);
+    expect(record?.args.p_customer_payload).toMatchObject({
+      backend: "authoritative_v2",
+      mode: "legacy_reprice_preview_proof",
+      quoteId: QUOTE_ID,
+      lineCount: 1,
+    });
+    expect(JSON.stringify(record?.args.p_customer_payload)).not.toMatch(
+      /dealer|wholesale|landed|internalCost|margin|productCost|freightAllocated/i,
+    );
     const resultJson = JSON.stringify(preview);
     expect(resultJson).not.toMatch(
       /dealer|wholesale|landed|internalCost|margin|productCost|freightAllocated/i,
@@ -374,6 +480,7 @@ describe("explicit legacy sales-quote V2 repricing", () => {
             quote_total: 432,
             priced_design_count: 1,
             blocked_design_count: 0,
+            customer_payload: customerPayload(),
             product_cost_total: 142.56,
             internal_landed_cost_total: 171.42,
             dealer_margin: 260.58,
@@ -423,29 +530,53 @@ describe("explicit legacy sales-quote V2 repricing", () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
-  it("allows a matching completed application to reach the RPC idempotency replay", async () => {
-    const rows = quoteRows(1, {
-      quote: {
-        quote_v2_backend: true,
-        quote_v2_status: "priced",
-        quote_v2_revision: 1,
-        total_amount: 432,
-      },
-    });
+  it("rejects an expired unconsumed preview before loading or repricing the quote", async () => {
+    const rows = quoteRows();
     rows.sales_quote_v2_legacy_reprice_previews = [
-      { ...previewRow(), expires_at: "2026-07-22T00:00:00.000Z" },
+      { ...previewRow(), expires_at: "2020-01-01T00:00:00.000Z" },
     ];
+    const fake = fakeSupabase(rows);
+    await expect(
+      applyLegacySalesQuoteV2Reprice(fake.client, applyInput()),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(fake.rpcCalls).toHaveLength(0);
+  });
+
+  it("returns an immutable completed replay without reading or repricing current quote state", async () => {
+    const rows = quoteRows();
+    rows.sales_quotes = [];
+    rows.sales_quote_line_items = [];
+    rows.sales_quote_designs = [];
+    rows.sales_quote_v2_legacy_reprice_previews = [];
+    rows.sales_quote_v2_legacy_reprice_audits = [auditRow()];
     const fake = fakeSupabase(rows);
     const replay = await applyLegacySalesQuoteV2Reprice(
       fake.client,
       applyInput(),
     );
     expect(replay.revision).toBe(1);
-    expect(
-      fake.rpcCalls.filter(
-        (call) => call.name === "apply_quote_v2_legacy_reprice",
-      ),
-    ).toHaveLength(1);
+    expect(replay.quoteTotal).toBe(432);
+    expect(replay.lines).toEqual(
+      (customerPayload().lines as Array<Record<string, unknown>>),
+    );
+    expect(fake.rpcCalls).toHaveLength(0);
+  });
+
+  it("rejects a protected field in an immutable completed replay", async () => {
+    const rows = quoteRows();
+    rows.sales_quote_v2_legacy_reprice_audits = [
+      auditRow({
+        customer_payload: {
+          ...customerPayload(),
+          internalCostSnapshot: { landedCostTotal: 1 },
+        },
+      }),
+    ];
+    const fake = fakeSupabase(rows);
+    await expect(
+      applyLegacySalesQuoteV2Reprice(fake.client, applyInput()),
+    ).rejects.toMatchObject({ status: 502 });
+    expect(fake.rpcCalls).toHaveLength(0);
   });
 
   it("rejects sent, already-V2, and revision-mismatched quotes before pricing", async () => {

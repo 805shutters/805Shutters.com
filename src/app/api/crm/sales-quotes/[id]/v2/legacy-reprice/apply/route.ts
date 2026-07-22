@@ -6,6 +6,7 @@ import {
 } from "@/lib/crm/auth";
 import {
   applyLegacySalesQuoteV2Reprice,
+  assertLegacyV2RepriceRuntimeEnabled,
   parseLegacyV2RepriceApplyBody,
 } from "@/lib/crm/sales-quote-v2-legacy-reprice";
 
@@ -22,6 +23,7 @@ export async function POST(
 ) {
   try {
     const { supabase, user } = await requireCrmUser(request);
+    assertLegacyV2RepriceRuntimeEnabled();
     const rawBody = await request.json().catch(() => {
       throw new CrmAuthError(400, "A valid JSON request object is required.");
     });

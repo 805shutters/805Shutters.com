@@ -34,7 +34,13 @@ describe("Quote V2 explicit legacy-draft repricing migration", () => {
       "create or replace function public.quote_v2_legacy_state_hash",
     )[0];
     expect(tableDefinitions).not.toMatch(
-      /internal_cost_snapshot|landed_cost|dealer_cost|wholesale|margin/i,
+      /\b(internal_cost_snapshot|landed_cost|dealer_cost|wholesale|margin)\b\s+(jsonb|numeric|text)/i,
+    );
+    expect(sql).toContain(
+      "create or replace function public.quote_v2_customer_payload_has_protected_key",
+    );
+    expect(sql).toMatch(
+      /customer_payload jsonb not null[\s\S]*not public\.quote_v2_customer_payload_has_protected_key\(customer_payload\)/i,
     );
     expect(sql).toMatch(/pricing_event_id uuid not null references public\.sales_quote_v2_events/i);
     expect(sql).toMatch(/preview_id uuid not null references public\.sales_quote_v2_legacy_reprice_previews/i);
@@ -75,6 +81,27 @@ describe("Quote V2 explicit legacy-draft repricing migration", () => {
     );
     expect(sql).toMatch(/legacyTotal'[\s\S]*proposedTotal'/i);
     expect(sql).toMatch(/expires_at timestamptz not null default \(now\(\) \+ interval '30 minutes'\)/i);
+    expect(sql).toMatch(/v_existing\.customer_payload <> p_customer_payload/i);
+    expect(sql).toMatch(/'customerPayload', p_customer_payload/i);
+  });
+
+  it("fails closed when an idempotent preview replay expired or its quote state drifted", () => {
+    const existingPreviewIndex = sql.indexOf("if v_existing.id is not null then");
+    const expiryIndex = sql.indexOf(
+      "if v_existing.expires_at <= now() then",
+      existingPreviewIndex,
+    );
+    const stateIndex = sql.indexOf(
+      "v_existing.legacy_state_hash is distinct from v_state_hash",
+      existingPreviewIndex,
+    );
+    const replayReturnIndex = sql.indexOf(
+      "return query select\n      v_existing.id",
+      existingPreviewIndex,
+    );
+    expect(expiryIndex).toBeGreaterThan(existingPreviewIndex);
+    expect(stateIndex).toBeGreaterThan(expiryIndex);
+    expect(replayReturnIndex).toBeGreaterThan(stateIndex);
   });
 
   it("detects legacy edits even when the legacy revision remains zero", () => {
@@ -130,6 +157,12 @@ describe("Quote V2 explicit legacy-draft repricing migration", () => {
     expect(stateCheckIndex).toBeGreaterThan(previewLookupIndex);
     expect(sql).toMatch(
       /v_existing\.preview_id <> p_preview_id[\s\S]*v_existing\.preview_digest <> p_preview_digest[\s\S]*v_existing\.actor_id <> p_actor_id/i,
+    );
+    expect(sql).toMatch(
+      /v_existing\.blocked_design_count,[\s\S]*v_existing\.customer_payload;/i,
+    );
+    expect(existingAuditIndex).toBeLessThan(
+      sql.indexOf("select quotes.*\n    into v_quote", existingAuditIndex),
     );
   });
 });

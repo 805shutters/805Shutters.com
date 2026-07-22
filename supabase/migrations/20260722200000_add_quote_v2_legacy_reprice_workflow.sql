@@ -5,6 +5,48 @@
 -- and then calls the apply RPC with the exact preview identity, quote revision,
 -- selected-design map, authoritative pricing batch, and idempotency key.
 
+create or replace function public.quote_v2_customer_payload_has_protected_key(
+  p_value jsonb
+)
+returns boolean
+language plpgsql
+immutable
+strict
+set search_path = public, pg_temp
+as $$
+declare
+  v_key text;
+  v_child jsonb;
+  v_normalized_key text;
+begin
+  if jsonb_typeof(p_value) = 'object' then
+    for v_key, v_child in select key, value from jsonb_each(p_value)
+    loop
+      v_normalized_key := lower(regexp_replace(v_key, '[^a-zA-Z0-9]', '', 'g'));
+      if v_normalized_key ~ '(cost|dealer|wholesale|freight|oversize|margin|multiplier|factor|processingfee)' then
+        return true;
+      end if;
+      if public.quote_v2_customer_payload_has_protected_key(v_child) then
+        return true;
+      end if;
+    end loop;
+  elsif jsonb_typeof(p_value) = 'array' then
+    for v_child in select value from jsonb_array_elements(p_value)
+    loop
+      if public.quote_v2_customer_payload_has_protected_key(v_child) then
+        return true;
+      end if;
+    end loop;
+  end if;
+  return false;
+end;
+$$;
+
+revoke all on function public.quote_v2_customer_payload_has_protected_key(jsonb)
+  from public, anon, authenticated;
+grant execute on function public.quote_v2_customer_payload_has_protected_key(jsonb)
+  to service_role;
+
 create table if not exists public.sales_quote_v2_legacy_reprice_previews (
   id uuid primary key default gen_random_uuid(),
   quote_id uuid not null references public.sales_quotes(id) on delete restrict,
@@ -17,6 +59,7 @@ create table if not exists public.sales_quote_v2_legacy_reprice_previews (
   line_count integer not null,
   legacy_total numeric(12, 2) not null,
   proposed_total numeric(12, 2) not null,
+  customer_payload jsonb not null,
   created_by uuid not null,
   idempotency_key text not null,
   created_at timestamptz not null default now(),
@@ -35,6 +78,11 @@ create table if not exists public.sales_quote_v2_legacy_reprice_previews (
     check (line_count between 1 and 40),
   constraint sales_quote_v2_legacy_preview_money_check
     check (legacy_total >= 0 and proposed_total >= 0),
+  constraint sales_quote_v2_legacy_preview_customer_payload_check
+    check (
+      jsonb_typeof(customer_payload) = 'object'
+      and not public.quote_v2_customer_payload_has_protected_key(customer_payload)
+    ),
   constraint sales_quote_v2_legacy_preview_expiry_check
     check (expires_at > created_at),
   constraint sales_quote_v2_legacy_preview_idempotency_uniq
@@ -61,6 +109,7 @@ create table if not exists public.sales_quote_v2_legacy_reprice_audits (
   quote_total numeric(12, 2) not null,
   priced_design_count integer not null,
   blocked_design_count integer not null,
+  customer_payload jsonb not null,
   actor_id uuid not null,
   idempotency_key text not null,
   created_at timestamptz not null default now(),
@@ -76,6 +125,11 @@ create table if not exists public.sales_quote_v2_legacy_reprice_audits (
     check (quote_total >= 0),
   constraint sales_quote_v2_legacy_audit_count_check
     check (priced_design_count between 0 and 40 and blocked_design_count between 0 and 40),
+  constraint sales_quote_v2_legacy_audit_customer_payload_check
+    check (
+      jsonb_typeof(customer_payload) = 'object'
+      and not public.quote_v2_customer_payload_has_protected_key(customer_payload)
+    ),
   constraint sales_quote_v2_legacy_audit_preview_uniq unique (preview_id),
   constraint sales_quote_v2_legacy_audit_event_uniq unique (pricing_event_id),
   constraint sales_quote_v2_legacy_audit_idempotency_uniq unique (quote_id, idempotency_key)
@@ -178,12 +232,14 @@ create or replace function public.record_quote_v2_legacy_reprice_preview(
   p_selection_map jsonb,
   p_legacy_total numeric,
   p_proposed_total numeric,
+  p_customer_payload jsonb,
   p_results jsonb
 )
 returns table (
   preview_id uuid,
   preview_digest text,
-  expires_at timestamptz
+  expires_at timestamptz,
+  customer_payload jsonb
 )
 language plpgsql
 security definer
@@ -197,6 +253,7 @@ declare
   v_authoritative_count integer;
   v_normalized_selection jsonb;
   v_result_selection jsonb;
+  v_customer_selection jsonb;
   v_state_hash text;
   v_batch_hash text;
   v_preview_digest text;
@@ -222,10 +279,56 @@ begin
   if p_server_catalog_date is null
     or p_legacy_total is null or p_legacy_total < 0
     or p_proposed_total is null or p_proposed_total < 0
+    or jsonb_typeof(p_customer_payload) is distinct from 'object'
     or jsonb_typeof(p_selection_map) is distinct from 'array'
     or jsonb_typeof(p_results) is distinct from 'array'
   then
     raise exception 'The legacy V2 preview payload is incomplete.'
+      using errcode = '22023';
+  end if;
+  if public.quote_v2_customer_payload_has_protected_key(p_customer_payload) then
+    raise exception 'The legacy V2 preview customer payload contains protected cost fields.'
+      using errcode = '22023';
+  end if;
+  if not (p_customer_payload ?& array[
+    'backend',
+    'mode',
+    'quoteId',
+    'expectedRevision',
+    'serverCatalogDate',
+    'legacyStoredTotal',
+    'proposedSelectedDesignTotal',
+    'difference',
+    'lineCount',
+    'lines'
+  ]::text[])
+    or (p_customer_payload - array[
+    'backend',
+    'mode',
+    'quoteId',
+    'expectedRevision',
+    'serverCatalogDate',
+    'legacyStoredTotal',
+    'proposedSelectedDesignTotal',
+    'difference',
+    'lineCount',
+    'lines'
+  ]::text[]) <> '{}'::jsonb
+    or p_customer_payload ->> 'backend' is distinct from 'authoritative_v2'
+    or p_customer_payload ->> 'mode' is distinct from 'legacy_reprice_preview_proof'
+    or p_customer_payload ->> 'quoteId' is distinct from p_quote_id::text
+    or (p_customer_payload ->> 'expectedRevision')::bigint is distinct from p_expected_revision
+    or (p_customer_payload ->> 'serverCatalogDate')::date is distinct from p_server_catalog_date
+    or round((p_customer_payload ->> 'legacyStoredTotal')::numeric, 2)
+        is distinct from round(p_legacy_total, 2)
+    or round((p_customer_payload ->> 'proposedSelectedDesignTotal')::numeric, 2)
+        is distinct from round(p_proposed_total, 2)
+    or round((p_customer_payload ->> 'difference')::numeric, 2)
+        is distinct from round(p_proposed_total - p_legacy_total, 2)
+    or (p_customer_payload ->> 'lineCount')::integer
+        is distinct from jsonb_array_length(p_customer_payload -> 'lines')
+  then
+    raise exception 'The legacy V2 preview customer payload is inconsistent.'
       using errcode = '22023';
   end if;
 
@@ -236,6 +339,20 @@ begin
    for update;
   if not found then
     raise exception 'Quote % does not exist.', p_quote_id using errcode = 'P0002';
+  end if;
+  if v_quote.quote_v2_backend or v_quote.quote_v2_status <> 'legacy'
+    or v_quote.status <> 'draft'
+  then
+    raise exception 'Only an unsent legacy draft may be previewed for V2 repricing.'
+      using errcode = '22023';
+  end if;
+  if v_quote.quote_v2_revision <> p_expected_revision then
+    raise exception 'Legacy quote revision changed.' using errcode = '40001';
+  end if;
+  v_state_hash := public.quote_v2_legacy_state_hash(p_quote_id);
+  if v_state_hash is null then
+    raise exception 'The legacy quote state could not be fingerprinted.'
+      using errcode = '22023';
   end if;
 
   select previews.*
@@ -264,6 +381,14 @@ begin
   ), '[]'::jsonb)
     into v_result_selection
     from jsonb_array_elements(p_results) item;
+  select coalesce(jsonb_agg(
+    jsonb_build_object(
+      'lineItemId', item ->> 'lineItemId',
+      'designId', item ->> 'selectedDesignId'
+    ) order by item ->> 'lineItemId'
+  ), '[]'::jsonb)
+    into v_customer_selection
+    from jsonb_array_elements(p_customer_payload -> 'lines') item;
 
   if v_existing.id is not null then
     if v_existing.quote_revision <> p_expected_revision
@@ -273,22 +398,24 @@ begin
       or v_existing.pricing_batch_hash <> v_batch_hash
       or v_existing.legacy_total <> round(p_legacy_total, 2)
       or v_existing.proposed_total <> round(p_proposed_total, 2)
+      or v_existing.customer_payload <> p_customer_payload
     then
       raise exception 'The preview idempotency key was already used for different inputs.'
         using errcode = '40001';
     end if;
-    return query select v_existing.id, v_existing.preview_digest, v_existing.expires_at;
+    if v_existing.expires_at <= now() then
+      raise exception 'The legacy repricing preview expired.' using errcode = '40001';
+    end if;
+    if v_existing.legacy_state_hash is distinct from v_state_hash then
+      raise exception 'The legacy quote changed after its prior preview.'
+        using errcode = '40001';
+    end if;
+    return query select
+      v_existing.id,
+      v_existing.preview_digest,
+      v_existing.expires_at,
+      v_existing.customer_payload;
     return;
-  end if;
-
-  if v_quote.quote_v2_backend or v_quote.quote_v2_status <> 'legacy'
-    or v_quote.status <> 'draft'
-  then
-    raise exception 'Only an unsent legacy draft may be previewed for V2 repricing.'
-      using errcode = '22023';
-  end if;
-  if v_quote.quote_v2_revision <> p_expected_revision then
-    raise exception 'Legacy quote revision changed.' using errcode = '40001';
   end if;
 
   select count(*)::integer
@@ -299,12 +426,24 @@ begin
   if v_line_count < 1 or v_line_count > 40
     or v_selection_count <> v_line_count
     or jsonb_array_length(p_results) <> v_line_count
+    or (p_customer_payload ->> 'lineCount')::integer <> v_line_count
   then
     raise exception 'A preview must cover every one of 1 to 40 quote lines exactly once.'
       using errcode = '22023';
   end if;
   if v_normalized_selection <> v_result_selection then
     raise exception 'The preview selection map does not match its pricing batch.'
+      using errcode = '22023';
+  end if;
+  if v_normalized_selection <> v_customer_selection
+    or exists (
+      select 1
+      from jsonb_array_elements(p_customer_payload -> 'lines') item
+      where item ->> 'priceStatus' is distinct from 'authoritative'
+        or jsonb_typeof(item #> '{price,total}') is distinct from 'number'
+    )
+  then
+    raise exception 'The customer-safe preview does not match its authoritative selection.'
       using errcode = '22023';
   end if;
   if (
@@ -339,11 +478,6 @@ begin
       using errcode = '22023';
   end if;
 
-  v_state_hash := public.quote_v2_legacy_state_hash(p_quote_id);
-  if v_state_hash is null then
-    raise exception 'The legacy quote state could not be fingerprinted.'
-      using errcode = '22023';
-  end if;
   v_preview_digest := 'sha256:' || encode(
     digest(
       convert_to(jsonb_build_object(
@@ -354,7 +488,8 @@ begin
         'serverCatalogDate', p_server_catalog_date,
         'selectionMap', v_normalized_selection,
         'legacyTotal', round(p_legacy_total, 2),
-        'proposedTotal', round(p_proposed_total, 2)
+        'proposedTotal', round(p_proposed_total, 2),
+        'customerPayload', p_customer_payload
       )::text, 'UTF8'),
       'sha256'
     ),
@@ -372,6 +507,7 @@ begin
     line_count,
     legacy_total,
     proposed_total,
+    customer_payload,
     created_by,
     idempotency_key
   ) values (
@@ -385,21 +521,26 @@ begin
     v_line_count,
     round(p_legacy_total, 2),
     round(p_proposed_total, 2),
+    p_customer_payload,
     p_actor_id,
     btrim(p_idempotency_key)
   )
   returning id, sales_quote_v2_legacy_reprice_previews.expires_at
     into v_preview_id, v_expires_at;
 
-  return query select v_preview_id, v_preview_digest, v_expires_at;
+  return query select
+    v_preview_id,
+    v_preview_digest,
+    v_expires_at,
+    p_customer_payload;
 end;
 $$;
 
 revoke all on function public.record_quote_v2_legacy_reprice_preview(
-  uuid, bigint, text, uuid, date, jsonb, numeric, numeric, jsonb
+  uuid, bigint, text, uuid, date, jsonb, numeric, numeric, jsonb, jsonb
 ) from public, anon, authenticated;
 grant execute on function public.record_quote_v2_legacy_reprice_preview(
-  uuid, bigint, text, uuid, date, jsonb, numeric, numeric, jsonb
+  uuid, bigint, text, uuid, date, jsonb, numeric, numeric, jsonb, jsonb
 ) to service_role;
 
 create or replace function public.apply_quote_v2_legacy_reprice(
@@ -418,7 +559,8 @@ returns table (
   quote_status text,
   quote_total numeric,
   priced_design_count integer,
-  blocked_design_count integer
+  blocked_design_count integer,
+  customer_payload jsonb
 )
 language plpgsql
 security definer
@@ -455,15 +597,6 @@ begin
       using errcode = '22023';
   end if;
 
-  select quotes.*
-    into v_quote
-    from public.sales_quotes quotes
-   where quotes.id = p_quote_id
-   for update;
-  if not found then
-    raise exception 'Quote % does not exist.', p_quote_id using errcode = 'P0002';
-  end if;
-
   select audits.*
     into v_existing
     from public.sales_quote_v2_legacy_reprice_audits audits
@@ -474,6 +607,8 @@ begin
       or v_existing.preview_digest <> p_preview_digest
       or v_existing.previous_revision <> p_expected_revision
       or v_existing.actor_id <> p_actor_id
+      or jsonb_typeof(v_existing.customer_payload) is distinct from 'object'
+      or public.quote_v2_customer_payload_has_protected_key(v_existing.customer_payload)
     then
       raise exception 'The apply idempotency key was already used for different inputs.'
         using errcode = '40001';
@@ -485,8 +620,18 @@ begin
       v_existing.quote_status,
       v_existing.quote_total,
       v_existing.priced_design_count,
-      v_existing.blocked_design_count;
+      v_existing.blocked_design_count,
+      v_existing.customer_payload;
     return;
+  end if;
+
+  select quotes.*
+    into v_quote
+    from public.sales_quotes quotes
+   where quotes.id = p_quote_id
+   for update;
+  if not found then
+    raise exception 'Quote % does not exist.', p_quote_id using errcode = 'P0002';
   end if;
 
   select previews.*
@@ -505,6 +650,19 @@ begin
   end if;
   if v_preview.expires_at <= now() then
     raise exception 'The legacy repricing preview expired.' using errcode = '40001';
+  end if;
+  if jsonb_typeof(v_preview.customer_payload) is distinct from 'object'
+    or public.quote_v2_customer_payload_has_protected_key(v_preview.customer_payload)
+    or v_preview.customer_payload ->> 'quoteId' is distinct from p_quote_id::text
+    or (v_preview.customer_payload ->> 'expectedRevision')::bigint
+        is distinct from p_expected_revision
+    or round((v_preview.customer_payload ->> 'proposedSelectedDesignTotal')::numeric, 2)
+        is distinct from v_preview.proposed_total
+    or (v_preview.customer_payload ->> 'lineCount')::integer
+        is distinct from v_preview.line_count
+  then
+    raise exception 'The saved legacy repricing customer payload is invalid.'
+      using errcode = '22023';
   end if;
   if v_quote.quote_v2_backend or v_quote.quote_v2_status <> 'legacy'
     or v_quote.status <> 'draft'
@@ -574,6 +732,7 @@ begin
 
   if v_saved_quote_id is null or v_saved_status <> 'priced'
     or v_saved_priced <> v_preview.line_count or v_saved_blocked <> 0
+    or round(v_saved_total, 2) is distinct from v_preview.proposed_total
   then
     raise exception 'Legacy conversion did not produce a fully priced V2 quote.'
       using errcode = '22023';
@@ -602,6 +761,7 @@ begin
     quote_total,
     priced_design_count,
     blocked_design_count,
+    customer_payload,
     actor_id,
     idempotency_key
   ) values (
@@ -617,6 +777,7 @@ begin
     round(v_saved_total, 2),
     v_saved_priced,
     v_saved_blocked,
+    v_preview.customer_payload,
     p_actor_id,
     btrim(p_idempotency_key)
   );
@@ -628,7 +789,8 @@ begin
     v_saved_status,
     round(v_saved_total, 2),
     v_saved_priced,
-    v_saved_blocked;
+    v_saved_blocked,
+    v_preview.customer_payload;
 end;
 $$;
 

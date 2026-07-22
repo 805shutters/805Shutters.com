@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const mocks = vi.hoisted(() => ({
   requireCrmUser: vi.fn(),
+  gate: vi.fn(),
   parseBody: vi.fn(),
   apply: vi.fn(),
 }));
@@ -30,6 +31,7 @@ vi.mock("@/lib/crm/auth", () => {
 });
 
 vi.mock("@/lib/crm/sales-quote-v2-legacy-reprice", () => ({
+  assertLegacyV2RepriceRuntimeEnabled: mocks.gate,
   parseLegacyV2RepriceApplyBody: mocks.parseBody,
   applyLegacySalesQuoteV2Reprice: mocks.apply,
 }));
@@ -44,6 +46,7 @@ const PREVIEW_DIGEST = `sha256:${"a".repeat(64)}`;
 describe("POST explicit legacy quote V2 reprice apply", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.gate.mockReset();
     mocks.requireCrmUser.mockResolvedValue({
       supabase: { service: true },
       user: { id: ACTOR_ID },
@@ -94,6 +97,7 @@ describe("POST explicit legacy quote V2 reprice apply", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.requireCrmUser).toHaveBeenCalledWith(request);
+    expect(mocks.gate).toHaveBeenCalledOnce();
     expect(mocks.parseBody).toHaveBeenCalledWith(rawBody);
     expect(mocks.apply).toHaveBeenCalledWith(
       { service: true },
@@ -103,5 +107,25 @@ describe("POST explicit legacy quote V2 reprice apply", () => {
         ...mocks.parseBody.mock.results[0].value,
       },
     );
+  });
+
+  it("fails closed before parsing or applying when runtime cutover is disabled", async () => {
+    mocks.gate.mockImplementation(() => {
+      const error = new Error("Legacy V2 repricing is disabled") as Error & {
+        status: number;
+      };
+      error.status = 409;
+      throw error;
+    });
+    const request = new NextRequest(
+      `http://localhost/api/crm/sales-quotes/${QUOTE_ID}/v2/legacy-reprice/apply`,
+      { method: "POST", headers: { authorization: "Bearer test-token" } },
+    );
+    const response = await POST(request, {
+      params: Promise.resolve({ id: QUOTE_ID }),
+    });
+    expect(response.status).toBe(409);
+    expect(mocks.parseBody).not.toHaveBeenCalled();
+    expect(mocks.apply).not.toHaveBeenCalled();
   });
 });
