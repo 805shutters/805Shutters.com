@@ -1,0 +1,1000 @@
+{
+  "schemaVersion": 1,
+  "captureId": "quote-v2-portal-parity-before-2026-07-22",
+  "capturePhase": "before_correction",
+  "capturedAt": "2026-07-22T16:25:00Z",
+  "engine": {
+    "route": "/quote-lab/",
+    "interfaceMarker": "exact-existing-builder",
+    "adapter": "repriceExactQuoteBuilderForQuoteLabPreview",
+    "backend": "v2",
+    "revision": "0dd77d068746874ce8326a1350fe9eeb1947cf09",
+    "catalogAsOf": "2026-08-01"
+  },
+  "safety": {
+    "draftLabel": "CODEX PRICING TEST — DO NOT ORDER",
+    "submitted": false,
+    "customerData": "neutral_test_only",
+    "productionWrites": false,
+    "customerQuotesSent": false,
+    "manufacturerOrdersPlaced": false
+  },
+  "threshold": {
+    "absoluteCents": 100,
+    "relativeBasisPoints": 25,
+    "rule": "A verified MSRP comparison fails when either absolute difference exceeds $1.00 or relative difference exceeds 0.25%."
+  },
+  "evidence": [
+    {
+      "id": "norman-current-account-portal-fixture-2026-07-21",
+      "kind": "tracked_structured_portal_fixture",
+      "classification": "portal_verified",
+      "path": "src/lib/quote-v2/fixtures/norman-805-portal-2026-07-21.json",
+      "exactCaseIds": [
+        "norman-roller-smartrelease-24x36"
+      ],
+      "redacted": true,
+      "note": "Only the exact Roller base, SmartRelease, shim, dealer schedule, freight, and processing facts are reused."
+    },
+    {
+      "id": "polar-elite-private-capture-2026-07-22",
+      "kind": "external_private_capture_receipt",
+      "classification": "portal_verified",
+      "path": "docs/quote-v2/portal-parity/evidence/polar-elite-portal-capture-2026-07-22.md",
+      "sha256": "bca8fe340b1afad3838302ce3f734b04a9128824059152cb043860b0dae6a1a2",
+      "byteLength": 239424,
+      "exactCaseIds": [
+        "polar-elite-suntex90-manual-three-line"
+      ],
+      "redacted": true,
+      "note": "The private image is not committed. Its receipt preserves only the exact non-PII dimensions, configuration, portal list components, dealer pricing, tax, and hash."
+    },
+    {
+      "id": "lotus-three-product-cart-private-capture-2026-07-22",
+      "kind": "external_private_capture_receipt",
+      "classification": "portal_dealer_observation",
+      "path": "docs/quote-v2/portal-parity/evidence/lotus-three-product-cart-2026-07-22.md",
+      "sha256": "74d2088c10e7317b5e3614c74242f4d9648ed4d8ef35f621bbfbde1641d04915",
+      "byteLength": 133336,
+      "exactCaseIds": [],
+      "redacted": true,
+      "note": "The authenticated DO NOT ORDER cart contains three product types, but only dealer-facing observations; none is reused as customer MSRP."
+    }
+  ],
+  "coverage": [
+    {
+      "manufacturer": "Norman",
+      "caseCount": 3,
+      "distinctProductCount": 3,
+      "status": "before_captured",
+      "limitation": null
+    },
+    {
+      "manufacturer": "Polar",
+      "caseCount": 3,
+      "distinctProductCount": 3,
+      "status": "before_captured",
+      "limitation": "Only the Elite case has exact portal evidence; Drapery Track and Premium Pro are official-price-book cases."
+    },
+    {
+      "manufacturer": "Lotus",
+      "caseCount": 3,
+      "distinctProductCount": 3,
+      "status": "msrp_unverified",
+      "limitation": "The supplied Lotus book exposes dealer-net amounts but no authoritative customer MSRP method."
+    },
+    {
+      "manufacturer": "Onyx",
+      "caseCount": 1,
+      "distinctProductCount": 1,
+      "status": "coverage_limited",
+      "limitation": "The current catalog supports one Onyx shutter product family, so three genuinely different Onyx product types cannot be tested without fabricating coverage."
+    }
+  ],
+  "cases": [
+    {
+      "id": "norman-roller-smartrelease-24x36",
+      "manufacturer": "Norman",
+      "scenario": "option_heavy",
+      "classification": "portal_verified",
+      "product": {
+        "id": "roller",
+        "name": "Soluna Roller Shades",
+        "programId": "roller_cordless_fabric_price_group_1_pg1",
+        "programName": "Cordless Fabric - Price Group 1"
+      },
+      "lines": [
+        {
+          "widthInches": 24,
+          "heightInches": 36,
+          "quantity": 1,
+          "configuration": "Inside mount; Brook F1120 Pewter; SmartRelease; 1 3/4-inch tube; no top treatment; one shim"
+        }
+      ],
+      "source": {
+        "sourceId": "norman-retail-guide-2026-07",
+        "pages": [18, 20],
+        "evidenceRefs": [
+          "norman-current-account-portal-fixture-2026-07-21"
+        ],
+        "note": "Portal fixture confirms $254 list base, $96 grouped list options, .33 current-account factor, freight, and processing."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "official_msrp",
+        "ledgers": [
+          {
+            "id": "official_msrp",
+            "audience": "customer_retail",
+            "verification": "portal_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "24 x 36 PG1 base", "amountCents": 25400 },
+              { "id": "smartrelease", "category": "operating_system", "label": "SmartRelease", "amountCents": 8900 },
+              { "id": "shim", "category": "accessory", "label": "Shim", "amountCents": 700 }
+            ],
+            "subtotalCents": 35000,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 35000
+          },
+          {
+            "id": "portal_dealer",
+            "audience": "dealer_cost",
+            "verification": "portal_verified",
+            "components": [
+              { "id": "dealer_base", "category": "base_grid", "label": "Portal-rounded base", "amountCents": 8382 },
+              { "id": "dealer_options", "category": "other", "label": "Portal-rounded grouped SmartRelease and shim", "amountCents": 3168 }
+            ],
+            "subtotalCents": 11550,
+            "freightCents": 2500,
+            "processingCents": 281,
+            "taxCents": 0,
+            "grandTotalCents": 14331
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced",
+        "productStatus": "documented_limited",
+        "validationStatus": "valid",
+        "sendable": true,
+        "selectionFingerprint": "sha256:742a6a0dab3283bbfe122d0b8d595c3ba18fcb5109178daa54c001e404c4c4b3",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Base grid", "amountCents": 20955 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "PG1 fabric included", "amountCents": 0 },
+          { "id": "smartrelease", "category": "operating_system", "label": "SmartRelease", "amountCents": 7343 },
+          { "id": "shim", "category": "accessory", "label": "Shim", "amountCents": 577 }
+        ],
+        "customerRetailSubtotalCents": 28875,
+        "displayedTotalCents": 28875,
+        "internalCost": {
+          "productCents": 11550,
+          "freightCents": 2500,
+          "oversizeCents": 0,
+          "processingCents": 281,
+          "landedCents": 14331
+        },
+        "blockCodes": [],
+        "error": null,
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 35000,
+        "systemCents": 28875,
+        "differenceCents": -6125,
+        "percentageBasisPoints": 1750,
+        "result": "fail",
+        "firstDiscrepancy": "The 805 base component starts from current dealer net and then applies 2.5 instead of preserving the official $254 MSRP base.",
+        "suspectedCause": "Manufacturer-specific MSRP method is replaced by dealer-net x2.5."
+      },
+      "limitations": []
+    },
+    {
+      "id": "norman-synchrony-vertical-24x48",
+      "manufacturer": "Norman",
+      "scenario": "ordinary",
+      "classification": "official_price_book_verified",
+      "product": {
+        "id": "synchrony_vertical",
+        "name": "Synchrony Vertical Blinds",
+        "programId": "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+        "programName": "Synchrony Vertical Blind - Price Group 1"
+      },
+      "lines": [
+        {
+          "widthInches": 24,
+          "heightInches": 48,
+          "quantity": 1,
+          "configuration": "Outside mount; Classic Pure White; left stack; left draw; standard operation"
+        }
+      ],
+      "source": {
+        "sourceId": "norman-retail-guide-2026-07",
+        "pages": [34],
+        "evidenceRefs": [],
+        "note": "Official July retail grid. Product restrictions and exact color identity are from the pinned Vertical guide."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "official_msrp",
+        "ledgers": [
+          {
+            "id": "official_msrp",
+            "audience": "customer_retail",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "24 x 48 PG1 base", "amountCents": 20400 }
+            ],
+            "subtotalCents": 20400,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 20400
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced",
+        "productStatus": "complete",
+        "validationStatus": "valid",
+        "sendable": true,
+        "selectionFingerprint": "sha256:bd6f26a646c7d1c8b88c04768971f88502192398253867dadacf773ba97b90f2",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Base grid", "amountCents": 16830 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "PG1 fabric included", "amountCents": 0 },
+          { "id": "standard_operation", "category": "operating_system", "label": "Standard operation included", "amountCents": 0 },
+          { "id": "accessories", "category": "accessory", "label": "No accessories", "amountCents": 0 }
+        ],
+        "customerRetailSubtotalCents": 16830,
+        "displayedTotalCents": 16830,
+        "internalCost": {
+          "productCents": 6732,
+          "freightCents": 2500,
+          "oversizeCents": 0,
+          "processingCents": 185,
+          "landedCents": 9417
+        },
+        "blockCodes": [],
+        "error": null,
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 20400,
+        "systemCents": 16830,
+        "differenceCents": -3570,
+        "percentageBasisPoints": 1750,
+        "result": "fail",
+        "firstDiscrepancy": "The $204 official MSRP base becomes $168.30 in the 805 customer ledger.",
+        "suspectedCause": "Manufacturer-specific MSRP is replaced by current dealer net x2.5."
+      },
+      "limitations": [
+        "Portal parity is not claimed; this is an official-price-book comparison."
+      ]
+    },
+    {
+      "id": "norman-roman-large-96x72",
+      "manufacturer": "Norman",
+      "scenario": "large_or_surcharge_sensitive",
+      "classification": "official_price_book_verified",
+      "product": {
+        "id": "roman",
+        "name": "Centerpiece Roman Shades",
+        "programId": "roman_cordless_usa_price_group_1_pg1",
+        "programName": "Cordless USA - Price Group 1"
+      },
+      "lines": [
+        {
+          "widthInches": 96,
+          "heightInches": 72,
+          "quantity": 1,
+          "configuration": "Outside mount; Scarlett F1599 Cottage Linen; Flat Fold with Batten Back; Continuous Cord Loop with 2-inch headrail; unlined; non-railroaded; no seams"
+        }
+      ],
+      "source": {
+        "sourceId": "norman-retail-guide-2026-07",
+        "pages": [26],
+        "evidenceRefs": [],
+        "note": "Official July retail grid; the large width also exercises current order-level oversize handling."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "official_msrp",
+        "ledgers": [
+          {
+            "id": "official_msrp",
+            "audience": "customer_retail",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "96 x 72 PG1 base", "amountCents": 230600 }
+            ],
+            "subtotalCents": 230600,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 230600
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced_but_send_blocked",
+        "productStatus": "documented_limited",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:c1d055abbddf3f2ef497b3781cd7d3c5464021cd12b468a7990044b8dfa032c3",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Base grid", "amountCents": 190245 },
+          { "id": "fabric_upgrade", "category": "fabric_upgrade", "label": "PG1 fabric included", "amountCents": 0 },
+          { "id": "continuous_loop", "category": "operating_system", "label": "Continuous Cord Loop included", "amountCents": 0 },
+          { "id": "accessories", "category": "accessory", "label": "No accessories", "amountCents": 0 }
+        ],
+        "customerRetailSubtotalCents": 190245,
+        "displayedTotalCents": 190245,
+        "internalCost": {
+          "productCents": 76098,
+          "freightCents": 2500,
+          "oversizeCents": 8000,
+          "processingCents": 1572,
+          "landedCents": 88170
+        },
+        "blockCodes": [
+          "norman.processing_fee.oversize_scope_unverified"
+        ],
+        "error": "Norman processing-fee treatment for an oversize charge is not source-verified.",
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 230600,
+        "systemCents": 190245,
+        "differenceCents": -40355,
+        "percentageBasisPoints": 1750,
+        "result": "fail",
+        "firstDiscrepancy": "The $2,306 official MSRP base becomes $1,902.45 before the separate send block.",
+        "suspectedCause": "Manufacturer-specific MSRP is replaced by current dealer net x2.5; oversize processing scope is independently unresolved."
+      },
+      "limitations": [
+        "The customer price exists, but the quote is not sendable because oversize processing-fee scope is unverified."
+      ]
+    },
+    {
+      "id": "polar-elite-suntex90-manual-three-line",
+      "manufacturer": "Polar",
+      "scenario": "portal_reference",
+      "classification": "portal_verified_with_official_book_conflict",
+      "product": {
+        "id": "polar_elite_patio",
+        "name": "Polar Elite Patio",
+        "programId": "group_4",
+        "programName": "Price Group 4"
+      },
+      "lines": [
+        { "widthInches": 88, "heightInches": 67, "quantity": 1, "configuration": "Exterior Elite track shade; SunTex 90 10%; manual gear/crank; standard non-zipper tracks; no valance; railroad and seam" },
+        { "widthInches": 92, "heightInches": 67, "quantity": 1, "configuration": "Exterior Elite track shade; SunTex 90 10%; manual gear/crank; standard non-zipper tracks; no valance; railroad and seam" },
+        { "widthInches": 85.5, "heightInches": 67, "quantity": 1, "configuration": "Exterior Elite track shade; SunTex 90 10%; manual gear/crank; standard non-zipper tracks; no valance; railroad and seam" }
+      ],
+      "source": {
+        "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+        "pages": [97],
+        "evidenceRefs": [
+          "polar-elite-private-capture-2026-07-22"
+        ],
+        "note": "The live portal priced each shade at $839 base plus $66 tracks ($905 list) and $407.25 dealer. The pinned book routes SunTex 90 to a conflicting $961 Group 4 cell."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "portal_msrp",
+        "ledgers": [
+          {
+            "id": "portal_msrp",
+            "audience": "customer_retail",
+            "verification": "portal_verified",
+            "components": [
+              { "id": "shade_1_base", "category": "base_grid", "label": "88 x 67 portal base", "amountCents": 83900 },
+              { "id": "shade_1_tracks", "category": "accessory", "label": "88 x 67 Titan - Tracks", "amountCents": 6600 },
+              { "id": "shade_2_base", "category": "base_grid", "label": "92 x 67 portal base", "amountCents": 83900 },
+              { "id": "shade_2_tracks", "category": "accessory", "label": "92 x 67 Titan - Tracks", "amountCents": 6600 },
+              { "id": "shade_3_base", "category": "base_grid", "label": "85.5 x 67 portal base", "amountCents": 83900 },
+              { "id": "shade_3_tracks", "category": "accessory", "label": "85.5 x 67 Titan - Tracks", "amountCents": 6600 }
+            ],
+            "subtotalCents": 271500,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 271500
+          },
+          {
+            "id": "official_book_msrp",
+            "audience": "customer_retail",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "shade_1", "category": "base_grid", "label": "88 x 67 rounded to the book's 96 x 72 Group 4 cell", "amountCents": 96100 },
+              { "id": "shade_2", "category": "base_grid", "label": "92 x 67 rounded to the book's 96 x 72 Group 4 cell", "amountCents": 96100 },
+              { "id": "shade_3", "category": "base_grid", "label": "85.5 x 67 rounded to the book's 96 x 72 Group 4 cell", "amountCents": 96100 }
+            ],
+            "subtotalCents": 288300,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 288300
+          },
+          {
+            "id": "portal_dealer",
+            "audience": "dealer_cost",
+            "verification": "portal_verified",
+            "components": [
+              { "id": "shade_1", "category": "base_grid", "label": "Portal dealer unit", "amountCents": 40725 },
+              { "id": "shade_2", "category": "base_grid", "label": "Portal dealer unit", "amountCents": 40725 },
+              { "id": "shade_3", "category": "base_grid", "label": "Portal dealer unit", "amountCents": 40725 }
+            ],
+            "subtotalCents": 122175,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 9469,
+            "grandTotalCents": 131644
+          },
+          {
+            "id": "official_book_dealer_factor",
+            "audience": "dealer_cost",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "shade_1", "category": "base_grid", "label": "$961 x .45", "amountCents": 43245 },
+              { "id": "shade_2", "category": "base_grid", "label": "$961 x .45", "amountCents": 43245 },
+              { "id": "shade_3", "category": "base_grid", "label": "$961 x .45", "amountCents": 43245 }
+            ],
+            "subtotalCents": 129735,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 129735
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": null,
+        "components": [
+          { "id": "shade_1", "category": "base_grid", "label": "805 customer unit", "amountCents": 108113 },
+          { "id": "shade_2", "category": "base_grid", "label": "805 customer unit", "amountCents": 108113 },
+          { "id": "shade_3", "category": "base_grid", "label": "805 customer unit", "amountCents": 108113 }
+        ],
+        "customerRetailSubtotalCents": 324339,
+        "displayedTotalCents": 324339,
+        "internalCost": {
+          "productCents": 129735,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 129735
+        },
+        "blockCodes": [
+          "product_status_not_sendable"
+        ],
+        "error": "Polar Elite restriction evidence and freight remain incomplete, so the calculated price is not customer-sendable.",
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 271500,
+        "systemCents": 324339,
+        "differenceCents": 52839,
+        "percentageBasisPoints": 1946,
+        "result": "fail",
+        "firstDiscrepancy": "Each portal $905 configured list unit becomes $1,081.13 in the 805 customer ledger.",
+        "suspectedCause": "The current engine applies the book's .45 dealer factor and then 2.5, while the exact portal route also conflicts with the book's Group 4 base and separately identifies a $66 track component."
+      },
+      "limitations": [
+        "The live portal and pinned book conflict for this exact route; the option remains quarantined until that source conflict is resolved.",
+        "Portal list and dealer figures are preserved separately from the conflicting official-book ledger."
+      ]
+    },
+    {
+      "id": "polar-drapery-pinch-split-white-48",
+      "manufacturer": "Polar",
+      "scenario": "ordinary",
+      "classification": "official_price_book_verified",
+      "product": {
+        "id": "polar_drapery_track",
+        "name": "Polar Motorized Drapery Track",
+        "programId": "pinch_split_white",
+        "programName": "Pinch Pleat Split White"
+      },
+      "lines": [
+        { "widthInches": 48, "heightInches": 96, "quantity": 1, "configuration": "Pinch pleat; split draw; white track; base configuration only" }
+      ],
+      "source": {
+        "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+        "pages": [74],
+        "evidenceRefs": [],
+        "note": "Official width-axis list grid. No portal result was captured for this exact configuration."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "official_msrp",
+        "ledgers": [
+          {
+            "id": "official_msrp",
+            "audience": "customer_retail",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "48-inch Pinch Pleat Split White", "amountCents": 47200 }
+            ],
+            "subtotalCents": 47200,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 47200
+          },
+          {
+            "id": "official_book_dealer_factor",
+            "audience": "dealer_cost",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "dealer_base", "category": "base_grid", "label": "$472 x .45", "amountCents": 21240 }
+            ],
+            "subtotalCents": 21240,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 21240
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "unpriceable",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:9fabac83125fe8fbd8aeb42623f748a58df8a2fac3279c6cd9e5f031969ead7a",
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": {
+          "productCents": 0,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 0
+        },
+        "blockCodes": [
+          "price_components.family_metadata_missing",
+          "product_status_not_sendable"
+        ],
+        "error": "A price-group program requires one unambiguous explicit pricing family and baseline program.",
+        "nonAuthoritativeDiagnostic": {
+          "sourceListCents": 47200,
+          "dealerCents": 21240,
+          "projectedCustomerCents": 53100,
+          "note": "Raw catalog arithmetic only; the authoritative component engine rejected the configuration."
+        }
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 47200,
+        "systemCents": 0,
+        "differenceCents": -47200,
+        "percentageBasisPoints": 10000,
+        "result": "fail",
+        "firstDiscrepancy": "The authoritative 805 component engine returns no base component or customer total.",
+        "suspectedCause": "Missing pricing-family and baseline metadata, followed by incomplete product restrictions."
+      },
+      "limitations": [
+        "Official-price-book verified only; no portal parity claim."
+      ]
+    },
+    {
+      "id": "polar-premium-pro-awning-120x83",
+      "manufacturer": "Polar",
+      "scenario": "large_or_surcharge_sensitive",
+      "classification": "official_price_book_verified",
+      "product": {
+        "id": "polar_awning_premium_pro",
+        "name": "Polar Premium Pro Awning",
+        "programId": "standard",
+        "programName": "Premium Pro"
+      },
+      "lines": [
+        { "widthInches": 120, "heightInches": 83, "quantity": 1, "configuration": "Premium Pro base grid at the minimum listed 120-inch width and 83-inch projection" }
+      ],
+      "source": {
+        "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+        "pages": [165],
+        "evidenceRefs": [],
+        "note": "Official Premium Pro MSRP grid. No portal result was captured for this exact configuration."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": "official_msrp",
+        "ledgers": [
+          {
+            "id": "official_msrp",
+            "audience": "customer_retail",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "120 x 83 Premium Pro", "amountCents": 490000 }
+            ],
+            "subtotalCents": 490000,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 490000
+          },
+          {
+            "id": "official_book_dealer_factor",
+            "audience": "dealer_cost",
+            "verification": "official_price_book_verified",
+            "components": [
+              { "id": "dealer_base", "category": "base_grid", "label": "$4,900 x .45", "amountCents": 220500 }
+            ],
+            "subtotalCents": 220500,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 220500
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "unpriceable",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:751e1f5a6f0141ccfc9af92cd8ee5ffa57f2c29fbf88cd1807259fe4ce10a57c",
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": {
+          "productCents": 0,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 0
+        },
+        "blockCodes": [
+          "price_components.family_metadata_missing",
+          "product_status_not_sendable"
+        ],
+        "error": "A price-group program requires one unambiguous explicit pricing family and baseline program.",
+        "nonAuthoritativeDiagnostic": {
+          "sourceListCents": 490000,
+          "dealerCents": 220500,
+          "projectedCustomerCents": 551250,
+          "note": "Raw catalog arithmetic only; the authoritative component engine rejected the configuration."
+        }
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": 490000,
+        "systemCents": 0,
+        "differenceCents": -490000,
+        "percentageBasisPoints": 10000,
+        "result": "fail",
+        "firstDiscrepancy": "The authoritative 805 component engine returns no base component or customer total.",
+        "suspectedCause": "Missing pricing-family and baseline metadata, followed by incomplete product restrictions."
+      },
+      "limitations": [
+        "Official-price-book verified only; no portal parity claim."
+      ]
+    },
+    {
+      "id": "lotus-mini-aluminum-17x36",
+      "manufacturer": "Lotus",
+      "scenario": "ordinary",
+      "classification": "official_dealer_book_verified_msrp_unverified",
+      "product": {
+        "id": "lotus_mini_blinds",
+        "name": "Lotus Aluminum Mini Blinds",
+        "programId": "lotus_amx_1in_aluminum_custom",
+        "programName": "1-inch Aluminum Mini Blind - Custom Cut"
+      },
+      "lines": [
+        { "widthInches": 17, "heightInches": 36, "quantity": 1, "configuration": "Custom-cut 1-inch aluminum mini blind; base dealer matrix cell" }
+      ],
+      "source": {
+        "sourceId": "lotus-west-a26-v1",
+        "pages": [97],
+        "evidenceRefs": [],
+        "note": "The official supplier manual labels this as dealer-net cost and supplies no customer MSRP method."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": null,
+        "ledgers": [
+          {
+            "id": "official_dealer_net",
+            "audience": "dealer_cost",
+            "verification": "official_dealer_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "17 x 36 dealer matrix", "amountCents": 2148 }
+            ],
+            "subtotalCents": 2148,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 2148
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:7d277bf3d41d4cb59d080f0aa74ed7e8013ecc1d2a4e4febc847c7f79213d077",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Dealer-net base converted by current 805 policy", "amountCents": 5370 }
+        ],
+        "customerRetailSubtotalCents": 5370,
+        "displayedTotalCents": 5370,
+        "internalCost": {
+          "productCents": 2148,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 2148
+        },
+        "blockCodes": [
+          "product_status_not_sendable"
+        ],
+        "error": "Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.",
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": null,
+        "systemCents": 5370,
+        "differenceCents": null,
+        "percentageBasisPoints": null,
+        "result": "unverified",
+        "firstDiscrepancy": "No manufacturer MSRP exists in the supplied source, so $53.70 cannot be compared to like-for-like manufacturer retail.",
+        "suspectedCause": "The current engine projects customer retail from dealer net using 2.5 without a manufacturer-specific MSRP source."
+      },
+      "limitations": [
+        "Dealer cost is verified; customer MSRP is not."
+      ]
+    },
+    {
+      "id": "lotus-faux-wood-bright-white-17x36",
+      "manufacturer": "Lotus",
+      "scenario": "option_heavy",
+      "classification": "official_dealer_book_verified_msrp_unverified",
+      "product": {
+        "id": "lotus_faux_wood_blinds",
+        "name": "Lotus Faux Wood Blinds",
+        "programId": "lotus_flx_2in_bright_white_custom",
+        "programName": "2-inch Faux Wood, Smooth Bright White - Custom Cut"
+      },
+      "lines": [
+        { "widthInches": 17, "heightInches": 36, "quantity": 1, "configuration": "Custom-cut 2-inch smooth faux wood; Bright White; base dealer matrix cell" }
+      ],
+      "source": {
+        "sourceId": "lotus-west-a26-v1",
+        "pages": [99],
+        "evidenceRefs": [],
+        "note": "The official supplier manual labels this as dealer-net cost and supplies no customer MSRP method."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": null,
+        "ledgers": [
+          {
+            "id": "official_dealer_net",
+            "audience": "dealer_cost",
+            "verification": "official_dealer_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "17 x 36 dealer matrix", "amountCents": 2357 }
+            ],
+            "subtotalCents": 2357,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 2357
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:55dec5642dfb11190dffec1137021fd5e9cac533b4335ae026a137a947f37bc6",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Dealer-net base converted by current 805 policy", "amountCents": 5893 }
+        ],
+        "customerRetailSubtotalCents": 5893,
+        "displayedTotalCents": 5893,
+        "internalCost": {
+          "productCents": 2357,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 2357
+        },
+        "blockCodes": [
+          "product_status_not_sendable"
+        ],
+        "error": "Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.",
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": null,
+        "systemCents": 5893,
+        "differenceCents": null,
+        "percentageBasisPoints": null,
+        "result": "unverified",
+        "firstDiscrepancy": "No manufacturer MSRP exists in the supplied source, so $58.93 cannot be compared to like-for-like manufacturer retail.",
+        "suspectedCause": "The current engine projects customer retail from dealer net using 2.5 without a manufacturer-specific MSRP source."
+      },
+      "limitations": [
+        "Dealer cost is verified; customer MSRP is not.",
+        "This is a separate product type but not a portal-verified option-heavy configuration because no authenticated Lotus portal evidence was available."
+      ]
+    },
+    {
+      "id": "lotus-steel-vertical-35x48",
+      "manufacturer": "Lotus",
+      "scenario": "large_or_surcharge_sensitive",
+      "classification": "official_dealer_book_verified_msrp_unverified",
+      "product": {
+        "id": "lotus_vertical_blinds",
+        "name": "Lotus Vertical Blinds",
+        "programId": "lotus_cv_steel_complete_custom",
+        "programName": "3.5-inch Steel Vertical Blind - Custom Cut"
+      },
+      "lines": [
+        { "widthInches": 35, "heightInches": 48, "quantity": 1, "configuration": "Custom-cut 3.5-inch complete steel vertical; base dealer matrix cell" }
+      ],
+      "source": {
+        "sourceId": "lotus-west-a26-v1",
+        "pages": [106],
+        "evidenceRefs": [],
+        "note": "The official supplier manual labels this as dealer-net cost and supplies no customer MSRP method."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": null,
+        "ledgers": [
+          {
+            "id": "official_dealer_net",
+            "audience": "dealer_cost",
+            "verification": "official_dealer_book_verified",
+            "components": [
+              { "id": "base_grid", "category": "base_grid", "label": "35 x 48 dealer matrix", "amountCents": 3197 }
+            ],
+            "subtotalCents": 3197,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 3197
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "priced_but_send_blocked",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:56aa3bd18ee5feda776cc93ebaf514e9e88fc0cbc3ddcabea958aca59702601d",
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "Dealer-net base converted by current 805 policy", "amountCents": 7993 }
+        ],
+        "customerRetailSubtotalCents": 7993,
+        "displayedTotalCents": 7993,
+        "internalCost": {
+          "productCents": 3197,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 3197
+        },
+        "blockCodes": [
+          "product_status_not_sendable"
+        ],
+        "error": "Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.",
+        "nonAuthoritativeDiagnostic": null
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": null,
+        "systemCents": 7993,
+        "differenceCents": null,
+        "percentageBasisPoints": null,
+        "result": "unverified",
+        "firstDiscrepancy": "No manufacturer MSRP exists in the supplied source, so $79.93 cannot be compared to like-for-like manufacturer retail.",
+        "suspectedCause": "The current engine projects customer retail from dealer net using 2.5 without a manufacturer-specific MSRP source."
+      },
+      "limitations": [
+        "Dealer cost is verified; customer MSRP is not.",
+        "The available third Lotus product is not a genuinely large test at this cell; no unsupported size was invented."
+      ]
+    },
+    {
+      "id": "onyx-us-made-vinyl-36x48",
+      "manufacturer": "Onyx",
+      "scenario": "ordinary",
+      "classification": "dealer_evidence_verified_msrp_unverified",
+      "product": {
+        "id": "onyx_shutters",
+        "name": "Onyx Shutters",
+        "programId": "onyx_us_made_vinyl",
+        "programName": "Onyx US Made Vinyl"
+      },
+      "lines": [
+        { "widthInches": 36, "heightInches": 48, "quantity": 1, "configuration": "12 square feet; outside mount; LR two-panel layout; 3.5-inch louvers; standard tilt; white; final frame-to-frame dimensions" }
+      ],
+      "source": {
+        "sourceId": "onyx-price-screenshot-2026-07-20",
+        "pages": [],
+        "evidenceRefs": [],
+        "note": "The supplied screenshot verifies $13.60 per square foot dealer cost. It does not establish manufacturer MSRP."
+      },
+      "manufacturerOutput": {
+        "comparableLedgerId": null,
+        "ledgers": [
+          {
+            "id": "dealer_cost_evidence",
+            "audience": "dealer_cost",
+            "verification": "user_supplied_pricing_evidence",
+            "components": [
+              { "id": "base_sqft", "category": "base_grid", "label": "12 sq ft x $13.60", "amountCents": 16320 }
+            ],
+            "subtotalCents": 16320,
+            "freightCents": 0,
+            "processingCents": 0,
+            "taxCents": 0,
+            "grandTotalCents": 16320
+          }
+        ]
+      },
+      "systemBefore": {
+        "captureMethod": "exact_v2_backend_runtime",
+        "status": "unpriceable",
+        "productStatus": "restriction_source_incomplete",
+        "validationStatus": "blocked",
+        "sendable": false,
+        "selectionFingerprint": "sha256:86d272641e67989f7da731baa11bc93d91c9adf71487d1d26625cd8fb00593f2",
+        "components": [],
+        "customerRetailSubtotalCents": 0,
+        "displayedTotalCents": 0,
+        "internalCost": {
+          "productCents": 0,
+          "freightCents": 0,
+          "oversizeCents": 0,
+          "processingCents": 0,
+          "landedCents": 0
+        },
+        "blockCodes": [
+          "onyx.us_made_vinyl.restriction_identity_unverified",
+          "product_status_not_sendable"
+        ],
+        "error": "The supplied binder documents only generic Vinyl and does not establish U.S. Made Vinyl restrictions.",
+        "nonAuthoritativeDiagnostic": {
+          "sourceListCents": null,
+          "dealerCents": 16320,
+          "projectedCustomerCents": 40800,
+          "note": "Existing 805 catalog policy is $34 per square foot; this is not manufacturer MSRP and V2 correctly blocks it."
+        }
+      },
+      "comparison": {
+        "basis": "manufacturer_msrp_vs_805_customer_retail",
+        "manufacturerCents": null,
+        "systemCents": 0,
+        "differenceCents": null,
+        "percentageBasisPoints": null,
+        "result": "unverified",
+        "firstDiscrepancy": "No current Onyx restriction source or manufacturer MSRP supports a customer-retail comparison.",
+        "suspectedCause": "The only current price evidence is dealer cost; the restriction binder identifies generic Vinyl and is stale."
+      },
+      "limitations": [
+        "Three genuinely different Onyx product types are impossible because the current system exposes one Onyx shutter family.",
+        "The $408 diagnostic is an 805 policy amount, not manufacturer MSRP."
+      ]
+    }
+  ]
+}
