@@ -116,27 +116,27 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
 
     expect(result.programName).toBe("Cordless Fabric - Price Group 2");
-    expect(result.total).toBe(370.5);
+    expect(result.total).toBe(407.55);
     expect(result.components).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           category: "base_grid",
           catalogAmount: 298,
-          wholesaleAmount: 89.4,
-          customerAmount: 223.5,
+          wholesaleAmount: 98.34,
+          customerAmount: 245.85,
         }),
         expect.objectContaining({
           category: "fabric_upgrade",
           catalogAmount: 30,
-          wholesaleAmount: 9,
-          customerAmount: 22.5,
+          wholesaleAmount: 9.9,
+          customerAmount: 24.75,
         }),
         expect.objectContaining({
           category: "operating_system",
           priceLineId: "motor:autowand:autowand",
           catalogAmount: 166,
-          wholesaleAmount: 49.8,
-          customerAmount: 124.5,
+          wholesaleAmount: 54.78,
+          customerAmount: 136.95,
         }),
         expect.objectContaining({
           id: "accessory:autowand_included_charging_kit",
@@ -148,19 +148,324 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     );
     expect(result.componentTotals).toMatchObject({
       catalogPerWindow: 494,
-      wholesalePerWindow: 148.2,
-      customerPerWindow: 370.5,
+      wholesalePerWindow: 163.02,
+      customerPerWindow: 407.55,
     });
     expect(priced.costResult).toMatchObject({
       ok: true,
-      wholesaleUnitCost: 148.2,
+      wholesaleUnitCost: 163.02,
       freightAllocated: 25,
-      landedCostTotal: 173.2,
+      processingFeeAllocated: 3.76,
+      landedCostTotal: 191.78,
     });
 
-    const customerSnapshot = JSON.stringify(priced.snapshot);
-    expect(customerSnapshot).toContain('"customerAmount":223.5');
-    expect(customerSnapshot).not.toMatch(/wholesaleAmount|catalogAmount|dealerFactor|landedCost/i);
+    expect(priced.snapshot?.dealerPolicy).toMatchObject({
+      effectiveDealerFactor: 0.33,
+    });
+    const customerRetailSnapshot = JSON.stringify(priced.snapshot?.retail);
+    expect(customerRetailSnapshot).toContain('"customerAmount":245.85');
+    expect(customerRetailSnapshot).not.toMatch(
+      /wholesaleAmount|catalogAmount|dealerFactor|processingFee|landedCost/i,
+    );
+  });
+
+  it("charges the source-backed Fabric Valance selected through the existing interface", () => {
+    const quoteLine = line("norman-fabric-valance-line", "Roller Shades", 67, 71);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_1_pg1",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Cordless",
+          valance: '3 1/2" Fabric Valance*',
+          fabric: "Brook",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
+          fabric_color_collection: "Brook",
+          fabric_color_code: "F1120",
+          fabric_color_name: "Pewter",
+          roller_application: "Single Shade",
+          top_treatment_class: "Fabric Valance",
+          roller_top_treatment: "fabric_valance",
+          roller_tube: "All Tubes",
+          hem_bar: "Fabric Covered",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.total).toBe(709.5);
+    expect(result.internalCost?.productCostTotal).toBe(283.8);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 628,
+          wholesaleAmount: 207.24,
+          customerAmount: 518.1,
+        }),
+        expect.objectContaining({
+          id: "accessory:fabric_valance_3_1_2in_4_1_2in_and_6in",
+          category: "accessory",
+          basis: "width_ladder",
+          catalogAmount: 232,
+          wholesaleAmount: 76.56,
+          customerAmount: 191.4,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 860,
+      wholesalePerWindow: 283.8,
+      customerPerWindow: 709.5,
+    });
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
+  it("preserves the exact 8-inch Fabric Valance under the broad Fabric Valance class", () => {
+    const quoteLine = line("norman-8in-fabric-valance-line", "Roller Shades", 67, 71);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_1_pg1",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Cordless",
+          valance: '8" Fabric Valance*',
+          fabric: "Brook",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
+          fabric_color_collection: "Brook",
+          fabric_color_code: "F1120",
+          fabric_color_name: "Pewter",
+          roller_application: "Single Shade",
+          top_treatment_class: "Fabric Valance",
+          roller_top_treatment: "Fabric Valance",
+          roller_tube: "All Tubes",
+          hem_bar: "Fabric Covered",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.total).toBe(791.18);
+    expect(result.internalCost?.productCostTotal).toBe(316.47);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "accessory:8in_fabric_valance_and_cassette",
+          category: "accessory",
+          basis: "width_ladder",
+          catalogAmount: 331,
+          wholesaleAmount: 109.23,
+          customerAmount: 273.08,
+        }),
+      ]),
+    );
+    expect(
+      result.components.some(
+        (component) =>
+          component.priceLineId ===
+          "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      ),
+    ).toBe(false);
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 959,
+      wholesalePerWindow: 316.47,
+      customerPerWindow: 791.18,
+    });
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
+  it("preserves Curved Fascia with Fabric instead of repricing it as plain fascia", () => {
+    const quoteLine = line("norman-curved-fabric-fascia-line", "Roller Shades", 67, 71);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_1_pg1",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Cordless",
+          valance: "Curved Fascia with Fabric*",
+          fabric: "Brook",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
+          fabric_color_collection: "Brook",
+          fabric_color_code: "F1120",
+          fabric_color_name: "Pewter",
+          roller_application: "Single Shade",
+          top_treatment_class: "Curved Fascia",
+          roller_top_treatment: "Curved Fascia",
+          roller_tube: "All Tubes",
+          hem_bar: "Fabric Covered",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.total).toBe(709.5);
+    expect(result.internalCost?.productCostTotal).toBe(283.8);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "accessory:fabric_valance_3_1_2in_4_1_2in_and_6in",
+          category: "accessory",
+          basis: "width_ladder",
+          catalogAmount: 232,
+          wholesaleAmount: 76.56,
+          customerAmount: 191.4,
+        }),
+      ]),
+    );
+    expect(
+      result.components.some(
+        (component) =>
+          component.priceLineId ===
+          "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+      ),
+    ).toBe(false);
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 860,
+      wholesalePerWindow: 283.8,
+      customerPerWindow: 709.5,
+    });
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
+  it("classifies the exact Smart Release UI value as the operating-system price", () => {
+    const quoteLine = line("norman-smartrelease-line", "Roller Shades", 30, 48);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_3_pg3",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Smart Release",
+          valance: "No Valance",
+          fabric: "Caroline",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_3_pg3",
+          fabric_color_collection: "Caroline",
+          fabric_color_code: "F0867",
+          fabric_color_name: "White sand",
+          roller_application: "Single Shade",
+          top_treatment_class: "No Top Treatment",
+          roller_tube: '1 3/4" (43mm) Tube',
+          hem_bar: "Fabric Covered",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.total).toBe(380.33);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "operating:smartrelease",
+          category: "operating_system",
+          priceLineId: "smartrelease",
+          catalogAmount: 89,
+          wholesaleAmount: 29.37,
+          customerAmount: 73.43,
+        }),
+      ]),
+    );
+    expect(
+      result.components.some(
+        (component) =>
+          component.category === "accessory" &&
+          component.priceLineId === "smartrelease",
+      ),
+    ).toBe(false);
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 461,
+      wholesalePerWindow: 152.13,
+      customerPerWindow: 380.33,
+    });
+    expect(quote.sendability.sendable).toBe(true);
+  });
+
+  it("rounds a half-cent line discount from integer cents exactly once", () => {
+    const quoteLine = line("norman-half-cent-discount-line", "Roller Shades", 36, 60);
+    const quote = repriceOne(
+      quoteLine,
+      design(
+        quoteLine,
+        "Norman",
+        "roller",
+        "roller_cordless_fabric_price_group_1_pg1",
+        {
+          mount_type: "Inside Mount",
+          shade_type: "Single Shade",
+          lift_system: "Cordless",
+          valance: "No Valance",
+          fabric: "Brook",
+        },
+        {
+          fabric_program_id: "roller_cordless_fabric_price_group_1_pg1",
+          fabric_color_collection: "Brook",
+          fabric_color_code: "F1120",
+          fabric_color_name: "Pewter",
+          roller_application: "Single Shade",
+          top_treatment_class: "No Top Treatment",
+          roller_tube: "All Tubes",
+          hem_bar: "Fabric Covered",
+          roller_region_scope: "ca_ma",
+          shipping_region: "continental_us",
+          discount_percent: 15,
+        },
+      ),
+      true,
+    );
+    const result = quote.designs[0].result;
+    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
+
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 346,
+      wholesalePerWindow: 114.18,
+      customerPerWindow: 285.45,
+    });
+    expect(result.discountAmount).toBe(42.82);
+    expect(result.unitPrice).toBe(242.63);
+    expect(result.total).toBe(242.63);
+    expect(quote.sendability.sendable).toBe(true);
   });
 
   it("keeps Polar's $142 source cell but applies V2 retail to its $63.90 dealer cost", () => {
@@ -330,10 +635,10 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       throw new Error(JSON.stringify(motorOnlyResult, null, 2));
     }
     expect(motorOnlyResult).toMatchObject({
-      base: 666,
-      wholesaleBase: 266.4,
+      base: 732.6,
+      wholesaleBase: 293.04,
       configurationUnits: 3,
-      total: 1_564.5,
+      total: 1_720.95,
       productStatus: "documented_limited",
       validationStatus: "valid",
     });
@@ -341,17 +646,22 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       expect.arrayContaining([
         expect.objectContaining({
           id: "coupled_shade",
-          amount: 175.5,
-          wholesaleAmount: 70.2,
+          amount: 193.05,
+          wholesaleAmount: 77.22,
         }),
         expect.objectContaining({
           id: "motor:smart_motorization:motor",
-          amount: 723,
-          wholesaleAmount: 289.2,
+          amount: 795.3,
+          wholesaleAmount: 318.12,
           detail: "482 x 2",
         }),
       ]),
     );
+    expect(motorOnlyResult.componentTotals).toMatchObject({
+      catalogPerWindow: 2_086,
+      wholesalePerWindow: 688.38,
+      customerPerWindow: 1_720.95,
+    });
     expect(motorOnly.sendability.sendable).toBe(true);
 
     const withSmartSense = repriceOne(quoteLine, {
@@ -365,16 +675,24 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:smart_motorization:smartsense",
-          amount: 45,
-          wholesaleAmount: 18,
+          amount: 49.5,
+          wholesaleAmount: 19.8,
         }),
       ]),
     );
-    expect(smartResult.total - motorOnlyResult.total).toBe(45);
+    expect(smartResult.componentTotals).toMatchObject({
+      catalogPerWindow: 2_146,
+      wholesalePerWindow: 708.18,
+      customerPerWindow: 1_770.45,
+    });
+    expect(smartResult.total - motorOnlyResult.total).toBe(49.5);
     expect(
-      (smartResult.internalCost?.productCostTotal ?? 0) -
-        (motorOnlyResult.internalCost?.productCostTotal ?? 0),
-    ).toBe(18);
+      Math.round(
+        ((smartResult.internalCost?.productCostTotal ?? 0) -
+          (motorOnlyResult.internalCost?.productCostTotal ?? 0)) *
+          100,
+      ),
+    ).toBe(1_980);
     expect(withSmartSense.sendability.sendable).toBe(true);
   });
 });

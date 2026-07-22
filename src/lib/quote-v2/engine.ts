@@ -11,6 +11,7 @@ import {
   type PriceBreakdown,
   type PriceFailure,
   type PriceInput,
+  type PriceLine,
   type PriceResult,
   type SurchargeSelection,
 } from "@/lib/quote/pricing";
@@ -23,6 +24,10 @@ import {
   type SelectionContext,
   type ValidationIssue,
 } from "./core";
+import {
+  NORMAN_805_DEALER_POLICY,
+  normanDealerScheduleForSelection,
+} from "./norman-dealer-policy";
 import { productRuleStatusForSelection, validateSelection } from "./rules";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { rollerMotorChargeForPowerConfiguration } from "./roller-motor";
@@ -44,13 +49,25 @@ export type QuoteV2ValidationStatus = "valid" | "blocked";
 
 export type QuoteV2InternalProductCost = {
   basis: "catalog_factor" | "dealer_net";
+  effectiveDealerFactor?: number;
+  dealerPolicyId?: string;
+  dealerPolicyFixtureId?: string;
   productCostUnit: number;
   productCostTotal: number;
   freightAllocated: number;
   oversizeAllocated: number;
+  processingFeeAllocated: number;
   landedCostTotal: number;
   freightStatus: "published" | "estimated" | "unresolved" | "not_applicable";
 };
+
+export type QuoteV2DealerPolicySnapshot = Readonly<{
+  policyId: string;
+  fixtureId: string;
+  effectiveDealerFactor: number;
+  /** Deterministic signature of every current cost-policy term. */
+  revision: string;
+}>;
 
 export type QuoteV2ResultMetadata = {
   catalogVersion: string;
@@ -82,6 +99,143 @@ export type QuoteV2PriceRequest = {
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function moneyCents(value: number): number {
+  return Math.round(value * 100);
+}
+
+function moneyFromCents(value: number): number {
+  return Math.round(value) / 100;
+}
+
+function multiplyMoney(value: number, multiplier: number): number {
+  return moneyFromCents(Math.round(moneyCents(value) * multiplier));
+}
+
+function percentOfMoney(value: number, percent: number): number {
+  return moneyFromCents(Math.round((moneyCents(value) * percent) / 100));
+}
+
+function sumMoney(values: readonly number[]): number {
+  return moneyFromCents(
+    values.reduce((total, value) => total + moneyCents(value), 0),
+  );
+}
+
+function currentNormanDealerPolicyRevision(
+  effectiveDealerFactor: number,
+): string {
+  return JSON.stringify({
+    policyId: NORMAN_805_DEALER_POLICY.id,
+    verifiedOn: NORMAN_805_DEALER_POLICY.verifiedOn,
+    fixtureId: NORMAN_805_DEALER_POLICY.runtimeVerification.fixtureId,
+    effectiveDealerFactor,
+    freight: NORMAN_805_DEALER_POLICY.freight,
+    processingFee: NORMAN_805_DEALER_POLICY.processingFee,
+  });
+}
+
+export function dealerPolicySnapshotFromPriceResult(
+  result: QuoteV2PriceResult,
+): QuoteV2DealerPolicySnapshot | null {
+  if (!result.ok || !result.internalCost) return null;
+  const { dealerPolicyId, dealerPolicyFixtureId, effectiveDealerFactor } =
+    result.internalCost;
+  if (
+    !dealerPolicyId ||
+    !dealerPolicyFixtureId ||
+    typeof effectiveDealerFactor !== "number" ||
+    !Number.isFinite(effectiveDealerFactor)
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    policyId: dealerPolicyId,
+    fixtureId: dealerPolicyFixtureId,
+    effectiveDealerFactor,
+    revision: currentNormanDealerPolicyRevision(effectiveDealerFactor),
+  });
+}
+
+/**
+ * Allocate one portal-rounded group back to its source lines without losing a
+ * penny. Each exact fractional-cent share is floored first; remaining cents go
+ * to the largest fractional remainders, with original source order as the
+ * stable tie-breaker. The output order always matches the input order.
+ */
+function allocateRoundedMoneyGroup(
+  sourceAmounts: readonly number[],
+  multiplier: number,
+): number[] {
+  if (sourceAmounts.length === 0) return [];
+  const scale = 1_000_000;
+  const scaledMultiplier = Math.round(multiplier * scale);
+  const exactNumerators = sourceAmounts.map(
+    (amount) => moneyCents(amount) * scaledMultiplier,
+  );
+  const allocatedCents = exactNumerators.map((numerator) =>
+    Math.floor(numerator / scale),
+  );
+  const targetCents = Math.round(
+    exactNumerators.reduce((total, numerator) => total + numerator, 0) /
+      scale,
+  );
+  let centsRemaining =
+    targetCents -
+    allocatedCents.reduce((total, amount) => total + amount, 0);
+  const priority = exactNumerators
+    .map((numerator, index) => ({
+      index,
+      remainder: numerator % scale,
+    }))
+    .sort(
+      (left, right) =>
+        right.remainder - left.remainder || left.index - right.index,
+    );
+  for (let index = 0; index < centsRemaining; index += 1) {
+    allocatedCents[priority[index].index] += 1;
+  }
+  return allocatedCents.map(moneyFromCents);
+}
+
+function catalogLinesWithPortalGroupedRounding(
+  lines: readonly PriceLine[],
+  product: CatalogProduct,
+  effectiveDealerFactor: number,
+): PriceLine[] {
+  if (lines.length === 0) return [];
+  const wholesaleAmounts = Array<number>(lines.length).fill(0);
+  const indexesByFactor = new Map<number, number[]>();
+  lines.forEach((line, index) => {
+    // Published freight and other explicitly factored charges retain their
+    // documented factor. Product options and motorization inherit the current
+    // account schedule selected through the existing interface.
+    const factor =
+      findProductSurcharge(product, line.id)?.dealerFactor ??
+      effectiveDealerFactor;
+    const indexes = indexesByFactor.get(factor) ?? [];
+    indexes.push(index);
+    indexesByFactor.set(factor, indexes);
+  });
+  for (const [factor, indexes] of indexesByFactor) {
+    const allocation = allocateRoundedMoneyGroup(
+      indexes.map((index) => lines[index].amount),
+      factor,
+    );
+    indexes.forEach((lineIndex, allocationIndex) => {
+      wholesaleAmounts[lineIndex] = allocation[allocationIndex];
+    });
+  }
+
+  // Customer retail is also one rounded group, then allocated back to the
+  // exact source identities so Base/Fabric/Accessories/Operating always sum.
+  const customerAmounts = allocateRoundedMoneyGroup(wholesaleAmounts, 2.5);
+  return lines.map((line, index) => ({
+    ...line,
+    wholesaleAmount: wholesaleAmounts[index],
+    amount: customerAmounts[index],
+  }));
 }
 
 function metadata(
@@ -151,12 +305,111 @@ function positiveWholeUnits(value: unknown): number | null {
 
 function normalizedAutomaticDetail(value: unknown): unknown {
   if (typeof value !== "string") return value;
-  return value
+  const normalized = value
     .trim()
     .toLowerCase()
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+  // The existing Roller interface stores the visible label `Smart Release`,
+  // while the source catalog uses the canonical key `smartrelease`. Treat the
+  // two spellings as the same configuration so the required operating charge
+  // is derived by the backend instead of relying on a manual surcharge.
+  return normalized === "smart_release" ? "smartrelease" : normalized;
+}
+
+type CanonicalRollerValance =
+  | "square_fascia"
+  | "plain_curved_fascia"
+  | "curved_fascia_with_fabric"
+  | "fabric_valance_3_1_2"
+  | "fabric_valance_4_1_2"
+  | "fabric_valance_6"
+  | "fabric_valance_8"
+  | "modern_wood_valance_4_1_2"
+  | "cassette"
+  | "none";
+
+function canonicalRollerValance(value: unknown): CanonicalRollerValance | null {
+  const normalized = normalizedAutomaticDetail(value);
+  if (typeof normalized !== "string" || !normalized) return null;
+  switch (normalized) {
+    case "square_fascia":
+      return "square_fascia";
+    case "curved_fascia":
+    case "plain_curved_fascia":
+      return "plain_curved_fascia";
+    case "curved_fascia_with_fabric":
+      return "curved_fascia_with_fabric";
+    case "fabric_valance":
+    case "3_1_2_fabric_valance":
+    case "fabric_valance_3_1_2":
+      return "fabric_valance_3_1_2";
+    case "4_1_2_fabric_valance":
+    case "fabric_valance_4_1_2":
+      return "fabric_valance_4_1_2";
+    case "6_fabric_valance":
+    case "fabric_valance_6":
+      return "fabric_valance_6";
+    case "8_fabric_valance":
+    case "fabric_valance_8":
+      return "fabric_valance_8";
+    case "wood_valance":
+    case "4_1_2_modern_wood_valance":
+    case "modern_wood_valance_4_1_2":
+      return "modern_wood_valance_4_1_2";
+    case "cassette":
+      return "cassette";
+    case "none":
+    case "no_valance":
+    case "no_top_treatment":
+    case "lightguard_360_housing":
+      return "none";
+    default:
+      return null;
+  }
+}
+
+function reconciledRollerValance(
+  topTreatmentValue: unknown,
+  valanceValue: unknown,
+): CanonicalRollerValance | null {
+  const topTreatment = normalizedAutomaticDetail(topTreatmentValue);
+  const selectedValance = canonicalRollerValance(valanceValue);
+  if (typeof topTreatment !== "string" || !topTreatment) {
+    return selectedValance;
+  }
+
+  // The top-treatment class governs which exact dependent options remain
+  // valid. Preserve a compatible exact subtype; replace a stale incompatible
+  // value with the documented default for the newly selected class.
+  switch (topTreatment) {
+    case "no_top_treatment":
+    case "lightguard_360_housing":
+      return "none";
+    case "square_fascia":
+      return "square_fascia";
+    case "curved_fascia":
+      return selectedValance === "plain_curved_fascia" ||
+        selectedValance === "curved_fascia_with_fabric"
+        ? selectedValance
+        : "plain_curved_fascia";
+    case "fabric_valance":
+      return selectedValance === "fabric_valance_3_1_2" ||
+        selectedValance === "fabric_valance_4_1_2" ||
+        selectedValance === "fabric_valance_6" ||
+        selectedValance === "fabric_valance_8"
+        ? selectedValance
+        : "fabric_valance_3_1_2";
+    case "wood_valance":
+      return selectedValance === "modern_wood_valance_4_1_2"
+        ? selectedValance
+        : "modern_wood_valance_4_1_2";
+    case "cassette":
+      return "cassette";
+    default:
+      return canonicalRollerValance(topTreatment) ?? selectedValance;
+  }
 }
 
 /**
@@ -204,14 +457,11 @@ export function authoritativeAutomaticSurchargeSelections(
       details.hardware_type = "premium";
     }
 
-    const topTreatment = String(details.roller_top_treatment ?? "");
-    if (!details.valance) {
-      if (topTreatment === "square_fascia") details.valance = "square_fascia";
-      else if (topTreatment === "curved_fascia") details.valance = "plain_curved_fascia";
-      else if (topTreatment === "fabric_valance") details.valance = "fabric_valance";
-      else if (topTreatment === "wood_valance") details.valance = "wood_valance";
-      else if (topTreatment === "cassette") details.valance = "cassette";
-    }
+    const valance = reconciledRollerValance(
+      details.roller_top_treatment ?? details.top_treatment_class,
+      details.valance,
+    );
+    if (valance) details.valance = valance;
   }
 
   return deriveAutomaticSurcharges(selection.productId, details).map(
@@ -560,10 +810,14 @@ function dealerNetRetail(
   const program = product ? getProgram(product, cost.programId) : undefined;
   const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
   const discountPercent = Math.min(100, Math.max(0, Number(input.discountPercent) || 0));
-  const undiscountedUnit = roundMoney(cost.dealerNetUnitCost * 2.5);
-  const discountAmount = roundMoney(undiscountedUnit * (discountPercent / 100));
-  const unitPrice = roundMoney(undiscountedUnit - discountAmount);
-  const productCostTotal = roundMoney(cost.dealerNetUnitCost * quantity);
+  const undiscountedUnit = multiplyMoney(cost.dealerNetUnitCost, 2.5);
+  const discountAmount = percentOfMoney(undiscountedUnit, discountPercent);
+  const unitPrice = moneyFromCents(
+    moneyCents(undiscountedUnit) - moneyCents(discountAmount),
+  );
+  const productCostTotal = moneyFromCents(
+    moneyCents(cost.dealerNetUnitCost) * quantity,
+  );
   const sourceResult: PriceBreakdown = {
     ok: true,
     productId: cost.productId,
@@ -604,7 +858,7 @@ function dealerNetRetail(
       wholesaleUnitPrice: cost.dealerNetUnitCost,
       quantity,
       onceTotal: 0,
-      total: roundMoney(unitPrice * quantity),
+      total: moneyFromCents(moneyCents(unitPrice) * quantity),
       wholesaleTotal: productCostTotal,
       warnings: ["Customer retail was calculated from the configured dealer pricing policy."],
       costStatus: "complete",
@@ -615,10 +869,16 @@ function dealerNetRetail(
   };
 }
 
-function selectedNormanDealerScale(selection: SelectionContext): number {
-  if (!selection.manufacturerId.toLowerCase().includes("norman")) return 1;
-  const selected = Number(selection.options.schedule_discount_percent);
-  return selected === 28.5 ? 0.95 : 1;
+function selectedNormanDealerFactor(
+  selection: SelectionContext,
+  product: CatalogProduct,
+): number | null {
+  if (product.manufacturer?.trim().toLowerCase() !== "norman") return null;
+  return (
+    normanDealerScheduleForSelection(
+      selection.options.schedule_discount_percent,
+    )?.effectivePortalFactor ?? null
+  );
 }
 
 /** Convert every source-backed product and option cost into V2 retail policy. */
@@ -626,7 +886,9 @@ function catalogCostRetail(
   source: PriceBreakdown,
   selection: SelectionContext,
 ): PriceResult {
+  const product = getProduct(source.productId);
   if (
+    !product ||
     source.wholesaleBase == null ||
     source.wholesaleUnitPrice == null ||
     source.wholesaleTotal == null ||
@@ -641,28 +903,77 @@ function catalogCostRetail(
     };
   }
 
-  const dealerScale = selectedNormanDealerScale(selection);
-  const productCostBase = roundMoney(source.wholesaleBase * dealerScale);
-  const productCostUnit = roundMoney(source.wholesaleUnitPrice * dealerScale);
-  const productCostTotal = roundMoney(source.wholesaleTotal * dealerScale);
-  const productCostOnce = roundMoney(
-    Math.max(0, productCostTotal - productCostUnit * source.quantity),
+  const normanDealerFactor = selectedNormanDealerFactor(selection, product);
+  const onceLineIds = new Set(
+    source.surchargeLines
+      .filter(
+        (line) => findProductSurcharge(product, line.id)?.per === "once",
+      )
+      .map((line) => line.id),
   );
-  const base = roundMoney(productCostBase * 2.5);
-  const undiscountedUnit = roundMoney(productCostUnit * 2.5);
-  const discountAmount = roundMoney(
-    undiscountedUnit * (source.discountPercent / 100),
+  const sourcePerWindowLines = source.surchargeLines.filter(
+    (line) => !onceLineIds.has(line.id),
   );
-  const unitPrice = roundMoney(undiscountedUnit - discountAmount);
-  const onceTotal = roundMoney(productCostOnce * 2.5);
-  const surchargeLines = source.surchargeLines.map((line) => {
-    const wholesaleAmount = roundMoney((line.wholesaleAmount ?? 0) * dealerScale);
-    return {
-      ...line,
-      wholesaleAmount,
-      amount: roundMoney(wholesaleAmount * 2.5),
-    };
-  });
+  const sourceOnceLines = source.surchargeLines.filter((line) =>
+    onceLineIds.has(line.id),
+  );
+  const convertedBySourceLine = new Map<PriceLine, PriceLine>();
+  const convertLines = (lines: readonly PriceLine[]): PriceLine[] => {
+    const converted =
+      normanDealerFactor == null
+        ? lines.map((line) => ({
+            ...line,
+            wholesaleAmount: line.wholesaleAmount ?? 0,
+            amount: multiplyMoney(line.wholesaleAmount ?? 0, 2.5),
+          }))
+        : catalogLinesWithPortalGroupedRounding(
+            lines,
+            product,
+            normanDealerFactor,
+          );
+    lines.forEach((line, index) => {
+      convertedBySourceLine.set(line, converted[index]);
+    });
+    return converted;
+  };
+  const perWindowLines = convertLines(sourcePerWindowLines);
+  const onceLines = convertLines(sourceOnceLines);
+  const surchargeLines = source.surchargeLines.map(
+    (line) => convertedBySourceLine.get(line) as PriceLine,
+  );
+
+  // Norman portal parity has two merchandise rounding groups: one selected
+  // grid and one sum of all per-window option charges. The latter is allocated
+  // back to source lines above so the itemized ledger retains provenance while
+  // summing to the exact portal subtotal.
+  const productCostBase =
+    normanDealerFactor == null
+      ? source.wholesaleBase
+      : multiplyMoney(source.base, normanDealerFactor);
+  const productCostUnit = sumMoney([
+    productCostBase,
+    ...perWindowLines.map((line) => line.wholesaleAmount ?? 0),
+  ]);
+  const productCostOnce = sumMoney(
+    onceLines.map((line) => line.wholesaleAmount ?? 0),
+  );
+  const productCostTotal = moneyFromCents(
+    moneyCents(productCostUnit) * source.quantity +
+      moneyCents(productCostOnce),
+  );
+  const base = multiplyMoney(productCostBase, 2.5);
+  const undiscountedUnit = sumMoney([
+    base,
+    ...perWindowLines.map((line) => line.amount),
+  ]);
+  const discountAmount = percentOfMoney(
+    undiscountedUnit,
+    source.discountPercent,
+  );
+  const unitPrice = moneyFromCents(
+    moneyCents(undiscountedUnit) - moneyCents(discountAmount),
+  );
+  const onceTotal = sumMoney(onceLines.map((line) => line.amount));
   return {
     ...source,
     base,
@@ -672,7 +983,9 @@ function catalogCostRetail(
     discountAmount,
     wholesaleUnitPrice: productCostUnit,
     onceTotal,
-    total: roundMoney(unitPrice * source.quantity + onceTotal),
+    total: moneyFromCents(
+      moneyCents(unitPrice) * source.quantity + moneyCents(onceTotal),
+    ),
     wholesaleTotal: productCostTotal,
     warnings: [
       ...source.warnings,
@@ -819,7 +1132,7 @@ function baselinePriceComponent(
       matchedHeight: dealer.matchedHeight,
       catalogAmount: dealer.dealerNetUnitCost,
       wholesaleAmount: dealer.dealerNetUnitCost,
-      customerAmount: roundMoney(dealer.dealerNetUnitCost * 2.5),
+      customerAmount: multiplyMoney(dealer.dealerNetUnitCost, 2.5),
       source,
     };
   }
@@ -884,14 +1197,31 @@ function priceComponentInputs(
     ? `motor:${baseMotor.groupId}:${baseMotor.optionId}`
     : null;
   const liftSystem = selection.configuration.lift_system;
+  const normalizedLiftSystem = normalizedComponentIdentity(liftSystem);
+  const compactLiftSystem = normalizedLiftSystem.replace(/\s+/g, "");
   const motorized =
-    normalizedComponentIdentity(liftSystem).includes("motor") ||
+    normalizedLiftSystem.includes("motor") ||
     Boolean(baseMotor);
+  const smartReleaseSurchargeId =
+    compactLiftSystem === "smartrelease"
+      ? selection.productId === "roman"
+        ? "smartrelease_lift_system"
+        : selection.productId === "roller" || selection.productId === "honeycomb"
+          ? "smartrelease"
+          : null
+      : null;
+  const operatingSurchargeLine = smartReleaseSurchargeId
+    ? sourceResult.surchargeLines.find(
+        (line) => line.id === smartReleaseSurchargeId,
+      )
+    : undefined;
   const fallbackMotorLine = sourceResult.surchargeLines.find((line) =>
     line.id.startsWith("motor:"),
   );
   const operatingPriceLineId =
-    baseMotorLineId ?? (motorized ? fallbackMotorLine?.id ?? null : null);
+    baseMotorLineId ??
+    operatingSurchargeLine?.id ??
+    (motorized ? fallbackMotorLine?.id ?? null : null);
   const operatingPriceLine = operatingPriceLineId
     ? sourceResult.surchargeLines.find(
         (line) => line.id === operatingPriceLineId,
@@ -1031,15 +1361,36 @@ function priceComponentInputs(
         label: `${operatingPriceLine.label} operating system`,
         category: "operating_system",
         status: "priced",
-        basis: "flat",
+        basis: priceComponentBasis(
+          product,
+          operatingPriceLine.id,
+          operatingPriceLine.kind,
+        ),
         selectionBindings: [
           { field: "lift_system", value: String(liftSystem ?? "Motorized") },
-          {
-            field: "motorization_selection",
-            value: operatingPriceLine.id,
-          },
+          baseMotor
+            ? {
+                field: "motorization_selection",
+                value: operatingPriceLine.id,
+              }
+            : {
+                field: "operating_surcharge",
+                value: operatingPriceLine.id,
+              },
         ],
-        source: motorPriceComponentSource(operatingPriceLine.id),
+        source: operatingPriceLine.id.startsWith("motor:")
+          ? motorPriceComponentSource(operatingPriceLine.id)
+          : (() => {
+              const surcharge = findProductSurcharge(
+                product,
+                operatingPriceLine.id,
+              );
+              return surcharge?.sourcePages?.length
+                ? sourceProvenance(contractSourceId(product.id), {
+                    pages: surcharge.sourcePages,
+                  })
+                : pricingSource;
+            })(),
         priceLineId: operatingPriceLine.id,
         units: baseMotor?.units ?? 1,
         billingScope: "per_window",
@@ -1075,6 +1426,11 @@ function priceComponentInputs(
 function internalCostFromResult(
   result: PriceBreakdown,
   dealerCostOverride?: { unit: number | null; total: number | null },
+  dealerPolicy?: {
+    effectiveDealerFactor: number;
+    policyId: string;
+    fixtureId: string;
+  },
 ): QuoteV2InternalProductCost | undefined {
   const unit = dealerCostOverride?.unit ?? result.wholesaleUnitPrice;
   const total = dealerCostOverride?.total ?? result.wholesaleTotal;
@@ -1082,10 +1438,18 @@ function internalCostFromResult(
   const product = getProduct(result.productId);
   return {
     basis: product?.priceBasis === "dealer_net" ? "dealer_net" : "catalog_factor",
+    ...(dealerPolicy
+      ? {
+          effectiveDealerFactor: dealerPolicy.effectiveDealerFactor,
+          dealerPolicyId: dealerPolicy.policyId,
+          dealerPolicyFixtureId: dealerPolicy.fixtureId,
+        }
+      : {}),
     productCostUnit: unit,
     productCostTotal: total,
     freightAllocated: 0,
     oversizeAllocated: 0,
+    processingFeeAllocated: 0,
     landedCostTotal: total,
     freightStatus:
       product?.freightStatus === "order_level"
@@ -1163,8 +1527,27 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   const resultMetadata = metadata(selection, productStatus, issues, true);
+  const normanSchedule =
+    product?.manufacturer?.trim().toLowerCase() === "norman"
+    ? normanDealerScheduleForSelection(
+        selection.options.schedule_discount_percent,
+      )
+    : null;
   const internalCost = request.includeInternalCost
-    ? internalCostFromResult(result, dealer ? { unit: dealer.productCostUnit, total: dealer.productCostTotal } : undefined)
+    ? internalCostFromResult(
+        result,
+        dealer
+          ? { unit: dealer.productCostUnit, total: dealer.productCostTotal }
+          : undefined,
+        normanSchedule
+          ? {
+              effectiveDealerFactor:
+                normanSchedule.effectivePortalFactor,
+              policyId: NORMAN_805_DEALER_POLICY.id,
+              fixtureId: normanSchedule.fixtureId,
+            }
+          : undefined,
+      )
     : undefined;
   return {
     ...result,
@@ -1212,12 +1595,15 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
       customerPerWindow: result.componentTotals.customerPerWindow,
       customerOncePerLine: result.componentTotals.customerOncePerLine,
     },
-    surchargeLines: result.surchargeLines.map(({ id, label, amount, kind, detail }) => ({
+    // Source price-line details can contain catalog/dealer formulas such as
+    // "$7 x 2". Customer projections retain the authoritative retail amount
+    // and structured component basis/units above, but never forward that
+    // internal formula text.
+    surchargeLines: result.surchargeLines.map(({ id, label, amount, kind }) => ({
       id,
       label,
       amount,
       kind,
-      ...(detail ? { detail } : {}),
     })),
     unitPrice: result.unitPrice,
     discountPercent: result.discountPercent,
@@ -1235,6 +1621,7 @@ export type ImmutableQuoteV2PriceSnapshot = {
   catalogAsOf: string;
   selectionFingerprint: string;
   priceStatus: "authoritative";
+  dealerPolicy: QuoteV2DealerPolicySnapshot | null;
   retail: Record<string, unknown>;
 };
 
@@ -1246,6 +1633,7 @@ export function createImmutablePriceSnapshot(
     catalogAsOf: result.catalogAsOf,
     selectionFingerprint: result.selectionFingerprint,
     priceStatus: "authoritative" as const,
+    dealerPolicy: dealerPolicySnapshotFromPriceResult(result),
     retail: Object.freeze(toCustomerQuotePriceResult(result)),
   });
 }

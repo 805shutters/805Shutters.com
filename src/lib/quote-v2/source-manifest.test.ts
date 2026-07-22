@@ -130,6 +130,17 @@ describe("quote V2 source manifest", () => {
     }
   });
 
+  it("quarantines the R00646 portal PDF from every runtime authority", () => {
+    expect(
+      getSourceManifestEntry("norman-dealer-pricing-snapshot-2026-07-20"),
+    ).toMatchObject({
+      authorities: [],
+      runtimeAuthority: false,
+      accountScope: "Norman dealer R00646 (not the current 805 account)",
+      quarantineReason: expect.stringMatching(/R00646.*must never drive current 805 pricing/i),
+    });
+  });
+
   it("constructs rule-level provenance from the pinned manifest", () => {
     expect(
       sourceProvenance("norman-roller-minmax-appendix-2026-08", {

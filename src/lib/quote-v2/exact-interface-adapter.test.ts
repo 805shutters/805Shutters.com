@@ -68,6 +68,50 @@ describe("V2 exact-interface adapter", () => {
     expect(context.configuration).not.toHaveProperty("pricing_grid_price");
   });
 
+  it("derives manufacturer identity only from the authoritative catalog product", () => {
+    for (const supplier of [undefined, "Typo Vendor"]) {
+      const context = selectionContextFromExactInterface(
+        line,
+        { ...design, supplier },
+        {
+          productId: "roller",
+          programId: "roller_cordless_fabric_price_group_1_pg1",
+        },
+      );
+      expect(context.manufacturerId).toBe("norman");
+    }
+
+    const lotus = selectionContextFromExactInterface(
+      line,
+      { ...design, supplier: "Norman" },
+      {
+        productId: "lotus_mini_blinds",
+        programId: "lotus_amx_1in_aluminum_custom",
+      },
+    );
+    expect(lotus.manufacturerId).toBe("lotus");
+  });
+
+  it("preserves present malformed schedule input for fail-closed validation", () => {
+    for (const schedule of [null, "", "not-a-number", Number.NaN]) {
+      const context = selectionContextFromExactInterface(
+        line,
+        {
+          ...design,
+          options_json: {
+            ...design.options_json,
+            schedule_discount_percent: schedule,
+          },
+        },
+        {
+          productId: "roller",
+          programId: "roller_cordless_fabric_price_group_1_pg1",
+        },
+      );
+      expect(context.options).toHaveProperty("schedule_discount_percent");
+    }
+  });
+
   it("invalidates the fingerprint for every price-affecting dimension, fabric, lift, and option change", () => {
     const base = selectionContextFromExactInterface(line, design, {
       productId: "roller",

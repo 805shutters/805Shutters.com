@@ -12,6 +12,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:quote-v2-golden": "vitest run src/lib/quote-v2/norman-roller-400-line-golden.test.ts",
     "test:e2e": "playwright test",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",

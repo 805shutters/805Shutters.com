@@ -3,8 +3,9 @@ import type { SelectionContext } from "./core";
 import { priceQuoteV2Selection } from "./engine";
 
 /**
- * Read-only dealer-portal fixture captured 2026-07-20 from Norman draft TEST,
- * line RR002. The draft was not checked out or submitted.
+ * Historical read-only dealer-portal fixture captured 2026-07-20 from Norman
+ * draft TEST, line RR002. The .30 account factor is superseded by the current
+ * authenticated 805 policy; its list dollars remain useful as a fixed input.
  */
 const NORMAN_PORTAL_RR002 = Object.freeze({
   product: "Roller Shades",
@@ -16,13 +17,15 @@ const NORMAN_PORTAL_RR002 = Object.freeze({
   colorName: "Mist Gray",
   widthInches: 36,
   heightInches: 60,
+  baseList: 384,
+  racewayList: 67,
   baseDealerNet: 115.2,
   racewayDealerNet: 20.1,
   subtotalDealerNet: 135.3,
 });
 
-describe("current Norman dealer-portal parity fixtures", () => {
-  it("matches RR002 base and Raceway dealer net to the cent", () => {
+describe("Norman dealer-portal parity fixtures", () => {
+  it("does not let the superseded RR002 .30 capture override current 805 policy", () => {
     const selection: SelectionContext = {
       manufacturerId: "norman",
       productId: "roller",
@@ -62,26 +65,26 @@ describe("current Norman dealer-portal parity fixtures", () => {
     });
 
     if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
-    expect(result.wholesaleBase).toBe(NORMAN_PORTAL_RR002.baseDealerNet);
+    expect(result.wholesaleBase).toBe(126.72); // $384 list x current .33
     expect(result.surchargeLines).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: "raceway",
-          wholesaleAmount: NORMAN_PORTAL_RR002.racewayDealerNet,
+          wholesaleAmount: 22.11, // $67 list x current .33
         }),
       ]),
     );
-    expect(result.wholesaleUnitPrice).toBe(
-      NORMAN_PORTAL_RR002.subtotalDealerNet,
-    );
-    expect(result.internalCost?.productCostUnit).toBe(
-      NORMAN_PORTAL_RR002.subtotalDealerNet,
-    );
+    expect(result.wholesaleUnitPrice).toBe(148.83);
+    expect(result.internalCost).toMatchObject({
+      productCostUnit: 148.83,
+      effectiveDealerFactor: 0.33,
+    });
+    expect(result.wholesaleBase).not.toBe(NORMAN_PORTAL_RR002.baseDealerNet);
 
     // Customer retail follows the V2 2.5 policy and is deliberately not the
     // dealer portal's net subtotal.
-    expect(result.base).toBe(288);
-    expect(result.surchargeLines[0]?.amount).toBe(50.25);
-    expect(result.total).toBe(338.25);
+    expect(result.base).toBe(316.8);
+    expect(result.surchargeLines[0]?.amount).toBe(55.28);
+    expect(result.total).toBe(372.08);
   });
 });

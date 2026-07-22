@@ -152,6 +152,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
       authoritativeWholesaleCost: {
         ok: true,
         basis: "catalog_factor",
+        effectiveDealerFactor: 0.33,
         matchedWidth: 30,
         matchedHeight: 48,
         wholesaleBase: 89.4,
@@ -176,7 +177,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("No top treatment");
     expect(html).toContain("Included");
     expect(html).toContain("AutoWand operating system");
-    expect(html).toContain("Manufacturer suggested retail x 0.30");
+    expect(html).toContain("Manufacturer suggested retail x 0.330");
     expect(highlightedWholesaleValues(html)).toContain("$89.40");
     expect(highlightedWholesaleValues(html)).toContain("$9");
     expect(highlightedWholesaleValues(html)).toContain("$49.80");
@@ -203,6 +204,26 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("$89.40");
     expect(highlightedWholesaleValues(html)).toEqual(["$89.40", "$0", "$89.40"]);
     expect(html).not.toContain("No source-backed wholesale cost");
+  });
+
+  it("shows the exact three-decimal slow-schedule portal factor", () => {
+    const html = renderCost({
+      ok: true,
+      basis: "catalog_factor",
+      effectiveDealerFactor: 0.297,
+      dealerPolicyId: "norman-805-dealer-policy-2026-07-21",
+      dealerPolicyFixtureId: "norman-805-live-portal-2026-07-21",
+      matchedWidth: 24,
+      matchedHeight: 36,
+      wholesaleBase: 75.44,
+      wholesaleAddOns: [],
+      wholesaleUnitCost: 75.44,
+      quantity: 1,
+      wholesaleTotal: 75.44,
+    }, 254, 254);
+
+    expect(html).toContain("Manufacturer suggested retail x 0.297");
+    expect(html).not.toContain("x 0.30");
   });
 
   it("shows Lotus dealer-net cost without inventing customer retail", () => {
@@ -298,7 +319,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).not.toContain("Surcharge mismatch");
   });
 
-  it("highlights quantity line cost and oversize allocation without marking retail red", () => {
+  it("highlights quantity, freight, oversize, and processing cost without marking retail red", () => {
     const html = renderCost({
       ok: true,
       basis: "catalog_factor",
@@ -311,7 +332,8 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
       wholesaleTotal: 360,
       freightAllocated: 25,
       oversizeAllocated: 80,
-      landedCostTotal: 465,
+      processingFeeAllocated: 7.7,
+      landedCostTotal: 472.7,
       freightStatus: "published",
     }, 600, 600);
 
@@ -322,8 +344,10 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
       "$360",
       "$25",
       "$80",
-      "$465",
+      "$7.70",
+      "$472.70",
     ]);
+    expect(html).toContain("Allocated processing fee");
     expect(highlightedWholesaleValues(html)).not.toContain("$1,200");
     expect(html).toContain("Retail line revenue");
     expect(html).toContain("Gross profit dollars");

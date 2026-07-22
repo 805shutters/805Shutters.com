@@ -31,6 +31,12 @@ export interface SourceManifestEntry {
   modifiedDate: ISODate | null;
   sha256: string;
   authorities: readonly SourceAuthority[];
+  /** False when the artifact is retained only as quarantined historical evidence. */
+  runtimeAuthority?: boolean;
+  /** Required context explaining why a pinned artifact cannot drive runtime rules. */
+  quarantineReason?: string;
+  /** Dealer/account scope when an artifact is not manufacturer-global evidence. */
+  accountScope?: string;
   pageCount?: number;
   sheetNames?: readonly string[];
   sourceUrl?: string;
@@ -130,14 +136,18 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     kind: "dealer_portal_snapshot",
     format: "pdf",
     fileName: "NORMAN PRICING.pdf",
-    title: "Product Pricing",
-    revision: "Dealer portal print dated 2026-07-20",
+    title: "Product Pricing (Dealer R00646 - quarantined)",
+    revision: "Dealer R00646 portal print dated 2026-07-20",
     effectiveDate: null,
     effectiveDateEvidence: "Capture dated 7/20/2026; no separate effective date stated",
     receivedDate: "2026-07-20",
     modifiedDate: "2026-07-20",
     sha256: "fdf0af921d137d778d6890b7afa97342045bd50d05a4838afc116b6c400f3044",
-    authorities: ["pricing", "freight", "dealer_program"],
+    authorities: [],
+    runtimeAuthority: false,
+    accountScope: "Norman dealer R00646 (not the current 805 account)",
+    quarantineReason:
+      "The PDF belongs to dealer R00646. Its $8 additional-unit freight rate must never drive current 805 pricing.",
     pageCount: 3,
   },
   {

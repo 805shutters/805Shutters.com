@@ -92,6 +92,32 @@ describe("Quote V2 authoritative manufacturer rules", () => {
     ).toContain("common.dealer_program.unsupported");
   });
 
+  it.each([null, "", "   ", "not-a-number", true, [], {}])(
+    "rejects a present malformed dealer schedule %#",
+    (schedule) => {
+      const context = selection("honeycomb", honeycombConfiguration);
+      expect(
+        ruleIds({
+          ...context,
+          options: { schedule_discount_percent: schedule },
+        }),
+      ).toContain("common.dealer_program.unsupported");
+    },
+  );
+
+  it("defaults only an absent schedule and accepts numeric UI strings", () => {
+    const context = selection("honeycomb", honeycombConfiguration);
+    expect(ruleIds({ ...context, options: {} })).not.toContain(
+      "common.dealer_program.unsupported",
+    );
+    expect(
+      ruleIds({
+        ...context,
+        options: { schedule_discount_percent: "28.5" },
+      }),
+    ).not.toContain("common.dealer_program.unsupported");
+  });
+
   it("rejects the future Roller appendix before August 1 and allows an injected preview date", () => {
     const before = selection("roller", rollerConfiguration, {
       catalogAsOf: "2026-07-31",

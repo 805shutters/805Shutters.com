@@ -14,6 +14,9 @@ export type PricingAuditSurcharge = {
 export type PricingAuditWholesaleCost = {
   ok: true;
   basis: "catalog_factor" | "dealer_net";
+  effectiveDealerFactor?: number;
+  dealerPolicyId?: string;
+  dealerPolicyFixtureId?: string;
   matchedWidth: number | null;
   matchedHeight: number | null;
   wholesaleBase: number;
@@ -24,6 +27,7 @@ export type PricingAuditWholesaleCost = {
   wholesaleTotal: number;
   freightAllocated?: number;
   oversizeAllocated?: number;
+  processingFeeAllocated?: number;
   landedCostTotal?: number;
   freightStatus?: "published" | "estimated" | "unresolved" | "not_applicable";
 };
@@ -548,10 +552,23 @@ export function PricingAuditPanel({
     authoritativeWholesaleCost?.basis === "catalog_factor" && wholesaleBase !== null && basePrice > 0
       ? wholesaleBase / basePrice
       : null;
+  const policyDealerFactor =
+    authoritativeWholesaleCost?.effectiveDealerFactor;
+  const effectiveDealerFactor = policyDealerFactor ?? componentDealerFactor;
+  const formatDealerFactor = (factor: number) =>
+    factor.toFixed(
+      Math.abs(factor - Math.round(factor * 100) / 100) < 0.000_001
+        ? 2
+        : 3,
+    );
   const costBasis = authoritativeWholesaleCost?.basis === "dealer_net"
     ? "Dealer-net source grid"
-    : componentDealerFactor !== null
-      ? `Manufacturer suggested retail x ${componentDealerFactor.toFixed(2)}`
+    : effectiveDealerFactor !== null
+      ? `Manufacturer suggested retail x ${
+          policyDealerFactor === undefined
+            ? formatDealerFactor(effectiveDealerFactor)
+            : policyDealerFactor.toFixed(3)
+        }`
     : dealerFactor !== null
       ? `Retail x ${dealerFactor.toFixed(2)}`
       : wholesaleRate !== null
@@ -863,6 +880,13 @@ export function PricingAuditPanel({
                   <DetailRow
                     label="Allocated oversize"
                     value={money(authoritativeWholesaleCost?.oversizeAllocated)}
+                    wholesaleCost
+                  />
+                )}
+                {(authoritativeWholesaleCost?.processingFeeAllocated ?? 0) > 0 && (
+                  <DetailRow
+                    label="Allocated processing fee"
+                    value={money(authoritativeWholesaleCost?.processingFeeAllocated)}
                     wholesaleCost
                   />
                 )}

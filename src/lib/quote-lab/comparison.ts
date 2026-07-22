@@ -1,6 +1,7 @@
 import { catalog, findProductSurcharge, getProduct, getProgram } from "@/lib/quote/catalog";
 import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
 import { priceDesign, type PriceInput } from "@/lib/quote/pricing";
+import { NORMAN_805_DEALER_POLICY } from "@/lib/quote-v2/norman-dealer-policy";
 import { getProductPriceBreakdown } from "@mts/lib/pricingEngine";
 import { QUOTE_LAB_MAX_DESIGNS_PER_LINE, QUOTE_LAB_MAX_LINES } from "./types";
 import type {
@@ -291,11 +292,15 @@ function orderCharges(quote: QuoteLabQuoteInput): QuoteLabOrderCharge[] {
 
   const charges: QuoteLabOrderCharge[] = [];
   if (shadeUnits > 0) {
+    const freight =
+      NORMAN_805_DEALER_POLICY.freight.continentalUsBlindsAndShades;
     charges.push({
       id: "freight-shades",
       label: "Blinds & shades freight",
-      amount: 25 + Math.max(0, shadeUnits - 1) * 11,
-      detail: `$25 first unit + $11 x ${Math.max(0, shadeUnits - 1)} additional`,
+      amount:
+        freight.firstUnit +
+        Math.max(0, shadeUnits - 1) * freight.additionalUnit,
+      detail: `$${freight.firstUnit} first unit + $${freight.additionalUnit} x ${Math.max(0, shadeUnits - 1)} additional`,
     });
   }
   if (shutterUnits > 0) {

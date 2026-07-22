@@ -321,6 +321,29 @@ describe("exact-interface V2 integration", () => {
       "selection_fingerprint_mismatch",
     );
 
+    const current = priceOne(1);
+    const currentSnapshot = current.designs[0]?.snapshot;
+    if (!currentSnapshot?.dealerPolicy) {
+      throw new Error("Expected a pinned Norman dealer policy snapshot.");
+    }
+    const stalePolicy = priceOne(1, {
+      authoritative_v2_snapshot: {
+        ...currentSnapshot,
+        dealerPolicy: {
+          ...currentSnapshot.dealerPolicy,
+          revision: `${currentSnapshot.dealerPolicy.revision}-stale`,
+        },
+      },
+    });
+    expect(stalePolicy.designs[0].result.ok).toBe(true);
+    expect(stalePolicy.sendability.lines[0]).toMatchObject({
+      stale: true,
+      sendable: false,
+    });
+    expect(
+      stalePolicy.sendability.lines[0].reasons.map((reason) => reason.code),
+    ).toContain("price_not_authoritative");
+
     const quoteLine = line("line-incomplete");
     const incomplete = rollerDesign(quoteLine.id);
     delete (incomplete.options_json as Record<string, unknown>).roller_tube;
@@ -406,12 +429,27 @@ describe("exact-interface V2 integration", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "additional_fiberglass_pole",
-          amount: 42,
-          wholesaleAmount: 16.8,
+          amount: 46.2,
+          wholesaleAmount: 18.48,
           detail: "28 x 2 units",
         }),
       ]),
     );
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "accessory:additional_fiberglass_pole",
+          catalogAmount: 56,
+          wholesaleAmount: 18.48,
+          customerAmount: 46.2,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 440,
+      wholesalePerWindow: 145.2,
+      customerPerWindow: 363,
+    });
     expect(quote.sendability.sendable).toBe(true);
   });
 
@@ -510,32 +548,81 @@ describe("exact-interface V2 integration", () => {
     expect(first?.ok).toBe(true);
     expect(second?.ok).toBe(true);
     if (!first?.ok || !second?.ok) return;
+    if (!first.internalCost || !second.internalCost) {
+      throw new Error("Expected protected internal cost for both Norman lines.");
+    }
+
+    const firstProcessingFee =
+      Math.round(
+        (first.internalCost.productCostTotal + 25) * 0.02 * 100,
+      ) / 100;
+    const totalProcessingFee =
+      Math.round(
+        (first.internalCost.productCostTotal +
+          second.internalCost.productCostTotal +
+          36) *
+          0.02 *
+          100,
+      ) / 100;
+    const secondProcessingFee =
+      Math.round((totalProcessingFee - firstProcessingFee) * 100) / 100;
 
     expect(first.internalCost).toMatchObject({
       freightAllocated: 25,
       oversizeAllocated: 80,
+      processingFeeAllocated: firstProcessingFee,
       freightStatus: "published",
     });
     expect(second.internalCost).toMatchObject({
       freightAllocated: 11,
       oversizeAllocated: 50,
+      processingFeeAllocated: secondProcessingFee,
       freightStatus: "published",
     });
-    expect(first.internalCost?.landedCostTotal).toBe(
+    expect(first.internalCost.landedCostTotal).toBe(
       Math.round(
-        ((first.internalCost?.productCostTotal ?? 0) + 25 + 80) * 100,
+        (first.internalCost.productCostTotal +
+          25 +
+          80 +
+          firstProcessingFee) *
+          100,
       ) / 100,
     );
-    expect(second.internalCost?.landedCostTotal).toBe(
+    expect(second.internalCost.landedCostTotal).toBe(
       Math.round(
-        ((second.internalCost?.productCostTotal ?? 0) + 11 + 50) * 100,
+        (second.internalCost.productCostTotal +
+          11 +
+          50 +
+          secondProcessingFee) *
+          100,
       ) / 100,
     );
     expect(quote.costSummary).toMatchObject({
-      status: "complete",
+      status: "incomplete",
       freightHandling: 36,
       oversize: 130,
+      processingFee: totalProcessingFee,
     });
+    expect(quote.costSummary.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/oversize charge is not source-verified/i),
+      ]),
+    );
+    expect(first.validationStatus).toBe("blocked");
+    expect(second.validationStatus).toBe("blocked");
+    expect(first.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "norman.processing_fee.oversize_scope_unverified",
+    );
+    expect(second.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "norman.processing_fee.oversize_scope_unverified",
+    );
+    expect(quote.sendability.sendable).toBe(false);
+    expect(quote.sendability.lines.every((entry) => !entry.sendable)).toBe(true);
+    expect(quote.designs.every((entry) => entry.snapshot === null)).toBe(true);
+    expect(
+      first.internalCost.processingFeeAllocated +
+        second.internalCost.processingFeeAllocated,
+    ).toBe(totalProcessingFee);
     expect(quote.total).toBe(first.total + second.total);
   });
 
@@ -565,7 +652,8 @@ describe("exact-interface V2 integration", () => {
       expect.arrayContaining([
         expect.objectContaining({
           id: "motor:automate_home:motor_rechargeable_battery_pack",
-          amount: 511.5,
+          amount: 562.65,
+          wholesaleAmount: 225.06,
         }),
       ]),
     );
@@ -577,7 +665,7 @@ describe("exact-interface V2 integration", () => {
         expect.arrayContaining([
           expect.objectContaining({
             id: "motor:automate_home:motor_rechargeable_battery_pack",
-            amount: 204.6,
+            amount: 225.06,
           }),
         ]),
       );
@@ -587,10 +675,28 @@ describe("exact-interface V2 integration", () => {
       expect(costResult).toMatchObject({
         freightAllocated: result.internalCost?.freightAllocated,
         oversizeAllocated: result.internalCost?.oversizeAllocated,
+        processingFeeAllocated:
+          result.internalCost?.processingFeeAllocated,
         landedCostTotal: result.internalCost?.landedCostTotal,
         freightStatus: result.internalCost?.freightStatus,
       });
     }
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "operating:motor:automate_home:motor_rechargeable_battery_pack",
+          category: "operating_system",
+          catalogAmount: 682,
+          wholesaleAmount: 225.06,
+          customerAmount: 562.65,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 1_066,
+      wholesalePerWindow: 351.78,
+      customerPerWindow: 879.45,
+    });
 
     const undercharged = {
       ...design,
@@ -653,10 +759,26 @@ describe("exact-interface V2 integration", () => {
     ).toEqual([
       expect.objectContaining({
         id: "motor:smart_motorization:hub",
-        amount: 240.75,
-        wholesaleAmount: 96.3,
+        amount: 264.83,
+        wholesaleAmount: 105.93,
       }),
     ]);
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "motor:smart_motorization:hub",
+          category: "accessory",
+          catalogAmount: 321,
+          wholesaleAmount: 105.93,
+          customerAmount: 264.83,
+        }),
+      ]),
+    );
+    expect(result.componentTotals).toMatchObject({
+      catalogPerWindow: 1_187,
+      wholesalePerWindow: 391.71,
+      customerPerWindow: 979.28,
+    });
   });
 
   it("hard-blocks ambiguous and unknown populated legacy Roller accessories", () => {
@@ -730,7 +852,7 @@ describe("exact-interface V2 integration", () => {
     const quote = priceOne(1);
     const serialized = JSON.stringify(quote.customerQuote);
     expect(serialized).not.toMatch(
-      /wholesale|internalCost|costStatus|landed|freight|oversize|dealer|multiplier|margin|2\.5/i,
+      /wholesale|internalCost|costStatus|landed|freight|oversize|processing|dealer|multiplier|margin|2\.5/i,
     );
     expect(quote.customerQuote.total).toBe(quote.total);
     expect(quote.customerQuote.lines[0].price).toMatchObject({

@@ -1,4 +1,5 @@
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { getProduct } from "@/lib/quote/catalog";
 import type {
   ISODate,
   SelectionContext,
@@ -303,7 +304,14 @@ function normalizedOptions(options: Record<string, unknown>, mode: "configuratio
     if (INTERNAL_OPTION_KEYS.has(key)) continue;
     if (mode === "configuration" ? PRICE_OPTION_KEYS.has(key) : !PRICE_OPTION_KEYS.has(key)) continue;
     const normalized = jsonValue(value);
-    if (normalized !== undefined) entries.push([key, normalized]);
+    if (normalized !== undefined) {
+      entries.push([key, normalized]);
+    } else if (mode === "pricing" && key === "schedule_discount_percent") {
+      // Presence is price-affecting. Preserve a malformed runtime value as an
+      // explicit invalid sentinel so it cannot collapse onto the absent-value
+      // standard schedule during validation/fingerprinting.
+      entries.push([key, null]);
+    }
   }
   return Object.fromEntries(entries);
 }
@@ -684,8 +692,11 @@ export function selectionContextFromExactInterface(
   // Catalog authority belongs to the caller/server. Values stored in the
   // browser payload are snapshots only and must never select a pricing book.
   const catalogAsOf = input.catalogAsOf ?? "2026-07-20";
+  const catalogManufacturer = getProduct(input.productId)?.manufacturer;
   return {
-    manufacturerId: stringValue(design.supplier)?.toLowerCase() ?? "805-catalog",
+    manufacturerId:
+      catalogManufacturer?.trim().toLowerCase() ??
+      "unknown-catalog-manufacturer",
     productId: input.productId,
     programId: input.programId,
     catalogVersion:

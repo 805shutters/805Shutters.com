@@ -81,9 +81,10 @@ describe("Norman exact Quote Builder rules", () => {
     expect(quote.costSummary).toEqual({
       status: "complete",
       productCost: 298.8,
-      freightHandling: 47, // PDF p4 net: $25 first + $11 x 2 additional
+      freightHandling: 47, // Current 805 portal: $25 first + $11 x 2 additional
       oversize: 0,
-      dealerCostTotal: 345.8,
+      processingFee: 6.92, // 2% x ($298.80 merchandise + $47 freight)
+      dealerCostTotal: 352.72,
       warnings: [],
     });
   });
@@ -102,8 +103,17 @@ describe("Norman exact Quote Builder rules", () => {
     expect(quote.total).toBe(priced.total);
     expect(quote.costSummary.freightHandling).toBe(25);
     expect(quote.costSummary.oversize).toBe(80);
+    expect(quote.costSummary.processingFee).toBe(
+      Math.round(((priced.wholesaleTotal ?? 0) + 25) * 0.02 * 100) / 100,
+    );
     expect(quote.costSummary.dealerCostTotal).toBe(
-      Math.round(((priced.wholesaleTotal ?? 0) + 25 + 80) * 100) / 100,
+      Math.round(
+        ((priced.wholesaleTotal ?? 0) +
+          25 +
+          80 +
+          quote.costSummary.processingFee) *
+          100,
+      ) / 100,
     );
   });
 
@@ -115,8 +125,15 @@ describe("Norman exact Quote Builder rules", () => {
       designs: [quoteDesign],
       selectedVariantByLine: { [quoteLine.id]: "A" },
     });
-    expect(quote.costSummary.freightHandling).toBe(58); // $25 + 3 x $11
+    expect(quote.costSummary.freightHandling).toBe(58); // Current 805: $25 + 3 x $11
     expect(quote.costSummary.oversize).toBe(130); // $80 first + $50 second
+    expect(quote.costSummary.processingFee).toBe(
+      Math.round(
+        (quote.costSummary.productCost + quote.costSummary.freightHandling) *
+          0.02 *
+          100,
+      ) / 100,
+    );
   });
 
   it("uses the page 4 HI/AK net freight schedule when explicitly selected", () => {
@@ -129,6 +146,7 @@ describe("Norman exact Quote Builder rules", () => {
     });
     expect(quote.costSummary.status).toBe("complete");
     expect(quote.costSummary.freightHandling).toBe(100);
+    expect(quote.costSummary.processingFee).toBe(3.52);
   });
 
   it("prices a Day & Night Roman with two single-motor surcharges", () => {
@@ -174,9 +192,10 @@ describe("Norman exact Quote Builder rules", () => {
     expect(quote.costSummary).toMatchObject({
       status: "complete",
       productCost: 3048,
-      freightHandling: 454, // PDF p4: $25 + $11 x 39
+      freightHandling: 454, // Current 805 portal: $25 + $11 x 39
       oversize: 0,
-      dealerCostTotal: 3502,
+      processingFee: 70.04,
+      dealerCostTotal: 3572.04,
     });
   });
 });

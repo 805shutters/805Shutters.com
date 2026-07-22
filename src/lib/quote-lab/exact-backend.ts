@@ -7,11 +7,13 @@ import { evaluateSendability } from "@/lib/quote-v2/core";
 import {
   authoritativeAutomaticSurchargeSelections,
   createImmutablePriceSnapshot,
+  dealerPolicySnapshotFromPriceResult,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
   type QuoteV2PriceResult,
 } from "@/lib/quote-v2/engine";
 import { quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
+import { NORMAN_805_DEALER_POLICY } from "@/lib/quote-v2/norman-dealer-policy";
 import { validateQuoteSelectionRelationships } from "@/lib/quote-v2/quote-rules";
 import {
   selectionContextFromExactInterface as adaptExactInterfaceSelection,
@@ -426,6 +428,21 @@ function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function moneyCents(value: number): number {
+  return Math.round(value * 100);
+}
+
+function moneyFromCents(value: number): number {
+  return Math.round(value) / 100;
+}
+
+function normanProcessingFeeCents(basisCents: number): number {
+  return Math.round(
+    (basisCents * NORMAN_805_DEALER_POLICY.processingFee.basisPoints) /
+      10_000,
+  );
+}
+
 function graduatedNetCost(units: number, first: number, additional: number): number {
   return units <= 0 ? 0 : first + Math.max(0, units - 1) * additional;
 }
@@ -475,6 +492,9 @@ function v2CostResult(result: QuoteV2PriceResult) {
     productId: result.productId,
     programId: result.programId,
     basis: result.internalCost.basis,
+    effectiveDealerFactor: result.internalCost.effectiveDealerFactor,
+    dealerPolicyId: result.internalCost.dealerPolicyId,
+    dealerPolicyFixtureId: result.internalCost.dealerPolicyFixtureId,
     matchedWidth: result.matchedWidth,
     matchedHeight: result.matchedHeight,
     wholesaleBase: result.wholesaleBase,
@@ -497,6 +517,7 @@ function v2CostResult(result: QuoteV2PriceResult) {
     wholesaleTotal: result.internalCost.productCostTotal,
     freightAllocated: result.internalCost.freightAllocated,
     oversizeAllocated: result.internalCost.oversizeAllocated,
+    processingFeeAllocated: result.internalCost.processingFeeAllocated,
     landedCostTotal: result.internalCost.landedCostTotal,
     freightStatus: result.internalCost.freightStatus,
   };
@@ -516,6 +537,27 @@ function storedText(
 ): string | null {
   const value = snapshot?.[key];
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function storedDealerPolicyMatchesCurrent(
+  snapshot: Record<string, unknown> | null,
+  result: QuoteV2PriceResult,
+): boolean {
+  const current = dealerPolicySnapshotFromPriceResult(result);
+  const storedValue = snapshot?.dealerPolicy;
+  if (current === null) {
+    return storedValue === undefined || storedValue === null;
+  }
+  if (!storedValue || typeof storedValue !== "object" || Array.isArray(storedValue)) {
+    return false;
+  }
+  const stored = storedValue as Record<string, unknown>;
+  return (
+    stored.policyId === current.policyId &&
+    stored.fixtureId === current.fixtureId &&
+    stored.effectiveDealerFactor === current.effectiveDealerFactor &&
+    stored.revision === current.revision
+  );
 }
 
 function customerV2Price(result: QuoteV2PriceResult): Record<string, unknown> {
@@ -565,6 +607,17 @@ export type ExactQuoteBuilderRepriceInput = {
   lines: SalesQuoteLineItem[];
   designs: SalesQuoteDesign[];
   selectedVariantByLine: Record<string, string>;
+};
+
+export type ExactQuoteCostSummary = {
+  status: "complete" | "incomplete";
+  productCost: number;
+  freightHandling: number;
+  oversize: number;
+  /** Norman's verified 2% fee on merchandise plus freight; oversize excluded. */
+  processingFee: number;
+  dealerCostTotal: number;
+  warnings: string[];
 };
 
 export const QUOTE_LAB_V2_PREVIEW_CATALOG_AS_OF = "2026-08-01" as const;
@@ -834,15 +887,33 @@ function repriceExactQuoteBuilderV2(
     );
   }
   const hiAk = shippingRegions.size === 1 && shippingRegions.has("hi_ak");
+  const dealerFreight = NORMAN_805_DEALER_POLICY.freight;
   const blindFreightTotal = (units: number) =>
     hiAk
-      ? graduatedNetCost(units, 100, 15)
-      : graduatedNetCost(units, 25, 11);
+      ? graduatedNetCost(
+          units,
+          dealerFreight.hiAkBlindsAndShades.firstUnit,
+          dealerFreight.hiAkBlindsAndShades.additionalUnit,
+        )
+      : graduatedNetCost(
+          units,
+          dealerFreight.continentalUsBlindsAndShades.firstUnit,
+          dealerFreight.continentalUsBlindsAndShades.additionalUnit,
+        );
   const shutterFreightTotal = (units: number) => {
-    const published = graduatedNetCost(units, 75, 25);
+    const published = graduatedNetCost(
+      units,
+      dealerFreight.continentalUsShutters.firstUnit,
+      dealerFreight.continentalUsShutters.additionalUnit,
+    );
     return hiAk && units > 0 ? Math.max(100, published) : published;
   };
-  const oversizeTotal = (units: number) => graduatedNetCost(units, 80, 50);
+  const oversizeTotal = (units: number) =>
+    graduatedNetCost(
+      units,
+      dealerFreight.oversize.firstUnit,
+      dealerFreight.oversize.additionalUnit,
+    );
 
   let blindFreightUnits = 0;
   let shutterFreightUnits = 0;
@@ -850,6 +921,8 @@ function repriceExactQuoteBuilderV2(
   let shutterOversizeUnits = 0;
   let freightHandling = 0;
   let oversize = 0;
+  let processingFee = 0;
+  let processingBasisCents = 0;
 
   for (const entry of selected) {
     const result = entry.priced.result;
@@ -861,6 +934,7 @@ function repriceExactQuoteBuilderV2(
     const height = entry.prepared.selection.heightInches;
     let freightAllocated = 0;
     let oversizeAllocated = 0;
+    let processingFeeAllocated = 0;
     let freightStatus = result.internalCost.freightStatus;
 
     if (mixedShippingRegions) {
@@ -933,18 +1007,72 @@ function repriceExactQuoteBuilderV2(
       freightStatus = "published";
     }
 
+    const oversizeProcessingScopeUnverified =
+      product?.manufacturer === "Norman" &&
+      oversizeAllocated > 0 &&
+      NORMAN_805_DEALER_POLICY.processingFee.oversizeScope ===
+        "unverified_excluded";
+    const oversizeProcessingIssue = oversizeProcessingScopeUnverified
+      ? {
+          severity: "hard_block" as const,
+          ruleId: "norman.processing_fee.oversize_scope_unverified",
+          source: NORMAN_805_DEALER_POLICY.publishedFreightSource,
+          selectedValues: {
+            oversizeAllocated: roundMoney(oversizeAllocated),
+            processingFeeOversizeScope:
+              NORMAN_805_DEALER_POLICY.processingFee.oversizeScope,
+          },
+          explanation:
+            "Norman processing-fee treatment for an oversize charge is not source-verified. This line requires manual cost verification before it can be sent.",
+        }
+      : null;
+    if (oversizeProcessingIssue) {
+      costComplete = false;
+      costWarnings.push(oversizeProcessingIssue.explanation);
+    }
+
+    // Current 805 Norman terms apply 2% to merchandise plus freight. Oversize
+    // is deliberately excluded because its inclusion has not been verified.
+    // Cumulative cent rounding makes every line allocation deterministic while
+    // guaranteeing that the line allocations equal the order-level fee.
+    if (
+      product?.manufacturer === "Norman" &&
+      freightStatus !== "unresolved"
+    ) {
+      const lineBasisCents =
+        moneyCents(result.internalCost.productCostTotal) +
+        moneyCents(freightAllocated);
+      const feeBeforeCents = normanProcessingFeeCents(processingBasisCents);
+      processingBasisCents += lineBasisCents;
+      processingFeeAllocated = moneyFromCents(
+        normanProcessingFeeCents(processingBasisCents) - feeBeforeCents,
+      );
+    }
+
     freightHandling += freightAllocated;
     oversize += oversizeAllocated;
+    processingFee += processingFeeAllocated;
     entry.priced.result = {
       ...result,
+      ...(oversizeProcessingIssue
+        ? {
+            validationStatus: "blocked" as const,
+            validationIssues: [
+              ...result.validationIssues,
+              oversizeProcessingIssue,
+            ],
+          }
+        : {}),
       internalCost: {
         ...result.internalCost,
         freightAllocated: roundMoney(freightAllocated),
         oversizeAllocated: roundMoney(oversizeAllocated),
+        processingFeeAllocated: roundMoney(processingFeeAllocated),
         landedCostTotal: roundMoney(
           result.internalCost.productCostTotal +
             freightAllocated +
-            oversizeAllocated,
+            oversizeAllocated +
+            processingFeeAllocated,
         ),
         freightStatus,
       },
@@ -953,7 +1081,7 @@ function repriceExactQuoteBuilderV2(
 
   for (const priced of pricedDesigns) {
     priced.costResult = v2CostResult(priced.result);
-    priced.snapshot = priced.result.ok
+    priced.snapshot = priced.result.ok && priced.result.validationStatus === "valid"
       ? createImmutablePriceSnapshot(priced.result)
       : null;
   }
@@ -979,11 +1107,15 @@ function repriceExactQuoteBuilderV2(
     const storedPriceIsAuthoritative =
       !hasStoredSnapshot ||
       storedText(storedSnapshot, "priceStatus") === "authoritative";
+    const storedDealerPolicyIsCurrent =
+      !hasStoredSnapshot ||
+      storedDealerPolicyMatchesCurrent(storedSnapshot, result);
     const stale =
       hasStoredSnapshot &&
       (!storedPriceIsAuthoritative ||
         pricedSelectionFingerprint !== result.selectionFingerprint ||
-        pricedCatalogVersion !== result.catalogVersion);
+        pricedCatalogVersion !== result.catalogVersion ||
+        !storedDealerPolicyIsCurrent);
     const evaluation = evaluateSendability({
       productStatus: result.productStatus,
       issues: result.validationIssues,
@@ -1017,9 +1149,12 @@ function repriceExactQuoteBuilderV2(
       productCost: roundMoney(productCost),
       freightHandling: roundMoney(freightHandling),
       oversize: roundMoney(oversize),
-      dealerCostTotal: roundMoney(productCost + freightHandling + oversize),
+      processingFee: roundMoney(processingFee),
+      dealerCostTotal: roundMoney(
+        productCost + freightHandling + oversize + processingFee,
+      ),
       warnings: [...new Set(costWarnings)],
-    },
+    } satisfies ExactQuoteCostSummary,
     sendability: {
       sendable: quoteSendable,
       lines: lineSendability,
@@ -1098,6 +1233,7 @@ function repriceExactQuoteBuilderAtDate(
   const total = selected.reduce((sum, entry) => sum + (entry.priced?.result.ok ? entry.priced.result.total : 0), 0);
 
   let productCost = 0;
+  let normanProductCost = 0;
   let blindShadeFreightUnits = 0;
   let shutterFreightUnits = 0;
   let blindShadeOversizeUnits = 0;
@@ -1116,6 +1252,9 @@ function repriceExactQuoteBuilderAtDate(
     }
     const productId = result?.ok ? result.productId : costResult?.ok ? costResult.productId : "";
     const product = getProduct(productId);
+    if (costResult?.ok && product?.manufacturer === "Norman") {
+      normanProductCost += costResult.wholesaleTotal;
+    }
     if ((!result?.ok || result.costStatus !== "complete") && product?.freightStatus !== "order_level") {
       costComplete = false;
     }
@@ -1168,17 +1307,57 @@ function repriceExactQuoteBuilderAtDate(
     costWarnings.push("Mixed continental-US and HI/AK shipping regions require separate quotes; freight is unresolved.");
   }
   const hiAk = shippingRegions.size === 1 && shippingRegions.has("hi_ak");
+  const dealerFreight = NORMAN_805_DEALER_POLICY.freight;
   const freightHandling = mixedShippingRegions
     ? 0
     : hiAk
-      ? graduatedNetCost(blindShadeFreightUnits, 100, 15) +
-        (shutterFreightUnits > 0 ? Math.max(100, graduatedNetCost(shutterFreightUnits, 75, 25)) : 0)
-      : graduatedNetCost(blindShadeFreightUnits, 25, 11) +
-        graduatedNetCost(shutterFreightUnits, 75, 25);
+      ? graduatedNetCost(
+          blindShadeFreightUnits,
+          dealerFreight.hiAkBlindsAndShades.firstUnit,
+          dealerFreight.hiAkBlindsAndShades.additionalUnit,
+        ) +
+        (shutterFreightUnits > 0
+          ? Math.max(
+              100,
+              graduatedNetCost(
+                shutterFreightUnits,
+                dealerFreight.continentalUsShutters.firstUnit,
+                dealerFreight.continentalUsShutters.additionalUnit,
+              ),
+            )
+          : 0)
+      : graduatedNetCost(
+          blindShadeFreightUnits,
+          dealerFreight.continentalUsBlindsAndShades.firstUnit,
+          dealerFreight.continentalUsBlindsAndShades.additionalUnit,
+        ) +
+        graduatedNetCost(
+          shutterFreightUnits,
+          dealerFreight.continentalUsShutters.firstUnit,
+          dealerFreight.continentalUsShutters.additionalUnit,
+        );
   const oversize =
-    graduatedNetCost(blindShadeOversizeUnits, 80, 50) +
-    graduatedNetCost(shutterOversizeUnits, 80, 50);
-  const dealerCostTotal = productCost + freightHandling + oversize;
+    graduatedNetCost(
+      blindShadeOversizeUnits,
+      dealerFreight.oversize.firstUnit,
+      dealerFreight.oversize.additionalUnit,
+    ) +
+    graduatedNetCost(
+      shutterOversizeUnits,
+      dealerFreight.oversize.firstUnit,
+      dealerFreight.oversize.additionalUnit,
+    );
+  // The verified 2% basis is Norman merchandise plus freight only. Oversize is
+  // excluded until its processing-fee treatment is confirmed in the live account.
+  const processingFee = mixedShippingRegions
+    ? 0
+    : moneyFromCents(
+        normanProcessingFeeCents(
+          moneyCents(normanProductCost) + moneyCents(freightHandling),
+        ),
+      );
+  const dealerCostTotal =
+    productCost + freightHandling + oversize + processingFee;
   return {
     total: Math.round(total * 100) / 100,
     designs: pricedDesigns,
@@ -1187,9 +1366,10 @@ function repriceExactQuoteBuilderAtDate(
       productCost: roundMoney(productCost),
       freightHandling: roundMoney(freightHandling),
       oversize: roundMoney(oversize),
+      processingFee: roundMoney(processingFee),
       dealerCostTotal: roundMoney(dealerCostTotal),
       warnings: [...new Set(costWarnings)],
-    },
+    } satisfies ExactQuoteCostSummary,
   };
 }
 

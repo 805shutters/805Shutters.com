@@ -209,17 +209,26 @@ function validateCommon(context: SelectionContext): ValidationIssue[] {
       ),
     );
   }
-  const schedulePercent = finiteNumber(
-    optionValue(context, "schedule_discount_percent"),
+  const hasSchedulePercent = Object.prototype.hasOwnProperty.call(
+    context.options,
+    "schedule_discount_percent",
   );
-  if (schedulePercent !== null && ![28.5, 30].includes(schedulePercent)) {
+  const rawSchedulePercent = context.options.schedule_discount_percent;
+  const schedulePercent = finiteNumber(rawSchedulePercent);
+  if (
+    hasSchedulePercent &&
+    (schedulePercent === null || ![28.5, 30].includes(schedulePercent))
+  ) {
     issues.push(
       issue(
         "hard_block",
         "common.dealer_program.unsupported",
-        { sourceId: "norman-dealer-pricing-snapshot-2026-07-20", pages: [1, 2, 3] },
-        { schedule_discount_percent: schedulePercent },
-        "Only the documented 30% standard program or deliberate 28.5% slower-schedule program may be used.",
+        { sourceId: "norman-retail-guide-2026-07", page: 4 },
+        {
+          schedule_discount_percent:
+            rawSchedulePercent === undefined ? null : rawSchedulePercent,
+        },
+        "A supplied dealer schedule must be the exact documented 30 or 28.5 selection. Only a truly absent value defaults to standard.",
       ),
     );
   }

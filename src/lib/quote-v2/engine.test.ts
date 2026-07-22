@@ -6,6 +6,7 @@ import {
   createImmutablePriceSnapshot,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
+  type QuoteV2PriceSuccess,
 } from "./engine";
 
 function selection(
@@ -76,7 +77,12 @@ describe("Quote V2 authoritative pricing engine", () => {
       "lotus_mini_blinds",
       "lotus_amx_1in_aluminum_custom",
       {},
-      { widthInches: 30, heightInches: 48, quantity: 2 },
+      {
+        manufacturerId: "norman",
+        widthInches: 30,
+        heightInches: 48,
+        quantity: 2,
+      },
     );
     const result = priceQuoteV2Selection({
       selection: context,
@@ -98,8 +104,35 @@ describe("Quote V2 authoritative pricing engine", () => {
       basis: "dealer_net",
       productCostUnit: 24.3,
       productCostTotal: 48.6,
+      processingFeeAllocated: 0,
       landedCostTotal: 48.6,
     });
+    expect(result.internalCost).not.toHaveProperty("effectiveDealerFactor");
+  });
+
+  it("does not apply Norman policy to a non-Norman catalog product with a forged label", () => {
+    const context = selection("polar_interior_roller", "group_1", {}, {
+      manufacturerId: "norman",
+      widthInches: 30,
+      heightInches: 48,
+    });
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+      },
+      includeInternalCost: true,
+    });
+    expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
+    if (!result.ok) return;
+    expect(result).toMatchObject({
+      base: 159.75,
+      wholesaleBase: 63.9,
+    });
+    expect(result.internalCost).not.toHaveProperty("effectiveDealerFactor");
   });
 
   it("prices Norman catalog products from dealer cost instead of published suggested retail", () => {
@@ -116,7 +149,11 @@ describe("Quote V2 authoritative pricing engine", () => {
         roller_top_treatment: "No Top Treatment",
         roller_tube: "All Tubes",
       },
-      { manufacturerId: "norman", widthInches: 24, heightInches: 36 },
+      {
+        manufacturerId: "typo-supplier",
+        widthInches: 24,
+        heightInches: 36,
+      },
     );
     const result = priceQuoteV2Selection({
       selection: context,
@@ -130,10 +167,48 @@ describe("Quote V2 authoritative pricing engine", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.wholesaleBase).toBe(76.2); // $254 suggested retail x 30%
-    expect(result.base).toBe(190.5); // $76.20 eligible dealer cost x 2.5
-    expect(result.unitPrice).toBe(190.5);
-    expect(result.internalCost?.productCostTotal).toBe(76.2);
+    expect(result.wholesaleBase).toBe(83.82); // $254 list x current portal factor .33
+    expect(result.base).toBe(209.55); // $83.82 eligible dealer cost x 2.5
+    expect(result.unitPrice).toBe(209.55);
+    expect(result.internalCost?.productCostTotal).toBe(83.82);
+    expect(result.internalCost?.effectiveDealerFactor).toBe(0.33);
+  });
+
+  it("hard-blocks a present malformed schedule before pricing", () => {
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_1_pg1",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single Shade",
+        lift_system: "Cordless",
+        fabric_collection: "Brook",
+        fabric_color_code: "F1120",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: "All Tubes",
+      },
+      {
+        manufacturerId: "anything",
+        widthInches: 24,
+        heightInches: 36,
+        options: { schedule_discount_percent: "" },
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+      },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "common.dealer_program.unsupported",
+    );
+    expect(result).not.toHaveProperty("unitPrice");
   });
 
   it("preserves the deliberate 28.5% Norman slower-schedule cost choice", () => {
@@ -171,9 +246,108 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(standardResult.ok).toBe(true);
     expect(slowerResult.ok).toBe(true);
     if (!standardResult.ok || !slowerResult.ok) return;
-    expect(standardResult.wholesaleBase).toBe(76.2);
-    expect(slowerResult.wholesaleBase).toBe(72.39);
-    expect(slowerResult.base).toBe(180.98);
+    expect(standardResult.wholesaleBase).toBe(83.82);
+    expect(slowerResult.wholesaleBase).toBe(75.44);
+    expect(slowerResult.base).toBe(188.6);
+  });
+
+  it("matches the live slow-schedule portal rounding groups and allocates every component cent", () => {
+    const context = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_1_pg1",
+      {
+        mount_type: "Inside Mount",
+        roller_region_scope: "ca_ma",
+        roller_application: "Single Shade",
+        lift_system: "SmartRelease",
+        fabric_collection: "Brook",
+        fabric_color_code: "F1120",
+        roller_top_treatment: "No Top Treatment",
+        roller_tube: '1 3/4" (43mm) Tube',
+        shim: true,
+      },
+      {
+        manufacturerId: "norman",
+        widthInches: 24,
+        heightInches: 36,
+        options: { schedule_discount_percent: 28.5 },
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        surcharges: [
+          { id: "smartrelease" },
+          { id: "shim" },
+        ],
+      },
+      includeInternalCost: true,
+    });
+
+    expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
+    if (!result.ok) return;
+    expect(result.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "base_grid",
+          catalogAmount: 254,
+          wholesaleAmount: 75.44,
+          customerAmount: 188.6,
+        }),
+        expect.objectContaining({
+          id: "operating:smartrelease",
+          category: "operating_system",
+          catalogAmount: 89,
+          wholesaleAmount: 26.43,
+          customerAmount: 66.08,
+        }),
+        expect.objectContaining({
+          id: "accessory:shim",
+          category: "accessory",
+          catalogAmount: 7,
+          wholesaleAmount: 2.08,
+          customerAmount: 5.2,
+        }),
+      ]),
+    );
+    expect(
+      result.surchargeLines.reduce(
+        (total, line) => total + (line.wholesaleAmount ?? 0),
+        0,
+      ),
+    ).toBeCloseTo(28.51, 10);
+    expect(result.wholesaleUnitPrice).toBe(103.95);
+    expect(result.internalCost).toMatchObject({
+      productCostUnit: 103.95,
+      effectiveDealerFactor: 0.297,
+      dealerPolicyId: "norman-805-dealer-policy-2026-07-21",
+      dealerPolicyFixtureId: "norman-805-live-portal-2026-07-21",
+    });
+    const snapshot = createImmutablePriceSnapshot(result);
+    expect(snapshot.dealerPolicy).toMatchObject({
+      policyId: "norman-805-dealer-policy-2026-07-21",
+      fixtureId: "norman-805-live-portal-2026-07-21",
+      effectiveDealerFactor: 0.297,
+    });
+    expect(snapshot.dealerPolicy?.revision).toContain('"additionalUnit":11');
+    expect(snapshot.dealerPolicy?.revision).toContain('"basisPoints":200');
+    expect(JSON.stringify(snapshot.retail)).not.toMatch(
+      /dealerPolicy|effectiveDealerFactor|basisPoints/i,
+    );
+    expect(result.componentTotals).toMatchObject({
+      wholesalePerWindow: 103.95,
+      customerPerWindow: 259.88,
+    });
+    expect(result.unitPrice).toBe(259.88);
+
+    const customer = JSON.stringify(toCustomerQuotePriceResult(result));
+    expect(customer).not.toMatch(
+      /wholesale|catalogAmount|dealerFactor|effectiveDealerFactor|freight|landedCost|margin/i,
+    );
   });
 
   it("fails closed instead of omitting unsupported dealer-net option charges", () => {
@@ -259,6 +433,173 @@ describe("Quote V2 authoritative pricing engine", () => {
     ]);
     expect(automatic({ roller_application: "LightGuard 360" })).toEqual([
       { id: "lightguard_360", units: 1 },
+    ]);
+  });
+
+  it("canonicalizes Smart Release UI labels for every source-priced product", () => {
+    const automatic = (productId: string, configuration: SelectionRecord) =>
+      authoritativeAutomaticSurchargeSelections(
+        selection(productId, `${productId}-program`, configuration),
+      );
+
+    expect(automatic("roller", { lift_system: "Smart Release" })).toEqual([
+      { id: "smartrelease", units: 1 },
+    ]);
+    expect(automatic("honeycomb", { lift_system: "Smart Release" })).toEqual([
+      { id: "smartrelease", units: 1 },
+    ]);
+    expect(automatic("roman", { lift_system: "Smart Release" })).toEqual([
+      { id: "smartrelease_lift_system", units: 1 },
+    ]);
+  });
+
+  it.each([
+    {
+      productId: "honeycomb",
+      programId: "honeycomb_3_8in_cordless_single_and_3_4in_single",
+      surchargeId: "smartrelease",
+      configuration: {
+        mount_type: "Inside Mount",
+        cell_size: '3/8" Single Cell',
+        lift_system: "SmartRelease",
+        fabric_collection: "Light Filtering",
+        fabric_color_code: "C7015K",
+        application: "Standard Horizontal",
+      } as SelectionRecord,
+    },
+    {
+      productId: "roman",
+      programId: "roman_cordless_usa_price_group_2_pg2",
+      surchargeId: "smartrelease_lift_system",
+      configuration: {
+        mount_type: "Inside Mount",
+        shade_type: "Single",
+        lift_system: "SmartRelease",
+        fold_style: "Flat Fold without Seams",
+        fabric_collection: "Alma",
+        fabric_color_code: "F1621",
+        lining: "Translucent",
+        fabric_orientation: "Standard",
+        seaming: "No Seams",
+      } as SelectionRecord,
+    },
+  ])(
+    "classifies the exact Smart Release UI value as $productId operating cost",
+    ({ productId, programId, surchargeId, configuration }) => {
+      const context = selection(productId, programId, configuration, {
+        manufacturerId: "norman",
+      });
+      const result = priceQuoteV2Selection({
+        selection: context,
+        priceInput: {
+          productId,
+          programId,
+          widthInches: context.widthInches,
+          heightInches: context.heightInches,
+          surcharges: [{ id: surchargeId }],
+        },
+        includeInternalCost: true,
+      });
+
+      expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
+      if (!result.ok) return;
+      expect(result.components).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: `operating:${surchargeId}`,
+            category: "operating_system",
+            priceLineId: surchargeId,
+            status: "priced",
+          }),
+        ]),
+      );
+      expect(
+        result.components.some(
+          (component) =>
+            component.category === "accessory" &&
+            component.priceLineId === surchargeId,
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it("preserves compatible exact Roller valances and replaces stale dependent values", () => {
+    const base = selection(
+      "roller",
+      "roller_cordless_fabric_price_group_1_pg1",
+    );
+    const automatic = (configuration: SelectionRecord) =>
+      authoritativeAutomaticSurchargeSelections({
+        ...base,
+        configuration,
+      });
+    const expectValance = (
+      topTreatment: string,
+      valance: string,
+      surchargeId: string,
+    ) => {
+      expect(
+        automatic({
+          top_treatment_class: topTreatment,
+          valance,
+        }),
+      ).toEqual([{ id: surchargeId, units: 1 }]);
+    };
+
+    for (const valance of [
+      '3 1/2" Fabric Valance*',
+      '4 1/2" Fabric Valance*',
+      '6" Fabric Valance*',
+    ]) {
+      expectValance(
+        "Fabric Valance",
+        valance,
+        "fabric_valance_3_1_2in_4_1_2in_and_6in",
+      );
+    }
+    expectValance(
+      "Fabric Valance",
+      '8" Fabric Valance*',
+      "8in_fabric_valance_and_cassette",
+    );
+    expectValance(
+      "Curved Fascia",
+      "Plain Curved Fascia*",
+      "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+    );
+    expectValance(
+      "Curved Fascia",
+      "Curved Fascia with Fabric*",
+      "fabric_valance_3_1_2in_4_1_2in_and_6in",
+    );
+    expectValance(
+      "Square Fascia",
+      "Square Fascia*",
+      "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+    );
+    expectValance(
+      "Wood Valance",
+      '4 1/2" Modern Wood Valance*',
+      "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+    );
+    expectValance(
+      "Cassette",
+      "Cassette*",
+      "8in_fabric_valance_and_cassette",
+    );
+
+    // A broad-class change is authoritative: an incompatible exact dependent
+    // value is cleared to the new class default before pricing.
+    expect(
+      automatic({
+        roller_top_treatment: "Square Fascia",
+        valance: '8" Fabric Valance*',
+      }),
+    ).toEqual([
+      {
+        id: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
+        units: 1,
+      },
     ]);
   });
 
@@ -522,6 +863,188 @@ describe("Quote V2 authoritative pricing engine", () => {
     }); // 8 sq ft minimum x $13.60; its retail policy remains $272 / $34 per sq ft.
   });
 
+  it("keeps retail component fields but removes source-dollar formulas from customer payloads", () => {
+    const context = selection(
+      "lotus_mini_blinds",
+      "lotus_amx_1in_aluminum_custom",
+      {},
+      { widthInches: 30, heightInches: 48 },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+      },
+      includeInternalCost: true,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const componentTemplate = result.components[0];
+    expect(componentTemplate).toBeDefined();
+    if (!componentTemplate) return;
+    const retailProbe: QuoteV2PriceSuccess = {
+      ...result,
+      components: [
+        {
+          ...componentTemplate,
+          id: "probe:fixed",
+          category: "accessory",
+          label: "Fixed option",
+          status: "priced",
+          basis: "flat",
+          selectionBindings: [],
+          catalogAmount: 8,
+          wholesaleAmount: 4,
+          customerAmount: 20,
+          units: 1,
+          billingScope: "per_window",
+          priceLineId: "probe:fixed",
+        },
+        {
+          ...componentTemplate,
+          id: "probe:percent",
+          category: "accessory",
+          label: "Percentage option",
+          status: "priced",
+          basis: "percent",
+          selectionBindings: [],
+          catalogAmount: 15,
+          wholesaleAmount: 7.5,
+          customerAmount: 37.5,
+          units: 1,
+          billingScope: "per_window",
+          priceLineId: "probe:percent",
+        },
+        {
+          ...componentTemplate,
+          id: "probe:quantity",
+          category: "accessory",
+          label: "Multi-unit option",
+          status: "priced",
+          basis: "flat",
+          selectionBindings: [],
+          catalogAmount: 14,
+          wholesaleAmount: 7,
+          customerAmount: 35,
+          units: 2,
+          billingScope: "per_window",
+          priceLineId: "probe:quantity",
+        },
+      ],
+      componentTotals: {
+        catalogPerWindow: 37,
+        wholesalePerWindow: 18.5,
+        customerPerWindow: 92.5,
+        catalogOncePerLine: 0,
+        wholesaleOncePerLine: 0,
+        customerOncePerLine: 0,
+      },
+      surchargeLines: [
+        {
+          id: "probe:fixed",
+          label: "Fixed option",
+          amount: 20,
+          wholesaleAmount: 4,
+          kind: "flat",
+          detail: "$8 fixed source charge",
+        },
+        {
+          id: "probe:percent",
+          label: "Percentage option",
+          amount: 37.5,
+          wholesaleAmount: 7.5,
+          kind: "percent",
+          detail: "15% of source base ($100)",
+        },
+        {
+          id: "probe:quantity",
+          label: "Multi-unit option",
+          amount: 35,
+          wholesaleAmount: 7,
+          kind: "flat",
+          detail: "$7 x 2 sides",
+        },
+      ],
+    };
+
+    const customer = toCustomerQuotePriceResult(retailProbe) as {
+      base: number;
+      unitPrice: number;
+      total: number;
+      components: Array<Record<string, unknown>>;
+      componentTotals: Record<string, number>;
+      surchargeLines: Array<Record<string, unknown>>;
+    };
+    expect(customer).toMatchObject({
+      base: result.base,
+      unitPrice: result.unitPrice,
+      total: result.total,
+      componentTotals: {
+        customerPerWindow: 92.5,
+        customerOncePerLine: 0,
+      },
+    });
+    expect(customer.components).toEqual([
+      expect.objectContaining({
+        id: "probe:fixed",
+        basis: "flat",
+        customerAmount: 20,
+        units: 1,
+      }),
+      expect.objectContaining({
+        id: "probe:percent",
+        basis: "percent",
+        customerAmount: 37.5,
+        units: 1,
+      }),
+      expect.objectContaining({
+        id: "probe:quantity",
+        basis: "flat",
+        customerAmount: 35,
+        units: 2,
+      }),
+    ]);
+    expect(customer.surchargeLines).toEqual([
+      {
+        id: "probe:fixed",
+        label: "Fixed option",
+        amount: 20,
+        kind: "flat",
+      },
+      {
+        id: "probe:percent",
+        label: "Percentage option",
+        amount: 37.5,
+        kind: "percent",
+      },
+      {
+        id: "probe:quantity",
+        label: "Multi-unit option",
+        amount: 35,
+        kind: "flat",
+      },
+    ]);
+
+    const customerJson = JSON.stringify(customer);
+    expect(customerJson).not.toContain("$");
+    expect(customerJson).not.toMatch(/source (base|charge)/i);
+    expect(customer.surchargeLines.every((line) => !("detail" in line))).toBe(
+      true,
+    );
+    expect(retailProbe.surchargeLines.map((line) => line.detail)).toEqual([
+      "$8 fixed source charge",
+      "15% of source base ($100)",
+      "$7 x 2 sides",
+    ]);
+    expect(JSON.stringify(createImmutablePriceSnapshot(retailProbe))).not.toContain(
+      "$",
+    );
+  });
+
   it("excludes every internal-cost field from customer projections and snapshots", () => {
     const context = selection(
       "lotus_mini_blinds",
@@ -543,13 +1066,17 @@ describe("Quote V2 authoritative pricing engine", () => {
     if (!result.ok) return;
     const customer = toCustomerQuotePriceResult(result);
     const serialized = JSON.stringify(customer);
-    expect(serialized).not.toMatch(/wholesale|internalCost|costStatus|freightAllocated|landedCost/i);
+    expect(serialized).not.toMatch(
+      /wholesale|internalCost|costStatus|freightAllocated|processingFee|landedCost/i,
+    );
     expect(serialized).not.toContain("24.3");
     expect(serialized).not.toContain("2.5");
 
     const snapshot = createImmutablePriceSnapshot(result);
     expect(snapshot.selectionFingerprint).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(JSON.stringify(snapshot)).not.toMatch(/wholesale|internalCost|costStatus/i);
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /wholesale|internalCost|costStatus|processingFee/i,
+    );
     expect(Object.isFrozen(snapshot)).toBe(true);
   });
 });
