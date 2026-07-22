@@ -17,8 +17,8 @@ Thinking about an outdoor room? 805 Shutters measures, recommends, and installs 
 
 ## Publishing status
 
-- Website: ready for deployment
-- Facebook: pending
-- Instagram: pending
-- Google Business Profile: pending
-- Yelp: pending
+- Website: live and verified at https://www.805shutters.com/images/portfolio-enhanced/exterior-patio-shades-wide-card.jpg
+- Facebook: live post ID `1655106029956031` at https://www.facebook.com/805shutters/posts/1655106029956031
+- Instagram: live carousel at https://www.instagram.com/805shutters/p/DbEzfxtGpDp/
+- Google Business Profile: three photos uploaded successfully in the manager; public media visibility is pending Google processing
+- Yelp: three photos uploaded and visible in Yelp Business Manager
