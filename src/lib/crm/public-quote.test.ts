@@ -181,6 +181,20 @@ describe("signed SMS copy", () => {
       ].join("\n")
     );
   });
+  it("primary shop recipient gets the technical measure form", () => {
+    const msg = buildSignedShopSmsForRecipient(SOLD_QUOTE_CONTACT_SMS_RECIPIENT, "Jane Smith", 4250, 2125, {
+      technicalMeasure: "needed",
+      measureFormUrl: "https://805shutters.com/crm/technical-measures/form-id",
+    });
+    expect(msg).toContain("Measure Form: https://805shutters.com/crm/technical-measures/form-id");
+  });
+  it("other shop recipients do not get the technical measure form", () => {
+    const msg = buildSignedShopSmsForRecipient("805-630-0848", "Jane Smith", 4250, 2125, {
+      technicalMeasure: "needed",
+      measureFormUrl: "https://805shutters.com/crm/technical-measures/form-id",
+    });
+    expect(msg).not.toContain("Measure Form:");
+  });
   it("other shop recipients keep the base sale fields only", () => {
     const msg = buildSignedShopSmsForRecipient("805-630-0848", "Jane Smith", 4250, 2125, {
       customerPhone: "805-555-1212",

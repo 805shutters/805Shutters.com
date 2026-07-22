@@ -100,6 +100,11 @@ export type TechnicalMeasureForm = {
   requiresAddendum: boolean;
 };
 
+export function technicalMeasureFormUrl(formId: string): string {
+  const origin = (process.env.NEXT_PUBLIC_SITE_URL || "https://805shutters.com").replace(/\/+$/, "");
+  return `${origin}/crm/technical-measures/${encodeURIComponent(formId)}`;
+}
+
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }

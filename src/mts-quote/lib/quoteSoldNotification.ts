@@ -53,7 +53,8 @@ function technicalMeasureSmsLine(value?: SoldQuoteSmsInput["technical_measure"])
 export function build805SoldQuoteSmsMessage(
   quote: SoldQuoteSmsInput,
   contractUrl = buildContractUrl(quote.share_token),
-  includeCustomerContact = false
+  includeCustomerContact = false,
+  measureFormUrl: string | null = null,
 ): string {
   const customerName = quote.customer_name?.trim() || "Unknown customer";
   const lines = [
@@ -64,6 +65,7 @@ export function build805SoldQuoteSmsMessage(
     includeCustomerContact ? optionalSmsLine("Customer Phone", quote.customer_phone) : null,
     includeCustomerContact ? optionalSmsLine("Customer Address", quote.customer_address) : null,
   ].filter((line): line is string => Boolean(line));
+  if (measureFormUrl) lines.push(`Measure Form: ${measureFormUrl}`);
   if (contractUrl) lines.push(`Contract PDF: ${contractUrl}`);
   return lines.join("\n");
 }
@@ -71,12 +73,15 @@ export function build805SoldQuoteSmsMessage(
 export function build805SoldQuoteSmsMessageForRecipient(
   recipient: string,
   quote: SoldQuoteSmsInput,
-  contractUrl = buildContractUrl(quote.share_token)
+  contractUrl = buildContractUrl(quote.share_token),
+  measureFormUrl: string | null = null,
 ): string {
+  const isPrimaryRecipient = recipient === SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT;
   return build805SoldQuoteSmsMessage(
     quote,
-    contractUrl,
-    recipient === SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
+    isPrimaryRecipient ? null : contractUrl,
+    isPrimaryRecipient,
+    isPrimaryRecipient ? measureFormUrl : null,
   );
 }
 

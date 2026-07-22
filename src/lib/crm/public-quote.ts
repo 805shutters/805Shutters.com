@@ -7,7 +7,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity, upsertCrmCustomer } from "@/lib/crm/backend";
 import { markMeasureNotNeededForJob, requestMeasureNeededForJob } from "@/lib/crm/measure-needed";
-import { ensureTechnicalMeasureForm } from "@/lib/crm/technical-measures";
+import { ensureTechnicalMeasureForm, technicalMeasureFormUrl } from "@/lib/crm/technical-measures";
 import {
   getMeasureNeededMeta,
   isTechnicalMeasureDecision,
@@ -49,6 +49,7 @@ type SignedShopSmsContact = {
   customerPhone?: string | null;
   customerAddress?: string | null;
   technicalMeasure?: TechnicalMeasureDecision | null;
+  measureFormUrl?: string | null;
 };
 
 export type PublicQuoteLine = {
@@ -654,6 +655,7 @@ export function buildSignedShopSms(
     technicalMeasureSmsLine(contact.technicalMeasure),
     optionalSmsLine("Customer Phone", contact.customerPhone),
     optionalSmsLine("Customer Address", contact.customerAddress),
+    optionalSmsLine("Measure Form", contact.measureFormUrl),
   ].filter((line): line is string => Boolean(line)).join("\n");
 }
 
@@ -1150,13 +1152,14 @@ export async function acceptPublicQuote(
     signature,
     soldTotal,
   });
-  if (technicalMeasure === "needed" && soldSync.job) {
-    await ensureTechnicalMeasureForm(
+  const measureForm = technicalMeasure === "needed" && soldSync.job
+    ? await ensureTechnicalMeasureForm(
       supabase,
       { jobId: soldSync.job.id, quoteId: signedQuote.id },
       { email: "automation:quote_signed" }
-    );
-  }
+    )
+    : null;
+  shopSmsContact.measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
 
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",

@@ -45,6 +45,38 @@ describe("805 sold quote SMS notification", () => {
     );
   });
 
+  it("replaces the contract with the measure form for the primary recipient", () => {
+    const message = build805SoldQuoteSmsMessageForRecipient(
+      SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
+      { ...quote, technical_measure: "needed" },
+      "https://805shutters.com/quote/quote-token",
+      "https://805shutters.com/crm/technical-measures/form-id",
+    );
+    expect(message).toContain("Measure Form: https://805shutters.com/crm/technical-measures/form-id");
+    expect(message).not.toContain("Contract PDF:");
+  });
+
+  it("removes the contract from the primary recipient when no measure is needed", () => {
+    const message = build805SoldQuoteSmsMessageForRecipient(
+      SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
+      { ...quote, technical_measure: "not_needed" },
+      "https://805shutters.com/quote/quote-token",
+    );
+    expect(message).not.toContain("Contract PDF:");
+    expect(message).not.toContain("Measure Form:");
+  });
+
+  it("keeps the contract for other recipients and omits the measure form", () => {
+    const message = build805SoldQuoteSmsMessageForRecipient(
+      "805-630-0848",
+      { ...quote, technical_measure: "needed" },
+      "https://805shutters.com/quote/quote-token",
+      "https://805shutters.com/crm/technical-measures/form-id",
+    );
+    expect(message).toContain("Contract PDF: https://805shutters.com/quote/quote-token");
+    expect(message).not.toContain("Measure Form:");
+  });
+
   it("keeps other recipients on the base sale fields only", () => {
     expect(build805SoldQuoteSmsMessageForRecipient("805-630-0848", quote, null)).toBe(
       build805SoldQuoteSmsMessage(quote, null)
