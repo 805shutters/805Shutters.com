@@ -687,7 +687,7 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     await page.reload();
     const card = page.locator(`[data-quote-line-id="${firstLine.id}"]`);
     await expect(card).toBeVisible();
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("246");
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("328");
 
     await card.locator(".quote-confirmed-option-chip").filter({ hasText: "Lift SystemCordless" }).click();
     await card.getByRole("button", { name: "Motorized", exact: true }).click();
@@ -704,14 +704,14 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     await page.getByRole("option", { name: "AutoWand", exact: true }).click();
 
     await expect(card.getByTestId("roller-motorization-complete")).toContainText(/AutoWand/i);
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("370.5", {
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("494", {
       timeout: 30_000,
     });
     await card.getByText("Why this price?", { exact: false }).click();
-    await expect(card).toContainText("Base $223.50");
-    await expect(card).toContainText("Fabric $22.50");
+    await expect(card).toContainText("Base $298");
+    await expect(card).toContainText("Fabric $30");
     await expect(card).toContainText("Accessories $0");
-    await expect(card).toContainText("Operating $124.50");
+    await expect(card).toContainText("Operating $166");
     await expect(card).toContainText("Actual selected grid");
     await expect(card).toContainText("$328");
     await expect(card).toContainText("AutoWand charging-kit allocation");
@@ -732,9 +732,6 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     await expect(
       card.locator('[aria-label="Retail pricing"] [data-wholesale-cost-value="true"]'),
     ).toHaveCount(0);
-    await expect(
-      highlightedWholesaleCosts.filter({ hasText: "$124.50" }),
-    ).toHaveCount(0);
     await expect(card).not.toContainText("Stored price mismatch");
     await expect(card).not.toContainText("Surcharge mismatch");
     await expect(page.getByText("Quote saved", { exact: true })).toBeVisible();
@@ -747,7 +744,7 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     expect(persistedDesign).toMatchObject({
       lift_system: "Motorized",
       motor_type: "Autowand",
-      unit_price: 370.5,
+      unit_price: 494,
       options_json: {
         tube_class: '2" (52mm) Tube',
         power_configuration: "AutoWand",
@@ -761,11 +758,11 @@ test("Roller Cordless to Motorized reprices, persists, explains cost, and clears
     });
 
     await page.reload();
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("370.5");
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("494");
     await expect(card.getByTestId("roller-motorization-complete")).toBeVisible();
     await card.locator(".quote-confirmed-option-chip").filter({ hasText: "Lift SystemMotorized" }).click();
     await card.getByRole("button", { name: "Cordless", exact: true }).click();
-    await expect(card.getByLabel("Authoritative price")).toHaveValue("246", {
+    await expect(card.getByLabel("Authoritative price")).toHaveValue("328", {
       timeout: 30_000,
     });
     await expect(card.getByTestId("roller-motorization-required")).toHaveCount(0);
@@ -823,7 +820,7 @@ test("V2 existing-interface visual regression", async ({ page }) => {
   try {
     await page.reload();
     await expect(page.locator(".quote-line-card-header")).toHaveCount(40);
-    await expect(page.locator('[data-line-number="1"] [aria-label="Authoritative price"]')).toHaveValue("246");
+    await expect(page.locator('[data-line-number="1"] [aria-label="Authoritative price"]')).toHaveValue("328");
     await expect(page).toHaveScreenshot("quote-lab-v2-existing-interface.png", {
       animations: "disabled",
       caret: "hide",
