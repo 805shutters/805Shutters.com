@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
 import {
+  QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ROLLER_PREVIEW_VERSION,
+} from "@/lib/quote-v2/catalog";
+import {
   priceExactQuoteBuilderDesign,
   repriceExactQuoteBuilderForQuoteLabPreview as repriceExactQuoteBuilder,
   repriceExactQuoteBuilderForServerDate,
@@ -128,6 +132,9 @@ function lotusDesign(
 
 type RepricedQuote = ReturnType<typeof repriceExactQuoteBuilder>;
 type V2Quote = Extract<RepricedQuote, { backend: "v2" }>;
+
+const PRE_MSRP_ROLLER_PREVIEW_VERSION =
+  "805-v2-norman-roller-2026-08-01";
 
 function requireV2(quote: RepricedQuote): V2Quote {
   if (!("backend" in quote) || quote.backend !== "v2") {
@@ -329,7 +336,7 @@ describe("exact-interface V2 integration", () => {
   it("blocks sending when a stored fingerprint is stale or the selection is incomplete", () => {
     const stale = priceOne(1, {
       authoritative_v2_snapshot: {
-        catalogVersion: "805-v2-norman-2026-07",
+        catalogVersion: "stale-catalog-version",
         catalogAsOf: "2026-08-01",
         selectionFingerprint: `sha256:${"0".repeat(64)}`,
         priceStatus: "authoritative",
@@ -383,6 +390,45 @@ describe("exact-interface V2 integration", () => {
     });
     expect(blocked.total).toBe(0);
     expect(blocked.sendability.sendable).toBe(false);
+  });
+
+  it("marks a pre-MSRP-policy catalog snapshot stale even when its fingerprint matches", () => {
+    const current = priceOne(1);
+    const currentSnapshot = current.designs[0]?.snapshot;
+    const currentResult = current.designs[0]?.result;
+    if (!currentSnapshot || !currentResult?.ok) {
+      throw new Error("Expected a current authoritative Roller snapshot.");
+    }
+    expect(currentResult.catalogVersion).toBe(
+      QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    );
+
+    const prePolicy = priceOne(1, {
+      authoritative_v2_snapshot: {
+        ...currentSnapshot,
+        // Keep the current fingerprint deliberately: this isolates the
+        // catalog revision as an independently sufficient stale-price guard.
+        catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        retail: {
+          ...currentSnapshot.retail,
+          catalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+        },
+      },
+    });
+    expect(prePolicy.designs[0].result).toMatchObject({
+      ok: true,
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    });
+    expect(prePolicy.sendability.lines[0]).toMatchObject({
+      stale: true,
+      sendable: false,
+      pricedSelectionFingerprint: currentResult.selectionFingerprint,
+      pricedCatalogVersion: PRE_MSRP_ROLLER_PREVIEW_VERSION,
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    });
+    expect(
+      prePolicy.sendability.lines[0].reasons.map((reason) => reason.code),
+    ).toContain("catalog_version_mismatch");
   });
 
   it("fails closed for unknown explicitly selected product and program codes", () => {
@@ -508,7 +554,7 @@ describe("exact-interface V2 integration", () => {
     });
     expect(injected.designs[0].result.ok).toBe(true);
     expect(injected.designs[0].result.catalogVersion).toBe(
-      "805-v2-norman-roller-2026-08-01",
+      QUOTE_V2_ROLLER_PREVIEW_VERSION,
     );
     expect(injected.designs[0].result.catalogAsOf).toBe("2026-08-01");
   });
@@ -517,7 +563,7 @@ describe("exact-interface V2 integration", () => {
     const quoteLine = line("line-production-date");
     const design = rollerDesign(quoteLine.id, "A", {
       // These browser-stored preview labels must not activate the appendix.
-      quote_v2_catalog_version: "805-v2-norman-roller-2026-08-01",
+      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       quote_v2_catalog_as_of: "2026-08-01",
     });
     const production = requireV2(
@@ -533,7 +579,7 @@ describe("exact-interface V2 integration", () => {
 
     expect(production.designs[0].result).toMatchObject({
       ok: false,
-      catalogVersion: "805-v2-norman-2026-07",
+      catalogVersion: QUOTE_V2_CATALOG_VERSION,
       catalogAsOf: "2026-07-31",
       validationStatus: "blocked",
     });
@@ -866,16 +912,24 @@ describe("exact-interface V2 integration", () => {
     for (const customerProjection of customerProjections) {
       const serialized = JSON.stringify(customerProjection);
       expect(serialized).not.toMatch(
-        /wholesale|internalCost|costStatus|landedCost|freightAllocated|oversizeAllocated|processingFeeAllocated|productCost|dealerCost|effectiveDealerFactor|multiplier|margin|2\.5/i,
+        /wholesale|internalCost|costStatus|landedCost|freightAllocated|oversizeAllocated|processingFeeAllocated|productCost|dealer(?:[-_\s]?net)?|effectiveDealerFactor|multiplier|margin|schedule|2\.5/i,
       );
     }
+    if (priced.result.ok) {
+      throw new Error("Expected customer retail to remain undefined.");
+    }
+    expect(priced.result.error).toMatch(/dealer-net/i);
     expect(customerProjections[0]).toMatchObject({
       ok: false,
       code: "CUSTOMER_RETAIL_UNDEFINED",
+      error:
+        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
     });
     expect(quote.customerQuote.lines[0].price).toMatchObject({
       ok: false,
       code: "CUSTOMER_RETAIL_UNDEFINED",
+      error:
+        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
     });
   });
 
@@ -915,7 +969,7 @@ describe("exact-interface V2 integration", () => {
     });
   });
 
-  it("does not preserve a base-only dealer cost when a valid option is selected", () => {
+  it("preserves the source-backed Polar Sliding Glass Door dealer cost", () => {
     const quoteLine = line("line-polar-dealer-option", {
       product_type: "Retractable Screens",
       width_whole: 48,
@@ -954,16 +1008,37 @@ describe("exact-interface V2 integration", () => {
         expect.objectContaining({ severity: "hard_block" }),
       ]),
     );
-    expect(priced.result).not.toHaveProperty("internalCost");
+    expect(priced.result).toMatchObject({
+      internalCost: {
+        basis: "dealer_net",
+        productCostUnit: 400,
+        productCostTotal: 400,
+        landedCostTotal: 400,
+        freightStatus: "unresolved",
+      },
+    });
     expect(priced.costResult).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
+      wholesaleBase: 375,
+      wholesaleAddOns: [
+        {
+          id: "sliding_glass_door",
+          label: "Sliding Glass Door",
+          amount: 25,
+        },
+      ],
+      wholesaleUnitCost: 400,
+      wholesaleTotal: 400,
     });
     expect(quote.costSummary).toMatchObject({
       status: "incomplete",
-      productCost: 0,
-      dealerCostTotal: 0,
+      productCost: 400,
+      dealerCostTotal: 400,
     });
+    expect(quote.total).toBe(0);
+    expect(JSON.stringify(quote.customerQuote)).not.toMatch(
+      /wholesale|internalCost|landedCost|productCost|dealerCost|margin/i,
+    );
   });
 
   it("hard-blocks ambiguous and unknown populated legacy Roller accessories", () => {

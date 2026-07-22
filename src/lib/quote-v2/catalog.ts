@@ -2,8 +2,19 @@ import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generat
 import { normanRollerFabricColors } from "@/lib/quote/norman-roller-fabrics";
 import { normanRomanDealerFabricRows } from "@/lib/quote/norman-roman-dealer-fabrics.generated";
 
-export const QUOTE_V2_CATALOG_VERSION = "805-v2-norman-2026-07" as const;
-export const QUOTE_V2_ROLLER_PREVIEW_VERSION = "805-v2-norman-roller-2026-08-01" as const;
+/**
+ * Customer-retail policy revision introduced with the authoritative MSRP/list
+ * correction in 8cfcd72. It is embedded in every current catalog identity so
+ * a snapshot produced by the earlier dealer-cost-markup policy cannot compare
+ * equal to a current authoritative price.
+ */
+export const QUOTE_V2_PRICING_POLICY_REVISION =
+  "msrp-r1" as const;
+
+export const QUOTE_V2_CATALOG_VERSION =
+  `805-v2-norman-2026-07-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
+export const QUOTE_V2_ROLLER_PREVIEW_VERSION =
+  `805-v2-norman-roller-2026-08-01-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
 
 /**
  * Server-owned catalog selection. A browser-provided catalog label is never

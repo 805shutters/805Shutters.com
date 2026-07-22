@@ -17,7 +17,7 @@ const sharedCategories = new Set(
 const sharedProducts = products.filter((product) => sharedCategories.has(quoteLabProductType(product.id)));
 
 function isDealerNet(product: CatalogProduct, program: CatalogProgram): boolean {
-  return product.priceBasis === "dealer_net" || program.priceBasis === "dealer_net";
+  return (program.priceBasis ?? product.priceBasis) === "dealer_net";
 }
 
 function matrixFor(product: CatalogProduct, program: CatalogProgram): (number | null)[][] {
@@ -170,6 +170,9 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
     let sqftPrograms = 0;
     for (const product of sharedProducts) {
       for (const program of product.programs.filter((candidate) => candidate.priceAxis === "sqft")) {
+        if (program.priceBasis === "manual_required" || program.priceBasis === "unavailable") {
+          continue;
+        }
         sqftPrograms += 1;
         for (const [widthInches, heightInches] of [[12, 12], [36, 60], [96, 96]]) {
           const dealerNet = isDealerNet(product, program);
@@ -196,7 +199,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
         }
       }
     }
-    expect(sqftPrograms).toBe(13);
+    expect(sqftPrograms).toBe(12);
   });
 
   it("matches the comparison projection to direct pricing for every shared program", () => {

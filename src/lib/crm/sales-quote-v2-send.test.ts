@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
+import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "@/lib/quote-v2/catalog";
 import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
 import type {
   SalesQuoteDesign,
@@ -67,7 +68,7 @@ function unpricedRollerDesign(): SalesQuoteDesign {
       quote_lab_product_id: "roller",
       fabric_product_id: "roller",
       fabric_program_id: "roller_cordless_fabric_price_group_2_pg2",
-      quote_v2_catalog_version: "805-v2-norman-roller-2026-08-01",
+      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       quote_v2_catalog_as_of: "2026-08-01",
       fabric_color_collection: "Amelia",
       fabric_color_code: "F1484",

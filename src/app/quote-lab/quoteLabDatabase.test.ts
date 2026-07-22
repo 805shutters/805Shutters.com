@@ -5,6 +5,7 @@ import type {
   QuoteLabFixture,
 } from "@/lib/quote-lab/types";
 import type { SalesQuoteDesign } from "@mts/types/quote";
+import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "@/lib/quote-v2/catalog";
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import {
   createExactQuoteLabDatabase,
@@ -110,8 +111,8 @@ function authoritativeResponse(options?: {
     validationStatus: "valid",
     selectionFingerprint: responseFingerprint,
     pricedSelectionFingerprint: responseFingerprint,
-    catalogVersion: "805-v2-norman-roller-2026-08-01",
-    pricedCatalogVersion: "805-v2-norman-roller-2026-08-01",
+    catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+    pricedCatalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
   };
   return new Response(
     JSON.stringify({
@@ -421,11 +422,11 @@ describe("V2 authoritative price persistence", () => {
       authoritative_price_error: null,
       authoritative_once_total: 5,
       priced_selection_fingerprint: fingerprint,
-      priced_catalog_version: "805-v2-norman-roller-2026-08-01",
+      priced_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       authoritative_v2_snapshot: {
         priceStatus: "authoritative",
         selectionFingerprint: fingerprint,
-        catalogVersion: "805-v2-norman-roller-2026-08-01",
+        catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       },
     });
 

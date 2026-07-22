@@ -217,10 +217,17 @@ describe("catalog integrity", () => {
       for (const prog of product.programs) {
         const { widths, heights, prices } = prog.grid;
         if (prog.priceAxis === "sqft") {
-          const dealerNet = (prog.priceBasis ?? product.priceBasis) === "dealer_net";
+          const effectiveBasis = prog.priceBasis ?? product.priceBasis;
+          const dealerNet = effectiveBasis === "dealer_net";
           if (dealerNet) {
             expect(prog.pricePerSqft, `${prog.id} customer retail`).toBeNull();
             expect(typeof prog.costPerSqft, `${prog.id} costPerSqft`).toBe("number");
+          } else if (
+            effectiveBasis === "manual_required" ||
+            effectiveBasis === "unavailable"
+          ) {
+            expect(prog.pricePerSqft, `${prog.id} quarantined retail`).toBeNull();
+            expect(prog.costPerSqft, `${prog.id} quarantined cost`).toBeNull();
           } else {
             expect(typeof prog.pricePerSqft, `${prog.id} pricePerSqft`).toBe("number");
           }

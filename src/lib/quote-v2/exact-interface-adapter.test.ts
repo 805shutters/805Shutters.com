@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
+import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "./catalog";
 import { createSelectionFingerprint } from "./core";
 import {
   EXACT_INTERFACE_V2_FRACTIONS,
@@ -54,7 +55,7 @@ describe("V2 exact-interface adapter", () => {
       heightInches: 60,
       quantity: 2,
       catalogAsOf: "2026-08-01",
-      catalogVersion: "805-v2-norman-roller-2026-08-01",
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       configuration: {
         roller_application: "Single",
         roller_top_treatment: "No Top Treatment",
@@ -197,7 +198,7 @@ describe("V2 exact-interface adapter", () => {
       options_json: {
         ...design.options_json,
         priced_selection_fingerprint: `sha256:${"a".repeat(64)}`,
-        priced_catalog_version: "805-v2-norman-roller-2026-08-01",
+        priced_catalog_version: "stored-client-label-is-not-selection-state",
       },
     }, {
       productId: "roller",

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { priceDesign, type PriceResult } from "./pricing";
+import {
+  priceDealerNetDesign,
+  priceDesign,
+  type PriceResult,
+} from "./pricing";
 import { catalog, getProduct } from "./catalog";
 
 function ok(result: PriceResult) {
@@ -10,13 +14,120 @@ function ok(result: PriceResult) {
 describe("Polar Shades dealer book golden quotes", () => {
   it("records the received CURRENT source without inventing an effective date", () => {
     expect(catalog.sources).toContainEqual({
-      file: "Polar-Shades-Dealer-Book-CURRENT.pdf",
-      title: "Microsoft Word - 2019 Polar Dealer Book (Repaired)",
+      sourceId: "polar-shades-dealer-book-current-2026-07-18",
+      file: "_Polar Shades Dealer Book - CURRENT.pdf",
+      title: "Interior & Exterior Shades Pricing & Reference Guide",
       revision: "CURRENT",
       effectiveDate: null,
       receivedDate: "2026-07-20",
       modifiedDate: "2026-07-18",
       pages: 246,
+      sha256: "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e",
+    });
+  });
+
+  it("keeps both All Seasons cells exclusively as dealer cost", () => {
+    const product = getProduct("polar_all_seasons_screen");
+    expect(product?.priceBasis).toBe("dealer_net");
+    const cases = [
+      ["single_48x96", 48, 96, 375],
+      ["double_72x96", 72, 96, 700],
+    ] as const;
+
+    for (const [programId, widthInches, heightInches, expectedCost] of cases) {
+      const program = product?.programs.find((entry) => entry.id === programId);
+      expect(program?.priceGroup, programId).toBeNull();
+      expect(program?.grid.prices, `${programId} customer retail`).toEqual([[null]]);
+      expect(program?.grid.costs, `${programId} dealer cost`).toEqual([[expectedCost]]);
+      expect(priceDealerNetDesign({
+        productId: "polar_all_seasons_screen",
+        programId,
+        widthInches,
+        heightInches,
+      })).toMatchObject({
+        ok: true,
+        dealerNetUnitCost: expectedCost,
+        matchedWidth: widthInches,
+        matchedHeight: heightInches,
+      });
+      expect(priceDesign({
+        productId: "polar_all_seasons_screen",
+        programId,
+        widthInches,
+        heightInches,
+      })).toMatchObject({
+        ok: false,
+        code: "CUSTOMER_RETAIL_UNDEFINED",
+      });
+    }
+
+    expect(product?.surcharges).toContainEqual({
+      id: "sliding_glass_door",
+      name: "Sliding Glass Door",
+      kind: "flat",
+      per: "unit",
+      value: null,
+      dealerNetValue: 25,
+      sourceId: "polar-shades-dealer-book-current-2026-07-18",
+      appliesTo: "all",
+      notes: "$25 is published dealer-net cost. Customer retail is undefined.",
+      sourceType: "Polar dealer book",
+      sourcePages: [88],
+    });
+    expect(priceDealerNetDesign({
+      productId: "polar_all_seasons_screen",
+      programId: "single_48x96",
+      widthInches: 48,
+      heightInches: 96,
+      quantity: 2,
+      surcharges: [{ id: "sliding_glass_door" }],
+    })).toMatchObject({
+      ok: true,
+      dealerNetBaseCost: 375,
+      dealerNetOptionLines: [
+        {
+          id: "sliding_glass_door",
+          amount: 25,
+          billingScope: "per_window",
+          sourceId: "polar-shades-dealer-book-current-2026-07-18",
+        },
+      ],
+      dealerNetUnitCost: 400,
+      quantity: 2,
+      dealerNetTotalCost: 800,
+    });
+  });
+
+  it("enforces All Seasons exact min/max dimensions before grid rounding", () => {
+    const priceSingle = (widthInches: number, heightInches: number) =>
+      priceDealerNetDesign({
+        productId: "polar_all_seasons_screen",
+        programId: "single_48x96",
+        widthInches,
+        heightInches,
+      });
+
+    expect(priceSingle(48, 96)).toMatchObject({
+      ok: true,
+      matchedWidth: 48,
+      matchedHeight: 96,
+      dealerNetUnitCost: 375,
+    });
+    expect(priceSingle(47.99, 96)).toMatchObject({
+      ok: false,
+      code: "INVALID_DIMENSIONS",
+    });
+    expect(priceSingle(48, 95.99)).toMatchObject({
+      ok: false,
+      code: "INVALID_DIMENSIONS",
+    });
+    expect(priceSingle(48.01, 96)).toMatchObject({
+      ok: false,
+      code: "WIDTH_EXCEEDS_MAX",
+    });
+    expect(priceSingle(48, 96.01)).toMatchObject({
+      ok: false,
+      code: "HEIGHT_EXCEEDS_MAX",
     });
   });
 

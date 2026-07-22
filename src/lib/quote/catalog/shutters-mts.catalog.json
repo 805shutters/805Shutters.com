@@ -761,21 +761,21 @@
           "name": "Poly Composite",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
+          "priceBasis": "manual_required",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
           "pricePerSqft": null,
-          "costPerSqft": 12.0,
+          "costPerSqft": null,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. Separate legacy dealer-cost evidence; customer MSRP is unverified."
+            "Quarantined: the legacy $12.00 dealer-cost value has no pinned sourceId. Manual source verification is required before pricing."
           ]
         }
       ],

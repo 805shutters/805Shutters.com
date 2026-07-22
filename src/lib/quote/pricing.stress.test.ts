@@ -77,9 +77,13 @@ describe("STRESS: shutter sqft sweep honors the 8 sqft floor and never goes nega
     for (const product of catalog.products) {
       if (product.productType !== "shutter") continue;
       for (const prog of product.programs) {
+        const effectiveBasis = prog.priceBasis ?? product.priceBasis;
+        if (effectiveBasis === "manual_required" || effectiveBasis === "unavailable") {
+          continue;
+        }
         for (let w = 12; w <= 96; w += 6) {
           for (let h = 12; h <= 96; h += 6) {
-            const dealerOnly = (prog.priceBasis ?? product.priceBasis) === "dealer_net";
+            const dealerOnly = effectiveBasis === "dealer_net";
             if (dealerOnly) {
               const r = priceDealerNetDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
               expect(r.ok).toBe(true);

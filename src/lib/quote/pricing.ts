@@ -144,7 +144,24 @@ export type DealerNetCostBreakdown = {
   sqft?: number;
   /** Source minimum applied to actual square footage. */
   billableSqft?: number;
+  /** Source-backed base cost before dealer-net options. */
+  dealerNetBaseCost: number;
+  /** Every selected source-backed dealer-net option, retained for cost audit. */
+  dealerNetOptionLines: Array<{
+    id: string;
+    label: string;
+    amount: number;
+    billingScope: "per_window" | "once";
+    sourceId: string;
+    detail?: string;
+  }>;
+  /** Base plus per-window dealer-net options. */
   dealerNetUnitCost: number;
+  quantity: number;
+  /** Dealer-net options charged once per line. */
+  dealerNetOnceCost: number;
+  /** Unit cost times quantity, plus once-per-line dealer-net options. */
+  dealerNetTotalCost: number;
 };
 
 export type DealerNetCostResult = DealerNetCostBreakdown | PriceFailure;
@@ -298,11 +315,34 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   const warnings: string[] = [];
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
+  if (product.priceBasis === "manual_required") {
+    return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual source cost.`, warnings);
+  }
+  if (product.priceBasis === "unavailable") {
+    return fail("PRODUCT_UNAVAILABLE", `${product.name} has no usable source cost.`, warnings);
+  }
   const resolved = resolveProgram(product, input, warnings);
   if ("ok" in resolved) return resolved;
   const program = resolved;
   if (program.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${program.name} requires a manual source price.`, warnings);
+  }
+  if (program.priceBasis === "unavailable") {
+    return fail("PRODUCT_UNAVAILABLE", `${program.name} is unavailable from the pinned source.`, warnings);
+  }
+  if ((program.priceBasis ?? product.priceBasis) !== "dealer_net") {
+    return fail(
+      "CUSTOMER_RETAIL_UNDEFINED",
+      `${program.name} is not a dealer-net source program.`,
+      warnings,
+    );
+  }
+  if (product.id === "onyx_shutters" && !program.sourceId) {
+    return fail(
+      "MANUAL_PRICE_REQUIRED",
+      `${program.name} is missing pinned Onyx dealer-cost provenance.`,
+      warnings,
+    );
   }
   const width = Number(input.widthInches);
   const height = Number(input.heightInches);
@@ -312,6 +352,52 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   if (program.priceAxis !== "width" && (!Number.isFinite(height) || height <= 0)) {
     return fail("INVALID_DIMENSIONS", "Height must be a positive number.", warnings);
   }
+  const needsHeight = program.priceAxis !== "width";
+  if (program.minWidth != null && width < program.minWidth) {
+    return fail(
+      "INVALID_DIMENSIONS",
+      `Width ${width}" is below the ${program.minWidth}" minimum for ${program.name}.`,
+      warnings,
+    );
+  }
+  if (needsHeight && program.minHeight != null && height < program.minHeight) {
+    return fail(
+      "INVALID_DIMENSIONS",
+      `Height ${height}" is below the ${program.minHeight}" minimum for ${program.name}.`,
+      warnings,
+    );
+  }
+  if (program.maxWidth != null && width > program.maxWidth) {
+    return fail(
+      "WIDTH_EXCEEDS_MAX",
+      `Width ${width}" exceeds the ${program.maxWidth}" max for ${program.name}.`,
+      warnings,
+    );
+  }
+  if (needsHeight && program.maxHeight != null && height > program.maxHeight) {
+    return fail(
+      "HEIGHT_EXCEEDS_MAX",
+      `Height ${height}" exceeds the ${program.maxHeight}" max for ${program.name}.`,
+      warnings,
+    );
+  }
+  if (
+    needsHeight &&
+    program.maxAreaSqft != null &&
+    squareFeet(width, height) > program.maxAreaSqft
+  ) {
+    return fail(
+      "AREA_EXCEEDS_MAX",
+      `${squareFeet(width, height).toFixed(1)} sq ft exceeds the ${program.maxAreaSqft} sq ft max for ${program.name}.`,
+      warnings,
+    );
+  }
+
+  let matchedWidth: number | null = null;
+  let matchedHeight: number | null = null;
+  let sqft: number | undefined;
+  let billableSqft: number | undefined;
+  let dealerNetBaseCents: number;
   if (program.priceAxis === "sqft") {
     if (program.costPerSqft == null) {
       return fail(
@@ -320,63 +406,205 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
         warnings,
       );
     }
-    const sqft = squareFeet(width, height);
-    const billableSqft = Math.max(sqft, program.minSqft ?? 0);
-    return {
-      ok: true,
-      productId: product.id,
-      programId: program.id,
-      matchedWidth: width,
-      matchedHeight: height,
-      sqft,
-      billableSqft,
-      dealerNetUnitCost: fromCents(
-        Math.round(billableSqft * toCents(program.costPerSqft)),
-      ),
-    };
-  }
-  const costs = program.grid.costs;
-  if (!costs?.length) {
-    return fail("CUSTOMER_RETAIL_UNDEFINED", `${program.name} has no dealer-net cost grid.`, warnings);
-  }
-  let widthIndex = 0;
-  let heightIndex = 0;
-  let matchedWidth: number | null = null;
-  let matchedHeight: number | null = null;
-  if (program.priceAxis !== "height") {
-    widthIndex = roundUpIndex(program.grid.widths, width);
-    if (widthIndex < 0) {
-      return fail("WIDTH_EXCEEDS_MAX", `Width ${width}" exceeds the largest source size for ${program.name}.`, warnings);
+    sqft = squareFeet(width, height);
+    billableSqft = Math.max(sqft, program.minSqft ?? 0);
+    matchedWidth = width;
+    matchedHeight = height;
+    dealerNetBaseCents = Math.round(
+      billableSqft * toCents(program.costPerSqft),
+    );
+  } else {
+    const costs = program.grid.costs;
+    if (!costs?.length) {
+      return fail("CUSTOMER_RETAIL_UNDEFINED", `${program.name} has no dealer-net cost grid.`, warnings);
     }
-    matchedWidth = program.grid.widths[widthIndex];
-  }
-  if (program.priceAxis !== "width") {
-    heightIndex = roundUpIndex(program.grid.heights, height);
-    if (heightIndex < 0) {
-      return fail("HEIGHT_EXCEEDS_MAX", `Height ${height}" exceeds the largest source size for ${program.name}.`, warnings);
+    let widthIndex = 0;
+    let heightIndex = 0;
+    if (program.priceAxis !== "height") {
+      widthIndex = roundUpIndex(program.grid.widths, width);
+      if (widthIndex < 0) {
+        return fail("WIDTH_EXCEEDS_MAX", `Width ${width}" exceeds the largest source size for ${program.name}.`, warnings);
+      }
+      matchedWidth = program.grid.widths[widthIndex];
     }
-    matchedHeight = program.grid.heights[heightIndex];
+    if (program.priceAxis !== "width") {
+      heightIndex = roundUpIndex(program.grid.heights, height);
+      if (heightIndex < 0) {
+        return fail("HEIGHT_EXCEEDS_MAX", `Height ${height}" exceeds the largest source size for ${program.name}.`, warnings);
+      }
+      matchedHeight = program.grid.heights[heightIndex];
+    }
+    const value = program.priceAxis === "height"
+      ? costs[heightIndex]?.[0]
+      : program.priceAxis === "width"
+        ? costs[0]?.[widthIndex]
+        : costs[heightIndex]?.[widthIndex];
+    if (value == null) {
+      const note = program.grid.cellNotes?.[heightIndex]?.[widthIndex];
+      return fail(
+        "NA_CELL",
+        `${program.name} is not priced at the matched source cell${note ? ` (${note})` : ""}.`,
+        warnings,
+      );
+    }
+    dealerNetBaseCents = toCents(value);
   }
-  const value = program.priceAxis === "height"
-    ? costs[heightIndex]?.[0]
-    : program.priceAxis === "width"
-      ? costs[0]?.[widthIndex]
-      : costs[heightIndex]?.[widthIndex];
-  if (value == null) {
-    const note = program.grid.cellNotes?.[heightIndex]?.[widthIndex];
+
+  const dealerNetOptionLines: DealerNetCostBreakdown["dealerNetOptionLines"] = [];
+  const selectedSurchargeIds = new Set<string>();
+  let dealerNetPerWindowOptionCents = 0;
+  let dealerNetOnceOptionCents = 0;
+  for (const selection of input.surcharges ?? []) {
+    const surchargeId =
+      selection && typeof selection.id === "string"
+        ? selection.id.trim()
+        : "";
+    const selectedUnits = selection ? selection.units ?? 1 : Number.NaN;
+    if (
+      !surchargeId ||
+      !Number.isFinite(selectedUnits) ||
+      selectedUnits <= 0 ||
+      !Number.isInteger(selectedUnits)
+    ) {
+      return fail(
+        "CONFIGURATION_INCOMPLETE",
+        "Every dealer-net option requires an exact ID and positive whole-number units.",
+        warnings,
+      );
+    }
+    if (selectedSurchargeIds.has(surchargeId)) {
+      return fail(
+        "CONFIGURATION_INCOMPLETE",
+        `Dealer-net option '${surchargeId}' was selected more than once.`,
+        warnings,
+      );
+    }
+    selectedSurchargeIds.add(surchargeId);
+
+    const surcharge = findProductSurcharge(product, surchargeId);
+    if (!surcharge) {
+      return fail(
+        "SURCHARGE_UNKNOWN",
+        `Surcharge '${surchargeId}' is not valid for ${product.name}.`,
+        warnings,
+      );
+    }
+    if (
+      surcharge.dealerNetValue == null ||
+      !Number.isFinite(surcharge.dealerNetValue) ||
+      !surcharge.sourceId ||
+      surcharge.kind !== "flat" ||
+      surcharge.widthGraduated ||
+      surcharge.heightGraduated
+    ) {
+      return fail(
+        "SURCHARGE_NO_PRICE",
+        `Surcharge '${surcharge.name}' has no complete source-backed dealer-net price.`,
+        warnings,
+      );
+    }
+
+    let amountCents: number;
+    let detail: string | undefined;
+    if (surcharge.per === "sqft") {
+      const optionSqft = sqft ?? squareFeet(width, height);
+      amountCents = Math.round(
+        toCents(surcharge.dealerNetValue) * optionSqft,
+      );
+      detail = `$${surcharge.dealerNetValue}/sq ft x ${optionSqft.toFixed(1)}`;
+    } else {
+      const automaticUnits =
+        surcharge.autoUnits === "width_foot"
+          ? Math.ceil(width / 12)
+          : surcharge.autoUnits === "height_foot"
+            ? Math.ceil(height / 12)
+            : null;
+      const units = surcharge.per === "once"
+        ? 1
+        : automaticUnits ?? selectedUnits;
+      amountCents = toCents(surcharge.dealerNetValue) * units;
+      if (units > 1) {
+        detail = `${surcharge.dealerNetValue} x ${units} ${surcharge.per}s`;
+      }
+    }
+    const billingScope = surcharge.per === "once" ? "once" : "per_window";
+    dealerNetOptionLines.push({
+      id: surcharge.id,
+      label: surcharge.name,
+      amount: fromCents(amountCents),
+      billingScope,
+      sourceId: surcharge.sourceId,
+      ...(detail ? { detail } : {}),
+    });
+    if (billingScope === "once") {
+      dealerNetOnceOptionCents += amountCents;
+    } else {
+      dealerNetPerWindowOptionCents += amountCents;
+    }
+  }
+
+  for (const selection of input.motorization ?? []) {
+    if (
+      !selection ||
+      typeof selection.groupId !== "string" ||
+      !selection.groupId.trim() ||
+      typeof selection.optionId !== "string" ||
+      !selection.optionId.trim() ||
+      !Number.isFinite(selection.units ?? 1) ||
+      (selection.units ?? 1) <= 0 ||
+      !Number.isInteger(selection.units ?? 1)
+    ) {
+      return fail(
+        "CONFIGURATION_INCOMPLETE",
+        "Every dealer-net motor selection requires exact IDs and positive whole-number units.",
+        warnings,
+      );
+    }
+    const group = catalog.motorization[selection.groupId];
+    const allowedGroups = new Set(getMotorizationGroupsForProduct(product.id));
+    if (!allowedGroups.has(selection.groupId) || !group) {
+      return fail(
+        "MOTORIZATION_UNKNOWN",
+        `Motorization group '${selection.groupId}' is not valid for ${product.name}.`,
+        warnings,
+      );
+    }
+    const option = group.options.find(
+      (candidate) => candidate.id === selection.optionId,
+    );
+    if (!option) {
+      return fail(
+        "MOTORIZATION_UNKNOWN",
+        `Motorization '${selection.groupId}/${selection.optionId}' not found.`,
+        warnings,
+      );
+    }
     return fail(
-      "NA_CELL",
-      `${program.name} is not priced at the matched source cell${note ? ` (${note})` : ""}.`,
+      "MOTORIZATION_NO_PRICE",
+      `Motorization '${option.name}' has no source-backed dealer-net cost for ${product.name}.`,
       warnings,
     );
   }
+
+  const quantity = normalizeQuantity(input.quantity);
+  const dealerNetUnitCents =
+    dealerNetBaseCents + dealerNetPerWindowOptionCents;
+  const dealerNetTotalCents =
+    dealerNetUnitCents * quantity + dealerNetOnceOptionCents;
   return {
     ok: true,
     productId: product.id,
     programId: program.id,
     matchedWidth,
     matchedHeight,
-    dealerNetUnitCost: fromCents(toCents(value)),
+    ...(sqft === undefined ? {} : { sqft }),
+    ...(billableSqft === undefined ? {} : { billableSqft }),
+    dealerNetBaseCost: fromCents(dealerNetBaseCents),
+    dealerNetOptionLines,
+    dealerNetUnitCost: fromCents(dealerNetUnitCents),
+    quantity,
+    dealerNetOnceCost: fromCents(dealerNetOnceOptionCents),
+    dealerNetTotalCost: fromCents(dealerNetTotalCents),
   };
 }
 

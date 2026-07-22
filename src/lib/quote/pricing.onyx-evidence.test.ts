@@ -103,4 +103,21 @@ describe("Onyx dealer-cost evidence", () => {
       sourceId: ONYX_SOURCE_ID,
     });
   });
+
+  it("quarantines the legacy Poly Composite value without pinned provenance", () => {
+    const { program } = onyxProgram("poly_composite");
+    expect(program).toMatchObject({
+      priceBasis: "manual_required",
+      costPerSqft: null,
+    });
+    expect(program).not.toHaveProperty("sourceId");
+    expect(
+      priceDealerNetDesign({
+        productId: "onyx_shutters",
+        programId: "poly_composite",
+        widthInches: 30,
+        heightInches: 60,
+      }),
+    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+  });
 });

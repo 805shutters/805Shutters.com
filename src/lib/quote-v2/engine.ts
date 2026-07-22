@@ -96,6 +96,9 @@ export type QuoteV2PriceRequest = {
   additionalValidationIssues?: readonly ValidationIssue[];
 };
 
+const CUSTOMER_PRICING_FAILURE_MESSAGE =
+  "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.";
+
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -1442,7 +1445,10 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
     return {
       ok: false,
       code: result.code,
-      error: result.error,
+      // Internal failures intentionally retain full diagnostics for staff and
+      // logs. Customer projections use neutral copy so source cost evidence,
+      // margin policy, and dealer schedule language can never cross this API.
+      error: CUSTOMER_PRICING_FAILURE_MESSAGE,
       validationStatus: result.validationStatus,
       catalogVersion: result.catalogVersion,
     };

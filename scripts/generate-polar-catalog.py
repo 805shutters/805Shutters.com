@@ -7,17 +7,74 @@ Run with the bundled Codex Python because it includes pdfplumber and pypdf:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
 from pathlib import Path
 
-import pdfplumber
-from pypdf import PdfReader
-
 PDF = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/polar-shades-dealer-book-current.pdf")
 OUT = Path(__file__).resolve().parents[1] / "src/lib/quote/catalog/polar-shades.catalog.json"
-reader = PdfReader(str(PDF))
+SOURCE_ID = "polar-shades-dealer-book-current-2026-07-18"
+SOURCE_FILE = "_Polar Shades Dealer Book - CURRENT.pdf"
+SOURCE_SHA256 = "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e"
+SOURCE_PAGE_COUNT = 246
+SOURCE_PAGE_MARKERS = {
+    5: ("SHIPPING", "HANDLING"),
+    20: ("HOW TO PRICE A POLAR SHADE", "RETAIL PRICE"),
+    26: ("INTERIOR SHADE PRICE CHARTS", "PRICE GROUP 1"),
+    74: ("MOTORIZED DRAPERY TRACKS", "PINCH PLEAT"),
+    88: ("NET PRICING", "SINGLE DOOR", "$375.00", "$700.00"),
+    95: ("EXTERIOR FABRIC LIST", "PRICE GROUP"),
+    96: ("ELITE", "PRICE GROUP 1"),
+    120: ("TITAN", "PRICE GROUP 1"),
+    147: ("MEGA", "PRICE GROUP 1"),
+    165: ("FRAME COLORS", "$4,900"),
+}
+
+
+def file_sha256(path: Path):
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def normalized_page_text(page):
+    return re.sub(r"\s+", " ", page.extract_text() or "").strip().upper()
+
+
+def validate_pinned_source(path: Path):
+    if not path.is_file():
+        raise SystemExit(f"Pinned Polar source is missing: {path}")
+    actual_sha256 = file_sha256(path)
+    if actual_sha256 != SOURCE_SHA256:
+        raise SystemExit(
+            f"Refusing to overwrite {OUT.name}: Polar PDF SHA-256 mismatch "
+            f"(expected {SOURCE_SHA256}, received {actual_sha256})."
+        )
+    from pypdf import PdfReader
+
+    source_reader = PdfReader(str(path))
+    if len(source_reader.pages) != SOURCE_PAGE_COUNT:
+        raise SystemExit(
+            f"Refusing to overwrite {OUT.name}: expected {SOURCE_PAGE_COUNT} pages, "
+            f"received {len(source_reader.pages)}."
+        )
+    for page_number, markers in SOURCE_PAGE_MARKERS.items():
+        page_text = normalized_page_text(source_reader.pages[page_number - 1])
+        missing = [marker for marker in markers if marker not in page_text]
+        if missing:
+            raise SystemExit(
+                f"Refusing to overwrite {OUT.name}: pinned page {page_number} "
+                f"is missing structural marker(s) {missing}."
+            )
+    return source_reader
+
+
+reader = validate_pinned_source(PDF)
+import pdfplumber
 
 
 def money(value: str | None):
@@ -36,13 +93,15 @@ def inches(value: str):
     return float(number.group()) if number else None
 
 
-def surcharge(id_, name, value, page, *, kind="flat", per="unit", applies="all", notes="", dealer_factor=None, auto_units=None, percent_of=None, minimum_charge=None):
+def surcharge(id_, name, value, page, *, kind="flat", per="unit", applies="all", notes="", dealer_factor=None, dealer_net_value=None, source_id=None, auto_units=None, percent_of=None, minimum_charge=None):
     item = {
         "id": id_, "name": name, "kind": kind, "per": per, "value": value,
         "appliesTo": applies, "notes": notes, "sourceType": "Polar dealer book",
         "sourcePages": [page],
     }
     if dealer_factor is not None: item["dealerFactor"] = dealer_factor
+    if dealer_net_value is not None: item["dealerNetValue"] = dealer_net_value
+    if source_id is not None: item["sourceId"] = source_id
     if auto_units is not None: item["autoUnits"] = auto_units
     if percent_of is not None: item["percentOfSurchargeId"] = percent_of
     if minimum_charge is not None: item["minimumCharge"] = minimum_charge
@@ -61,12 +120,15 @@ def height_surcharge(id_, name, heights, prices, page, *, notes=""):
     return item
 
 
-def program(id_, name, widths, heights, prices, page, *, min_width=None, min_height=None, max_width=None, max_height=None, notes=None, standalone=False):
+def program(id_, name, widths, heights, prices, page, *, costs=None, min_width=None, min_height=None, max_width=None, max_height=None, notes=None, standalone=False):
+    grid = {"widths": widths, "heights": heights, "prices": prices}
+    if costs is not None:
+        grid["costs"] = costs
     return {
         "id": id_, "name": name,
         "priceGroup": None if standalone else name.removeprefix("Price Group "),
         "priceAxis": "wh" if heights else "width",
-        "grid": {"widths": widths, "heights": heights, "prices": prices},
+        "grid": grid,
         "minWidth": min_width, "minHeight": min_height,
         "maxWidth": max_width if max_width is not None else (widths[-1] if widths else None),
         "maxHeight": max_height if max_height is not None else (heights[-1] if heights else None),
@@ -78,7 +140,7 @@ def product(id_, product_type, name, pages, programs, surcharges, *, system=None
     item = {
         "id": id_, "productType": product_type, "name": name, "manufacturer": "Polar",
         "system": system, "priceBasis": basis, "dealerFactor": factor,
-        "freightStatus": freight, "pages": pages, "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+        "freightStatus": freight, "pages": pages, "source": SOURCE_FILE,
         "fabricRouting": routing, "fabricMetadata": fabrics or [], "programs": programs,
         "surcharges": surcharges, "fabricByYard": [], "notes": notes or [],
     }
@@ -303,8 +365,19 @@ with pdfplumber.open(str(PDF)) as pdf:
     ]
     products.append(product("polar_drapery_track", "Drapery Tracks", "Polar Motorized Drapery Track", [74,75,76,77], parse_drapery(), drapery_surcharges, system="Motorized Drapery Track", notes=["Each named drapery program is a complete standalone source grid, not a fabric price-group tier.", "Track price excludes motor and brackets.", "Irismo motor maximum track length is 396 inches."]))
     products.append(product("polar_tension_shade", "Tension Shades", "Polar Motorized Tension Shade", [84,85,86], [], [], system="Motorized Tension Shade", basis="manual_required", factor=None, notes=["Specifications are published but the source has no complete retail price grid."]))
-    all_seasons_programs = [program("single_48x96", "Single Door 48 x 96", [48], [96], [[375]], 88, min_width=48, min_height=96), program("double_72x96", "Double Door 72 x 96", [72], [96], [[700]], 88, min_width=72, min_height=96)]
-    products.append(product("polar_all_seasons_screen", "Retractable Screens", "Polar All Seasons Retractable Screen", [88], all_seasons_programs, [surcharge("sliding_glass_door", "Sliding Glass Door", 25, 88)], system="All Seasons Single / Double", basis="dealer_net", factor=None, notes=["NET PRICING - NO DEALER DISCOUNTS APPLY.", "Customer retail is not defined; customer totals are blocked."]))
+    all_seasons_programs = [
+        program(
+            "single_48x96", "Single Door 48 x 96", [48], [96], [[None]], 88,
+            costs=[[375]], min_width=48, min_height=96, standalone=True,
+            notes=["$375 is published dealer-net cost. Customer retail is undefined."],
+        ),
+        program(
+            "double_72x96", "Double Door 72 x 96", [72], [96], [[None]], 88,
+            costs=[[700]], min_width=72, min_height=96, standalone=True,
+            notes=["$700 is published dealer-net cost. Customer retail is undefined."],
+        ),
+    ]
+    products.append(product("polar_all_seasons_screen", "Retractable Screens", "Polar All Seasons Retractable Screen", [88], all_seasons_programs, [surcharge("sliding_glass_door", "Sliding Glass Door", None, 88, dealer_net_value=25, source_id=SOURCE_ID, notes="$25 is published dealer-net cost. Customer retail is undefined.")], system="All Seasons Single / Double", basis="dealer_net", factor=None, notes=["NET PRICING - NO DEALER DISCOUNTS APPLY.", "Customer retail is not defined; customer totals are blocked."]))
 
     awning_specs = [(165,"polar_awning_premium_pro","Premium Pro",2,276),(167,"polar_awning_premium_plus","Premium Plus",2,240),(169,"polar_awning_premium","Premium",2,276),(171,"polar_awning_select","Select",3,480),(178,"polar_awning_drop_arm","Drop Arm Window",1,192)]
     for page,id_,name,start_col,max_technical in awning_specs:
@@ -333,9 +406,10 @@ with pdfplumber.open(str(PDF)) as pdf:
     products.append(product("polar_exterior_clutch_unavailable", "Roller Shades", "Polar Exterior Clutch Roller Shade", [8,9], [], [], system="Exterior Clutch", basis="unavailable", factor=None, notes=["Only a stale bookmark and warranty reference exist; no usable product/pricing section is present."]))
 
 catalog = {
-    "source": "Polar-Shades-Dealer-Book-CURRENT.pdf", "effectiveDate": "undefined", "currency": "USD",
-    "generatedFrom": "Polar-Shades-Dealer-Book-CURRENT.pdf",
-    "sources": [{"file":"Polar-Shades-Dealer-Book-CURRENT.pdf","title":"Microsoft Word - 2019 Polar Dealer Book (Repaired)","revision":"CURRENT","effectiveDate":None,"receivedDate":"2026-07-20","modifiedDate":"2026-07-18","pages":246}],
+    "source": SOURCE_FILE, "sourceId": SOURCE_ID, "sourceSha256": SOURCE_SHA256,
+    "effectiveDate": "undefined", "currency": "USD",
+    "generatedFrom": SOURCE_FILE,
+    "sources": [{"sourceId":SOURCE_ID,"file":SOURCE_FILE,"title":"Interior & Exterior Shades Pricing & Reference Guide","revision":"CURRENT","effectiveDate":None,"receivedDate":"2026-07-20","modifiedDate":"2026-07-18","pages":SOURCE_PAGE_COUNT,"sha256":SOURCE_SHA256}],
     "globalRules": {"surcharges": [], "notes": ["Suggested retail is customer pricing.", "Dealer cost is retail x 0.45 except dealer-net or manual products.", "Round each measured dimension up independently.", "Never substitute another group or cell.", "Freight, residential delivery, and out-of-area delivery amounts are unresolved."]},
     "products": products,
     "motorization": {
@@ -348,5 +422,94 @@ catalog = {
     },
 }
 
-OUT.write_text(json.dumps(catalog, indent=2) + "\n")
+
+def assert_catalog_structure(output):
+    def require(condition, message):
+        if not condition:
+            raise RuntimeError(f"Refusing to overwrite {OUT.name}: {message}")
+
+    require(output["sourceId"] == SOURCE_ID, "source identity drifted")
+    require(output["sourceSha256"] == SOURCE_SHA256, "source SHA-256 drifted")
+    require(output["sources"] == [{
+        "sourceId": SOURCE_ID,
+        "file": SOURCE_FILE,
+        "title": "Interior & Exterior Shades Pricing & Reference Guide",
+        "revision": "CURRENT",
+        "effectiveDate": None,
+        "receivedDate": "2026-07-20",
+        "modifiedDate": "2026-07-18",
+        "pages": SOURCE_PAGE_COUNT,
+        "sha256": SOURCE_SHA256,
+    }], "embedded source metadata is incomplete")
+
+    expected_program_counts = {
+        "polar_interior_roller": 14,
+        "polar_elite_patio": 10,
+        "polar_titan_patio": 10,
+        "polar_mega_exterior": 10,
+        "polar_drapery_track": 28,
+        "polar_tension_shade": 0,
+        "polar_all_seasons_screen": 2,
+        "polar_awning_premium_pro": 1,
+        "polar_awning_premium_plus": 1,
+        "polar_awning_premium": 1,
+        "polar_awning_select": 1,
+        "polar_awning_drop_arm": 1,
+        "polar_exterior_clutch_unavailable": 0,
+    }
+    by_product = {entry["id"]: entry for entry in output["products"]}
+    require(len(by_product) == len(output["products"]), "duplicate product IDs")
+    require(set(by_product) == set(expected_program_counts), "product inventory drifted")
+    require(sum(len(entry["programs"]) for entry in output["products"]) == 79, "program inventory is not 79")
+
+    for product_id, expected_count in expected_program_counts.items():
+        product_entry = by_product[product_id]
+        require(len(product_entry["programs"]) == expected_count, f"{product_id} program count drifted")
+        program_ids = [entry["id"] for entry in product_entry["programs"]]
+        require(len(program_ids) == len(set(program_ids)), f"{product_id} has duplicate program IDs")
+        for program_entry in product_entry["programs"]:
+            grid = program_entry["grid"]
+            expected_rows = 1 if program_entry["priceAxis"] == "width" else len(grid["heights"])
+            expected_columns = 1 if program_entry["priceAxis"] == "height" else len(grid["widths"])
+            for matrix_name in ("prices", "costs"):
+                if matrix_name not in grid:
+                    continue
+                matrix = grid[matrix_name]
+                require(len(matrix) == expected_rows, f"{product_id}/{program_entry['id']} {matrix_name} row count drifted")
+                require(all(len(row) == expected_columns for row in matrix), f"{product_id}/{program_entry['id']} {matrix_name} is not rectangular")
+            require(all(1 <= page <= SOURCE_PAGE_COUNT for page in program_entry["sourcePages"]), f"{product_id}/{program_entry['id']} has an invalid source page")
+
+    require(len(by_product["polar_interior_roller"]["fabricMetadata"]) == 176, "interior fabric inventory is not 176")
+    for product_id in ("polar_elite_patio", "polar_titan_patio", "polar_mega_exterior"):
+        require(len(by_product[product_id]["fabricMetadata"]) == 48, f"{product_id} fabric inventory is not 48")
+    require(by_product["polar_interior_roller"]["programs"][0]["grid"]["prices"][0][0] == 110, "Interior Group 1 anchor is not $110")
+    require(by_product["polar_drapery_track"]["programs"][0]["grid"]["prices"][0][0] == 472, "Drapery anchor is not $472")
+    require(by_product["polar_awning_premium_pro"]["programs"][0]["grid"]["prices"][0][0] == 4900, "Premium Pro anchor is not $4,900")
+
+    all_seasons = by_product["polar_all_seasons_screen"]
+    require(all_seasons["priceBasis"] == "dealer_net", "All Seasons is not dealer-net")
+    all_seasons_programs = {entry["id"]: entry for entry in all_seasons["programs"]}
+    require(all_seasons_programs["single_48x96"]["grid"]["prices"] == [[None]], "Single Door contains invented retail")
+    require(all_seasons_programs["single_48x96"]["grid"]["costs"] == [[375]], "Single Door dealer cost is not $375")
+    require(all_seasons_programs["double_72x96"]["grid"]["prices"] == [[None]], "Double Door contains invented retail")
+    require(all_seasons_programs["double_72x96"]["grid"]["costs"] == [[700]], "Double Door dealer cost is not $700")
+    require(all_seasons["surcharges"] == [{
+        "id": "sliding_glass_door",
+        "name": "Sliding Glass Door",
+        "kind": "flat",
+        "per": "unit",
+        "value": None,
+        "appliesTo": "all",
+        "notes": "$25 is published dealer-net cost. Customer retail is undefined.",
+        "sourceType": "Polar dealer book",
+        "sourcePages": [88],
+        "dealerNetValue": 25,
+        "sourceId": SOURCE_ID,
+    }], "Sliding Glass Door must remain a source-pinned $25 dealer-net option")
+
+
+assert_catalog_structure(catalog)
+temporary_out = OUT.with_name(f".{OUT.name}.tmp")
+temporary_out.write_text(json.dumps(catalog, indent=2) + "\n")
+temporary_out.replace(OUT)
 print(f"Wrote {OUT}: {len(products)} products, {sum(len(p['programs']) for p in products)} programs")

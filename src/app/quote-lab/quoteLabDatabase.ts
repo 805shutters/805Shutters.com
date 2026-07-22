@@ -4,6 +4,10 @@ import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuild
 import type { SalesQuote, SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
+import {
+  QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ROLLER_PREVIEW_VERSION,
+} from "@/lib/quote-v2/catalog";
 import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
 import type {
   QuoteLabCatalogResponse,
@@ -24,8 +28,6 @@ export type QuoteLabState = {
   selectedVariantByLine: Record<string, string>;
 };
 
-const QUOTE_LAB_V2_CATALOG_VERSION = "805-v2-norman-2026-07";
-const QUOTE_LAB_V2_ROLLER_CATALOG_VERSION = "805-v2-norman-roller-2026-08-01";
 const QUOTE_LAB_V2_PREVIEW_DATE = "2026-08-01";
 
 function v2SeedDesignDefaults(productId: string) {
@@ -61,8 +63,8 @@ function withV2CatalogMarker(
     quote_v2_backend: true,
     quote_v2_catalog_version:
       productId === "roller"
-        ? QUOTE_LAB_V2_ROLLER_CATALOG_VERSION
-        : QUOTE_LAB_V2_CATALOG_VERSION,
+        ? QUOTE_V2_ROLLER_PREVIEW_VERSION
+        : QUOTE_V2_CATALOG_VERSION,
     quote_v2_catalog_as_of: QUOTE_LAB_V2_PREVIEW_DATE,
   };
 }

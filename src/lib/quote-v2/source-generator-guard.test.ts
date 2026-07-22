@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -28,5 +28,27 @@ describe("quote V2 source generator guards", () => {
     } finally {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }
+  });
+
+  it("refuses unexpected Polar PDF bytes before overwriting the catalog", () => {
+    const catalogPath = path.join(
+      process.cwd(),
+      "src/lib/quote/catalog/polar-shades.catalog.json",
+    );
+    const catalogBefore = readFileSync(catalogPath);
+    const result = spawnSync(
+      "python3",
+      [
+        path.join(process.cwd(), "scripts/generate-polar-catalog.py"),
+        path.join(process.cwd(), "package.json"),
+      ],
+      { encoding: "utf8" },
+    );
+
+    expect(result.status).not.toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain(
+      "Polar PDF SHA-256 mismatch",
+    );
+    expect(readFileSync(catalogPath)).toEqual(catalogBefore);
   });
 });

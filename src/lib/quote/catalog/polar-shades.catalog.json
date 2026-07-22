@@ -1,17 +1,21 @@
 {
-  "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+  "source": "_Polar Shades Dealer Book - CURRENT.pdf",
+  "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+  "sourceSha256": "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e",
   "effectiveDate": "undefined",
   "currency": "USD",
-  "generatedFrom": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+  "generatedFrom": "_Polar Shades Dealer Book - CURRENT.pdf",
   "sources": [
     {
-      "file": "Polar-Shades-Dealer-Book-CURRENT.pdf",
-      "title": "Microsoft Word - 2019 Polar Dealer Book (Repaired)",
+      "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+      "file": "_Polar Shades Dealer Book - CURRENT.pdf",
+      "title": "Interior & Exterior Shades Pricing & Reference Guide",
       "revision": "CURRENT",
       "effectiveDate": null,
       "receivedDate": "2026-07-20",
       "modifiedDate": "2026-07-18",
-      "pages": 246
+      "pages": 246,
+      "sha256": "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e"
     }
   ],
   "globalRules": {
@@ -78,7 +82,7 @@
         52,
         53
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": {
         "Coulisse Screen Essential 3001 - 1%": "group_4",
         "Coulisse Screen Essential 3003 - 3%": "group_3",
@@ -10642,7 +10646,7 @@
         106,
         107
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": {
         "Polar Tech Omega Pro 3%": "group_6",
         "Polar Tech Omega Pro 5%": "group_5",
@@ -12982,7 +12986,7 @@
         130,
         131
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": {
         "Polar Tech Omega Pro 3%": "group_6",
         "Polar Tech Omega Pro 5%": "group_5",
@@ -16654,7 +16658,7 @@
         157,
         158
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": {
         "Polar Tech Omega Pro 3%": "group_6",
         "Polar Tech Omega Pro 5%": "group_5",
@@ -19320,7 +19324,7 @@
         76,
         77
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -22095,7 +22099,7 @@
         85,
         86
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [],
@@ -22117,14 +22121,14 @@
       "pages": [
         88
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
         {
           "id": "single_48x96",
           "name": "Single Door 48 x 96",
-          "priceGroup": "Single Door 48 x 96",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -22134,6 +22138,11 @@
               96
             ],
             "prices": [
+              [
+                null
+              ]
+            ],
+            "costs": [
               [
                 375
               ]
@@ -22145,7 +22154,9 @@
           "maxHeight": 96,
           "maxAreaSqft": null,
           "fabricCollections": [],
-          "notes": [],
+          "notes": [
+            "$375 is published dealer-net cost. Customer retail is undefined."
+          ],
           "sourcePages": [
             88
           ]
@@ -22153,7 +22164,7 @@
         {
           "id": "double_72x96",
           "name": "Double Door 72 x 96",
-          "priceGroup": "Double Door 72 x 96",
+          "priceGroup": null,
           "priceAxis": "wh",
           "grid": {
             "widths": [
@@ -22163,6 +22174,11 @@
               96
             ],
             "prices": [
+              [
+                null
+              ]
+            ],
+            "costs": [
               [
                 700
               ]
@@ -22174,7 +22190,9 @@
           "maxHeight": 96,
           "maxAreaSqft": null,
           "fabricCollections": [],
-          "notes": [],
+          "notes": [
+            "$700 is published dealer-net cost. Customer retail is undefined."
+          ],
           "sourcePages": [
             88
           ]
@@ -22186,13 +22204,15 @@
           "name": "Sliding Glass Door",
           "kind": "flat",
           "per": "unit",
-          "value": 25,
+          "value": null,
           "appliesTo": "all",
-          "notes": "",
+          "notes": "$25 is published dealer-net cost. Customer retail is undefined.",
           "sourceType": "Polar dealer book",
           "sourcePages": [
             88
-          ]
+          ],
+          "dealerNetValue": 25,
+          "sourceId": "polar-shades-dealer-book-current-2026-07-18"
         }
       ],
       "fabricByYard": [],
@@ -22216,7 +22236,7 @@
         176,
         177
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -22596,7 +22616,7 @@
         176,
         177
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -22949,7 +22969,7 @@
         176,
         177
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -23367,7 +23387,7 @@
         176,
         177
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -23874,7 +23894,7 @@
         176,
         177
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [
@@ -24283,7 +24303,7 @@
         8,
         9
       ],
-      "source": "Polar-Shades-Dealer-Book-CURRENT.pdf",
+      "source": "_Polar Shades Dealer Book - CURRENT.pdf",
       "fabricRouting": null,
       "fabricMetadata": [],
       "programs": [],

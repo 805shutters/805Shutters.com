@@ -66,14 +66,21 @@ describe("shutter $/sqft pricing", () => {
     const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
     expect(r.sqft).toBe(12.5);
     expect(r.billableSqft).toBe(12.5);
+    expect(r.dealerNetBaseCost).toBe(168.75);
+    expect(r.dealerNetOptionLines).toEqual([]);
     expect(r.dealerNetUnitCost).toBe(168.75);
+    expect(r.dealerNetTotalCost).toBe(168.75);
   });
 
-  it("uses the $12/sqft Onyx Poly Composite wholesale rate with the 8 sq ft minimum", () => {
-    const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "poly_composite", widthInches: 24, heightInches: 24 }));
-    expect(r.sqft).toBe(4);
-    expect(r.billableSqft).toBe(8);
-    expect(r.dealerNetUnitCost).toBe(96);
+  it("quarantines Onyx Poly Composite without pinned dealer-cost provenance", () => {
+    expect(
+      priceDealerNetDesign({
+        productId: "onyx_shutters",
+        programId: "poly_composite",
+        widthInches: 24,
+        heightInches: 24,
+      }),
+    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
   });
 
   it("prices Onyx Basswood Stain as dealer cost only", () => {
@@ -94,6 +101,90 @@ describe("shutter $/sqft pricing", () => {
       ok: false,
       code: "CUSTOMER_RETAIL_UNDEFINED",
     });
+  });
+
+  it("itemizes Onyx H2 and H3 dealer costs without dropping either selection", () => {
+    const h2 = dealerOk(
+      priceDealerNetDesign({
+        productId: "onyx_shutters",
+        programId: "painted_basswood",
+        widthInches: 30,
+        heightInches: 60,
+        surcharges: [{ id: "h2_tilt" }],
+      }),
+    );
+    expect(h2).toMatchObject({
+      dealerNetBaseCost: 168.75,
+      dealerNetUnitCost: 168.75,
+      dealerNetTotalCost: 168.75,
+      dealerNetOptionLines: [
+        {
+          id: "h2_tilt",
+          label: "H2 Tilt",
+          amount: 0,
+          billingScope: "per_window",
+          sourceId: "onyx-price-screenshot-2026-07-20",
+        },
+      ],
+    });
+
+    const h3 = dealerOk(
+      priceDealerNetDesign({
+        productId: "onyx_shutters",
+        programId: "painted_basswood",
+        widthInches: 30,
+        heightInches: 60,
+        quantity: 2,
+        surcharges: [{ id: "hidden_tilt_rod" }],
+      }),
+    );
+    expect(h3).toMatchObject({
+      sqft: 12.5,
+      dealerNetBaseCost: 168.75,
+      dealerNetUnitCost: 181.25,
+      quantity: 2,
+      dealerNetOnceCost: 0,
+      dealerNetTotalCost: 362.5,
+      dealerNetOptionLines: [
+        {
+          id: "hidden_tilt_rod",
+          label: "H3 Hidden Gear",
+          amount: 12.5,
+          billingScope: "per_window",
+          sourceId: "onyx-price-screenshot-2026-07-20",
+          detail: "$1/sq ft x 12.5",
+        },
+      ],
+    });
+  });
+
+  it("fails closed for unknown or unproven dealer-net options", () => {
+    const baseInput = {
+      productId: "onyx_shutters",
+      programId: "painted_basswood",
+      widthInches: 30,
+      heightInches: 60,
+    } as const;
+    expect(
+      priceDealerNetDesign({
+        ...baseInput,
+        surcharges: [{ id: "unknown-option" }],
+      }),
+    ).toMatchObject({ ok: false, code: "SURCHARGE_UNKNOWN" });
+    expect(
+      priceDealerNetDesign({
+        ...baseInput,
+        surcharges: [{ id: "double_hung" }],
+      }),
+    ).toMatchObject({ ok: false, code: "SURCHARGE_NO_PRICE" });
+    expect(
+      priceDealerNetDesign({
+        ...baseInput,
+        motorization: [
+          { groupId: "smart_motorization", optionId: "motor" },
+        ],
+      }),
+    ).toMatchObject({ ok: false, code: "MOTORIZATION_UNKNOWN" });
   });
 
   it("prices Norman bypass/bifold track selections from the visible detail options", () => {
@@ -189,8 +280,12 @@ describe("shutter fuzz sweep: no NaN / negative ever escapes", () => {
     for (const product of catalog.products) {
       if (product.productType !== "shutter") continue;
       for (const prog of product.programs) {
+        const effectiveBasis = prog.priceBasis ?? product.priceBasis;
+        if (effectiveBasis === "manual_required" || effectiveBasis === "unavailable") {
+          continue;
+        }
         for (const [w, h] of sizes) {
-          const dealerNet = product.priceBasis === "dealer_net" || prog.priceBasis === "dealer_net";
+          const dealerNet = effectiveBasis === "dealer_net";
           const r = dealerNet
             ? priceDealerNetDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h })
             : priceDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
@@ -205,6 +300,6 @@ describe("shutter fuzz sweep: no NaN / negative ever escapes", () => {
         }
       }
     }
-    expect(priced).toBe(13 * sizes.length);
+    expect(priced).toBe(12 * sizes.length);
   });
 });

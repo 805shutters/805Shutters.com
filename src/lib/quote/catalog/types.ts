@@ -124,6 +124,7 @@ export type CatalogSurcharge = {
 };
 
 export type CatalogSourceMetadata = {
+  sourceId?: string;
   file: string;
   title: string;
   revision: string;
@@ -215,6 +216,10 @@ export type CatalogMotorizationGroup = {
 
 export type Catalog = {
   source: string;
+  /** Pinned source-manifest identity when this catalog has one generator source. */
+  sourceId?: string;
+  /** SHA-256 of the exact source binary accepted by the generator. */
+  sourceSha256?: string;
   effectiveDate: string;
   currency: string;
   generatedFrom: string;

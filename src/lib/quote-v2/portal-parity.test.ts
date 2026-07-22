@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "./catalog";
 import type { SelectionContext } from "./core";
 import { priceQuoteV2Selection } from "./engine";
 
@@ -30,7 +31,7 @@ describe("Norman dealer-portal parity fixtures", () => {
       manufacturerId: "norman",
       productId: "roller",
       programId: "roller_cordless_fabric_price_group_2_pg2",
-      catalogVersion: "805-v2-norman-roller-2026-08-01",
+      catalogVersion: QUOTE_V2_ROLLER_PREVIEW_VERSION,
       // The source appendix activates 8/1. Preview parity is intentionally
       // date-injected and cannot activate the production catalog early.
       catalogAsOf: "2026-08-01",

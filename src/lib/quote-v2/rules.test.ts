@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ROLLER_PREVIEW_VERSION,
+} from "./catalog";
 import type { SelectionContext, SelectionRecord, ValidationIssue } from "./core";
 import { productRuleStatusForSelection, validateSelection } from "./rules";
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
@@ -23,8 +27,8 @@ function selection(
     programId: programByProduct[productId] ?? `${productId}-test-program`,
     catalogVersion:
       productId === "roller"
-        ? "805-v2-norman-roller-2026-08-01"
-        : "805-v2-norman-2026-07",
+        ? QUOTE_V2_ROLLER_PREVIEW_VERSION
+        : QUOTE_V2_CATALOG_VERSION,
     catalogAsOf,
     widthInches: 36,
     heightInches: 60,
@@ -121,7 +125,7 @@ describe("Quote V2 authoritative manufacturer rules", () => {
   it("rejects the future Roller appendix before August 1 and allows an injected preview date", () => {
     const before = selection("roller", rollerConfiguration, {
       catalogAsOf: "2026-07-31",
-      catalogVersion: "805-v2-norman-2026-07",
+      catalogVersion: QUOTE_V2_CATALOG_VERSION,
     });
     expect(ruleIds(before)).toContain("roller.appendix.effective_date");
 

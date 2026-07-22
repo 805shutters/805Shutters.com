@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { priceDealerNetDesign, priceDesign } from "@/lib/quote/pricing";
 import type { SelectionContext, SelectionRecord } from "./core";
 import {
+  QUOTE_V2_CATALOG_VERSION,
+  QUOTE_V2_ROLLER_PREVIEW_VERSION,
+} from "./catalog";
+import {
   authoritativeAutomaticSurchargeSelections,
   createImmutablePriceSnapshot,
   priceQuoteV2Selection,
@@ -22,8 +26,8 @@ function selection(
     programId,
     catalogVersion:
       productId === "roller"
-        ? "805-v2-norman-roller-2026-08-01"
-        : "805-v2-norman-2026-07",
+        ? QUOTE_V2_ROLLER_PREVIEW_VERSION
+        : QUOTE_V2_CATALOG_VERSION,
     catalogAsOf,
     widthInches: 30,
     heightInches: 48,
@@ -104,6 +108,25 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result).not.toHaveProperty("base");
     expect(result).not.toHaveProperty("total");
     expect(result).not.toHaveProperty("internalCost");
+
+    const internalDiagnostic = {
+      ...result,
+      error:
+        "Dealer-net cost and margin use the exact dealer schedule factor 0.33.",
+    };
+    expect(internalDiagnostic.error).toMatch(
+      /dealer-net|cost|margin|schedule|0\.33/i,
+    );
+    const customerFailure = toCustomerQuotePriceResult(internalDiagnostic);
+    expect(customerFailure).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      error:
+        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+    });
+    expect(JSON.stringify(customerFailure)).not.toMatch(
+      /dealer(?:[-_\s]?net)?|cost|margin|schedule|factor|0\.33/i,
+    );
   });
 
   it("does not apply Norman policy to a non-Norman catalog product with a forged label", () => {

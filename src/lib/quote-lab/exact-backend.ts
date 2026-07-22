@@ -354,10 +354,12 @@ export function costExactQuoteBuilderDesign(
   const productId = resolveProductId(line, design);
   const product = getProduct(productId);
   const input = exactPriceInput(line, design, productId);
-  if (product?.priceBasis === "dealer_net") {
+  const selectedProgram = product?.programs.find(
+    (program) => program.id === input.programId,
+  );
+  if ((selectedProgram?.priceBasis ?? product?.priceBasis) === "dealer_net") {
     const result = priceDealerNetDesign(input);
     if (!result.ok) return result;
-    const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
     return {
       ok: true,
       productId: result.productId,
@@ -365,11 +367,15 @@ export function costExactQuoteBuilderDesign(
       basis: "dealer_net",
       matchedWidth: result.matchedWidth,
       matchedHeight: result.matchedHeight,
-      wholesaleBase: result.dealerNetUnitCost,
-      wholesaleAddOns: [],
+      wholesaleBase: result.dealerNetBaseCost,
+      wholesaleAddOns: result.dealerNetOptionLines.map((option) => ({
+        id: option.id,
+        label: option.label,
+        amount: option.amount,
+      })),
       wholesaleUnitCost: result.dealerNetUnitCost,
-      quantity,
-      wholesaleTotal: roundMoney(result.dealerNetUnitCost * quantity),
+      quantity: result.quantity,
+      wholesaleTotal: result.dealerNetTotalCost,
     };
   }
 
@@ -465,6 +471,8 @@ type ValidationGatedDealerNetCost = {
   matchedWidth: number | null;
   matchedHeight: number | null;
   wholesaleBase: number;
+  wholesaleAddOns: Array<{ id: string; label: string; amount: number }>;
+  wholesaleUnitCost: number;
   quantity: number;
   wholesaleTotal: number;
   internalCost: QuoteV2InternalProductCost;
@@ -484,9 +492,7 @@ function validationGatedDealerNetCost(
   if (
     result.ok ||
     result.code !== "CUSTOMER_RETAIL_UNDEFINED" ||
-    result.validationIssues.some((issue) => issue.severity === "hard_block") ||
-    (priceInput.surcharges?.length ?? 0) > 0 ||
-    (priceInput.motorization?.length ?? 0) > 0
+    result.validationIssues.some((issue) => issue.severity === "hard_block")
   ) {
     return null;
   }
@@ -510,9 +516,10 @@ function validationGatedDealerNetCost(
   });
   if (!dealerNet.ok) return null;
 
-  const quantity = selection.quantity;
-  const wholesaleBase = roundMoney(dealerNet.dealerNetUnitCost);
-  const wholesaleTotal = roundMoney(wholesaleBase * quantity);
+  const quantity = dealerNet.quantity;
+  const wholesaleBase = dealerNet.dealerNetBaseCost;
+  const wholesaleUnitCost = dealerNet.dealerNetUnitCost;
+  const wholesaleTotal = dealerNet.dealerNetTotalCost;
   const freightStatus: QuoteV2InternalProductCost["freightStatus"] =
     product.freightStatus === "order_level"
       ? "published"
@@ -521,7 +528,7 @@ function validationGatedDealerNetCost(
         : "not_applicable";
   const internalCost: QuoteV2InternalProductCost = {
     basis: "dealer_net",
-    productCostUnit: wholesaleBase,
+    productCostUnit: wholesaleUnitCost,
     productCostTotal: wholesaleTotal,
     freightAllocated: 0,
     oversizeAllocated: 0,
@@ -536,6 +543,12 @@ function validationGatedDealerNetCost(
     matchedWidth: dealerNet.matchedWidth,
     matchedHeight: dealerNet.matchedHeight,
     wholesaleBase,
+    wholesaleAddOns: dealerNet.dealerNetOptionLines.map((option) => ({
+      id: option.id,
+      label: option.label,
+      amount: option.amount,
+    })),
+    wholesaleUnitCost,
     quantity,
     wholesaleTotal,
     internalCost,
@@ -556,7 +569,7 @@ function v2CostResult(
         matchedWidth: dealerNetCost.matchedWidth,
         matchedHeight: dealerNetCost.matchedHeight,
         wholesaleBase: dealerNetCost.wholesaleBase,
-        wholesaleAddOns: [],
+        wholesaleAddOns: dealerNetCost.wholesaleAddOns,
         wholesaleComponents: [],
         wholesaleUnitCost: result.internalCost.productCostUnit,
         quantity: dealerNetCost.quantity,

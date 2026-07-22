@@ -33,7 +33,12 @@ describe("Lotus West A26.v1 dealer-net catalog", () => {
       programId,
       matchedWidth,
       matchedHeight,
+      dealerNetBaseCost: cost,
+      dealerNetOptionLines: [],
       dealerNetUnitCost: cost,
+      quantity: 1,
+      dealerNetOnceCost: 0,
+      dealerNetTotalCost: cost,
     });
   });
 
@@ -44,6 +49,55 @@ describe("Lotus West A26.v1 dealer-net catalog", () => {
       widthInches: 30.01,
       heightInches: 48.01,
     })).toMatchObject({ ok: true, matchedWidth: 35, matchedHeight: 60, dealerNetUnitCost: 27.84 });
+  });
+
+  it("enforces Lotus max width, max height, and max area before grid rounding", () => {
+    const baseInput = {
+      productId: "lotus_mini_blinds",
+      programId: "lotus_amx_1in_aluminum_custom",
+    } as const;
+    expect(priceDealerNetDesign({
+      ...baseInput,
+      widthInches: 95,
+      heightInches: 36,
+    })).toMatchObject({ ok: true, matchedWidth: 95, matchedHeight: 36 });
+    expect(priceDealerNetDesign({
+      ...baseInput,
+      widthInches: 95.01,
+      heightInches: 36,
+    })).toMatchObject({ ok: false, code: "WIDTH_EXCEEDS_MAX" });
+    expect(priceDealerNetDesign({
+      ...baseInput,
+      widthInches: 17,
+      heightInches: 108,
+    })).toMatchObject({ ok: true, matchedWidth: 17, matchedHeight: 108 });
+    expect(priceDealerNetDesign({
+      ...baseInput,
+      widthInches: 17,
+      heightInches: 108.01,
+    })).toMatchObject({ ok: false, code: "HEIGHT_EXCEEDS_MAX" });
+
+    const product = getProduct("lotus_mini_blinds");
+    const program = product?.programs.find(
+      (entry) => entry.id === "lotus_amx_1in_aluminum_custom",
+    );
+    if (!program) throw new Error("Expected the Lotus AMX source program.");
+    const originalMaxAreaSqft = program.maxAreaSqft;
+    try {
+      program.maxAreaSqft = 20;
+      expect(priceDealerNetDesign({
+        ...baseInput,
+        widthInches: 60,
+        heightInches: 48,
+      })).toMatchObject({ ok: true, matchedWidth: 63, matchedHeight: 48 });
+      expect(priceDealerNetDesign({
+        ...baseInput,
+        widthInches: 60,
+        heightInches: 48.01,
+      })).toMatchObject({ ok: false, code: "AREA_EXCEEDS_MAX" });
+    } finally {
+      program.maxAreaSqft = originalMaxAreaSqft;
+    }
   });
 
   it("blocks source-directed substitutions and missing Blackout pricing", () => {
