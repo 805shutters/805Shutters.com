@@ -1056,6 +1056,9 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
       "onyx.source.current_effective_revision_missing",
     );
+    expect(result.validationIssues.map((entry) => entry.ruleId)).toContain(
+      "onyx.price.portal_source_conflict",
+    );
 
     const pinnedRate = priceDealerNetDesign({
       productId: context.productId,

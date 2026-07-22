@@ -5,18 +5,18 @@ does not authorize a production cutover or silently replace any pinned source.
 
 ## Verification result
 
-The repository verifier passed all 13 pinned artifacts in the external,
+The repository verifier passed all 14 pinned artifacts in the external,
 read-only source vault:
 
 ```text
 npm run quote-v2:sources:verify -- --source-dir /Users/michaelshepard/Documents/805-quote-v2-sources
-Verified 13 immutable Quote V2 source artifacts.
+Verified 14 immutable Quote V2 source artifacts.
 ```
 
 The set includes the Norman July Retail Guide, Honeycomb/Roller/Roman/Vertical
 product guides, May Motorization Guide, Honeycomb color workbook, August 1
-Roller MinMax Appendix, Lotus and Polar books, Onyx binder and pricing image,
-and the retained Norman dealer-pricing snapshot. Runtime and tests use the
+Roller MinMax Appendix, Lotus and Polar books, Onyx binder and two pricing
+fixtures, and the retained Norman dealer-pricing snapshot. Runtime and tests use the
 source IDs, hashes, revisions, and effective dates in
 `src/lib/quote-v2/source-manifest.ts` and
 `src/lib/quote-v2/source-artifacts.lock.json`.
@@ -39,12 +39,18 @@ source IDs, hashes, revisions, and effective dates in
   `ffd0dc5d5a337a7a6a4a3ec55446119cb596445b04816afa095af4b0e9e94500`.
   It proves dealer cost `$13.60/sq. ft.`, H2 tilt included, and H3 hidden gear
   `$1.00/sq. ft.` only.
+- `Onyx US Made Vinyl Portal 2026-07-22.png`: 73,462 bytes; SHA-256
+  `8396fc5fadef32982a5731ce007e2b41d133de038f769d00ac44681f037f7eaf`.
+  The redacted current-account fixture proves `$239.749` on `17.564` portal
+  square feet for a 30 × 72 VL Outside line, which reconciles to `$13.65` per
+  portal square foot and conflicts with the supplied `$13.60` screenshot.
 
 ## Deliberate fail-closed boundaries
 
-- The Onyx screenshot does not prove a customer MSRP, current dimensional
-  restrictions, or an effective program revision. Onyx customer pricing stays
-  blocked.
+- The Onyx artifacts conflict on both active rate and billable-area basis. They
+  do not prove a customer MSRP, current dimensional restrictions, a general
+  frame-area formula, or an effective program revision. Onyx customer pricing
+  and current-cost authorization stay blocked.
 - A source hash proves document identity, not manufacturer-portal parity.
   Products and options with unresolved book-versus-portal conflicts remain
   quarantined or manual-quote-only.

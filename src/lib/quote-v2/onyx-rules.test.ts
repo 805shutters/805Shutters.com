@@ -4,6 +4,8 @@ import {
   ONYX_BINDER_SOURCE,
   ONYX_SHUTTER_RULE_STATUS,
   ONYX_US_MADE_VINYL_PRICE,
+  ONYX_US_MADE_VINYL_PORTAL_FIXTURE,
+  ONYX_US_MADE_VINYL_PORTAL_SOURCE,
   evaluateOnyxShutterRestrictions,
   validateOnyxShutterRestrictions,
 } from "./onyx-rules";
@@ -62,6 +64,26 @@ describe("Onyx source identity and safe status", () => {
       "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b",
     );
     expect(ONYX_US_MADE_VINYL_PRICE.dealerCostPerSquareFoot).toBe(13.6);
+    expect(
+      ONYX_US_MADE_VINYL_PRICE.currentPortalDealerCostPerBillableSquareFoot,
+    ).toBe(13.65);
+    expect(ONYX_US_MADE_VINYL_PRICE.pricingConflict).toBe(true);
+    expect(ONYX_US_MADE_VINYL_PORTAL_SOURCE.sha256).toBe(
+      "8396fc5fadef32982a5731ce007e2b41d133de038f769d00ac44681f037f7eaf",
+    );
+    expect(ONYX_US_MADE_VINYL_PORTAL_FIXTURE).toMatchObject({
+      widthInches: 30,
+      heightInches: 72,
+      frameType: "VL Outside",
+      portalBillableSquareFeet: 17.564,
+      portalDealerCostPerBillableSquareFoot: 13.65,
+      portalLinePrice: 239.749,
+      portalSurcharge: 0,
+    });
+    expect(
+      ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalBillableSquareFeet *
+        ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalDealerCostPerBillableSquareFoot,
+    ).toBeCloseTo(ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalLinePrice, 3);
     expect(ONYX_US_MADE_VINYL_PRICE.retailMultiplier).toBeNull();
     expect(ONYX_US_MADE_VINYL_PRICE.customerRetailPerSquareFoot).toBeNull();
     expect(ONYX_US_MADE_VINYL_PRICE.legacyUserDirectedRetailMultiplier).toBe(2.5);
@@ -74,6 +96,7 @@ describe("Onyx source identity and safe status", () => {
     expect(result.productStatus).toBe("restriction_source_incomplete");
     expect(matching(result.issues as ReturnType<typeof validateOnyxShutterRestrictions>, "onyx.us_made_vinyl.restriction_identity_unverified")).toHaveLength(1);
     expect(matching(result.issues as ReturnType<typeof validateOnyxShutterRestrictions>, "onyx.source.current_effective_revision_missing")).toHaveLength(1);
+    expect(matching(result.issues as ReturnType<typeof validateOnyxShutterRestrictions>, "onyx.price.portal_source_conflict")).toHaveLength(1);
     expect(matching(result.issues as ReturnType<typeof validateOnyxShutterRestrictions>, "onyx.panel.maximum_area_source_incomplete")).toHaveLength(1);
   });
 

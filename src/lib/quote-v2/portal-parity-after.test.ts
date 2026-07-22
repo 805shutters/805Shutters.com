@@ -866,6 +866,9 @@ describe("portal parity AFTER live runtime outcomes", () => {
     expect(runtime.validationIssues.map((issue) => issue.ruleId)).toContain(
       "onyx.us_made_vinyl.restriction_identity_unverified",
     );
+    expect(runtime.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "onyx.price.portal_source_conflict",
+    );
     expect(runtime).not.toHaveProperty("internalCost");
     expect(afterCase("onyx-us-made-vinyl-36x48").systemAfter).toMatchObject({
       status: "unpriceable",

@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(13);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(14);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(13);
+    ).toBe(14);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(13);
+    ).toBe(14);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -138,6 +138,20 @@ describe("quote V2 source manifest", () => {
       runtimeAuthority: false,
       accountScope: "Other Norman dealer account (not the current 805 account; identifier redacted)",
       quarantineReason: expect.stringMatching(/different dealer account.*must never drive current 805 pricing/i),
+    });
+  });
+
+  it("pins the redacted current-account Onyx portal fixture without inventing an effective date", () => {
+    expect(
+      getSourceManifestEntry("onyx-us-made-vinyl-portal-2026-07-22"),
+    ).toMatchObject({
+      kind: "dealer_portal_snapshot",
+      fileName: "Onyx US Made Vinyl Portal 2026-07-22.png",
+      effectiveDate: null,
+      sha256:
+        "8396fc5fadef32982a5731ce007e2b41d133de038f769d00ac44681f037f7eaf",
+      authorities: ["pricing"],
+      accountScope: expect.stringMatching(/current 805.*cropped/i),
     });
   });
 

@@ -729,6 +729,9 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(result.validationIssues.map((issue) => issue.ruleId)).toContain(
       "onyx.source.current_effective_revision_missing",
     );
+    expect(result.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "onyx.price.portal_source_conflict",
+    );
     expect(quote.total).toBe(0);
     expect(quote.sendability.sendable).toBe(false);
   });

@@ -131,6 +131,24 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     authorities: ["pricing"],
   },
   {
+    id: "onyx-us-made-vinyl-portal-2026-07-22",
+    manufacturer: "Onyx Shutters",
+    kind: "dealer_portal_snapshot",
+    format: "png",
+    fileName: "Onyx US Made Vinyl Portal 2026-07-22.png",
+    title: "Current 805 Dealer Portal U.S. Made Vinyl Price Fixture",
+    revision: "Customer-neutral portal draft captured 2026-07-22",
+    effectiveDate: null,
+    effectiveDateEvidence:
+      "The authenticated portal fixture was captured 2026-07-22 but does not state a price-book effective date",
+    receivedDate: "2026-07-22",
+    modifiedDate: "2026-07-22",
+    sha256: "8396fc5fadef32982a5731ce007e2b41d133de038f769d00ac44681f037f7eaf",
+    authorities: ["pricing"],
+    accountScope:
+      "Current 805 Onyx dealer account; account identity and customer data are cropped from the retained fixture",
+  },
+  {
     id: "norman-dealer-pricing-snapshot-2026-07-20",
     manufacturer: "Norman",
     kind: "dealer_portal_snapshot",

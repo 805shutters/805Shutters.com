@@ -28,9 +28,30 @@ export const ONYX_US_MADE_VINYL_PRICE_SOURCE = sourceProvenance(
   "onyx-price-screenshot-2026-07-20",
 );
 
+/** Redacted, customer-neutral fixture captured from the current 805 dealer portal. */
+export const ONYX_US_MADE_VINYL_PORTAL_SOURCE = sourceProvenance(
+  "onyx-us-made-vinyl-portal-2026-07-22",
+);
+
+export const ONYX_US_MADE_VINYL_PORTAL_FIXTURE = Object.freeze({
+  widthInches: 30,
+  heightInches: 72,
+  frameType: "VL Outside",
+  frameSides: 4,
+  panelConfiguration: "L",
+  portalBillableSquareFeet: 17.564,
+  portalDealerCostPerBillableSquareFoot: 13.65,
+  portalLinePrice: 239.749,
+  portalSurcharge: 0,
+  source: ONYX_US_MADE_VINYL_PORTAL_SOURCE,
+});
+
 export const ONYX_US_MADE_VINYL_PRICE = Object.freeze({
   programId: "onyx_us_made_vinyl",
+  /** Historical user-supplied evidence. It is not current runtime authority while the portal conflict is open. */
   dealerCostPerSquareFoot: 13.6,
+  currentPortalDealerCostPerBillableSquareFoot: 13.65,
+  pricingConflict: true,
   customerRetailPerSquareFoot: null,
   retailMultiplier: null,
   legacyUserDirectedCustomerRetailPerSquareFoot: 34,
@@ -39,6 +60,7 @@ export const ONYX_US_MADE_VINYL_PRICE = Object.freeze({
 });
 
 export const ONYX_AUTOMATION_GAPS = Object.freeze([
+  "The current 805 dealer portal prices the verified U.S. Made Vinyl fixture at $13.65 per portal billable square foot and 17.564 square feet, conflicting with the supplied $13.60 opening-area evidence.",
   "The binder names generic Vinyl, not Onyx U.S. Made Vinyl, so their construction limits cannot be joined safely.",
   "The binder states no effective date and its cover identifies a 2017 reference menu.",
   "No maximum panel-area rule is published; only width and height limits are present.",
@@ -987,6 +1009,26 @@ export function validateOnyxShutterRestrictions(
     );
   }
 
+  if (US_MADE_PROGRAM_IDS.has(context.programId ?? "")) {
+    issues.push({
+      severity: "hard_block",
+      ruleId: "onyx.price.portal_source_conflict",
+      source: ONYX_US_MADE_VINYL_PORTAL_SOURCE,
+      selectedValues: {
+        programId: context.programId,
+        supplied_dealer_cost_per_sqft:
+          ONYX_US_MADE_VINYL_PRICE.dealerCostPerSquareFoot,
+        portal_dealer_cost_per_billable_sqft:
+          ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalDealerCostPerBillableSquareFoot,
+        portal_billable_sqft:
+          ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalBillableSquareFeet,
+        portal_line_price:
+          ONYX_US_MADE_VINYL_PORTAL_FIXTURE.portalLinePrice,
+      },
+      explanation:
+        "Current portal price and billable-area behavior conflict with the supplied pricing screenshot. U.S. Made Vinyl remains unpriceable until Onyx confirms the active rate and frame-area formula.",
+    });
+  }
   issues.push(
     issue(
       "hard_block",

@@ -20,7 +20,7 @@ describe.skipIf(sourceDirectories.length === 0)(
   "quote V2 external immutable source vault",
   () => {
     it("hashes every actual vendor artifact and matches the source lock", () => {
-      expect(sourceArtifactLock.artifacts).toHaveLength(13);
+      expect(sourceArtifactLock.artifacts).toHaveLength(14);
       for (const artifact of sourceArtifactLock.artifacts) {
         const filePath = locate(artifact.fileName);
         expect(filePath, `${artifact.fileName} must exist in the source vault`).not.toBeNull();
