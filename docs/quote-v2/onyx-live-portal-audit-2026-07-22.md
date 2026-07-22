@@ -1,7 +1,7 @@
 # Onyx U.S. Made Vinyl — live portal parity audit
 
-Date: 2026-07-22  
-Status: **FAIL CLOSED — pricing-source conflict**  
+Date: 2026-07-22
+Status: **FAIL CLOSED — pricing-source conflict**
 Portal draft: customer-neutral `CODEX PRICING TEST - DO NOT ORDER`; not checked out or submitted
 
 ## Exact configuration
@@ -69,4 +69,3 @@ the product can be promoted from `restriction_source_incomplete`.
 - Byte length: `73,462`
 - Retained image is cropped to the configured line and totals; account identity
   and customer information are not present.
-
