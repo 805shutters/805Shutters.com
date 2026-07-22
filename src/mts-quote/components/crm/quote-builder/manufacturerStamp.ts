@@ -91,6 +91,13 @@ export function manufacturerStampTone(label: string): ManufacturerStampTone {
   }
 }
 
+export function manufacturerStampFromLabel(value: unknown): ManufacturerStamp | null {
+  const manufacturer = cleanText(value);
+  if (!manufacturer) return null;
+  const label = canonicalManufacturer(manufacturer);
+  return { label, tone: manufacturerStampTone(label) };
+}
+
 /**
  * Resolve the visible manufacturer from the exact selected product first. The
  * persisted supplier is the extensibility contract: a newly added manufacturer
@@ -118,17 +125,12 @@ export function resolveManufacturerStamp(
   }
 
   for (const key of MANUFACTURER_KEYS) {
-    const manufacturer = cleanText(options[key]);
-    if (!manufacturer) continue;
-    const label = canonicalManufacturer(manufacturer);
-    return { label, tone: manufacturerStampTone(label) };
+    const stamp = manufacturerStampFromLabel(options[key]);
+    if (stamp) return stamp;
   }
 
-  const supplier = cleanText(design.supplier);
-  if (supplier) {
-    const label = canonicalManufacturer(supplier);
-    return { label, tone: manufacturerStampTone(label) };
-  }
+  const supplierStamp = manufacturerStampFromLabel(design.supplier);
+  if (supplierStamp) return supplierStamp;
 
   // Some legacy Norman records only identify the fabric catalog. Keep that as
   // the final fallback so a rear fabric or motor vendor can never override the

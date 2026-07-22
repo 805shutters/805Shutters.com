@@ -287,7 +287,10 @@ import {
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { calculateLineItemDesignTotal } from "@mts/lib/quoteTotals";
-import { resolveManufacturerStamp } from "./manufacturerStamp";
+import {
+  manufacturerStampFromLabel,
+  resolveManufacturerStamp,
+} from "./manufacturerStamp";
 import type {
   ManufacturerComparisonProgram,
   ManufacturerComparisonResponse,
@@ -4710,15 +4713,15 @@ export function DesignCard({
                   Add Size
                 </button>
               )}
-              {manufacturerStamp && (
-                authoritativeV2 ? (
-                  <ManufacturerCatalogStampChooser
-                    design={currentDesign}
-                    manufacturerStamp={manufacturerStamp}
-                    onUpdateFields={updateFields}
-                    productType={lineItem.product_type}
-                  />
-                ) : (
+              {authoritativeV2 ? (
+                <ManufacturerCatalogStampChooser
+                  design={currentDesign}
+                  manufacturerStamp={manufacturerStamp}
+                  onUpdateFields={updateFields}
+                  productType={lineItem.product_type}
+                />
+              ) : (
+                manufacturerStamp && (
                   <span
                     aria-label={`Manufacturer: ${manufacturerStamp.label}`}
                     className={cn(
@@ -5058,7 +5061,7 @@ export function ManufacturerCatalogStampChooser({
 }: {
   productType: string;
   design: SalesQuoteDesign | undefined;
-  manufacturerStamp: NonNullable<ReturnType<typeof resolveManufacturerStamp>>;
+  manufacturerStamp: ReturnType<typeof resolveManufacturerStamp>;
   onUpdateFields: (fields: Partial<SalesQuoteDesign>) => void;
   catalogProducts?: QuoteLabCatalogProduct[];
 }) {
@@ -5112,30 +5115,46 @@ export function ManufacturerCatalogStampChooser({
     Boolean(selectedProduct) &&
     availablePrograms.length > 1 &&
     (!selectedProgram || selectedManufacturer.toLowerCase() !== "norman");
+  const catalogManufacturerStamp = manufacturerStampFromLabel(
+    selectedProduct?.manufacturer,
+  );
+  const displayStamp =
+    manufacturerStamp ?? catalogManufacturerStamp ?? {
+      label: "Choose",
+      tone: "generic" as const,
+    };
+  const displayManufacturer =
+    manufacturerStamp?.label ?? catalogManufacturerStamp?.label;
+  // A fresh design has no manufacturer stamp yet. Keep the chooser in the
+  // exact header position anyway so selecting the catalog identity can create
+  // the first persisted design instead of requiring that identity up front.
+  const showProductChooser =
+    !selectedProduct || availableProducts.length > 1;
 
   const stamp = (
     <span
-      aria-label={`Manufacturer: ${manufacturerStamp.label}`}
+      aria-label={`Manufacturer: ${displayStamp.label}`}
       className={cn(
         "quote-line-manufacturer-stamp",
-        `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+        `quote-line-manufacturer-stamp--${displayStamp.tone}`,
       )}
-      data-manufacturer={manufacturerStamp.label}
+      data-manufacturer={displayManufacturer}
       data-testid="manufacturer-stamp"
-      title={`Manufacturer: ${manufacturerStamp.label}`}
+      title={`Manufacturer: ${displayStamp.label}`}
     >
       <span className="quote-line-manufacturer-stamp-caption">MFR</span>
       <span className="quote-line-manufacturer-stamp-name">
-        {manufacturerStamp.label}
+        {displayStamp.label}
       </span>
     </span>
   );
 
-  if (availableProducts.length <= 1) return stamp;
+  if (!showProductChooser) return stamp;
 
   return (
     <>
       <Select
+        disabled={availableProducts.length === 0}
         value={selectedProduct?.id ?? ""}
         onValueChange={(nextProductId) => {
           const product = availableProducts.find(
@@ -5146,23 +5165,28 @@ export function ManufacturerCatalogStampChooser({
         }}
       >
         <SelectTrigger
-          aria-label={`Change manufacturer or product. Current manufacturer: ${manufacturerStamp.label}`}
+          aria-label={
+            manufacturerStamp
+              ? `Change manufacturer or product. Current manufacturer: ${manufacturerStamp.label}`
+              : "Choose manufacturer or product"
+          }
           className={cn(
             "quote-line-manufacturer-stamp h-8 w-auto cursor-pointer justify-start pr-2 focus:ring-2 focus:ring-offset-1",
-            `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
+            `quote-line-manufacturer-stamp--${displayStamp.tone}`,
           )}
           data-catalog-chooser="product"
-          data-manufacturer={manufacturerStamp.label}
+          data-manufacturer={displayManufacturer}
+          data-selection-state={selectedProduct ? "selected" : "empty"}
           data-testid="manufacturer-stamp"
           title={
             selectedProduct
               ? `Change manufacturer / product: ${selectedProduct.manufacturer ?? "Manufacturer"} - ${selectedProduct.system ?? selectedProduct.name}`
-              : `Change manufacturer / product: ${manufacturerStamp.label}`
+              : "Choose manufacturer / product"
           }
         >
           <span className="quote-line-manufacturer-stamp-caption">MFR</span>
           <span className="quote-line-manufacturer-stamp-name">
-            {manufacturerStamp.label}
+            {displayStamp.label}
           </span>
         </SelectTrigger>
         <SelectContent>

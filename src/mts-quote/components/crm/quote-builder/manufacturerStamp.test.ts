@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 import {
+  manufacturerStampFromLabel,
   manufacturerStampTone,
   resolveManufacturerStamp,
 } from "./manufacturerStamp";
@@ -87,6 +88,18 @@ describe("quote-line manufacturer stamps", () => {
       tone: "polar",
     });
     expect(manufacturerStampTone("MTS Shutters")).toBe("mts");
+  });
+
+  it("builds a canonical stamp from catalog manufacturer labels", () => {
+    expect(manufacturerStampFromLabel("  Lotus   & Windoware ")).toEqual({
+      label: "Lotus",
+      tone: "lotus",
+    });
+    expect(manufacturerStampFromLabel("Future Shade Company")).toEqual({
+      label: "Future Shade Company",
+      tone: "generic",
+    });
+    expect(manufacturerStampFromLabel(null)).toBeNull();
   });
 
   it("does not invent a manufacturer when no evidence is stored", () => {

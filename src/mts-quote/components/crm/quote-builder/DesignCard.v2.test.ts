@@ -438,7 +438,10 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('data-testid="manufacturer-stamp"');
     expect(source).toContain("{manufacturerStamp.label}");
     expect(source).toContain(
-      "manufacturerStamp && (\n                authoritativeV2 ? (\n                  <ManufacturerCatalogStampChooser",
+      "{authoritativeV2 ? (\n                <ManufacturerCatalogStampChooser",
+    );
+    expect(source).toContain(
+      "manufacturerStamp && (\n                  <span",
     );
     const quoteBuilderSource = readFileSync(
       fileURLToPath(new URL("./QuoteBuilder.tsx", import.meta.url)),
@@ -610,7 +613,17 @@ describe("V2 exact-interface contract", () => {
         discount_percent: 10,
         fabric_program_id: "stale-program",
         power_configuration: "stale-power",
+        authoritative_price_status: "authoritative",
+        authoritative_price_error: "",
+        authoritative_price_breakdown: { total: 757.5 },
+        authoritative_cost_breakdown: { landedCost: 260 },
+        authoritative_once_total: 25,
         authoritative_v2_snapshot: { stale: true },
+        priced_selection_fingerprint: "old-selection",
+        priced_catalog_version: "old-catalog",
+        sent_price_snapshot: { total: 757.5 },
+        base_price: 610,
+        surcharge_total: 147.5,
       },
       { id: "smartprivacy_faux", manufacturer: "Norman" },
       "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
@@ -626,7 +639,16 @@ describe("V2 exact-interface contract", () => {
     });
     expect(options).not.toHaveProperty("fabric_program_id");
     expect(options).not.toHaveProperty("power_configuration");
+    expect(options).not.toHaveProperty("authoritative_price_status");
+    expect(options).not.toHaveProperty("authoritative_price_breakdown");
+    expect(options).not.toHaveProperty("authoritative_cost_breakdown");
+    expect(options).not.toHaveProperty("authoritative_once_total");
     expect(options).not.toHaveProperty("authoritative_v2_snapshot");
+    expect(options).not.toHaveProperty("priced_selection_fingerprint");
+    expect(options).not.toHaveProperty("priced_catalog_version");
+    expect(options).not.toHaveProperty("sent_price_snapshot");
+    expect(options).not.toHaveProperty("base_price");
+    expect(options).not.toHaveProperty("surcharge_total");
   });
 
   it("requires an exact program when an alternate catalog product has multiple programs", () => {
@@ -757,6 +779,67 @@ describe("V2 exact-interface contract", () => {
     );
     expect(legacyShapeHtml).not.toContain('data-catalog-chooser="product"');
     expect(legacyShapeHtml).toContain('aria-label="Manufacturer: Norman"');
+  });
+
+  it("renders a usable manufacturer chooser for a brand-new design with no identity", () => {
+    const norman = catalogProduct("roller", "Norman", [
+      { id: "norman_pg1", name: "Norman PG1", priceAxis: "wh" },
+    ]);
+    const polar = catalogProduct("polar_interior_roller", "Polar", [
+      { id: "polar_pg1", name: "Polar PG1", priceAxis: "wh" },
+      { id: "polar_pg2", name: "Polar PG2", priceAxis: "wh" },
+    ]);
+
+    const blankHtml = renderToStaticMarkup(
+      createElement(ManufacturerCatalogStampChooser, {
+        productType: "Roller Shades",
+        design: undefined,
+        manufacturerStamp: null,
+        onUpdateFields: () => undefined,
+        catalogProducts: [norman, polar],
+      }),
+    );
+    expect(blankHtml).toContain('data-catalog-chooser="product"');
+    expect(blankHtml).toContain('data-selection-state="empty"');
+    expect(blankHtml).toContain('aria-label="Choose manufacturer or product"');
+    expect(blankHtml).toContain("Choose");
+
+    const loadingHtml = renderToStaticMarkup(
+      createElement(ManufacturerCatalogStampChooser, {
+        productType: "Roller Shades",
+        design: undefined,
+        manufacturerStamp: null,
+        onUpdateFields: () => undefined,
+      }),
+    );
+    expect(loadingHtml).toContain('data-catalog-chooser="product"');
+    expect(loadingHtml).toContain('data-selection-state="empty"');
+    expect(loadingHtml).toContain("disabled");
+
+    const singleProductHtml = renderToStaticMarkup(
+      createElement(ManufacturerCatalogStampChooser, {
+        productType: "Roller Shades",
+        design: undefined,
+        manufacturerStamp: null,
+        onUpdateFields: () => undefined,
+        catalogProducts: [norman],
+      }),
+    );
+    expect(singleProductHtml).toContain('data-catalog-chooser="product"');
+    expect(singleProductHtml).toContain('data-selection-state="empty"');
+
+    expect(buildCatalogSelectionPatch({}, polar, "polar_pg2")).toMatchObject({
+      supplier: "Polar",
+      material: "Polar PG2",
+      unit_price: 0,
+      options_json: {
+        catalog_product_id: "polar_interior_roller",
+        quote_lab_product_id: "polar_interior_roller",
+        catalog_program_id: "polar_pg2",
+        quote_lab_program_id: "polar_pg2",
+        catalog_manufacturer: "Polar",
+      },
+    });
   });
 
   it("adds Onyx mechanical evidence only to the authoritative V2 card", () => {
