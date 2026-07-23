@@ -4,7 +4,6 @@
  * Safety boundary: this process cannot click checkout, submit-order, confirm-order,
  * or place-order controls. It stops at Norman's order queue/review screen.
  */
-import { createClient } from "@supabase/supabase-js";
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -22,8 +21,7 @@ main().catch((error) => {
 });
 
 async function main() {
-  const supabase = createSupabase();
-  const task = await claimTask(supabase, args.taskId);
+  const task = await claimTask(args.taskId);
   if (!task) {
     console.log(JSON.stringify({ status: "skipped", message: "No queued Norman Roller draft tasks." }));
     return;
@@ -31,39 +29,29 @@ async function main() {
   try {
     assertSafePlan(task.payload);
     const result = await preparePortalDraft(task);
-    const { error } = await supabase.from("crm_vendor_order_drafts").update({
-      status: "review_ready",
-      review_ready_at: new Date().toISOString(),
-      portal_draft_id: result.portalDraftId,
-      screenshot_path: result.screenshotPath,
-      error_message: null,
-      payload: { ...task.payload, review: result.review },
-    }).eq("id", task.id).eq("status", "processing");
-    if (error) throw new Error(`Review-ready update failed: ${error.message}`);
-    await updateMeasureStatus(supabase, task, {
-      status: "review_ready",
+    await workerRequest({
+      action: "complete",
+      formId: task.technical_measure_form_id,
       taskId: task.id,
-      issueCount: 0,
+      status: "review_ready",
       portalDraftId: result.portalDraftId,
       screenshotPath: result.screenshotPath,
-      message: "Norman Roller saved draft is ready for manual review. The order has not been placed.",
+      review: result.review,
     });
     console.log(JSON.stringify({ status: "review_ready", task_id: task.id, ...result }, null, 2));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await supabase.from("crm_vendor_order_drafts").update({ status: "failed", error_message: message }).eq("id", task.id);
-    await updateMeasureStatus(supabase, task, { status: "failed", taskId: task.id, issueCount: 0, message });
+    await workerRequest({
+      action: "complete",
+      formId: task.technical_measure_form_id,
+      taskId: task.id,
+      status: "failed",
+      errorMessage: message,
+    }).catch((completionError) => {
+      console.error(`Norman failure status could not be recorded: ${completionError instanceof Error ? completionError.message : String(completionError)}`);
+    });
     throw error;
   }
-}
-
-async function updateMeasureStatus(supabase, task, status) {
-  const { data: form } = await supabase.from("crm_technical_measure_forms").select("meta").eq("id", task.technical_measure_form_id).maybeSingle();
-  const meta = form?.meta && typeof form.meta === "object" && !Array.isArray(form.meta) ? form.meta : {};
-  const { error } = await supabase.from("crm_technical_measure_forms").update({
-    meta: { ...meta, vendor_order_preparation: { manufacturer: "Norman", productType: "roller", ...status } },
-  }).eq("id", task.technical_measure_form_id);
-  if (error) throw new Error(`Measure review status update failed: ${error.message}`);
 }
 
 function parseArgs(argv) {
@@ -89,20 +77,9 @@ function assertSafePlan(plan) {
   }
 }
 
-async function claimTask(supabase, taskId) {
-  let query = supabase.from("crm_vendor_order_drafts").select("*").eq("manufacturer", "Norman").eq("product_type", "roller").eq("status", "queued");
-  query = taskId ? query.eq("id", taskId) : query.order("requested_at", { ascending: true }).limit(1);
-  const { data, error } = taskId ? await query.maybeSingle() : await query;
-  if (error) throw new Error(`Queue read failed: ${error.message}`);
-  const row = taskId ? data : data?.[0];
-  if (!row) return null;
-  const { data: claimed, error: claimError } = await supabase.from("crm_vendor_order_drafts").update({
-    status: "processing",
-    started_at: new Date().toISOString(),
-    error_message: null,
-  }).eq("id", row.id).eq("status", "queued").select("*").maybeSingle();
-  if (claimError) throw new Error(`Queue claim failed: ${claimError.message}`);
-  return claimed || null;
+async function claimTask(taskId) {
+  const result = await workerRequest({ action: "claim", taskId: taskId || undefined });
+  return result.task || null;
 }
 
 async function preparePortalDraft(task) {
@@ -332,11 +309,19 @@ function extractDraftId(url, body) {
   return fromUrl || fromBody || null;
 }
 
-function createSupabase() {
-  const url = process.env.SUPABASE_URL || process.env.PROD_SUPABASE_URL || "https://djduaqegxwjnmjlzjdor.supabase.co";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.PROD_SERVICE_ROLE_KEY || keychain("mts-supabase-service", "clawdbot");
-  if (!url || !key) throw new Error("Supabase service credentials are not configured.");
-  return createClient(url, key);
+async function workerRequest(body) {
+  const url = process.env.NORMAN_ORDER_WORKER_URL || "https://805-one.vercel.app/api/crm/norman-order-worker";
+  const secret = process.env.NORMAN_ORDER_WORKER_SECRET || keychain("805-norman-worker-secret", "order-drafts");
+  if (!secret) throw new Error("Norman order worker secret is not configured in the environment or macOS Keychain.");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { authorization: `Bearer ${secret}`, "content-type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(typeof result.message === "string" ? result.message : `Norman worker API failed with HTTP ${response.status}.`);
+  return result;
 }
 
 function normanCredentials() {

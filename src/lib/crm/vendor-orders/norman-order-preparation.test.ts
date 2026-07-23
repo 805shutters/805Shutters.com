@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { TechnicalMeasureForm, TechnicalMeasureLine } from "@/lib/crm/technical-measures";
-import { buildNormanRollerPreparation, validateNormanRollerMeasureForSubmission } from "./norman-order-preparation";
+import { buildNormanRollerPreparation, enqueueNormanRollerPreparation, validateNormanRollerMeasureForSubmission } from "./norman-order-preparation";
 
 function line(): TechnicalMeasureLine {
   const values = {
@@ -99,5 +99,19 @@ describe("Norman Roller order preparation", () => {
     const prepared = buildNormanRollerPreparation(form());
     expect(prepared?.plan.ready).toBe(false);
     expect(prepared?.plan.issues).toContainEqual(expect.objectContaining({ field: "ship_to_profile_id" }));
+  });
+
+  it("queues the immutable saved-draft payload on the existing measure record", async () => {
+    process.env.NORMAN_SHIP_TO_PROFILE_ID = "dealer-camarillo";
+    const queued = await enqueueNormanRollerPreparation(form(), "sales-user-1");
+    expect(queued).toMatchObject({
+      manufacturer: "Norman",
+      productType: "roller",
+      status: "queued",
+      requestedBy: "sales-user-1",
+      issueCount: 0,
+    });
+    expect(queued.taskId).toMatch(/^norman:form-1:[a-f0-9]{12}$/);
+    expect(queued.payload).toMatchObject({ adapter: "norman_roller", safety: "saved_draft_only", ready: true });
   });
 });

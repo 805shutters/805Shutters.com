@@ -627,7 +627,7 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
   let orderPreparation: VendorOrderPreparationSummary | null = null;
   const submittedForm = await loadTechnicalMeasureForm(supabase, form.id);
   try {
-    orderPreparation = await enqueueNormanRollerPreparation(supabase, submittedForm, actor.userId);
+    orderPreparation = await enqueueNormanRollerPreparation(submittedForm, actor.userId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Norman order preparation could not be queued.";
     orderPreparation = { manufacturer: "Norman", productType: "roller", status: "queue_failed", taskId: null, issueCount: 0, message };

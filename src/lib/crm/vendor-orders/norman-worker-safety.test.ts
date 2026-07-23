@@ -15,6 +15,14 @@ describe("Norman order worker safety boundary", () => {
     expect(worker).toContain('safety: "saved_draft_only"');
   });
 
+  it("uses the protected 805 worker endpoint rather than a direct database credential", () => {
+    expect(worker).toContain("https://805-one.vercel.app/api/crm/norman-order-worker");
+    expect(worker).toContain("805-norman-worker-secret");
+    expect(worker).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
+    expect(worker).not.toContain("djduaqegxwjnmjlzjdor");
+    expect(worker).not.toContain('from("crm_vendor_order_drafts")');
+  });
+
   it("does not permit placed, ordered, or submitted queue states", () => {
     const check = migration.match(/check \(status in \(([^)]+)\)\)/)?.[1] || "";
     expect(check).toContain("'review_ready'");

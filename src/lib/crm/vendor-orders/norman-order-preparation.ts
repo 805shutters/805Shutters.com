@@ -1,15 +1,22 @@
 import { createHash } from "node:crypto";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import { buildNormanRollerDraftPlan, type NormanRollerProfile } from "./norman-roller";
 
 export type VendorOrderPreparationSummary = {
   manufacturer: "Norman";
   productType: "roller";
-  status: "skipped" | "needs_input" | "queued" | "queue_failed";
+  status: "skipped" | "needs_input" | "queued" | "processing" | "review_ready" | "failed" | "queue_failed";
   taskId: string | null;
   issueCount: number;
   message: string;
+  requestedAt?: string;
+  requestedBy?: string | null;
+  sourceHash?: string;
+  payload?: ReturnType<typeof buildNormanRollerDraftPlan>;
+  startedAt?: string;
+  reviewReadyAt?: string;
+  portalDraftId?: string | null;
+  screenshotPath?: string | null;
 };
 
 function profileFromEnvironment(): NormanRollerProfile {
@@ -66,7 +73,6 @@ export function validateNormanRollerMeasureForSubmission(form: TechnicalMeasureF
 }
 
 export async function enqueueNormanRollerPreparation(
-  supabase: SupabaseClient,
   form: TechnicalMeasureForm,
   requestedBy?: string,
 ): Promise<VendorOrderPreparationSummary> {
@@ -76,33 +82,16 @@ export async function enqueueNormanRollerPreparation(
   }
 
   const status = prepared.plan.ready ? "queued" : "needs_input";
-  const { data, error } = await supabase.from("crm_vendor_order_drafts").upsert({
-    technical_measure_form_id: form.id,
-    crm_quote_id: form.quote_id,
-    crm_job_id: form.job_id,
-    manufacturer: "Norman",
-    product_type: "roller",
-    status,
-    requested_by: requestedBy || null,
-    requested_at: new Date().toISOString(),
-    adapter_version: prepared.plan.adapterVersion,
-    source_hash: prepared.sourceHash,
-    payload: prepared.plan,
-    validation_issues: prepared.plan.issues,
-    error_message: null,
-    started_at: null,
-    review_ready_at: null,
-    portal_draft_id: null,
-    screenshot_path: null,
-  }, { onConflict: "technical_measure_form_id,manufacturer,product_type" }).select("id").single();
-
-  if (error || !data) throw new Error(error?.message || "Norman order preparation could not be queued.");
   return {
     manufacturer: "Norman",
     productType: "roller",
     status,
-    taskId: String(data.id),
+    taskId: `norman:${form.id}:${prepared.sourceHash.slice(0, 12)}`,
     issueCount: prepared.plan.issues.length,
+    requestedAt: new Date().toISOString(),
+    requestedBy: requestedBy || null,
+    sourceHash: prepared.sourceHash,
+    payload: prepared.plan,
     message: status === "queued"
       ? "Norman Roller draft preparation is queued for review."
       : `Norman Roller needs ${prepared.plan.issues.length} correction${prepared.plan.issues.length === 1 ? "" : "s"} before portal entry.`,
