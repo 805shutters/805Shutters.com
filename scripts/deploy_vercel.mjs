@@ -3,6 +3,7 @@
 import { spawnSync } from "node:child_process";
 
 const PROJECT = "805";
+const GITHUB_REPO = "805shutters/805Shutters.com";
 const VERIFY_URL = "https://www.805shutters.com";
 const WAIT_MS = 10_000;
 const MAX_WAIT_MS = 10 * 60_000;
@@ -24,6 +25,14 @@ function run(command, args, options = {}) {
   }
 
   return options.capture ? result.stdout : "";
+}
+
+function tryRun(command, args) {
+  return spawnSync(command, args, {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    stdio: "pipe"
+  });
 }
 
 function parseJsonOutput(output) {
@@ -59,11 +68,13 @@ function currentSha() {
 
 async function waitForVercelDeployment(sha) {
   const startedAt = Date.now();
+  let useGitHubStatus = false;
 
   while (Date.now() - startedAt < MAX_WAIT_MS) {
-    const output = run(
-      "npx",
-      [
+    let deployment;
+
+    if (!useGitHubStatus) {
+      const result = tryRun("npx", [
         "--yes",
         "vercel@latest",
         "list",
@@ -74,11 +85,37 @@ async function waitForVercelDeployment(sha) {
         `githubCommitSha=${sha}`,
         "--status",
         "BUILDING,READY,ERROR"
-      ],
-      { capture: true }
-    );
-    const payload = parseJsonOutput(output);
-    const deployment = (payload.deployments || []).find((item) => item.target === "production");
+      ]);
+
+      if (result.status === 0) {
+        const payload = parseJsonOutput(result.stdout);
+        deployment = (payload.deployments || []).find((item) => item.target === "production");
+      } else {
+        const errorOutput = `${result.stdout || ""}\n${result.stderr || ""}`;
+        if (!errorOutput.includes("No existing credentials found")) {
+          process.stderr.write(errorOutput);
+          process.exit(result.status || 1);
+        }
+        useGitHubStatus = true;
+        console.log("Vercel CLI is not authenticated; verifying through the GitHub Vercel status instead.");
+      }
+    }
+
+    if (useGitHubStatus) {
+      const output = run(
+        "gh",
+        ["api", `repos/${GITHUB_REPO}/commits/${sha}/status`],
+        { capture: true }
+      );
+      const payload = JSON.parse(output);
+      const status = (payload.statuses || []).find((item) => item.context === "Vercel");
+
+      if (status?.state === "success") {
+        deployment = { state: "READY", url: status.target_url, absoluteUrl: true };
+      } else if (status && ["error", "failure"].includes(status.state)) {
+        deployment = { state: "ERROR" };
+      }
+    }
 
     if (deployment?.state === "READY") return deployment;
     if (deployment?.state === "ERROR") {
@@ -117,5 +154,5 @@ verifyWebsite();
 console.log("");
 console.log("Vercel deployment verified.");
 console.log(`Commit: ${sha}`);
-console.log(`Deployment: https://${deployment.url}`);
+console.log(`Deployment: ${deployment.absoluteUrl ? deployment.url : `https://${deployment.url}`}`);
 console.log(`Website URL: ${VERIFY_URL}`);
