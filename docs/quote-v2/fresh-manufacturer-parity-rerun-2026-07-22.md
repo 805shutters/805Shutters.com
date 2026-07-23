@@ -41,15 +41,15 @@ This is a verified fresh-interface pass for the supported Norman recipe, not ove
 | Gate | Result |
 |---|---:|
 | Immutable source artifacts | 14/14 verified |
-| Quote V2, Quote Lab, and protected API tests | 431 passed, 1 skipped |
+| Quote V2, Quote Lab, and protected API tests | 469 passed, 1 skipped |
 | Fresh portal-order replay recipes | 12/12 passed |
 | Norman 20-quote × 20-item progressive component matrix | 400/400 priced lines passed |
-| Protected existing-interface browser suite | 9/9 passed |
+| Protected existing-interface browser suite | 10/10 passed |
 | TypeScript | Passed |
 | Production build | Passed |
-| Full repository unit suite | 1,449 passed, 5 skipped, 1 unrelated Mobile Appointment source-contract failure |
+| Full repository unit suite | 1,455 passed, 5 skipped, 1 unrelated Mobile Appointment source-contract failure |
 
-The browser suite now works from both `localhost` and the currently used `127.0.0.1` local preview. Its first rerun exposed Secure-cookie behavior on local HTTP; the isolated Quote Lab cookie logic was corrected and the full 9-test suite then passed on `127.0.0.1`.
+The browser suite now works from both `localhost` and the currently used `127.0.0.1` local preview. Its first rerun exposed Secure-cookie behavior on local HTTP; the isolated Quote Lab cookie logic was corrected, and the expanded 10-test suite now includes the fresh Norman Smart Release quote and passes on `127.0.0.1`.
 
 ## Replayed manufacturer configurations
 
@@ -63,9 +63,9 @@ The browser suite now works from both `localhost` and the currently used `127.0.
 
 Only the two Norman recipes currently prove a sendable manufacturer-to-V2 result. Polar, Lotus, and Onyx demonstrate safe blocking, not completion.
 
-## Critical fresh-interface failures
+## Critical fresh-interface failures reproduced before the fixes
 
-### 1. A blank quote cannot choose a manufacturer
+### 1. Pre-fix: a blank quote could not choose a manufacturer
 
 Reproduction through the visible interface:
 
@@ -80,7 +80,7 @@ Root cause: the manufacturer chooser is rendered only when `resolveManufacturerS
 
 This affects fresh products generally, not only Roller Shades.
 
-### 2. Fresh SmartRelease configuration becomes impossible even after catalog identity is supplied
+### 2. Pre-fix: Smart Release became impossible even after catalog identity was supplied
 
 For diagnostic separation only, the Norman product/program identity was inserted into the new design through the protected test API. All remaining choices were then made through the visible interface:
 
@@ -97,11 +97,11 @@ The UI auto-derived `All Tubes`, hid the tube selector, and the authoritative ba
 
 Changing the choice order did not expose a valid 1¾-inch tube path. The exact same portal configuration prices correctly at $350 when the complete authoritative selection is supplied directly, proving the grid/component arithmetic is sound and the visible dependency flow is the blocker.
 
-### 3. Seeded browser tests overstate fresh-quote readiness
+### 3. Pre-fix: seeded browser tests overstated fresh-quote readiness
 
 The existing manufacturer-switch and Cordless-to-Motorized browser tests pass, including the $328 → $494 AutoWand reprice, component explanation, red wholesale-cost highlighting, save/reload, and cleanup. Those tests start from designs that already have Norman product/program identity. They therefore do not cover the blank-quote manufacturer dependency above.
 
-## Confirmed component arithmetic after controlled identity injection
+## Confirmed component arithmetic before and after the fixes
 
 The new 24 × 36 line rendered:
 
@@ -117,15 +117,15 @@ The new 24 × 36 line rendered:
 
 Wholesale values rendered in the required red treatment, and customer-facing projection tests confirmed that dealer cost, freight cost, processing, margin, and wholesale fields are excluded.
 
-This controlled injection is diagnostic evidence, not a fresh-interface pass.
+The controlled injection first isolated the arithmetic from the interface defects. The post-fix browser acceptance now reaches the same amounts from a server-generated blank quote through visible controls only, persists the exact catalog identities, and reloads without an authoritative-pricing block.
 
-## Required fixes before the next grade
+## Remaining work before an A
 
-1. Render an empty-state manufacturer/product chooser for every fresh design; never require a preexisting manufacturer stamp.
-2. Make Roller dependent fields deterministic and reachable. Smart Release must expose or correctly derive its documented tube/profile, and changing valance/top treatment must not silently replace it with an invalid value.
-3. Add a browser acceptance test that builds the Norman SmartRelease portal recipe entirely from a server-generated blank quote with no API fixture patch.
+1. **Completed:** render an empty-state manufacturer/product chooser for every fresh design; never require a preexisting manufacturer stamp.
+2. **Completed:** make Roller dependent fields deterministic and reachable; Smart Release now derives the documented 1¾-inch tube and reprices authoritatively.
+3. **Completed:** add a browser acceptance test that builds the Norman Smart Release portal recipe entirely from a server-generated blank quote with no API fixture patch.
 4. Add the same fresh-interface recipe test for Polar, Lotus, and Onyx, expecting authoritative hard blocks until their source conflicts are resolved.
 5. Separate current-day catalog acceptance from the injected August 1 appendix preview before production cutover.
 6. Resolve Polar portal/book pricing, Lotus retail/stock/conflict authority, and Onyx live price/restriction authority before those manufacturers can count as parity passes.
 
-The next meaningful retest starts with the two blank-quote blockers. Until both pass without state injection, the build should remain isolated and must not replace the current quoting system.
+The two blank-quote blockers now pass without state injection. The build should still remain isolated and must not replace the current quoting system until the unresolved Polar, Lotus, Onyx, current-date, and portal-parity gates above are complete.
