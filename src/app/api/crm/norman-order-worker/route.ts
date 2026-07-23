@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse } from "@/lib/crm/auth";
+import { sendNormanOrderReviewTelegram } from "@/lib/crm/vendor-orders/order-review-alerts";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
@@ -78,7 +79,7 @@ async function completeTask(
 
   const { data: row, error: readError } = await supabase
     .from("crm_technical_measure_forms")
-    .select("meta")
+    .select("meta,customer_snapshot,quote_snapshot")
     .eq("id", formId)
     .maybeSingle();
   if (readError) throw new CrmAuthError(502, `Norman completion read failed: ${readError.message}`);
@@ -119,7 +120,41 @@ async function completeTask(
     .maybeSingle();
   if (updateError) throw new CrmAuthError(502, `Norman completion update failed: ${updateError.message}`);
   if (!updated) throw new CrmAuthError(409, "Norman measure task completion lost its processing lock.");
-  return { status, taskId, formId };
+
+  if (status !== "review_ready") return { status, taskId, formId };
+
+  const payload = object(current.payload);
+  const header = object(payload.header);
+  const customer = object(row.customer_snapshot);
+  const quote = object(row.quote_snapshot);
+  const lines = Array.isArray(payload.lines) ? payload.lines : [];
+  const alert = await sendNormanOrderReviewTelegram({
+    formId,
+    taskId,
+    customerName: typeof customer.name === "string" ? customer.name : null,
+    quoteNumber: typeof quote.quoteNumber === "string" ? quote.quoteNumber : null,
+    poNumber: typeof header.poNumber === "string" ? header.poNumber : null,
+    lineCount: lines.length,
+    portalDraftId,
+  });
+  const alertStatus = {
+    channel: "telegram",
+    status: alert.result.sent ? "sent" : "failed",
+    attemptedAt: new Date().toISOString(),
+    messageId: alert.result.messageId || null,
+    error: alert.result.error || alert.result.skipped || null,
+  };
+  const alertedPreparation = { ...next, reviewAlert: alertStatus };
+  const { error: alertStatusError } = await supabase
+    .from("crm_technical_measure_forms")
+    .update({ meta: { ...meta, vendor_order_preparation: alertedPreparation } })
+    .eq("id", formId)
+    .eq("meta->vendor_order_preparation->>status", "review_ready")
+    .eq("meta->vendor_order_preparation->>taskId", taskId);
+  if (alertStatusError) {
+    console.error("Norman Telegram alert status could not be recorded", { formId, taskId, error: alertStatusError.message });
+  }
+  return { status, taskId, formId, alert: alertStatus };
 }
 
 export async function POST(request: NextRequest) {
