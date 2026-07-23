@@ -4322,7 +4322,8 @@ body:has(.mobile-workspace-exit) .technical-measure-header {
 .mobile-crm-day-card,
 .mobile-crm-footer button,
 .mobile-crm-primary-action,
-.mobile-crm-secondary-action {
+.mobile-crm-secondary-action,
+.mobile-crm-danger-action {
   cursor: pointer;
 }
 
@@ -4333,7 +4334,8 @@ body:has(.mobile-workspace-exit) .technical-measure-header {
 }
 
 .mobile-crm-primary-action,
-.mobile-crm-secondary-action {
+.mobile-crm-secondary-action,
+.mobile-crm-danger-action {
   display: inline-flex;
   min-height: 54px;
   align-items: center;
@@ -4354,8 +4356,15 @@ body:has(.mobile-workspace-exit) .technical-measure-header {
   color: #111111;
 }
 
+.mobile-crm-danger-action {
+  background: #fff7f6;
+  color: #9f1d16;
+  border-color: #9f1d16;
+}
+
 .mobile-crm-primary-action:disabled,
 .mobile-crm-secondary-action:disabled,
+.mobile-crm-danger-action:disabled,
 .mobile-crm-segment button:disabled,
 .mobile-crm-footer button:disabled {
   cursor: not-allowed;

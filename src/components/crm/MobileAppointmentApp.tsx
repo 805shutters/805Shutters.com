@@ -5,6 +5,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   ArrowLeft,
   ArrowRight,
+  CalendarClock,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -20,6 +21,7 @@ import {
   RefreshCw,
   Ruler,
   Search,
+  Trash2,
   User,
   X
 } from "lucide-react";
@@ -289,6 +291,21 @@ function appointmentDateTimeRange(date: string, time: string, durationMinutes: n
   };
 }
 
+function eventDateInputValue(event: MobileAppointment) {
+  return eventDay(event);
+}
+
+function eventTimeInputValue(event: MobileAppointment) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date(event.start_at));
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.hour}:${values.minute}`;
+}
+
 function AppointmentChip({
   event,
   compact = false,
@@ -454,15 +471,21 @@ function UpcomingView({
 function AppointmentDetailSheet({
   event,
   etaBusy,
+  mutationBusy,
   etaMessage,
   onClose,
+  onReschedule,
+  onCancel,
   onTextAndNavigate,
   onNavigateOnly
 }: {
   event: MobileAppointment;
   etaBusy: boolean;
+  mutationBusy: boolean;
   etaMessage: string | null;
   onClose: () => void;
+  onReschedule: (event: MobileAppointment) => void;
+  onCancel: (event: MobileAppointment) => void;
   onTextAndNavigate: (event: MobileAppointment) => void;
   onNavigateOnly: (event: MobileAppointment) => void;
 }) {
@@ -497,6 +520,14 @@ function AppointmentDetailSheet({
         {etaMessage ? <p className="mobile-crm-eta-status">{etaMessage}</p> : null}
 
         <div className="mobile-crm-sheet-actions">
+          <button type="button" className="mobile-crm-secondary-action" disabled={mutationBusy} onClick={() => onReschedule(event)}>
+            <CalendarClock />
+            <span>Reschedule Appointment</span>
+          </button>
+          <button type="button" className="mobile-crm-danger-action" disabled={mutationBusy} onClick={() => onCancel(event)}>
+            {mutationBusy ? <Loader2 className="spin" /> : <Trash2 />}
+            <span>{mutationBusy ? "Canceling..." : "Cancel Appointment"}</span>
+          </button>
           {event.job_id ? (
             <a className="mobile-crm-secondary-action" href={`/crm/technical-measures?jobId=${encodeURIComponent(event.job_id)}`}>
               <Ruler />
@@ -512,6 +543,64 @@ function AppointmentDetailSheet({
             <span>Navigate Only</span>
           </button>
         </div>
+      </section>
+    </div>
+  );
+}
+
+function RescheduleAppointmentSheet({
+  event,
+  busy,
+  onClose,
+  onSubmit
+}: {
+  event: MobileAppointment;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+}) {
+  const duration = event.appointment_duration_minutes || bookingSlotDurationMinutes;
+  return (
+    <div className="mobile-crm-sheet-backdrop" role="presentation" onClick={onClose}>
+      <section className="mobile-crm-sheet mobile-crm-add-sheet" role="dialog" aria-modal="true" aria-label="Reschedule appointment" onClick={(eventClick) => eventClick.stopPropagation()}>
+        <div className="mobile-crm-sheet-bar">
+          <div>
+            <span>{eventTitle(event)}</span>
+            <h2>Reschedule</h2>
+          </div>
+          <button type="button" aria-label="Close reschedule appointment" disabled={busy} onClick={onClose}>
+            <X />
+          </button>
+        </div>
+
+        <form className="mobile-crm-add-form" onSubmit={onSubmit}>
+          <div className="mobile-crm-form-row">
+            <label>
+              New date
+              <input name="date" type="date" required defaultValue={eventDateInputValue(event)} />
+            </label>
+            <label>
+              New time
+              <input name="time" type="time" required defaultValue={eventTimeInputValue(event)} />
+            </label>
+          </div>
+          <label>
+            Duration
+            <select name="duration" defaultValue={String(duration)}>
+              {Array.from(new Set([...appointmentDurations, duration])).sort((left, right) => left - right).map((minutes) => (
+                <option value={minutes} key={minutes}>
+                  {minutes % 60 === 0 ? `${minutes / 60} hr` : `${minutes} min`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="mobile-crm-sheet-actions">
+            <button type="submit" className="mobile-crm-primary-action" disabled={busy}>
+              {busy ? <Loader2 className="spin" /> : <CalendarClock />}
+              <span>{busy ? "Rescheduling..." : "Confirm New Time"}</span>
+            </button>
+          </div>
+        </form>
       </section>
     </div>
   );
@@ -639,8 +728,10 @@ export function MobileAppointmentApp() {
   const [message, setMessage] = useState<string | null>(null);
   const [userLabel, setUserLabel] = useState<string | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<MobileAppointment | null>(null);
+  const [reschedulingAppointment, setReschedulingAppointment] = useState<MobileAppointment | null>(null);
   const [addingAppointment, setAddingAppointment] = useState(false);
   const [savingAppointment, setSavingAppointment] = useState(false);
+  const [appointmentMutationBusy, setAppointmentMutationBusy] = useState(false);
   const [etaBusy, setEtaBusy] = useState(false);
   const [etaMessage, setEtaMessage] = useState<string | null>(null);
   const activeRange = useMemo(() => rangeForView(anchorDate, view), [anchorDate, view]);
@@ -760,6 +851,67 @@ export function MobileAppointmentApp() {
       await loadAppointments(session);
     } finally {
       setSavingAppointment(false);
+    }
+  }
+
+  async function rescheduleAppointment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session || !reschedulingAppointment) return;
+
+    const formData = new FormData(event.currentTarget);
+    const date = formString(formData, "date");
+    const time = formString(formData, "time");
+    const durationMinutes = Number(formString(formData, "duration") || bookingSlotDurationMinutes);
+    const { startAt, endAt } = appointmentDateTimeRange(date, time, durationMinutes);
+
+    setAppointmentMutationBusy(true);
+    setMessage(null);
+    try {
+      await crmFetch<{ event: MobileAppointment }>(session, "/api/crm/calendar", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: reschedulingAppointment.id,
+          start_at: startAt,
+          end_at: endAt
+        })
+      });
+      setReschedulingAppointment(null);
+      setSelectedAppointment(null);
+      setAnchorDate(date);
+      await loadAppointments(session);
+      setMessage(`${eventTitle(reschedulingAppointment)} was rescheduled.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Appointment could not be rescheduled.");
+    } finally {
+      setAppointmentMutationBusy(false);
+    }
+  }
+
+  async function cancelAppointment(event: MobileAppointment) {
+    if (!session) return;
+    const confirmed = window.confirm(
+      `Cancel ${eventTitle(event)}'s appointment?\n\nThis removes it from the active schedule but keeps the cancellation in your records.`
+    );
+    if (!confirmed) return;
+
+    setAppointmentMutationBusy(true);
+    setMessage(null);
+    try {
+      await crmFetch<{ event: MobileAppointment }>(session, "/api/crm/calendar", {
+        method: "PATCH",
+        body: JSON.stringify({
+          id: event.id,
+          action: "cancel",
+          reason: "Canceled from mobile appointments"
+        })
+      });
+      setSelectedAppointment(null);
+      await loadAppointments(session);
+      setMessage(`${eventTitle(event)}'s appointment was canceled.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Appointment could not be canceled.");
+    } finally {
+      setAppointmentMutationBusy(false);
     }
   }
 
@@ -995,10 +1147,27 @@ export function MobileAppointmentApp() {
         <AppointmentDetailSheet
           event={selectedAppointment}
           etaBusy={etaBusy}
+          mutationBusy={appointmentMutationBusy}
           etaMessage={etaMessage}
           onClose={() => setSelectedAppointment(null)}
+          onReschedule={(event) => {
+            setSelectedAppointment(null);
+            setReschedulingAppointment(event);
+          }}
+          onCancel={cancelAppointment}
           onTextAndNavigate={handleTextAndNavigate}
           onNavigateOnly={(event) => openDirections(event.customer_address || event.location)}
+        />
+      ) : null}
+
+      {reschedulingAppointment ? (
+        <RescheduleAppointmentSheet
+          event={reschedulingAppointment}
+          busy={appointmentMutationBusy}
+          onClose={() => {
+            if (!appointmentMutationBusy) setReschedulingAppointment(null);
+          }}
+          onSubmit={rescheduleAppointment}
         />
       ) : null}
 
