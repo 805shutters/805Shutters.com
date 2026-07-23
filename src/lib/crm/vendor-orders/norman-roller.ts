@@ -77,7 +77,7 @@ export type NormanRollerDraftLine = {
   chainCode: "CT001" | "CT002" | "CT003" | null;
   smartRelease: boolean;
   portalDetails: {
-    rollType: string;
+    rollTypeCode: "Standard" | "Reverse";
     fabricDirection: string;
     fabricJoinConfirmed: boolean;
     controlSide: string | null;
@@ -92,10 +92,10 @@ export type NormanRollerDraftLine = {
     wallSwitchQuantity: string | null;
     solarPanelQuantity: string | null;
     powerLocation: string | null;
-    bracketType: string;
-    raceway: string;
-    lightGuard: string;
-    holdDowns: string;
+    bracketTypeCode: "T" | "B";
+    racewayCode: "N" | "Y";
+    lightGuardCode: "N" | "Y";
+    holdDownsCode: "N" | "Y" | "M";
     holdDownColor: string | null;
   };
   specialInstructions: string;
@@ -206,6 +206,43 @@ const CHAIN_CODES = new Map<string, NonNullable<NormanRollerDraftLine["chainCode
   ["cordloop with stainless steel chain", "CT003"],
 ]);
 
+const ROLL_TYPE_CODES = new Map<string, NormanRollerDraftLine["portalDetails"]["rollTypeCode"]>([
+  ["standard", "Standard"],
+  ["standard roll", "Standard"],
+  ["regular roll", "Standard"],
+  ["reverse", "Reverse"],
+  ["reverse roll", "Reverse"],
+]);
+
+const BRACKET_TYPE_CODES = new Map<string, NormanRollerDraftLine["portalDetails"]["bracketTypeCode"]>([
+  ["top mount bracket", "T"],
+  ["standard", "T"],
+  ["wall/back mount bracket", "B"],
+  ["wall mount bracket", "B"],
+  ["back mount bracket", "B"],
+  ["extension", "B"],
+]);
+
+const YES_NO_CODES = new Map<string, "N" | "Y">([
+  ["no", "N"],
+  ["none", "N"],
+  ["n", "N"],
+  ["yes", "Y"],
+  ["standard", "Y"],
+  ["y", "Y"],
+]);
+
+const HOLD_DOWN_CODES = new Map<string, NormanRollerDraftLine["portalDetails"]["holdDownsCode"]>([
+  ["no", "N"],
+  ["none", "N"],
+  ["n", "N"],
+  ["traditional", "Y"],
+  ["standard", "Y"],
+  ["y", "Y"],
+  ["magnetic", "M"],
+  ["m", "M"],
+]);
+
 function normalized(value: unknown) {
   return String(value ?? "").trim().replace(/\*/g, "").replace(/\s+/g, " ").toLowerCase();
 }
@@ -288,21 +325,16 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
   if (!fabricCollection) issue(issues, line, "missing_required_field", "fabric_color_collection", `${values.room}: exact Norman fabric collection is required.`);
   if (!fabricColorCode) issue(issues, line, "missing_required_field", "fabric_color_code", `${values.room}: exact Norman fabric color code is required.`);
 
-  const rollType = detail(line, "roll_type");
+  const rollTypeCode = mapped(issues, line, "roll_type", detail(line, "roll_type"), ROLL_TYPE_CODES);
   const fabricDirection = detail(line, "fabric_direction");
   const fabricJoinConfirmed = normalized(detail(line, "fabric_join_confirmed")) === "true";
-  const bracketType = detail(line, "bracket_type");
-  const raceway = detail(line, "raceway");
-  const lightGuard = detail(line, "light_guard");
-  const holdDowns = detail(line, "hold_downs");
-  if (!rollType) issue(issues, line, "missing_required_field", "roll_type", `${values.room}: fabric roll is required.`);
+  const bracketTypeCode = mapped(issues, line, "bracket_type", detail(line, "bracket_type"), BRACKET_TYPE_CODES);
+  const racewayCode = mapped(issues, line, "raceway", detail(line, "raceway"), YES_NO_CODES);
+  const lightGuardCode = mapped(issues, line, "light_guard", detail(line, "light_guard"), YES_NO_CODES);
+  const holdDownsCode = mapped(issues, line, "hold_downs", detail(line, "hold_downs"), HOLD_DOWN_CODES);
   if (!fabricDirection) issue(issues, line, "missing_required_field", "fabric_direction", `${values.room}: fabric direction is required.`);
   if (!fabricJoinConfirmed) issue(issues, line, "missing_required_field", "fabric_join_confirmed", `${values.room}: fabric join requirements must be reviewed.`);
-  if (!bracketType) issue(issues, line, "missing_required_field", "bracket_type", `${values.room}: bracket type is required.`);
-  if (!raceway) issue(issues, line, "missing_required_field", "raceway", `${values.room}: raceway choice is required.`);
-  if (!lightGuard) issue(issues, line, "missing_required_field", "light_guard", `${values.room}: light guard choice is required.`);
-  if (!holdDowns) issue(issues, line, "missing_required_field", "hold_downs", `${values.room}: hold down choice is required.`);
-  if (normalized(holdDowns) === "magnetic" && !detail(line, "hold_down_color")) issue(issues, line, "missing_required_field", "hold_down_color", `${values.room}: magnetic hold down color is required.`);
+  if (holdDownsCode === "M" && !detail(line, "hold_down_color")) issue(issues, line, "missing_required_field", "hold_down_color", `${values.room}: magnetic hold down color is required.`);
 
   let motorCode: NormanRollerDraftLine["motorCode"] = null;
   if (liftCode === "Y") {
@@ -325,7 +357,7 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
   if (
     widthEighths === null || lengthEighths === null || !mountCode || !shadeTypeCode || !liftCode ||
     valanceCode === null || !hemBarCode || !installationCode || !fabricType || !fabricCollection || !fabricColorCode ||
-    !values.design_id || !rollType || !fabricDirection || !fabricJoinConfirmed || !bracketType || !raceway || !lightGuard || !holdDowns
+    !values.design_id || !rollTypeCode || !fabricDirection || !fabricJoinConfirmed || !bracketTypeCode || !racewayCode || !lightGuardCode || !holdDownsCode
   ) return null;
 
   return {
@@ -347,7 +379,7 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
     chainCode,
     smartRelease,
     portalDetails: {
-      rollType,
+      rollTypeCode,
       fabricDirection,
       fabricJoinConfirmed,
       controlSide: detail(line, "control_side") || null,
@@ -362,10 +394,10 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
       wallSwitchQuantity: detail(line, "wall_switch_quantity") || null,
       solarPanelQuantity: detail(line, "solar_panel_quantity") || null,
       powerLocation: detail(line, "power_location") || null,
-      bracketType,
-      raceway,
-      lightGuard,
-      holdDowns,
+      bracketTypeCode,
+      racewayCode,
+      lightGuardCode,
+      holdDownsCode,
       holdDownColor: detail(line, "hold_down_color") || null,
     },
     specialInstructions: values.notes,

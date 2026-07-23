@@ -26,13 +26,13 @@ function line(overrides: Partial<TechnicalMeasureLine> = {}): TechnicalMeasureLi
       fabric_color_collection: "Breeze Screen 3%",
       fabric_color_code: "F1787",
       fabric_color_name: "Linen Flax",
-      roll_type: "Regular Roll",
+      roll_type: "Standard",
       fabric_direction: "Standard",
       fabric_join_confirmed: true,
-      bracket_type: "Standard",
-      raceway: "None",
-      light_guard: "None",
-      hold_downs: "None",
+      bracket_type: "Top Mount Bracket",
+      raceway: "No",
+      light_guard: "No",
+      hold_downs: "No",
     },
     motorization: [],
     surcharges: [],
@@ -89,7 +89,20 @@ describe("Norman Roller saved-draft plan", () => {
     expect(plan.portalSequence).toEqual(NORMAN_ROLLER_PORTAL_SEQUENCE);
     expect(plan.portalSequence.some((step) => /checkout|submit|place/i.test(step))).toBe(false);
     expect(plan.header).toMatchObject({ poNumber: "805-0200", sideMark: "Jane Customer", poDate: "2026-07-22" });
-    expect(plan.lines[0]).toMatchObject({ mountCode: "I", shadeTypeCode: "1", liftCode: "L", valanceCode: "", hemBarCode: "HB001" });
+    expect(plan.lines[0]).toMatchObject({
+      mountCode: "I",
+      shadeTypeCode: "1",
+      liftCode: "L",
+      valanceCode: "",
+      hemBarCode: "HB001",
+      portalDetails: {
+        rollTypeCode: "Standard",
+        bracketTypeCode: "T",
+        racewayCode: "N",
+        lightGuardCode: "N",
+        holdDownsCode: "N",
+      },
+    });
   });
 
   it("requires an actually submitted technical measure", () => {

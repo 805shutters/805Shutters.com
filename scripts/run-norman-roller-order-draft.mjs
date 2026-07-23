@@ -190,12 +190,11 @@ async function fillLine(page, line, report) {
   if (line.chainCode) await chooseUniqueValue(page, line.chainCode, "chain_type");
   if (line.motorCode) await chooseUniqueValue(page, line.motorCode, "motor_type");
 
-  await selectUniqueLabel(page, line.portalDetails.rollType, "roll_type");
-  await selectUniqueLabel(page, line.portalDetails.fabricDirection, "fabric_direction");
-  await selectUniqueLabel(page, line.portalDetails.bracketType, "bracket_type");
-  await selectUniqueLabel(page, line.portalDetails.raceway, "raceway");
-  await selectUniqueLabel(page, line.portalDetails.lightGuard, "light_guard");
-  await selectUniqueLabel(page, line.portalDetails.holdDowns, "hold_downs");
+  await checkNamed(page, "IsFabricRoll", line.portalDetails.rollTypeCode);
+  await checkNamed(page, "BracketType", line.portalDetails.bracketTypeCode);
+  await checkNamed(page, "chkRaceway", line.portalDetails.racewayCode);
+  await checkNamed(page, "LightGuard360YN", line.portalDetails.lightGuardCode);
+  await checkNamed(page, "HoldDownBracket", line.portalDetails.holdDownsCode);
   if (line.portalDetails.controlSide) await selectUniqueLabel(page, line.portalDetails.controlSide, "control_side");
   if (line.portalDetails.chainLengthType) await selectUniqueLabel(page, line.portalDetails.chainLengthType, "chain_length_type");
   if (line.portalDetails.holdDownColor) await selectUniqueLabel(page, line.portalDetails.holdDownColor, "hold_down_color");

@@ -118,7 +118,7 @@ export function NormanRollerMeasureFields({ details, disabled, onDetail, onFabri
         <SelectField label="Lift System" field="lift_system" options={LIFT_SYSTEMS} details={details} disabled={disabled} onDetail={onDetail} />
         <SelectField label="Hem Bar" field="hem_bar" options={["Plain", "External", "Fabric-Wrapped", "Brushed Ebony Finish"]} details={details} disabled={disabled} onDetail={onDetail} />
         <SelectField label="Valance" field="valance" options={VALANCES} details={details} disabled={disabled} onDetail={onDetail} />
-        <SelectField label="Fabric Roll" field="roll_type" options={["Regular Roll", "Reverse Roll"]} details={details} disabled={disabled} onDetail={onDetail} />
+        <SelectField label="Fabric Roll" field="roll_type" options={["Standard", "Reverse"]} details={details} disabled={disabled} onDetail={onDetail} />
         <SelectField label="Fabric Direction" field="fabric_direction" options={["Standard", "Railroaded"]} details={details} disabled={disabled} onDetail={onDetail} />
         <label className="technical-measure-vendor-confirm"><input disabled={disabled} type="checkbox" checked={details.fabric_join_confirmed === true} onChange={(event) => onDetail("fabric_join_confirmed", event.target.checked)} /><span>Fabric join requirements reviewed</span></label>
 
@@ -147,10 +147,10 @@ export function NormanRollerMeasureFields({ details, disabled, onDetail, onFabri
           <label><span>Return Depth</span><input disabled={disabled} value={value(details, "valance_return_depth")} onChange={(event) => onDetail("valance_return_depth", event.target.value)} /></label>
         </> : null}
 
-        <SelectField label="Bracket Type" field="bracket_type" options={["Standard", "Extension"]} details={details} disabled={disabled} onDetail={onDetail} />
-        <SelectField label="Raceway" field="raceway" options={["None", "Standard"]} details={details} disabled={disabled} onDetail={onDetail} />
-        <SelectField label="Light Guard" field="light_guard" options={["None", "Left", "Right", "Both"]} details={details} disabled={disabled} onDetail={onDetail} />
-        <SelectField label="Hold Downs" field="hold_downs" options={["None", "Standard", "Magnetic"]} details={details} disabled={disabled} onDetail={onDetail} />
+        <SelectField label="Bracket Type" field="bracket_type" options={["Top Mount Bracket", "Wall/Back Mount Bracket"]} details={details} disabled={disabled} onDetail={onDetail} />
+        <SelectField label="Raceway" field="raceway" options={["No", "Yes"]} details={details} disabled={disabled} onDetail={onDetail} />
+        <SelectField label="LightGuard 360" field="light_guard" options={["No", "Yes"]} details={details} disabled={disabled} onDetail={onDetail} />
+        <SelectField label="Hold Downs" field="hold_downs" options={["No", "Traditional", "Magnetic"]} details={details} disabled={disabled} onDetail={onDetail} />
         {value(details, "hold_downs") === "Magnetic" ? <label><span>Hold Down Color</span><input disabled={disabled} value={value(details, "hold_down_color")} onChange={(event) => onDetail("hold_down_color", event.target.value)} /></label> : null}
       </div>
     </fieldset>

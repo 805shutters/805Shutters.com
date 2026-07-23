@@ -212,7 +212,22 @@ const INTERNAL_MEASURE_DETAIL_KEYS = new Set([
   "fabric_color_collection",
   "fabric_color_code",
   "fabric_color_name",
+  "fabric_direction",
+  "fabric_join_confirmed",
+  "bracket_type",
+  "raceway",
+  "light_guard",
+  "hold_downs",
+  "hold_down_color",
 ]);
+
+function comparableContractDetail(key: string, value: unknown) {
+  const normalized = String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  if (key === "lift_system" && ["cordless", "precisionlift cordless", "precisionlift™ cordless"].includes(normalized)) return "precisionlift cordless";
+  if (key === "hem_bar" && ["fabric covered", "fabric-wrapped", "fabric wrapped"].includes(normalized)) return "fabric wrapped";
+  if (key === "roll_type" && ["standard", "standard roll", "regular roll"].includes(normalized)) return "standard";
+  return value;
+}
 
 export function technicalMeasureLineChanges(lineId: string, baseline: TechnicalMeasureLineValues, current: TechnicalMeasureLineValues): TechnicalMeasureChange[] {
   const changes: TechnicalMeasureChange[] = [];
@@ -231,7 +246,12 @@ export function technicalMeasureLineChanges(lineId: string, baseline: TechnicalM
   add("motorization", baseline.motorization, current.motorization, "contract");
   add("surcharges", baseline.surcharges, current.surcharges, "contract");
   const detailKeys = new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]);
-  for (const key of detailKeys) add(`details.${key}`, baseline.details[key], current.details[key], INTERNAL_MEASURE_DETAIL_KEYS.has(key) ? "internal" : "contract");
+  for (const key of detailKeys) {
+    const kind = INTERNAL_MEASURE_DETAIL_KEYS.has(key) ? "internal" : "contract";
+    const original = kind === "contract" ? comparableContractDetail(key, baseline.details[key]) : baseline.details[key];
+    const revised = kind === "contract" ? comparableContractDetail(key, current.details[key]) : current.details[key];
+    add(`details.${key}`, original, revised, kind);
+  }
   return changes;
 }
 

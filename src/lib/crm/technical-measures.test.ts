@@ -72,6 +72,41 @@ describe("technical measure change classification", () => {
     expect(changes.filter((change) => change.field !== "details.valance").every((change) => change.kind === "internal")).toBe(true);
     expect(changes.find((change) => change.field === "details.valance")?.kind).toBe("contract");
   });
+
+  it("does not require an addendum for Norman ordering aliases and portal-only completion fields", () => {
+    const original = normalizeTechnicalMeasureLineValues({
+      ...baseline(),
+      details: {
+        supplier: "Norman",
+        mount_type: "Inside Mount",
+        shade_type: "Single Shade",
+        lift_system: "Cordless",
+        hem_bar: "Fabric Covered",
+        valance: "No Valance",
+        roll_type: "Standard Roll",
+      },
+    });
+    const current = normalizeTechnicalMeasureLineValues({
+      ...original,
+      details: {
+        ...original.details,
+        window_type: "Single",
+        installation_location: "Window",
+        lift_system: "PrecisionLift Cordless",
+        hem_bar: "Fabric-Wrapped",
+        roll_type: "Standard",
+        fabric_direction: "Standard",
+        fabric_join_confirmed: true,
+        bracket_type: "Top Mount Bracket",
+        raceway: "No",
+        light_guard: "No",
+        hold_downs: "No",
+      },
+    }, original);
+    const changes = technicalMeasureLineChanges("line-1", original, current);
+    expect(changes.every((change) => change.kind === "internal")).toBe(true);
+    expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
+  });
 });
 
 describe("technical measure sold-job recovery", () => {
