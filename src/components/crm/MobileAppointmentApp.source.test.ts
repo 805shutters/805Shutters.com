@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/components/crm/MobileAppointmentApp.tsx", "utf8");
+const styles = readFileSync("src/app/globals.css", "utf8");
 
 describe("MobileAppointmentApp source contract", () => {
   it("keeps the mobile appointment app calendar views without a scope toggle", () => {
@@ -24,5 +25,9 @@ describe("MobileAppointmentApp source contract", () => {
     expect(source).toContain("/api/crm/mobile/appointments/");
     expect(source).toContain("Close appointments and return to mobile app home");
     expect(source).toContain("setShowWorkspaceMenu(true)");
+  });
+
+  it("keeps the mobile home logo centered at one quarter of its former width", () => {
+    expect(styles).toMatch(/\.mobile-crm-home-header img \{[\s\S]*?width: 44px;[\s\S]*?justify-self: center;/);
   });
 });

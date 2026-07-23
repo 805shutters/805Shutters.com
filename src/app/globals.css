@@ -3275,13 +3275,14 @@ body:has(.mobile-crm-login) {
 
 .mobile-crm-home-header {
   display: grid;
-  gap: 18px;
-  padding: 8px 4px 24px;
+  gap: 8px;
+  padding: 4px 4px 18px;
 }
 
 .mobile-crm-home-header img {
-  width: 176px;
+  width: 44px;
   height: auto;
+  justify-self: center;
 }
 
 .mobile-crm-home-header span {
