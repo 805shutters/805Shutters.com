@@ -103,6 +103,24 @@
   gap: 6px;
 }
 
+.mts-quote-scope .mts-measure-dialog {
+  grid-template-rows: auto minmax(0, 1fr);
+  width: calc(100vw - 1rem);
+  height: calc(100dvh - 1rem);
+  max-width: 760px;
+  max-height: calc(100dvh - 1rem);
+  overflow: hidden;
+}
+
+.mts-quote-scope .mts-measure-dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-anchor: none;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
 .mts-quote-scope .mts-measure-whole-button {
   min-width: 0;
   height: 36px;

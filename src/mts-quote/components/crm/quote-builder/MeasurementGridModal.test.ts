@@ -31,4 +31,21 @@ describe("mobile whole-inch selector", () => {
     expect(styles).toContain("grid-template-columns: repeat(10, minmax(0, 1fr));");
     expect(styles).toContain(".mts-measure-whole-button--selected");
   });
+
+  it("keeps the dialog frame stable and resets picker scroll between steps", () => {
+    const component = readFileSync(
+      "src/mts-quote/components/crm/quote-builder/MeasurementGridModal.tsx",
+      "utf8",
+    );
+    const styles = readFileSync("src/mts-quote/mts-quote.css", "utf8");
+
+    expect(component).toContain("useLayoutEffect");
+    expect(component).toContain('className="mts-measure-dialog p-4 sm:p-6"');
+    expect(component).toContain('className="mts-measure-dialog-scroll"');
+    expect(component).toContain('scrollTo({ top: 0, behavior: "auto" })');
+    expect(styles).toContain("height: calc(100dvh - 1rem);");
+    expect(styles).toContain("overflow: hidden;");
+    expect(styles).toContain("overscroll-behavior: contain;");
+    expect(styles).toContain("scroll-anchor: none;");
+  });
 });

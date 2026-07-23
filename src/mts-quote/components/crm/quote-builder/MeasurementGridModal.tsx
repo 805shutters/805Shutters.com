@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@mts/components/ui/dialog";
 import { cn } from "@mts/lib/utils";
 import { FRACTIONS } from "@mts/lib/quoteConstants";
@@ -35,6 +35,7 @@ export function MeasurementGridModal({
   const [directWidth, setDirectWidth] = useState("");
   const [directHeight, setDirectHeight] = useState("");
   const [directError, setDirectError] = useState("");
+  const pickerScrollRef = useRef<HTMLDivElement>(null);
   const isWidth = step === "width_whole" || step === "width_fraction";
   const isFractionStep = step === "width_fraction" || step === "height_fraction";
   const selectedWhole = isWidth ? pendingWidth?.whole : pendingHeight?.whole;
@@ -74,6 +75,11 @@ export function MeasurementGridModal({
     setDirectError("");
   }, [open, pendingWidth, pendingHeight]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    pickerScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [open, step]);
+
   const submitDirectMeasurements = () => {
     const width = parseDirectMeasurement(directWidth, 250);
     const height = parseDirectMeasurement(directHeight, 119);
@@ -87,7 +93,7 @@ export function MeasurementGridModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="mts-measure-dialog p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">{label}</DialogTitle>
@@ -104,7 +110,7 @@ export function MeasurementGridModal({
           <p className="text-sm text-muted-foreground">{sublabel}</p>
         </DialogHeader>
 
-        <div className="mt-4">
+        <div ref={pickerScrollRef} className="mts-measure-dialog-scroll">
           <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
             <div className="mb-2 text-sm font-semibold">Enter measurements instead</div>
             <div className="grid grid-cols-2 gap-3">
