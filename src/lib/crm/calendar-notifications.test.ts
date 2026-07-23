@@ -137,7 +137,7 @@ describe("calendar assignment SMS formatting", () => {
       productInterest: "Shutters"
     });
 
-    expect(message).toContain("Appointment rescheduled for Jessica");
+    expect(message).toMatch(/^RESCHEDULED\n\n805 Shutters appointment for Jessica\./);
     expect(message).toContain("new time: Thu, Jun 25, 4:00 PM - 5:00 PM");
     expect(message).toContain("Previous time: Wed, Jun 24, 4:00 PM - 5:00 PM");
   });
@@ -155,7 +155,7 @@ describe("calendar assignment SMS formatting", () => {
       productInterest: "Shutters"
     });
 
-    expect(message).toContain("Appointment canceled for Jessica");
+    expect(message).toMatch(/^CANCELLED\n\n805 Shutters appointment for Jessica\./);
     expect(message).toContain("Susannah, Wed, Jun 24, 4:00 PM - 5:00 PM");
     expect(message).toContain("Phone: 8043589594");
     expect(message).toContain("Product: Shutters");

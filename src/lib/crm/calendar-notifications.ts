@@ -93,9 +93,9 @@ export function buildCalendarAssignmentSms(input: CalendarAssignmentSmsInput): s
 
   const heading =
     action === "rescheduled"
-      ? `805 Shutters: Appointment rescheduled for ${assignedTo}.`
+      ? `RESCHEDULED\n\n805 Shutters appointment for ${assignedTo}.`
       : action === "canceled"
-        ? `805 Shutters: Appointment canceled for ${assignedTo}.`
+        ? `CANCELLED\n\n805 Shutters appointment for ${assignedTo}.`
         : `805 Shutters: New calendar appointment assigned to ${assignedTo}.`;
 
   return [
