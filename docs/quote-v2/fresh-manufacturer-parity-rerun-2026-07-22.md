@@ -2,13 +2,30 @@
 
 **Internal testing only — dealer cost data.**
 
-## Verdict
+## Pre-fix verdict
 
 **Grade: D+**
 
 The authoritative backend is materially stronger than the previous build, but the current Quote Lab is not usable for its primary job: a salesperson cannot take a truly blank quote through manufacturer selection and authoritative pricing. Seeded-state tests pass because those designs already contain manufacturer and catalog IDs.
 
 No manufacturer order was submitted, no customer quote was sent, no production database was touched, and no production deployment was performed.
+
+## Post-fix rerun
+
+**Honest current grade: B-**
+
+The two fresh-interface blockers documented below are now fixed for the verified Norman Roller path. Starting from a server-generated blank quote, the existing line-item header can select the manufacturer/product without seeded state or API injection. The visible interface then completed this exact configuration:
+
+- Norman Roller, 24 × 36
+- Brook F1120, Pewter
+- Inside Mount, Single Shade
+- No Top Treatment
+- Smart Release, with the documented 1¾-inch tube derived automatically
+- Shim: Yes
+
+The authoritative result was $350 customer retail with the complete component ledger: $254 base, $0 fabric, $7 accessories, and $89 operating system. Wholesale cost was $115.50 and allocated landed cost was $143.31. The protected Chromium suite passed 10/10, including save/reload persistence of the fresh quote.
+
+This is a verified fresh-interface pass for the supported Norman recipe, not overall manufacturer parity. Polar, Lotus, and Onyx remain source-incomplete or portal-conflicted as documented below, so this rerun does not justify an A grade or make those manufacturers customer-sendable.
 
 ## Fresh-test boundary
 
