@@ -31,7 +31,11 @@ import {
   PRODUCT_COLOR_NAME_DETAIL,
 } from "@/lib/quote/product-color-options";
 import { detailDisplayValue, isCustomerVisibleDetail } from "@/lib/quote/product-options";
-import { ensureBookkeepingEntry, listQuoteVersions } from "@/lib/crm/quote-groups";
+import {
+  ensureBookkeepingEntry,
+  listQuoteVersions,
+  materializeSignedQuoteSelection,
+} from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
@@ -956,8 +960,19 @@ export async function acceptPublicQuote(
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This contract link is no longer valid.");
   if (quote.signed_at) {
-    const pub = await loadPublicQuoteByToken(supabase, token);
+    let pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
+      const storedSelection = record(record(quote.meta).signed_selection).lineItemIds;
+      if (Array.isArray(storedSelection) && storedSelection.every((id) => typeof id === "string")) {
+        await materializeSignedQuoteSelection(
+          supabase,
+          quote.id,
+          pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
+          storedSelection as string[],
+        );
+        pub = await loadPublicQuoteByToken(supabase, token);
+        if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
+      }
       const printedName = quote.customer_printed_name || input.printedName || pub.customerName || "Customer";
       const signature = quote.customer_signature || printedName;
       // Convergence: a retry after a transient downstream failure must still bring
@@ -1075,9 +1090,19 @@ export async function acceptPublicQuote(
   }
   if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
 
+  const materializedSelection = selection
+    ? await materializeSignedQuoteSelection(
+        supabase,
+        quote.id,
+        pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
+        chosenLines.map((line) => line.id),
+      )
+    : null;
+
   // Within a group, the chosen version wins — supersede the unsigned alternatives
   // so they can't also be signed and never get their own bookkeeping entry.
-  if (quote.quote_group_id) {
+  const effectiveGroupId = materializedSelection?.groupId || quote.quote_group_id;
+  if (effectiveGroupId) {
     // Concurrency guard (M6): if a sibling link was signed at nearly the same
     // moment, both per-row claims can succeed. Resolve to a single winner — the
     // earliest signature (tiebreak: lowest id). If THIS request lost, revert our
@@ -1086,7 +1111,7 @@ export async function acceptPublicQuote(
     const { data: signedRows } = await supabase
       .from("crm_quotes")
       .select("id, signed_at")
-      .eq("quote_group_id", quote.quote_group_id)
+      .eq("quote_group_id", effectiveGroupId)
       .not("signed_at", "is", null);
     const others = ((signedRows as { id: string; signed_at: string }[]) ?? []).filter((r) => r.id !== quote.id);
     // Compare by parsed epoch ms — toISOString() (ms, "Z") and a PostgREST
@@ -1104,12 +1129,16 @@ export async function acceptPublicQuote(
       return { ok: true, alreadySigned: true };
     }
 
-    await supabase
+    let archiveSiblings = supabase
       .from("crm_quotes")
       .update({ status: "archived", share_token: null })
-      .eq("quote_group_id", quote.quote_group_id)
+      .eq("quote_group_id", effectiveGroupId)
       .neq("id", quote.id)
       .is("signed_at", null);
+    if (materializedSelection?.pendingQuoteId) {
+      archiveSiblings = archiveSiblings.neq("id", materializedSelection.pendingQuoteId);
+    }
+    await archiveSiblings;
   }
 
   const signedQuote: CrmQuote = {
@@ -1120,7 +1149,18 @@ export async function acceptPublicQuote(
     customer_signature: signature,
     customer_printed_name: printedName,
     quote_total: soldTotal,
-    ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
+    quote_group_id: effectiveGroupId || null,
+    ...(signedSelection ? {
+      meta: {
+        ...record(quote.meta),
+        signed_selection: signedSelection,
+        ...(materializedSelection?.pendingQuoteId ? {
+          selection_split_group_id: materializedSelection.groupId,
+          selection_remainder_quote_id: materializedSelection.pendingQuoteId,
+          selection_remainder_quote_label: materializedSelection.pendingLabel,
+        } : {}),
+      },
+    } : {}),
   };
 
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).

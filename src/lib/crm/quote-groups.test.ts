@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { createQuoteVersion, nextLabel } from "./quote-groups";
+import {
+  buildSignedQuoteSplitPlan,
+  createQuoteVersion,
+  materializeSignedQuoteSelection,
+  nextLabel,
+} from "./quote-groups";
 
 type Tables = Record<string, Array<Record<string, unknown>>>;
 
@@ -13,7 +18,7 @@ function fakeSupabase(tables: Tables) {
   };
 
   class Query {
-    private action: "select" | "insert" | "update" = "select";
+    private action: "select" | "insert" | "update" | "delete" = "select";
     private payload: unknown;
     private filters: Array<{ key: string; value: unknown }> = [];
     private selectedColumns = "*";
@@ -43,6 +48,11 @@ function fakeSupabase(tables: Tables) {
     update(payload: unknown) {
       this.action = "update";
       this.payload = payload;
+      return this;
+    }
+
+    delete() {
+      this.action = "delete";
       return this;
     }
 
@@ -105,6 +115,18 @@ function fakeSupabase(tables: Tables) {
         return { data: updated, error: null };
       }
 
+      if (this.action === "delete") {
+        const deleted = (tables[this.table] ?? []).filter((row) => this.matches(row));
+        tables[this.table] = (tables[this.table] ?? []).filter((row) => !this.matches(row));
+        if (this.table === "crm_quote_line_items") {
+          const deletedIds = new Set(deleted.map((row) => row.id));
+          tables.crm_quote_designs = (tables.crm_quote_designs ?? []).filter(
+            (design) => !deletedIds.has(design.line_item_id),
+          );
+        }
+        return { data: deleted, error: null };
+      }
+
       return { data: this.selectRows(), error: null };
     }
   }
@@ -130,6 +152,158 @@ describe("nextLabel", () => {
   });
   it("falls back past the letters", () => {
     expect(nextLabel(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"])).toBe("Option 11");
+  });
+});
+
+describe("signed customer selection splitting", () => {
+  it("counts selected and remaining quantities from expanded public rows", () => {
+    expect(buildSignedQuoteSplitPlan(
+      [
+        { id: "line-1#1", lineItemId: "line-1" },
+        { id: "line-1#2", lineItemId: "line-1" },
+        { id: "line-1#3", lineItemId: "line-1" },
+        { id: "line-2", lineItemId: "line-2" },
+      ],
+      ["line-1#2", "line-2"],
+    )).toEqual([
+      { lineItemId: "line-1", selectedQuantity: 1, remainingQuantity: 2 },
+      { lineItemId: "line-2", selectedQuantity: 1, remainingQuantity: 0 },
+    ]);
+  });
+
+  it("keeps purchased quantities on the sold quote and creates a pending remainder quote", async () => {
+    const tables: Tables = {
+      crm_quotes: [{
+        id: "quote-1",
+        job_id: "job-1",
+        quote_number: "805-100",
+        status: "sold",
+        quote_total: 300,
+        materials_cost: 0,
+        labor_cost: 0,
+        discount: 0,
+        tax: 0,
+        deposit_required: 150,
+        balance_due: 150,
+        customer_email: "customer@example.com",
+        customer_phone: "8055551212",
+        customer_address: "10 Main St",
+        quote_group_id: null,
+        quote_label: null,
+        meta: { signed_selection: { lineItemIds: ["line-1#2", "line-2"] } },
+        notes: null,
+      }],
+      crm_quote_line_items: [
+        {
+          id: "line-1",
+          quote_id: "quote-1",
+          room: "Living Room",
+          width_in: 24,
+          height_in: 36,
+          quantity: 3,
+          discount_percent: 0,
+          sort_order: 0,
+          selected_design_id: "design-1",
+          notes: null,
+        },
+        {
+          id: "line-2",
+          quote_id: "quote-1",
+          room: "Office",
+          width_in: 30,
+          height_in: 48,
+          quantity: 1,
+          discount_percent: 0,
+          sort_order: 1,
+          selected_design_id: "design-2",
+          notes: null,
+        },
+      ],
+      crm_quote_designs: [
+        {
+          id: "design-1",
+          line_item_id: "line-1",
+          label: "A",
+          sort_order: 0,
+          product_id: "honeycomb",
+          program_id: "honeycomb_9_16in_cordless_single_cell",
+          fabric: null,
+          details: {},
+          surcharges: [],
+          motorization: [],
+          unit_price: 100,
+          wholesale_unit_price: null,
+          price_breakdown: {},
+          price_status: "ok",
+          priced_at: null,
+          notes: null,
+        },
+        {
+          id: "design-2",
+          line_item_id: "line-2",
+          label: "A",
+          sort_order: 0,
+          product_id: "honeycomb",
+          program_id: "honeycomb_9_16in_cordless_single_cell",
+          fabric: null,
+          details: {},
+          surcharges: [],
+          motorization: [],
+          unit_price: 200,
+          wholesale_unit_price: null,
+          price_breakdown: {},
+          price_status: "ok",
+          priced_at: null,
+          notes: null,
+        },
+      ],
+      crm_activity_events: [],
+    };
+
+    const result = await materializeSignedQuoteSelection(
+      fakeSupabase(tables),
+      "quote-1",
+      [
+        { id: "line-1#1", lineItemId: "line-1" },
+        { id: "line-1#2", lineItemId: "line-1" },
+        { id: "line-1#3", lineItemId: "line-1" },
+        { id: "line-2", lineItemId: "line-2" },
+      ],
+      ["line-1#2", "line-2"],
+    );
+
+    const soldLine1 = tables.crm_quote_line_items.find((row) => row.id === "line-1");
+    const soldLine2 = tables.crm_quote_line_items.find((row) => row.id === "line-2");
+    const pendingQuote = tables.crm_quotes.find((row) => row.id === result.pendingQuoteId);
+    const pendingLines = tables.crm_quote_line_items.filter((row) => row.quote_id === result.pendingQuoteId);
+
+    expect(soldLine1?.quantity).toBe(1);
+    expect(soldLine2?.quantity).toBe(1);
+    expect(pendingQuote).toMatchObject({
+      status: "draft",
+      quote_group_id: result.groupId,
+      quote_label: "B",
+      quote_total: 200,
+    });
+    expect(pendingLines).toHaveLength(1);
+    expect(pendingLines[0]).toMatchObject({ room: "Living Room", quantity: 2 });
+    expect(tables.crm_quotes[0].meta).toMatchObject({
+      signed_selection: { lineItemIds: ["line-1#2", "line-2"] },
+      selection_remainder_quote_id: result.pendingQuoteId,
+      selection_remainder_quote_label: "B",
+    });
+
+    const retry = await materializeSignedQuoteSelection(
+      fakeSupabase(tables),
+      "quote-1",
+      [
+        { id: "line-1", lineItemId: "line-1" },
+        { id: "line-2", lineItemId: "line-2" },
+      ],
+      ["line-1", "line-2"],
+    );
+    expect(retry.pendingQuoteId).toBe(result.pendingQuoteId);
+    expect(tables.crm_quotes.filter((row) => row.meta && (row.meta as Record<string, unknown>).selection_split_role === "remaining")).toHaveLength(1);
   });
 });
 

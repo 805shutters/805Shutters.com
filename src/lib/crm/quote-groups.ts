@@ -82,6 +82,8 @@ async function cloneQuoteBuilderRows(
   supabase: CrmSupabaseClient,
   source: CrmQuote,
   targetQuoteId: string,
+  quantityByLineItemId?: Map<string, number>,
+  preservePricingSnapshot = false,
 ): Promise<void> {
   const { data, error } = await supabase
     .from("crm_quote_line_items")
@@ -96,6 +98,8 @@ async function cloneQuoteBuilderRows(
 
   const clonedLineItems: CrmQuoteLineItem[] = [];
   for (const item of sourceItems) {
+    const requestedQuantity = quantityByLineItemId?.get(item.id);
+    if (quantityByLineItemId && (!requestedQuantity || requestedQuantity < 1)) continue;
     const { data: lineData, error: lineError } = await supabase
       .from("crm_quote_line_items")
       .insert({
@@ -103,7 +107,7 @@ async function cloneQuoteBuilderRows(
         room: item.room,
         width_in: item.width_in,
         height_in: item.height_in,
-        quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+        quantity: requestedQuantity ?? Math.max(1, Math.floor(Number(item.quantity) || 1)),
         sort_order: item.sort_order,
         notes: item.notes,
         discount_percent: Math.min(100, Math.max(0, Number(item.discount_percent) || 0)),
@@ -126,19 +130,35 @@ async function cloneQuoteBuilderRows(
         surcharges: [],
         motorization: motorizationList(design.motorization),
       };
-      const priceFields = priceDesignFields(designInput, dims, discountPercent);
-      const clonedDesign = await saveQuoteDesignRecord<CrmQuoteDesign>(
-        {
-          line_item_id: clonedLine.id,
-          label: design.label,
-          sort_order: design.sort_order,
-          ...designInput,
-          notes: design.notes,
-          ...priceFields,
-        },
-        (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("*").single(),
-        "Quote version design could not be copied.",
-      );
+      const clonedDesign = preservePricingSnapshot
+        ? await saveQuoteDesignRecord<CrmQuoteDesign>(
+            {
+              line_item_id: clonedLine.id,
+              label: design.label,
+              sort_order: design.sort_order,
+              ...designInput,
+              notes: design.notes,
+              unit_price: design.unit_price,
+              wholesale_unit_price: design.wholesale_unit_price,
+              price_breakdown: design.price_breakdown,
+              price_status: design.price_status,
+              priced_at: design.priced_at,
+            },
+            (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("*").single(),
+            "Quote selection price snapshot could not be copied.",
+          )
+        : await saveQuoteDesignRecord<CrmQuoteDesign>(
+            {
+              line_item_id: clonedLine.id,
+              label: design.label,
+              sort_order: design.sort_order,
+              ...designInput,
+              notes: design.notes,
+              ...priceDesignFields(designInput, dims, discountPercent),
+            },
+            (nextRecord) => supabase.from("crm_quote_designs").insert(nextRecord).select("*").single(),
+            "Quote version design could not be copied.",
+          );
       clonedDesigns.push(clonedDesign);
       if (item.selected_design_id === design.id) selectedNewId = clonedDesign.id;
     }
@@ -165,6 +185,166 @@ async function cloneQuoteBuilderRows(
     })
     .eq("id", targetQuoteId);
   if (quoteError) throw new CrmAuthError(502, "Quote version total could not be recalculated.");
+}
+
+export type SignedQuoteSelectionLine = {
+  id: string;
+  lineItemId: string;
+};
+
+export type SignedQuoteSplitLine = {
+  lineItemId: string;
+  selectedQuantity: number;
+  remainingQuantity: number;
+};
+
+export function buildSignedQuoteSplitPlan(
+  lines: SignedQuoteSelectionLine[],
+  selectedLineIds: string[],
+): SignedQuoteSplitLine[] {
+  const selected = new Set(selectedLineIds);
+  const totals = new Map<string, number>();
+  const selectedTotals = new Map<string, number>();
+
+  for (const line of lines) {
+    totals.set(line.lineItemId, (totals.get(line.lineItemId) ?? 0) + 1);
+    if (selected.has(line.id)) {
+      selectedTotals.set(line.lineItemId, (selectedTotals.get(line.lineItemId) ?? 0) + 1);
+    }
+  }
+
+  return [...totals.entries()].map(([lineItemId, totalQuantity]) => {
+    const selectedQuantity = selectedTotals.get(lineItemId) ?? 0;
+    return {
+      lineItemId,
+      selectedQuantity,
+      remainingQuantity: totalQuantity - selectedQuantity,
+    };
+  });
+}
+
+export type MaterializedSignedQuoteSelection = {
+  groupId: string;
+  pendingQuoteId: string | null;
+  pendingLabel: string | null;
+};
+
+/**
+ * Turn a customer "Purchase some" choice into operational CRM records:
+ * the signed source quote keeps only purchased quantities and the excluded
+ * quantities are copied to a draft sibling that the CRM labels Pending Quote.
+ *
+ * A completed split is idempotent: retries return the remainder recorded in
+ * source metadata instead of creating duplicates.
+ */
+export async function materializeSignedQuoteSelection(
+  supabase: CrmSupabaseClient,
+  sourceQuoteId: string,
+  lines: SignedQuoteSelectionLine[],
+  selectedLineIds: string[],
+): Promise<MaterializedSignedQuoteSelection> {
+  const source = await fetchQuoteRow(supabase, sourceQuoteId);
+  const sourceMeta = record(source.meta);
+  const priorPendingId = typeof sourceMeta.selection_remainder_quote_id === "string"
+    ? sourceMeta.selection_remainder_quote_id
+    : null;
+  if (priorPendingId) {
+    return {
+      groupId: source.quote_group_id || String(sourceMeta.selection_split_group_id || ""),
+      pendingQuoteId: priorPendingId,
+      pendingLabel: typeof sourceMeta.selection_remainder_quote_label === "string"
+        ? sourceMeta.selection_remainder_quote_label
+        : null,
+    };
+  }
+
+  const plan = buildSignedQuoteSplitPlan(lines, selectedLineIds);
+  const remainingByLineItemId = new Map(
+    plan.filter((line) => line.remainingQuantity > 0).map((line) => [line.lineItemId, line.remainingQuantity]),
+  );
+  if (!remainingByLineItemId.size) {
+    return { groupId: source.quote_group_id || "", pendingQuoteId: null, pendingLabel: null };
+  }
+
+  const groupId = source.quote_group_id || randomUUID();
+  const sourceLabel = source.quote_label || "A";
+  if (!source.quote_group_id || !source.quote_label) {
+    const { error } = await supabase
+      .from("crm_quotes")
+      .update({ quote_group_id: groupId, quote_label: sourceLabel })
+      .eq("id", source.id);
+    if (error) throw new CrmAuthError(502, "Signed quote group could not be created.");
+  }
+
+  const usedLabels = (await listQuoteVersions(supabase, source.id)).map((version) => version.label);
+  const pendingLabel = nextLabel(usedLabels);
+  const pendingMeta = {
+    ...cloneQuoteMeta(source, { email: "automation:customer_selection" }, pendingLabel),
+    selection_split_role: "remaining",
+    selection_split_from_quote_id: source.id,
+  };
+  const { data: pendingRow, error: pendingError } = await supabase
+    .from("crm_quotes")
+    .insert({
+      job_id: source.job_id,
+      quote_number: source.quote_number ? `${source.quote_number}-${pendingLabel}` : null,
+      status: "draft",
+      quote_total: 0,
+      materials_cost: 0,
+      labor_cost: 0,
+      discount: 0,
+      tax: 0,
+      deposit_required: 0,
+      balance_due: 0,
+      customer_email: source.customer_email || null,
+      customer_phone: source.customer_phone || null,
+      customer_address: source.customer_address || null,
+      quote_group_id: groupId,
+      quote_label: pendingLabel,
+      notes: source.notes || null,
+      meta: pendingMeta,
+    })
+    .select("id")
+    .single();
+  if (pendingError || !pendingRow) throw new CrmAuthError(502, "Unpurchased items quote could not be created.");
+  const pendingQuoteId = String(pendingRow.id);
+
+  await cloneQuoteBuilderRows(supabase, source, pendingQuoteId, remainingByLineItemId, true);
+
+  for (const line of plan) {
+    if (line.selectedQuantity > 0) {
+      const { error } = await supabase
+        .from("crm_quote_line_items")
+        .update({ quantity: line.selectedQuantity })
+        .eq("id", line.lineItemId)
+        .eq("quote_id", source.id);
+      if (error) throw new CrmAuthError(502, "Purchased quote quantities could not be saved.");
+    } else {
+      const { error } = await supabase
+        .from("crm_quote_line_items")
+        .delete()
+        .eq("id", line.lineItemId)
+        .eq("quote_id", source.id);
+      if (error) throw new CrmAuthError(502, "Unpurchased quote lines could not be separated.");
+    }
+  }
+
+  const { error: sourceMetaError } = await supabase
+    .from("crm_quotes")
+    .update({
+      quote_group_id: groupId,
+      quote_label: sourceLabel,
+      meta: {
+        ...sourceMeta,
+        selection_split_group_id: groupId,
+        selection_remainder_quote_id: pendingQuoteId,
+        selection_remainder_quote_label: pendingLabel,
+      },
+    })
+    .eq("id", source.id);
+  if (sourceMetaError) throw new CrmAuthError(502, "Signed quote selection link could not be saved.");
+
+  return { groupId, pendingQuoteId, pendingLabel };
 }
 
 export async function listQuoteVersions(supabase: CrmSupabaseClient, quoteId: string): Promise<QuoteVersion[]> {

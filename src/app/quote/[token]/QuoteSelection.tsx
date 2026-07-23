@@ -115,6 +115,11 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
     });
   }
 
+  function chooseSome() {
+    setMode("some");
+    setSelected(new Set());
+  }
+
   return (
     <>
       {allowSelection ? (
@@ -125,7 +130,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
             <span>All</span>
           </label>
           <label className={styles.purchaseOption} data-selected={mode === "some"}>
-            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "some"} onChange={() => setMode("some")} />
+            <input className={styles.purchaseRadio} type="radio" name="purchase-mode" checked={mode === "some"} onChange={chooseSome} />
             <span>Some</span>
           </label>
           {mode === "some" ? (
