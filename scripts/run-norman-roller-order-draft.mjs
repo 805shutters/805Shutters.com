@@ -310,7 +310,7 @@ function extractDraftId(url, body) {
 }
 
 async function workerRequest(body) {
-  const url = process.env.NORMAN_ORDER_WORKER_URL || "https://805-one.vercel.app/api/crm/norman-order-worker";
+  const url = process.env.NORMAN_ORDER_WORKER_URL || "https://www.805shutters.com/api/crm/norman-order-worker";
   const secret = process.env.NORMAN_ORDER_WORKER_SECRET || keychain("805-norman-worker-secret", "order-drafts");
   if (!secret) throw new Error("Norman order worker secret is not configured in the environment or macOS Keychain.");
   const response = await fetch(url, {
