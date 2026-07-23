@@ -54,6 +54,24 @@ describe("technical measure change classification", () => {
     expect(changes.every((change) => change.kind === "internal")).toBe(true);
     expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
   });
+
+  it("treats Norman portal metadata as internal while keeping selected options contractual", () => {
+    const original = baseline();
+    const current = normalizeTechnicalMeasureLineValues({
+      ...original,
+      details: {
+        ...original.details,
+        supplier: "Norman",
+        window_type: "Single",
+        installation_location: "Window",
+        fabric_color_code: "F1787",
+        valance: "Square Fascia",
+      },
+    }, original);
+    const changes = technicalMeasureLineChanges("line-1", original, current);
+    expect(changes.filter((change) => change.field !== "details.valance").every((change) => change.kind === "internal")).toBe(true);
+    expect(changes.find((change) => change.field === "details.valance")?.kind).toBe("contract");
+  });
 });
 
 describe("technical measure sold-job recovery", () => {

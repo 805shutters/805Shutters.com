@@ -20,7 +20,8 @@
     "audit:llm-search": "python3 scripts/audit_llm_search.py --base-url https://www.805shutters.com --output reports/llm-search-readiness.md --json reports/llm-search-readiness.json",
     "audit:ai-crawlers": "python3 scripts/analyze_ai_crawler_activity.py --output reports/ai-crawler-activity.md --json reports/ai-crawler-activity.json",
     "indexnow:submit": "python3 scripts/submit_indexnow.py --base-url https://www.805shutters.com",
-    "migration:inventory": "python3 scripts/generate_migration_inventory.py"
+    "migration:inventory": "python3 scripts/generate_migration_inventory.py",
+    "orders:norman:next": "node scripts/run-norman-roller-order-draft.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.14",

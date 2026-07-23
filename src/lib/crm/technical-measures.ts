@@ -6,6 +6,7 @@ import { loadQuoteBuilder } from "@/lib/crm/quote-builder";
 import { getMeasureNeededMeta, MEASURE_NEEDED_META_KEY } from "@/lib/crm/measure-needed-state";
 import type { CrmJob, CrmQuote, CrmQuoteDesign, CrmQuoteDetailValue } from "@/lib/crm/types";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
+import { enqueueNormanRollerPreparation, validateNormanRollerMeasureForSubmission, type VendorOrderPreparationSummary } from "@/lib/crm/vendor-orders/norman-order-preparation";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -203,6 +204,16 @@ function equal(left: unknown, right: unknown) {
   return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
 }
 
+const INTERNAL_MEASURE_DETAIL_KEYS = new Set([
+  "supplier",
+  "window_type",
+  "installation_location",
+  "fabric_color_type",
+  "fabric_color_collection",
+  "fabric_color_code",
+  "fabric_color_name",
+]);
+
 export function technicalMeasureLineChanges(lineId: string, baseline: TechnicalMeasureLineValues, current: TechnicalMeasureLineValues): TechnicalMeasureChange[] {
   const changes: TechnicalMeasureChange[] = [];
   const add = (field: string, original: unknown, revised: unknown, kind: TechnicalMeasureChange["kind"]) => {
@@ -220,7 +231,7 @@ export function technicalMeasureLineChanges(lineId: string, baseline: TechnicalM
   add("motorization", baseline.motorization, current.motorization, "contract");
   add("surcharges", baseline.surcharges, current.surcharges, "contract");
   const detailKeys = new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]);
-  for (const key of detailKeys) add(`details.${key}`, baseline.details[key], current.details[key], "contract");
+  for (const key of detailKeys) add(`details.${key}`, baseline.details[key], current.details[key], INTERNAL_MEASURE_DETAIL_KEYS.has(key) ? "internal" : "contract");
   return changes;
 }
 
@@ -578,6 +589,11 @@ export async function signTechnicalMeasureAddendum(
 }
 
 async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
+  const preparationIssues = validateNormanRollerMeasureForSubmission(form);
+  if (preparationIssues.length) {
+    const first = preparationIssues[0];
+    throw new CrmAuthError(409, `${first.message} ${preparationIssues.length === 1 ? "" : `Correct ${preparationIssues.length} Norman ordering fields before completing the measure.`}`.trim());
+  }
   const submittedAt = new Date().toISOString();
   await syncTechnicalMeasureOperationalOverride(supabase, form, submittedAt);
   const { error } = await supabase.from("crm_technical_measure_forms").update({ status: "submitted", submitted_at: submittedAt, technician_email: actor.email, technician_name: actor.displayName || form.technician_name }).eq("id", form.id);
@@ -588,7 +604,25 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
     const measure = getMeasureNeededMeta(row.meta);
     await supabase.from("crm_jobs").update({ meta: { ...object(row.meta), [MEASURE_NEEDED_META_KEY]: { ...measure, status: "measured", measured_at: submittedAt, measured_by: actor.email, form_id: form.id, form_status: "submitted" } } }).eq("id", form.job_id);
   }
-  await recordCrmActivity(supabase, actor, { entityType: "job", entityId: form.job_id, action: "technical_measure.submit", metadata: { formId: form.id, submittedAt } });
+  let orderPreparation: VendorOrderPreparationSummary | null = null;
+  const submittedForm = await loadTechnicalMeasureForm(supabase, form.id);
+  try {
+    orderPreparation = await enqueueNormanRollerPreparation(supabase, submittedForm, actor.userId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Norman order preparation could not be queued.";
+    orderPreparation = { manufacturer: "Norman", productType: "roller", status: "queue_failed", taskId: null, issueCount: 0, message };
+    console.error("Norman order preparation queue failed", { formId: form.id, error });
+  }
+  if (orderPreparation.status !== "skipped") {
+    const nextMeta = { ...submittedForm.meta, vendor_order_preparation: orderPreparation };
+    await supabase.from("crm_technical_measure_forms").update({ meta: nextMeta }).eq("id", form.id);
+  }
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: form.job_id,
+    action: "technical_measure.submit",
+    metadata: { formId: form.id, submittedAt, orderPreparation },
+  });
   return loadTechnicalMeasureForm(supabase, form.id);
 }
 

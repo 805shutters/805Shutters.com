@@ -133,3 +133,13 @@ the Norman draft/session identifier, the mapped payload and adapter version, val
 warnings, and visual proof of the final review screen. The browser worker must have no
 callable action for Norman's final checkout/submission step, and creating a saved draft must
 not change the CRM quote or job to `ordered`.
+
+## Runtime
+
+- A submitted Norman Roller measure upserts one `crm_vendor_order_drafts` row.
+- Incomplete payloads remain `needs_input`; complete payloads become `queued`.
+- `npm run orders:norman:next` claims one queued task, enters a Norman saved draft, captures
+  a review screenshot, and changes the task to `review_ready`.
+- `scripts/install-norman-order-draft-launchagent.sh` installs the local two-minute poller.
+- The poller must not be installed until the database migration, Norman ship-to profile,
+  Supabase service credential, and Norman Keychain credentials have been configured.

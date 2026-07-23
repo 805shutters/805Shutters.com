@@ -9,6 +9,7 @@ import { MeasurementGridModal } from "@mts/components/crm/quote-builder/Measurem
 import { FRACTIONS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
+import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
 
 type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
 
@@ -48,6 +49,13 @@ function money(value: number) {
 
 function fieldName(key: string) {
   return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function orderPreparation(form: TechnicalMeasureForm | null) {
+  const value = form?.meta.vendor_order_preparation;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as { status?: string; message?: string; issueCount?: number; taskId?: string | null; portalDraftId?: string | null }
+    : null;
 }
 
 function SignaturePad({ value, onChange }: { value: SignatureStroke[]; onChange: (value: SignatureStroke[]) => void }) {
@@ -202,7 +210,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         return;
       }
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
-      setForm(result.form); setLines(result.form.lines); setMessage("Technical measure submitted and saved to the customer file.");
+      setForm(result.form); setLines(result.form.lines);
+      const preparation = orderPreparation(result.form);
+      setMessage(preparation?.message || "Technical measure submitted and saved to the customer file.");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be submitted."); }
     finally { setBusy(false); }
   }
@@ -250,6 +260,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const pendingWidth = activePickerLine ? wholeFraction(activePickerLine.current_values.width_in) : null;
   const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
   const readOnly = form?.status === "submitted";
+  const vendorOrderPreparation = orderPreparation(form);
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
 
   function showLine(index: number) {
@@ -277,6 +288,15 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </nav>
 
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
+      {vendorOrderPreparation ? (
+        <section className="technical-measure-order-status" data-status={vendorOrderPreparation.status}>
+          <div><span>Norman Roller order preparation</span><strong>{String(vendorOrderPreparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
+          <p>{vendorOrderPreparation.message}</p>
+          {vendorOrderPreparation.issueCount ? <small>{vendorOrderPreparation.issueCount} item{vendorOrderPreparation.issueCount === 1 ? "" : "s"} must be corrected before Norman portal entry.</small> : null}
+          {vendorOrderPreparation.portalDraftId ? <small>Norman draft: {vendorOrderPreparation.portalDraftId}</small> : null}
+          <b>Review-only: the automation cannot place or submit the order.</b>
+        </section>
+      ) : null}
 
       <section className="technical-measure-customer">
         <div><span>Customer</span><strong>{form.customer_snapshot.name}</strong></div>
@@ -299,7 +319,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
-          const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]));
+          const normanRoller = current.product_id === "roller" && String(current.details.supplier || "Norman").toLowerCase() === "norman";
+          const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
+            .filter((key) => !normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key));
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
               <div className="technical-measure-line-head"><div><span>Line {index + 1}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
@@ -313,6 +335,14 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                 <label className={changed(baseline.product_id, current.product_id) ? "changed" : ""}><span>Product</span><input disabled={readOnly} value={current.product_id} onChange={(event) => updateLine(line.id, { product_id: event.target.value })} /></label>
                 <label className={changed(baseline.program_id, current.program_id) ? "changed" : ""}><span>Program / Operating System</span><input disabled={readOnly} value={current.program_id || ""} onChange={(event) => updateLine(line.id, { program_id: event.target.value || null })} /></label>
                 <label className={changed(baseline.fabric, current.fabric) ? "changed" : ""}><span>Color / Fabric</span><input disabled={readOnly} value={current.fabric || ""} onChange={(event) => updateLine(line.id, { fabric: event.target.value || null })} /></label>
+                {normanRoller ? (
+                  <NormanRollerMeasureFields
+                    details={current.details}
+                    disabled={readOnly}
+                    onDetail={(key, value) => updateDetail(line.id, key, value)}
+                    onFabric={({ fabric, programId }) => updateLine(line.id, { fabric, program_id: programId })}
+                  />
+                ) : null}
                 {detailKeys.map((key) => {
                   const value = current.details[key];
                   const isBoolean = typeof value === "boolean" || typeof baseline.details[key] === "boolean";

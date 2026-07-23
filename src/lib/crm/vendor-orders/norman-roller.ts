@@ -76,6 +76,28 @@ export type NormanRollerDraftLine = {
   motorCode: "MT018" | "MT019" | "MT025" | "MT030" | "MT031" | "MT026" | "MT023" | "MT028" | null;
   chainCode: "CT001" | "CT002" | "CT003" | null;
   smartRelease: boolean;
+  portalDetails: {
+    rollType: string;
+    fabricDirection: string;
+    fabricJoinConfirmed: boolean;
+    controlSide: string | null;
+    chainLengthType: string | null;
+    chainLengthIn: string | null;
+    valanceFinish: string | null;
+    valanceReturnDepth: string | null;
+    remoteType: string | null;
+    remoteQuantity: string | null;
+    remoteChannel: string | null;
+    hubQuantity: string | null;
+    wallSwitchQuantity: string | null;
+    solarPanelQuantity: string | null;
+    powerLocation: string | null;
+    bracketType: string;
+    raceway: string;
+    lightGuard: string;
+    holdDowns: string;
+    holdDownColor: string | null;
+  };
   specialInstructions: string;
 };
 
@@ -266,8 +288,27 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
   if (!fabricCollection) issue(issues, line, "missing_required_field", "fabric_color_collection", `${values.room}: exact Norman fabric collection is required.`);
   if (!fabricColorCode) issue(issues, line, "missing_required_field", "fabric_color_code", `${values.room}: exact Norman fabric color code is required.`);
 
+  const rollType = detail(line, "roll_type");
+  const fabricDirection = detail(line, "fabric_direction");
+  const fabricJoinConfirmed = normalized(detail(line, "fabric_join_confirmed")) === "true";
+  const bracketType = detail(line, "bracket_type");
+  const raceway = detail(line, "raceway");
+  const lightGuard = detail(line, "light_guard");
+  const holdDowns = detail(line, "hold_downs");
+  if (!rollType) issue(issues, line, "missing_required_field", "roll_type", `${values.room}: fabric roll is required.`);
+  if (!fabricDirection) issue(issues, line, "missing_required_field", "fabric_direction", `${values.room}: fabric direction is required.`);
+  if (!fabricJoinConfirmed) issue(issues, line, "missing_required_field", "fabric_join_confirmed", `${values.room}: fabric join requirements must be reviewed.`);
+  if (!bracketType) issue(issues, line, "missing_required_field", "bracket_type", `${values.room}: bracket type is required.`);
+  if (!raceway) issue(issues, line, "missing_required_field", "raceway", `${values.room}: raceway choice is required.`);
+  if (!lightGuard) issue(issues, line, "missing_required_field", "light_guard", `${values.room}: light guard choice is required.`);
+  if (!holdDowns) issue(issues, line, "missing_required_field", "hold_downs", `${values.room}: hold down choice is required.`);
+  if (normalized(holdDowns) === "magnetic" && !detail(line, "hold_down_color")) issue(issues, line, "missing_required_field", "hold_down_color", `${values.room}: magnetic hold down color is required.`);
+
   let motorCode: NormanRollerDraftLine["motorCode"] = null;
-  if (liftCode === "Y") motorCode = mapped(issues, line, "motor_type", detail(line, "motor_type"), MOTOR_CODES);
+  if (liftCode === "Y") {
+    motorCode = mapped(issues, line, "motor_type", detail(line, "motor_type"), MOTOR_CODES);
+    if (normalized(detail(line, "motor_accessories_confirmed")) !== "true") issue(issues, line, "missing_required_field", "motor_accessories_confirmed", `${values.room}: motor power, controls, and accessories must be reviewed.`);
+  }
 
   const smartRelease = normalized(liftRaw) === "smart release" || normalized(liftRaw) === "smartrelease" || normalized(detail(line, "cord_loop_release")) === "smart release";
   let chainCode: NormanRollerDraftLine["chainCode"] = null;
@@ -279,11 +320,12 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
   if (shadeTypeCode && shadeTypeCode !== "1") {
     issue(issues, line, "unsupported_configuration", "shade_type", `${values.room}: ${detail(line, "shade_type")} requires a later Norman Roller adapter phase.`);
   }
+  if (valanceCode && !detail(line, "valance_finish")) issue(issues, line, "missing_required_field", "valance_finish", `${values.room}: valance finish or color is required.`);
 
   if (
     widthEighths === null || lengthEighths === null || !mountCode || !shadeTypeCode || !liftCode ||
     valanceCode === null || !hemBarCode || !installationCode || !fabricType || !fabricCollection || !fabricColorCode ||
-    !values.design_id
+    !values.design_id || !rollType || !fabricDirection || !fabricJoinConfirmed || !bracketType || !raceway || !lightGuard || !holdDowns
   ) return null;
 
   return {
@@ -304,6 +346,28 @@ function buildLine(line: TechnicalMeasureLine, sequence: number, issues: NormanR
     motorCode,
     chainCode,
     smartRelease,
+    portalDetails: {
+      rollType,
+      fabricDirection,
+      fabricJoinConfirmed,
+      controlSide: detail(line, "control_side") || null,
+      chainLengthType: detail(line, "chain_length_type") || null,
+      chainLengthIn: detail(line, "chain_length_in") || null,
+      valanceFinish: detail(line, "valance_finish") || null,
+      valanceReturnDepth: detail(line, "valance_return_depth") || null,
+      remoteType: detail(line, "remote_type") || null,
+      remoteQuantity: detail(line, "remote_quantity") || null,
+      remoteChannel: detail(line, "remote_channel") || null,
+      hubQuantity: detail(line, "hub_quantity") || null,
+      wallSwitchQuantity: detail(line, "wall_switch_quantity") || null,
+      solarPanelQuantity: detail(line, "solar_panel_quantity") || null,
+      powerLocation: detail(line, "power_location") || null,
+      bracketType,
+      raceway,
+      lightGuard,
+      holdDowns,
+      holdDownColor: detail(line, "hold_down_color") || null,
+    },
     specialInstructions: values.notes,
   };
 }
