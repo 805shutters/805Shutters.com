@@ -895,6 +895,9 @@ export function MobileAppointmentApp() {
           <button type="button" aria-label="Add appointment" onClick={() => setAddingAppointment(true)}>
             <Plus />
           </button>
+          <button type="button" aria-label="Close appointments and return to mobile app home" onClick={() => setShowWorkspaceMenu(true)}>
+            <X />
+          </button>
         </div>
       </header>
 

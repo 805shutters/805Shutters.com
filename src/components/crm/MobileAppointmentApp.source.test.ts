@@ -5,8 +5,8 @@ const source = readFileSync("src/components/crm/MobileAppointmentApp.tsx", "utf8
 
 describe("MobileAppointmentApp source contract", () => {
   it("keeps the mobile appointment app calendar views without a scope toggle", () => {
-    expect(source).toContain('type CalendarView = "month" | "week" | "day"');
-    expect(source).toContain('const calendarViews: CalendarView[] = ["month", "week", "day"]');
+    expect(source).toContain('type CalendarView = "list" | "month" | "week" | "day"');
+    expect(source).toContain('const calendarViews: CalendarView[] = ["list", "week", "day"]');
     expect(source).toContain('scope: "all"');
     expect(source).not.toContain("calendarScopes");
     expect(source).not.toContain('type CalendarScope = "my" | "all"');
@@ -22,5 +22,7 @@ describe("MobileAppointmentApp source contract", () => {
     expect(source).toContain("Navigate Only");
     expect(source).toContain("navigator.geolocation.getCurrentPosition");
     expect(source).toContain("/api/crm/mobile/appointments/");
+    expect(source).toContain("Close appointments and return to mobile app home");
+    expect(source).toContain("setShowWorkspaceMenu(true)");
   });
 });
