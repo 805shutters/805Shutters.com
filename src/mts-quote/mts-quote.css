@@ -97,6 +97,45 @@
   text-rendering: optimizeLegibility;
 }
 
+.mts-quote-scope .mts-measure-whole-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mts-quote-scope .mts-measure-whole-button {
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.mts-quote-scope .mts-measure-whole-button:hover,
+.mts-quote-scope .mts-measure-whole-button:focus-visible,
+.mts-quote-scope .mts-measure-whole-button--selected {
+  border-color: hsl(var(--foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+
+@media (min-width: 640px) {
+  .mts-quote-scope .mts-measure-whole-grid {
+    gap: 8px;
+  }
+
+  .mts-quote-scope .mts-measure-whole-button {
+    height: 40px;
+    font-size: 14px;
+  }
+}
+
 /* ---- Scoped preflight (Tailwind v3 preflight essentials, confined to scope) ---- */
 .mts-quote-scope *,
 .mts-quote-scope ::before,

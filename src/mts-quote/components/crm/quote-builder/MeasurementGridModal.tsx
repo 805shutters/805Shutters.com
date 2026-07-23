@@ -37,6 +37,8 @@ export function MeasurementGridModal({
   const [directError, setDirectError] = useState("");
   const isWidth = step === "width_whole" || step === "width_fraction";
   const isFractionStep = step === "width_fraction" || step === "height_fraction";
+  const selectedWhole = isWidth ? pendingWidth?.whole : pendingHeight?.whole;
+  const selectedFraction = isWidth ? pendingWidth?.fraction : pendingHeight?.fraction;
 
   const label = isWidth ? "Width" : "Height";
   const sublabel = isFractionStep
@@ -154,14 +156,19 @@ export function MeasurementGridModal({
 
           {/* Whole number grid */}
           {!isFractionStep && (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-2">
+            <div
+              className="mts-measure-whole-grid"
+              data-testid="measurement-whole-number-grid"
+            >
               {wholeNumbers.map((n) => (
                 <button
                   key={n}
+                  type="button"
                   onClick={() => handleWholeClick(n)}
+                  aria-pressed={n === selectedWhole}
                   className={cn(
-                    "h-11 rounded border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
-                    "bg-card border-border"
+                    "mts-measure-whole-button",
+                    n === selectedWhole && "mts-measure-whole-button--selected"
                   )}
                 >
                   {n}
@@ -176,10 +183,13 @@ export function MeasurementGridModal({
               {FRACTIONS.map((f) => (
                 <button
                   key={f}
+                  type="button"
                   onClick={() => handleFractionClick(f)}
+                  aria-pressed={f === selectedFraction}
                   className={cn(
                     "h-12 rounded-lg border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
-                    "bg-card border-border"
+                    "bg-card border-border",
+                    f === selectedFraction && "border-foreground bg-foreground text-background"
                   )}
                 >
                   {f === "0" ? "0 (even)" : f}

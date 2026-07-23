@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { parseDirectMeasurement } from "./MeasurementGridModal";
 
@@ -13,5 +14,21 @@ describe("parseDirectMeasurement", () => {
     expect(parseDirectMeasurement("0", 250)).toBeNull();
     expect(parseDirectMeasurement("251", 250)).toBeNull();
     expect(parseDirectMeasurement("120", 119)).toBeNull();
+  });
+});
+
+describe("mobile whole-inch selector", () => {
+  it("keeps the compact ten-column 805 button grid and selected state", () => {
+    const component = readFileSync(
+      "src/mts-quote/components/crm/quote-builder/MeasurementGridModal.tsx",
+      "utf8",
+    );
+    const styles = readFileSync("src/mts-quote/mts-quote.css", "utf8");
+
+    expect(component).toContain('className="mts-measure-whole-grid"');
+    expect(component).toContain('aria-pressed={n === selectedWhole}');
+    expect(component).toContain("mts-measure-whole-button--selected");
+    expect(styles).toContain("grid-template-columns: repeat(10, minmax(0, 1fr));");
+    expect(styles).toContain(".mts-measure-whole-button--selected");
   });
 });
