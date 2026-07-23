@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Clock,
   FileText,
+  Landmark,
   Loader2,
   MapPin,
   MessageSquare,
@@ -18,6 +19,7 @@ import {
   Plus,
   RefreshCw,
   Ruler,
+  Search,
   User,
   X
 } from "lucide-react";
@@ -861,6 +863,16 @@ export function MobileAppointmentApp() {
           <a href="/crm/mobile/quotes">
             <FileText />
             <div><strong>Quotes</strong><span>Create and manage customer quotes</span></div>
+            <ArrowRight />
+          </a>
+          <a href="/crm/mobile/bookkeeping">
+            <Landmark />
+            <div><strong>Bookkeeping</strong><span>Receivables, payables, and job balances</span></div>
+            <ArrowRight />
+          </a>
+          <a href="/crm/mobile/search">
+            <Search />
+            <div><strong>Search Appointments</strong><span>Find a customer and open their file</span></div>
             <ArrowRight />
           </a>
         </main>
