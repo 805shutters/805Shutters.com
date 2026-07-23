@@ -8,6 +8,9 @@ export type CalendarAssignmentSmsInput = {
   title: string;
   startAt: string;
   endAt: string;
+  action?: "created" | "rescheduled" | "canceled";
+  previousStartAt?: string | null;
+  previousEndAt?: string | null;
   location?: string | null;
   customerName?: string | null;
   phone?: string | null;
@@ -73,6 +76,11 @@ export function buildCalendarAssignmentSms(input: CalendarAssignmentSmsInput): s
   const assignedTo = cleanText(input.assignedTo) || "Sales";
   const customerName = cleanText(input.customerName) || customerNameFromTitle(input.title) || "New customer";
   const when = formatCalendarSmsWindow(input.startAt, input.endAt);
+  const action = input.action || "created";
+  const previousWhen =
+    action === "rescheduled" && input.previousStartAt && input.previousEndAt
+      ? formatCalendarSmsWindow(input.previousStartAt, input.previousEndAt)
+      : null;
   const location = cleanText(input.location);
   const phone = cleanText(input.phone);
   const product = cleanText(input.productInterest);
@@ -83,9 +91,17 @@ export function buildCalendarAssignmentSms(input: CalendarAssignmentSmsInput): s
         ? "Follow-up requested to confirm details."
         : "No follow-up meeting needed.";
 
+  const heading =
+    action === "rescheduled"
+      ? `805 Shutters: Appointment rescheduled for ${assignedTo}.`
+      : action === "canceled"
+        ? `805 Shutters: Appointment canceled for ${assignedTo}.`
+        : `805 Shutters: New calendar appointment assigned to ${assignedTo}.`;
+
   return [
-    `805 Shutters: New calendar appointment assigned to ${assignedTo}.`,
-    `${customerName}, ${when}.`,
+    heading,
+    action === "rescheduled" ? `${customerName}, new time: ${when}.` : `${customerName}, ${when}.`,
+    previousWhen ? `Previous time: ${previousWhen}.` : null,
     location ? `Address: ${location}.` : null,
     phone ? `Phone: ${phone}.` : null,
     product ? `Product: ${product}.` : null,

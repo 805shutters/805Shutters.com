@@ -2300,6 +2300,7 @@ export async function rescheduleCrmCalendarEvent(
 
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be rescheduled.");
 
+  let linkedJob: CrmJob | null = null;
   if (existing.job_id) {
     const { data: job, error: jobError } = await supabase
       .from("crm_jobs")
@@ -2312,8 +2313,25 @@ export async function rescheduleCrmCalendarEvent(
       .maybeSingle();
 
     if (jobError) throw new CrmAuthError(502, "Appointment moved, but the linked job could not be updated.");
-    if (job) await syncCustomerFromJob(supabase, job as CrmJob);
+    if (job) {
+      linkedJob = job as CrmJob;
+      await syncCustomerFromJob(supabase, linkedJob);
+    }
   }
+
+  const rescheduledSalespersonSms = await sendCalendarAssignmentSms({
+    action: "rescheduled",
+    assignedTo: existing.assigned_to,
+    title: existing.title,
+    startAt,
+    endAt,
+    previousStartAt: existing.start_at,
+    previousEndAt: existing.end_at,
+    location: existing.location || linkedJob?.address,
+    customerName: linkedJob?.customer_name,
+    phone: linkedJob?.phone,
+    productInterest: linkedJob?.product_interest
+  });
 
   await recordCrmActivity(supabase, actor, {
     entityType: "calendar_event",
@@ -2322,7 +2340,8 @@ export async function rescheduleCrmCalendarEvent(
     before: existing,
     after: data,
     metadata: {
-      jobId: existing.job_id || null
+      jobId: existing.job_id || null,
+      rescheduledSalespersonSms
     }
   });
 
@@ -2364,8 +2383,9 @@ export async function cancelCrmCalendarEvent(
 
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be canceled.");
 
+  let linkedJob: CrmJob | null = null;
   if (existing.job_id) {
-    const { data: linkedJob, error: linkedJobError } = await supabase
+    const { data: linkedJobData, error: linkedJobError } = await supabase
       .from("crm_jobs")
       .select("*")
       .eq("id", existing.job_id)
@@ -2373,13 +2393,14 @@ export async function cancelCrmCalendarEvent(
 
     if (linkedJobError) throw new CrmAuthError(502, "Appointment canceled, but the linked job could not be loaded.");
 
-    if (linkedJob) {
+    if (linkedJobData) {
+      linkedJob = linkedJobData as CrmJob;
       const jobUpdate: Record<string, unknown> = {
         appointment_start: null,
         appointment_end: null
       };
 
-      if ((linkedJob as CrmJob).status === "scheduled") {
+      if (linkedJob.status === "scheduled") {
         jobUpdate.status = "follow_up";
         jobUpdate.next_action = "Follow up after canceled appointment";
         jobUpdate.next_action_due = null;
@@ -2404,6 +2425,18 @@ export async function cancelCrmCalendarEvent(
     console.warn("[crm] google calendar delete error", error);
   }
 
+  const canceledSalespersonSms = await sendCalendarAssignmentSms({
+    action: "canceled",
+    assignedTo: existing.assigned_to,
+    title: existing.title,
+    startAt: existing.start_at,
+    endAt: existing.end_at,
+    location: existing.location || linkedJob?.address,
+    customerName: linkedJob?.customer_name,
+    phone: linkedJob?.phone,
+    productInterest: linkedJob?.product_interest
+  });
+
   await recordCrmActivity(supabase, actor, {
     entityType: "calendar_event",
     entityId: data.id,
@@ -2414,7 +2447,8 @@ export async function cancelCrmCalendarEvent(
       jobId: existing.job_id || null,
       googleCalendarDeleted: googleCalendarDelete.deleted,
       googleCalendarDeleteSkipped: googleCalendarDelete.skipped || null,
-      googleCalendarDelete: googleCalendarDelete.results
+      googleCalendarDelete: googleCalendarDelete.results,
+      canceledSalespersonSms
     }
   });
 

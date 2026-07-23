@@ -121,6 +121,45 @@ describe("calendar assignment SMS formatting", () => {
     expect(message).toContain("Phone: 8043589594.");
     expect(message).toContain("Product: Shutters.");
   });
+
+  it("identifies a reschedule and includes both the new and previous appointment windows", () => {
+    const message = buildCalendarAssignmentSms({
+      action: "rescheduled",
+      assignedTo: "Jessica",
+      title: "Susannah consultation",
+      customerName: "Susannah",
+      startAt: "2026-06-25T23:00:00.000Z",
+      endAt: "2026-06-26T00:00:00.000Z",
+      previousStartAt: "2026-06-24T23:00:00.000Z",
+      previousEndAt: "2026-06-25T00:00:00.000Z",
+      location: "340 Green Moor Place, Thousand Oaks",
+      phone: "8043589594",
+      productInterest: "Shutters"
+    });
+
+    expect(message).toContain("Appointment rescheduled for Jessica");
+    expect(message).toContain("new time: Thu, Jun 25, 4:00 PM - 5:00 PM");
+    expect(message).toContain("Previous time: Wed, Jun 24, 4:00 PM - 5:00 PM");
+  });
+
+  it("identifies a canceled appointment and retains its customer details", () => {
+    const message = buildCalendarAssignmentSms({
+      action: "canceled",
+      assignedTo: "Jessica",
+      title: "Susannah consultation",
+      customerName: "Susannah",
+      startAt: "2026-06-24T23:00:00.000Z",
+      endAt: "2026-06-25T00:00:00.000Z",
+      location: "340 Green Moor Place, Thousand Oaks",
+      phone: "8043589594",
+      productInterest: "Shutters"
+    });
+
+    expect(message).toContain("Appointment canceled for Jessica");
+    expect(message).toContain("Susannah, Wed, Jun 24, 4:00 PM - 5:00 PM");
+    expect(message).toContain("Phone: 8043589594");
+    expect(message).toContain("Product: Shutters");
+  });
 });
 
 describe("day-before customer reminders", () => {
