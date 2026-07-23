@@ -2,16 +2,34 @@
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, Ruler, Save, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, Minus, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
 import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
-import { FRACTIONS } from "@mts/lib/quoteConstants";
+import { FRACTIONS, PRODUCT_TYPES, ROOM_PRESETS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
 
 type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
+type FutureMeasureDraft = { room: string; width_in: number | null; height_in: number | null; notes: string };
+
+const PRODUCT_IDS: Record<(typeof PRODUCT_TYPES)[number], string> = {
+  "Shutters": "norman_shutters",
+  "Roller Shades": "roller",
+  "Roman Shades": "roman",
+  "Honeycomb Shades": "honeycomb",
+  "Sheer Shades": "perfectsheer",
+  "Mini Blinds": "mini_blinds",
+  "Faux Wood Blinds": "faux_wood",
+  "Wood Blinds": "wood_blinds",
+  "Vertical Blinds": "synchrony_vertical",
+  "Smart Drapes": "smartdrape",
+};
+
+function productLabel(productId: string) {
+  return Object.entries(PRODUCT_IDS).find(([, id]) => id === productId)?.[0] || fieldName(productId);
+}
 
 async function crmFetch<T>(session: Session, path: string, init: RequestInit = {}) {
   const response = await fetch(path, {
@@ -143,6 +161,10 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
+  const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" | "product" } | null>(null);
+  const [futureMeasureOpen, setFutureMeasureOpen] = useState(false);
+  const [futureMeasure, setFutureMeasure] = useState<FutureMeasureDraft>({ room: "Future Window", width_in: null, height_in: null, notes: "" });
+  const [futurePicker, setFuturePicker] = useState<MeasurementStep | null>(null);
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return; }
@@ -243,6 +265,29 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     finally { setBusy(false); }
   }
 
+  async function handleFutureMeasure() {
+    if (!session || !futureMeasure.width_in || !futureMeasure.height_in) {
+      setMessage("Select both width and height for the future window.");
+      return;
+    }
+    setBusy(true); setMessage(null);
+    try {
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(
+        session,
+        `/api/crm/technical-measures/${formId}/future-measures`,
+        { method: "POST", body: JSON.stringify(futureMeasure) },
+      );
+      setForm(result.form);
+      setFutureMeasure({ room: "Future Window", width_in: null, height_in: null, notes: "" });
+      setFutureMeasureOpen(false);
+      setMessage("Future measure saved to the customer file.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The future measure could not be saved.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openAddendumPdf() {
     if (!session) return;
     setBusy(true); setMessage(null);
@@ -262,6 +307,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const readOnly = form?.status === "submitted";
   const vendorOrderPreparation = orderPreparation(form);
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
+  const futureMeasures = form?.futureMeasures || [];
 
   function showLine(index: number) {
     setActiveLineIndex(Math.min(Math.max(index, 0), Math.max(lines.length - 1, 0)));
@@ -330,9 +376,32 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                 <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
               </div>
               <div className="technical-measure-fields">
-                <label className={changed(baseline.room, current.room) ? "changed" : ""}><span>Room</span><input disabled={readOnly} value={current.room} onChange={(event) => updateLine(line.id, { room: event.target.value })} /></label>
-                <label className={changed(baseline.quantity, current.quantity) ? "changed" : ""}><span>Quantity</span><input disabled={readOnly} type="number" min="1" value={current.quantity} onChange={(event) => updateLine(line.id, { quantity: Number(event.target.value) })} /></label>
-                <label className={changed(baseline.product_id, current.product_id) ? "changed" : ""}><span>Product</span><input disabled={readOnly} value={current.product_id} onChange={(event) => updateLine(line.id, { product_id: event.target.value })} /></label>
+                <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
+                  <span>Room</span>
+                  <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room || "Select room"}<ChevronRight /></button>
+                  {choiceField?.lineId === line.id && choiceField.field === "room" ? (
+                    <div className="technical-measure-choice-grid">
+                      {ROOM_PRESETS.map((room) => <button type="button" aria-pressed={current.room === room} key={room} onClick={() => { updateLine(line.id, { room }); setChoiceField(null); }}>{room}</button>)}
+                    </div>
+                  ) : null}
+                </div>
+                <div className={`technical-measure-choice-field ${changed(baseline.quantity, current.quantity) ? "changed" : ""}`}>
+                  <span>Quantity</span>
+                  <div className="technical-measure-stepper">
+                    <button type="button" aria-label="Decrease quantity" disabled={readOnly || current.quantity <= 1} onClick={() => updateLine(line.id, { quantity: Math.max(1, current.quantity - 1) })}><Minus /></button>
+                    <strong>{current.quantity}</strong>
+                    <button type="button" aria-label="Increase quantity" disabled={readOnly} onClick={() => updateLine(line.id, { quantity: current.quantity + 1 })}><Plus /></button>
+                  </div>
+                </div>
+                <div className={`technical-measure-choice-field technical-measure-field-wide ${changed(baseline.product_id, current.product_id) ? "changed" : ""}`}>
+                  <span>Product</span>
+                  <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "product" ? null : { lineId: line.id, field: "product" })}>{productLabel(current.product_id)}<ChevronRight /></button>
+                  {choiceField?.lineId === line.id && choiceField.field === "product" ? (
+                    <div className="technical-measure-choice-grid technical-measure-product-grid">
+                      {PRODUCT_TYPES.map((label) => <button type="button" aria-pressed={current.product_id === PRODUCT_IDS[label]} key={label} onClick={() => { updateLine(line.id, { product_id: PRODUCT_IDS[label] }); setChoiceField(null); }}>{label}</button>)}
+                    </div>
+                  ) : null}
+                </div>
                 <label className={changed(baseline.program_id, current.program_id) ? "changed" : ""}><span>Program / Operating System</span><input disabled={readOnly} value={current.program_id || ""} onChange={(event) => updateLine(line.id, { program_id: event.target.value || null })} /></label>
                 <label className={changed(baseline.fabric, current.fabric) ? "changed" : ""}><span>Color / Fabric</span><input disabled={readOnly} value={current.fabric || ""} onChange={(event) => updateLine(line.id, { fabric: event.target.value || null })} /></label>
                 {normanRoller ? (
@@ -382,6 +451,37 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         <section className="technical-measure-complete"><Check /><div><strong>Signed change order on file</strong><span>{form.addendum.status === "emailed" ? `Emailed to ${form.addendum.email_recipient}` : "Customer email delivery needs attention"}</span></div><button type="button" onClick={openAddendumPdf} disabled={busy}>View PDF</button>{form.addendum.status === "email_failed" ? <button type="button" onClick={retryEmail} disabled={busy}><Mail /> Retry email</button> : null}</section>
       ) : null}
 
+      <section className="technical-measure-future" id="future-measures">
+        <div className="technical-measure-future-head">
+          <div><span>Customer file</span><h2>Future Measures</h2><p>Save extra windows for a future quote or phase.</p></div>
+          <strong>{futureMeasures.length}</strong>
+        </div>
+        {futureMeasures.length ? (
+          <div className="technical-measure-future-list">
+            {futureMeasures.map((entry) => <div key={entry.id}><strong>{entry.room}</strong><span>{inches(entry.width_in)} × {inches(entry.height_in)}</span>{entry.notes ? <small>{entry.notes}</small> : null}</div>)}
+          </div>
+        ) : null}
+        {futureMeasureOpen ? (
+          <div className="technical-measure-future-form">
+            <div>
+              <span>Room</span>
+              <div className="technical-measure-choice-grid">
+                {ROOM_PRESETS.map((room) => <button type="button" aria-pressed={futureMeasure.room === room} key={room} onClick={() => setFutureMeasure((current) => ({ ...current, room }))}>{room}</button>)}
+              </div>
+            </div>
+            <div className="technical-measure-dimensions technical-measure-future-dimensions">
+              <button type="button" onClick={() => setFuturePicker("width_whole")}><Ruler /><span>Width</span><strong>{inches(futureMeasure.width_in)}</strong></button>
+              <button type="button" onClick={() => setFuturePicker("height_whole")}><Ruler /><span>Height</span><strong>{inches(futureMeasure.height_in)}</strong></button>
+            </div>
+            <label><span>Future-job notes</span><textarea rows={2} value={futureMeasure.notes} onChange={(event) => setFutureMeasure((current) => ({ ...current, notes: event.target.value }))} /></label>
+            <div className="technical-measure-future-actions">
+              <button type="button" onClick={() => setFutureMeasureOpen(false)}>Cancel</button>
+              <button className="technical-measure-primary" type="button" disabled={busy || !futureMeasure.width_in || !futureMeasure.height_in} onClick={handleFutureMeasure}>{busy ? <Loader2 className="spin" /> : <Save />} Save to Customer File</button>
+            </div>
+          </div>
+        ) : <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button>}
+      </section>
+
       {!readOnly ? <footer className="technical-measure-actions"><button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button><button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button></footer> : null}
 
       {measurePicker && activePickerLine ? (
@@ -396,6 +496,20 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           onHeightWhole={(whole) => { updateLine(activePickerLine.id, { height_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
           onHeightFraction={(fraction) => { updateLine(activePickerLine.id, { height_in: decimal(wholeFraction(activePickerLine.current_values.height_in).whole, fraction) }); setMeasurePicker(null); }}
           onDirectMeasurements={(width, height) => { updateLine(activePickerLine.id, { width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) }); setMeasurePicker(null); }}
+        />
+      ) : null}
+      {futurePicker ? (
+        <MeasurementGridModal
+          open
+          onClose={() => setFuturePicker(null)}
+          step={futurePicker}
+          pendingWidth={futureMeasure.width_in ? wholeFraction(futureMeasure.width_in) : null}
+          pendingHeight={futureMeasure.height_in ? wholeFraction(futureMeasure.height_in) : null}
+          onWidthWhole={(whole) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(whole, "0") })); setFuturePicker("width_fraction"); }}
+          onWidthFraction={(fraction) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(wholeFraction(current.width_in).whole, fraction) })); setFuturePicker(null); }}
+          onHeightWhole={(whole) => { setFutureMeasure((current) => ({ ...current, height_in: decimal(whole, "0") })); setFuturePicker("height_fraction"); }}
+          onHeightFraction={(fraction) => { setFutureMeasure((current) => ({ ...current, height_in: decimal(wholeFraction(current.height_in).whole, fraction) })); setFuturePicker(null); }}
+          onDirectMeasurements={(width, height) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) })); setFuturePicker(null); }}
         />
       ) : null}
     </main>

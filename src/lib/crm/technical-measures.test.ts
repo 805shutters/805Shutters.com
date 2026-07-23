@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTechnicalMeasureAddendumPdf,
+  normalizeFutureMeasureInput,
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
   soldJobNeedsTechnicalMeasureForm,
@@ -128,6 +129,28 @@ describe("technical measure sold-job recovery", () => {
       { id: "job-2", status: "quoted", meta: neededMeta },
       new Set(),
     )).toBe(false);
+  });
+});
+
+describe("future customer measures", () => {
+  it("normalizes a future window for durable customer-file storage", () => {
+    expect(normalizeFutureMeasureInput({
+      room: " Guest Bedroom ",
+      width_in: 35.5,
+      height_in: 61.25,
+      notes: "Phase two",
+    })).toEqual({
+      room: "Guest Bedroom",
+      width_in: 35.5,
+      height_in: 61.25,
+      notes: "Phase two",
+    });
+  });
+
+  it("requires both dimensions", () => {
+    expect(() => normalizeFutureMeasureInput({ room: "Office", width_in: 36 })).toThrow(
+      "Width and height are required",
+    );
   });
 });
 

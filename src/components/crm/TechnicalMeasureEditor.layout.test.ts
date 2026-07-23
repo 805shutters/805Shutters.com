@@ -1,0 +1,30 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+describe("technical measure mobile controls", () => {
+  it("uses compact paired dimensions and push-button choices", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain("technical-measure-stepper");
+    expect(component).toContain("technical-measure-choice-grid");
+    expect(component).toContain("PRODUCT_TYPES.map");
+    expect(styles).toContain(".technical-measure-dimensions { grid-template-columns: 1fr 1fr; }");
+    expect(styles).toContain("min-height: 58px;");
+  });
+
+  it("offers durable future measures through the customer-file API", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const api = readFileSync(
+      "src/app/api/crm/technical-measures/[id]/future-measures/route.ts",
+      "utf8",
+    );
+    const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
+
+    expect(component).toContain("Add Future Measure");
+    expect(component).toContain("Save to Customer File");
+    expect(api).toContain("addFutureMeasure");
+    expect(service).toContain('external_source: "technical_measure_future_folder"');
+    expect(service).toContain('title: `Future Measures (${entries.length})`');
+  });
+});

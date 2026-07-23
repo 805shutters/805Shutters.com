@@ -29,6 +29,16 @@ export type TechnicalMeasureLineValues = {
   discount_percent: number;
 };
 
+export type FutureMeasureEntry = {
+  id: string;
+  room: string;
+  width_in: number;
+  height_in: number;
+  notes: string;
+  created_at: string;
+  created_by: string;
+};
+
 export type TechnicalMeasureChange = {
   lineId: string;
   room: string;
@@ -99,6 +109,7 @@ export type TechnicalMeasureForm = {
   changes: TechnicalMeasureChange[];
   contractChanges: TechnicalMeasureChange[];
   requiresAddendum: boolean;
+  futureMeasures?: FutureMeasureEntry[];
 };
 
 export function technicalMeasureFormUrl(formId: string): string {
@@ -129,6 +140,33 @@ function dimension(value: unknown) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0 || number > 300) throw new CrmAuthError(400, "Measurements must be valid positive inches.");
   return Math.round(number * 16) / 16;
+}
+
+export function normalizeFutureMeasureInput(value: unknown) {
+  const source = object(value);
+  const room = text(source.room) || "Future Window";
+  const width_in = dimension(source.width_in);
+  const height_in = dimension(source.height_in);
+  if (!width_in || !height_in) throw new CrmAuthError(400, "Width and height are required for a future measure.");
+  return { room, width_in, height_in, notes: text(source.notes) };
+}
+
+function futureMeasures(value: unknown): FutureMeasureEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const source = object(item);
+    try {
+      const normalized = normalizeFutureMeasureInput(source);
+      return [{
+        id: text(source.id) || crypto.randomUUID(),
+        ...normalized,
+        created_at: text(source.created_at) || new Date(0).toISOString(),
+        created_by: text(source.created_by),
+      }];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function detailRecord(value: unknown): Record<string, CrmQuoteDetailValue> {
@@ -381,19 +419,65 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
   });
   const changes = lines.flatMap((line) => line.changes);
   const contractChanges = changes.filter((change) => change.kind === "contract");
+  const meta = object(form.meta);
   return {
     ...form,
     customer_snapshot: object(form.customer_snapshot),
     quote_snapshot: object(form.quote_snapshot),
     baseline_total: numeric(form.baseline_total),
     current_total: numeric(form.current_total),
-    meta: object(form.meta),
+    meta,
     lines,
     addendum: addendumRow ? ({ ...addendumRow, changes: Array.isArray(addendumRow.changes) ? addendumRow.changes : [] } as unknown as TechnicalMeasureAddendum) : null,
     changes,
     contractChanges,
     requiresAddendum: contractChanges.length > 0,
+    futureMeasures: futureMeasures(meta.future_measures),
   } as TechnicalMeasureForm;
+}
+
+export async function addFutureMeasure(
+  supabase: SupabaseClient,
+  formId: string,
+  input: unknown,
+  actor: CrmActor,
+) {
+  const form = await loadTechnicalMeasureForm(supabase, formId);
+  const next: FutureMeasureEntry = {
+    id: crypto.randomUUID(),
+    ...normalizeFutureMeasureInput(input),
+    created_at: new Date().toISOString(),
+    created_by: actor.email,
+  };
+  const entries = [...(form.futureMeasures || []), next];
+  const meta = { ...form.meta, future_measures: entries };
+  const { error: formError } = await supabase
+    .from("crm_technical_measure_forms")
+    .update({ meta, technician_email: actor.email, technician_name: actor.displayName || form.technician_name })
+    .eq("id", formId);
+  if (formError) throw new CrmAuthError(502, "The future measure could not be saved.");
+
+  const { error: folderError } = await supabase.from("crm_customer_contracts").upsert({
+    external_source: "technical_measure_future_folder",
+    external_id: `future-measures:${form.id}`,
+    customer_id: form.customer_id,
+    job_id: form.job_id,
+    quote_id: form.quote_id,
+    title: `Future Measures (${entries.length})`,
+    contract_url: `/crm/technical-measures/${form.id}#future-measures`,
+    status: "future_measure",
+    total_amount: 0,
+    meta: { form_id: form.id, future_measure_count: entries.length, future_measures: entries },
+  }, { onConflict: "external_source,external_id" });
+  if (folderError) throw new CrmAuthError(502, "The future measure was saved, but its Customer Files folder could not be updated.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: form.job_id,
+    action: "technical_measure.future_measure_add",
+    metadata: { formId, futureMeasureId: next.id, room: next.room, widthIn: next.width_in, heightIn: next.height_in },
+  });
+  return loadTechnicalMeasureForm(supabase, formId);
 }
 
 export async function loadTechnicalMeasureForm(supabase: SupabaseClient, formId: string): Promise<TechnicalMeasureForm> {
