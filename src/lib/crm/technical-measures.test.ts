@@ -5,6 +5,7 @@ import {
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
   soldJobNeedsTechnicalMeasureForm,
+  technicalMeasureScheduling,
   technicalMeasureLineChanges,
   type TechnicalMeasureAddendum,
   type TechnicalMeasureForm,
@@ -151,6 +152,28 @@ describe("future customer measures", () => {
     expect(() => normalizeFutureMeasureInput({ room: "Office", width_in: 36 })).toThrow(
       "Width and height are required",
     );
+  });
+});
+
+describe("technical measure scheduling queue", () => {
+  it("defaults older measure forms to unscheduled", () => {
+    expect(technicalMeasureScheduling(undefined)).toEqual({
+      status: "unscheduled",
+      scheduled_at: null,
+      scheduled_by: null,
+    });
+  });
+
+  it("reads durable scheduled metadata", () => {
+    expect(technicalMeasureScheduling({
+      status: "scheduled",
+      scheduled_at: "2026-07-24T15:00:00.000Z",
+      scheduled_by: "805@805shutters.com",
+    })).toEqual({
+      status: "scheduled",
+      scheduled_at: "2026-07-24T15:00:00.000Z",
+      scheduled_by: "805@805shutters.com",
+    });
   });
 });
 

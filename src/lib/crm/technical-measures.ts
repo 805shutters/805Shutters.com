@@ -39,6 +39,12 @@ export type FutureMeasureEntry = {
   created_by: string;
 };
 
+export type TechnicalMeasureScheduling = {
+  status: "unscheduled" | "scheduled";
+  scheduled_at: string | null;
+  scheduled_by: string | null;
+};
+
 export type TechnicalMeasureChange = {
   lineId: string;
   room: string;
@@ -110,6 +116,7 @@ export type TechnicalMeasureForm = {
   contractChanges: TechnicalMeasureChange[];
   requiresAddendum: boolean;
   futureMeasures?: FutureMeasureEntry[];
+  scheduling?: TechnicalMeasureScheduling;
 };
 
 export function technicalMeasureFormUrl(formId: string): string {
@@ -167,6 +174,15 @@ function futureMeasures(value: unknown): FutureMeasureEntry[] {
       return [];
     }
   });
+}
+
+export function technicalMeasureScheduling(value: unknown): TechnicalMeasureScheduling {
+  const source = object(value);
+  return {
+    status: source.status === "scheduled" ? "scheduled" : "unscheduled",
+    scheduled_at: nullableText(source.scheduled_at),
+    scheduled_by: nullableText(source.scheduled_by),
+  };
 }
 
 function detailRecord(value: unknown): Record<string, CrmQuoteDetailValue> {
@@ -433,7 +449,63 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
     contractChanges,
     requiresAddendum: contractChanges.length > 0,
     futureMeasures: futureMeasures(meta.future_measures),
+    scheduling: technicalMeasureScheduling(meta.measure_scheduling),
   } as TechnicalMeasureForm;
+}
+
+export async function setTechnicalMeasureSchedulingStatus(
+  supabase: SupabaseClient,
+  formId: string,
+  scheduled: boolean,
+  actor: CrmActor,
+) {
+  const form = await loadTechnicalMeasureForm(supabase, formId);
+  if (form.status === "submitted") throw new CrmAuthError(409, "Completed measures cannot be moved in the scheduling queue.");
+  const now = new Date().toISOString();
+  const scheduling: TechnicalMeasureScheduling = scheduled
+    ? { status: "scheduled", scheduled_at: now, scheduled_by: actor.email }
+    : { status: "unscheduled", scheduled_at: null, scheduled_by: null };
+  const { error: formError } = await supabase
+    .from("crm_technical_measure_forms")
+    .update({
+      meta: { ...form.meta, measure_scheduling: scheduling },
+      technician_email: actor.email,
+      technician_name: actor.displayName || form.technician_name,
+    })
+    .eq("id", formId);
+  if (formError) throw new CrmAuthError(502, "The measure scheduling status could not be saved.");
+
+  const { data: job, error: jobReadError } = await supabase
+    .from("crm_jobs")
+    .select("meta")
+    .eq("id", form.job_id)
+    .maybeSingle();
+  if (jobReadError || !job) throw new CrmAuthError(502, "The linked job could not be updated.");
+  const jobMeta = object(job.meta);
+  const measureMeta = object(jobMeta[MEASURE_NEEDED_META_KEY]);
+  const { error: jobError } = await supabase
+    .from("crm_jobs")
+    .update({
+      meta: {
+        ...jobMeta,
+        [MEASURE_NEEDED_META_KEY]: {
+          ...measureMeta,
+          schedule_status: scheduling.status,
+          scheduled_at: scheduling.scheduled_at,
+          scheduled_by: scheduling.scheduled_by,
+        },
+      },
+    })
+    .eq("id", form.job_id);
+  if (jobError) throw new CrmAuthError(502, "The measure was updated, but the linked job scheduling status could not be saved.");
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: form.job_id,
+    action: scheduled ? "technical_measure.mark_scheduled" : "technical_measure.mark_unscheduled",
+    metadata: { formId, scheduling },
+  });
+  return loadTechnicalMeasureForm(supabase, formId);
 }
 
 export async function addFutureMeasure(

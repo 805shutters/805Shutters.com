@@ -19,6 +19,9 @@ export type CrmMeasureNeededMeta = {
   last_mts_sync_attempt_at?: string | null;
   form_id?: string | null;
   form_status?: "draft" | "awaiting_signature" | "submitted" | null;
+  schedule_status?: "unscheduled" | "scheduled" | null;
+  scheduled_at?: string | null;
+  scheduled_by?: string | null;
 };
 
 export function objectMeta(value: unknown): Record<string, unknown> {

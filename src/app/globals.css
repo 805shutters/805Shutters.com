@@ -16376,13 +16376,28 @@ body:has(.financing-banner) .site-header-shell {
 .technical-measure-complete span { color: #3d664b; font-size: 13px; }
 
 .technical-measure-list { display: grid; gap: 10px; padding-top: 20px; }
-.technical-measure-list > a { display: grid; grid-template-columns: minmax(0, 1fr) auto 20px; min-height: 84px; align-items: center; gap: 12px; border: 1px solid #c8cac5; background: #fff; padding: 14px 15px; text-decoration: none; }
-.technical-measure-list > a:hover { border-color: #171717; }
-.technical-measure-list > a > div { display: grid; gap: 4px; min-width: 0; }
-.technical-measure-list > a span { overflow: hidden; color: #62645f; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
-.technical-measure-list > a small { color: #777a74; font-size: 11px; }
-.technical-measure-list > a > svg { width: 18px; height: 18px; }
+.technical-measure-queue-card { position: relative; display: grid; gap: 10px; min-height: 128px; border: 1px solid #c8cac5; background: #fff; padding: 14px 15px; }
+.technical-measure-queue-card:hover { border-color: #171717; }
+.technical-measure-queue-main { display: grid; grid-template-columns: minmax(0, 1fr) 20px; align-items: center; gap: 12px; color: #171717; text-decoration: none; }
+.technical-measure-queue-main > div { display: grid; gap: 4px; min-width: 0; }
+.technical-measure-queue-main strong { font-size: 17px; }
+.technical-measure-queue-main small { color: #777a74; font-size: 11px; }
+.technical-measure-queue-main > svg { width: 18px; height: 18px; }
+.technical-measure-address { display: flex; min-width: 0; align-items: center; gap: 7px; color: #4f534e; font-size: 13px; text-decoration: none; }
+.technical-measure-address:not(.technical-measure-address--disabled):hover span { color: #171717; text-decoration: underline; }
+.technical-measure-address svg { width: 16px; height: 16px; flex: 0 0 auto; }
+.technical-measure-address span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.technical-measure-address--disabled { color: #8a8d87; }
+.technical-measure-queue-actions { display: grid; grid-template-columns: auto auto minmax(130px, 1fr); gap: 7px; }
+.technical-measure-queue-actions a,
+.technical-measure-queue-actions button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 6px; border: 1px solid #aeb1ab; background: #fff; padding: 8px 11px; color: #171717; font: inherit; font-size: 12px; font-weight: 800; text-decoration: none; }
+.technical-measure-queue-actions button { border-color: #171717; background: #171717; color: #fff; }
+.technical-measure-queue-actions button[data-scheduled="true"] { background: #e9f5ed; color: #205d37; border-color: #43875d; }
+.technical-measure-queue-actions button:disabled { opacity: .6; }
+.technical-measure-queue-actions svg { width: 16px; height: 16px; }
+.technical-measure-queue-card > em { width: max-content; padding: 5px 7px; border: 1px solid #a6aaa1; background: #fff; color: #454943; font-size: 10px; font-style: normal; text-transform: capitalize; }
 .technical-measure-list-section { padding-top: 24px; }
+.technical-measure-list-section--scheduled { margin-top: 16px; border-top: 1px solid #c9cbc6; }
 .technical-measure-list-section--completed { margin-top: 16px; border-top: 1px solid #c9cbc6; }
 .technical-measure-list-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
 .technical-measure-list-heading span,
@@ -16451,9 +16466,9 @@ body:has(.financing-banner) .site-header-shell {
   .technical-measure-line-navigation button:disabled { opacity: .3; }
   .technical-measure-line-navigation span { color: #66645f; font-size: 10px; font-weight: 800; text-align: center; }
   .technical-measure-list { padding-top: 12px; }
-  .technical-measure-list > a { grid-template-columns: minmax(0, 1fr) 18px; min-height: 104px; padding: 16px; }
-  .technical-measure-list > a em { grid-column: 1; grid-row: 2; width: max-content; }
-  .technical-measure-list > a > svg { grid-column: 2; grid-row: 1 / 3; }
+  .technical-measure-queue-card { min-height: 156px; padding: 16px; }
+  .technical-measure-queue-actions { grid-template-columns: 1fr 1fr; }
+  .technical-measure-queue-actions button { grid-column: 1 / -1; }
   .technical-measure-queue { padding-bottom: 40px; }
   .crm-mobile-quotes-header { grid-template-columns: 44px minmax(0, 1fr); }
   .crm-mobile-quotes-header .crm-form-actions { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }

@@ -27,4 +27,22 @@ describe("technical measure mobile controls", () => {
     expect(service).toContain('external_source: "technical_measure_future_folder"');
     expect(service).toContain('title: `Future Measures (${entries.length})`');
   });
+
+  it("separates scheduling work and exposes customer contact and map actions", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const api = readFileSync(
+      "src/app/api/crm/technical-measures/[id]/schedule/route.ts",
+      "utf8",
+    );
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain("<h2>Needs Scheduling</h2>");
+    expect(component).toContain("<h2>Scheduled</h2>");
+    expect(component).toContain("https://www.google.com/maps/search/?api=1&query=");
+    expect(component).toContain('href={`tel:${phone}`}');
+    expect(component).toContain('href={`sms:${phone}`}');
+    expect(component).toContain("Mark Scheduled");
+    expect(api).toContain("setTechnicalMeasureSchedulingStatus");
+    expect(styles).toContain(".technical-measure-queue-actions");
+  });
 });

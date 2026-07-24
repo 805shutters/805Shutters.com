@@ -2,7 +2,7 @@
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, Minus, Plus, Ruler, Save, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Minus, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
 import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
@@ -523,6 +523,8 @@ export function TechnicalMeasureList() {
   const [forms, setForms] = useState<Array<Record<string, unknown>>>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [queueMessage, setQueueMessage] = useState<string | null>(null);
+  const [schedulingFormId, setSchedulingFormId] = useState<string | null>(null);
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(async ({ data }) => {
@@ -544,36 +546,94 @@ export function TechnicalMeasureList() {
   if (loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /></main>;
   if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
   const pendingForms = forms.filter((form) => form.status !== "submitted");
+  const unscheduledForms = pendingForms.filter((form) => {
+    const meta = form.meta as Record<string, unknown> | null;
+    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
+    return scheduling?.status !== "scheduled";
+  });
+  const scheduledForms = pendingForms.filter((form) => {
+    const meta = form.meta as Record<string, unknown> | null;
+    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
+    return scheduling?.status === "scheduled";
+  });
   const completedForms = forms.filter((form) => form.status === "submitted");
+  async function updateScheduling(formId: string, scheduled: boolean) {
+    if (!session) return;
+    setSchedulingFormId(formId);
+    setQueueMessage(null);
+    try {
+      const result = await crmFetch<{ form: Record<string, unknown> }>(
+        session,
+        `/api/crm/technical-measures/${formId}/schedule`,
+        { method: "POST", body: JSON.stringify({ scheduled }) },
+      );
+      setForms((current) => current.map((form) => String(form.id) === formId ? result.form : form));
+      setQueueMessage(scheduled ? "Technical measure moved to Scheduled." : "Technical measure moved back to Needs Scheduling.");
+    } catch (error) {
+      setQueueMessage(error instanceof Error ? error.message : "The scheduling status could not be updated.");
+    } finally {
+      setSchedulingFormId(null);
+    }
+  }
   const formLink = (form: Record<string, unknown>) => {
     const customer = form.customer_snapshot as Record<string, unknown>;
     const quote = form.quote_snapshot as Record<string, unknown>;
     const status = String(form.status);
+    const meta = form.meta as Record<string, unknown> | null;
+    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
+    const isScheduled = scheduling?.status === "scheduled";
+    const address = String(customer?.address || "").trim();
+    const phone = String(customer?.phone || "").trim();
+    const mapUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
+    const formId = String(form.id);
     return (
-      <a href={`/crm/technical-measures/${form.id}`} key={String(form.id)}>
-        <div>
-          <strong>{String(customer?.name || "Customer")}</strong>
-          <span>{String(customer?.address || "Address not provided")}</span>
-          <small>{quote?.quoteNumber ? `Contract ${quote.quoteNumber}` : "Sold contract"}</small>
-        </div>
-        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : "Needs measure"}</em>
-        <ChevronRight aria-hidden="true" />
-      </a>
+      <article className="technical-measure-queue-card" key={formId}>
+        <a className="technical-measure-queue-main" href={`/crm/technical-measures/${form.id}`}>
+          <div>
+            <strong>{String(customer?.name || "Customer")}</strong>
+            <small>{quote?.quoteNumber ? `Contract ${quote.quoteNumber}` : "Sold contract"}</small>
+          </div>
+          <ChevronRight aria-hidden="true" />
+        </a>
+        {mapUrl ? (
+          <a className="technical-measure-address" href={mapUrl} target="_blank" rel="noreferrer">
+            <MapPin /><span>{address}</span>
+          </a>
+        ) : <div className="technical-measure-address technical-measure-address--disabled"><MapPin /><span>Address not provided</span></div>}
+        {status !== "submitted" ? (
+          <div className="technical-measure-queue-actions">
+            {phone ? <a href={`tel:${phone}`}><Phone />Call</a> : null}
+            {phone ? <a href={`sms:${phone}`}><MessageSquare />Text</a> : null}
+            <button
+              type="button"
+              data-scheduled={isScheduled}
+              disabled={schedulingFormId === formId}
+              onClick={() => updateScheduling(formId, !isScheduled)}
+            >
+              {schedulingFormId === formId ? <Loader2 className="spin" /> : <Check />}
+              {isScheduled ? "Scheduled" : "Mark Scheduled"}
+            </button>
+          </div>
+        ) : null}
+        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : isScheduled ? "Scheduled measure" : "Needs scheduling"}</em>
+      </article>
     );
   };
   return (
     <main className="mts-quote-scope technical-measure-shell technical-measure-queue">
-      <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{pendingForms.length} job{pendingForms.length === 1 ? "" : "s"} need attention</p></div></header>
+      <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{unscheduledForms.length} need scheduling · {scheduledForms.length} scheduled</p></div></header>
       <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
         <a href="/crm/mobile"><CalendarDays />Appointments</a>
         <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
         <a href="/crm/mobile/quotes"><FileText />Quotes</a>
       </nav>
       {loadError ? <div className="technical-measure-alert" role="alert">{loadError}</div> : null}
+      {queueMessage ? <div className="technical-measure-alert" role="status">{queueMessage}</div> : null}
       <section className="technical-measure-list-section">
-        <div className="technical-measure-list-heading"><div><span>Sold jobs</span><h2>Needs Measure</h2></div><strong>{pendingForms.length}</strong></div>
-        <div className="technical-measure-list">{pendingForms.map(formLink)}{!pendingForms.length ? <p>All required technical measures are complete.</p> : null}</div>
+        <div className="technical-measure-list-heading"><div><span>Action required</span><h2>Needs Scheduling</h2></div><strong>{unscheduledForms.length}</strong></div>
+        <div className="technical-measure-list">{unscheduledForms.map(formLink)}{!unscheduledForms.length ? <p>Every open technical measure has been scheduled.</p> : null}</div>
       </section>
+      {scheduledForms.length ? <section className="technical-measure-list-section technical-measure-list-section--scheduled"><div className="technical-measure-list-heading"><div><span>Upcoming work</span><h2>Scheduled</h2></div><strong>{scheduledForms.length}</strong></div><div className="technical-measure-list">{scheduledForms.map(formLink)}</div></section> : null}
       {completedForms.length ? <section className="technical-measure-list-section technical-measure-list-section--completed"><div className="technical-measure-list-heading"><div><span>Customer file</span><h2>Completed</h2></div><strong>{completedForms.length}</strong></div><div className="technical-measure-list">{completedForms.map(formLink)}</div></section> : null}
     </main>
   );
