@@ -4,6 +4,11 @@ import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, 
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { effectiveBookkeepingStatus, formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
+import {
+  calendarAppointmentDurationChoices,
+  calendarAppointmentDurationLabel,
+  calendarAppointmentDurationMinutes
+} from "@/lib/crm/calendar-duration";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isCrmOwnerAdminEmail, isKenCrmEmail, isMikePaymentAdminEmail } from "@/lib/crm/allowed-users";
 import {
   buildUnpaidPartnerPaymentItemForRow,
@@ -2095,7 +2100,9 @@ export function CrmApp({
     const formData = new FormData(event.currentTarget);
     const date = formString(formData, "date");
     const time = formString(formData, "time");
-    const slot = calendarSlotSelection(date, time, calendarEventDurationMinutes(reschedulingCalendarEvent));
+    const currentDurationMinutes = calendarEventDurationMinutes(reschedulingCalendarEvent);
+    const durationMinutes = calendarAppointmentDurationMinutes(formData.get("duration"), currentDurationMinutes);
+    const slot = calendarSlotSelection(date, time, durationMinutes);
     await rescheduleCalendarEvent(reschedulingCalendarEvent, slot);
   }
 
@@ -13781,6 +13788,7 @@ function CalendarRescheduleModal({
 }) {
   const date = calendarEventDateValue(event);
   const time = calendarEventTimeValue(event);
+  const durationMinutes = calendarEventDurationMinutes(event);
 
   return (
     <div className="crm-slot-modal" role="dialog" aria-modal="true" aria-labelledby="crm-reschedule-modal-title">
@@ -13811,6 +13819,16 @@ function CalendarRescheduleModal({
                 {calendarEventTimeOptions(event).map((option) => (
                   <option value={option} key={option}>
                     {formatCalendarSlotTime(option)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Duration
+              <select name="duration" required defaultValue={String(durationMinutes)}>
+                {calendarAppointmentDurationChoices(durationMinutes).map((minutes) => (
+                  <option value={minutes} key={minutes}>
+                    {calendarAppointmentDurationLabel(minutes)}
                   </option>
                 ))}
               </select>
