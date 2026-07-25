@@ -3351,6 +3351,197 @@ body:has(.mobile-crm-login) {
   font-size: 13px;
 }
 
+.mobile-tech-shell {
+  width: min(720px, 100%);
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: max(18px, env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom));
+  background: #f4f4f2;
+  color: #111;
+}
+
+.mobile-tech-header {
+  display: grid;
+  grid-template-columns: 42px 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.mobile-tech-header > a,
+.mobile-tech-title-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(17, 17, 17, 0.2);
+  background: #fff;
+  color: #111;
+}
+
+.mobile-tech-header svg {
+  width: 21px;
+  height: 21px;
+}
+
+.mobile-tech-header span {
+  color: #66645f;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mobile-tech-header h1 {
+  margin: 2px 0 0;
+  font-family: var(--font-heading), Georgia, serif;
+  font-size: 30px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.mobile-tech-state {
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  background: #fff;
+  padding: 22px 18px;
+  color: #66645f;
+  text-align: center;
+}
+
+.mobile-job-buckets {
+  display: grid;
+  gap: 20px;
+}
+
+.mobile-job-bucket {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-job-bucket-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-job-bucket-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.mobile-job-bucket-heading > span {
+  display: grid;
+  min-width: 34px;
+  height: 34px;
+  place-items: center;
+  background: #111;
+  color: #fff;
+  font-weight: 800;
+}
+
+.mobile-job-list,
+.mobile-contract-list {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-job-card,
+.mobile-contract-card {
+  border: 1px solid rgba(17, 17, 17, 0.16);
+  background: #fff;
+  padding: 15px;
+}
+
+.mobile-job-card > div:first-child,
+.mobile-contract-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.mobile-job-card strong,
+.mobile-contract-card strong {
+  font-size: 17px;
+}
+
+.mobile-job-card span,
+.mobile-contract-card span,
+.mobile-contract-card small {
+  color: #66645f;
+}
+
+.mobile-job-card p {
+  margin: 10px 0 0;
+  color: #4f4e4a;
+  font-size: 13px;
+}
+
+.mobile-job-status-pill {
+  display: inline-block;
+  margin-top: 10px;
+  border: 1px solid #155c43;
+  padding: 4px 8px;
+  color: #155c43 !important;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.mobile-contract-search {
+  position: sticky;
+  z-index: 2;
+  top: max(8px, env(safe-area-inset-top));
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(17, 17, 17, 0.28);
+  background: #fff;
+  padding: 0 14px;
+}
+
+.mobile-contract-search svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-contract-search input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 15px 0;
+  font: inherit;
+}
+
+.mobile-contract-count {
+  margin: 10px 2px 14px;
+  color: #66645f;
+  font-size: 12px;
+}
+
+.mobile-contract-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  color: #111;
+  text-decoration: none;
+}
+
+.mobile-contract-card > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-contract-card small {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.mobile-contract-unavailable {
+  font-size: 11px;
+}
+
 .mobile-bookkeeping-shell {
   width: min(720px, 100%);
   min-height: 100dvh;

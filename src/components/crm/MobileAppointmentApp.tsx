@@ -9,7 +9,9 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Clock,
+  Files,
   FileText,
   Landmark,
   Loader2,
@@ -997,10 +999,6 @@ export function MobileAppointmentApp() {
   if (showWorkspaceMenu) {
     return (
       <div className="mobile-crm-app mobile-crm-home">
-        <header className="mobile-crm-home-header">
-          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width="220" height="60" />
-          <div><span>Mobile CRM</span><h1>Choose a workspace</h1><p>{userLabel || "805 Shutters"}</p></div>
-        </header>
         <main className="mobile-crm-category-stack">
           <button type="button" onClick={() => setShowWorkspaceMenu(false)}>
             <CalendarDays />
@@ -1025,6 +1023,16 @@ export function MobileAppointmentApp() {
           <a href="/crm/mobile/search">
             <Search />
             <div><strong>Search Appointments</strong><span>Find a customer and open their file</span></div>
+            <ArrowRight />
+          </a>
+          <a href="/crm/mobile/job-status">
+            <ClipboardList />
+            <div><strong>Job Status</strong><span>See which bucket every job is in</span></div>
+            <ArrowRight />
+          </a>
+          <a href="/crm/mobile/contracts">
+            <Files />
+            <div><strong>Contracts</strong><span>Search and open customer contracts</span></div>
             <ArrowRight />
           </a>
         </main>
