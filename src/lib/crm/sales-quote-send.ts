@@ -10,6 +10,7 @@ import {
   type TechnicalMeasureDecision,
 } from "@/lib/crm/measure-needed-state";
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
+import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
 import { sendSms } from "@/lib/notify/twilio";
 import {
@@ -61,6 +62,7 @@ export async function markSalesQuoteSold(
     ? await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor)
     : null;
   const measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
+  const installerForm = await createAndSendInstallerForm(supabase, crmQuote.id);
 
   const contractUrl = soldSource.share_token
     ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`
@@ -88,7 +90,7 @@ export async function markSalesQuoteSold(
     throw new CrmAuthError(502, `The sale was saved, but ${failed.length} sold notification text(s) failed.`);
   }
 
-  return { salesQuote: soldSource, crmQuote, notifications };
+  return { salesQuote: soldSource, crmQuote, notifications, installerForm };
 }
 
 const IMPORT_SOURCE = "mts_805_bookkeeping";
