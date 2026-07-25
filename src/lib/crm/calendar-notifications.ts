@@ -315,7 +315,8 @@ export async function runDayBeforeAppointmentReminders(
     .from("crm_calendar_events")
     .select("id,job_id,title,start_at,status,event_type,meta")
     .in("status", ACTIVE_APPOINTMENT_STATUSES)
-    .neq("event_type", "block");
+    .neq("event_type", "block")
+    .neq("event_type", "measure");
   if (eventError) throw eventError;
 
   const events = ((eventRows || []) as ReminderEvent[]).filter((event) => isTomorrowInPacific(event.start_at, now));

@@ -4,6 +4,7 @@ import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Minus, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
+import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
 import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
 import { FRACTIONS, PRODUCT_TYPES, ROOM_PRESETS } from "@mts/lib/quoteConstants";
@@ -13,6 +14,22 @@ import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/
 
 type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
 type FutureMeasureDraft = { room: string; width_in: number | null; height_in: number | null; notes: string };
+type ScheduleDraft = { formId: string; customerName: string; date: string; time: string; durationMinutes: number; scheduled: boolean };
+
+const scheduleTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+function measureScheduleLabel(scheduling: Record<string, unknown> | null) {
+  const startAt = typeof scheduling?.scheduled_start_at === "string" ? scheduling.scheduled_start_at : "";
+  const endAt = typeof scheduling?.scheduled_end_at === "string" ? scheduling.scheduled_end_at : "";
+  if (!startAt || !endAt) return "Scheduled measure";
+  return `${scheduleTimeFormatter.format(new Date(startAt))} – ${scheduleTimeFormatter.format(new Date(endAt))}`;
+}
 
 const PRODUCT_IDS: Record<(typeof PRODUCT_TYPES)[number], string> = {
   "Shutters": "norman_shutters",
@@ -525,6 +542,7 @@ export function TechnicalMeasureList() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [schedulingFormId, setSchedulingFormId] = useState<string | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(async ({ data }) => {
@@ -557,7 +575,7 @@ export function TechnicalMeasureList() {
     return scheduling?.status === "scheduled";
   });
   const completedForms = forms.filter((form) => form.status === "submitted");
-  async function updateScheduling(formId: string, scheduled: boolean) {
+  async function updateScheduling(formId: string, scheduled: boolean, startAt?: string, endAt?: string) {
     if (!session) return;
     setSchedulingFormId(formId);
     setQueueMessage(null);
@@ -565,15 +583,55 @@ export function TechnicalMeasureList() {
       const result = await crmFetch<{ form: Record<string, unknown> }>(
         session,
         `/api/crm/technical-measures/${formId}/schedule`,
-        { method: "POST", body: JSON.stringify({ scheduled }) },
+        { method: "POST", body: JSON.stringify({ scheduled, startAt, endAt }) },
       );
       setForms((current) => current.map((form) => String(form.id) === formId ? result.form : form));
-      setQueueMessage(scheduled ? "Technical measure moved to Scheduled." : "Technical measure moved back to Needs Scheduling.");
+      setScheduleDraft(null);
+      setQueueMessage(scheduled ? "Technical measure scheduled for Mike and added to the CRM calendar." : "Technical measure moved back to Needs Scheduling and removed from the calendar.");
     } catch (error) {
       setQueueMessage(error instanceof Error ? error.message : "The scheduling status could not be updated.");
     } finally {
       setSchedulingFormId(null);
     }
+  }
+  function openScheduleDraft(form: Record<string, unknown>) {
+    const meta = form.meta as Record<string, unknown> | null;
+    const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
+    const startAt = typeof scheduling?.scheduled_start_at === "string" ? new Date(scheduling.scheduled_start_at) : null;
+    const endAt = typeof scheduling?.scheduled_end_at === "string" ? new Date(scheduling.scheduled_end_at) : null;
+    const validStart = startAt && Number.isFinite(startAt.getTime());
+    const durationMinutes = validStart && endAt && Number.isFinite(endAt.getTime())
+      ? Math.max(30, Math.round((endAt.getTime() - startAt.getTime()) / 60000))
+      : 90;
+    const localParts = validStart
+      ? new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Los_Angeles",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+        }).formatToParts(startAt).reduce<Record<string, string>>((parts, part) => {
+          if (part.type !== "literal") parts[part.type] = part.value;
+          return parts;
+        }, {})
+      : null;
+    const customer = form.customer_snapshot as Record<string, unknown>;
+    setScheduleDraft({
+      formId: String(form.id),
+      customerName: String(customer?.name || "Customer"),
+      date: localParts ? `${localParts.year}-${localParts.month}-${localParts.day}` : losAngelesDateString(),
+      time: localParts ? `${localParts.hour}:${localParts.minute}` : "09:00",
+      durationMinutes,
+      scheduled: scheduling?.status === "scheduled",
+    });
+  }
+  async function saveScheduleDraft() {
+    if (!scheduleDraft) return;
+    const start = zonedTimeToUtc(scheduleDraft.date, scheduleDraft.time);
+    const end = new Date(start.getTime() + scheduleDraft.durationMinutes * 60000);
+    await updateScheduling(scheduleDraft.formId, true, start.toISOString(), end.toISOString());
   }
   const formLink = (form: Record<string, unknown>) => {
     const customer = form.customer_snapshot as Record<string, unknown>;
@@ -608,14 +666,14 @@ export function TechnicalMeasureList() {
               type="button"
               data-scheduled={isScheduled}
               disabled={schedulingFormId === formId}
-              onClick={() => updateScheduling(formId, !isScheduled)}
+              onClick={() => openScheduleDraft(form)}
             >
               {schedulingFormId === formId ? <Loader2 className="spin" /> : <Check />}
-              {isScheduled ? "Scheduled" : "Mark Scheduled"}
+              {isScheduled ? "Change Schedule" : "Mark Scheduled"}
             </button>
           </div>
         ) : null}
-        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : isScheduled ? "Scheduled measure" : "Needs scheduling"}</em>
+        <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : isScheduled ? measureScheduleLabel(scheduling) : "Needs scheduling"}</em>
       </article>
     );
   };
@@ -635,6 +693,27 @@ export function TechnicalMeasureList() {
       </section>
       {scheduledForms.length ? <section className="technical-measure-list-section technical-measure-list-section--scheduled"><div className="technical-measure-list-heading"><div><span>Upcoming work</span><h2>Scheduled</h2></div><strong>{scheduledForms.length}</strong></div><div className="technical-measure-list">{scheduledForms.map(formLink)}</div></section> : null}
       {completedForms.length ? <section className="technical-measure-list-section technical-measure-list-section--completed"><div className="technical-measure-list-heading"><div><span>Customer file</span><h2>Completed</h2></div><strong>{completedForms.length}</strong></div><div className="technical-measure-list">{completedForms.map(formLink)}</div></section> : null}
+      {scheduleDraft ? (
+        <div className="technical-measure-schedule-backdrop" role="presentation" onClick={() => setScheduleDraft(null)}>
+          <section className="technical-measure-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="technical-measure-schedule-title" onClick={(event) => event.stopPropagation()}>
+            <div className="technical-measure-schedule-head">
+              <div><span>Mike’s calendar</span><h2 id="technical-measure-schedule-title">Schedule Technical Measure</h2><p>{scheduleDraft.customerName}</p></div>
+              <button type="button" aria-label="Close scheduling" onClick={() => setScheduleDraft(null)}><X /></button>
+            </div>
+            <div className="technical-measure-schedule-fields">
+              <label><span>Date</span><input type="date" min={losAngelesDateString()} value={scheduleDraft.date} onChange={(event) => setScheduleDraft((current) => current ? { ...current, date: event.target.value } : current)} /></label>
+              <label><span>Start time</span><input type="time" step="900" value={scheduleDraft.time} onChange={(event) => setScheduleDraft((current) => current ? { ...current, time: event.target.value } : current)} /></label>
+              <label><span>Duration</span><select value={scheduleDraft.durationMinutes} onChange={(event) => setScheduleDraft((current) => current ? { ...current, durationMinutes: Number(event.target.value) } : current)}><option value={60}>1 hour</option><option value={90}>1½ hours</option><option value={120}>2 hours</option><option value={180}>3 hours</option></select></label>
+            </div>
+            <p className="technical-measure-schedule-note">This will be saved in the customer’s CRM file and shown as a green technical-measure appointment on Mike’s calendar.</p>
+            <div className="technical-measure-schedule-actions">
+              {scheduleDraft.scheduled ? <button type="button" className="technical-measure-schedule-remove" disabled={schedulingFormId === scheduleDraft.formId} onClick={() => void updateScheduling(scheduleDraft.formId, false)}>Move to Needs Scheduling</button> : null}
+              <button type="button" onClick={() => setScheduleDraft(null)}>Cancel</button>
+              <button type="button" className="technical-measure-primary" disabled={schedulingFormId === scheduleDraft.formId || !scheduleDraft.date || !scheduleDraft.time} onClick={() => void saveScheduleDraft()}>{schedulingFormId === scheduleDraft.formId ? <Loader2 className="spin" /> : <CalendarDays />} Save to Mike’s Calendar</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }

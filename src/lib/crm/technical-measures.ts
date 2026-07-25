@@ -43,6 +43,9 @@ export type TechnicalMeasureScheduling = {
   status: "unscheduled" | "scheduled";
   scheduled_at: string | null;
   scheduled_by: string | null;
+  scheduled_start_at: string | null;
+  scheduled_end_at: string | null;
+  calendar_event_id: string | null;
 };
 
 export type TechnicalMeasureChange = {
@@ -182,7 +185,19 @@ export function technicalMeasureScheduling(value: unknown): TechnicalMeasureSche
     status: source.status === "scheduled" ? "scheduled" : "unscheduled",
     scheduled_at: nullableText(source.scheduled_at),
     scheduled_by: nullableText(source.scheduled_by),
+    scheduled_start_at: nullableText(source.scheduled_start_at),
+    scheduled_end_at: nullableText(source.scheduled_end_at),
+    calendar_event_id: nullableText(source.calendar_event_id),
   };
+}
+
+export function normalizeTechnicalMeasureScheduleWindow(startAt: unknown, endAt: unknown) {
+  const start = new Date(text(startAt));
+  const end = new Date(text(endAt));
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+    throw new CrmAuthError(400, "Choose a valid technical measure date and time.");
+  }
+  return { startAt: start.toISOString(), endAt: end.toISOString() };
 }
 
 function detailRecord(value: unknown): Record<string, CrmQuoteDetailValue> {
@@ -458,13 +473,76 @@ export async function setTechnicalMeasureSchedulingStatus(
   formId: string,
   scheduled: boolean,
   actor: CrmActor,
+  window?: { startAt?: unknown; endAt?: unknown },
 ) {
   const form = await loadTechnicalMeasureForm(supabase, formId);
   if (form.status === "submitted") throw new CrmAuthError(409, "Completed measures cannot be moved in the scheduling queue.");
   const now = new Date().toISOString();
+  const previousScheduling = technicalMeasureScheduling(form.meta.measure_scheduling);
+  let calendarEventId = previousScheduling.calendar_event_id;
+  let scheduleWindow: { startAt: string; endAt: string } | null = null;
+
+  if (scheduled) {
+    scheduleWindow = normalizeTechnicalMeasureScheduleWindow(window?.startAt, window?.endAt);
+    const calendarRecord = {
+      job_id: form.job_id,
+      title: `${form.customer_snapshot.name} technical measure`,
+      event_type: "measure",
+      status: "scheduled",
+      assigned_to: "Mike",
+      start_at: scheduleWindow.startAt,
+      end_at: scheduleWindow.endAt,
+      location: [form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || null,
+      notes: `Technical measure for ${form.quote_snapshot.quoteNumber || "sold contract"}`,
+      meta: {
+        source: "technical_measure",
+        technical_measure_form_id: form.id,
+        createdBy: actor.email,
+      },
+    };
+
+    if (calendarEventId) {
+      const { data, error } = await supabase
+        .from("crm_calendar_events")
+        .update(calendarRecord)
+        .eq("id", calendarEventId)
+        .select("id")
+        .maybeSingle();
+      if (error || !data) throw new CrmAuthError(502, "The technical measure calendar appointment could not be updated.");
+    } else {
+      const { data, error } = await supabase
+        .from("crm_calendar_events")
+        .insert(calendarRecord)
+        .select("id")
+        .single();
+      if (error || !data) throw new CrmAuthError(502, "The technical measure calendar appointment could not be saved.");
+      calendarEventId = String(data.id);
+    }
+  } else if (calendarEventId) {
+    const { error } = await supabase
+      .from("crm_calendar_events")
+      .update({ status: "canceled", meta: { source: "technical_measure", technical_measure_form_id: form.id, canceledBy: actor.email } })
+      .eq("id", calendarEventId);
+    if (error) throw new CrmAuthError(502, "The technical measure calendar appointment could not be canceled.");
+  }
+
   const scheduling: TechnicalMeasureScheduling = scheduled
-    ? { status: "scheduled", scheduled_at: now, scheduled_by: actor.email }
-    : { status: "unscheduled", scheduled_at: null, scheduled_by: null };
+    ? {
+        status: "scheduled",
+        scheduled_at: now,
+        scheduled_by: actor.email,
+        scheduled_start_at: scheduleWindow!.startAt,
+        scheduled_end_at: scheduleWindow!.endAt,
+        calendar_event_id: calendarEventId,
+      }
+    : {
+        status: "unscheduled",
+        scheduled_at: null,
+        scheduled_by: null,
+        scheduled_start_at: null,
+        scheduled_end_at: null,
+        calendar_event_id: calendarEventId,
+      };
   const { error: formError } = await supabase
     .from("crm_technical_measure_forms")
     .update({
@@ -493,6 +571,9 @@ export async function setTechnicalMeasureSchedulingStatus(
           schedule_status: scheduling.status,
           scheduled_at: scheduling.scheduled_at,
           scheduled_by: scheduling.scheduled_by,
+          scheduled_start_at: scheduling.scheduled_start_at,
+          scheduled_end_at: scheduling.scheduled_end_at,
+          calendar_event_id: scheduling.calendar_event_id,
         },
       },
     })

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTechnicalMeasureAddendumPdf,
   normalizeFutureMeasureInput,
+  normalizeTechnicalMeasureScheduleWindow,
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
   soldJobNeedsTechnicalMeasureForm,
@@ -161,6 +162,9 @@ describe("technical measure scheduling queue", () => {
       status: "unscheduled",
       scheduled_at: null,
       scheduled_by: null,
+      scheduled_start_at: null,
+      scheduled_end_at: null,
+      calendar_event_id: null,
     });
   });
 
@@ -169,11 +173,31 @@ describe("technical measure scheduling queue", () => {
       status: "scheduled",
       scheduled_at: "2026-07-24T15:00:00.000Z",
       scheduled_by: "805@805shutters.com",
+      scheduled_start_at: "2026-07-25T16:00:00.000Z",
+      scheduled_end_at: "2026-07-25T17:30:00.000Z",
+      calendar_event_id: "event-1",
     })).toEqual({
       status: "scheduled",
       scheduled_at: "2026-07-24T15:00:00.000Z",
       scheduled_by: "805@805shutters.com",
+      scheduled_start_at: "2026-07-25T16:00:00.000Z",
+      scheduled_end_at: "2026-07-25T17:30:00.000Z",
+      calendar_event_id: "event-1",
     });
+  });
+
+  it("validates and normalizes the actual appointment window", () => {
+    expect(normalizeTechnicalMeasureScheduleWindow(
+      "2026-07-25T09:00:00-07:00",
+      "2026-07-25T10:30:00-07:00",
+    )).toEqual({
+      startAt: "2026-07-25T16:00:00.000Z",
+      endAt: "2026-07-25T17:30:00.000Z",
+    });
+    expect(() => normalizeTechnicalMeasureScheduleWindow(
+      "2026-07-25T10:30:00-07:00",
+      "2026-07-25T09:00:00-07:00",
+    )).toThrow("Choose a valid technical measure date and time.");
   });
 });
 

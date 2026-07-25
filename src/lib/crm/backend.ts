@@ -2141,6 +2141,67 @@ async function assertCalendarWindowAvailable(
   if (data?.length) throw new CrmAuthError(409, "That CRM calendar window is already booked.");
 }
 
+async function syncTechnicalMeasureCalendarState(
+  supabase: CrmSupabaseClient,
+  event: Record<string, unknown>,
+  patch: { status: "scheduled" | "unscheduled"; startAt?: string | null; endAt?: string | null; actorEmail: string }
+) {
+  if (event.event_type !== "measure") return;
+  const formId = optionalText(objectMeta(event.meta).technical_measure_form_id);
+  if (!formId) return;
+  const { data: form, error: formReadError } = await supabase
+    .from("crm_technical_measure_forms")
+    .select("id,job_id,meta")
+    .eq("id", formId)
+    .maybeSingle();
+  if (formReadError || !form) throw new CrmAuthError(502, "The calendar changed, but the technical measure form could not be updated.");
+  const formMeta = objectMeta(form.meta);
+  const previous = objectMeta(formMeta.measure_scheduling);
+  const scheduling = {
+    ...previous,
+    status: patch.status,
+    scheduled_at: patch.status === "scheduled" ? new Date().toISOString() : null,
+    scheduled_by: patch.status === "scheduled" ? patch.actorEmail : null,
+    scheduled_start_at: patch.status === "scheduled" ? patch.startAt || null : null,
+    scheduled_end_at: patch.status === "scheduled" ? patch.endAt || null : null,
+    calendar_event_id: event.id,
+  };
+  const { error: formError } = await supabase
+    .from("crm_technical_measure_forms")
+    .update({ meta: { ...formMeta, measure_scheduling: scheduling } })
+    .eq("id", formId);
+  if (formError) throw new CrmAuthError(502, "The calendar changed, but the technical measure form could not be updated.");
+
+  if (form.job_id) {
+    const { data: job, error: jobReadError } = await supabase
+      .from("crm_jobs")
+      .select("meta")
+      .eq("id", form.job_id)
+      .maybeSingle();
+    if (jobReadError || !job) throw new CrmAuthError(502, "The calendar changed, but the customer file could not be updated.");
+    const jobMeta = objectMeta(job.meta);
+    const measureMeta = objectMeta(jobMeta.measure_needed);
+    const { error: jobError } = await supabase
+      .from("crm_jobs")
+      .update({
+        meta: {
+          ...jobMeta,
+          measure_needed: {
+            ...measureMeta,
+            schedule_status: scheduling.status,
+            scheduled_at: scheduling.scheduled_at,
+            scheduled_by: scheduling.scheduled_by,
+            scheduled_start_at: scheduling.scheduled_start_at,
+            scheduled_end_at: scheduling.scheduled_end_at,
+            calendar_event_id: scheduling.calendar_event_id,
+          },
+        },
+      })
+      .eq("id", form.job_id);
+    if (jobError) throw new CrmAuthError(502, "The calendar changed, but the customer file could not be updated.");
+  }
+}
+
 export async function createCrmCalendarEvent(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -2157,12 +2218,13 @@ export async function createCrmCalendarEvent(
   }
 
   const assignedTo = optionalText(payload.assigned_to) || "Unassigned";
-  await assertCalendarWindowAvailable(supabase, startAt, endAt);
+  const eventType = normalizeEnum<string>(payload.event_type, calendarEventTypes, "sales_consult", "Invalid calendar event type.");
+  if (eventType !== "measure") await assertCalendarWindowAvailable(supabase, startAt, endAt);
 
   const record = {
     job_id: payload.job_id || null,
     title,
-    event_type: normalizeEnum(payload.event_type, calendarEventTypes, "sales_consult", "Invalid calendar event type."),
+    event_type: eventType,
     status: normalizeEnum(payload.status, calendarStatuses, "scheduled", "Invalid calendar event status."),
     assigned_to: assignedTo,
     start_at: startAt,
@@ -2282,7 +2344,7 @@ export async function rescheduleCrmCalendarEvent(
     throw new CrmAuthError(409, "Only scheduled appointments can be rescheduled.");
   }
 
-  await assertCalendarWindowAvailable(supabase, startAt, endAt, eventId);
+  if (existing.event_type !== "measure") await assertCalendarWindowAvailable(supabase, startAt, endAt, eventId);
 
   const update = {
     start_at: startAt,
@@ -2300,8 +2362,15 @@ export async function rescheduleCrmCalendarEvent(
 
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be rescheduled.");
 
+  await syncTechnicalMeasureCalendarState(supabase, data, {
+    status: "scheduled",
+    startAt,
+    endAt,
+    actorEmail: actor.email,
+  });
+
   let linkedJob: CrmJob | null = null;
-  if (existing.job_id) {
+  if (existing.job_id && existing.event_type !== "measure") {
     const { data: job, error: jobError } = await supabase
       .from("crm_jobs")
       .update({
@@ -2383,8 +2452,13 @@ export async function cancelCrmCalendarEvent(
 
   if (error || !data) throw new CrmAuthError(502, "Calendar event could not be canceled.");
 
+  await syncTechnicalMeasureCalendarState(supabase, data, {
+    status: "unscheduled",
+    actorEmail: actor.email,
+  });
+
   let linkedJob: CrmJob | null = null;
-  if (existing.job_id) {
+  if (existing.job_id && existing.event_type !== "measure") {
     const { data: linkedJobData, error: linkedJobError } = await supabase
       .from("crm_jobs")
       .select("*")

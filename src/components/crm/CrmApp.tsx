@@ -43,6 +43,7 @@ import {
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
+import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import {
   customerBookableSlotKeys,
   type BookingAvailabilityResponse
@@ -526,7 +527,11 @@ function calendarEventToneClassName(event: CrmCalendarEvent) {
     : owner.includes("jessica")
       ? "crm-calendar-event-block--jessica"
       : "crm-calendar-event-block--unassigned";
-  const typeClass = event.event_type === "block" ? " crm-calendar-event-block--block" : "";
+  const typeClass = event.event_type === "block"
+    ? " crm-calendar-event-block--block"
+    : event.event_type === "measure"
+      ? " crm-calendar-event-block--measure"
+      : "";
   const completionClass = calendarEventCompletionToneClassName(event);
 
   return `${ownerClass}${typeClass}${completionClass}`;
@@ -13162,6 +13167,7 @@ function CalendarTimelineGrid({
   onOpenEvent: (event: CrmCalendarEvent) => void;
   view: "day" | "week";
 }) {
+  const overlapLayout = useMemo(() => buildCalendarOverlapLayout(events), [events]);
   const availabilityLookup = useMemo(() => buildAvailabilityLookup(availabilitySlots), [availabilitySlots]);
   const customerBookableLookup = useMemo(() => new Set(customerBookableSlots), [customerBookableSlots]);
 
@@ -13303,6 +13309,7 @@ function CalendarTimelineGrid({
         {events.map((event) => {
           const placement = calendarEventPlacement(event, days);
           if (!placement) return null;
+          const overlap = overlapLayout.get(event.id) || { lane: 0, laneCount: 1 };
           const detailLines = calendarEventSecondaryDescriptionLines(event);
           const descriptionLabel = calendarEventDescriptionLabel(event);
           const canManage = canRescheduleCalendarEvent(event);
@@ -13329,7 +13336,14 @@ function CalendarTimelineGrid({
               role={canManage ? "button" : undefined}
               style={{
                 gridColumn: placement.column,
-                gridRow: `${placement.rowStart} / ${placement.rowEnd}`
+                gridRow: `${placement.rowStart} / ${placement.rowEnd}`,
+                ...(overlap.laneCount > 1
+                  ? {
+                      justifySelf: "start",
+                      transform: `translateX(${overlap.lane * 100}%)`,
+                      width: `calc((100% - 12px) / ${overlap.laneCount})`,
+                    }
+                  : {}),
               }}
               tabIndex={canManage ? 0 : undefined}
               title={descriptionLabel}

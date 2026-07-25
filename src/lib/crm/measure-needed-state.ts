@@ -22,6 +22,9 @@ export type CrmMeasureNeededMeta = {
   schedule_status?: "unscheduled" | "scheduled" | null;
   scheduled_at?: string | null;
   scheduled_by?: string | null;
+  scheduled_start_at?: string | null;
+  scheduled_end_at?: string | null;
+  calendar_event_id?: string | null;
 };
 
 export function objectMeta(value: unknown): Record<string, unknown> {
@@ -47,6 +50,18 @@ export function technicalMeasureSmsLine(status?: CrmMeasureNeededStatus | null):
 export function measureNeededLabel(job: Pick<CrmJob, "meta">) {
   const measure = getMeasureNeededMeta(job.meta);
   if (measure.status === "needed") {
+    if (measure.schedule_status === "scheduled" && measure.scheduled_start_at) {
+      const start = new Date(measure.scheduled_start_at);
+      if (Number.isFinite(start.getTime())) {
+        return `Measure scheduled ${new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/Los_Angeles",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(start)}`;
+      }
+    }
     if (measure.form_status === "awaiting_signature") return "Measure awaiting customer signature";
     if (measure.form_status === "draft") return "Measure form in progress";
     return measure.mts_job_number ? `Measure needed - MTS ${measure.mts_job_number}` : "Measure needed";

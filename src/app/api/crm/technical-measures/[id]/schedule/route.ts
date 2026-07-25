@@ -8,7 +8,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user, displayName } = await requireCrmUser(request);
     const { id } = await context.params;
-    const body = (await request.json().catch(() => ({}))) as { scheduled?: unknown };
+    const body = (await request.json().catch(() => ({}))) as {
+      scheduled?: unknown;
+      startAt?: unknown;
+      endAt?: unknown;
+    };
     if (typeof body.scheduled !== "boolean") {
       return NextResponse.json({ message: "Scheduled status is required." }, { status: 400 });
     }
@@ -17,6 +21,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       id,
       body.scheduled,
       { email, userId: user.id, displayName },
+      { startAt: body.startAt, endAt: body.endAt },
     );
     return NextResponse.json({ form });
   } catch (error) {
