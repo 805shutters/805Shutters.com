@@ -523,6 +523,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       {measurePicker && activePickerLine ? (
         <MeasurementGridModal
           open
+          showDirectEntry={false}
           onClose={() => setMeasurePicker(null)}
           step={measurePicker.step}
           pendingWidth={pendingWidth}
@@ -537,6 +538,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       {futurePicker ? (
         <MeasurementGridModal
           open
+          showDirectEntry={false}
           onClose={() => setFuturePicker(null)}
           step={futurePicker}
           pendingWidth={futureMeasure.width_in ? wholeFraction(futureMeasure.width_in) : null}

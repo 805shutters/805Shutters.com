@@ -7,6 +7,7 @@ import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilder
 
 interface MeasurementGridModalProps {
   open: boolean;
+  showDirectEntry?: boolean;
   onClose: () => void;
   step: MeasurementStep;
   onWidthWhole: (n: number) => void;
@@ -23,6 +24,7 @@ interface MeasurementGridModalProps {
 
 export function MeasurementGridModal({
   open,
+  showDirectEntry = true,
   onClose,
   step,
   onWidthWhole,
@@ -116,7 +118,7 @@ export function MeasurementGridModal({
         </DialogHeader>
 
         <div ref={pickerScrollRef} className="mts-measure-dialog-scroll">
-          <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
+          {showDirectEntry ? <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
             <div className="mb-2 text-sm font-semibold">Enter measurements instead</div>
             <div className="grid grid-cols-2 gap-3">
               <label className="text-xs font-medium text-muted-foreground">
@@ -163,7 +165,7 @@ export function MeasurementGridModal({
               </button>
             </div>
             {directError ? <p role="alert" className="mt-2 text-sm font-medium text-destructive">{directError}</p> : null}
-          </div>
+          </div> : null}
 
           {/* Whole number grid */}
           {!isFractionStep && (

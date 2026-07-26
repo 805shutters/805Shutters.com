@@ -9,6 +9,7 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("technical-measure-stepper");
     expect(component).toContain("technical-measure-choice-grid");
     expect(component).toContain("PRODUCT_TYPES.map");
+    expect(component.match(/showDirectEntry={false}/g)).toHaveLength(2);
     expect(styles).toContain(".technical-measure-dimensions { grid-template-columns: 1fr 1fr; }");
     expect(styles).toContain("min-height: 58px;");
   });
