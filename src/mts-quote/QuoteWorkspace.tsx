@@ -19,6 +19,10 @@ import { cn } from "@mts/lib/utils";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
+import {
+  QuoteBuilderDatabaseProvider,
+} from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { supabase } from "@mts/integrations/supabase/client";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 // The quote tools pull in the full product catalog, pricing engine,
@@ -106,13 +110,19 @@ export function QuoteWorkspace({
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <PortalContainerContext.Provider value={scopeEl}>
-        <div
-          ref={setScopeEl}
-          className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
-          data-theme="light"
-        >
+    <QuoteBuilderDatabaseProvider
+      database={supabase}
+      authoritativeV2
+      serverOwnedV2
+      preferStoredTotal
+    >
+      <QueryClientProvider client={queryClient}>
+        <PortalContainerContext.Provider value={scopeEl}>
+          <div
+            ref={setScopeEl}
+            className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
+            data-theme="light"
+          >
           {/* Tab buttons (hidden in the full-screen builder — its slim bar carries the toggle + X) */}
           {effectiveTab !== "builder" && (
             <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
@@ -160,7 +170,7 @@ export function QuoteWorkspace({
             {effectiveTab === "dashboard" && (
               <Suspense fallback={<QuoteTabLoading />}>
                 <QuoteDashboard
-                  quoteOperatorMode={false}
+                  quoteOperatorMode
                   newQuoteRequest={newQuoteRequest}
                   crmJobs={crmJobs}
                   crmQuotes={crmQuotes}
@@ -188,10 +198,11 @@ export function QuoteWorkspace({
             )}
           </div>
 
-          <Toaster richColors position="top-right" />
-        </div>
-      </PortalContainerContext.Provider>
-    </QueryClientProvider>
+            <Toaster richColors position="top-right" />
+          </div>
+        </PortalContainerContext.Provider>
+      </QueryClientProvider>
+    </QuoteBuilderDatabaseProvider>
   );
 }
 

@@ -10,6 +10,12 @@ type QuoteBuilderRuntime = {
   isolated: boolean;
   preferStoredTotal: boolean;
   authoritativeV2: boolean;
+  /**
+   * Production V2 rows must mutate through authenticated server APIs. The
+   * isolated Quote Lab keeps using its in-memory adapter, even though both
+   * runtimes share the authoritative configuration UI.
+   */
+  serverOwnedV2: boolean;
   showLabCatalogControls: boolean;
 };
 
@@ -18,6 +24,7 @@ const defaultRuntime: QuoteBuilderRuntime = {
   isolated: false,
   preferStoredTotal: false,
   authoritativeV2: false,
+  serverOwnedV2: false,
   showLabCatalogControls: false,
 };
 
@@ -28,6 +35,7 @@ export function QuoteBuilderDatabaseProvider({
   isolated = false,
   preferStoredTotal = false,
   authoritativeV2 = isolated,
+  serverOwnedV2 = false,
   showLabCatalogControls = false,
   children,
 }: {
@@ -35,6 +43,7 @@ export function QuoteBuilderDatabaseProvider({
   isolated?: boolean;
   preferStoredTotal?: boolean;
   authoritativeV2?: boolean;
+  serverOwnedV2?: boolean;
   showLabCatalogControls?: boolean;
   children: ReactNode;
 }) {
@@ -45,6 +54,7 @@ export function QuoteBuilderDatabaseProvider({
         isolated,
         preferStoredTotal,
         authoritativeV2,
+        serverOwnedV2,
         showLabCatalogControls,
       }}
     >

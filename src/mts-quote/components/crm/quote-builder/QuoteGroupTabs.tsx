@@ -13,10 +13,30 @@ import { Button } from "@mts/components/ui/button";
 import { Plus, Copy, Trash2 } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { toast } from "sonner";
-import type { SalesQuote } from "@mts/types/quote";
+import type {
+  SalesQuote,
+  SalesQuoteDesign,
+  SalesQuoteLineItem,
+} from "@mts/types/quote";
+import {
+  createQuoteV2Draft,
+  mutateQuoteV2Structure,
+  priceQuoteV2,
+  quoteV2DesignPatch,
+  quoteV2LinePatch,
+  type QuoteV2StructureOperation,
+} from "@mts/lib/quoteV2ServerClient";
+
+type QuoteGroupMutationResult = Pick<
+  SalesQuote,
+  "id" | "quote_number" | "quote_letter" | "quote_group_id"
+>;
 
 export function QuoteGroupTabs() {
-  const { database: supabase } = useQuoteBuilderDatabase();
+  const {
+    database: supabase,
+    serverOwnedV2,
+  } = useQuoteBuilderDatabase();
   const { activeQuoteId, setActiveQuote } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
 
@@ -53,11 +73,63 @@ export function QuoteGroupTabs() {
 
   const visibleQuotes = buildVisibleQuoteTabs(activeQuote, groupQuotes);
 
+  const mutateAndPriceActiveV2Quote = async (
+    operations: readonly QuoteV2StructureOperation[],
+  ) => {
+    if (!activeQuote?.quote_v2_backend) {
+      throw new Error(
+        "Historical quote conversion is required before changing quote alternatives.",
+      );
+    }
+    const expectedRevision = Number(activeQuote.quote_v2_revision);
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      throw new Error("This Quote V2 draft has no valid revision. Reload it.");
+    }
+    const structure = await mutateQuoteV2Structure(
+      supabase,
+      activeQuote.id,
+      expectedRevision,
+      operations,
+    );
+    const selected = Object.entries(structure.selectedDesigns).find(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" && entry[1].length > 0,
+    );
+    if (structure.lineCount > 0) {
+      if (!selected) {
+        throw new Error(
+          "Every Quote V2 line needs one selected design before pricing.",
+        );
+      }
+      await priceQuoteV2(supabase, activeQuote.id, {
+        lineItemId: selected[0],
+        designId: selected[1],
+        expectedRevision: structure.revision,
+      });
+    }
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.salesQuotes.detail(activeQuote.id),
+    });
+    return structure;
+  };
+
   const ensureActiveQuoteGroup = async () => {
     if (!activeQuote) throw new Error("No active quote");
     if (activeQuote.quote_group_id) return activeQuote.quote_group_id;
 
     const newGroupId = createQuoteGroupId();
+    if (serverOwnedV2) {
+      await mutateAndPriceActiveV2Quote([
+        {
+          type: "quote.update",
+          patch: {
+            quoteGroupId: newGroupId,
+            quoteLetter: activeQuote.quote_letter || "A",
+          },
+        },
+      ]);
+      return newGroupId;
+    }
     const { error } = await (supabase as any)
       .from("sales_quotes")
       .update({
@@ -86,7 +158,9 @@ export function QuoteGroupTabs() {
     return nextQuoteLetter(siblingLetters);
   };
 
-  const invalidateQuoteGroup = (quote: SalesQuote) => {
+  const invalidateQuoteGroup = (
+    quote: Pick<SalesQuote, "id" | "quote_group_id">,
+  ) => {
     queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
     if (activeQuoteId) {
       queryClient.invalidateQueries({
@@ -109,6 +183,23 @@ export function QuoteGroupTabs() {
       if (!activeQuote) throw new Error("No active quote");
       const ensuredGroupId = await ensureActiveQuoteGroup();
       const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
+      if (serverOwnedV2) {
+        const created = await createQuoteV2Draft(supabase, {
+          customerName: activeQuote.customer_name,
+          customerEmail: activeQuote.customer_email,
+          customerPhone: activeQuote.customer_phone,
+          customerAddress: activeQuote.customer_address,
+          appointmentDate: activeQuote.appointment_date,
+          quoteGroupId: ensuredGroupId,
+          quoteLetter: nextLetter,
+        });
+        return {
+          id: created.quoteId,
+          quote_number: created.quoteNumber,
+          quote_letter: nextLetter,
+          quote_group_id: ensuredGroupId,
+        } satisfies QuoteGroupMutationResult;
+      }
       const account =
         QUOTE_ACCOUNTS.find((a) => a.id === activeQuote.account_id) || QUOTE_ACCOUNTS[0];
 
@@ -158,6 +249,109 @@ export function QuoteGroupTabs() {
       if (!activeQuote) throw new Error("No active quote");
       const ensuredGroupId = await ensureActiveQuoteGroup();
       const nextLetter = await loadNextQuoteLetter(ensuredGroupId);
+      if (serverOwnedV2) {
+        if (!activeQuote.quote_v2_backend) {
+          throw new Error(
+            "Historical quote conversion is required before copying a quote alternative.",
+          );
+        }
+        const { data: sourceLines, error: lineError } = await (supabase as any)
+          .from("sales_quote_line_items")
+          .select("*")
+          .eq("quote_id", activeQuote.id)
+          .order("sort_order");
+        if (lineError) throw lineError;
+        const lines = (sourceLines || []) as SalesQuoteLineItem[];
+        let sourceDesigns: SalesQuoteDesign[] = [];
+        if (lines.length > 0) {
+          const { data, error } = await (supabase as any)
+            .from("sales_quote_designs")
+            .select("*")
+            .in("line_item_id", lines.map((line) => line.id));
+          if (error) throw error;
+          sourceDesigns = (data || []) as SalesQuoteDesign[];
+        }
+
+        for (const line of lines) {
+          const lineDesigns = sourceDesigns.filter(
+            (design) => design.line_item_id === line.id,
+          );
+          if (
+            !line.selected_design_id ||
+            !lineDesigns.some((design) => design.id === line.selected_design_id)
+          ) {
+            throw new Error(
+              `Line ${line.room_name} has no persisted selected design and cannot be copied safely.`,
+            );
+          }
+        }
+
+        const operations: QuoteV2StructureOperation[] = [];
+        for (const line of lines) {
+          const targetLineItemId = crypto.randomUUID();
+          operations.push({
+            type: "line.create",
+            lineItemId: targetLineItemId,
+            patch: quoteV2LinePatch(line),
+          });
+          for (const design of sourceDesigns.filter(
+            (candidate) => candidate.line_item_id === line.id,
+          )) {
+            operations.push({
+              type: "design.upsert",
+              lineItemId: targetLineItemId,
+              designId: crypto.randomUUID(),
+              variant: design.variant,
+              selectDesign: design.id === line.selected_design_id,
+              patch: quoteV2DesignPatch(design),
+            });
+          }
+        }
+        if (operations.length > 200) {
+          throw new Error(
+            "This quote has too many saved alternatives to copy in one authoritative transaction.",
+          );
+        }
+
+        const created = await createQuoteV2Draft(supabase, {
+          customerName: activeQuote.customer_name,
+          customerEmail: activeQuote.customer_email,
+          customerPhone: activeQuote.customer_phone,
+          customerAddress: activeQuote.customer_address,
+          appointmentDate: activeQuote.appointment_date,
+          installerNotes: activeQuote.installer_notes,
+          quoteGroupId: ensuredGroupId,
+          quoteLetter: nextLetter,
+        });
+        if (operations.length > 0) {
+          const structure = await mutateQuoteV2Structure(
+            supabase,
+            created.quoteId,
+            created.revision,
+            operations,
+          );
+          const selected = Object.entries(structure.selectedDesigns).find(
+            (entry): entry is [string, string] =>
+              typeof entry[1] === "string" && entry[1].length > 0,
+          );
+          if (!selected) {
+            throw new Error(
+              "The copied Quote V2 alternative did not retain a selected design.",
+            );
+          }
+          await priceQuoteV2(supabase, created.quoteId, {
+            lineItemId: selected[0],
+            designId: selected[1],
+            expectedRevision: structure.revision,
+          });
+        }
+        return {
+          id: created.quoteId,
+          quote_number: created.quoteNumber,
+          quote_letter: nextLetter,
+          quote_group_id: ensuredGroupId,
+        } satisfies QuoteGroupMutationResult;
+      }
       const account =
         QUOTE_ACCOUNTS.find((a) => a.id === activeQuote.account_id) || QUOTE_ACCOUNTS[0];
 
@@ -273,6 +467,11 @@ export function QuoteGroupTabs() {
   // Delete a quote from the group
   const deleteFromGroup = useMutation({
     mutationFn: async (quoteId: string) => {
+      if (serverOwnedV2) {
+        throw new Error(
+          "Quote V2 alternatives cannot be hard-deleted; server-owned archive support is required.",
+        );
+      }
       const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
       if (error) throw error;
     },

@@ -63,6 +63,15 @@ export interface SalesQuote {
   manufacturer_name: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Authoritative V2 rows are server-owned. These fields are optional so
+   * historical/legacy query fixtures remain backwards compatible.
+   */
+  quote_v2_backend?: boolean;
+  quote_v2_status?: "legacy" | "draft" | "stale" | "priced" | "blocked" | "sent";
+  quote_v2_catalog_version?: string | null;
+  quote_v2_revision?: number;
+  quote_v2_last_priced_at?: string | null;
 }
 
 export interface SalesQuoteLineItem {
@@ -76,6 +85,7 @@ export interface SalesQuoteLineItem {
   height_fraction: string;
   quantity: number;
   sort_order: number;
+  selected_design_id?: string | null;
   created_at: string;
 }
 
@@ -103,6 +113,12 @@ export interface SalesQuoteDesign {
   unit_price: number;
   notes: string | null;
   options_json: Record<string, unknown>;
+  quote_v2_selection?: Record<string, unknown>;
+  quote_v2_price_status?: "legacy" | "stale" | "authoritative" | "blocked" | "unpriceable";
+  quote_v2_selection_fingerprint?: string | null;
+  quote_v2_priced_catalog_version?: string | null;
+  quote_v2_priced_at?: string | null;
+  current_v2_snapshot_id?: string | null;
   created_at: string;
 }
 

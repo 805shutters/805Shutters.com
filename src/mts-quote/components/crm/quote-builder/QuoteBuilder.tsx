@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts/lib/queryKeys";
@@ -68,6 +68,15 @@ import {
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
+import {
+  mutateQuoteV2Structure,
+  priceQuoteV2,
+  quoteV2DesignPatch,
+  quoteV2LinePatch,
+  quoteV2QuotePatch,
+  type QuoteV2StructureOperation,
+  type QuoteV2StructureResponse,
+} from "@mts/lib/quoteV2ServerClient";
 import {
   formatDimensions,
   formatDimensionsOrNull,
@@ -496,6 +505,7 @@ export function QuoteBuilder() {
     database: supabase,
     isolated,
     authoritativeV2,
+    serverOwnedV2,
     preferStoredTotal,
   } = useQuoteBuilderDatabase();
   const {
@@ -524,6 +534,10 @@ export function QuoteBuilder() {
   } = useQuoteBuilderStore();
 
   const queryClient = useQueryClient();
+  const quoteQueryKey = queryKeys.salesQuotes.detail(activeQuoteId || "");
+  const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
+  const designsQueryKey = [...quoteQueryKey, "designs"] as const;
+  const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
   // The class is removed on unmount (e.g. when the X switches back to the
@@ -547,6 +561,11 @@ export function QuoteBuilder() {
 
   const syncQuoteTotal = async (options: { allowZero?: boolean } = {}) => {
     if (!activeQuoteId) return;
+    if (serverOwnedV2) {
+      throw new Error(
+        "Quote V2 totals are server-owned and cannot be written by the browser.",
+      );
+    }
 
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
@@ -588,7 +607,7 @@ export function QuoteBuilder() {
     isPending: isQuoteLoading,
     isError: isQuoteLoadError,
   } = useQuery({
-    queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+    queryKey: quoteQueryKey,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
@@ -614,7 +633,7 @@ export function QuoteBuilder() {
     isPending: areLineItemsLoading,
     isError: isLineItemsLoadError,
   } = useQuery({
-    queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+    queryKey: lineItemsQueryKey,
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
@@ -629,7 +648,6 @@ export function QuoteBuilder() {
 
   // Fetch all designs for this quote's line items
   const lineItemIds = lineItems.map((i) => i.id);
-  const designsQueryKey = [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"];
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
   const isActiveQuotePriceLocked = isQuotePriceLocked(quote);
   const {
@@ -645,14 +663,143 @@ export function QuoteBuilder() {
         .select("*")
         .in("line_item_id", lineItemIds);
       if (error) throw error;
-      return (data || []) as SalesQuoteDesign[];
+      const rows = (data || []) as SalesQuoteDesign[];
+      if (!authoritativeV2) return rows;
+      const selectedByLine = new Map(
+        lineItems.map((line) => [line.id, line.selected_design_id ?? null]),
+      );
+      return rows.map((design) => ({
+        ...design,
+        [QUOTE_V2_SELECTED_DESIGN_MARKER]:
+          selectedByLine.get(design.line_item_id) === design.id,
+      }));
     },
     enabled: lineItemIds.length > 0,
   });
 
+  const refreshServerOwnedV2Rows = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: quoteQueryKey }),
+      queryClient.invalidateQueries({ queryKey: lineItemsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: designsQueryKey }),
+    ]);
+  };
+
+  const updateServerOwnedV2QuoteCache = (
+    response:
+      | QuoteV2StructureResponse
+      | Awaited<ReturnType<typeof priceQuoteV2>>,
+  ) => {
+    queryClient.setQueryData<SalesQuote>(quoteQueryKey, (current) => {
+      if (!current) return current;
+      if ("quoteTotal" in response) {
+        return {
+          ...current,
+          quote_v2_revision: response.revision,
+          quote_v2_status: response.quoteStatus as SalesQuote["quote_v2_status"],
+          total_amount: response.quoteTotal,
+        };
+      }
+      return {
+        ...current,
+        quote_v2_revision: response.revision,
+        quote_v2_status: response.quoteV2Status,
+        total_amount: 0,
+        product_cost: 0,
+        profit_amount: 0,
+      };
+    });
+  };
+
+  /**
+   * Serialize edits because every authoritative structural request uses
+   * optimistic concurrency. The server invalidates all quote money, then the
+   * existing price endpoint reconstructs the full quote from saved selections.
+   */
+  const mutateAndRepriceServerOwnedV2 = (
+    operations: readonly QuoteV2StructureOperation[],
+    preferredLineItemId?: string,
+  ): Promise<void> => {
+    const execute = async () => {
+      if (!activeQuoteId) throw new Error("No active quote is open.");
+      const cachedQuote =
+        queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
+      if (!cachedQuote?.quote_v2_backend) {
+        throw new Error(
+          "Historical quote conversion is required before this quote can be changed in V2.",
+        );
+      }
+      const expectedRevision = Number(cachedQuote.quote_v2_revision);
+      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+        throw new Error(
+          "This Quote V2 draft has no valid revision. Reload it before editing.",
+        );
+      }
+
+      let structure: QuoteV2StructureResponse | null = null;
+      try {
+        structure = await mutateQuoteV2Structure(
+          supabase,
+          activeQuoteId,
+          expectedRevision,
+          operations,
+        );
+        updateServerOwnedV2QuoteCache(structure);
+
+        if (structure.lineCount > 0) {
+          const preferredDesignId = preferredLineItemId
+            ? structure.selectedDesigns[preferredLineItemId]
+            : null;
+          const selectedEntry =
+            preferredLineItemId && preferredDesignId
+              ? ([preferredLineItemId, preferredDesignId] as const)
+              : Object.entries(structure.selectedDesigns).find(
+                  (entry): entry is [string, string] =>
+                    typeof entry[1] === "string" && entry[1].length > 0,
+                );
+          if (!selectedEntry) {
+            throw new Error(
+              "Every Quote V2 line needs one selected design before pricing.",
+            );
+          }
+
+          const priced = await priceQuoteV2(supabase, activeQuoteId, {
+            lineItemId: selectedEntry[0],
+            designId: selectedEntry[1],
+            expectedRevision: structure.revision,
+          });
+          updateServerOwnedV2QuoteCache(priced);
+        }
+      } finally {
+        if (structure) {
+          await refreshServerOwnedV2Rows();
+        }
+      }
+    };
+
+    const queued = v2MutationQueueRef.current.then(execute, execute);
+    v2MutationQueueRef.current = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  };
+
   // Update customer info
   const updateQuote = useMutation({
     mutationFn: async (updates: Partial<SalesQuote>) => {
+      if (serverOwnedV2) {
+        const patch = quoteV2QuotePatch(
+          updates as unknown as Record<string, unknown>,
+        );
+        if (Object.keys(patch).length === 0) {
+          throw new Error("That Quote V2 field is not structurally editable.");
+        }
+        await mutateAndRepriceServerOwnedV2([
+          { type: "quote.update", patch },
+        ]);
+        return;
+      }
       const { error } = await (supabase as any)
         .from("sales_quotes")
         .update(updates)
@@ -661,8 +808,13 @@ export function QuoteBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Quote details could not be saved",
+      );
     },
   });
 
@@ -717,6 +869,38 @@ export function QuoteBuilder() {
       if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
         throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
       }
+      if (serverOwnedV2) {
+        const lineItemId = crypto.randomUUID();
+        const designId = crypto.randomUUID();
+        await mutateAndRepriceServerOwnedV2(
+          [
+            {
+              type: "line.create",
+              lineItemId,
+              patch: {
+                roomName: item.room_name,
+                productType: item.product_type,
+                widthWhole: item.width_whole ?? 0,
+                widthFraction: item.width_fraction ?? "0",
+                heightWhole: item.height_whole ?? 0,
+                heightFraction: item.height_fraction ?? "0",
+                quantity: 1,
+                sortOrder: lineItems.length,
+              },
+            },
+            {
+              type: "design.upsert",
+              lineItemId,
+              designId,
+              variant: "A",
+              selectDesign: true,
+              patch: { productType: item.product_type },
+            },
+          ],
+          lineItemId,
+        );
+        return;
+      }
       const { error } = await (supabase as any).from("sales_quote_line_items").insert({
         quote_id: activeQuoteId!,
         room_name: item.room_name,
@@ -731,12 +915,14 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await syncQuoteTotal({ allowZero: true });
+      if (!serverOwnedV2) {
+        await syncQuoteTotal({ allowZero: true });
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
     },
     onError: (error) => {
@@ -747,6 +933,17 @@ export function QuoteBuilder() {
   // Update line item measurements
   const updateLineItem = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<SalesQuoteLineItem>) => {
+      if (serverOwnedV2) {
+        const patch = quoteV2LinePatch(updates);
+        if (Object.keys(patch).length === 0) {
+          throw new Error("That Quote V2 line field is not structurally editable.");
+        }
+        await mutateAndRepriceServerOwnedV2(
+          [{ type: "line.update", lineItemId: id, patch }],
+          id,
+        );
+        return;
+      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .update(updates)
@@ -754,13 +951,20 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Line item could not be updated",
+      );
     },
   });
 
@@ -773,8 +977,31 @@ export function QuoteBuilder() {
       id: string;
       productType: string;
       previousProductType: string;
-    }) =>
-      changeLineItemProductTypeWithRollback({
+    }) => {
+      if (serverOwnedV2) {
+        if (productType === previousProductType) return;
+        const designId = crypto.randomUUID();
+        await mutateAndRepriceServerOwnedV2(
+          [
+            {
+              type: "line.update",
+              lineItemId: id,
+              patch: { productType },
+            },
+            {
+              type: "design.upsert",
+              lineItemId: id,
+              designId,
+              variant: "A",
+              selectDesign: true,
+              patch: { productType },
+            },
+          ],
+          id,
+        );
+        return;
+      }
+      await changeLineItemProductTypeWithRollback({
         lineItemId: id,
         previousProductType,
         nextProductType: productType,
@@ -792,17 +1019,20 @@ export function QuoteBuilder() {
             .eq("line_item_id", id);
           return error;
         },
-      }),
+      });
+    },
     onSuccess: async () => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
+        queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
       toast.success("Product type changed. Design details cleared for the new quote.");
     },
@@ -814,6 +1044,12 @@ export function QuoteBuilder() {
   // Delete line item
   const deleteLineItem = useMutation({
     mutationFn: async (id: string) => {
+      if (serverOwnedV2) {
+        await mutateAndRepriceServerOwnedV2([
+          { type: "line.delete", lineItemId: id },
+        ]);
+        return;
+      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .delete()
@@ -822,8 +1058,13 @@ export function QuoteBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Line item could not be deleted",
+      );
     },
   });
 
@@ -865,6 +1106,21 @@ export function QuoteBuilder() {
       if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
         throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
       }
+      if (serverOwnedV2) {
+        const targetLineItemId = crypto.randomUUID();
+        await mutateAndRepriceServerOwnedV2(
+          [
+            {
+              type: "line.copy",
+              sourceLineItemId: id,
+              targetLineItemId,
+              sortOrder: lineItems.length,
+            },
+          ],
+          targetLineItemId,
+        );
+        return targetLineItemId;
+      }
       const source = lineItems.find((i) => i.id === id);
       if (!source) return;
       const sourceDesigns = designs.filter((design) => design.line_item_id === id);
@@ -903,15 +1159,17 @@ export function QuoteBuilder() {
       }
     },
     onSuccess: async () => {
-      await syncQuoteTotal({ allowZero: true });
+      if (!serverOwnedV2) {
+        await syncQuoteTotal({ allowZero: true });
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
+        queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
       toast.success("Line item copied");
     },
@@ -923,6 +1181,10 @@ export function QuoteBuilder() {
   // Fresh start - clear all line items
   const freshStart = useMutation({
     mutationFn: async () => {
+      if (serverOwnedV2) {
+        await mutateAndRepriceServerOwnedV2([{ type: "lines.clear" }]);
+        return;
+      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .delete()
@@ -930,15 +1192,22 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
       selectProduct(null);
       toast.success("All line items cleared");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Line items could not be cleared",
+      );
     },
   });
 
@@ -948,6 +1217,31 @@ export function QuoteBuilder() {
     mutationFn: async (
       design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
     ) => {
+      if (serverOwnedV2) {
+        const latestDesigns =
+          queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ??
+          designs;
+        const existing = latestDesigns.find(
+          (row) =>
+            row.line_item_id === design.line_item_id &&
+            row.variant === design.variant,
+        );
+        const designId = existing?.id ?? crypto.randomUUID();
+        await mutateAndRepriceServerOwnedV2(
+          [
+            {
+              type: "design.upsert",
+              lineItemId: design.line_item_id,
+              designId,
+              variant: design.variant,
+              selectDesign: true,
+              patch: quoteV2DesignPatch(design),
+            },
+          ],
+          design.line_item_id,
+        );
+        return;
+      }
       const { error } = await (supabase as any).from("sales_quote_designs").upsert(design, {
         onConflict: "line_item_id,variant",
       });
@@ -997,14 +1291,19 @@ export function QuoteBuilder() {
       if (context?.previousDesigns) {
         queryClient.setQueryData(designsQueryKey, context.previousDesigns);
       }
+      toast.error(
+        _error instanceof Error ? _error.message : "Design could not be saved",
+      );
     },
     onSuccess: async () => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
     },
   });
@@ -1034,6 +1333,28 @@ export function QuoteBuilder() {
       );
 
       if (targets.length === 0) throw new Error("No matching line items selected to copy to.");
+
+      if (serverOwnedV2) {
+        const linePatch = quoteV2LinePatch(
+          buildCopiedLineItemPatch(sourceItem),
+        );
+        const operations = targets.flatMap<QuoteV2StructureOperation>(
+          (targetLineItemId) => [
+            {
+              type: "line.update",
+              lineItemId: targetLineItemId,
+              patch: linePatch,
+            },
+            {
+              type: "design.copySet",
+              sourceLineItemId: sourceItemId,
+              targetLineItemId,
+            },
+          ],
+        );
+        await mutateAndRepriceServerOwnedV2(operations, targets[0]);
+        return targets;
+      }
 
       const sourceVariants = sourceDesigns.map((sd) => sd.variant);
       const sourceVariantFilter = `(${sourceVariants.map((variant) => `"${variant}"`).join(",")})`;
@@ -1070,15 +1391,17 @@ export function QuoteBuilder() {
       return targets;
     },
     onSuccess: async (copiedTargetIds, variables) => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
+        queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
       if (variables.mode === "all") {
         clearCopyTargets();
@@ -1128,6 +1451,31 @@ export function QuoteBuilder() {
         applyQuoteDesignDiscount(design, percent)
       );
 
+      if (serverOwnedV2) {
+        const selectedByLine = new Map(
+          lineItems.map((line) => [line.id, line.selected_design_id ?? null]),
+        );
+        const operations = targetDesigns.map<QuoteV2StructureOperation>(
+          (design, index) => ({
+            type: "design.upsert",
+            lineItemId: design.line_item_id,
+            designId: design.id,
+            variant: design.variant,
+            selectDesign:
+              selectedByLine.get(design.line_item_id) === design.id,
+            patch: quoteV2DesignPatch(discountedRows[index]),
+          }),
+        );
+        await mutateAndRepriceServerOwnedV2(
+          operations,
+          targetDesigns[0]?.line_item_id,
+        );
+        return {
+          count: targetDesigns.length,
+          rows: discountedRows,
+        };
+      }
+
       const { error } = await (supabase as any).from("sales_quote_designs").upsert(discountedRows, {
         onConflict: "line_item_id,variant",
       });
@@ -1141,6 +1489,9 @@ export function QuoteBuilder() {
     onMutate: async ({ percent, lineItemIds: targetLineItemIds }) => {
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
       const previousDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey);
+      if (serverOwnedV2) {
+        return { previousDesigns };
+      }
       const targetIds = new Set(targetLineItemIds);
 
       queryClient.setQueryData<SalesQuoteDesign[]>(designsQueryKey, (current = []) =>
@@ -1160,12 +1511,14 @@ export function QuoteBuilder() {
       toast.error(error instanceof Error ? error.message : "Discount could not be applied");
     },
     onSuccess: async (result, variables) => {
-      await syncQuoteTotal();
+      if (!serverOwnedV2) {
+        await syncQuoteTotal();
+      }
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+        queryKey: quoteQueryKey,
       });
       toast.success(
         `${variables.percent}% discount applied to ${result.count} design${
@@ -1410,6 +1763,40 @@ export function QuoteBuilder() {
                 type="button"
                 variant="outline"
                 className="mt-4 border-red-300 bg-white text-red-950 hover:bg-red-100"
+                onClick={() => {
+                  setActiveQuote(null);
+                  setActiveTab("dashboard");
+                }}
+              >
+                Back to quote dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (serverOwnedV2 && quote.quote_v2_backend !== true) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div
+          className="max-w-xl rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-950 shadow-sm"
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
+            <div>
+              <h2 className="text-lg font-black">Historical quote conversion is required</h2>
+              <p className="mt-2 text-sm leading-6">
+                This record is a legacy quote, not a server-authoritative V2 draft. It has been
+                left unchanged so its saved configuration and pricing cannot be silently replaced
+                or edited through the wrong backend.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
                 onClick={() => {
                   setActiveQuote(null);
                   setActiveTab("dashboard");

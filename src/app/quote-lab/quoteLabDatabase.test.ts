@@ -67,6 +67,19 @@ function fixtureWithQuantities(quantities: number[]): QuoteLabFixture {
 
 const fingerprint = `sha256:${"a".repeat(64)}`;
 
+function clientWritableDesign(design: SalesQuoteDesign) {
+  const {
+    quote_v2_selection: _quoteV2Selection,
+    quote_v2_price_status: _quoteV2PriceStatus,
+    quote_v2_selection_fingerprint: _quoteV2SelectionFingerprint,
+    quote_v2_priced_catalog_version: _quoteV2PricedCatalogVersion,
+    quote_v2_priced_at: _quoteV2PricedAt,
+    current_v2_snapshot_id: _currentV2SnapshotId,
+    ...writable
+  } = design;
+  return writable;
+}
+
 const pricedFixture: QuoteLabFixture = {
   id: "snapshot-persistence",
   name: "snapshot-persistence",
@@ -500,7 +513,7 @@ describe("V2 authoritative price persistence", () => {
     const save = await database
       .from("sales_quote_designs")
       .upsert({
-        ...savedDesign,
+        ...clientWritableDesign(savedDesign),
         options_json: {
           ...savedDesign.options_json,
           fabric_color_code: "F1490",
@@ -600,7 +613,7 @@ describe("V2 authoritative price persistence", () => {
       database
         .from("sales_quote_designs")
         .upsert({
-          ...savedDesign,
+          ...clientWritableDesign(savedDesign),
           options_json: {
             ...savedDesign.options_json,
             fabric_color_code: "STALE",
@@ -614,7 +627,7 @@ describe("V2 authoritative price persistence", () => {
       database
         .from("sales_quote_designs")
         .upsert({
-          ...savedDesign,
+          ...clientWritableDesign(savedDesign),
           options_json: {
             ...savedDesign.options_json,
             fabric_color_code: "LATEST",
@@ -701,7 +714,7 @@ describe("V2 authoritative price persistence", () => {
         database
           .from("sales_quote_designs")
           .upsert({
-            ...savedDesign,
+            ...clientWritableDesign(savedDesign),
             options_json: {
               ...savedDesign.options_json,
               fabric_color_code: fabricColorCode,

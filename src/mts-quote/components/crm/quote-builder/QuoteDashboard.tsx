@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@mts/integrations/supabase/client";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
@@ -31,6 +31,7 @@ import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { SalesQuoteV2RouteResolution } from "@/lib/crm/sales-quote-v2-route-resolver";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
+import { createQuoteV2Draft } from "@mts/lib/quoteV2ServerClient";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
@@ -132,6 +133,10 @@ export function QuoteDashboard({
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
+  const {
+    database: supabase,
+    serverOwnedV2,
+  } = useQuoteBuilderDatabase();
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
@@ -332,6 +337,24 @@ export function QuoteDashboard({
   const createQuote = useMutation({
     mutationFn: async (formData: NewQuoteData) => {
       const submittedAccountId = quoteOperatorMode ? ACCOUNT_IDS.SHUTTERS_805 : formData.accountId;
+      if (serverOwnedV2) {
+        if (submittedAccountId !== ACCOUNT_IDS.SHUTTERS_805) {
+          throw new Error(
+            "Authoritative Quote V2 currently creates 805 Shutters drafts only.",
+          );
+        }
+        const created = await createQuoteV2Draft(supabase, {
+          customerName: formData.customerName,
+          customerPhone: formData.customerPhone || null,
+          customerAddress: formData.customerAddress || null,
+          customerEmail: formData.customerEmail || null,
+        });
+        return {
+          quoteId: created.quoteId,
+          quoteNumber: created.quoteNumber,
+          accountId: ACCOUNT_IDS.SHUTTERS_805,
+        };
+      }
       const account = QUOTE_ACCOUNTS.find((a) => a.id === submittedAccountId) || QUOTE_ACCOUNTS[0];
       const { data: session } = await supabase.auth.getSession();
       const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
@@ -361,15 +384,20 @@ export function QuoteDashboard({
         .select()
         .single();
       if (error) throw error;
-      return data as SalesQuote;
+      const quote = data as SalesQuote;
+      return {
+        quoteId: quote.id,
+        quoteNumber: quote.quote_number,
+        accountId: quote.account_id,
+      };
     },
     onSuccess: (quote) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      setAccountId(quote.account_id);
-      setActiveQuote(quote.id);
+      setAccountId(quote.accountId);
+      setActiveQuote(quote.quoteId);
       setActiveTab("builder");
       setShowNewQuoteDialog(false);
-      toast.success(`Quote ${quote.quote_number} created`);
+      toast.success(`Quote ${quote.quoteNumber} created`);
     },
     onError: (error) => {
       toast.error("Failed to create quote: " + error.message);
@@ -382,48 +410,61 @@ export function QuoteDashboard({
         return { quoteId: appointment.quote_id, created: false };
       }
 
-      const account = QUOTE_ACCOUNTS.find((a) => a.id === ACCOUNT_IDS.SHUTTERS_805);
-      const { data: session } = await supabase.auth.getSession();
-      const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
-        "next_quote_number",
-        {
-          account_prefix: account?.prefix || "805",
-        }
-      );
-      if (numError) throw numError;
-      const salesOwnerPatch = await getCurrentQuoteSalesOwnerPatch();
+      let quoteId: string;
+      if (serverOwnedV2) {
+        const created = await createQuoteV2Draft(supabase, {
+          customerName: appointment.customer_name,
+          customerPhone: appointment.customer_phone || null,
+          customerEmail: appointment.customer_email || null,
+          customerAddress: appointment.customer_address || null,
+          appointmentDate: appointment.appointment_date,
+        });
+        quoteId = created.quoteId;
+      } else {
+        const account = QUOTE_ACCOUNTS.find((a) => a.id === ACCOUNT_IDS.SHUTTERS_805);
+        const { data: session } = await supabase.auth.getSession();
+        const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
+          "next_quote_number",
+          {
+            account_prefix: account?.prefix || "805",
+          }
+        );
+        if (numError) throw numError;
+        const salesOwnerPatch = await getCurrentQuoteSalesOwnerPatch();
 
-      const { data: quote, error: quoteError } = await (supabase as any)
-        .from("sales_quotes")
-        .insert({
-          quote_number: quoteNumber,
-          account_id: ACCOUNT_IDS.SHUTTERS_805,
-          status: "draft",
-          customer_name: appointment.customer_name,
-          customer_phone: appointment.customer_phone || null,
-          customer_email: appointment.customer_email || null,
-          customer_address: appointment.customer_address || null,
-          appointment_date: appointment.appointment_date,
-          created_by: session?.session?.user?.id || null,
-          ...(salesOwnerPatch || {}),
-        })
-        .select()
-        .single();
-      if (quoteError) throw quoteError;
+        const { data: quote, error: quoteError } = await (supabase as any)
+          .from("sales_quotes")
+          .insert({
+            quote_number: quoteNumber,
+            account_id: ACCOUNT_IDS.SHUTTERS_805,
+            status: "draft",
+            customer_name: appointment.customer_name,
+            customer_phone: appointment.customer_phone || null,
+            customer_email: appointment.customer_email || null,
+            customer_address: appointment.customer_address || null,
+            appointment_date: appointment.appointment_date,
+            created_by: session?.session?.user?.id || null,
+            ...(salesOwnerPatch || {}),
+          })
+          .select()
+          .single();
+        if (quoteError) throw quoteError;
+        quoteId = quote.id as string;
+      }
 
       const updateBuilder =
         appointment.sourceType === "sales_805"
           ? (supabase as any)
               .from("sales_805_appointments")
-              .update({ quote_id: quote.id })
+              .update({ quote_id: quoteId })
               .eq("id", appointment.sourceId)
           : (supabase as any)
               .from("crm_calendar_events")
               .update({
                 meta: {
                   ...(appointment.crmEventMeta || {}),
-                  mts_quote_id: quote.id,
-                  sales_quote_id: quote.id,
+                  mts_quote_id: quoteId,
+                  sales_quote_id: quoteId,
                 },
               })
               .eq("id", appointment.sourceId);
@@ -431,7 +472,7 @@ export function QuoteDashboard({
       const { error: appointmentError } = await updateBuilder;
       if (appointmentError) throw appointmentError;
 
-      return { quoteId: quote.id as string, created: true };
+      return { quoteId, created: true };
     },
     onSuccess: ({ quoteId, created }, appointment) => {
       setAppointmentQuoteIds((current) => ({ ...current, [appointment.id]: quoteId }));
@@ -450,6 +491,11 @@ export function QuoteDashboard({
   // Copy quote
   const copyQuote = useMutation({
     mutationFn: async (quoteId: string) => {
+      if (serverOwnedV2) {
+        throw new Error(
+          "Whole-quote copy is blocked until the server can preserve selected designs and authoritative price locks.",
+        );
+      }
       const { data: original, error: fetchErr } = await (supabase as any)
         .from("sales_quotes")
         .select("*")
@@ -521,6 +567,11 @@ export function QuoteDashboard({
   // Delete quote
   const deleteQuote = useMutation({
     mutationFn: async (quoteId: string) => {
+      if (serverOwnedV2) {
+        throw new Error(
+          "Quote V2 deletion is blocked; archive support must be server-owned.",
+        );
+      }
       const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
       if (error) throw error;
     },
