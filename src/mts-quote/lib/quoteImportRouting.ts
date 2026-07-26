@@ -35,6 +35,7 @@ function externalQuoteId(value: unknown): string | null {
  */
 export function crmQuoteSourceSalesQuoteId(quote: CrmQuoteLinkSource): string | null {
   return (
+    nonEmptyString(quote.meta?.target_sales_quote_id) ||
     nonEmptyString(quote.meta?.sales_quote_id) ||
     nonEmptyString(quote.meta?.mts_quote_id) ||
     externalQuoteId(quote.external_id)
@@ -45,16 +46,19 @@ export function resolveCrmQuoteBuilderRoute(
   quote: CrmQuoteLinkSource,
   localSalesQuoteIds: ReadonlySet<string>,
 ): CrmQuoteBuilderRoute {
+  const typedTargetSalesQuoteId = nonEmptyString(quote.meta?.target_sales_quote_id);
   const explicitSalesQuoteId = nonEmptyString(quote.meta?.sales_quote_id);
   const mtsSourceQuoteId = nonEmptyString(quote.meta?.mts_quote_id);
   const externalSourceQuoteId = externalQuoteId(quote.external_id);
-  const candidateIds = Array.from(
-    new Set(
-      [explicitSalesQuoteId, mtsSourceQuoteId, externalSourceQuoteId].filter(
-        (value): value is string => Boolean(value),
-      ),
-    ),
-  );
+  const candidateIds = typedTargetSalesQuoteId
+    ? [typedTargetSalesQuoteId]
+    : Array.from(
+        new Set(
+          [explicitSalesQuoteId, mtsSourceQuoteId, externalSourceQuoteId].filter(
+            (value): value is string => Boolean(value),
+          ),
+        ),
+      );
   const sourceSystemQuoteId = candidateIds[0] ?? null;
 
   if (candidateIds.length > 1) {

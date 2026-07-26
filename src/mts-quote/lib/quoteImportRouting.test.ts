@@ -64,6 +64,26 @@ describe("historical quote V2 routing", () => {
     ).toBe("sales-quote");
   });
 
+  it("uses the typed imported target without confusing it with source provenance", () => {
+    const quote = {
+      id: "crm-quote",
+      meta: {
+        target_sales_quote_id: " local-sales-quote ",
+        mts_quote_id: "foreign-mts-quote",
+      },
+      external_id: "quote:foreign-mts-quote",
+    };
+
+    expect(crmQuoteSourceSalesQuoteId(quote)).toBe("local-sales-quote");
+    expect(
+      resolveCrmQuoteBuilderRoute(quote, new Set(["local-sales-quote"])),
+    ).toEqual({
+      kind: "v2",
+      crmQuoteId: "crm-quote",
+      salesQuoteId: "local-sales-quote",
+    });
+  });
+
   it("fails closed when two untyped metadata links disagree", () => {
     expect(
       resolveCrmQuoteBuilderRoute(
