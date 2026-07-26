@@ -113,6 +113,7 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("Known base cost per window");
     expect(html).toContain("Landed cost unresolved");
     expect(html).toContain("Gross margin");
+    expect(html).toMatch(/Gross profit dollars[\s\S]*?—/);
     expect(html).not.toContain("70.0%");
   });
 

@@ -982,7 +982,11 @@ export function PricingAuditPanel({
                 ) : (
                   <>
                     <DetailRow label="Retail line revenue" value={money(retailLineTotal)} />
-                    <DetailRow label="Gross profit dollars" value={money(grossProfit)} emphasized />
+                    <DetailRow
+                      label="Gross profit dollars"
+                      value={grossProfit === null ? "—" : money(grossProfit)}
+                      emphasized
+                    />
                     <DetailRow
                       label="Gross margin"
                       value={grossMargin === null ? "—" : `${grossMargin.toFixed(1)}%`}
