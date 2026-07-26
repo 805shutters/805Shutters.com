@@ -191,6 +191,22 @@ describe("buildPricingReference", () => {
     expect(lotus!.costs.flat().some((cost) => cost !== null)).toBe(true);
   });
 
+  it("surfaces the blocking Lotus FLX source reconciliation in the staff ledger", () => {
+    const flx = ref.programs.find(
+      (program) =>
+        program.programId === "lotus_flx_2in_bright_white_custom",
+    );
+    expect(flx).toMatchObject({
+      provenanceStatus: "source_conflict",
+      customerPriceEligible: false,
+      authorityFindings: [
+        { code: "SOURCE_PRICE_CONFLICT", blocking: true },
+        { code: "PORTAL_METADATA_CONFLICT", blocking: true },
+        { code: "EFFECTIVE_DATE_MISSING", blocking: true },
+      ],
+    });
+  });
+
   it("keeps product-specific motorization price maps in the pricing reference", () => {
     const smart = ref.motorization.find((group) => group.groupId === "smart_motorization")!;
     const motor = smart.options.find((option) => option.id === "motor")!;

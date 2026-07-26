@@ -175,6 +175,12 @@ export function PricingGuidePanel({ session }: Props) {
   const blockedPrograms = visiblePrograms.filter(
     (program) => !program.customerPriceEligible,
   ).length;
+  const conflictedPrograms = visiblePrograms.filter(
+    (program) => program.provenanceStatus === "source_conflict",
+  ).length;
+  const undatedPrograms = visiblePrograms.filter(
+    (program) => program.provenanceStatus === "effective_date_missing",
+  ).length;
 
   if (error) {
     return (
@@ -218,6 +224,12 @@ export function PricingGuidePanel({ session }: Props) {
             </span>
             <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">
               {blockedPrograms} customer-price blocked
+            </span>
+            <span className="rounded-full bg-red-100 px-3 py-1 text-red-800">
+              {conflictedPrograms} source conflicts
+            </span>
+            <span className="rounded-full bg-slate-200 px-3 py-1 text-slate-700">
+              {undatedPrograms} effective dates missing
             </span>
           </div>
         </div>
@@ -330,6 +342,19 @@ function ProgramPricingCard({ program }: { program: UiPricingReferenceProgram })
           <span className="text-slate-600">Dealer factor {program.dealerFactor.toFixed(2)}</span>
         ) : null}
       </div>
+      {program.authorityFindings.length ? (
+        <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-xs text-red-950">
+          <strong className="block">Authority reconciliation blocked</strong>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {program.authorityFindings.map((finding) => (
+              <li key={finding.code}>
+                <span className="font-bold">{finding.summary}:</span>{" "}
+                {finding.detail}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       {program.priceAxis === "sqft" ? <SqftPricing program={program} /> : <PriceGridTable program={program} />}
       <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
         <strong className="text-slate-800">

@@ -14,6 +14,7 @@ import {
   type WholesaleLedgerSource,
   type WholesaleProvenanceStatus,
 } from "./wholesale-ledger";
+import type { WholesaleAuthorityFinding } from "./lotus-authority";
 import type { ProductCatalogStatus } from "@/lib/quote-v2/catalog";
 
 export type UiProgram = {
@@ -135,6 +136,7 @@ export type UiPricingReferenceProgram = {
   provenanceStatus: WholesaleProvenanceStatus;
   productStatus: ProductCatalogStatus;
   customerPriceEligible: boolean;
+  authorityFindings: readonly WholesaleAuthorityFinding[];
   priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   costBasis: WholesaleCostBasis | null;
   costCoverage: "complete" | "partial" | "missing";
@@ -305,6 +307,7 @@ export function buildPricingReference(): UiPricingReference {
         provenanceStatus: status.provenanceStatus,
         productStatus: status.productStatus,
         customerPriceEligible: status.customerPriceEligible,
+        authorityFindings: status.authorityFindings,
         priceBasis:
           program.priceBasis ?? product.priceBasis ?? "suggested_retail",
         costBasis: status.basis,

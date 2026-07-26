@@ -5,6 +5,7 @@ import {
   PricingAuditPanel,
   type PricingAuditWholesaleCost,
 } from "./PricingAuditPanel";
+import { lookupWholesaleLedgerCost } from "@/lib/quote/wholesale-ledger";
 
 function renderCost(cost: PricingAuditWholesaleCost, savedUnitPrice: number, basePrice: number) {
   return renderToStaticMarkup(createElement(PricingAuditPanel, {
@@ -115,6 +116,48 @@ describe("PricingAuditPanel authoritative wholesale cost", () => {
     expect(html).toContain("Gross margin");
     expect(html).toMatch(/Gross profit dollars[\s\S]*?—/);
     expect(html).not.toContain("70.0%");
+  });
+
+  it("shows the exact Lotus authority conflict in Why this price", () => {
+    const canonicalWholesaleCost = lookupWholesaleLedgerCost({
+      productId: "lotus_faux_wood_blinds",
+      programId: "lotus_flx_2in_bright_white_custom",
+      widthInches: 59,
+      heightInches: 60,
+    });
+    if (!canonicalWholesaleCost.ok) {
+      throw new Error(canonicalWholesaleCost.error);
+    }
+    const html = renderToStaticMarkup(createElement(PricingAuditPanel, {
+      productType: "Faux Wood Blinds",
+      supplier: "Lotus",
+      programName: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+      widthIn: 59,
+      heightIn: 60,
+      rawSqft: null,
+      billableSqft: null,
+      quantity: 1,
+      savedUnitPrice: 0,
+      options: {
+        authoritative_price_breakdown: {
+          ok: false,
+          code: "CUSTOMER_RETAIL_UNDEFINED",
+        },
+      },
+      currentRetailPerSqft: null,
+      wholesaleRate: null,
+      tariffPercent: 0,
+      surcharges: [],
+      authoritativeWholesaleCost: null,
+      canonicalWholesaleCost,
+    }));
+
+    expect(html).toContain("Why this price?");
+    expect(html).toContain("$53.81");
+    expect(html).toContain("Dealer guide and current portal prices conflict");
+    expect(html).toContain("Nine exact FLX Bright White SKUs show $105 each");
+    expect(html).toContain("Two portal SKU descriptions conflict");
+    expect(html).toContain("Customer retail is blocked");
   });
 
   it("itemizes the exact Norman Roller base, fabric, accessories, and AutoWand prices", () => {

@@ -12,6 +12,10 @@ import {
   getSourceManifestEntry,
   type SourceManifestEntry,
 } from "@/lib/quote-v2/source-manifest";
+import {
+  wholesaleAuthorityFindings,
+  type WholesaleAuthorityFinding,
+} from "./lotus-authority";
 
 export type WholesaleCostBasis =
   | "dealer_net_grid"
@@ -20,6 +24,7 @@ export type WholesaleCostBasis =
 
 export type WholesaleProvenanceStatus =
   | "complete"
+  | "source_conflict"
   | "effective_date_missing"
   | "source_missing"
   | "provisional";
@@ -59,6 +64,7 @@ export type WholesaleCostSuccess = Readonly<{
   provenanceStatus: WholesaleProvenanceStatus;
   productStatus: ProductCatalogStatus;
   customerPriceEligible: boolean;
+  authorityFindings?: readonly WholesaleAuthorityFinding[];
 }>;
 
 export type WholesaleCostFailure = Readonly<{
@@ -90,6 +96,7 @@ export type WholesaleLedgerProgramStatus = Readonly<{
   source: WholesaleLedgerSource | null;
   productStatus: ProductCatalogStatus;
   customerPriceEligible: boolean;
+  authorityFindings: readonly WholesaleAuthorityFinding[];
 }>;
 
 const roundMoney = (value: number) => Math.round(value * 100) / 100;
@@ -147,8 +154,12 @@ function ledgerSource(
 
 function provenanceStatus(
   product: CatalogProduct,
+  program: CatalogProgram,
   source: WholesaleLedgerSource | null,
 ): WholesaleProvenanceStatus {
+  if (wholesaleAuthorityFindings(product.id, program.id).length > 0) {
+    return "source_conflict";
+  }
   if (product.provisional === true) return "provisional";
   if (!source) return "source_missing";
   return source.effectiveDate ? "complete" : "effective_date_missing";
@@ -164,12 +175,14 @@ function customerPriceEligible(
 ): boolean {
   const status = productStatus(product.id);
   const basis = effectiveBasis(product, program);
+  const findings = wholesaleAuthorityFindings(product.id, program.id);
   return (
     (status === "complete" || status === "documented_limited") &&
     basis === "suggested_retail" &&
     product.customerRetailStatus !== "unverified" &&
     product.provisional !== true &&
-    product.freightStatus !== "unresolved"
+    product.freightStatus !== "unresolved" &&
+    findings.length === 0
   );
 }
 
@@ -243,6 +256,7 @@ export function wholesaleLedgerProgramStatus(
   program: CatalogProgram,
 ): WholesaleLedgerProgramStatus {
   const source = ledgerSource(product, program);
+  const authorityFindings = wholesaleAuthorityFindings(product.id, program.id);
   const squareFootCost = canonicalWholesaleCostPerSqft(product, program);
   const gridCosts = canonicalWholesaleCostGrid(product, program);
   const cells = gridCosts.flat();
@@ -273,10 +287,11 @@ export function wholesaleLedgerProgramStatus(
         : unavailableCellCount === 0
           ? "complete"
           : "partial",
-    provenanceStatus: provenanceStatus(product, source),
+    provenanceStatus: provenanceStatus(product, program, source),
     source,
     productStatus: productStatus(product.id),
     customerPriceEligible: customerPriceEligible(product, program),
+    authorityFindings,
   };
 }
 
@@ -436,6 +451,7 @@ export function lookupWholesaleLedgerCost(input: Readonly<{
     return fail("INVALID_QUANTITY", "Quantity must be a positive whole number.");
   }
   const source = ledgerSource(product, program);
+  const authorityFindings = wholesaleAuthorityFindings(product.id, program.id);
   return {
     ok: true,
     productId: product.id,
@@ -456,8 +472,9 @@ export function lookupWholesaleLedgerCost(input: Readonly<{
     wholesaleUnitCost: wholesaleBase,
     wholesaleTotal: roundMoney(wholesaleBase * quantity),
     source,
-    provenanceStatus: provenanceStatus(product, source),
+    provenanceStatus: provenanceStatus(product, program, source),
     productStatus: productStatus(product.id),
     customerPriceEligible: customerPriceEligible(product, program),
+    authorityFindings,
   };
 }

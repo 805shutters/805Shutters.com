@@ -861,6 +861,14 @@ export function PricingAuditPanel({
                     }
                   />
                 )}
+                {canonicalWholesaleSuccess?.authorityFindings?.map((finding) => (
+                  <div
+                    key={finding.code}
+                    className="mt-2 rounded-md border border-red-300 bg-red-50 px-2 py-1.5 text-red-950"
+                  >
+                    <strong>{finding.summary}:</strong> {finding.detail}
+                  </div>
+                ))}
                 {tariffPercent > 0 && !authoritativeWholesaleCost && <DetailRow label="Tariff" value={`${tariffPercent}%`} />}
                 {displayedWholesaleComponents ? (
                   <div aria-label="Authoritative wholesale price components">
