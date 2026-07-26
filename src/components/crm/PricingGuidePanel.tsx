@@ -101,6 +101,7 @@ function productLabel(product: UiPricingReferenceProduct) {
 
 export function PricingGuidePanel({ session }: Props) {
   const [reference, setReference] = useState<UiPricingReference | null>(null);
+  const [activeManufacturer, setActiveManufacturer] = useState("");
   const [activeProductId, setActiveProductId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -112,6 +113,13 @@ export function PricingGuidePanel({ session }: Props) {
         if (!active) return;
         const products = sortProducts(nextReference.products);
         setReference(nextReference);
+        setActiveManufacturer((current) =>
+          current && products.some((product) => product.manufacturer === current)
+            ? current
+            : products.find((product) => product.manufacturer === "Norman")?.manufacturer ||
+              products[0]?.manufacturer ||
+              "",
+        );
         setActiveProductId((current) =>
           current && products.some((product) => product.productId === current)
             ? current
@@ -127,6 +135,21 @@ export function PricingGuidePanel({ session }: Props) {
   }, [session]);
 
   const products = useMemo(() => sortProducts(reference?.products || []), [reference]);
+  const manufacturers = useMemo(
+    () =>
+      [...new Set(products.map((product) => product.manufacturer))].sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    [products],
+  );
+  const manufacturerProducts = useMemo(
+    () =>
+      products.filter(
+        (product) =>
+          !activeManufacturer || product.manufacturer === activeManufacturer,
+      ),
+    [activeManufacturer, products],
+  );
   const programsByProduct = useMemo(() => {
     const map = new Map<string, UiPricingReferenceProgram[]>();
     for (const program of reference?.programs || []) {
@@ -137,8 +160,21 @@ export function PricingGuidePanel({ session }: Props) {
     return map;
   }, [reference]);
 
-  const activeProduct = products.find((product) => product.productId === activeProductId) || products[0];
+  const activeProduct =
+    manufacturerProducts.find((product) => product.productId === activeProductId) ||
+    manufacturerProducts[0];
   const activePrograms = activeProduct ? programsByProduct.get(activeProduct.productId) || [] : [];
+  const allPrograms = reference?.programs ?? [];
+  const visiblePrograms = allPrograms.filter(
+    (program) =>
+      !activeManufacturer || program.manufacturer === activeManufacturer,
+  );
+  const completeCostPrograms = visiblePrograms.filter(
+    (program) => program.costCoverage === "complete",
+  ).length;
+  const blockedPrograms = visiblePrograms.filter(
+    (program) => !program.customerPriceEligible,
+  ).length;
 
   if (error) {
     return (
@@ -166,8 +202,53 @@ export function PricingGuidePanel({ session }: Props) {
         </div>
       </div>
 
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+              Internal wholesale cost ledger
+            </p>
+            <p className="mt-1 text-sm text-slate-700">
+              Canonical source used by quote calculation. Cost and margin data are staff-only.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs font-bold">
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">
+              {completeCostPrograms} complete cost grids
+            </span>
+            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-900">
+              {blockedPrograms} customer-price blocked
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="crm-pricing-tabs" role="tablist" aria-label="Pricing manufacturers">
+        {manufacturers.map((manufacturer) => (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeManufacturer === manufacturer}
+            className={activeManufacturer === manufacturer ? "active" : ""}
+            key={manufacturer}
+            onClick={() => {
+              setActiveManufacturer(manufacturer);
+              const firstProduct = products.find(
+                (product) => product.manufacturer === manufacturer,
+              );
+              setActiveProductId(firstProduct?.productId ?? "");
+            }}
+          >
+            {manufacturer}
+            <span>
+              {products.filter((product) => product.manufacturer === manufacturer).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
       <div className="crm-pricing-tabs" role="tablist" aria-label="Pricing product groups">
-        {products.map((product) => {
+        {manufacturerProducts.map((product) => {
           const count = programsByProduct.get(product.productId)?.length || 0;
           return (
             <button
@@ -189,7 +270,7 @@ export function PricingGuidePanel({ session }: Props) {
         <div>
           <h3>{activeProduct.productName}</h3>
           <p>
-            {activeProduct.productType.replaceAll("_", " ")}
+            {activeProduct.manufacturer} · {activeProduct.productType.replaceAll("_", " ")}
             {activeProduct.provisional ? " - provisional MTS pricing" : ""}
           </p>
         </div>
@@ -210,6 +291,16 @@ export function PricingGuidePanel({ session }: Props) {
 }
 
 function ProgramPricingCard({ program }: { program: UiPricingReferenceProgram }) {
+  const coverageLabel =
+    program.costCoverage === "complete"
+      ? "Wholesale complete"
+      : program.costCoverage === "partial"
+        ? "Wholesale partial"
+        : "Wholesale missing";
+  const provenanceLabel =
+    program.provenanceStatus === "complete"
+      ? "Provenance complete"
+      : program.provenanceStatus.replaceAll("_", " ");
   return (
     <article className="crm-pricing-program-card">
       <header>
@@ -225,7 +316,36 @@ function ProgramPricingCard({ program }: { program: UiPricingReferenceProgram })
           {program.maxHeight ? ` / Max H ${program.maxHeight}"` : ""}
         </span>
       </header>
+      <div className="flex flex-wrap gap-2 border-y border-slate-100 bg-slate-50 px-4 py-2 text-[11px] font-bold">
+        <span className={program.costCoverage === "complete" ? "text-emerald-700" : "text-amber-800"}>
+          {coverageLabel} ({program.costCellCount}/{program.totalCellCount || 1})
+        </span>
+        <span className={program.provenanceStatus === "complete" ? "text-emerald-700" : "text-amber-800"}>
+          {provenanceLabel}
+        </span>
+        <span className={program.customerPriceEligible ? "text-emerald-700" : "text-red-700"}>
+          {program.customerPriceEligible ? "Customer pricing eligible" : "Customer pricing blocked"}
+        </span>
+        {program.dealerFactor != null ? (
+          <span className="text-slate-600">Dealer factor {program.dealerFactor.toFixed(2)}</span>
+        ) : null}
+      </div>
       {program.priceAxis === "sqft" ? <SqftPricing program={program} /> : <PriceGridTable program={program} />}
+      <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+        <strong className="text-slate-800">
+          {program.sourceTitle || program.source || "Source not pinned"}
+        </strong>
+        <span>
+          {" "}· revision {program.sourceRevision || "unknown"} · effective{" "}
+          {program.sourceEffectiveDate || "not stated"}
+          {program.sourcePages.length ? ` · pages ${program.sourcePages.join(", ")}` : ""}
+        </span>
+        {program.sourceSha256 ? (
+          <code className="mt-1 block break-all text-[10px] text-slate-500">
+            SHA-256 {program.sourceSha256}
+          </code>
+        ) : null}
+      </div>
       {program.notes.length ? (
         <ul className="crm-pricing-notes">
           {program.notes.map((note) => (
@@ -309,7 +429,18 @@ function PriceGridTable({ program }: { program: UiPricingReferenceProgram }) {
 }
 
 function PriceCell({ price, cost }: { price: number | null | undefined; cost: number | null | undefined }) {
-  if (price == null) return <span className="crm-pricing-empty-cell">-</span>;
+  if (price == null && cost == null) return <span className="crm-pricing-empty-cell">N/A</span>;
+  if (price == null && cost != null) {
+    return (
+      <span
+        className="crm-pricing-price-pair"
+        aria-label={`Wholesale cost ${money(cost)}. Customer retail is not defined.`}
+      >
+        <span className="crm-pricing-cost-price">{money(cost)} cost</span>
+        <span className="text-[10px] text-red-700">retail blocked</span>
+      </span>
+    );
+  }
   if (cost == null) {
     return (
       <span className="crm-pricing-price-pair" aria-label={`Retail ${money(price)}. No source-backed cost.`}>

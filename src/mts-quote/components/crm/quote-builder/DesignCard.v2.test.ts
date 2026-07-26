@@ -19,6 +19,7 @@ import {
   buildLegacyRomanLiftSystemUpdate,
   buildLegacyShutterRouteUpdate,
   canonicalRollerMotorizationSelections,
+  canonicalLedgerIdentity,
   getStandardShutterGridOptions,
   ManufacturerCatalogStampChooser,
   needsShutterRoutePatch,
@@ -65,6 +66,38 @@ function catalogProduct(
 }
 
 describe("V2 exact-interface contract", () => {
+  it("resolves wholesale ledger identity by manufacturer and fails closed on ambiguous or unknown fabric", () => {
+    expect(
+      canonicalLedgerIdentity(
+        { supplier: "Lotus" } as SalesQuoteDesign,
+        "Mini Blinds",
+        {},
+      ),
+    ).toEqual({
+      productId: "lotus_mini_blinds",
+      programId: "lotus_amx_1in_aluminum_custom",
+    });
+
+    expect(
+      canonicalLedgerIdentity(
+        { supplier: "Polar" } as SalesQuoteDesign,
+        "Roller Shades",
+        {},
+      ),
+    ).toBeNull();
+
+    expect(
+      canonicalLedgerIdentity(
+        {
+          supplier: "Norman",
+          fabric: "Unknown fabric that is not in the pinned catalog",
+        } as SalesQuoteDesign,
+        "Honeycomb Shades",
+        {},
+      ),
+    ).toBeNull();
+  });
+
   it("preserves the exact legacy Roller lift and top-treatment update shapes", () => {
     const legacyDesign = {
       motor_type: "Legacy saved motor",

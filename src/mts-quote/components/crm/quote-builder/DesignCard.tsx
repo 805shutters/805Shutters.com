@@ -235,6 +235,8 @@ import {
   isMarkedSelectedQuoteDesign,
   preferredSavedQuoteVariant,
 } from "@/lib/quote-v2/selected-design";
+import { getProduct } from "@/lib/quote/catalog";
+import { lookupWholesaleLedgerCost } from "@/lib/quote/wholesale-ledger";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
@@ -1178,6 +1180,123 @@ function getShutterProgramPricing(
   return programs.find((program) => program.name === programName) ?? null;
 }
 
+const CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  norman: {
+    "Honeycomb Shades": "honeycomb",
+    "Roller Shades": "roller",
+    "Roman Shades": "roman",
+    "Sheer Shades": "perfectsheer",
+    "Mini Blinds": "citylights_aluminum",
+    "Vertical Blinds": "synchrony_vertical",
+    "Wood Blinds": "wood_blinds",
+    "Smart Drapes": "smartdrape",
+  },
+  lotus: {
+    "Mini Blinds": "lotus_mini_blinds",
+    "Faux Wood Blinds": "lotus_faux_wood_blinds",
+    "Roller Shades": "lotus_roller_shades",
+    "Vertical Blinds": "lotus_vertical_blinds",
+    "Vinyl Blinds": "lotus_vinyl_blinds",
+  },
+};
+
+const ONYX_PROGRAM_ID_BY_NAME: Readonly<Record<string, string>> = {
+  "painted basswood": "painted_basswood",
+  "stained basswood": "stained_basswood",
+  secamore: "secamore",
+  vinyl: "vinyl",
+  "vlo hybrid": "vlo_hybrid",
+  hybrid: "vlo_hybrid",
+  "onyx us made vinyl": "onyx_us_made_vinyl",
+  "poly composite": "poly_composite",
+};
+
+function normalizedCatalogLabel(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/u\.s\./g, "us")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function canonicalLedgerIdentity(
+  design: SalesQuoteDesign | undefined,
+  productType: string,
+  options: Record<string, unknown>,
+): { productId: string; programId: string } | null {
+  if (!design) return null;
+  const explicitProductId =
+    stringOption(options, "catalog_product_id") ||
+    stringOption(options, "quote_lab_product_id") ||
+    stringOption(options, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
+  const supplierKey = normalizedCatalogLabel(design.supplier);
+  let productId: string | null =
+    explicitProductId ??
+    CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE[supplierKey]?.[productType] ??
+    null;
+  if (productType === "Shutters") {
+    productId =
+      supplierKey === "onyx"
+        ? "onyx_shutters"
+        : supplierKey === "norman"
+          ? "norman_shutters"
+          : explicitProductId;
+  } else if (productType === "Faux Wood Blinds") {
+    const productLine = normalizedCatalogLabel(options.product_line);
+    productId =
+      explicitProductId ??
+      (supplierKey === "lotus"
+        ? "lotus_faux_wood_blinds"
+        : supplierKey === "norman"
+          ? productLine.includes("ultimate")
+            ? "faux_wood"
+            : "smartprivacy_faux"
+          : null);
+  }
+  if (!productId) return null;
+  const product = getProduct(productId);
+  if (!product) return null;
+
+  const explicitProgramId =
+    stringOption(options, "catalog_program_id") ||
+    stringOption(options, "quote_lab_program_id") ||
+    stringOption(options, PRODUCT_COLOR_PROGRAM_DETAIL);
+  if (
+    explicitProgramId &&
+    product.programs.some((program) => program.id === explicitProgramId)
+  ) {
+    return { productId, programId: explicitProgramId };
+  }
+
+  if (design.fabric && product.fabricRouting) {
+    const routedProgramId = product.fabricRouting[design.fabric];
+    if (!routedProgramId) return null;
+    return { productId, programId: routedProgramId };
+  }
+
+  const selectedProgramName =
+    getShutterProgramName(design) || design.material || "";
+  if (productId === "onyx_shutters") {
+    const onyxProgramId =
+      ONYX_PROGRAM_ID_BY_NAME[normalizedCatalogLabel(selectedProgramName)];
+    if (
+      onyxProgramId &&
+      product.programs.some((program) => program.id === onyxProgramId)
+    ) {
+      return { productId, programId: onyxProgramId };
+    }
+  }
+  const matchingProgram = product.programs.find(
+    (program) =>
+      normalizedCatalogLabel(program.name) ===
+      normalizedCatalogLabel(selectedProgramName),
+  );
+  if (matchingProgram) return { productId, programId: matchingProgram.id };
+  return !normalizedCatalogLabel(selectedProgramName) && product.programs.length === 1
+    ? { productId, programId: product.programs[0].id }
+    : null;
+}
+
 function PriceExplanation({
   design,
   productType,
@@ -1220,6 +1339,15 @@ function PriceExplanation({
     (storedWholesaleCost as Record<string, unknown>).ok === true
       ? (storedWholesaleCost as PricingAuditWholesaleCost)
       : null;
+  const canonicalIdentity = canonicalLedgerIdentity(design, productType, options);
+  const canonicalWholesaleCost = canonicalIdentity
+    ? lookupWholesaleLedgerCost({
+        ...canonicalIdentity,
+        widthInches: widthIn,
+        heightInches: heightIn,
+        quantity,
+      })
+    : null;
 
   return (
     <PricingAuditPanel
@@ -1238,6 +1366,7 @@ function PriceExplanation({
       tariffPercent={shutterProgram?.tariff ?? 0}
       surcharges={auditSurcharges}
       authoritativeWholesaleCost={authoritativeWholesaleCost}
+      canonicalWholesaleCost={canonicalWholesaleCost}
     />
   );
 }

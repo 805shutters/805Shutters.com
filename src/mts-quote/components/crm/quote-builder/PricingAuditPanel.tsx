@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "@mts/lib/utils";
+import type { WholesaleCostResult } from "@/lib/quote/wholesale-ledger";
 
 export type PricingAuditSurcharge = {
   id: string;
@@ -101,6 +102,7 @@ type PricingAuditPanelProps = {
   tariffPercent: number;
   surcharges: PricingAuditSurcharge[];
   authoritativeWholesaleCost: PricingAuditWholesaleCost | null;
+  canonicalWholesaleCost?: WholesaleCostResult | null;
 };
 
 function roundMoney(value: number): number {
@@ -333,8 +335,34 @@ export function PricingAuditPanel({
   wholesaleRate,
   tariffPercent,
   surcharges,
-  authoritativeWholesaleCost,
+  authoritativeWholesaleCost: protectedWholesaleCost,
+  canonicalWholesaleCost,
 }: PricingAuditPanelProps) {
+  const canonicalWholesaleSuccess =
+    canonicalWholesaleCost?.ok === true ? canonicalWholesaleCost : null;
+  const canonicalBaseOnly =
+    protectedWholesaleCost === null && canonicalWholesaleSuccess !== null;
+  const authoritativeWholesaleCost: PricingAuditWholesaleCost | null =
+    protectedWholesaleCost ??
+    (canonicalWholesaleSuccess
+      ? {
+          ok: true,
+          basis:
+            canonicalWholesaleSuccess.basis === "dealer_factor"
+              ? "catalog_factor"
+              : "dealer_net",
+          effectiveDealerFactor:
+            canonicalWholesaleSuccess.dealerFactor ?? undefined,
+          matchedWidth: canonicalWholesaleSuccess.matchedWidth,
+          matchedHeight: canonicalWholesaleSuccess.matchedHeight,
+          wholesaleBase: canonicalWholesaleSuccess.wholesaleBase,
+          wholesaleAddOns: [],
+          wholesaleUnitCost: canonicalWholesaleSuccess.wholesaleUnitCost,
+          quantity: canonicalWholesaleSuccess.quantity,
+          wholesaleTotal: canonicalWholesaleSuccess.wholesaleTotal,
+          freightStatus: "unresolved",
+        }
+      : null);
   const isManual = options.manual_price_override === true;
   const authoritativeRetailResult =
     options.authoritative_price_breakdown &&
@@ -465,10 +493,6 @@ export function PricingAuditPanel({
       ? roundMoney(basePrice / billableSqft)
       : currentRetailPerSqft;
 
-  const legacyWholesaleBase =
-    wholesaleRate !== null && billableSqft !== null
-      ? roundMoney(billableSqft * wholesaleRate * (1 + tariffPercent / 100))
-      : null;
   const authoritativeWholesaleComponents = parseWholesaleComponents(
     authoritativeWholesaleCost?.wholesaleComponents,
   );
@@ -481,7 +505,7 @@ export function PricingAuditPanel({
       : SUMMARY_CATEGORIES;
   const wholesaleBase = authoritativeWholesaleComponents
     ? wholesaleComponentCategoryTotal(authoritativeWholesaleComponents, "base_grid")
-    : authoritativeWholesaleCost?.wholesaleBase ?? legacyWholesaleBase;
+    : authoritativeWholesaleCost?.wholesaleBase ?? null;
   const wholesaleSurchargeLines =
     wholesaleBase === null
       ? []
@@ -513,7 +537,12 @@ export function PricingAuditPanel({
     ?? (wholesaleBase === null ? null : roundMoney(wholesaleBase + wholesaleSurchargeTotal));
   const wholesaleLineCost = authoritativeWholesaleCost?.wholesaleTotal
     ?? (wholesaleUnitCost === null ? null : roundMoney(wholesaleUnitCost * quantity));
-  const landedLineCost = authoritativeWholesaleCost?.landedCostTotal ?? wholesaleLineCost;
+  const landedCostUnresolved =
+    authoritativeWholesaleCost?.freightStatus === "unresolved" &&
+    authoritativeWholesaleCost.landedCostTotal === undefined;
+  const landedLineCost =
+    authoritativeWholesaleCost?.landedCostTotal ??
+    (landedCostUnresolved ? null : wholesaleLineCost);
   const grossProfit =
     authoritativeRetailBlocked || landedLineCost === null
       ? null
@@ -800,6 +829,38 @@ export function PricingAuditPanel({
                       : `${authoritativeWholesaleCost.matchedWidth}\" W x ${authoritativeWholesaleCost.matchedHeight}\" H`}
                   />
                 )}
+                {canonicalWholesaleSuccess?.source && (
+                  <>
+                    <DetailRow
+                      label="Manufacturer source"
+                      value={`${canonicalWholesaleSuccess.source.title} · ${canonicalWholesaleSuccess.source.revision}`}
+                    />
+                    <DetailRow
+                      label="Effective date"
+                      value={canonicalWholesaleSuccess.source.effectiveDate ?? "Not stated — customer pricing remains blocked"}
+                    />
+                    {canonicalWholesaleSuccess.source.pages.length > 0 && (
+                      <DetailRow
+                        label="Source pages"
+                        value={canonicalWholesaleSuccess.source.pages.join(", ")}
+                      />
+                    )}
+                    <DetailRow
+                      label="Source hash"
+                      value={canonicalWholesaleSuccess.source.sha256}
+                    />
+                  </>
+                )}
+                {canonicalWholesaleSuccess && (
+                  <DetailRow
+                    label="Ledger status"
+                    value={
+                      canonicalWholesaleSuccess.customerPriceEligible
+                        ? "Wholesale verified; customer pricing eligible"
+                        : `Internal cost only · ${canonicalWholesaleSuccess.productStatus.replaceAll("_", " ")}`
+                    }
+                  />
+                )}
                 {tariffPercent > 0 && !authoritativeWholesaleCost && <DetailRow label="Tariff" value={`${tariffPercent}%`} />}
                 {displayedWholesaleComponents ? (
                   <div aria-label="Authoritative wholesale price components">
@@ -855,15 +916,27 @@ export function PricingAuditPanel({
                         <div className="mt-0.5 text-right text-[11px] text-slate-500">{line.detail}</div>
                       </div>
                     ))}
-                    <DetailRow label="Total wholesale add-ons" value={money(wholesaleSurchargeTotal)} wholesaleCost />
+                    {canonicalBaseOnly ? (
+                      <DetailRow
+                        label="Wholesale add-ons"
+                        value="Unresolved — protected price snapshot required"
+                      />
+                    ) : (
+                      <DetailRow label="Total wholesale add-ons" value={money(wholesaleSurchargeTotal)} wholesaleCost />
+                    )}
                   </>
                 )}
               </div>
               <div>
-                <DetailRow label="Our cost per window" value={money(wholesaleUnitCost)} emphasized wholesaleCost />
+                <DetailRow
+                  label={canonicalBaseOnly ? "Known base cost per window" : "Our cost per window"}
+                  value={money(wholesaleUnitCost)}
+                  emphasized
+                  wholesaleCost
+                />
                 {quantity > 1 && (
                   <DetailRow
-                    label={`Our line cost (${quantity} windows)`}
+                    label={`${canonicalBaseOnly ? "Known base line cost" : "Our line cost"} (${quantity} windows)`}
                     value={money(wholesaleLineCost)}
                     emphasized
                     wholesaleCost
@@ -896,6 +969,12 @@ export function PricingAuditPanel({
                     value={money(authoritativeWholesaleCost.landedCostTotal)}
                     emphasized
                     wholesaleCost
+                  />
+                )}
+                {landedCostUnresolved && (
+                  <DetailRow
+                    label="Margin status"
+                    value="Landed cost unresolved — margin withheld"
                   />
                 )}
                 {authoritativeRetailBlocked ? (

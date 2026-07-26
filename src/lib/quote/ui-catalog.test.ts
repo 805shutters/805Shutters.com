@@ -138,7 +138,17 @@ describe("buildPricingReference", () => {
     expect(honeycomb!.widths).toContain(24);
     expect(honeycomb!.heights).toContain(36);
     expect(honeycomb!.prices[0][0]).toBe(212);
-    expect(honeycomb!.costs[0][0]).toBeNull();
+    expect(honeycomb!.costs[0][0]).toBe(63.6);
+    expect(honeycomb).toMatchObject({
+      manufacturer: "Norman",
+      costBasis: "dealer_factor",
+      costCoverage: "complete",
+      provenanceStatus: "complete",
+      sourceId: "norman-retail-guide-2026-07",
+      sourceRevision: "2026-07",
+      sourceEffectiveDate: "2026-07-01",
+      sourcePages: [10],
+    });
   });
 
   it("keeps provisional shutter provenance visible", () => {
@@ -149,6 +159,8 @@ describe("buildPricingReference", () => {
     expect(shutter!.priceAxis).toBe("sqft");
     expect(shutter!.pricePerSqft).toBeGreaterThan(0);
     expect(shutter!.costPerSqft).toBe(13.1);
+    expect(shutter!.provenanceStatus).toBe("provisional");
+    expect(shutter!.customerPriceEligible).toBe(false);
   });
 
   it("exposes full guide reference sections for the CRM pricing page", () => {
@@ -159,6 +171,24 @@ describe("buildPricingReference", () => {
     expect(ref.motorization.length).toBeGreaterThan(0);
     expect(ref.motorization[0].options.length).toBeGreaterThan(0);
     expect(ref.currency).toBe("USD");
+    expect(ref.sources.map((source) => source.sourceId)).toContain(
+      "norman-retail-guide-2026-07",
+    );
+  });
+
+  it("lists every supported manufacturer and preserves blocked dealer-net products", () => {
+    expect(new Set(ref.products.map((product) => product.manufacturer))).toEqual(
+      new Set(["Lotus", "Norman", "Onyx", "Polar"]),
+    );
+    const lotus = ref.programs.find(
+      (program) => program.productId === "lotus_mini_blinds",
+    );
+    expect(lotus).toMatchObject({
+      priceBasis: "dealer_net",
+      customerPriceEligible: false,
+      provenanceStatus: "effective_date_missing",
+    });
+    expect(lotus!.costs.flat().some((cost) => cost !== null)).toBe(true);
   });
 
   it("keeps product-specific motorization price maps in the pricing reference", () => {

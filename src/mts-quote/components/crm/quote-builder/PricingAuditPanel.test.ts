@@ -46,6 +46,76 @@ function highlightedWholesaleValues(html: string): string[] {
 }
 
 describe("PricingAuditPanel authoritative wholesale cost", () => {
+  it("shows the canonical ledger cell and provenance when no protected V2 snapshot exists", () => {
+    const html = renderToStaticMarkup(createElement(PricingAuditPanel, {
+      productType: "Honeycomb Shades",
+      supplier: "Norman",
+      programName: '9/16" Cordless Single Cell',
+      widthIn: 25,
+      heightIn: 37,
+      rawSqft: null,
+      billableSqft: null,
+      quantity: 2,
+      savedUnitPrice: 270,
+      options: {
+        base_price: 270,
+        pricing_method: "grid",
+      },
+      currentRetailPerSqft: null,
+      wholesaleRate: null,
+      tariffPercent: 0,
+      surcharges: [],
+      authoritativeWholesaleCost: null,
+      canonicalWholesaleCost: {
+        ok: true,
+        productId: "honeycomb",
+        productName: "Portrait Honeycomb Shades",
+        manufacturer: "Norman",
+        programId: "honeycomb_9_16in_cordless_single_cell",
+        programName: '9/16" Cordless Single Cell',
+        basis: "dealer_factor",
+        dealerFactor: 0.3,
+        measuredWidth: 25,
+        measuredHeight: 37,
+        matchedWidth: 30,
+        matchedHeight: 42,
+        wholesaleBase: 81,
+        quantity: 2,
+        wholesaleUnitCost: 81,
+        wholesaleTotal: 162,
+        source: {
+          sourceId: "norman-retail-guide-2026-07",
+          manufacturer: "Norman",
+          fileName: "2026Jul Retail Price Guide (1).pdf",
+          title: "2026 Retail Guide",
+          revision: "2026-07",
+          effectiveDate: "2026-07-01",
+          effectiveDateEvidence: "Cover: Effective July 1st, 2026",
+          sha256: "ae102c19",
+          pages: [10],
+        },
+        provenanceStatus: "complete",
+        productStatus: "documented_limited",
+        customerPriceEligible: true,
+      },
+    }));
+
+    expect(html).toContain("Why this price?");
+    expect(html).toContain('30&quot; W x 42&quot; H');
+    expect(html).toContain("2026 Retail Guide · 2026-07");
+    expect(html).toContain("2026-07-01");
+    expect(html).toContain("Source pages");
+    expect(html).toContain("Source hash");
+    expect(html).toContain("$81");
+    expect(html).toContain("$162");
+    expect(html).toContain("Wholesale add-ons");
+    expect(html).toContain("protected price snapshot required");
+    expect(html).toContain("Known base cost per window");
+    expect(html).toContain("Landed cost unresolved");
+    expect(html).toContain("Gross margin");
+    expect(html).not.toContain("70.0%");
+  });
+
   it("itemizes the exact Norman Roller base, fabric, accessories, and AutoWand prices", () => {
     const retailComponents = [
       {

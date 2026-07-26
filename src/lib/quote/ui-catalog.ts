@@ -6,6 +6,15 @@ import { catalog } from "./catalog";
 import { productImage } from "./product-images";
 import { getProductColorOptions, type ProductColorOption } from "./product-color-options";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
+import {
+  canonicalWholesaleCostGrid,
+  canonicalWholesaleCostPerSqft,
+  wholesaleLedgerProgramStatus,
+  type WholesaleCostBasis,
+  type WholesaleLedgerSource,
+  type WholesaleProvenanceStatus,
+} from "./wholesale-ledger";
+import type { ProductCatalogStatus } from "@/lib/quote-v2/catalog";
 
 export type UiProgram = {
   id: string;
@@ -113,8 +122,25 @@ export type UiPricingReferenceProgram = {
   productId: string;
   productName: string;
   productType: string;
+  manufacturer: string;
   provisional: boolean;
   source: string | null;
+  sourceId: string | null;
+  sourceFileName: string | null;
+  sourceTitle: string | null;
+  sourceRevision: string | null;
+  sourceEffectiveDate: string | null;
+  sourceSha256: string | null;
+  sourcePages: number[];
+  provenanceStatus: WholesaleProvenanceStatus;
+  productStatus: ProductCatalogStatus;
+  customerPriceEligible: boolean;
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
+  costBasis: WholesaleCostBasis | null;
+  costCoverage: "complete" | "partial" | "missing";
+  costCellCount: number;
+  totalCellCount: number;
+  dealerFactor: number | null;
   programId: string;
   programName: string;
   priceGroup: string | null;
@@ -135,6 +161,8 @@ export type UiPricingReferenceProduct = {
   productId: string;
   productName: string;
   productType: string;
+  manufacturer: string;
+  priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
   surcharges: UiReferenceSurcharge[];
@@ -153,6 +181,7 @@ export type UiPricingReference = {
   source: string;
   effectiveDate: string;
   currency: string;
+  sources: WholesaleLedgerSource[];
   programs: UiPricingReferenceProgram[];
   products: UiPricingReferenceProduct[];
   globalSurcharges: UiReferenceSurcharge[];
@@ -256,33 +285,60 @@ export function buildUiCatalog(): UiCatalog {
 
 export function buildPricingReference(): UiPricingReference {
   const programs = catalog.products.flatMap((product) =>
-    product.programs.map((program) => ({
-      productId: product.id,
-      productName: product.name,
-      productType: product.productType,
-      provisional: product.provisional === true,
-      source: product.source ?? null,
-      programId: program.id,
-      programName: program.name,
-      priceGroup: program.priceGroup,
-      priceAxis: program.priceAxis,
-      maxWidth: program.maxWidth ?? null,
-      maxHeight: program.maxHeight ?? null,
-      minSqft: program.minSqft ?? null,
-      pricePerSqft: program.pricePerSqft ?? null,
-      costPerSqft: program.costPerSqft ?? null,
-      widths: program.grid.widths,
-      heights: program.grid.heights,
-      prices: program.grid.prices,
-      costs: program.grid.costs ?? emptyCostGrid(program.grid.prices),
-      notes: program.notes,
-    })),
+    product.programs.map((program) => {
+      const status = wholesaleLedgerProgramStatus(product, program);
+      const squareFootCost = canonicalWholesaleCostPerSqft(product, program);
+      return {
+        productId: product.id,
+        productName: product.name,
+        productType: product.productType,
+        manufacturer: product.manufacturer ?? "Unknown manufacturer",
+        provisional: product.provisional === true,
+        source: product.source ?? null,
+        sourceId: status.source?.sourceId ?? null,
+        sourceFileName: status.source?.fileName ?? null,
+        sourceTitle: status.source?.title ?? null,
+        sourceRevision: status.source?.revision ?? null,
+        sourceEffectiveDate: status.source?.effectiveDate ?? null,
+        sourceSha256: status.source?.sha256 ?? null,
+        sourcePages: [...(status.source?.pages ?? [])],
+        provenanceStatus: status.provenanceStatus,
+        productStatus: status.productStatus,
+        customerPriceEligible: status.customerPriceEligible,
+        priceBasis:
+          program.priceBasis ?? product.priceBasis ?? "suggested_retail",
+        costBasis: status.basis,
+        costCoverage: status.coverage,
+        costCellCount: status.costCellCount,
+        totalCellCount: status.totalCellCount,
+        dealerFactor: product.dealerFactor ?? null,
+        programId: program.id,
+        programName: program.name,
+        priceGroup: program.priceGroup,
+        priceAxis: program.priceAxis,
+        maxWidth: program.maxWidth ?? null,
+        maxHeight: program.maxHeight ?? null,
+        minSqft: program.minSqft ?? null,
+        pricePerSqft: program.pricePerSqft ?? null,
+        costPerSqft: squareFootCost?.amount ?? null,
+        widths: program.grid.widths,
+        heights: program.grid.heights,
+        prices: program.grid.prices,
+        costs:
+          program.priceAxis === "sqft"
+            ? emptyCostGrid(program.grid.prices)
+            : canonicalWholesaleCostGrid(product, program),
+        notes: program.notes,
+      };
+    }),
   );
 
   const products = catalog.products.map((product) => ({
     productId: product.id,
     productName: product.name,
     productType: product.productType,
+    manufacturer: product.manufacturer ?? "Unknown manufacturer",
+    priceBasis: product.priceBasis ?? "suggested_retail",
     provisional: product.provisional === true,
     source: product.source ?? null,
     surcharges: product.surcharges.map(projectSurcharge),
@@ -307,6 +363,31 @@ export function buildPricingReference(): UiPricingReference {
     source: catalog.source,
     effectiveDate: catalog.effectiveDate,
     currency: catalog.currency,
+    sources: [
+      ...new Map(
+        programs.flatMap((program) =>
+          program.sourceId
+            ? [[
+                program.sourceId,
+                {
+                  sourceId: program.sourceId,
+                  manufacturer: program.manufacturer,
+                  fileName: program.sourceFileName ?? "Pinned source",
+                  title: program.sourceTitle ?? program.source ?? "Pinned source",
+                  revision: program.sourceRevision ?? "Unknown",
+                  effectiveDate: program.sourceEffectiveDate,
+                  effectiveDateEvidence:
+                    program.sourceEffectiveDate == null
+                      ? "No effective date is stated in the pinned source."
+                      : `Effective ${program.sourceEffectiveDate}.`,
+                  sha256: program.sourceSha256 ?? "",
+                  pages: program.sourcePages,
+                } satisfies WholesaleLedgerSource,
+              ] as const]
+            : [],
+        ),
+      ).values(),
+    ],
     programs,
     products,
     globalSurcharges: catalog.globalRules.surcharges.map(projectSurcharge),

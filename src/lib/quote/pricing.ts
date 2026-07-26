@@ -20,6 +20,10 @@ import {
 import type { CatalogProduct, CatalogProgram } from "./catalog/types";
 import { squareFeet } from "./measurements";
 import { getMotorizationGroupsForProduct } from "./product-options";
+import {
+  canonicalWholesaleCostAtCell,
+  canonicalWholesaleCostPerSqft,
+} from "./wholesale-ledger";
 
 export type PriceErrorCode =
   | "PRODUCT_SELECTION_REQUIRED"
@@ -266,6 +270,7 @@ type BaseLookup = {
 };
 
 function lookupBaseCents(
+  product: CatalogProduct,
   prog: CatalogProgram,
   widthInches: number,
   heightInches: number,
@@ -279,10 +284,11 @@ function lookupBaseCents(
     const sqft = squareFeet(widthInches, heightInches);
     const billableSqft = Math.max(sqft, prog.minSqft ?? 0);
     const cents = Math.round(billableSqft * toCents(prog.pricePerSqft));
+    const wholesaleRate = canonicalWholesaleCostPerSqft(product, prog);
     const wholesaleCents =
-      prog.costPerSqft == null
+      wholesaleRate == null
         ? null
-        : Math.round(billableSqft * toCents(prog.costPerSqft));
+        : Math.round(billableSqft * toCents(wholesaleRate.amount));
     return { cents, wholesaleCents, matchedWidth: widthInches, matchedHeight: heightInches, sqft, billableSqft };
   }
 
@@ -295,7 +301,13 @@ function lookupBaseCents(
   if (prog.priceAxis === "width") {
     const v = prog.grid.prices[0]?.[wi];
     if (v == null) return fail("NA_CELL", `${prog.name} is not available at width ${matchedWidth}".`, warnings);
-    return { cents: toCents(v), wholesaleCents: null, matchedWidth, matchedHeight: null };
+    const wholesale = canonicalWholesaleCostAtCell(product, prog, 0, wi);
+    return {
+      cents: toCents(v),
+      wholesaleCents: wholesale == null ? null : toCents(wholesale.amount),
+      matchedWidth,
+      matchedHeight: null,
+    };
   }
 
   const hi = roundUpIndex(prog.grid.heights, heightInches);
@@ -307,7 +319,13 @@ function lookupBaseCents(
   if (v == null) {
     return fail("NA_CELL", `${prog.name} is not available (NA) at ${matchedWidth}" x ${matchedHeight}".`, warnings);
   }
-  return { cents: toCents(v), wholesaleCents: null, matchedWidth, matchedHeight };
+  const wholesale = canonicalWholesaleCostAtCell(product, prog, hi, wi);
+  return {
+    cents: toCents(v),
+    wholesaleCents: wholesale == null ? null : toCents(wholesale.amount),
+    matchedWidth,
+    matchedHeight,
+  };
 }
 
 /** Internal-only lookup for supplier cost books. This result is never returned by customer APIs. */
@@ -399,7 +417,8 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   let billableSqft: number | undefined;
   let dealerNetBaseCents: number;
   if (program.priceAxis === "sqft") {
-    if (program.costPerSqft == null) {
+    const wholesaleRate = canonicalWholesaleCostPerSqft(product, program);
+    if (!wholesaleRate) {
       return fail(
         "CUSTOMER_RETAIL_UNDEFINED",
         `${program.name} has no dealer-net cost per square foot.`,
@@ -411,11 +430,10 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
     matchedWidth = width;
     matchedHeight = height;
     dealerNetBaseCents = Math.round(
-      billableSqft * toCents(program.costPerSqft),
+      billableSqft * toCents(wholesaleRate.amount),
     );
   } else {
-    const costs = program.grid.costs;
-    if (!costs?.length) {
+    if (!program.grid.costs?.length && product.dealerFactor == null) {
       return fail("CUSTOMER_RETAIL_UNDEFINED", `${program.name} has no dealer-net cost grid.`, warnings);
     }
     let widthIndex = 0;
@@ -434,12 +452,13 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
       }
       matchedHeight = program.grid.heights[heightIndex];
     }
-    const value = program.priceAxis === "height"
-      ? costs[heightIndex]?.[0]
-      : program.priceAxis === "width"
-        ? costs[0]?.[widthIndex]
-        : costs[heightIndex]?.[widthIndex];
-    if (value == null) {
+    const wholesale = canonicalWholesaleCostAtCell(
+      product,
+      program,
+      heightIndex,
+      widthIndex,
+    );
+    if (!wholesale) {
       const note = program.grid.cellNotes?.[heightIndex]?.[widthIndex];
       return fail(
         "NA_CELL",
@@ -447,7 +466,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
         warnings,
       );
     }
-    dealerNetBaseCents = toCents(value);
+    dealerNetBaseCents = toCents(wholesale.amount);
   }
 
   const dealerNetOptionLines: DealerNetCostBreakdown["dealerNetOptionLines"] = [];
@@ -728,7 +747,7 @@ export function priceDesign(input: PriceInput): PriceResult {
 
   const baseLookups: BaseLookup[] = [];
   for (const pricedWidth of pricedWidths) {
-    const lookup = lookupBaseCents(prog, pricedWidth, H, warnings);
+    const lookup = lookupBaseCents(product, prog, pricedWidth, H, warnings);
     if ("ok" in lookup) return lookup;
     baseLookups.push(lookup);
   }
