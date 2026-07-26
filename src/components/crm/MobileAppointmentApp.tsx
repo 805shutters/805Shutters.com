@@ -71,6 +71,75 @@ type MobileEtaResponse = {
 };
 
 const calendarViews: CalendarView[] = ["list", "week", "day"];
+
+export function MobileWorkspaceMenu({
+  appointmentCount,
+  onOpenAppointments,
+}: {
+  appointmentCount: number;
+  onOpenAppointments: () => void;
+}) {
+  return (
+    <div className="mobile-crm-app mobile-crm-home">
+      <header className="mobile-crm-home-header">
+        <span className="mobile-crm-home-logo">
+          <img
+            src="/brand/805-shutters-logo-exact-transparent.png"
+            alt="805 Shutters"
+            width="1144"
+            height="1080"
+          />
+        </span>
+      </header>
+      <main className="mobile-crm-home-main" aria-label="Technician workspace">
+        <section className="mobile-crm-home-actions" aria-labelledby="mobile-workflow-label">
+          <span className="mobile-crm-functional-label" id="mobile-workflow-label">Today&apos;s Workflow</span>
+          <button
+            className="mobile-crm-home-control mobile-crm-home-control--primary"
+            type="button"
+            onClick={onOpenAppointments}
+          >
+            <span className="mobile-crm-action-icon"><CalendarDays /></span>
+            <div>
+              <strong>Open Appointments</strong>
+              <span>{appointmentCount} upcoming · Schedule, navigation, and arrival texts</span>
+            </div>
+            <ArrowRight />
+          </button>
+        </section>
+        <section className="mobile-crm-home-actions" aria-labelledby="mobile-tools-label">
+          <span className="mobile-crm-functional-label" id="mobile-tools-label">Field Tools</span>
+          <a className="mobile-crm-home-control" href="/crm/technical-measures">
+            <span className="mobile-crm-action-icon"><Ruler /></span>
+            <div><strong>Technical Measures</strong><span>Complete field measurements</span></div>
+            <ArrowRight />
+          </a>
+          <a className="mobile-crm-home-control" href="/crm/mobile/quotes">
+            <span className="mobile-crm-action-icon"><FileText /></span>
+            <div><strong>Quotes</strong><span>Create and manage quotes</span></div>
+            <ArrowRight />
+          </a>
+          <a className="mobile-crm-home-control" href="/crm/mobile/contracts">
+            <span className="mobile-crm-action-icon"><Files /></span>
+            <div><strong>Contracts</strong><span>Open signed documents</span></div>
+            <ArrowRight />
+          </a>
+          <a className="mobile-crm-home-control" href="/crm/mobile/search">
+            <span className="mobile-crm-action-icon"><Search /></span>
+            <div><strong>Customer Search</strong><span>Find appointments and files</span></div>
+            <ArrowRight />
+          </a>
+          <a className="mobile-crm-home-control" href="/crm/mobile/bookkeeping">
+            <span className="mobile-crm-action-icon"><Landmark /></span>
+            <div><strong>Bookkeeping</strong><span>Balances and payments</span></div>
+            <ArrowRight />
+          </a>
+        </section>
+      </main>
+      <footer className="mobile-crm-home-footer">805 Shutters · Field Operations</footer>
+    </div>
+  );
+}
 const ownerOptions = ["Mike", "Jessica", "Unassigned"];
 const productOptions = [...productInterestOptions, "Mixed"];
 const appointmentDurations = [60, 90, 120, 180];
@@ -997,65 +1066,10 @@ export function MobileAppointmentApp() {
 
   if (showWorkspaceMenu) {
     return (
-      <div className="mobile-crm-app mobile-crm-home">
-        <header className="mobile-crm-home-header">
-          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width="440" height="120" />
-          <div>
-            <span>Technician workspace</span>
-            <h1>Good work starts here.</h1>
-            <p>{userLabel || "805 Shutters"} · {appointments.length} upcoming appointments</p>
-          </div>
-        </header>
-        <main className="mobile-crm-home-main">
-          <section className="mobile-crm-home-primary" aria-labelledby="mobile-today-heading">
-            <div className="mobile-crm-section-heading">
-              <span>Today&apos;s workflow</span>
-              <h2 id="mobile-today-heading">Stay on schedule</h2>
-            </div>
-            <button type="button" onClick={() => setShowWorkspaceMenu(false)}>
-              <span className="mobile-crm-action-icon"><CalendarDays /></span>
-              <div><strong>Open Appointments</strong><span>View schedule, customer details, navigation, and arrival texts</span></div>
-              <span className="mobile-crm-action-count">{appointments.length}</span>
-              <ArrowRight />
-            </button>
-          </section>
-
-          <section className="mobile-crm-tools" aria-labelledby="mobile-tools-heading">
-            <div className="mobile-crm-section-heading">
-              <span>Field tools</span>
-              <h2 id="mobile-tools-heading">Everything for the job</h2>
-            </div>
-            <div className="mobile-crm-category-stack">
-              <a href="/crm/technical-measures">
-                <Ruler />
-                <div><strong>Technical Measures</strong><span>Complete field measurements</span></div>
-                <ArrowRight />
-              </a>
-              <a href="/crm/mobile/quotes">
-                <FileText />
-                <div><strong>Quotes</strong><span>Create and manage quotes</span></div>
-                <ArrowRight />
-              </a>
-              <a href="/crm/mobile/contracts">
-                <Files />
-                <div><strong>Contracts</strong><span>Open signed documents</span></div>
-                <ArrowRight />
-              </a>
-              <a href="/crm/mobile/search">
-                <Search />
-                <div><strong>Customer Search</strong><span>Find appointments and files</span></div>
-                <ArrowRight />
-              </a>
-              <a href="/crm/mobile/bookkeeping">
-                <Landmark />
-                <div><strong>Bookkeeping</strong><span>Balances and payments</span></div>
-                <ArrowRight />
-              </a>
-            </div>
-          </section>
-        </main>
-        <footer className="mobile-crm-home-footer">805 Shutters · Field Operations</footer>
-      </div>
+      <MobileWorkspaceMenu
+        appointmentCount={appointments.length}
+        onOpenAppointments={() => setShowWorkspaceMenu(false)}
+      />
     );
   }
 

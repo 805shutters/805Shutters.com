@@ -28,11 +28,13 @@ describe("MobileAppointmentApp source contract", () => {
   });
 
   it("presents the branded technician workspace without the job-status view", () => {
-    expect(source).toContain("/brand/805-shutters-logo-header.png");
-    expect(source).toContain("Technician workspace");
+    expect(source).toContain("/brand/805-shutters-logo-exact-transparent.png");
     expect(source).toContain("Open Appointments");
+    expect(source).not.toContain("Good work starts here");
     expect(source).not.toContain("/crm/mobile/job-status");
     expect(source).not.toContain("<strong>Job Status</strong>");
-    expect(styles).toMatch(/\.mobile-crm-home-header img \{[\s\S]*?width: min\(78vw, 360px\);/);
+    expect(styles).toMatch(/\.mobile-crm-home-logo img \{[\s\S]*?width: 168px;/);
+    expect(styles).toMatch(/\.mobile-crm-home-control \{[\s\S]*?min-height: 88px;[\s\S]*?border-radius: 12px;/);
+    expect(styles).toMatch(/\.mobile-crm-home-control--primary \{[\s\S]*?background: #171817;/);
   });
 });
