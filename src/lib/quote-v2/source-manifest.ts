@@ -186,6 +186,25 @@ export const QUOTE_V2_SOURCE_MANIFEST = [
     pageCount: 91,
   },
   {
+    id: "norman-motorization-guide-2026-07",
+    manufacturer: "Norman",
+    kind: "product_guide",
+    format: "pdf",
+    fileName: "Motorization Guide 2026-07-20.pdf",
+    title: "Shade Motorization Program Reference Guide",
+    revision: "July 2026; latest revision 2026-07-01",
+    effectiveDate: "2026-07-01",
+    effectiveDateEvidence:
+      "Revision summary: 7/1/2026 SmartSense, SmartDrape, Honeycomb, Roller, and SmartFold updates",
+    receivedDate: "2026-07-26",
+    modifiedDate: "2026-07-20",
+    sha256: "b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b",
+    authorities: ["restrictions", "options"],
+    pageCount: 92,
+    sourceUrl:
+      "https://download.normanwindowcoverings.com/Document/Service/download/ProgramBinderSync/Blinds%20and%20Shades/Norman/Shade%20Motorization/Motorization%20Guide.pdf",
+  },
+  {
     id: "norman-honeycomb-guide-2026-07",
     manufacturer: "Norman",
     kind: "product_guide",

@@ -95,7 +95,7 @@ function onlyLimit(context: SelectionContext) {
   return resolution!.limits![0];
 }
 
-describe("Norman May 2026 Honeycomb motorization normalization", () => {
+describe("Norman July 2026 Honeycomb motorization normalization", () => {
   it.each([
     [
       "Smart rechargeable bottom-up",
@@ -297,9 +297,9 @@ describe("Norman May 2026 Honeycomb motorization normalization", () => {
       severity: "auto_derive",
       derivedValues: { ac_adapter_wattage: 65 },
       source: {
-        sourceId: "norman-motorization-guide-2026-05",
-        fileName: "Motorization Guide.pdf",
-        revision: "May 2026; latest revision 2026-05-11",
+        sourceId: "norman-motorization-guide-2026-07",
+        fileName: "Motorization Guide 2026-07-20.pdf",
+        revision: "July 2026; latest revision 2026-07-01",
         page: 9,
       },
     });
@@ -336,7 +336,7 @@ describe("Norman May 2026 Honeycomb motorization normalization", () => {
   });
 });
 
-describe("Norman May 2026 Roman motorization normalization", () => {
+describe("Norman July 2026 Roman motorization normalization", () => {
   it.each([
     [
       "Smart rechargeable",

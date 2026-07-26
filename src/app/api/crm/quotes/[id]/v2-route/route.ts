@@ -57,7 +57,9 @@ export async function POST(
       id,
       user.id,
       idempotencyKey,
-      existingRoute.salesQuoteId,
+      existingRoute.reason === "target_not_found"
+        ? null
+        : existingRoute.salesQuoteId,
     );
     const route = await resolveSalesQuoteV2Route(supabase, id);
     return NextResponse.json({ imported, route });

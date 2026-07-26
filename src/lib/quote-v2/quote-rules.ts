@@ -245,7 +245,7 @@ function validateMotorizationOrderControls(
     issues.push({
       severity: "hard_block",
       ruleId: "norman.motorization.quote.controller_required",
-      source: sourceProvenance("norman-motorization-guide-2026-05", {
+      source: sourceProvenance("norman-motorization-guide-2026-07", {
         page: 4,
       }),
       selectedValues: {
@@ -300,7 +300,7 @@ function validateOrderAdapterWattage(
     issues.push({
       severity: "hard_block",
       ruleId: `${productId}.motorization.quote.ac_adapter_wattage_not_persisted`,
-      source: sourceProvenance("norman-motorization-guide-2026-05", {
+      source: sourceProvenance("norman-motorization-guide-2026-07", {
         page: productId === "honeycomb" ? 9 : 19,
       }),
       selectedValues: {

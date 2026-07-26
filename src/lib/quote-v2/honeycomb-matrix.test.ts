@@ -294,7 +294,7 @@ describe("Norman Honeycomb authoritative dimension matrix", () => {
       ok: true,
       profile: {
         id: "norman-smart-bottom-up",
-        sourceId: "norman-motorization-guide-2026-05",
+        sourceId: "norman-motorization-guide-2026-07",
         limits: { minWidth: 24, maxWidth: 120, maxAreaSqFt: 90 },
       },
     });

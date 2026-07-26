@@ -384,9 +384,9 @@ describe("Quote V2 cross-line side-by-side rules", () => {
       expect.arrayContaining(["norman_smart", "automate_home"]),
     );
     expect(issues[0]?.source).toMatchObject({
-      sourceId: "norman-motorization-guide-2026-05",
-      fileName: "Motorization Guide.pdf",
-      revision: "May 2026; latest revision 2026-05-11",
+      sourceId: "norman-motorization-guide-2026-07",
+      fileName: "Motorization Guide 2026-07-20.pdf",
+      revision: "July 2026; latest revision 2026-07-01",
       page: 4,
     });
   });

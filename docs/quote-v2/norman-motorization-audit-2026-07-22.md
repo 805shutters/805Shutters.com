@@ -1,15 +1,20 @@
-# Norman Motorization Guide audit — 2026-07-22
+# Norman Motorization Guide audit — refreshed 2026-07-26
 
 ## Pinned source
 
-- Source ID: `norman-motorization-guide-2026-05`
-- File: `Motorization Guide.pdf`
-- Revision: `May 2026; latest revision 2026-05-11`
-- SHA-256: `57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290`
+- Source ID: `norman-motorization-guide-2026-07`
+- File: `Motorization Guide 2026-07-20.pdf`
+- Revision: `July 2026; latest revision 2026-07-01`
+- SHA-256: `b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b`
+- Direct source: current authenticated Norman program binder, Shutters
+  specification date 2026-05-20 and Motorization specification date 2026-07-20.
 
 The motorization guide controls compatibility, dimensions, required controls,
 and included components. The July Retail Price Guide continues to control the
-dollar amount of each priced motorization component.
+dollar amount of each priced motorization component. The July revision adds
+SmartSense coverage for Norman Smart Roller and SmartFold plus documented
+SmartDrape, Honeycomb, Roller, and cable-routing changes. SmartSense is not
+silently inferred as a selected control or priced accessory.
 
 ## Normalized, send-eligible when complete
 

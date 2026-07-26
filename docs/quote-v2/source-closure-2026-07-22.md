@@ -5,16 +5,16 @@ does not authorize a production cutover or silently replace any pinned source.
 
 ## Verification result
 
-The repository verifier passed all 14 pinned artifacts in the external,
+The repository verifier passed all 15 pinned artifacts in the external,
 read-only source vault:
 
 ```text
 npm run quote-v2:sources:verify -- --source-dir /Users/michaelshepard/Documents/805-quote-v2-sources
-Verified 14 immutable Quote V2 source artifacts.
+Verified 15 immutable Quote V2 source artifacts.
 ```
 
 The set includes the Norman July Retail Guide, Honeycomb/Roller/Roman/Vertical
-product guides, May Motorization Guide, Honeycomb color workbook, August 1
+product guides, retained May and current July Motorization Guides, Honeycomb color workbook, August 1
 Roller MinMax Appendix, Lotus and Polar books, Onyx binder and two pricing
 fixtures, and the retained Norman dealer-pricing snapshot. Runtime and tests use the
 source IDs, hashes, revisions, and effective dates in
@@ -23,8 +23,13 @@ source IDs, hashes, revisions, and effective dates in
 
 ## Reconciled source identities
 
-- `Motorization Guide.pdf`: 9,323,825 bytes; SHA-256
+- The retained May `Motorization Guide.pdf` remains immutable at 9,323,825
+  bytes and SHA-256
   `57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290`.
+  Active motorization provenance now uses the authenticated Norman binder's
+  2026-07-20 download, pinned as `Motorization Guide 2026-07-20.pdf` at
+  7,283,766 bytes and SHA-256
+  `b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b`.
 - `Roller MinMax Appendix.xls`: the current official 696,832-byte download is
   byte-for-byte identical to the pinned SHA-256
   `ba286767b6c4d760bf480434312678f6c35b229e9763ddd6fcda9f7cd18b9cc3`.

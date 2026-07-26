@@ -9,7 +9,7 @@ import type { CanonicalMotorizationSelection } from "./roller-motor-contract";
 import { sourceProvenance } from "./source-manifest";
 
 export const NORMAN_MOTORIZATION_SOURCE_ID =
-  "norman-motorization-guide-2026-05" as const;
+  "norman-motorization-guide-2026-07" as const;
 
 export type NormanShadeMotorFamily =
   "norman_smart" | "automate_home" | "autowand";

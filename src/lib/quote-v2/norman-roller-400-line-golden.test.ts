@@ -29,7 +29,7 @@ import { QUOTE_V2_SOURCE_MANIFEST } from "./source-manifest";
 const PRICE_BOOK_SHA256 =
   "ae102c19b833e5c20070c11ecaad61d68a79bf6b52b5402fad55415e2602d2f3";
 const MOTOR_GUIDE_SHA256 =
-  "57692a04ac4abe2e8774f8b248f4516141929124580edc2527e85f29d4feb290";
+  "b095c105b4c35dfd803122b2a9143e5e7de2b847c8c182ee405ee66b1723780b";
 const QUOTE_COUNT = 20;
 const ITEMS_PER_QUOTE = 20;
 // Literal current-account values captured from the live, unsubmitted dealer
@@ -831,7 +831,7 @@ function assertComponentProvenance(
     if (component.id === "accessory:autowand_included_charging_kit") {
       expect(component.status).toBe("included");
       expect(component.source.sourceId).toBe(
-        "norman-motorization-guide-2026-05",
+        "norman-motorization-guide-2026-07",
       );
       expect(component.source.sha256).toBe(MOTOR_GUIDE_SHA256);
       expect(pages(component)).toContain(83);

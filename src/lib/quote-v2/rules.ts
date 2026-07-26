@@ -1250,7 +1250,7 @@ function validateSynchronyVertical(context: SelectionContext): ValidationIssue[]
 
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
-  // The pinned May 2026 Motorization Guide now supplies exact motor-family,
+  // The pinned July 2026 Motorization Guide now supplies exact motor-family,
   // power, control, accessory, and size rules. Unsupported or incomplete
   // configurations remain fail-closed through structured hard blocks rather
   // than downgrading every motorized selection to a blanket product status.

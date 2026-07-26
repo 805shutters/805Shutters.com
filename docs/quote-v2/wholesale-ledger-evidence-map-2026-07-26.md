@@ -44,7 +44,7 @@ runtime lookup returns `WHOLESALE_VERSION_NOT_PUBLISHED`.
 
 The immutable source vault is
 `/Users/michaelshepard/Documents/805-quote-v2-sources`. The prior verifier
-confirmed all 14 artifacts against
+confirmed all 15 artifacts against
 `src/lib/quote-v2/source-manifest.ts` and
 `src/lib/quote-v2/source-artifacts.lock.json`. The source vault remains external
 and read-only; generated catalogs and retained evidence receipts are stored in
@@ -57,7 +57,7 @@ the repository.
 | `2026Jul Retail Price Guide (1).pdf`, SHA `ae102c…2f3` | Suggested-retail grids, options, and freight for Norman products, including Ultimate page 30 and SmartPrivacy page 31 | Effective 2026-07-01 | Normalized in `src/lib/quote/catalog/norman-2026.catalog.json`; pricing/rule tests exist | Retail grids are not the current 805 wholesale schedule |
 | `NORMAN PRICING.pdf`, SHA `fdf0af…044` | Shows a 0.3000 dealer factor for 2-inch SmartPrivacy and 2-inch Ultimate and $25/$8 freight | Other-dealer capture dated 2026-07-20; no stated effective date | Pinned only as quarantined evidence with `runtimeAuthority: false` | It belongs to another dealer account and cannot authorize 805 cost |
 | Current 805 Norman Roller fixtures and `docs/quote-v2/portal-parity/evidence/norman-roller-portal-capture-2026-07-21.md` | Exact current-account Roller evidence for 0.330 standard / 0.297 slower schedule, $25/$11 freight, and processing in the observed Roller recipe | Read-only unsubmitted draft captured 2026-07-21 | Normalized fixture and passing exact Roller parity tests | It proves Roller only; applying the factors to faux wood would be unsupported extrapolation |
-| `Motorization Guide.pdf`, SHA `57692a…290` | Motor/power/controller restrictions and options | Effective 2026-05-11 | Normalized motorization rules/tests | Not wholesale authority for Phase 1 faux wood |
+| `Motorization Guide 2026-07-20.pdf`, SHA `b095c1…780` | Motor/power/controller restrictions and options | Effective 2026-07-01; authenticated binder download dated 2026-07-20 | Normalized motorization rules/tests | Not wholesale authority for Phase 1 faux wood |
 | Honeycomb, Roller, Roman, and Vertical product guides, SHAs pinned in the manifest | Product restrictions, assortment, and options | Current revisions from May through July 2026 | Normalized product catalogs/rules/tests | These are not wholesale authority for Phase 1 faux wood |
 | `HC Color Coordination.xlsx` and `Roller MinMax Appendix.xls` | Honeycomb assortment/restrictions and Roller configuration boundaries | Honeycomb effective 2026-07-01; Roller appendix effective 2026-08-01 | Pinned workbooks and normalized rule fixtures | Not Phase 1 faux-wood cost evidence; Roller appendix must remain date-gated |
 

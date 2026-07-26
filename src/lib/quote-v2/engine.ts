@@ -1239,7 +1239,7 @@ function priceComponentInputs(
       "AutoWand charging-kit allocation — included",
       "motorization_selections",
       "autowand/autowand",
-      sourceProvenance("norman-motorization-guide-2026-05", {
+      sourceProvenance("norman-motorization-guide-2026-07", {
         page: sourcePage,
       }),
     );

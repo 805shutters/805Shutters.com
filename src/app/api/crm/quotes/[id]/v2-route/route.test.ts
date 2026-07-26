@@ -129,4 +129,62 @@ describe("GET CRM quote V2 route resolution", () => {
       route: { status: "ready", designCount: 3 },
     });
   });
+
+  it("creates a fresh V2 target when the stored target identity no longer exists", async () => {
+    mocks.importQuote.mockResolvedValue({
+      backend: "authoritative_v2",
+      crmQuoteId: CRM_QUOTE_ID,
+      quoteId: "33333333-3333-4333-8333-333333333333",
+      quoteNumber: "805-0010",
+      lineCount: 2,
+      designCount: 3,
+    });
+    mocks.resolveRoute
+      .mockResolvedValueOnce({
+        status: "legacy_import_required",
+        crmQuoteId: CRM_QUOTE_ID,
+        salesQuoteId: "22222222-2222-4222-8222-222222222222",
+        reason: "target_not_found",
+      })
+      .mockResolvedValueOnce({
+        status: "ready",
+        crmQuoteId: CRM_QUOTE_ID,
+        salesQuoteId: "33333333-3333-4333-8333-333333333333",
+        lineCount: 2,
+        designCount: 3,
+      });
+    const request = new NextRequest(
+      `http://localhost/api/crm/quotes/${CRM_QUOTE_ID}/v2-route`,
+      {
+        method: "POST",
+        headers: {
+          authorization: "Bearer test-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ idempotencyKey: "missing-target-import" }),
+      },
+    );
+
+    const response = await POST(request, {
+      params: Promise.resolve({ id: CRM_QUOTE_ID }),
+    });
+
+    expect(mocks.importQuote).toHaveBeenCalledWith(
+      { service: true },
+      CRM_QUOTE_ID,
+      "actor-id",
+      "missing-target-import",
+      null,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      imported: {
+        quoteId: "33333333-3333-4333-8333-333333333333",
+      },
+      route: {
+        status: "ready",
+        salesQuoteId: "33333333-3333-4333-8333-333333333333",
+      },
+    });
+  });
 });

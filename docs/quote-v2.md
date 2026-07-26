@@ -123,7 +123,7 @@ be explicitly labeled estimated.
 
 ## Intentional fail-closed areas
 
-- Motorized Honeycomb and Roman configurations use the pinned May 2026 Norman
+- Motorized Honeycomb and Roman configurations use the pinned July 2026 Norman
   Motorization Guide for exact motor-family compatibility, power source,
   controller family, motor position, accessories, and dimension/area limits.
   Missing or unsupported evidence is a structured hard block. Shared Norman DC
