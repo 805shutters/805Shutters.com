@@ -37,6 +37,7 @@ type V2RetailSnapshotRow = {
   catalog_version?: unknown;
   retail_total?: unknown;
   retail_snapshot?: unknown;
+  provenance_snapshot?: unknown;
 };
 
 export type V2CustomerRetailPrice = {
@@ -392,7 +393,10 @@ export function prepareV2CustomerSendPayload(
   if (!("backend" in repriced) || repriced.backend !== "v2") {
     fail("The server-authoritative V2 engine did not handle this quote.");
   }
-  if (!repriced.sendability.sendable) {
+  const hasStandardSnapshot = [...storedByDesignId.values()].some(
+    (stored) => stored.catalogVersion !== "custom-override-v1",
+  );
+  if (!repriced.sendability.sendable && hasStandardSnapshot) {
     const reason = repriced.sendability.reasons[0]?.message;
     fail(reason ? `Authoritative V2 validation blocked sending: ${reason}` : "Authoritative V2 validation blocked sending.");
   }
@@ -407,6 +411,29 @@ export function prepareV2CustomerSendPayload(
     const priced = repriced.designs.find(
       (entry) => entry.lineItemId === line.id && entry.designId === selectedDesignId,
     );
+    if (stored.catalogVersion === "custom-override-v1") {
+      const provenance = record(stored.snapshotRow.provenance_snapshot);
+      if (provenance?.mode !== "custom_override" || provenance.internalOnly !== true) {
+        return fail(`Custom Mode snapshot ${selectedDesignId} is missing internal provenance.`);
+      }
+      const customerPrice = projectV2CustomerRetailPrice(stored.snapshot.retail);
+      if (!sameMoney(design.unit_price, customerPrice.unitPrice)) {
+        return fail(`Custom Mode design ${selectedDesignId} does not match its immutable retail snapshot.`);
+      }
+      if (!priced) return fail(`Custom Mode design ${selectedDesignId} no longer resolves to its original V2 selection.`);
+      return {
+        lineItemId: line.id,
+        selectedDesignId,
+        selectedVariant: design.variant.trim(),
+        room: text(line.room_name),
+        productType: text(line.product_type),
+        widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
+        heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
+        quantity: Math.max(1, Math.floor(Number(line.quantity) || 1)),
+        configuration: customerConfigurationFromSelection(priced.selection),
+        price: customerPrice,
+      };
+    }
     if (!priced?.result.ok || priced.result.validationStatus !== "valid") {
       return fail(`Selected design ${selectedDesignId} did not reprice authoritatively.`);
     }
@@ -519,7 +546,7 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     ? await supabase
         .from("sales_quote_v2_price_snapshots")
         .select(
-          "id,quote_id,line_item_id,design_id,quote_revision,selection_fingerprint,catalog_version,retail_total,retail_snapshot",
+          "id,quote_id,line_item_id,design_id,quote_revision,selection_fingerprint,catalog_version,retail_total,retail_snapshot,provenance_snapshot",
         )
         .in("id", snapshotIds)
     : { data: [], error: null };

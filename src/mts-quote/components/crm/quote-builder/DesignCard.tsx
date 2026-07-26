@@ -292,6 +292,7 @@ import {
   manufacturerStampFromLabel,
   resolveManufacturerStamp,
 } from "./manufacturerStamp";
+import { CustomModePanel } from "./CustomModePanel";
 import type {
   ManufacturerComparisonProgram,
   ManufacturerComparisonResponse,
@@ -9593,6 +9594,9 @@ function ShadesAndBlindsOptions({
           </div>
         </div>
       )}
+      {authoritativeV2 && design ? (
+        <CustomModePanel lineItem={_lineItem} design={design} />
+      ) : null}
     </div>
   );
 }
