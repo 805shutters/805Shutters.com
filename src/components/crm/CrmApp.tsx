@@ -42,6 +42,7 @@ import {
   soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
+import { normanOrderBridgeLaunchUrl } from "@/lib/crm/vendor-orders/norman-order-launch";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import {
@@ -77,6 +78,7 @@ import {
   CrmPaymentPerson,
   CrmQuote,
   CrmQuoteStatus,
+  CrmVendorOrderTask,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
@@ -871,6 +873,7 @@ export function CrmApp({
   const installationInvoiceEmails = useMemo(() => data?.installationInvoiceEmails || [], [data]);
   const orderCogsEmails = useMemo(() => data?.orderCogsEmails || [], [data]);
   const customerFiles = useMemo(() => data?.customerFiles || [], [data]);
+  const vendorOrderTasks = useMemo(() => data?.vendorOrderTasks || [], [data]);
   const accountability = useMemo(() => data?.accountability || [], [data]);
   const kenPayments = useMemo(() => data?.kenPayments || [], [data]);
   const commissionPayments = useMemo(() => data?.commissionPayments || [], [data]);
@@ -990,9 +993,20 @@ export function CrmApp({
       rows,
       customerFiles,
       installationInvoiceEmails,
-      orderCogsEmails
+      orderCogsEmails,
+      vendorOrderTasks
     );
     if (payload) setDrill(payload);
+  }
+
+  function startVendorOrderEntry(task: CrmVendorOrderTask) {
+    try {
+      const opened = window.open(normanOrderBridgeLaunchUrl(task.taskId), "_blank");
+      if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
+      setMessage(`Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The local Norman order runner could not be opened.");
+    }
   }
 
   function openTab(tab: CrmTab) {
@@ -2721,6 +2735,7 @@ export function CrmApp({
   const balanceDueCompletedCount = summary?.balanceDueCompleted || 0;
   const missingCogsCount = summary?.missingCogs || 0;
   const measureNeededCount = summary?.measureNeeded || 0;
+  const readyToOrderCount = vendorOrderTasks.length;
   const globalDrill = drill && (activeTab !== "command" || drill.placement === "summary") ? drill : null;
   const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
 
@@ -2749,6 +2764,9 @@ export function CrmApp({
           <Metric label="Open Balance" value={toCurrency(data?.summary.openBalance)} onClick={() => openSummaryDrill("openBalance")} />
           <Metric label="Need To Order" value={needsOrderCount} tone={needsOrderCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("needsOrder")} />
           <Metric label="Deposit Needed" value={depositNeededCount} tone={depositNeededCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("depositNeeded")} />
+          {readyToOrderCount > 0 ? (
+            <Metric label="Ready to Order" value={readyToOrderCount} tone="warning" onClick={() => openSummaryDrill("readyToOrder")} />
+          ) : null}
           <Metric label="Balance Due" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
           <Metric label="Missing COGS" value={missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
@@ -2799,6 +2817,7 @@ export function CrmApp({
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
+            onVendorOrderLaunch={startVendorOrderEntry}
           />
         </div>
       ) : null}
@@ -3483,6 +3502,7 @@ type DrillEntry = {
   documents?: DrillDocument[];
   products?: CrmCustomerFile["products"];
   notes?: string[];
+  vendorOrderTask?: CrmVendorOrderTask;
 };
 type InstallationInvoiceLedgerStatus = "open" | "paid" | "partial" | "review";
 type InstallationInvoiceLedgerItem = {
@@ -4726,7 +4746,8 @@ function buildSummaryDrill(
   rows: CrmBookkeepingRow[],
   files: CrmCustomerFile[],
   installationInvoiceEmails: CrmInstallationInvoiceEmail[] = [],
-  orderCogsEmails: CrmOrderCogsEmail[] = []
+  orderCogsEmails: CrmOrderCogsEmail[] = [],
+  vendorOrderTasks?: CrmVendorOrderTask[]
 ): DrillPayload | null {
   switch (metric) {
     case "openJobs":
@@ -4785,6 +4806,33 @@ function buildSummaryDrill(
         metric,
         placement: "summary",
         entries: rowsToEntries(depositNeededRows(rows), (row) => Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0), { jobs, files })
+      };
+    case "readyToOrder":
+      if (!vendorOrderTasks) return null;
+      return {
+        title: "Ready to Order",
+        subtitle: "Submitted technical measures queued for review-only vendor entry",
+        metric,
+        placement: "summary",
+        entries: vendorOrderTasks.map((task) => {
+          const job = jobs.find((item) => item.id === task.jobId);
+          const file = files.find((item) => normalizeCustomerName(item.customerName) === normalizeCustomerName(task.customerName));
+          return {
+            id: `vendor-order-${task.taskId}`,
+            name: task.customerName,
+            customerName: task.customerName,
+            meta: [task.quoteNumber, `${task.manufacturer} Roller`, formatShortDate(task.submittedAt)].filter(Boolean).join(" · "),
+            value: "Queued",
+            jobId: task.jobId,
+            job,
+            file,
+            vendorOrderTask: task,
+            notes: [
+              task.message,
+              "The automation creates a review-ready saved draft only. It cannot place, submit, checkout, confirm, or finalize an order.",
+            ],
+          };
+        }),
       };
     case "balanceDueCompleted":
       return {
@@ -5989,6 +6037,7 @@ type DrillPanelProps = {
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
+  onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
 };
 
 function DrillSearchResultsPanel({
@@ -6005,7 +6054,8 @@ function DrillSearchResultsPanel({
   onFindCogs,
   onSaveField,
   onLedgerLineAction,
-  onPaymentPlanAction
+  onPaymentPlanAction,
+  onVendorOrderLaunch
 }: DrillPanelProps & {
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
@@ -6106,6 +6156,7 @@ function DrillSearchResultsPanel({
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
                 onPaymentPlanAction={onPaymentPlanAction}
+                onVendorOrderLaunch={onVendorOrderLaunch}
               />
             </div>
           ) : null}
@@ -6801,7 +6852,8 @@ function DrillDetailPanel({
   onFindCogs,
   onSaveField,
   onLedgerLineAction,
-  onPaymentPlanAction
+  onPaymentPlanAction,
+  onVendorOrderLaunch
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -6834,6 +6886,7 @@ function DrillDetailPanel({
             onSaveField={onSaveField}
             onLedgerLineAction={onLedgerLineAction}
             onPaymentPlanAction={onPaymentPlanAction}
+            onVendorOrderLaunch={onVendorOrderLaunch}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -6853,7 +6906,8 @@ function DrillDetailCard({
   onFindCogs,
   onSaveField,
   onLedgerLineAction,
-  onPaymentPlanAction
+  onPaymentPlanAction,
+  onVendorOrderLaunch
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
@@ -6866,6 +6920,7 @@ function DrillDetailCard({
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
+  onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
 }) {
   const row = entry.row;
   const job = entry.job;
@@ -7275,6 +7330,16 @@ function DrillDetailCard({
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
+    entry.vendorOrderTask && onVendorOrderLaunch
+      ? {
+          key: "start-vendor-order",
+          label: "Start Order Entry",
+          detail: "Review-only Norman draft",
+          tone: "warning",
+          disabled: busy,
+          onClick: () => onVendorOrderLaunch(entry.vendorOrderTask as CrmVendorOrderTask)
+        }
+      : null,
     measureFormId
       ? {
           key: "technical-measure-form",

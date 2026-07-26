@@ -66,6 +66,7 @@ import {
   CrmPaymentPerson,
   CrmQuote,
   CrmQuoteStatus,
+  CrmVendorOrderTask,
   crmJobStatuses,
   crmQuoteStatuses
 } from "@/lib/crm/types";
@@ -1122,6 +1123,7 @@ export function buildDashboardData({
   orderCogsEmails = [],
   commissionPayments = [],
   commissionPaymentAllocations = [],
+  vendorOrderTasks = [],
   openingBalance,
   payoffTarget,
   now
@@ -1142,6 +1144,7 @@ export function buildDashboardData({
   orderCogsEmails?: CrmOrderCogsEmail[];
   commissionPayments?: CrmCommissionPayment[];
   commissionPaymentAllocations?: CrmCommissionPaymentAllocation[];
+  vendorOrderTasks?: CrmVendorOrderTask[];
   openingBalance: number;
   payoffTarget: number;
   now?: Date | string;
@@ -1212,6 +1215,7 @@ export function buildDashboardData({
     commissionSummary,
     partnerPaymentLedger,
     accountability,
+    vendorOrderTasks,
     summary: buildDashboardSummaryMetrics({
       jobs: jobsWithQuotes,
       quotes: liveQuotes,
@@ -1441,6 +1445,43 @@ function jobStatusForBookkeepingRow(row: CrmBookkeepingRow): CrmJobStatus {
   return "sold";
 }
 
+export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | null {
+  const row = objectMeta(value);
+  const order = objectMeta(objectMeta(row.meta).vendor_order_preparation);
+  const customer = objectMeta(row.customer_snapshot);
+  const quote = objectMeta(row.quote_snapshot);
+  const taskId = optionalText(order.taskId);
+  const formId = optionalText(row.id);
+  const jobId = optionalText(row.job_id);
+  const quoteId = optionalText(row.quote_id);
+  const submittedAt = optionalText(row.submitted_at);
+  if (
+    !taskId ||
+    !formId ||
+    !jobId ||
+    !quoteId ||
+    !submittedAt ||
+    order.manufacturer !== "Norman" ||
+    order.productType !== "roller" ||
+    order.status !== "queued"
+  ) {
+    return null;
+  }
+  return {
+    taskId,
+    formId,
+    jobId,
+    quoteId,
+    customerName: optionalText(customer.name) || "Customer",
+    quoteNumber: optionalText(quote.quoteNumber),
+    manufacturer: "Norman",
+    productType: "roller",
+    status: "queued",
+    submittedAt,
+    message: optionalText(order.message) || "Norman Roller saved-draft entry is ready to start.",
+  };
+}
+
 export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const [
     jobsResult,
@@ -1460,6 +1501,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     orderCogsEmailFallbackEventsResult,
     commissionPaymentsResult,
     commissionPaymentAllocationsResult,
+    vendorOrderTasksResult,
     settingsResult
   ] = await Promise.all([
     // Jobs and quotes use the SAME limit so a job and its quote don't land on
@@ -1525,6 +1567,15 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .select("*")
       .order("created_at", { ascending: true })
       .limit(4000),
+    supabase
+      .from("crm_technical_measure_forms")
+      .select("id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot")
+      .eq("status", "submitted")
+      .eq("meta->vendor_order_preparation->>manufacturer", "Norman")
+      .eq("meta->vendor_order_preparation->>productType", "roller")
+      .eq("meta->vendor_order_preparation->>status", "queued")
+      .order("submitted_at", { ascending: true })
+      .limit(250),
     supabase.from("crm_settings").select("*")
   ]);
 
@@ -1570,6 +1621,10 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
 
   if (commissionPaymentAllocationsResult.error) {
     console.warn("CRM commission payment allocations could not be loaded.", commissionPaymentAllocationsResult.error.message);
+  }
+
+  if (vendorOrderTasksResult.error) {
+    console.warn("CRM vendor order tasks could not be loaded.", vendorOrderTasksResult.error.message);
   }
 
   if (settingsResult.error) {
@@ -1620,6 +1675,9 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const commissionPaymentAllocations = (
     commissionPaymentAllocationsResult.error ? [] : commissionPaymentAllocationsResult.data || []
   ) as CrmCommissionPaymentAllocation[];
+  const vendorOrderTasks = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || [])
+    .map(vendorOrderTaskFromRow)
+    .filter((task): task is CrmVendorOrderTask => Boolean(task));
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
     value: number;
@@ -1646,6 +1704,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     orderCogsEmails,
     commissionPayments,
     commissionPaymentAllocations,
+    vendorOrderTasks,
     openingBalance,
     payoffTarget
   });

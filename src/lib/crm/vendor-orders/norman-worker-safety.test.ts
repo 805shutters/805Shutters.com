@@ -23,6 +23,25 @@ describe("Norman order worker safety boundary", () => {
     expect(worker).not.toContain('from("crm_vendor_order_drafts")');
   });
 
+  it("attaches to the user's authenticated Chrome session without reading portal credentials or cookies", () => {
+    expect(worker).toContain("chromium.connectOverCDP");
+    expect(worker).toContain("authenticatedNormanContext");
+    expect(worker).not.toContain("chromium.launch");
+    expect(worker).not.toContain("NORMAN_USERNAME");
+    expect(worker).not.toContain("NORMAN_PASSWORD");
+    expect(worker).not.toContain("context.cookies");
+    expect(worker.indexOf("const context = await authenticatedNormanContext()")).toBeLessThan(
+      worker.indexOf("const task = await claimTask(taskId)")
+    );
+  });
+
+  it("provides a loopback-only deliberate launch bridge", () => {
+    expect(worker).toContain('"127.0.0.1"');
+    expect(worker).toContain('url.pathname !== "/start"');
+    expect(worker).toContain("isLoopbackAddress");
+    expect(worker).toContain("Review-only safety is enforced");
+  });
+
   it("does not permit placed, ordered, or submitted queue states", () => {
     const check = migration.match(/check \(status in \(([^)]+)\)\)/)?.[1] || "";
     expect(check).toContain("'review_ready'");

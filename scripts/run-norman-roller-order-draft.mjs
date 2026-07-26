@@ -7,13 +7,15 @@
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 
-const LOGIN_URL = "https://www.normanwindowcoverings.com/frontend/login.asp";
 const HOME_URL = "https://www.normanwindowcoverings.com/Login/default.asp";
 const ROLLER_URL = "https://www.normanwindowcoverings.com/Login/RollerShadesRR/SessionCtrl.asp?pgmcode=RR";
 const BLOCKED_ACTION = /\b(check\s*out|checkout|submit\s+order|place\s+order|confirm\s+order|process\s+order|send\s+order|finalize\s+order)\b/i;
 const args = parseArgs(process.argv.slice(2));
+const bridgeRuns = new Map();
+let connectedBrowser = null;
 
 main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
@@ -21,14 +23,25 @@ main().catch((error) => {
 });
 
 async function main() {
-  const task = await claimTask(args.taskId);
-  if (!task) {
-    console.log(JSON.stringify({ status: "skipped", message: "No queued Norman Roller draft tasks." }));
+  if (args.serve) {
+    await serveBridge();
     return;
+  }
+  const result = await runQueuedTask(args.taskId);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function runQueuedTask(taskId) {
+  // Verify the user's visible, authenticated Chrome session before claiming the
+  // queue row. A missing debugger or logged-out portal must leave the task queued.
+  const context = await authenticatedNormanContext();
+  const task = await claimTask(taskId);
+  if (!task) {
+    return { status: "skipped", message: "No queued Norman Roller draft tasks." };
   }
   try {
     assertSafePlan(task.payload);
-    const result = await preparePortalDraft(task);
+    const result = await preparePortalDraft(task, context);
     await workerRequest({
       action: "complete",
       formId: task.technical_measure_form_id,
@@ -38,7 +51,7 @@ async function main() {
       screenshotPath: result.screenshotPath,
       review: result.review,
     });
-    console.log(JSON.stringify({ status: "review_ready", task_id: task.id, ...result }, null, 2));
+    return { status: "review_ready", task_id: task.id, ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await workerRequest({
@@ -55,14 +68,25 @@ async function main() {
 }
 
 function parseArgs(argv) {
-  const result = { taskId: "", headed: false, screenshotDir: process.env.NORMAN_ORDER_SCREENSHOT_DIR || "tmp/norman-order-drafts" };
+  const result = {
+    taskId: "",
+    serve: false,
+    bridgePort: 47635,
+    cdpUrl: process.env.NORMAN_CHROME_CDP_URL || "http://127.0.0.1:9222",
+    screenshotDir: process.env.NORMAN_ORDER_SCREENSHOT_DIR || "tmp/norman-order-drafts",
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--task-id") result.taskId = argv[++index] || "";
     else if (arg.startsWith("--task-id=")) result.taskId = arg.slice(10);
-    else if (arg === "--headed") result.headed = true;
+    else if (arg === "--serve") result.serve = true;
+    else if (arg === "--bridge-port") result.bridgePort = Number(argv[++index] || result.bridgePort);
+    else if (arg === "--cdp-url") result.cdpUrl = argv[++index] || result.cdpUrl;
     else if (arg === "--screenshot-dir") result.screenshotDir = argv[++index] || result.screenshotDir;
     else throw new Error(`Unknown argument: ${arg}`);
+  }
+  if (!Number.isInteger(result.bridgePort) || result.bridgePort < 1024 || result.bridgePort > 65535) {
+    throw new Error("Norman bridge port must be an integer between 1024 and 65535.");
   }
   return result;
 }
@@ -82,21 +106,22 @@ async function claimTask(taskId) {
   return result.task || null;
 }
 
-async function preparePortalDraft(task) {
-  const credentials = normanCredentials();
-  if (!credentials.username || !credentials.password) throw new Error("Norman credentials are not configured in the environment or macOS Keychain.");
+async function preparePortalDraft(task, context) {
   fs.mkdirSync(args.screenshotDir, { recursive: true });
-  const browser = await chromium.launch({ headless: !args.headed });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1440, height: 1100 });
   const report = [];
   page.on("dialog", async (dialog) => {
     const message = dialog.message();
     report.push({ field: "portal.dialog", status: "dismissed", message });
     await dialog.dismiss();
   });
+  await page.goto(ROLLER_URL, { waitUntil: "domcontentloaded", timeout: 45_000 });
+  const passwordFieldCount = await page.locator('input[type="password"]').count();
+  if (passwordFieldCount || !/\/Login\/RollerShadesRR\//i.test(page.url())) {
+    throw new Error("The attached Chrome session is no longer logged into the authorized Norman RA00743 dealer account.");
+  }
   try {
-    await login(page, credentials);
-    await page.goto(ROLLER_URL, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await clickSafe(page.locator('input[value*="Add New Order"], button:has-text("Add New Order")').first(), "add_new_order");
     await waitLoaded(page);
     await fillNamed(page, "txtPO", task.payload.header.poNumber);
@@ -124,26 +149,40 @@ async function preparePortalDraft(task) {
       screenshotPath,
       review: { url: page.url(), title: await page.title(), capturedAt: new Date().toISOString(), report, safety: "saved_draft_only" },
     };
-  } finally {
-    await browser.close();
+  } catch (error) {
+    report.push({ field: "automation", status: "failed", message: error instanceof Error ? error.message : String(error) });
+    throw error;
   }
 }
 
-async function login(page, credentials) {
-  await page.goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 45_000 });
-  const username = page.locator('input[type="text"], input:not([type])').first();
-  const password = page.locator('input[type="password"]').first();
-  await username.fill(credentials.username);
-  await password.fill(credentials.password);
-  await page.evaluate(() => {
-    const form = document.forms.Loginform || document.querySelector("form");
-    if (!form) throw new Error("Norman login form was not found.");
-    form.submit();
-  });
-  await waitLoaded(page);
-  if (!/\/Login\/default\.asp/i.test(page.url())) await page.goto(HOME_URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  const body = await page.locator("body").innerText().catch(() => "");
-  if (!/RA00743|MIKE\s+SHEPARD/i.test(body)) throw new Error("Norman login did not reach the authorized RA00743 dealer account.");
+async function authenticatedNormanContext() {
+  if (!connectedBrowser?.isConnected()) {
+    try {
+      connectedBrowser = await chromium.connectOverCDP(args.cdpUrl);
+    } catch {
+      throw new Error(`Chrome is not available at ${args.cdpUrl}. Start the Norman order Chrome session with remote debugging, then log into Norman before trying again.`);
+    }
+  }
+  for (const context of connectedBrowser.contexts()) {
+    const hasNormanPage = context.pages().some((page) => {
+      try {
+        const hostname = new URL(page.url()).hostname;
+        return hostname === "normanwindowcoverings.com" || hostname.endsWith(".normanwindowcoverings.com");
+      } catch {
+        return false;
+      }
+    });
+    if (!hasNormanPage) continue;
+    const probe = await context.newPage();
+    try {
+      await probe.goto(HOME_URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
+      const body = await probe.locator("body").innerText().catch(() => "");
+      if (/RA00743|RA-007-43|MIKE\s+SHEPARD/i.test(body)) return context;
+    } finally {
+      await probe.close().catch(() => {});
+    }
+  }
+  throw new Error("Log into the authorized Norman RA00743 account in the remote-debugging Chrome session before starting order entry.");
 }
 
 async function fillLine(page, line, report) {
@@ -309,6 +348,99 @@ function extractDraftId(url, body) {
   return fromUrl || fromBody || null;
 }
 
+async function serveBridge() {
+  const server = http.createServer((request, response) => {
+    void handleBridgeRequest(request, response);
+  });
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(args.bridgePort, "127.0.0.1", resolve);
+  });
+  console.log(`Norman review-only order bridge ready at http://127.0.0.1:${args.bridgePort}.`);
+  console.log(`Chrome debugger: ${args.cdpUrl}. Log into Norman RA00743 in that Chrome session before using the CRM button.`);
+  await new Promise(() => {});
+}
+
+async function handleBridgeRequest(request, response) {
+  try {
+    if (!isLoopbackAddress(request.socket.remoteAddress)) {
+      return sendText(response, 403, "Loopback requests only.");
+    }
+    const url = new URL(request.url || "/", `http://127.0.0.1:${args.bridgePort}`);
+    if (request.method !== "GET") return sendText(response, 405, "GET required.");
+    if (url.pathname === "/health") {
+      return sendJson(response, 200, { ok: true, safety: "saved_draft_only", cdpUrl: args.cdpUrl });
+    }
+    if (url.pathname === "/status") {
+      const taskId = url.searchParams.get("taskId") || "";
+      const run = bridgeRuns.get(taskId);
+      return sendJson(response, run ? 200 : 404, run || { status: "unknown", message: "This local run was not found." });
+    }
+    if (url.pathname !== "/start") return sendText(response, 404, "Not found.");
+    const taskId = url.searchParams.get("taskId") || "";
+    if (!/^[a-zA-Z0-9_-]{8,120}$/.test(taskId)) return sendText(response, 400, "The queued task identifier is invalid.");
+    const currentRun = bridgeRuns.get(taskId);
+    if (!currentRun || currentRun.status === "failed" || currentRun.status === "skipped") {
+      bridgeRuns.set(taskId, { status: "starting", message: "Checking the logged-in Norman browser session before claiming the queued task." });
+      setTimeout(() => void runBridgeTask(taskId), 0);
+    }
+    return sendBridgePage(response, taskId);
+  } catch (error) {
+    return sendText(response, 500, error instanceof Error ? error.message : "The local Norman bridge failed.");
+  }
+}
+
+async function runBridgeTask(taskId) {
+  try {
+    bridgeRuns.set(taskId, { status: "running", message: "Preparing the Norman saved draft. No final-order controls are permitted." });
+    const result = await runQueuedTask(taskId);
+    bridgeRuns.set(taskId, {
+      status: result.status,
+      message: result.status === "review_ready"
+        ? "Saved draft ready for manual review. The order has not been placed."
+        : result.message || "No queued task was claimed.",
+      portalDraftId: result.portalDraftId || null,
+    });
+  } catch (error) {
+    bridgeRuns.set(taskId, {
+      status: "failed",
+      message: error instanceof Error ? error.message : "Norman order entry failed.",
+    });
+  }
+}
+
+function sendBridgePage(response, taskId) {
+  response.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+  });
+  response.end(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>805 Norman Order Entry</title>
+<style>body{font-family:system-ui,sans-serif;max-width:680px;margin:10vh auto;padding:24px;color:#171714}main{border:1px solid #d8d5cc;border-radius:18px;padding:28px;box-shadow:0 10px 35px #0001}h1{margin-top:0}#state{font-size:1.1rem;font-weight:700}small{display:block;margin-top:24px;color:#5d5a52}</style>
+</head><body><main><h1>Norman saved-draft entry</h1><p id="state">Starting…</p><p id="detail">Checking the active Chrome login before the queue is claimed.</p><small>Review-only safety is enforced: this runner cannot place, submit, checkout, confirm, or finalize an order.</small></main>
+<script>
+const taskId=${JSON.stringify(taskId)};
+async function poll(){try{const response=await fetch("/status?taskId="+encodeURIComponent(taskId),{cache:"no-store"});const run=await response.json();document.querySelector("#state").textContent=String(run.status||"working").replaceAll("_"," ");document.querySelector("#detail").textContent=run.message||"Working…";if(!["review_ready","failed","skipped"].includes(run.status))setTimeout(poll,1000)}catch{document.querySelector("#detail").textContent="The local runner status could not be read.";setTimeout(poll,2000)}}poll();
+</script></body></html>`);
+}
+
+function sendJson(response, status, value) {
+  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+  response.end(JSON.stringify(value));
+}
+
+function sendText(response, status, value) {
+  response.writeHead(status, { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" });
+  response.end(value);
+}
+
+function isLoopbackAddress(value) {
+  return value === "127.0.0.1" || value === "::1" || value === "::ffff:127.0.0.1";
+}
+
 async function workerRequest(body) {
   const url = process.env.NORMAN_ORDER_WORKER_URL || "https://www.805shutters.com/api/crm/norman-order-worker";
   const secret = process.env.NORMAN_ORDER_WORKER_SECRET || keychain("805-norman-worker-secret", "order-drafts");
@@ -322,13 +454,6 @@ async function workerRequest(body) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(typeof result.message === "string" ? result.message : `Norman worker API failed with HTTP ${response.status}.`);
   return result;
-}
-
-function normanCredentials() {
-  return {
-    username: process.env.NORMAN_USERNAME || keychain("mts-norman-username", "quote_norman_order_entry") || keychain("mts-norman-login", "username"),
-    password: process.env.NORMAN_PASSWORD || keychain("mts-norman-password", "quote_norman_order_entry") || keychain("mts-norman-login", "password"),
-  };
 }
 
 function keychain(service, account) {

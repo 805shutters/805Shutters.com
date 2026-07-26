@@ -22,7 +22,8 @@ import {
   updateCrmJobExpense,
   updateCrmInstallationInvoiceEmail,
   updateCrmQuote,
-  updateCrmSettings
+  updateCrmSettings,
+  vendorOrderTaskFromRow
 } from "./backend";
 import { CrmAuthError } from "./auth";
 import {
@@ -447,6 +448,53 @@ function createSupabaseRecorder(
 
   return { calls, supabase };
 }
+
+describe("vendorOrderTaskFromRow", () => {
+  const queuedRow = {
+    id: "form-123",
+    job_id: "job-123",
+    quote_id: "quote-123",
+    submitted_at: "2026-07-26T18:00:00.000Z",
+    customer_snapshot: { name: "Ready Customer" },
+    quote_snapshot: { quoteNumber: "805-0200" },
+    meta: {
+      vendor_order_preparation: {
+        taskId: "task_12345678",
+        manufacturer: "Norman",
+        productType: "roller",
+        status: "queued",
+        message: "Ready for saved-draft entry.",
+        payload: { privatePortalPlan: "must not reach the dashboard" }
+      }
+    }
+  };
+
+  it("projects only safe queued-task metadata for the CRM action card", () => {
+    const task = vendorOrderTaskFromRow(queuedRow);
+    expect(task).toEqual({
+      taskId: "task_12345678",
+      formId: "form-123",
+      jobId: "job-123",
+      quoteId: "quote-123",
+      customerName: "Ready Customer",
+      quoteNumber: "805-0200",
+      manufacturer: "Norman",
+      productType: "roller",
+      status: "queued",
+      submittedAt: "2026-07-26T18:00:00.000Z",
+      message: "Ready for saved-draft entry."
+    });
+    expect(task).not.toHaveProperty("payload");
+  });
+
+  it("does not expose non-queued or unsubmitted vendor work", () => {
+    expect(vendorOrderTaskFromRow({
+      ...queuedRow,
+      meta: { vendor_order_preparation: { ...queuedRow.meta.vendor_order_preparation, status: "review_ready" } }
+    })).toBeNull();
+    expect(vendorOrderTaskFromRow({ ...queuedRow, submitted_at: null })).toBeNull();
+  });
+});
 
 describe("buildDashboardData", () => {
   it("counts Open Jobs as sold jobs that are not paid/completed", () => {

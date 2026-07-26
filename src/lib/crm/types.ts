@@ -791,6 +791,20 @@ export type CrmKenPayoffSummary = {
   completedJobs: number;
 };
 
+export type CrmVendorOrderTask = {
+  taskId: string;
+  formId: string;
+  jobId: string;
+  quoteId: string;
+  customerName: string;
+  quoteNumber: string | null;
+  manufacturer: "Norman";
+  productType: "roller";
+  status: "queued";
+  submittedAt: string;
+  message: string;
+};
+
 export type CrmDashboardData = {
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -815,5 +829,6 @@ export type CrmDashboardData = {
   commissionSummary: CrmCommissionSummary;
   partnerPaymentLedger: CrmPartnerPaymentLedger;
   accountability: CrmAccountabilityItem[];
+  vendorOrderTasks: CrmVendorOrderTask[];
   summary: CrmSummary;
 };
