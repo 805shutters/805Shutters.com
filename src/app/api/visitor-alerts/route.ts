@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
   const { error } = await supabase.from("visitor_alert_events").insert({
     viewed_at: parseViewedAt(payload.startedAt),
     referrer: cleanReferrer(payload.referrer) || null,
-    location: geoLabel(request) || null,
+    location: null,
   });
   if (error) {
     console.warn("Could not queue visitor alert:", error.message);
@@ -96,10 +96,14 @@ export async function GET(request: NextRequest) {
   const supabase = getSupabaseServiceClient();
   if (!supabase) return NextResponse.json({ sent: false, skipped: "database_not_configured" }, { status: 503 });
 
+  const now = new Date();
+  const beginning = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const { data: events, error } = await supabase
     .from("visitor_alert_events")
-    .select("id, viewed_at, referrer, location")
+    .select("id, referrer")
     .is("sent_at", null)
+    .gte("viewed_at", beginning.toISOString())
+    .lt("viewed_at", now.toISOString())
     .order("viewed_at", { ascending: true })
     .limit(150);
   if (error) {
@@ -135,25 +139,28 @@ function normalizeEvent(value: unknown): keyof typeof eventLabels | null {
   return null;
 }
 
-function buildHourlyDigest(events: Array<{ viewed_at: string; referrer: string | null; location: string | null }>) {
+function buildHourlyDigest(events: Array<{ referrer: string | null }>) {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    const source = referrerSource(event.referrer);
+    counts.set(source, (counts.get(source) || 0) + 1);
+  }
+  const referrers = [...counts.entries()]
+    .sort(([leftSource, leftCount], [rightSource, rightCount]) => rightCount - leftCount || leftSource.localeCompare(rightSource));
   return [
-    `805 visitor update (${events.length})`,
-    ...events.map((event) => [
-      formatViewedAt(event.viewed_at),
-      event.referrer || "Direct",
-      event.location || "Unknown location",
-    ].join(" | ")),
+    "805 daily site visit summary",
+    `Total visits: ${events.length}`,
+    "Referrers:",
+    ...referrers.map(([source, count]) => `${source}: ${count}`),
   ].join("\n");
 }
 
-function formatViewedAt(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown time";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+function referrerSource(referrer: string | null) {
+  if (!referrer) return "Unknown";
+  const host = referrer.split("/")[0]?.toLowerCase() || "";
+  if (host.includes("google.")) return "Google";
+  if (host.includes("yelp.")) return "Yelp";
+  return host.replace(/^www\./, "") || "Unknown";
 }
 
 function parseViewedAt(value: unknown) {
