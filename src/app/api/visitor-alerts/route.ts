@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendTelegramMessage } from "@/lib/notify/telegram";
 import { isPublicFacingPath } from "@/lib/public-activity";
+import { getSupabaseServiceClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
@@ -69,9 +70,54 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ sent: false, skipped: "bot" });
   }
 
-  const text = buildVisitorMessage(payload, event, request, userAgent);
-  const result = await sendTelegramMessage({ text });
-  return NextResponse.json(result);
+  // A visit is recorded once, when it starts. The hourly cron produces the
+  // compact Telegram digest instead of sending a message for every event.
+  if (event !== "start") return NextResponse.json({ sent: false, queued: false, skipped: "not_start" });
+
+  const supabase = getSupabaseServiceClient();
+  if (!supabase) return NextResponse.json({ sent: false, queued: false, skipped: "database_not_configured" });
+
+  const { error } = await supabase.from("visitor_alert_events").insert({
+    viewed_at: parseViewedAt(payload.startedAt),
+    referrer: cleanReferrer(payload.referrer) || null,
+    location: geoLabel(request) || null,
+  });
+  if (error) {
+    console.warn("Could not queue visitor alert:", error.message);
+    return NextResponse.json({ sent: false, queued: false, error: "visitor_alert_queue_failed" }, { status: 503 });
+  }
+
+  return NextResponse.json({ sent: false, queued: true });
+}
+
+export async function GET(request: NextRequest) {
+  if (!hasCronAccess(request)) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const supabase = getSupabaseServiceClient();
+  if (!supabase) return NextResponse.json({ sent: false, skipped: "database_not_configured" }, { status: 503 });
+
+  const { data: events, error } = await supabase
+    .from("visitor_alert_events")
+    .select("id, viewed_at, referrer, location")
+    .is("sent_at", null)
+    .order("viewed_at", { ascending: true })
+    .limit(150);
+  if (error) {
+    console.warn("Could not read visitor alert digest:", error.message);
+    return NextResponse.json({ sent: false, error: "visitor_alert_digest_failed" }, { status: 503 });
+  }
+  if (!events?.length) return NextResponse.json({ sent: false, count: 0 });
+
+  const result = await sendTelegramMessage({ text: buildHourlyDigest(events) });
+  if (!result.sent) return NextResponse.json({ ...result, count: events.length }, { status: 503 });
+
+  const { error: markSentError } = await supabase
+    .from("visitor_alert_events")
+    .update({ sent_at: new Date().toISOString() })
+    .in("id", events.map((event) => event.id));
+  if (markSentError) console.warn("Could not mark visitor digest events sent:", markSentError.message);
+
+  return NextResponse.json({ ...result, count: events.length });
 }
 
 async function readPayload(request: NextRequest): Promise<VisitorAlertPayload | null> {
@@ -89,44 +135,36 @@ function normalizeEvent(value: unknown): keyof typeof eventLabels | null {
   return null;
 }
 
-function buildVisitorMessage(
-  payload: VisitorAlertPayload,
-  event: keyof typeof eventLabels,
-  request: NextRequest,
-  userAgent: string,
-) {
-  const path = cleanString(payload.path, 180) || cleanPathFromHref(payload.href) || "/";
-  const entryPath = cleanString(payload.entryPath, 180);
-  const lastPath = cleanString(payload.lastPath, 180);
-  const referrer = cleanReferrer(payload.referrer);
-  const pageCount = clampNumber(payload.pageCount, 1, 50);
-  const durationMs = clampNumber(payload.durationMs, 0, 24 * 60 * 60 * 1000);
-  const activeDurationMs = clampNumber(payload.activeDurationMs, 0, 24 * 60 * 60 * 1000);
-  const sessionId = cleanString(payload.sessionId, 64);
-  const reason = cleanString(payload.reason, 32);
-  const geo = geoLabel(request);
-  const device = deviceLabel(userAgent);
-  const screen = screenLabel(payload.screen);
-  const utmLines = utmLabels(payload.utm);
-
+function buildHourlyDigest(events: Array<{ viewed_at: string; referrer: string | null; location: string | null }>) {
   return [
-    eventLabels[event],
-    `Page: ${path}`,
-    event === "start" ? null : `Time on site: ${formatDuration(durationMs)}`,
-    event === "start" ? null : `Active time: ${formatDuration(activeDurationMs)}`,
-    event === "start" ? null : `Pages viewed: ${pageCount}`,
-    entryPath && entryPath !== path ? `Entry: ${entryPath}` : null,
-    lastPath && lastPath !== path ? `Last page: ${lastPath}` : null,
-    referrer ? `Referrer: ${referrer}` : null,
-    ...utmLines,
-    device ? `Device: ${device}` : null,
-    screen ? `Screen: ${screen}` : null,
-    geo ? `Location: ${geo}` : null,
-    reason ? `Reason: ${reason}` : null,
-    sessionId ? `Session: ${sessionId.slice(0, 12)}` : null,
-  ]
-    .filter(Boolean)
-    .join("\n");
+    `805 visitor update (${events.length})`,
+    ...events.map((event) => [
+      formatViewedAt(event.viewed_at),
+      event.referrer || "Direct",
+      event.location || "Unknown location",
+    ].join(" | ")),
+  ].join("\n");
+}
+
+function formatViewedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function parseViewedAt(value: unknown) {
+  if (typeof value !== "string") return new Date().toISOString();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+}
+
+function hasCronAccess(request: NextRequest) {
+  const secret = process.env.VISITOR_ALERTS_CRON_SECRET || process.env.CRON_SECRET;
+  return Boolean(secret && request.headers.get("authorization") === `Bearer ${secret}`);
 }
 
 function cleanString(value: unknown, maxLength: number) {
