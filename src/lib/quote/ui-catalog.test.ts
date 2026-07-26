@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildPricingReference, buildUiCatalog } from "./ui-catalog";
+import { buildPricingReference, buildUiCatalog, resolveMotorizationOptionsForProduct } from "./ui-catalog";
 
 describe("buildUiCatalog", () => {
   const ui = buildUiCatalog();
@@ -89,10 +89,33 @@ describe("buildUiCatalog", () => {
     expect(dualMotor.priceByProduct?.roller).toBeNull();
   });
 
+  it("omits authoritative NA motor options from each product selector", () => {
+    const smart = ui.motorization.find((group) => group.groupId === "smart_motorization")!;
+    expect(resolveMotorizationOptionsForProduct(smart, "roller").find((option) => option.id === "smartsense")?.price).toBe(60);
+    expect(resolveMotorizationOptionsForProduct(smart, "smartfold").find((option) => option.id === "smartsense")?.price).toBe(60);
+    expect(resolveMotorizationOptionsForProduct(smart, "honeycomb").some((option) => option.id === "smartsense")).toBe(false);
+    expect(resolveMotorizationOptionsForProduct(smart, "smartdrape").some((option) => option.id === "wired_charging_wand")).toBe(false);
+  });
+
   it("does not leak full price grids to the UI projection", () => {
     const json = JSON.stringify(ui);
     expect(json).not.toContain("\"prices\"");
+    expect(json).not.toContain("\"costs\"");
+    expect(json).not.toContain("dealerNetPrice");
     expect(json).not.toContain("\"grid\"");
+    expect(json).not.toContain("dealerFactor");
+    expect(json).not.toContain("wholesale");
+  });
+
+  it("exposes Polar choices without exposing internal cost policy", () => {
+    const polar = ui.products.filter((product) => product.manufacturer === "Polar");
+    expect(polar).toHaveLength(13);
+    expect(polar.find((product) => product.id === "polar_interior_roller")).toMatchObject({
+      productType: "Roller Shades",
+      system: "Interior Roller",
+      priceBasis: "suggested_retail",
+    });
+    expect(polar.find((product) => product.id === "polar_tension_shade")?.priceBasis).toBe("manual_required");
   });
 
   it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
@@ -111,7 +134,7 @@ describe("buildPricingReference", () => {
   it("exposes authoritative grid numbers for CRM reference", () => {
     const honeycomb = ref.programs.find((p) => p.programId === "honeycomb_9_16in_cordless_single_cell");
     expect(honeycomb).toBeTruthy();
-    expect(honeycomb!.source).toBeNull();
+    expect(honeycomb!.source).toBe("2026Jul Retail Price Guide (1).pdf");
     expect(honeycomb!.widths).toContain(24);
     expect(honeycomb!.heights).toContain(36);
     expect(honeycomb!.prices[0][0]).toBe(212);

@@ -3,6 +3,9 @@ import {
   PRODUCT_COLOR_UNKNOWN_GRID,
   getMtsGridKeyForCatalogProgram,
   getMtsProductColorRows,
+  getV2HoneycombFabricFamiliesForCellSize,
+  getVerticalFabricGroupSelection,
+  isMtsProductColorCodeAvailableForContext,
   searchMtsProductColors,
   supportsMtsProductColorSearch,
 } from "./productColorCatalog";
@@ -19,6 +22,77 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "SmartPrivacy" })).toHaveLength(16);
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "Ultimate" })).toHaveLength(16);
     expect(getMtsProductColorRows("Wood Blinds")).toHaveLength(26);
+  });
+
+  it("uses the source-correct V2 Vertical and application-scoped Honeycomb inventories", () => {
+    const v2 = { quote_v2_backend: true };
+    const vertical = getMtsProductColorRows("Vertical Blinds", v2);
+    expect(vertical).toHaveLength(46);
+    expect(vertical).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ collection: "Faux Wood", colorName: "Limed White" }),
+        expect.objectContaining({ collection: "Faux Wood", colorName: "Silver Birch" }),
+      ]),
+    );
+    expect(vertical.some((row) => row.colorName === "Cloud" && row.collection === "Willow")).toBe(false);
+    expect(getVerticalFabricGroupSelection("Classic")).toBe("Classic collection");
+
+    expect(
+      getMtsProductColorRows("Honeycomb Shades", {
+        ...v2,
+        honeycomb_application: "Patio Door Vertical",
+      }),
+    ).toHaveLength(142);
+    expect(
+      getMtsProductColorRows("Honeycomb Shades", {
+        ...v2,
+        honeycomb_application: "Motorized Skylights",
+      }),
+    ).toHaveLength(134);
+    expect(
+      searchMtsProductColors("Honeycomb Shades", v2, "C7207K")[0]?.collection,
+    ).toBe("Designer Fabric (LF) (Silverbrook)");
+
+    expect(
+      searchMtsProductColors(
+        "Honeycomb Shades",
+        { ...v2, lift_system: "SmartRise Cordless" },
+        "C5004",
+      ),
+    ).toHaveLength(0);
+    expect(
+      searchMtsProductColors(
+        "Honeycomb Shades",
+        { ...v2, lift_system: "Cordless Day & Night" },
+        "C5004",
+      )[0],
+    ).toMatchObject({ collection: "Sheer", colorCode: "C5004" });
+    expect(
+      isMtsProductColorCodeAvailableForContext(
+        "Honeycomb Shades",
+        {
+          ...v2,
+          honeycomb_application: "Motorized Skylights",
+          lift_system: "SmartRise Cordless",
+        },
+        "C5004",
+      ),
+    ).toBe(false);
+    const dayNight916 = getMtsProductColorRows("Honeycomb Shades", {
+      ...v2,
+      cell_size: '9/16" Single Cell',
+      lift_system: "Cordless Day & Night",
+    });
+    expect(dayNight916.filter((row) => row.collection === "Sheer")).toHaveLength(5);
+    expect(dayNight916).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ collection: "Sheer", colorCode: "C5004" }),
+      ]),
+    );
+    expect(getV2HoneycombFabricFamiliesForCellSize('9/16" Single Cell')).toContain(
+      "Sheer",
+    );
+    expect(searchMtsProductColors("Roman Shades", v2, "F1090")).toHaveLength(0);
   });
 
   it("filters autocomplete rows to the selected product group", () => {

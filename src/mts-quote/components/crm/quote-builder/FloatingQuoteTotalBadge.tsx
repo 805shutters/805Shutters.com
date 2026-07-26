@@ -15,12 +15,20 @@ export function FloatingQuoteTotalBadge({
   lineItems,
   designs,
   storedTotal,
+  preferStoredTotal = false,
+  authoritativeV2 = false,
 }: {
   lineItems: QuoteTotalLineItem[];
   designs: QuoteTotalDesign[];
   storedTotal?: number | null;
+  preferStoredTotal?: boolean;
+  authoritativeV2?: boolean;
 }) {
-  const total = resolveQuoteDisplayTotal(storedTotal, lineItems, designs);
+  const total = preferStoredTotal && Number.isFinite(Number(storedTotal))
+    ? Number(storedTotal)
+    : resolveQuoteDisplayTotal(storedTotal, lineItems, designs, {
+        mode: authoritativeV2 ? "authoritative_v2" : "legacy",
+      });
 
   return (
     <aside

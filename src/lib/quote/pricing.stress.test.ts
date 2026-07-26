@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { priceDesign } from "./pricing";
+import { priceDealerNetDesign, priceDesign } from "./pricing";
 import { catalog } from "./catalog";
 
 // Exhaustive stress sweep of the pricing ENGINE against the catalog data.
@@ -18,6 +18,7 @@ describe("STRESS: every in-range grid cell prices to exactly its catalog value",
   it("sweeps all grid + width-only programs", () => {
     let verified = 0;
     for (const product of catalog.products) {
+      if (product.priceBasis && product.priceBasis !== "suggested_retail") continue;
       for (const prog of product.programs) {
         if (prog.priceAxis === "sqft") continue;
         const { widths, heights, prices } = prog.grid;
@@ -76,16 +77,33 @@ describe("STRESS: shutter sqft sweep honors the 8 sqft floor and never goes nega
     for (const product of catalog.products) {
       if (product.productType !== "shutter") continue;
       for (const prog of product.programs) {
+        const effectiveBasis = prog.priceBasis ?? product.priceBasis;
+        if (effectiveBasis === "manual_required" || effectiveBasis === "unavailable") {
+          continue;
+        }
         for (let w = 12; w <= 96; w += 6) {
           for (let h = 12; h <= 96; h += 6) {
-            const r = priceDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
-            expect(r.ok).toBe(true);
-            if (r.ok) {
-              expect(Number.isFinite(r.total)).toBe(true);
-              expect(r.total).toBeGreaterThan(0);
-              expect(r.billableSqft).toBeGreaterThanOrEqual(8);
-              const expectedSqft = Math.max((w * h) / 144, 8);
-              expect(r.billableSqft).toBeCloseTo(expectedSqft, 5);
+            const dealerOnly = effectiveBasis === "dealer_net";
+            if (dealerOnly) {
+              const r = priceDealerNetDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
+              expect(r.ok).toBe(true);
+              if (r.ok) {
+                expect(Number.isFinite(r.dealerNetUnitCost)).toBe(true);
+                expect(r.dealerNetUnitCost).toBeGreaterThan(0);
+                expect(r.billableSqft).toBeGreaterThanOrEqual(8);
+                const expectedSqft = Math.max((w * h) / 144, 8);
+                expect(r.billableSqft).toBeCloseTo(expectedSqft, 5);
+              }
+            } else {
+              const r = priceDesign({ productId: product.id, programId: prog.id, widthInches: w, heightInches: h });
+              expect(r.ok).toBe(true);
+              if (r.ok) {
+                expect(Number.isFinite(r.total)).toBe(true);
+                expect(r.total).toBeGreaterThan(0);
+                expect(r.billableSqft).toBeGreaterThanOrEqual(8);
+                const expectedSqft = Math.max((w * h) / 144, 8);
+                expect(r.billableSqft).toBeCloseTo(expectedSqft, 5);
+              }
             }
             n += 1;
           }

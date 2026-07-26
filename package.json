@@ -12,6 +12,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:quote-v2-golden": "vitest run src/lib/quote-v2/norman-roller-400-line-golden.test.ts",
     "test:e2e": "playwright test",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
@@ -21,7 +22,8 @@
     "audit:ai-crawlers": "python3 scripts/analyze_ai_crawler_activity.py --output reports/ai-crawler-activity.md --json reports/ai-crawler-activity.json",
     "indexnow:submit": "python3 scripts/submit_indexnow.py --base-url https://www.805shutters.com",
     "migration:inventory": "python3 scripts/generate_migration_inventory.py",
-    "orders:norman:next": "node scripts/run-norman-roller-order-draft.mjs"
+    "orders:norman:next": "node scripts/run-norman-roller-order-draft.mjs",
+    "quote-v2:sources:verify": "node scripts/verify-quote-v2-sources.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.14",

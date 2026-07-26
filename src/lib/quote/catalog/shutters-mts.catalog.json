@@ -5,6 +5,7 @@
       "id": "norman_shutters",
       "productType": "shutter",
       "name": "Norman Shutters",
+      "manufacturer": "Norman",
       "pages": [],
       "provisional": true,
       "source": "MTS pricingData.ts (pre-2026) — PROVISIONAL, verify against current Norman/Onyx guide",
@@ -608,22 +609,28 @@
       "id": "onyx_shutters",
       "productType": "shutter",
       "name": "Onyx Shutters",
+      "manufacturer": "Onyx",
+      "priceBasis": "dealer_net",
+      "customerRetailStatus": "unverified",
+      "freightStatus": "unresolved",
       "pages": [],
       "provisional": true,
-      "source": "MTS pricingData.ts (pre-2026) — PROVISIONAL, verify against current Norman/Onyx guide",
+      "source": "Onyx dealer-cost evidence received 2026-07-20; customer MSRP and effective date are unverified",
       "fabricRouting": null,
       "programs": [
         {
           "id": "painted_basswood",
-          "name": "Painted Basswood",
+          "name": "Basswood",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 38.0,
+          "pricePerSqft": null,
           "costPerSqft": 13.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -631,20 +638,22 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. $13.50 is dealer cost; customer MSRP is unverified."
           ]
         },
         {
           "id": "stained_basswood",
-          "name": "Stained Basswood",
+          "name": "Basswood Stain",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 42.0,
+          "pricePerSqft": null,
           "costPerSqft": 16.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -652,28 +661,30 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. $16.50 is dealer cost; customer MSRP is unverified."
           ]
         },
         {
           "id": "secamore",
-          "name": "Secamore",
+          "name": "Sycamore",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 25.55,
-          "costPerSqft": 10.95,
+          "pricePerSqft": null,
+          "costPerSqft": 11.95,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. Legacy program id secamore is retained for saved-quote compatibility; the source identity is Sycamore. $11.95 is dealer cost; customer MSRP is unverified."
           ]
         },
         {
@@ -681,62 +692,68 @@
           "name": "Vinyl",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 31.0,
-          "costPerSqft": 12.0,
+          "pricePerSqft": null,
+          "costPerSqft": 11.0,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. $11.00 is dealer cost; customer MSRP is unverified."
           ]
         },
         {
           "id": "vlo_hybrid",
-          "name": "VLO Hybrid",
+          "name": "MDF Hybrid",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 28.0,
-          "costPerSqft": 12.0,
+          "pricePerSqft": null,
+          "costPerSqft": 10.35,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. Legacy program id vlo_hybrid is retained for saved-quote compatibility; the source identity is MDF Hybrid. $10.35 is dealer cost; customer MSRP is unverified."
           ]
         },
         {
           "id": "onyx_us_made_vinyl",
-          "name": "Onyx US Made Vinyl",
+          "name": "Onyx U.S. Made Vinyl",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "dealer_net",
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 33.0,
-          "costPerSqft": 13.65,
+          "pricePerSqft": null,
+          "costPerSqft": 13.6,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "8 sq ft minimum billable area. $13.60 is dealer cost; the supplied evidence does not establish a $34.00 manufacturer MSRP."
           ]
         },
         {
@@ -744,33 +761,48 @@
           "name": "Poly Composite",
           "priceGroup": null,
           "priceAxis": "sqft",
+          "priceBasis": "manual_required",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": 31.0,
-          "costPerSqft": 12.0,
+          "pricePerSqft": null,
+          "costPerSqft": null,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area."
+            "Quarantined: the legacy $12.00 dealer-cost value has no pinned sourceId. Manual source verification is required before pricing."
           ]
         }
       ],
       "surcharges": [
         {
-          "id": "hidden_tilt_rod",
-          "name": "Hidden Tilt Rod",
+          "id": "h2_tilt",
+          "name": "H2 Tilt",
           "kind": "flat",
           "per": "sqft",
-          "value": 1.2,
+          "value": null,
+          "dealerNetValue": 0,
+          "sourceId": "onyx-price-screenshot-2026-07-20",
           "appliesTo": "shutter",
-          "notes": "",
-          "sourceType": "flat"
+          "notes": "Included at no dealer charge. Customer MSRP is unverified.",
+          "sourceType": "Onyx dealer-cost evidence"
+        },
+        {
+          "id": "hidden_tilt_rod",
+          "name": "H3 Hidden Gear",
+          "kind": "flat",
+          "per": "sqft",
+          "value": null,
+          "dealerNetValue": 1,
+          "sourceId": "onyx-price-screenshot-2026-07-20",
+          "appliesTo": "shutter",
+          "notes": "$1.00 per square foot dealer cost. Customer MSRP is unverified.",
+          "sourceType": "Onyx dealer-cost evidence"
         },
         {
           "id": "double_hung",
@@ -1015,7 +1047,8 @@
       ],
       "fabricByYard": [],
       "notes": [
-        "Retail derived from wholesale x 28/12 (legacy MTS markup). 8 sq ft minimum."
+        "Dealer-cost evidence only. Priced per square foot with an 8 sq ft minimum.",
+        "No manufacturer customer MSRP is established by the supplied pricing screenshot."
       ]
     }
   ]

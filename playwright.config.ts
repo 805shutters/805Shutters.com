@@ -8,6 +8,8 @@ import { defineConfig, devices } from "@playwright/test";
 //   Run:  E2E_BASE_URL=https://staging.805shutters.com npx playwright test
 
 const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const vercelProtectionBypass =
+  process.env.VERCEL_AUTOMATION_BYPASS_SECRET?.trim();
 
 export default defineConfig({
   testDir: "./e2e",
@@ -17,6 +19,12 @@ export default defineConfig({
   use: {
     baseURL,
     ignoreHTTPSErrors: true,
+    extraHTTPHeaders: vercelProtectionBypass
+      ? {
+          "x-vercel-protection-bypass": vercelProtectionBypass,
+          "x-vercel-set-bypass-cookie": "true",
+        }
+      : undefined,
     trace: "on-first-retry",
   },
   projects: [

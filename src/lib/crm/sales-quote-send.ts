@@ -12,6 +12,7 @@ import {
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { guardV2SalesQuoteBeforeLegacySend } from "@/lib/crm/sales-quote-v2-send-guard";
 import { sendSms } from "@/lib/notify/twilio";
 import {
   build805SoldQuoteSmsMessageForRecipient,
@@ -42,6 +43,7 @@ export async function markSalesQuoteSold(
 ) {
   const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
+  await guardV2SalesQuoteBeforeLegacySend(supabase, original);
   const signedAt = original.signed_at || new Date().toISOString();
   const { error } = await supabase
     .from("sales_quotes")
@@ -180,6 +182,7 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   const contactPatch: AnyRow = {};
@@ -265,6 +268,7 @@ export async function sendSalesQuotePaymentLinkToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   const contactPatch: AnyRow = {};

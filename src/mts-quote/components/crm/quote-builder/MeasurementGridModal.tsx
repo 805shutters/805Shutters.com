@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@mts/component
 import { cn } from "@mts/lib/utils";
 import { FRACTIONS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
+import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 
 interface MeasurementGridModalProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function MeasurementGridModal({
   pendingWidth,
   pendingHeight,
 }: MeasurementGridModalProps) {
+  const { authoritativeV2 } = useQuoteBuilderDatabase();
   const [directWidth, setDirectWidth] = useState("");
   const [directHeight, setDirectHeight] = useState("");
   const [directError, setDirectError] = useState("");
@@ -46,7 +48,8 @@ export function MeasurementGridModal({
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  const maxWholeInches = isWidth ? 250 : 119;
+  const maxWholeInches = getMeasurementMaxWholeInches(isWidth, authoritativeV2);
+  const maxHeightWholeInches = getMeasurementMaxWholeInches(false, authoritativeV2);
   const wholeNumbers: number[] = [];
   for (let i = 10; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
@@ -82,9 +85,11 @@ export function MeasurementGridModal({
 
   const submitDirectMeasurements = () => {
     const width = parseDirectMeasurement(directWidth, 250);
-    const height = parseDirectMeasurement(directHeight, 119);
+    const height = parseDirectMeasurement(directHeight, maxHeightWholeInches);
     if (!width || !height) {
-      setDirectError("Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
+      setDirectError(
+        `Enter a width from 1 to 250 15/16 and a height from 1 to ${maxHeightWholeInches} 15/16 inches.`,
+      );
       return;
     }
     setDirectError("");
@@ -137,7 +142,7 @@ export function MeasurementGridModal({
                   type="number"
                   inputMode="decimal"
                   min="1"
-                  max="119.9375"
+                  max={`${maxHeightWholeInches}.9375`}
                   step="0.0625"
                   value={directHeight}
                   onChange={(event) => setDirectHeight(event.target.value)}
@@ -220,6 +225,14 @@ export function parseDirectMeasurement(
   const fraction = FRACTIONS[totalSixteenths % 16];
   if (whole > maxWholeInches || !fraction) return null;
   return { whole, fraction };
+}
+
+export function getMeasurementMaxWholeInches(
+  isWidth: boolean,
+  authoritativeV2: boolean,
+): number {
+  if (isWidth) return 250;
+  return authoritativeV2 ? 250 : 119;
 }
 
 function measurementToDecimalString(measurement: { whole: number; fraction: string }): string {

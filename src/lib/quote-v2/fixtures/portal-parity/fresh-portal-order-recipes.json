@@ -1,0 +1,709 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "quote-v2-fresh-portal-order-recipes-2026-07-22",
+  "capturedAt": "2026-07-22T17:30:00-07:00",
+  "purpose": "Rebuild brand-new Quote V2 drafts from the exact manufacturer portal configurations already observed, without reusing a stored 805 quote price.",
+  "safety": {
+    "draftLabel": "CODEX PRICING TEST — DO NOT ORDER",
+    "manufacturerOrdersPlaced": false,
+    "customerQuotesSent": false,
+    "productionWrites": false
+  },
+  "groups": [
+    {
+      "id": "fresh-norman-smartrelease-current-account",
+      "manufacturer": "Norman",
+      "portalReference": "Current-account Roller pricing review captured 2026-07-21",
+      "evidence": [
+        {
+          "id": "norman-current-account-portal-fixture-2026-07-21",
+          "path": "src/lib/quote-v2/fixtures/norman-805-portal-2026-07-21.json",
+          "classification": "portal_verified_exact_case",
+          "sourceControlledSha256": "8cf4c88db889a42551f4e0b67f39bf3003efcf6aeacf9fd91a41f2cf3e5a8fcf"
+        },
+        {
+          "id": "norman-roller-private-capture-2026-07-21",
+          "path": "docs/quote-v2/portal-parity/evidence/norman-roller-portal-capture-2026-07-21.md",
+          "classification": "private_authenticated_capture_receipt",
+          "sourceControlledSha256": "fa0117414f931ef5f814e9fede035a621ae1cd1b11924395a781a792fc160922",
+          "privateArtifactSha256": "ce2ae5ebc7713113ea7eab24cfb208a8f71ef9a3e61d8dd656ea4e1c527d8b7d",
+          "privateArtifactByteLength": 140404
+        }
+      ],
+      "portalObserved": {
+        "customerRetail": {
+          "componentsCents": {
+            "baseGrid": 25400,
+            "fabricUpgrade": 0,
+            "operatingSystem": 8900,
+            "accessories": 700
+          },
+          "subtotalCents": 35000,
+          "grandTotalCents": 35000
+        },
+        "dealer": {
+          "merchandiseCents": 11550,
+          "freightCents": 2500,
+          "processingCents": 281,
+          "taxCents": 0,
+          "grandTotalCents": 14331
+        }
+      },
+      "bookObserved": {
+        "sourceId": "norman-retail-guide-2026-07",
+        "pages": [18, 20],
+        "customerRetailCents": 35000
+      },
+      "lines": [
+        {
+          "id": "fresh-norman-smartrelease-line-1",
+          "productType": "Roller Shades",
+          "productId": "roller",
+          "programId": "roller_cordless_fabric_price_group_1_pg1",
+          "widthInches": 24,
+          "heightInches": 36,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "mount": "Inside Mount",
+            "application": "Single Shade",
+            "fabricCollection": "Brook",
+            "fabricCode": "F1120",
+            "fabricColor": "Pewter",
+            "operation": "SmartRelease",
+            "topTreatment": "No Top Treatment",
+            "tube": "1 3/4 inch",
+            "shimQuantity": 1
+          },
+          "design": {
+            "supplier": "Norman",
+            "mount_type": "Inside Mount",
+            "shade_type": "Single Shade",
+            "lift_system": "SmartRelease",
+            "valance": "No Top Treatment",
+            "fabric": "Brook",
+            "options": {
+              "fabric_color_collection": "Brook",
+              "fabric_color_code": "F1120",
+              "fabric_color_name": "Pewter",
+              "roller_application": "Single Shade",
+              "roller_top_treatment": "No Top Treatment",
+              "roller_tube": "1 3/4\" (43mm) Tube",
+              "roller_region_scope": "ca_ma",
+              "shipping_region": "continental_us",
+              "shim": true
+            }
+          }
+        }
+      ],
+      "expectedFreshRuntime": {
+        "catalogAsOf": "2026-08-01",
+        "customerTotalCents": 35000,
+        "sendable": true,
+        "costSummary": {
+          "status": "complete",
+          "productCostCents": 11550,
+          "freightCents": 2500,
+          "processingCents": 281,
+          "dealerCostTotalCents": 14331
+        },
+        "lineResults": [
+          {
+            "lineId": "fresh-norman-smartrelease-line-1",
+            "ok": true,
+            "resultCode": null,
+            "customerTotalCents": 35000,
+            "wholesaleTotalCents": 11550,
+            "requiredValidationRuleIds": [],
+            "requiredSendabilityReasonCodes": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "fresh-norman-rr002-current-policy",
+      "manufacturer": "Norman",
+      "portalReference": "Historical draft TEST, line RR002, captured 2026-07-20",
+      "evidence": [
+        {
+          "id": "norman-historical-rr002-2026-07-20",
+          "path": "src/lib/quote-v2/portal-parity.test.ts",
+          "classification": "historical_portal_fixture"
+        }
+      ],
+      "portalObserved": {
+        "customerRetail": {
+          "componentsCents": {
+            "baseGrid": 38400,
+            "fabricUpgrade": 0,
+            "operatingSystem": 0,
+            "accessories": 6700
+          },
+          "subtotalCents": 45100,
+          "grandTotalCents": 45100
+        },
+        "dealer": {
+          "policy": "superseded .30 capture",
+          "merchandiseCents": 13530,
+          "freightCents": null,
+          "processingCents": null,
+          "taxCents": null,
+          "grandTotalCents": null
+        }
+      },
+      "bookObserved": {
+        "sourceId": "norman-retail-guide-2026-07",
+        "customerRetailCents": 45100
+      },
+      "lines": [
+        {
+          "id": "fresh-norman-rr002-line-1",
+          "productType": "Roller Shades",
+          "productId": "roller",
+          "programId": "roller_cordless_fabric_price_group_2_pg2",
+          "widthInches": 36,
+          "heightInches": 60,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "mount": "Inside Mount",
+            "application": "Single",
+            "fabricCollection": "Amelia RD",
+            "fabricCode": "F1774",
+            "fabricColor": "Mist Gray",
+            "operation": "Continuous Cord Loop",
+            "topTreatment": "No Top Treatment",
+            "tube": "1 3/4 inch",
+            "raceway": "Yes"
+          },
+          "design": {
+            "supplier": "Norman",
+            "mount_type": "Inside Mount",
+            "shade_type": "Single",
+            "lift_system": "Continuous Cord Loop",
+            "valance": "No Top Treatment",
+            "fabric": "Amelia RD",
+            "options": {
+              "fabric_color_collection": "Amelia RD",
+              "fabric_color_code": "F1774",
+              "fabric_color_name": "Mist Gray",
+              "roller_application": "Single",
+              "roller_top_treatment": "No Top Treatment",
+              "roller_tube": "1 3/4\" (43mm) Tube",
+              "roller_region_scope": "ca_ma",
+              "shipping_region": "continental_us",
+              "raceway": "Yes"
+            }
+          }
+        }
+      ],
+      "expectedFreshRuntime": {
+        "catalogAsOf": "2026-08-01",
+        "customerTotalCents": 45100,
+        "sendable": true,
+        "policyNote": "The fresh build must preserve $451 source retail while replacing the superseded .30 dealer capture with the current .33 account factor.",
+        "costSummary": {
+          "status": "complete",
+          "productCostCents": 14883,
+          "freightCents": 2500,
+          "processingCents": 348,
+          "dealerCostTotalCents": 17731
+        },
+        "lineResults": [
+          {
+            "lineId": "fresh-norman-rr002-line-1",
+            "ok": true,
+            "resultCode": null,
+            "customerTotalCents": 45100,
+            "wholesaleTotalCents": 14883,
+            "requiredValidationRuleIds": [],
+            "requiredSendabilityReasonCodes": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "fresh-polar-quote-166382",
+      "manufacturer": "Polar",
+      "portalReference": "Saved portal quote 166382; not submitted to manufacturing",
+      "evidence": [
+        {
+          "id": "polar-elite-private-capture-2026-07-22",
+          "path": "docs/quote-v2/portal-parity/evidence/polar-elite-portal-capture-2026-07-22.md",
+          "classification": "private_user_supplied_capture_receipt",
+          "sourceControlledSha256": "6c064b1068098662cc4e6999b2c8bfb8123087d683963630e40b67f39bd2ef58",
+          "privateArtifactSha256": "bca8fe340b1afad3838302ce3f734b04a9128824059152cb043860b0dae6a1a2",
+          "privateArtifactByteLength": 239424
+        }
+      ],
+      "portalObserved": {
+        "customerRetail": {
+          "unitComponentsCents": {
+            "baseGrid": 83900,
+            "tracks": 6600
+          },
+          "unitTotalCents": 90500,
+          "subtotalCents": 271500,
+          "grandTotalCents": 271500
+        },
+        "dealer": {
+          "unitCents": 40725,
+          "merchandiseCents": 122175,
+          "freightCents": 0,
+          "processingCents": 0,
+          "taxCents": 9469,
+          "grandTotalCents": 131644
+        }
+      },
+      "bookObserved": {
+        "sourceId": "polar-shades-dealer-book-current-2026-07-18",
+        "pages": [97],
+        "unitCustomerRetailCents": 96100,
+        "customerRetailCents": 288300,
+        "unitDealerCents": 43245,
+        "dealerMerchandiseCents": 129735,
+        "portalDifferenceCents": 16800,
+        "portalDifferenceBasisPoints": 619
+      },
+      "lines": [
+        {
+          "id": "fresh-polar-166382-line-1",
+          "productType": "Roller Shades",
+          "productId": "polar_elite_patio",
+          "programId": "group_4",
+          "widthInches": 88,
+          "heightInches": 67,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "product": "Exterior Elite track shade",
+            "fabric": "SunTex 90 10%",
+            "operation": "Manual Gear/Crank",
+            "track": "Standard Non-Zipper Tracks",
+            "valance": "None",
+            "fabricOrientation": "Railroad",
+            "seaming": "Seam"
+          },
+          "design": {
+            "supplier": "Polar",
+            "valance": "None",
+            "fabric": "SunTex 90 10%",
+            "options": {
+              "fabric_collection": "SunTex 90 10%",
+              "operating_system": "Manual Gear/Crank",
+              "track_type": "Standard Non-Zipper Tracks",
+              "fabric_orientation": "Railroad",
+              "seaming": "Seam",
+              "railroad_and_seam": true
+            }
+          }
+        },
+        {
+          "id": "fresh-polar-166382-line-2",
+          "productType": "Roller Shades",
+          "productId": "polar_elite_patio",
+          "programId": "group_4",
+          "widthInches": 92,
+          "heightInches": 67,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "product": "Exterior Elite track shade",
+            "fabric": "SunTex 90 10%",
+            "operation": "Manual Gear/Crank",
+            "track": "Standard Non-Zipper Tracks",
+            "valance": "None",
+            "fabricOrientation": "Railroad",
+            "seaming": "Seam"
+          },
+          "design": {
+            "supplier": "Polar",
+            "valance": "None",
+            "fabric": "SunTex 90 10%",
+            "options": {
+              "fabric_collection": "SunTex 90 10%",
+              "operating_system": "Manual Gear/Crank",
+              "track_type": "Standard Non-Zipper Tracks",
+              "fabric_orientation": "Railroad",
+              "seaming": "Seam",
+              "railroad_and_seam": true
+            }
+          }
+        },
+        {
+          "id": "fresh-polar-166382-line-3",
+          "productType": "Roller Shades",
+          "productId": "polar_elite_patio",
+          "programId": "group_4",
+          "widthInches": 85.5,
+          "heightInches": 67,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "product": "Exterior Elite track shade",
+            "fabric": "SunTex 90 10%",
+            "operation": "Manual Gear/Crank",
+            "track": "Standard Non-Zipper Tracks",
+            "valance": "None",
+            "fabricOrientation": "Railroad",
+            "seaming": "Seam"
+          },
+          "design": {
+            "supplier": "Polar",
+            "valance": "None",
+            "fabric": "SunTex 90 10%",
+            "options": {
+              "fabric_collection": "SunTex 90 10%",
+              "operating_system": "Manual Gear/Crank",
+              "track_type": "Standard Non-Zipper Tracks",
+              "fabric_orientation": "Railroad",
+              "seaming": "Seam",
+              "railroad_and_seam": true
+            }
+          }
+        }
+      ],
+      "expectedFreshRuntime": {
+        "catalogAsOf": "2026-08-01",
+        "customerTotalCents": 0,
+        "sendable": false,
+        "sourceReconciliationCustomerCents": 288300,
+        "costSummary": {
+          "status": "incomplete",
+          "productCostCents": 0,
+          "freightCents": 0,
+          "processingCents": 0,
+          "dealerCostTotalCents": 0
+        },
+        "lineResults": [
+          {
+            "lineId": "fresh-polar-166382-line-1",
+            "ok": false,
+            "resultCode": "CONFIGURATION_INCOMPLETE",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": null,
+            "requiredValidationRuleIds": [
+              "polar.elite.portal_book_price_conflict"
+            ],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative",
+              "hard_block"
+            ]
+          },
+          {
+            "lineId": "fresh-polar-166382-line-2",
+            "ok": false,
+            "resultCode": "CONFIGURATION_INCOMPLETE",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": null,
+            "requiredValidationRuleIds": [
+              "polar.elite.portal_book_price_conflict"
+            ],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative",
+              "hard_block"
+            ]
+          },
+          {
+            "lineId": "fresh-polar-166382-line-3",
+            "ok": false,
+            "resultCode": "CONFIGURATION_INCOMPLETE",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": null,
+            "requiredValidationRuleIds": [
+              "polar.elite.portal_book_price_conflict"
+            ],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative",
+              "hard_block"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fresh-lotus-three-product-cart",
+      "manufacturer": "Lotus",
+      "portalReference": "Authenticated CODEX PRICING TEST — DO NOT ORDER cart captured 2026-07-22",
+      "evidence": [
+        {
+          "id": "lotus-three-product-cart-private-capture-2026-07-22",
+          "path": "docs/quote-v2/portal-parity/evidence/lotus-three-product-cart-2026-07-22.md",
+          "classification": "private_authenticated_dealer_observation",
+          "sourceControlledSha256": "01c9f02fd4c40ff93daa10c7021207f16081c2ef4de90f9c04f2eb4771c9be28",
+          "privateArtifactSha256": "74d2088c10e7317b5e3614c74242f4d9648ed4d8ef35f621bbfbde1641d04915",
+          "privateArtifactByteLength": 133336
+        }
+      ],
+      "portalObserved": {
+        "customerRetail": null,
+        "dealer": {
+          "lineTotalsCents": {
+            "CAMX3560W": 2784,
+            "CFCX4872W": 10500,
+            "VS4372SCWH": 2342
+          },
+          "cartTotalCents": 15626
+        }
+      },
+      "bookObserved": {
+        "sourceId": "lotus-west-a26-v1",
+        "customerRetailCents": null,
+        "lineTotalsCents": {
+          "CAMX3560W": 2784,
+          "CFCX4872W": 5397,
+          "VS4372SCWH": 2342
+        },
+        "conflicts": [
+          {
+            "sku": "CFCX4872W",
+            "portalCents": 10500,
+            "bookCents": 5397,
+            "differenceCents": 5103
+          }
+        ]
+      },
+      "lines": [
+        {
+          "id": "fresh-lotus-cart-camx3560w",
+          "productType": "Mini Blinds",
+          "productId": "lotus_mini_blinds",
+          "programId": "lotus_amx_1in_aluminum_custom",
+          "widthInches": 32,
+          "heightInches": 55,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "sku": "CAMX3560W",
+            "product": "Custom 1-inch aluminum",
+            "color": "White"
+          },
+          "design": {
+            "supplier": "Lotus",
+            "material": "1-inch Aluminum Mini Blind - Custom Cut",
+            "options": {
+              "supplier_sku": "CAMX3560W",
+              "color": "White"
+            }
+          }
+        },
+        {
+          "id": "fresh-lotus-cart-cfcx4872w",
+          "productType": "Faux Wood Blinds",
+          "productId": "lotus_faux_wood_blinds",
+          "programId": "lotus_fcx_2in_soft_white_custom",
+          "widthInches": 48,
+          "heightInches": 72,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "sku": "CFCX4872W",
+            "product": "Custom 2-inch faux wood",
+            "color": "Soft White"
+          },
+          "design": {
+            "supplier": "Lotus",
+            "material": "2-inch Faux Wood, Soft White - Custom Cut",
+            "options": {
+              "supplier_sku": "CFCX4872W",
+              "color": "Soft White"
+            }
+          }
+        },
+        {
+          "id": "fresh-lotus-cart-vs4372scwh",
+          "productType": "Vertical Blinds",
+          "productId": "lotus_vertical_blinds",
+          "programId": "lotus_vs_steel_complete_stock",
+          "widthInches": 43,
+          "heightInches": 72,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "sku": "VS4372SCWH",
+            "product": "Stock 3.5-inch steel vertical",
+            "color": "White"
+          },
+          "design": {
+            "supplier": "Lotus",
+            "material": "3.5-inch Ready-Made Vertical - Steel",
+            "options": {
+              "supplier_sku": "VS4372SCWH",
+              "color": "White",
+              "stock_item": true
+            }
+          }
+        }
+      ],
+      "expectedFreshRuntime": {
+        "catalogAsOf": "2026-08-01",
+        "customerTotalCents": 0,
+        "sendable": false,
+        "policyNote": "The portal and book expose dealer amounts only. Customer retail must remain undefined; the stock vertical SKU is not a supported V2 price program.",
+        "costSummary": {
+          "status": "incomplete",
+          "productCostCents": 8181,
+          "freightCents": 0,
+          "processingCents": 0,
+          "dealerCostTotalCents": 8181
+        },
+        "lineResults": [
+          {
+            "lineId": "fresh-lotus-cart-camx3560w",
+            "ok": false,
+            "resultCode": "CUSTOMER_RETAIL_UNDEFINED",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": 2784,
+            "requiredValidationRuleIds": [],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative"
+            ]
+          },
+          {
+            "lineId": "fresh-lotus-cart-cfcx4872w",
+            "ok": false,
+            "resultCode": "CUSTOMER_RETAIL_UNDEFINED",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": 5397,
+            "requiredValidationRuleIds": [],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative"
+            ]
+          },
+          {
+            "lineId": "fresh-lotus-cart-vs4372scwh",
+            "ok": false,
+            "resultCode": "PROGRAM_NOT_RESOLVED",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": null,
+            "requiredValidationRuleIds": [],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "fresh-onyx-live-us-made-vinyl",
+      "manufacturer": "Onyx",
+      "portalReference": "Customer-neutral CODEX PRICING TEST - DO NOT ORDER portal draft captured 2026-07-22",
+      "evidence": [
+        {
+          "id": "onyx-us-made-vinyl-portal-2026-07-22",
+          "path": "docs/quote-v2/onyx-live-portal-audit-2026-07-22.md",
+          "classification": "authenticated_portal_audit",
+          "sourceControlledSha256": "f2f95dfefdb1086e7aa4123685f0eb4e3a88c598f84612bcaad35edd37055b93",
+          "privateArtifactSha256": "8396fc5fadef32982a5731ce007e2b41d133de038f769d00ac44681f037f7eaf",
+          "privateArtifactByteLength": 73462
+        }
+      ],
+      "portalObserved": {
+        "customerRetail": null,
+        "dealer": {
+          "portalAreaThousandthsSqft": 17564,
+          "rawLinePriceMills": 239749,
+          "lineTotalCents": 23975,
+          "surchargeCents": 0,
+          "subtotalCents": 23975,
+          "taxCents": 2338,
+          "grandTotalCents": 26313,
+          "downPaymentCents": 13156
+        }
+      },
+      "bookObserved": {
+        "sourceId": "onyx-price-screenshot-2026-07-20",
+        "customerRetailCents": null,
+        "suppliedRateMillsPerSqft": 13600,
+        "openingAreaThousandthsSqft": 15000,
+        "dealerCostCents": 20400,
+        "portalRateMillsPerSqft": 13650,
+        "portalDifferenceCents": 3575
+      },
+      "lines": [
+        {
+          "id": "fresh-onyx-live-line-1",
+          "productType": "Shutters",
+          "productId": "onyx_shutters",
+          "programId": "onyx_us_made_vinyl",
+          "widthInches": 30,
+          "heightInches": 72,
+          "quantity": 1,
+          "portalObservedSelections": {
+            "program": "U.S. Made Shutters",
+            "material": "Vinyl",
+            "shape": "Regular",
+            "measurement": "Opening size",
+            "frame": "VL Outside",
+            "frameSides": 4,
+            "louver": "3 1/2 inches",
+            "color": "101 White",
+            "panelConfiguration": "L"
+          },
+          "runtimeCompletionAssumptions": {
+            "tilt": "Standard Tilt",
+            "hingeColor": "White",
+            "panelWidthInches": 30,
+            "panelHeightInches": 72,
+            "dividerRail": "No",
+            "windowApplication": "Standard"
+          },
+          "design": {
+            "supplier": "Onyx",
+            "material": "Onyx U.S. Made Vinyl",
+            "mount_type": "Outside Mount",
+            "louver_size": "3 1/2\"",
+            "tilt_type": "Standard Tilt",
+            "hinge_color": "White",
+            "panel_config": "L",
+            "options": {
+              "onyx_order_type": "Regular",
+              "size_type": "W - Window Size",
+              "onyx_mount": "OM",
+              "frame_type": "VL Outside",
+              "frame_sides": 4,
+              "color": "101_White",
+              "frame_extension_inches": 0,
+              "onyx_panel_1_width_inches": 30,
+              "onyx_panel_1_height_inches": 72,
+              "onyx_t_post_count": 0,
+              "divider_rail": "No",
+              "window_application": "Standard"
+            }
+          }
+        }
+      ],
+      "expectedFreshRuntime": {
+        "catalogAsOf": "2026-08-01",
+        "customerTotalCents": 0,
+        "sendable": false,
+        "policyNote": "The portal and supplied pricing artifact conflict on both rate and billable area. V2 must withhold customer retail and current internal cost.",
+        "costSummary": {
+          "status": "incomplete",
+          "productCostCents": 0,
+          "freightCents": 0,
+          "processingCents": 0,
+          "dealerCostTotalCents": 0
+        },
+        "lineResults": [
+          {
+            "lineId": "fresh-onyx-live-line-1",
+            "ok": false,
+            "resultCode": "CONFIGURATION_INCOMPLETE",
+            "customerTotalCents": 0,
+            "wholesaleTotalCents": null,
+            "requiredValidationRuleIds": [
+              "onyx.us_made_vinyl.restriction_identity_unverified",
+              "onyx.price.portal_source_conflict",
+              "onyx.source.current_effective_revision_missing",
+              "onyx.panel.maximum_area_source_incomplete"
+            ],
+            "requiredSendabilityReasonCodes": [
+              "product_status_not_sendable",
+              "price_not_authoritative",
+              "hard_block"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

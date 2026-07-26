@@ -548,6 +548,26 @@ const productDetails: Record<string, QuoteDetailField[]> = {
       ],
     },
     {
+      id: "coupled_shade_count",
+      label: "Coupled shade count",
+      type: "select",
+      options: [
+        { value: "2", label: "2 shades" },
+        { value: "3", label: "3 shades" },
+        { value: "4", label: "4 shades" },
+      ],
+    },
+    {
+      id: "lightguard_360_shade_count",
+      label: "LightGuard 360 shade count",
+      type: "select",
+      options: [
+        { value: "2", label: "2 shades" },
+        { value: "3", label: "3 shades" },
+        { value: "4", label: "4 shades" },
+      ],
+    },
+    {
       id: "control_side",
       label: "Control side",
       type: "select",
@@ -908,17 +928,23 @@ const productDetails: Record<string, QuoteDetailField[]> = {
   ],
 };
 
-const shadeMotorizationGroups = ["automate_home", "autowand", "smart_motorization"];
-
 const productMotorizationGroups: Record<string, string[]> = {
-  honeycomb: shadeMotorizationGroups,
-  perfectsheer: shadeMotorizationGroups,
-  roller: shadeMotorizationGroups,
-  roman: shadeMotorizationGroups,
-  smartdrape: shadeMotorizationGroups,
-  smartfold: shadeMotorizationGroups,
-  synchrony_vertical: shadeMotorizationGroups,
-  vertical_honeycomb: shadeMotorizationGroups,
+  honeycomb: ["automate_home", "autowand", "smart_motorization"],
+  perfectsheer: ["automate_home", "autowand", "smart_motorization"],
+  roller: ["automate_home", "autowand", "smart_motorization"],
+  roman: ["automate_home", "autowand", "smart_motorization"],
+  smartfold: ["autowand", "smart_motorization"],
+  smartdrape: ["smart_motorization"],
+  polar_interior_roller: ["polar_interior_motors"],
+  polar_elite_patio: ["polar_elite_motors"],
+  polar_titan_patio: ["polar_titan_motors"],
+  polar_mega_exterior: ["polar_mega_motors"],
+  polar_drapery_track: ["polar_drapery_motors"],
+  polar_awning_premium_pro: ["polar_awning_controls"],
+  polar_awning_premium_plus: ["polar_awning_controls"],
+  polar_awning_premium: ["polar_awning_controls"],
+  polar_awning_select: ["polar_awning_controls"],
+  polar_awning_drop_arm: ["polar_awning_controls"],
 };
 
 export function getDetailFieldsForProduct(productId: string): QuoteDetailField[] {

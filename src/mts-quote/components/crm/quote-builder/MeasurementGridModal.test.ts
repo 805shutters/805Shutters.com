@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseDirectMeasurement } from "./MeasurementGridModal";
+import { getMeasurementMaxWholeInches, parseDirectMeasurement } from "./MeasurementGridModal";
 
 describe("parseDirectMeasurement", () => {
   it("converts decimal inches to the nearest sixteenth", () => {
@@ -14,6 +14,16 @@ describe("parseDirectMeasurement", () => {
     expect(parseDirectMeasurement("0", 250)).toBeNull();
     expect(parseDirectMeasurement("251", 250)).toBeNull();
     expect(parseDirectMeasurement("120", 119)).toBeNull();
+  });
+
+  it("preserves the production height cap while V2 accepts catalog-valid tall shades", () => {
+    expect(getMeasurementMaxWholeInches(true, false)).toBe(250);
+    expect(getMeasurementMaxWholeInches(false, false)).toBe(119);
+    expect(getMeasurementMaxWholeInches(false, true)).toBe(250);
+    expect(parseDirectMeasurement("144", getMeasurementMaxWholeInches(false, true))).toEqual({
+      whole: 144,
+      fraction: "0",
+    });
   });
 });
 

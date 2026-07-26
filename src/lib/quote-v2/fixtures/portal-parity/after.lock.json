@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "captureId": "quote-v2-portal-parity-after-2026-07-22",
+  "policy": "immutable_after_correction_evidence",
+  "correctionRevision": "fe4c1e7802a394929d8a17cf37592b51ea73c492",
+  "beforeLock": {
+    "path": "src/lib/quote-v2/fixtures/portal-parity/before.lock.json",
+    "byteLength": 1048,
+    "sha256": "885c58510f500379d2d57a00495c86cd9ea6323e90458915896e7b12265a387c"
+  },
+  "verificationCommands": [
+    "npx vitest run src/lib/quote-v2/portal-parity-after.test.ts",
+    "node scripts/generate-quote-v2-portal-parity-after.mjs --check"
+  ],
+  "trackedArtifacts": [
+    {
+      "path": "src/lib/quote-v2/fixtures/portal-parity/after-cases.json",
+      "byteLength": 20733,
+      "sha256": "6fb8480e3be7819d7a6910aa4f1211145f32a3b6494f2f32a1306b2a094d03b4"
+    },
+    {
+      "path": "scripts/generate-quote-v2-portal-parity-after.mjs",
+      "byteLength": 10515,
+      "sha256": "820e1de88e51630f940a310c11c7a6d14712204e62d9efd4e0de08cfae92a55c"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/after-audit-2026-07-22.md",
+      "byteLength": 35108,
+      "sha256": "b0a7717b7c7fe5a46149ba1cec8ff210ab20a7d3b5c184d3f45b6a4b92886e99"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/norman-roller-portal-capture-2026-07-21.md",
+      "byteLength": 1401,
+      "sha256": "fa0117414f931ef5f814e9fede035a621ae1cd1b11924395a781a792fc160922"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/polar-elite-portal-capture-2026-07-22.md",
+      "byteLength": 1559,
+      "sha256": "6c064b1068098662cc4e6999b2c8bfb8123087d683963630e40b67f39bd2ef58"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/lotus-three-product-cart-2026-07-22.md",
+      "byteLength": 1622,
+      "sha256": "01c9f02fd4c40ff93daa10c7021207f16081c2ef4de90f9c04f2eb4771c9be28"
+    },
+    {
+      "path": "docs/quote-v2/portal-parity/evidence/805-norman-roller-after-ui-2026-07-22.md",
+      "byteLength": 1360,
+      "sha256": "8607d2fd7d559fd26dbcb4cac8e9c96e11dd28be4b6ba8403132232da2d591f2"
+    }
+  ],
+  "externalArtifacts": [
+    {
+      "id": "norman-roller-manufacturer-portal",
+      "classification": "private_authenticated_capture",
+      "exactCaseIds": ["norman-roller-smartrelease-24x36"],
+      "byteLength": 140404,
+      "sha256": "ce2ae5ebc7713113ea7eab24cfb208a8f71ef9a3e61d8dd656ea4e1c527d8b7d"
+    },
+    {
+      "id": "polar-elite-manufacturer-portal",
+      "classification": "private_user_supplied_capture",
+      "exactCaseIds": ["polar-elite-suntex90-manual-three-line"],
+      "byteLength": 239424,
+      "sha256": "bca8fe340b1afad3838302ce3f734b04a9128824059152cb043860b0dae6a1a2"
+    },
+    {
+      "id": "lotus-three-product-dealer-cart",
+      "classification": "private_authenticated_dealer_observation",
+      "exactCaseIds": [],
+      "byteLength": 133336,
+      "sha256": "74d2088c10e7317b5e3614c74242f4d9648ed4d8ef35f621bbfbde1641d04915"
+    },
+    {
+      "id": "805-norman-roller-completed-line-item",
+      "classification": "local_ui_capture",
+      "exactCaseIds": ["norman-roller-smartrelease-24x36"],
+      "byteLength": 133810,
+      "sha256": "8ee4a3c50549e9545ebe759640c028ba50ed3ca0c7c91a0eef40b6ff3d2b17b5"
+    },
+    {
+      "id": "805-norman-roller-protected-wholesale-ledger",
+      "classification": "local_ui_capture",
+      "exactCaseIds": ["norman-roller-smartrelease-24x36"],
+      "byteLength": 111865,
+      "sha256": "c175dfe106da06c35e97eeea11d75fa317b37cd265bb1c0e58b24a7b4afa3d5b"
+    }
+  ]
+}

@@ -16,6 +16,11 @@ const PRODUCT_TYPE_IMAGES: Record<string, string> = {
   smart_drape: "/images/805-portfolio-drapery-living-room.jpg",
   vertical_blind: "/images/product-previews/vertical-blinds-sliding-door.jpg",
   aluminum_blind: "/images/product-previews/aluminum-blinds-window.jpg",
+  "Vinyl Blinds": "/images/805-portfolio-blinds-office.jpg",
+  "Mini Blinds": "/images/product-previews/aluminum-blinds-window.jpg",
+  "Faux Wood Blinds": "/images/805-portfolio-blinds-office.jpg",
+  "Roller Shades": "/images/portfolio-enhanced/roller-shade-large-window-wide.jpg",
+  "Vertical Blinds": "/images/product-previews/vertical-blinds-sliding-door.jpg",
   accessory: "/images/805-portfolio-shades-bedroom.jpg",
 };
 

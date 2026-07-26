@@ -72,8 +72,11 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
     },
     shade_type: {
       dual: "dual_shade",
+      dual_rollers: "dual_shade",
       coupled: "coupled_shade",
+      coupled_shades: "coupled_shade",
       lightguard_360_t_post: ["lightguard_360", "t_post_for_lg_360"],
+      lightguard_360_with_t_post: ["lightguard_360", "t_post_for_lg_360"],
     },
     valance: {
       square_fascia: "fascia_wood_valance_3_1_2in_4_1_2in_and_6in",
@@ -106,6 +109,9 @@ const PRODUCT_FIELD_MAPPINGS: Record<string, Record<string, Record<string, Surch
     },
   },
   roman: {
+    shade_type: {
+      day_and_night: "day_and_night",
+    },
     lift_system: {
       smartrelease: "smartrelease_lift_system",
     },
@@ -271,7 +277,7 @@ function isSelected(value: unknown): boolean {
 }
 
 export function isPriceableCatalogSurcharge(surcharge: CatalogSurcharge): boolean {
-  return surcharge.value != null || surcharge.widthGraduated != null;
+  return surcharge.value != null || surcharge.dealerNetValue != null || surcharge.widthGraduated != null;
 }
 
 export function findPriceableProductSurcharge(productId: string, surchargeId: string): CatalogSurcharge | null {
@@ -328,6 +334,19 @@ export function deriveAutomaticSurcharges(productId: string, details: DetailReco
 
   const fabricSurcharge = text(source[FABRIC_SURCHARGE_DETAIL_ID]);
   if (fabricSurcharge) add(fabricSurcharge);
+
+  if (productId === "roller") {
+    const shadeType = text(source.shade_type);
+    if (shadeType === "coupled" || shadeType === "coupled_shades") {
+      const count = Math.min(4, Math.max(2, Math.round(Number(source.coupled_shade_count) || 2)));
+      add("coupled_shade", count - 1);
+    }
+    if (shadeType === "lightguard_360_t_post" || shadeType === "lightguard_360_with_t_post") {
+      const count = Math.min(4, Math.max(2, Math.round(Number(source.lightguard_360_shade_count) || 2)));
+      add("lightguard_360", count);
+      add("t_post_for_lg_360");
+    }
+  }
 
   for (const [detailId, value] of Object.entries(source)) {
     if (!isSelected(value)) continue;
