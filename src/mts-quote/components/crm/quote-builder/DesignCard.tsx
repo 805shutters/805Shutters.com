@@ -236,6 +236,7 @@ import {
   preferredSavedQuoteVariant,
 } from "@/lib/quote-v2/selected-design";
 import { getProduct } from "@/lib/quote/catalog";
+import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
 import { lookupWholesaleLedgerCost } from "@/lib/quote/wholesale-ledger";
 import { measurementToInches, getProductPriceBreakdown, calculateSqft } from "@mts/lib/pricingEngine";
 import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
@@ -1200,6 +1201,19 @@ const CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE: Readonly<Record<string, Readonly<R
   },
 };
 
+const MOTOR_UI_SUPPORTED_PRODUCT_IDS = new Set([
+  "honeycomb",
+  "perfectsheer",
+  "roller",
+  "roman",
+  "smartdrape",
+]);
+
+const MOTORIZATION_CONTROL_FIELDS = new Set([
+  "lift_system",
+  "json:control_type",
+]);
+
 const ONYX_PROGRAM_ID_BY_NAME: Readonly<Record<string, string>> = {
   "painted basswood": "painted_basswood",
   "stained basswood": "stained_basswood",
@@ -1217,6 +1231,84 @@ function normalizedCatalogLabel(value: unknown): string {
     .replace(/u\.s\./g, "us")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+export type MotorizationUiEligibility = Readonly<{
+  productId: string | null;
+  eligible: boolean;
+  reason:
+    | "eligible"
+    | "manufacturer_reselection_required"
+    | "catalog_motorization_unsupported"
+    | "manufacturer_ui_not_integrated";
+}>;
+
+export function resolveMotorizationUiEligibility(
+  design: SalesQuoteDesign | undefined,
+  productType: string,
+  options: Record<string, unknown>,
+): MotorizationUiEligibility {
+  const explicitProductId =
+    stringOption(options, "catalog_product_id") ||
+    stringOption(options, "quote_lab_product_id") ||
+    stringOption(options, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
+  const supplierKey = normalizedCatalogLabel(design?.supplier);
+  const candidateProductId =
+    explicitProductId ??
+    CANONICAL_PRODUCT_BY_SUPPLIER_AND_TYPE[supplierKey]?.[productType] ??
+    null;
+
+  if (!candidateProductId || !supplierKey) {
+    return {
+      productId: null,
+      eligible: false,
+      reason: "manufacturer_reselection_required",
+    };
+  }
+
+  const product = getProduct(candidateProductId);
+  const productSupplierKey = normalizedCatalogLabel(product?.manufacturer);
+  if (!product || !productSupplierKey || productSupplierKey !== supplierKey) {
+    return {
+      productId: null,
+      eligible: false,
+      reason: "manufacturer_reselection_required",
+    };
+  }
+
+  const productId = product.id;
+  if (getMotorizationGroupsForProduct(productId).length === 0) {
+    return {
+      productId,
+      eligible: false,
+      reason: "catalog_motorization_unsupported",
+    };
+  }
+
+  if (!MOTOR_UI_SUPPORTED_PRODUCT_IDS.has(productId)) {
+    return {
+      productId,
+      eligible: false,
+      reason: "manufacturer_ui_not_integrated",
+    };
+  }
+
+  return { productId, eligible: true, reason: "eligible" };
+}
+
+export function motorizationEligibleControlOptions(
+  options: readonly string[],
+  eligibility: MotorizationUiEligibility,
+): readonly string[] {
+  return eligibility.eligible
+    ? options
+    : options.filter(
+        (option) => !normalizedCatalogLabel(option).startsWith("motor"),
+      );
+}
+
+export function shouldRenderMotorizationControlDirect(field: string): boolean {
+  return MOTORIZATION_CONTROL_FIELDS.has(field);
 }
 
 export function canonicalLedgerIdentity(
@@ -6425,6 +6517,11 @@ function ShadesAndBlindsOptions({
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
   const requestedOpenOptionFieldRef = useRef<string | null | undefined>(undefined);
+  const motorizationEligibility = resolveMotorizationUiEligibility(
+    design,
+    productType,
+    (design?.options_json as Record<string, unknown> | undefined) || {},
+  );
 
   const requestOpenOptionField = (field: string | null) => {
     requestedOpenOptionFieldRef.current = field;
@@ -7818,10 +7915,13 @@ function ShadesAndBlindsOptions({
           },
           {
             key: "lift",
-            label: "Lift System",
+            label: "Control Type",
             field: "lift_system",
             type: "buttons",
-            options: rollerFacets?.liftSystems ?? ROLLER_LIFT_SYSTEMS,
+            options: motorizationEligibleControlOptions(
+              rollerFacets?.liftSystems ?? ROLLER_LIFT_SYSTEMS,
+              motorizationEligibility,
+            ),
           },
           {
             key: "valance",
@@ -8053,7 +8153,10 @@ function ShadesAndBlindsOptions({
             label: "Control Type",
             field: "lift_system",
             type: "buttons",
-            options: ROMAN_LIFT_SYSTEMS,
+            options: motorizationEligibleControlOptions(
+              ROMAN_LIFT_SYSTEMS,
+              motorizationEligibility,
+            ),
           },
         ];
 
@@ -8396,7 +8499,13 @@ function ShadesAndBlindsOptions({
             label: "Operating System",
             field: "lift_system",
             type: "select",
-            options: withStoredValue(getHoneycombOperatingSystemsFor(cellSize), operatingSystem),
+            options: withStoredValue(
+              motorizationEligibleControlOptions(
+                getHoneycombOperatingSystemsFor(cellSize),
+                motorizationEligibility,
+              ),
+              motorizationEligibility.eligible ? operatingSystem : null,
+            ),
           },
         ];
 
@@ -8882,10 +8991,13 @@ function ShadesAndBlindsOptions({
           },
           {
             key: "lift",
-            label: "Lift System",
+            label: "Control Type",
             field: "lift_system",
             type: "buttons",
-            options: PERFECTSHEER_LIFT_SYSTEMS,
+            options: motorizationEligibleControlOptions(
+              PERFECTSHEER_LIFT_SYSTEMS,
+              motorizationEligibility,
+            ),
           },
           {
             key: "fabric",
@@ -9152,7 +9264,10 @@ function ShadesAndBlindsOptions({
             label: "Control Type",
             field: "json:control_type",
             type: "buttons",
-            options: SMARTDRAPE_CONTROL_TYPES,
+            options: motorizationEligibleControlOptions(
+              SMARTDRAPE_CONTROL_TYPES,
+              motorizationEligibility,
+            ),
           },
           {
             key: "control_side",
@@ -9549,6 +9664,7 @@ function ShadesAndBlindsOptions({
       isOpen={openOptionField === opt.field}
       onToggle={() => setOpenOptionField((field) => (field === opt.field ? null : opt.field))}
       renderSelectedDirect={
+        shouldRenderMotorizationControlDirect(opt.field) ||
         opt.type === "number" ||
         (opt.type === "select" &&
           opt.field !== "json:back_fabric_color" &&
@@ -9586,7 +9702,15 @@ function ShadesAndBlindsOptions({
   const rollerMotorized =
     authoritativeV2 &&
     productType === "Roller Shades" &&
+    motorizationEligibility.eligible &&
     design?.lift_system === "Motorized";
+  const savedMotorizedSelection =
+    Boolean(design?.lift_system?.startsWith("Motorized")) ||
+    stringOption(optionsJson, "control_type") === "Motorized";
+  const unsupportedSavedMotorization =
+    authoritativeV2 &&
+    savedMotorizedSelection &&
+    !motorizationEligibility.eligible;
   const rollerTubeClass = stringOption(optionsJson, "tube_class");
   const rollerPowerConfiguration = stringOption(optionsJson, "power_configuration");
   const rollerPricedMotor = expectedRollerMotorForPowerConfiguration(
@@ -9600,6 +9724,19 @@ function ShadesAndBlindsOptions({
         editingField={openOptionField}
         onReset={handleConfirmedOptionReset}
       />
+
+      {unsupportedSavedMotorization ? (
+        <div
+          className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-950"
+          data-testid="motorization-catalog-blocked"
+          role="alert"
+        >
+          <strong>Motorization needs manufacturer re-selection.</strong>{" "}
+          The saved motor choice is preserved, but it cannot be repriced or sent
+          until the selected manufacturer and product expose a supported,
+          source-backed motor configuration.
+        </div>
+      ) : null}
 
       {rollerMotorized && (!rollerTubeClass || !rollerPowerConfiguration) ? (
         <div

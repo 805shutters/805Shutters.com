@@ -22,10 +22,13 @@ import {
   canonicalLedgerIdentity,
   getStandardShutterGridOptions,
   ManufacturerCatalogStampChooser,
+  motorizationEligibleControlOptions,
   needsShutterRoutePatch,
   parseDeferredNumberDraft,
   reconcileRollerTopTreatmentSelection,
   resetHoneycombFrameOptions,
+  resolveMotorizationUiEligibility,
+  shouldRenderMotorizationControlDirect,
   shouldApplyAutomaticShutterRoutePatch,
   shutterRoutePatchStateKey,
   usableCatalogProductsForLine,
@@ -66,6 +69,116 @@ function catalogProduct(
 }
 
 describe("V2 exact-interface contract", () => {
+  it("keeps Motorization visible only for catalog-backed manufacturer routes", () => {
+    const controlTypes = [
+      "Cordless",
+      "Continuous Cord Loop",
+      "Motorized",
+    ] as const;
+    const normanRoller = resolveMotorizationUiEligibility(
+      { supplier: "Norman" } as SalesQuoteDesign,
+      "Roller Shades",
+      {},
+    );
+    expect(normanRoller).toEqual({
+      productId: "roller",
+      eligible: true,
+      reason: "eligible",
+    });
+    expect(
+      motorizationEligibleControlOptions(controlTypes, normanRoller),
+    ).toEqual(controlTypes);
+
+    const lotusRoller = resolveMotorizationUiEligibility(
+      { supplier: "Lotus" } as SalesQuoteDesign,
+      "Roller Shades",
+      { catalog_product_id: "lotus_roller_shades" },
+    );
+    expect(lotusRoller).toEqual({
+      productId: "lotus_roller_shades",
+      eligible: false,
+      reason: "catalog_motorization_unsupported",
+    });
+    expect(
+      motorizationEligibleControlOptions(controlTypes, lotusRoller),
+    ).toEqual(["Cordless", "Continuous Cord Loop"]);
+
+    const polarRoller = resolveMotorizationUiEligibility(
+      { supplier: "Polar" } as SalesQuoteDesign,
+      "Roller Shades",
+      { catalog_product_id: "polar_interior_roller" },
+    );
+    expect(polarRoller).toEqual({
+      productId: "polar_interior_roller",
+      eligible: false,
+      reason: "manufacturer_ui_not_integrated",
+    });
+    expect(
+      motorizationEligibleControlOptions(controlTypes, polarRoller),
+    ).not.toContain("Motorized");
+
+    expect(
+      resolveMotorizationUiEligibility(
+        undefined,
+        "Roller Shades",
+        {},
+      ),
+    ).toEqual({
+      productId: null,
+      eligible: false,
+      reason: "manufacturer_reselection_required",
+    });
+
+    expect(
+      resolveMotorizationUiEligibility(
+        { supplier: "Lotus" } as SalesQuoteDesign,
+        "Roller Shades",
+        { catalog_product_id: "roller" },
+      ),
+    ).toEqual({
+      productId: null,
+      eligible: false,
+      reason: "manufacturer_reselection_required",
+    });
+  });
+
+  it("keeps Control Type expanded and clears incompatible motors at manufacturer changes", () => {
+    expect(shouldRenderMotorizationControlDirect("lift_system")).toBe(true);
+    expect(shouldRenderMotorizationControlDirect("json:control_type")).toBe(
+      true,
+    );
+    expect(shouldRenderMotorizationControlDirect("fabric")).toBe(false);
+
+    const patch = buildCatalogSelectionPatch(
+      {
+        catalog_product_id: "roller",
+        power_configuration: "Automate ARC Motor",
+        motorization_selections: [
+          { groupId: "automate_home", optionId: "motor" },
+        ],
+      },
+      catalogProduct(
+        "lotus_roller_shades",
+        "Lotus",
+        [{ id: "lotus-program", name: "Lotus", priceAxis: "wh" }],
+      ),
+      "lotus-program",
+    );
+    expect(patch).toMatchObject({
+      supplier: "Lotus",
+      lift_system: null,
+      motor_type: null,
+      remote_type: null,
+      unit_price: 0,
+    });
+    expect(patch.options_json).toMatchObject({
+      catalog_product_id: "lotus_roller_shades",
+      catalog_program_id: "lotus-program",
+      motorization_selections: [],
+    });
+    expect(patch.options_json).not.toHaveProperty("power_configuration");
+  });
+
   it("resolves wholesale ledger identity by manufacturer and fails closed on ambiguous or unknown fabric", () => {
     expect(
       canonicalLedgerIdentity(
