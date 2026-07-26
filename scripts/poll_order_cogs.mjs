@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const DEFAULT_URL = "https://www.805shutters.com/api/cron/order-cogs";
+const DEFAULT_URL = "https://www.805shutters.com/api/cron/order-cogs/";
 const DEFAULT_MAILBOX = "805shutters@gmail.com";
 const COUNT_FIELDS = [
   "scanned",

@@ -18,6 +18,6 @@ jobs:
       - name: Process manufacturer order confirmations
         env:
           ORDER_COGS_CRON_SECRET: ${{ secrets.ORDER_COGS_CRON_SECRET }}
-          ORDER_COGS_CRON_URL: https://www.805shutters.com/api/cron/order-cogs
+          ORDER_COGS_CRON_URL: https://www.805shutters.com/api/cron/order-cogs/
           EXPECTED_ORDER_COGS_MAILBOX: 805shutters@gmail.com
         run: node scripts/poll_order_cogs.mjs
