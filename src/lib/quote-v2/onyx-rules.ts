@@ -7,6 +7,7 @@ import type {
   ValidationSeverity,
 } from "./core";
 import { sourceProvenance } from "./source-manifest";
+import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
 
 /**
  * The supplied binder is an old, undated reference guide. Its cover says
@@ -309,14 +310,66 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
     "Measurement basis",
     10,
   );
-  if (measurementBasis && measurementBasis !== "frame_to_frame") {
+  const windowSizePricing = resolveOnyxWindowSizePricing(context);
+  if (measurementBasis === "window_size") {
+    if (windowSizePricing.frameSides === null) {
+      issues.push(
+        issue(
+          "hard_block",
+          "onyx.required.frame_sides",
+          { page: 13 },
+          { frame_sides: null },
+          "Three-sided or four-sided frame pricing must be selected for a window-size Onyx quote.",
+        ),
+      );
+    }
+    if (!windowSizePricing.supported) {
+      issues.push(
+        issue(
+          "hard_block",
+          "onyx.measurement.window_size_pricing_unsupported",
+          { page: 13 },
+          {
+            measurement_basis: measurementBasis,
+            mount_type: mount || null,
+            frame_type: frameType || null,
+            frame_sides: windowSizePricing.frameSides,
+            reason: windowSizePricing.reason,
+          },
+          "The pinned binder does not document a window-size pricing footprint for this exact mount, frame, and side count. Enter final frame-to-frame dimensions instead.",
+        ),
+      );
+    } else {
+      issues.push(
+        issue(
+          "auto_derive",
+          "onyx.measurement.window_size_pricing_dimensions",
+          { page: 13 },
+          {
+            measured_width_inches: context.widthInches,
+            measured_height_inches: context.heightInches,
+            mount_type: mount,
+            frame_type: frameType,
+            frame_sides: windowSizePricing.frameSides,
+          },
+          "The authoritative engine derives the internal Onyx pricing footprint from the measured opening and the binder's exact window-size table.",
+          {
+            pricing_width_inches: windowSizePricing.pricingWidthInches,
+            pricing_height_inches: windowSizePricing.pricingHeightInches,
+            width_addition_inches: windowSizePricing.widthAdditionInches,
+            height_addition_inches: windowSizePricing.heightAdditionInches,
+          },
+        ),
+      );
+    }
+  } else if (measurementBasis && measurementBasis !== "frame_to_frame") {
     issues.push(
       issue(
         "hard_block",
         "onyx.measurement.frame_to_frame_required",
         { pages: [10, 13] },
         { measurement_basis: measurementBasis },
-        "Automated restriction checks require final frame-to-frame dimensions; window-size additions vary by frame.",
+        "Automated restriction checks require final frame-to-frame dimensions or the exact documented window-size selection.",
       ),
     );
   }

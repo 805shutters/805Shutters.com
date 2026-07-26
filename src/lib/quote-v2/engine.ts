@@ -27,6 +27,7 @@ import {
   NORMAN_805_DEALER_POLICY,
   normanDealerScheduleForSelection,
 } from "./norman-dealer-policy";
+import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
 import { productRuleStatusForSelection, validateSelection } from "./rules";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
 import { rollerMotorChargeForPowerConfiguration } from "./roller-motor";
@@ -73,6 +74,9 @@ export type QuoteV2ResultMetadata = {
   catalogVersion: string;
   catalogAsOf: string;
   selectionFingerprint: string;
+  /** Customer-opening dimensions, kept distinct from any pricing footprint. */
+  measuredWidthInches: number;
+  measuredHeightInches: number;
   productStatus: ProductRuleStatus;
   validationStatus: QuoteV2ValidationStatus;
   validationIssues: readonly ValidationIssue[];
@@ -244,6 +248,8 @@ function metadata(
     catalogVersion: selection.catalogVersion,
     catalogAsOf: selection.catalogAsOf,
     selectionFingerprint: fingerprint,
+    measuredWidthInches: selection.widthInches,
+    measuredHeightInches: selection.heightInches,
     productStatus,
     validationStatus:
       hasHardBlock(issues) || !isProductRuleStatusSendable(productStatus) ? "blocked" : "valid",
@@ -1355,6 +1361,25 @@ function internalCostFromResult(
 }
 
 /**
+ * Convert a measured selection into the exact source-priced input. This
+ * transformation is engine-owned; adapters and browser payloads must continue
+ * to carry the customer opening dimensions.
+ */
+export function authoritativePriceInputForSelection(
+  selection: SelectionContext,
+  priceInput: PriceInput,
+): PriceInput {
+  const onyxPricingSize = resolveOnyxWindowSizePricing(selection);
+  return onyxPricingSize.applicable && onyxPricingSize.supported
+    ? {
+        ...priceInput,
+        widthInches: onyxPricingSize.pricingWidthInches!,
+        heightInches: onyxPricingSize.pricingHeightInches!,
+      }
+    : priceInput;
+}
+
+/**
  * The single server-authoritative entry point for V2 validation and pricing.
  * No catalog price lookup occurs until all hard restriction evidence passes.
  */
@@ -1372,12 +1397,22 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     return validationFailure(selection, productStatus, issues);
   }
 
-  const product = getProduct(priceInput.productId);
+  // Callers describe the measured opening. The engine alone substitutes a
+  // source-backed Onyx billable footprint after validation, so a direct caller
+  // cannot bypass or duplicate the manufacturer conversion.
+  const authoritativePriceInput = authoritativePriceInputForSelection(
+    selection,
+    priceInput,
+  );
+  const product = getProduct(authoritativePriceInput.productId);
   const selectedProgram = product
-    ? getProgram(product, priceInput.programId ?? selection.programId ?? "")
+    ? getProgram(
+        product,
+        authoritativePriceInput.programId ?? selection.programId ?? "",
+      )
     : undefined;
   const effectivePriceBasis = selectedProgram?.priceBasis ?? product?.priceBasis;
-  const sourceResult = priceDesign(priceInput);
+  const sourceResult = priceDesign(authoritativePriceInput);
   const result =
     effectivePriceBasis === "dealer_net"
       ? sourceResult
@@ -1411,7 +1446,7 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
     baseline: pricedProgram
       ? baselinePriceComponent(
           selection,
-          priceInput,
+          authoritativePriceInput,
           product,
           pricedProgram,
           sourceResult,
@@ -1471,15 +1506,22 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
       catalogVersion: result.catalogVersion,
     };
   }
+  const usesInternalPricingGeometry = result.productId === "onyx_shutters";
   return {
     ok: true,
     productId: result.productId,
     programId: result.programId,
     programName: result.programName,
-    matchedWidth: result.matchedWidth,
-    matchedHeight: result.matchedHeight,
-    ...(result.sqft !== undefined ? { sqft: result.sqft } : {}),
-    ...(result.billableSqft !== undefined
+    matchedWidth: usesInternalPricingGeometry
+      ? result.measuredWidthInches
+      : result.matchedWidth,
+    matchedHeight: usesInternalPricingGeometry
+      ? result.measuredHeightInches
+      : result.matchedHeight,
+    ...(!usesInternalPricingGeometry && result.sqft !== undefined
+      ? { sqft: result.sqft }
+      : {}),
+    ...(!usesInternalPricingGeometry && result.billableSqft !== undefined
       ? { billableSqft: result.billableSqft }
       : {}),
     base: result.base,
@@ -1524,18 +1566,39 @@ export type ImmutableQuoteV2PriceSnapshot = {
   selectionFingerprint: string;
   priceStatus: "authoritative";
   dealerPolicy: QuoteV2DealerPolicySnapshot | null;
+  /** Source-backed automatic pricing transformations retained for audit. */
+  pricingDerivations?: readonly Readonly<{
+    ruleId: string;
+    source: ValidationIssue["source"];
+    selectedValues: ValidationIssue["selectedValues"];
+    derivedValues: ValidationIssue["derivedValues"];
+  }>[];
   retail: Record<string, unknown>;
 };
 
 export function createImmutablePriceSnapshot(
   result: QuoteV2PriceSuccess,
 ): ImmutableQuoteV2PriceSnapshot {
+  const pricingDerivations = result.validationIssues
+    .filter(
+      (issue) =>
+        issue.severity === "auto_derive" && issue.derivedValues !== undefined,
+    )
+    .map((issue) =>
+      Object.freeze({
+        ruleId: issue.ruleId,
+        source: Object.freeze({ ...issue.source }),
+        selectedValues: Object.freeze({ ...issue.selectedValues }),
+        derivedValues: Object.freeze({ ...issue.derivedValues }),
+      }),
+    );
   return Object.freeze({
     catalogVersion: result.catalogVersion,
     catalogAsOf: result.catalogAsOf,
     selectionFingerprint: result.selectionFingerprint,
     priceStatus: "authoritative" as const,
     dealerPolicy: dealerPolicySnapshotFromPriceResult(result),
+    pricingDerivations: Object.freeze(pricingDerivations),
     retail: Object.freeze(toCustomerQuotePriceResult(result)),
   });
 }

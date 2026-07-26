@@ -183,6 +183,103 @@ describe("Onyx documented panel boundaries", () => {
 });
 
 describe("Onyx documented frame, depth, and tilt boundaries", () => {
+  it("auto-derives the exact four-sided inside window-size pricing footprint", () => {
+    const issues = validateOnyxShutterRestrictions(
+      withConfiguration(selection(), {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_type: "Z Frame Fine",
+        frame_sides: 4,
+        available_depth_inches: 2,
+        opening_diagonal_difference_inches: 0,
+      }),
+    );
+    expect(matching(issues, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(0);
+    expect(matching(issues, "onyx.measurement.frame_to_frame_required")).toHaveLength(0);
+    expect(matching(issues, "onyx.measurement.window_size_pricing_dimensions")).toMatchObject([
+      {
+        severity: "auto_derive",
+        source: { sourceId: "onyx-reference-guide-2020-2021", page: 13 },
+        derivedValues: {
+          pricing_width_inches: 33.75,
+          pricing_height_inches: 63.75,
+          width_addition_inches: 2,
+          height_addition_inches: 2,
+        },
+      },
+    ]);
+  });
+
+  it("uses the documented three-sided height addition", () => {
+    const issues = validateOnyxShutterRestrictions(
+      withConfiguration(selection(), {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_type: "Z Frame Crown",
+        frame_sides: 3,
+        available_depth_inches: 2.5,
+        opening_diagonal_difference_inches: 0,
+      }),
+    );
+    expect(matching(issues, "onyx.measurement.window_size_pricing_dimensions")).toMatchObject([
+      {
+        derivedValues: {
+          pricing_width_inches: 36,
+          pricing_height_inches: 63.875,
+          width_addition_inches: 4.25,
+          height_addition_inches: 2.125,
+        },
+      },
+    ]);
+  });
+
+  it("requires a frame-side count and blocks undocumented window-size frames", () => {
+    const missingSides = validateOnyxShutterRestrictions(
+      withConfiguration(selection(), {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_type: "Z Frame Fine",
+      }),
+    );
+    expect(matching(missingSides, "onyx.required.frame_sides")).toHaveLength(1);
+    expect(matching(missingSides, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(1);
+
+    const undocumented = validateOnyxShutterRestrictions(
+      withConfiguration(selection(), {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_type: "Vinyl Z Frame Small",
+        frame_sides: 4,
+      }),
+    );
+    expect(matching(undocumented, "onyx.required.frame_sides")).toHaveLength(0);
+    expect(matching(undocumented, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(1);
+    expect(matching(undocumented, "onyx.measurement.window_size_pricing_dimensions")).toHaveLength(0);
+  });
+
+  it("accepts the documented three-sided outside window-size formula", () => {
+    const issues = validateOnyxShutterRestrictions(
+      withConfiguration(selection(), {
+        measurement_basis: "window_size",
+        mount_type: "outside",
+        frame_type: "Decor Frame 2",
+        frame_sides: 3,
+      }),
+    );
+    expect(matching(issues, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(0);
+    expect(matching(issues, "onyx.measurement.frame_to_frame_required")).toHaveLength(0);
+    expect(matching(issues, "onyx.measurement.window_size_pricing_dimensions")).toMatchObject([
+      {
+        derivedValues: {
+          pricing_width_inches: 37.25,
+          pricing_height_inches: 64.5,
+          width_addition_inches: 5.5,
+          height_addition_inches: 2.75,
+        },
+      },
+    ]);
+  });
+
   it("allows exactly 2 inches of extension and blocks immediately above it", () => {
     const at = validateOnyxShutterRestrictions(
       withConfiguration(selection(), { frame_extension_inches: 2 }),

@@ -19,6 +19,7 @@ import {
   buildLegacyRomanLiftSystemUpdate,
   buildLegacyShutterRouteUpdate,
   canonicalRollerMotorizationSelections,
+  getStandardShutterGridOptions,
   ManufacturerCatalogStampChooser,
   needsShutterRoutePatch,
   parseDeferredNumberDraft,
@@ -849,12 +850,33 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('field: "json:frame_extension_inches"');
     expect(source).toContain('field: "json:available_depth_inches"');
     expect(source).toContain('field: "json:opening_diagonal_difference_inches"');
+    expect(source).toContain('field: "json:frame_sides"');
+    expect(source).toContain('String(onyxOptions.size_type || "") === "W - Window Size"');
+    expect(source).toContain(
+      '...(value === "W - Window Size" ? {} : { frame_sides: null })',
+    );
     expect(source).toContain('field: `json:onyx_panel_${panelIndex}_width_inches`');
     expect(source).toContain('field: `json:onyx_panel_${panelIndex}_height_inches`');
     expect(source).toContain('field: `json:onyx_tilt_section_${sectionIndex}_inches`');
     expect(source).toContain('field: "json:onyx_tilt_section_count"');
     expect(source).toContain('field: "json:onyx_t_post_count"');
     expect(source).toContain('field: `json:onyx_t_post_${tPostIndex}_position_inches`');
+  });
+
+  it("requires Onyx frame sides only for an authoritative window-size selection", () => {
+    const fields = (
+      sizeType: "W - Window Size" | "F - Frame to Frame",
+      authoritativeV2: boolean,
+    ) =>
+      getStandardShutterGridOptions({
+        supplier: "Onyx",
+        material: "Vinyl",
+        options_json: { size_type: sizeType },
+      } as unknown as SalesQuoteDesign, authoritativeV2).map((option) => option.field);
+
+    expect(fields("W - Window Size", true)).toContain("json:frame_sides");
+    expect(fields("F - Frame to Frame", true)).not.toContain("json:frame_sides");
+    expect(fields("W - Window Size", false)).not.toContain("json:frame_sides");
   });
 
   it("distinguishes an explicitly entered zero from a cleared numeric field", () => {

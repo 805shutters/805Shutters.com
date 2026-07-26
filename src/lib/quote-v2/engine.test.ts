@@ -7,6 +7,7 @@ import {
 } from "./catalog";
 import {
   authoritativeAutomaticSurchargeSelections,
+  authoritativePriceInputForSelection,
   createImmutablePriceSnapshot,
   priceQuoteV2Selection,
   toCustomerQuotePriceResult,
@@ -1135,6 +1136,60 @@ describe("Quote V2 authoritative pricing engine", () => {
     });
   });
 
+  it("keeps measured Onyx dimensions in the selection and derives only the engine price input", () => {
+    const context = selection(
+      "onyx_shutters",
+      "vinyl",
+      {
+        material: "Vinyl",
+        order_type: "standard",
+        measurement_basis: "window_size",
+        mount_type: "outside",
+        frame_type: "Decor Frame 2",
+        frame_source_code: "Decor 2",
+        frame_sides: 3,
+      },
+      { widthInches: 30, heightInches: 72 },
+    );
+    const measuredInput = {
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+    };
+
+    expect(authoritativePriceInputForSelection(context, measuredInput)).toMatchObject({
+      widthInches: 35.5,
+      heightInches: 74.75,
+    });
+    expect(context).toMatchObject({ widthInches: 30, heightInches: 72 });
+
+    const callerExpanded = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        ...measuredInput,
+        widthInches: 35.5,
+        heightInches: 74.75,
+      },
+    });
+    expect(callerExpanded.ok).toBe(false);
+    expect(callerExpanded.validationIssues.map((issue) => issue.ruleId)).toContain(
+      "engine.selection_price_input.mismatch",
+    );
+
+    const unsupported = {
+      ...context,
+      configuration: {
+        ...context.configuration,
+        frame_type: "VZ Fine",
+        frame_source_code: "VZ Fine",
+      },
+    };
+    expect(authoritativePriceInputForSelection(unsupported, measuredInput)).toBe(
+      measuredInput,
+    );
+  });
+
   it("keeps retail component fields but removes source-dollar formulas from customer payloads", () => {
     const context = selection(
       "polar_interior_roller",
@@ -1315,6 +1370,85 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(JSON.stringify(createImmutablePriceSnapshot(retailProbe))).not.toContain(
       "$",
     );
+  });
+
+  it("never exposes an Onyx internal billable footprint as the customer measurement", () => {
+    const context = selection(
+      "polar_interior_roller",
+      "group_1",
+      {},
+      { widthInches: 30, heightInches: 48 },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const onyxProbe: QuoteV2PriceSuccess = {
+      ...result,
+      productId: "onyx_shutters",
+      matchedWidth: 35.5,
+      matchedHeight: 74.75,
+      measuredWidthInches: 30,
+      measuredHeightInches: 72,
+      sqft: 18.4184,
+      billableSqft: 18.4184,
+      validationIssues: [
+        ...result.validationIssues,
+        {
+          severity: "auto_derive",
+          ruleId: "onyx.measurement.window_size_pricing_dimensions",
+          source: {
+            sourceId: "onyx-reference-guide-2020-2021",
+            fileName: "OnyxProgramBinder2020 (1).pdf",
+            revision: "2017 Reference Menu; PDF modified 2020-11-16",
+            effectiveDate: null,
+            sha256: "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b",
+            page: 13,
+          },
+          selectedValues: {
+            measured_width_inches: 30,
+            measured_height_inches: 72,
+          },
+          explanation: "Test-only source-backed internal pricing derivation.",
+          derivedValues: {
+            pricing_width_inches: 35.5,
+            pricing_height_inches: 74.75,
+          },
+        },
+      ],
+    };
+    const customer = toCustomerQuotePriceResult(onyxProbe);
+    expect(customer).toMatchObject({
+      matchedWidth: 30,
+      matchedHeight: 72,
+    });
+    expect(customer).not.toHaveProperty("sqft");
+    expect(customer).not.toHaveProperty("billableSqft");
+    const snapshot = createImmutablePriceSnapshot(onyxProbe);
+    expect(snapshot.pricingDerivations).toMatchObject([
+      {
+        ruleId: "onyx.measurement.window_size_pricing_dimensions",
+        source: { sourceId: "onyx-reference-guide-2020-2021", page: 13 },
+        derivedValues: {
+          pricing_width_inches: 35.5,
+          pricing_height_inches: 74.75,
+        },
+      },
+    ]);
+    expect(snapshot.retail).toMatchObject({
+      matchedWidth: 30,
+      matchedHeight: 72,
+    });
+    expect(snapshot.retail).not.toHaveProperty("sqft");
+    expect(snapshot.retail).not.toHaveProperty("billableSqft");
   });
 
   it("excludes every internal-cost field from customer projections and snapshots", () => {

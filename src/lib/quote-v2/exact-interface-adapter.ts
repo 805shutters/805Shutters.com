@@ -215,6 +215,25 @@ function canonicalOnyxMount(value: unknown): string | null {
   return selected;
 }
 
+function onyxFrameSides(value: unknown): 3 | 4 | null {
+  const numeric = finiteValue(value);
+  if (numeric === 3 || numeric === 4) return numeric;
+  const selected = stringValue(value)?.trim().toLowerCase();
+  if (
+    selected === "3" ||
+    selected === "three" ||
+    selected === "3-sided" ||
+    selected === "3 sided"
+  ) return 3;
+  if (
+    selected === "4" ||
+    selected === "four" ||
+    selected === "4-sided" ||
+    selected === "4 sided"
+  ) return 4;
+  return null;
+}
+
 function canonicalOnyxMeasurementBasis(value: unknown): string | null {
   const selected = stringValue(value)?.toLowerCase();
   if (!selected) return null;
@@ -240,14 +259,10 @@ function canonicalOnyxOrderType(value: unknown): string | null {
 function canonicalOnyxFrameType(value: unknown): string | null {
   const selected = stringValue(value);
   if (!selected) return null;
-  const normalized = selected.replace(/\s+FS$/i, "").trim();
+  const normalized = selected.trim();
   const aliases: Record<string, string> = {
     "VZ Small": "Vinyl Z Frame Small",
     "VZ Large": "Vinyl Z Frame Large",
-    "VZ Fine": "Z Frame Fine",
-    "VZ Crown": "Z Frame Crown",
-    "VZ Crest": "Z Frame Crest",
-    "VDecor 2": "Decor Frame 2",
     "Decor 2": "Decor Frame 2",
     "Decor 3": "Decor Frame 3",
     "Z Fine": "Z Frame Fine",
@@ -541,7 +556,12 @@ export function selectionContextFromExactInterface(
       "order_type",
       canonicalOnyxOrderType(sourceOptions.onyx_order_type ?? sourceOptions.shutter_type),
     );
+    alias(configuration, "frame_source_code", stringValue(sourceOptions.frame_type));
     alias(configuration, "frame_type", canonicalOnyxFrameType(sourceOptions.frame_type));
+    // The normalized browser payload is not authoritative for this numeric
+    // enum. Keep only a canonical three- or four-sided selection.
+    delete configuration.frame_sides;
+    alias(configuration, "frame_sides", onyxFrameSides(sourceOptions.frame_sides));
     alias(configuration, "panel_configuration", design.panel_config);
     alias(configuration, "louver_size_inches", canonicalOnyxLouverSize(design.louver_size));
     alias(configuration, "tilt_type", canonicalOnyxTilt(design.tilt_type));
@@ -675,16 +695,21 @@ export function selectionContextFromExactInterface(
     firstString(sourceOptions, "draw_direction", "control_side", "control_type"),
   );
 
-  const widthInches = authoritativeV2Measurement(
+  const measuredWidthInches = authoritativeV2Measurement(
     line.width_whole,
     line.width_fraction,
     "width",
   );
-  const heightInches = authoritativeV2Measurement(
+  const measuredHeightInches = authoritativeV2Measurement(
     line.height_whole,
     line.height_fraction,
     "height",
   );
+  // SelectionContext always preserves the customer opening. Source-backed
+  // pricing footprints are derived inside the authoritative engine, never in
+  // the browser-payload adapter.
+  const widthInches = measuredWidthInches;
+  const heightInches = measuredHeightInches;
   // Honeycomb side-by-side rules compare the exact measured height from the
   // immutable line snapshot; this is not a user-entered confirmation flag.
   alias(configuration, "shade_height", heightInches);

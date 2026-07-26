@@ -175,6 +175,8 @@ export const ONYX_SIZE_TYPES = ["W - Window Size", "F - Frame to Frame"] as cons
 
 export const ONYX_MOUNT_TYPES = ["IM", "OM"] as const;
 
+export const ONYX_FRAME_SIDE_OPTIONS = ["3", "4"] as const;
+
 export const ONYX_TRACK_TYPES = ["Bypass", "Bifold"] as const;
 
 export const ONYX_BYPASS_TYPES = ["Open Bypass", "Closed Bypass"] as const;

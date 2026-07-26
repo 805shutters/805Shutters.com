@@ -53,6 +53,7 @@ import {
   ONYX_ORDER_SHUTTER_TYPES,
   ONYX_SIZE_TYPES,
   ONYX_MOUNT_TYPES,
+  ONYX_FRAME_SIDE_OPTIONS,
   ONYX_TILT_TYPES,
   ONYX_HINGE_COLORS,
   ONYX_PANEL_CONFIGS,
@@ -2952,7 +2953,7 @@ function isTrackedOrSpecialty(design: SalesQuoteDesign | undefined): boolean {
   return shutterType === "Tracked Shutter" || shutterType === "Specialty Shutter";
 }
 
-function getStandardShutterGridOptions(
+export function getStandardShutterGridOptions(
   design: SalesQuoteDesign | undefined,
   authoritativeV2 = false,
 ): GridOption[] {
@@ -2968,6 +2969,8 @@ function getStandardShutterGridOptions(
         : ONYX_WOOD_FRAME_TYPES;
 
   if (design?.supplier === "Onyx") {
+    const onyxOptions =
+      (design.options_json as Record<string, unknown> | undefined) || {};
     const options: GridOption[] = [
       {
         key: "onyx_order_type",
@@ -3071,9 +3074,24 @@ function getStandardShutterGridOptions(
       },
     ];
 
+    if (
+      authoritativeV2 &&
+      String(onyxOptions.size_type || "") === "W - Window Size"
+    ) {
+      const frameTypeIndex = options.findIndex(
+        (option) => option.field === "json:frame_type",
+      );
+      options.splice(frameTypeIndex + 1, 0, {
+        key: "frame_sides",
+        label: "Frame Sides",
+        field: "json:frame_sides",
+        type: "buttons",
+        options: ONYX_FRAME_SIDE_OPTIONS,
+      });
+    }
+
     if (!authoritativeV2) return options;
 
-    const onyxOptions = (design.options_json as Record<string, unknown>) || {};
     const panelConfiguration = String(design.panel_config || "");
     const panelCount =
       panelConfiguration === "L" || panelConfiguration === "R"
@@ -5645,6 +5663,16 @@ function ShutterDesignOptions({
             ...currentJson,
             onyx_mount: value,
             ...(value === "IM" ? {} : { opening_diagonal_difference_inches: null }),
+          },
+        });
+        return;
+      }
+      if (field === "json:size_type") {
+        onUpdateFields({
+          options_json: {
+            ...currentJson,
+            size_type: value,
+            ...(value === "W - Window Size" ? {} : { frame_sides: null }),
           },
         });
         return;

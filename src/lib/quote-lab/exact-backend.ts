@@ -6,6 +6,7 @@ import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import { evaluateSendability } from "@/lib/quote-v2/core";
 import {
   authoritativeAutomaticSurchargeSelections,
+  authoritativePriceInputForSelection,
   createImmutablePriceSnapshot,
   dealerPolicySnapshotFromPriceResult,
   priceQuoteV2Selection,
@@ -510,7 +511,7 @@ function validationGatedDealerNetCost(
   }
 
   const dealerNet = priceDealerNetDesign({
-    ...priceInput,
+    ...authoritativePriceInputForSelection(selection, priceInput),
     productId: selection.productId,
     programId,
   });
@@ -696,8 +697,12 @@ function customerV2Price(result: QuoteV2PriceResult): Record<string, unknown> {
     productId: safe.productId,
     programId: safe.programId,
     programName: safe.programName,
-    matchedWidth: safe.matchedWidth,
-    matchedHeight: safe.matchedHeight,
+    ...(safe.matchedWidth !== undefined
+      ? { matchedWidth: safe.matchedWidth }
+      : {}),
+    ...(safe.matchedHeight !== undefined
+      ? { matchedHeight: safe.matchedHeight }
+      : {}),
     ...(safe.sqft !== undefined ? { sqft: safe.sqft } : {}),
     ...(safe.billableSqft !== undefined ? { billableSqft: safe.billableSqft } : {}),
     base: safe.base,

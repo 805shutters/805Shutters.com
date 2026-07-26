@@ -17,6 +17,7 @@ import {
 import {
   prepareV2CustomerSendPayload,
   prepareV2CustomerSendPayloadFromDatabase,
+  projectV2CustomerRetailPrice,
 } from "./sales-quote-v2-send";
 
 const SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
@@ -174,6 +175,60 @@ function authoritativeQuote(
     ...overrides,
   };
 }
+
+describe("V2 customer retail projection", () => {
+  it("keeps Onyx internal pricing area out while retaining measured opening dimensions", () => {
+    const projected = projectV2CustomerRetailPrice({
+      ok: true,
+      productId: "onyx_shutters",
+      programId: "vinyl",
+      programName: "Vinyl",
+      matchedWidth: 30,
+      matchedHeight: 72,
+      // Even a malformed/stale stored snapshot cannot leak the internal
+      // frame-pricing area into the customer-safe DTO.
+      sqft: 18.42,
+      billableSqft: 18.5,
+      base: 500,
+      surchargeLines: [],
+      unitPrice: 500,
+      discountPercent: 0,
+      discountAmount: 0,
+      quantity: 1,
+      onceTotal: 0,
+      total: 500,
+    });
+
+    expect(projected).toMatchObject({
+      productId: "onyx_shutters",
+      programId: "vinyl",
+      matchedWidth: 30,
+      matchedHeight: 72,
+      total: 500,
+    });
+    expect(projected).not.toHaveProperty("sqft");
+    expect(projected).not.toHaveProperty("billableSqft");
+  });
+
+  it("continues to require catalog-match geometry for non-Onyx products", () => {
+    expect(() =>
+      projectV2CustomerRetailPrice({
+        ok: true,
+        productId: "roller",
+        programId: "group_1",
+        programName: "Group 1",
+        base: 500,
+        surchargeLines: [],
+        unitPrice: 500,
+        discountPercent: 0,
+        discountAmount: 0,
+        quantity: 1,
+        onceTotal: 0,
+        total: 500,
+      }),
+    ).toThrow("Matched width is missing");
+  });
+});
 
 function invalidV2Supabase(
   quote: Record<string, unknown>,

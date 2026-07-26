@@ -213,11 +213,19 @@ export function projectV2CustomerRetailPrice(value: unknown): V2CustomerRetailPr
     onceTotal: finiteNumber(source.onceTotal, "Retail one-time total"),
     total: finiteNumber(source.total, "Retail total"),
   };
-  if (typeof source.sqft === "number" && Number.isFinite(source.sqft)) {
-    projected.sqft = source.sqft;
-  }
-  if (typeof source.billableSqft === "number" && Number.isFinite(source.billableSqft)) {
-    projected.billableSqft = source.billableSqft;
+  // Onyx retail snapshots already substitute the measured opening for matched
+  // geometry. Its internal frame-pricing area must never enter the customer
+  // DTO even if a malformed or stale snapshot contains area fields.
+  if (productId !== "onyx_shutters") {
+    if (typeof source.sqft === "number" && Number.isFinite(source.sqft)) {
+      projected.sqft = source.sqft;
+    }
+    if (
+      typeof source.billableSqft === "number" &&
+      Number.isFinite(source.billableSqft)
+    ) {
+      projected.billableSqft = source.billableSqft;
+    }
   }
   return projected;
 }

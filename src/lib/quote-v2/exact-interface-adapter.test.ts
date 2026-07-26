@@ -7,6 +7,7 @@ import {
   ExactInterfaceV2InputError,
   selectionContextFromExactInterface,
 } from "./exact-interface-adapter";
+import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
 
 const line = {
@@ -395,6 +396,7 @@ describe("V2 exact-interface adapter", () => {
       order_type: "standard",
       measurement_basis: "frame_to_frame",
       mount_type: "inside",
+      frame_source_code: "VZ Small",
       frame_type: "Vinyl Z Frame Small",
       panel_configuration: "LR",
       louver_size_inches: 3.5,
@@ -418,5 +420,167 @@ describe("V2 exact-interface adapter", () => {
         .filter((issue) => issue.ruleId.startsWith("onyx.required."))
         .map((issue) => issue.ruleId),
     ).toEqual([]);
+  });
+
+  it("keeps an Onyx window measurement unchanged and canonicalizes its frame-side selection", () => {
+    const context = selectionContextFromExactInterface({
+      ...line,
+      width_whole: 28,
+      width_fraction: "1/2",
+      height_whole: 58,
+      height_fraction: "1/4",
+      quantity: 1,
+    }, {
+      supplier: "Onyx",
+      material: "Painted Basswood",
+      options_json: {
+        onyx_mount: "IM",
+        size_type: "W - Window Size",
+        frame_type: "Z Fine",
+        frame_sides: "4 Sided",
+      },
+    }, {
+      productId: "onyx_shutters",
+      programId: "bassia",
+    });
+
+    expect(context).toMatchObject({
+      widthInches: 28.5,
+      heightInches: 58.25,
+      configuration: {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_source_code: "Z Fine",
+        frame_type: "Z Frame Fine",
+        frame_sides: 4,
+      },
+    });
+    expect(resolveOnyxWindowSizePricing(context)).toMatchObject({
+      supported: true,
+      pricingWidthInches: 30.5,
+      pricingHeightInches: 60.25,
+      source: { sourceId: "onyx-reference-guide-2020-2021", page: 13 },
+    });
+  });
+
+  it("does not invent a Norman window-size footprint from the shade-only July retail guide", () => {
+    const context = selectionContextFromExactInterface({
+      ...line,
+      width_whole: 30,
+      width_fraction: "0",
+      height_whole: 60,
+      height_fraction: "0",
+      quantity: 1,
+    }, {
+      supplier: "Norman",
+      material: "Woodlore",
+      options_json: {
+        frame_type: '2" Bullnose Z Frame',
+        size_type: "W - Window Size",
+        mount_type: "Outside",
+      },
+    }, {
+      productId: "norman_shutters",
+      programId: "woodlore",
+    });
+
+    expect(context).toMatchObject({
+      widthInches: 30,
+      heightInches: 60,
+      configuration: {
+        frame_type: '2" Bullnose Z Frame',
+        size_type: "W - Window Size",
+        mount_type: "Outside",
+      },
+    });
+    expect(
+      Object.keys(context.configuration).filter((key) =>
+        key.startsWith("norman_pricing_"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps an Onyx outside opening unchanged while the engine resolver derives its pricing size", () => {
+    const context = selectionContextFromExactInterface({
+      ...line,
+      width_whole: 30,
+      width_fraction: "0",
+      height_whole: 72,
+      height_fraction: "0",
+      quantity: 1,
+    }, {
+      supplier: "Onyx",
+      material: "Painted Basswood",
+      options_json: {
+        onyx_mount: "OM",
+        size_type: "W - Window Size",
+        frame_type: "Decor 2",
+        frame_sides: 3,
+      },
+    }, {
+      productId: "onyx_shutters",
+      programId: "bassia",
+    });
+
+    expect(context).toMatchObject({
+      widthInches: 30,
+      heightInches: 72,
+      configuration: {
+        mount_type: "outside",
+        frame_source_code: "Decor 2",
+        frame_type: "Decor Frame 2",
+        frame_sides: 3,
+      },
+    });
+    expect(resolveOnyxWindowSizePricing(context)).toMatchObject({
+      supported: true,
+      pricingWidthInches: 35.5,
+      pricingHeightInches: 74.75,
+    });
+  });
+
+  it("preserves FS and V-prefixed frame identities instead of collapsing them onto sourced rows", () => {
+    const contextForFrame = (frameType: string) =>
+      selectionContextFromExactInterface(line, {
+        supplier: "Onyx",
+        material: "Painted Basswood",
+        options_json: {
+          onyx_mount: "IM",
+          size_type: "F - Frame to Frame",
+          frame_type: frameType,
+        },
+      }, {
+        productId: "onyx_shutters",
+        programId: "bassia",
+      });
+
+    const documented = contextForFrame("Z Fine");
+    const fsVariant = contextForFrame("Z Fine FS");
+    const vinylVariant = contextForFrame("VZ Fine");
+
+    expect(documented.configuration).toMatchObject({
+      frame_source_code: "Z Fine",
+      frame_type: "Z Frame Fine",
+    });
+    expect(fsVariant.configuration).toMatchObject({
+      frame_source_code: "Z Fine FS",
+      frame_type: "Z Fine FS",
+    });
+    expect(vinylVariant.configuration).toMatchObject({
+      frame_source_code: "VZ Fine",
+      frame_type: "VZ Fine",
+    });
+    expect(createSelectionFingerprint(fsVariant)).not.toBe(
+      createSelectionFingerprint(documented),
+    );
+    expect(createSelectionFingerprint(vinylVariant)).not.toBe(
+      createSelectionFingerprint(documented),
+    );
+    expect(
+      validateOnyxShutterRestrictions(fsVariant).map((issue) => issue.ruleId),
+    ).toContain("onyx.frame.mount_incompatible");
+    expect(
+      validateOnyxShutterRestrictions(vinylVariant).map((issue) => issue.ruleId),
+    ).toContain("onyx.frame.mount_incompatible");
   });
 });
