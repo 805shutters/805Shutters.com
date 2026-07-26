@@ -387,12 +387,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
+          const isExpandedWindow = (line.source_quantity || 1) > 1;
           const normanRoller = current.product_id === "roller" && String(current.details.supplier || "Norman").toLowerCase() === "norman";
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
             .filter((key) => !normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key));
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
-              <div className="technical-measure-line-head"><div><span>Line {index + 1}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
+              <div className="technical-measure-line-head"><div><span>Line {index + 1}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
               <div className="technical-measure-dimensions">
                 <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
                 <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
@@ -410,9 +411,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                 <div className={`technical-measure-choice-field ${changed(baseline.quantity, current.quantity) ? "changed" : ""}`}>
                   <span>Quantity</span>
                   <div className="technical-measure-stepper">
-                    <button type="button" aria-label="Decrease quantity" disabled={readOnly || current.quantity <= 1} onClick={() => updateLine(line.id, { quantity: Math.max(1, current.quantity - 1) })}><Minus /></button>
+                    <button type="button" aria-label="Decrease quantity" disabled={readOnly || isExpandedWindow || current.quantity <= 1} onClick={() => updateLine(line.id, { quantity: Math.max(1, current.quantity - 1) })}><Minus /></button>
                     <strong>{current.quantity}</strong>
-                    <button type="button" aria-label="Increase quantity" disabled={readOnly} onClick={() => updateLine(line.id, { quantity: current.quantity + 1 })}><Plus /></button>
+                    <button type="button" aria-label="Increase quantity" disabled={readOnly || isExpandedWindow} onClick={() => updateLine(line.id, { quantity: current.quantity + 1 })}><Plus /></button>
                   </div>
                 </div>
                 <div className={`technical-measure-choice-field technical-measure-field-wide ${changed(baseline.product_id, current.product_id) ? "changed" : ""}`}>

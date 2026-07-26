@@ -45,4 +45,11 @@ describe("technical measure mobile controls", () => {
     expect(api).toContain("setTechnicalMeasureSchedulingStatus");
     expect(styles).toContain(".technical-measure-queue-actions");
   });
+
+  it("labels contracted quantities as separate per-window measure lines", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+
+    expect(component).toContain("Window ${line.source_quantity_index} of ${line.source_quantity}");
+    expect(component).toContain("disabled={readOnly || isExpandedWindow}");
+  });
 });

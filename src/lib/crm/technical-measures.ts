@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
@@ -69,6 +70,17 @@ export type TechnicalMeasureLine = {
   current_unit_price: number;
   price_status: string;
   changes: TechnicalMeasureChange[];
+  source_quote_line_item_id?: string;
+  source_quantity_index?: number;
+  source_quantity?: number;
+};
+
+export type TechnicalMeasureLineInstance = {
+  measure_quote_line_item_id: string;
+  source_quote_line_item_id: string;
+  source_quantity_index: number;
+  source_quantity: number;
+  sort_order: number;
 };
 
 export type TechnicalMeasureAddendum = {
@@ -360,6 +372,34 @@ function selectedSignedLineIds(quote: CrmQuote) {
   return Array.isArray(ids) ? new Set(ids.filter((id): id is string => typeof id === "string")) : null;
 }
 
+function deterministicWindowLineId(sourceLineId: string, quantityIndex: number) {
+  const hex = createHash("sha256")
+    .update(`805-technical-measure:${sourceLineId}:window:${quantityIndex}`)
+    .digest("hex")
+    .slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20)}`;
+}
+
+export function expandTechnicalMeasureLineQuantity(input: {
+  id: string;
+  quantity: number;
+  sort_order: number;
+}): TechnicalMeasureLineInstance[] {
+  const quantity = Math.max(1, Math.floor(Number(input.quantity) || 1));
+  return Array.from({ length: quantity }, (_, offset) => {
+    const quantityIndex = offset + 1;
+    return {
+      measure_quote_line_item_id: quantityIndex === 1
+        ? input.id
+        : deterministicWindowLineId(input.id, quantityIndex),
+      source_quote_line_item_id: input.id,
+      source_quantity_index: quantityIndex,
+      source_quantity: quantity,
+      sort_order: quantity === 1 ? input.sort_order : input.sort_order * 1000 + offset,
+    };
+  });
+}
+
 async function updateJobMeasureFormMeta(supabase: SupabaseClient, job: CrmJob, formId: string, formStatus: string) {
   const measure = getMeasureNeededMeta(job.meta);
   await supabase.from("crm_jobs").update({
@@ -391,6 +431,10 @@ export async function ensureTechnicalMeasureForm(
     return design ? [{ line, design }] : [];
   });
   if (!lines.length) throw new CrmAuthError(409, "The sold contract does not contain measurable line items.");
+  const expandedLines = lines.flatMap(({ line, design }) =>
+    expandTechnicalMeasureLineQuantity(line).map((instance) => ({ line, design, instance }))
+  );
+  const lineProvenance = expandedLines.map(({ instance }) => instance);
 
   const customerSnapshot = {
     name: job.customer_name || built.customer_name || "Customer",
@@ -411,16 +455,23 @@ export async function ensureTechnicalMeasureForm(
     current_total: built.quote_total,
     technician_email: actor.email,
     technician_name: actor.displayName || null,
-    meta: { source: "sold_contract", immutable_quote_id: built.id },
+    meta: {
+      source: "sold_contract",
+      immutable_quote_id: built.id,
+      technical_measure_line_provenance: lineProvenance,
+    },
   }).select("*").single();
   if (error || !form) throw new CrmAuthError(502, "The technical measure form could not be created.");
 
-  const lineRows = lines.map(({ line, design }) => {
-    const baseline = lineSnapshot(line, design);
+  const lineRows = expandedLines.map(({ line, design, instance }) => {
+    const baseline = {
+      ...lineSnapshot(line, design),
+      quantity: 1,
+    };
     return {
       form_id: form.id,
-      quote_line_item_id: line.id,
-      sort_order: line.sort_order,
+      quote_line_item_id: instance.measure_quote_line_item_id,
+      sort_order: instance.sort_order,
       baseline,
       current_values: baseline,
       baseline_unit_price: design.unit_price,
@@ -436,9 +487,17 @@ export async function ensureTechnicalMeasureForm(
 }
 
 function decorateForm(form: Record<string, unknown>, lineRows: Record<string, unknown>[], addendumRow: Record<string, unknown> | null): TechnicalMeasureForm {
+  const meta = object(form.meta);
+  const provenanceRows = Array.isArray(meta.technical_measure_line_provenance)
+    ? meta.technical_measure_line_provenance.map(object)
+    : [];
+  const provenanceByMeasureLineId = new Map(
+    provenanceRows.map((row) => [text(row.measure_quote_line_item_id), row])
+  );
   const lines = lineRows.map((row) => {
     const baseline = normalizeTechnicalMeasureLineValues(row.baseline);
     const current = normalizeTechnicalMeasureLineValues(row.current_values, baseline);
+    const provenance = provenanceByMeasureLineId.get(text(row.quote_line_item_id));
     return {
       ...row,
       baseline,
@@ -446,11 +505,13 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
       baseline_unit_price: numeric(row.baseline_unit_price),
       current_unit_price: numeric(row.current_unit_price),
       changes: technicalMeasureLineChanges(String(row.id), baseline, current),
+      source_quote_line_item_id: text(provenance?.source_quote_line_item_id) || text(row.quote_line_item_id),
+      source_quantity_index: Math.max(1, Math.floor(numeric(provenance?.source_quantity_index, 1))),
+      source_quantity: Math.max(1, Math.floor(numeric(provenance?.source_quantity, baseline.quantity))),
     } as TechnicalMeasureLine;
   });
   const changes = lines.flatMap((line) => line.changes);
   const contractChanges = changes.filter((change) => change.kind === "contract");
-  const meta = object(form.meta);
   return {
     ...form,
     customer_snapshot: object(form.customer_snapshot),
@@ -896,7 +957,14 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
     addendum_id: form.addendum?.signed_at ? form.addendum.id : null,
     baseline_total: form.baseline_total,
     revised_total: form.current_total,
-    lines: form.lines.map((line) => ({ quote_line_item_id: line.quote_line_item_id, values: line.current_values, unit_price: line.current_unit_price })),
+    lines: form.lines.map((line) => ({
+      technical_measure_line_id: line.id,
+      quote_line_item_id: line.source_quote_line_item_id || line.quote_line_item_id,
+      source_quantity_index: line.source_quantity_index || 1,
+      source_quantity: line.source_quantity || line.current_values.quantity,
+      values: line.current_values,
+      unit_price: line.current_unit_price,
+    })),
   };
   const { data: quote, error: quoteReadError } = await supabase.from("crm_quotes").select("meta").eq("id", form.quote_id).maybeSingle();
   if (quoteReadError || !quote) throw new CrmAuthError(502, "The ordering override could not be linked to the sold quote.");
@@ -907,6 +975,8 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
   const sourceQuoteId = typeof quoteMeta.mts_quote_id === "string" ? quoteMeta.mts_quote_id : null;
   if (!sourceQuoteId) return;
   for (const line of form.lines) {
+    const sourceLineItemId = line.source_quote_line_item_id || line.quote_line_item_id;
+    if ((line.source_quantity || 1) > 1) continue;
     const width = legacyDimension(line.current_values.width_in);
     const height = legacyDimension(line.current_values.height_in);
     const { error: lineError } = await supabase.from("sales_quote_line_items").update({
@@ -916,7 +986,7 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
       height_whole: height.whole,
       height_fraction: height.fraction,
       quantity: line.current_values.quantity,
-    }).eq("id", line.quote_line_item_id).eq("quote_id", sourceQuoteId);
+    }).eq("id", sourceLineItemId).eq("quote_id", sourceQuoteId);
     if (lineError) throw new CrmAuthError(502, "Measured dimensions could not be projected to the ordering record.");
 
     if (line.current_values.design_id) {
@@ -931,7 +1001,7 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
         remote_type: nullableText(details.remote_type),
         options_json: optionsJson,
         unit_price: line.current_unit_price,
-      }).eq("id", line.current_values.design_id).eq("line_item_id", line.quote_line_item_id);
+      }).eq("id", line.current_values.design_id).eq("line_item_id", sourceLineItemId);
       if (designError) throw new CrmAuthError(502, "Changed product details could not be projected to the ordering record.");
     }
   }

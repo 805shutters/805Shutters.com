@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildTechnicalMeasureAddendumPdf,
+  expandTechnicalMeasureLineQuantity,
   normalizeFutureMeasureInput,
   normalizeTechnicalMeasureScheduleWindow,
   normalizeTechnicalMeasureLineValues,
@@ -131,6 +132,39 @@ describe("technical measure sold-job recovery", () => {
       { id: "job-2", status: "quoted", meta: neededMeta },
       new Set(),
     )).toBe(false);
+  });
+});
+
+describe("technical measure quantity expansion", () => {
+  it("keeps normal quantity-one contract lines unchanged", () => {
+    expect(expandTechnicalMeasureLineQuantity({
+      id: "source-line-1",
+      quantity: 1,
+      sort_order: 4,
+    })).toEqual([{
+      measure_quote_line_item_id: "source-line-1",
+      source_quote_line_item_id: "source-line-1",
+      source_quantity_index: 1,
+      source_quantity: 1,
+      sort_order: 4,
+    }]);
+  });
+
+  it("creates one deterministic independently measurable row per contracted unit", () => {
+    const input = {
+      id: "b3cb5a73-c124-4e41-823d-9c9205244963",
+      quantity: 10,
+      sort_order: 2,
+    };
+    const firstAttempt = expandTechnicalMeasureLineQuantity(input);
+    const retry = expandTechnicalMeasureLineQuantity(input);
+
+    expect(firstAttempt).toHaveLength(10);
+    expect(new Set(firstAttempt.map((line) => line.measure_quote_line_item_id)).size).toBe(10);
+    expect(firstAttempt.map((line) => line.source_quantity_index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(firstAttempt.every((line) => line.source_quote_line_item_id === input.id)).toBe(true);
+    expect(firstAttempt.every((line) => line.source_quantity === 10)).toBe(true);
+    expect(retry).toEqual(firstAttempt);
   });
 });
 
