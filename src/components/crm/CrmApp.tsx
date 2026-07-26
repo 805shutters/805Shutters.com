@@ -34,6 +34,7 @@ import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
+import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import {
   awaitingProductRows,
   balanceDueCompletedRows,
@@ -2916,6 +2917,7 @@ export function CrmApp({
             <AccountabilityBoard items={accountability} />
             <BookkeepingSnapshot rows={rows} />
           </section>
+          {session ? <JessicaFeedbackHub session={session} userEmail={user?.email} /> : null}
         </>
       ) : null}
 
