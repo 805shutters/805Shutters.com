@@ -9,7 +9,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Clock,
   Files,
   FileText,
@@ -999,43 +998,63 @@ export function MobileAppointmentApp() {
   if (showWorkspaceMenu) {
     return (
       <div className="mobile-crm-app mobile-crm-home">
-        <main className="mobile-crm-category-stack">
-          <button type="button" onClick={() => setShowWorkspaceMenu(false)}>
-            <CalendarDays />
-            <div><strong>Appointments</strong><span>{appointments.length} upcoming</span></div>
-            <ArrowRight />
-          </button>
-          <a href="/crm/technical-measures">
-            <Ruler />
-            <div><strong>Technical Measures</strong><span>Sold jobs awaiting measure</span></div>
-            <ArrowRight />
-          </a>
-          <a href="/crm/mobile/quotes">
-            <FileText />
-            <div><strong>Quotes</strong><span>Create and manage customer quotes</span></div>
-            <ArrowRight />
-          </a>
-          <a href="/crm/mobile/bookkeeping">
-            <Landmark />
-            <div><strong>Bookkeeping</strong><span>Receivables, payables, and job balances</span></div>
-            <ArrowRight />
-          </a>
-          <a href="/crm/mobile/search">
-            <Search />
-            <div><strong>Search Appointments</strong><span>Find a customer and open their file</span></div>
-            <ArrowRight />
-          </a>
-          <a href="/crm/mobile/job-status">
-            <ClipboardList />
-            <div><strong>Job Status</strong><span>See which bucket every job is in</span></div>
-            <ArrowRight />
-          </a>
-          <a href="/crm/mobile/contracts">
-            <Files />
-            <div><strong>Contracts</strong><span>Search and open customer contracts</span></div>
-            <ArrowRight />
-          </a>
+        <header className="mobile-crm-home-header">
+          <img src="/brand/805-shutters-logo-header.png" alt="805 Shutters" width="440" height="120" />
+          <div>
+            <span>Technician workspace</span>
+            <h1>Good work starts here.</h1>
+            <p>{userLabel || "805 Shutters"} · {appointments.length} upcoming appointments</p>
+          </div>
+        </header>
+        <main className="mobile-crm-home-main">
+          <section className="mobile-crm-home-primary" aria-labelledby="mobile-today-heading">
+            <div className="mobile-crm-section-heading">
+              <span>Today&apos;s workflow</span>
+              <h2 id="mobile-today-heading">Stay on schedule</h2>
+            </div>
+            <button type="button" onClick={() => setShowWorkspaceMenu(false)}>
+              <span className="mobile-crm-action-icon"><CalendarDays /></span>
+              <div><strong>Open Appointments</strong><span>View schedule, customer details, navigation, and arrival texts</span></div>
+              <span className="mobile-crm-action-count">{appointments.length}</span>
+              <ArrowRight />
+            </button>
+          </section>
+
+          <section className="mobile-crm-tools" aria-labelledby="mobile-tools-heading">
+            <div className="mobile-crm-section-heading">
+              <span>Field tools</span>
+              <h2 id="mobile-tools-heading">Everything for the job</h2>
+            </div>
+            <div className="mobile-crm-category-stack">
+              <a href="/crm/technical-measures">
+                <Ruler />
+                <div><strong>Technical Measures</strong><span>Complete field measurements</span></div>
+                <ArrowRight />
+              </a>
+              <a href="/crm/mobile/quotes">
+                <FileText />
+                <div><strong>Quotes</strong><span>Create and manage quotes</span></div>
+                <ArrowRight />
+              </a>
+              <a href="/crm/mobile/contracts">
+                <Files />
+                <div><strong>Contracts</strong><span>Open signed documents</span></div>
+                <ArrowRight />
+              </a>
+              <a href="/crm/mobile/search">
+                <Search />
+                <div><strong>Customer Search</strong><span>Find appointments and files</span></div>
+                <ArrowRight />
+              </a>
+              <a href="/crm/mobile/bookkeeping">
+                <Landmark />
+                <div><strong>Bookkeeping</strong><span>Balances and payments</span></div>
+                <ArrowRight />
+              </a>
+            </div>
+          </section>
         </main>
+        <footer className="mobile-crm-home-footer">805 Shutters · Field Operations</footer>
       </div>
     );
   }

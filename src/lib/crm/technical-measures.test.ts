@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTechnicalMeasureAddendumPdf,
   expandTechnicalMeasureLineQuantity,
+  normalizeTechnicalMeasureLineInstanceSort,
   normalizeFutureMeasureInput,
   normalizeTechnicalMeasureScheduleWindow,
   normalizeTechnicalMeasureLineValues,
@@ -165,6 +166,32 @@ describe("technical measure quantity expansion", () => {
     expect(firstAttempt.every((line) => line.source_quote_line_item_id === input.id)).toBe(true);
     expect(firstAttempt.every((line) => line.source_quantity === 10)).toBe(true);
     expect(retry).toEqual(firstAttempt);
+  });
+
+  it("keeps expanded windows ahead of later source lines without sort collisions", () => {
+    const expanded = [
+      ...expandTechnicalMeasureLineQuantity({
+        id: "b3cb5a73-c124-4e41-823d-9c9205244963",
+        quantity: 3,
+        sort_order: 0,
+      }),
+      ...expandTechnicalMeasureLineQuantity({
+        id: "cce9f95d-acde-4f3d-b11a-b284761091f6",
+        quantity: 1,
+        sort_order: 1,
+      }),
+    ].map((instance) => ({ instance }));
+
+    expect(normalizeTechnicalMeasureLineInstanceSort(expanded).map(({ instance }) => ({
+      source: instance.source_quote_line_item_id,
+      window: instance.source_quantity_index,
+      sort: instance.sort_order,
+    }))).toEqual([
+      { source: "b3cb5a73-c124-4e41-823d-9c9205244963", window: 1, sort: 0 },
+      { source: "b3cb5a73-c124-4e41-823d-9c9205244963", window: 2, sort: 1 },
+      { source: "b3cb5a73-c124-4e41-823d-9c9205244963", window: 3, sort: 2 },
+      { source: "cce9f95d-acde-4f3d-b11a-b284761091f6", window: 1, sort: 3 },
+    ]);
   });
 });
 

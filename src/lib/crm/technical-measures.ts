@@ -400,6 +400,15 @@ export function expandTechnicalMeasureLineQuantity(input: {
   });
 }
 
+export function normalizeTechnicalMeasureLineInstanceSort<
+  T extends { instance: TechnicalMeasureLineInstance },
+>(entries: T[]): T[] {
+  return entries.map((entry, sortOrder) => ({
+    ...entry,
+    instance: { ...entry.instance, sort_order: sortOrder },
+  }));
+}
+
 async function updateJobMeasureFormMeta(supabase: SupabaseClient, job: CrmJob, formId: string, formStatus: string) {
   const measure = getMeasureNeededMeta(job.meta);
   await supabase.from("crm_jobs").update({
@@ -431,9 +440,9 @@ export async function ensureTechnicalMeasureForm(
     return design ? [{ line, design }] : [];
   });
   if (!lines.length) throw new CrmAuthError(409, "The sold contract does not contain measurable line items.");
-  const expandedLines = lines.flatMap(({ line, design }) =>
+  const expandedLines = normalizeTechnicalMeasureLineInstanceSort(lines.flatMap(({ line, design }) =>
     expandTechnicalMeasureLineQuantity(line).map((instance) => ({ line, design, instance }))
-  );
+  ));
   const lineProvenance = expandedLines.map(({ instance }) => instance);
 
   const customerSnapshot = {

@@ -27,7 +27,12 @@ describe("MobileAppointmentApp source contract", () => {
     expect(source).toContain("setShowWorkspaceMenu(true)");
   });
 
-  it("keeps the mobile home logo centered at one quarter of its former width", () => {
-    expect(styles).toMatch(/\.mobile-crm-home-header img \{[\s\S]*?width: 44px;[\s\S]*?justify-self: center;/);
+  it("presents the branded technician workspace without the job-status view", () => {
+    expect(source).toContain("/brand/805-shutters-logo-header.png");
+    expect(source).toContain("Technician workspace");
+    expect(source).toContain("Open Appointments");
+    expect(source).not.toContain("/crm/mobile/job-status");
+    expect(source).not.toContain("<strong>Job Status</strong>");
+    expect(styles).toMatch(/\.mobile-crm-home-header img \{[\s\S]*?width: min\(78vw, 360px\);/);
   });
 });

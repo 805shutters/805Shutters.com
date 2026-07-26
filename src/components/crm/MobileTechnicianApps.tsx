@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, ChevronRight, ClipboardList, Files, Search } from "lucide-react";
-import { buildMobileContractItems, buildMobileJobBuckets, filterMobileContracts } from "@/lib/crm/mobile-technician";
+import { ArrowLeft, ChevronRight, Files, Search } from "lucide-react";
+import { buildMobileContractItems, filterMobileContracts } from "@/lib/crm/mobile-technician";
 import type { CrmDashboardData } from "@/lib/crm/types";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
@@ -68,46 +68,6 @@ function MobilePageHeader({ icon, eyebrow, title }: { icon: React.ReactNode; eye
 
 function MobileState({ text }: { text: string }) {
   return <div className="mobile-tech-state">{text}</div>;
-}
-
-export function MobileJobStatusApp() {
-  const { session, authLoading, data, error } = useMobileDashboard();
-  const buckets = useMemo(() => buildMobileJobBuckets(data?.jobs || []), [data?.jobs]);
-
-  if (authLoading) return <main className="mobile-tech-shell"><MobileState text="Loading…" /></main>;
-  if (!session) return <main className="mobile-tech-shell"><MobileState text="Sign in from the Mobile CRM to view job status." /></main>;
-
-  return (
-    <main className="mobile-tech-shell">
-      <MobilePageHeader icon={<ClipboardList />} eyebrow="Technician app" title="Job Status" />
-      {error ? <MobileState text={error} /> : null}
-      {!data && !error ? <MobileState text="Loading jobs…" /> : null}
-      {data && buckets.length === 0 ? <MobileState text="No jobs found." /> : null}
-      <div className="mobile-job-buckets">
-        {buckets.map((bucket) => (
-          <section className="mobile-job-bucket" key={bucket.id}>
-            <div className="mobile-job-bucket-heading">
-              <h2>{bucket.label}</h2>
-              <span>{bucket.jobs.length}</span>
-            </div>
-            <div className="mobile-job-list">
-              {bucket.jobs.map((job) => (
-                <article className="mobile-job-card" key={job.id}>
-                  <div>
-                    <strong>{job.customer_name}</strong>
-                    <span>{job.product_interest || "Product not listed"}</span>
-                  </div>
-                  <span className="mobile-job-status-pill">{bucket.label}</span>
-                  {job.address ? <p>{job.address}{job.city ? `, ${job.city}` : ""}</p> : null}
-                  {job.next_action ? <p><b>Next:</b> {job.next_action}</p> : null}
-                </article>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    </main>
-  );
 }
 
 export function MobileContractsApp() {
