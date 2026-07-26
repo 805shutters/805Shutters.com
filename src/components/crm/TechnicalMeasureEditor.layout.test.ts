@@ -14,6 +14,17 @@ describe("technical measure mobile controls", () => {
     expect(styles).toContain("min-height: 58px;");
   });
 
+  it("continues from width fraction directly into height selection", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+
+    expect(component).toContain('setMeasurePicker({ ...measurePicker, step: "height_whole" })');
+    expect(component).toContain('setFuturePicker("height_whole")');
+    expect(component).toContain("onHeightFraction={(fraction) => { updateLine");
+    expect(component).toContain("setMeasurePicker(null); }}");
+    expect(component).toContain("onHeightFraction={(fraction) => { setFutureMeasure");
+    expect(component).toContain("setFuturePicker(null); }}");
+  });
+
   it("uses a compact paired room and opening identifier row", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");

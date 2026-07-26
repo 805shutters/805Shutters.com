@@ -529,7 +529,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           pendingWidth={pendingWidth}
           pendingHeight={pendingHeight}
           onWidthWhole={(whole) => { updateLine(activePickerLine.id, { width_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "width_fraction" }); }}
-          onWidthFraction={(fraction) => { updateLine(activePickerLine.id, { width_in: decimal(wholeFraction(activePickerLine.current_values.width_in).whole, fraction) }); setMeasurePicker(null); }}
+          onWidthFraction={(fraction) => { updateLine(activePickerLine.id, { width_in: decimal(wholeFraction(activePickerLine.current_values.width_in).whole, fraction) }); setMeasurePicker({ ...measurePicker, step: "height_whole" }); }}
           onHeightWhole={(whole) => { updateLine(activePickerLine.id, { height_in: decimal(whole, "0") }); setMeasurePicker({ ...measurePicker, step: "height_fraction" }); }}
           onHeightFraction={(fraction) => { updateLine(activePickerLine.id, { height_in: decimal(wholeFraction(activePickerLine.current_values.height_in).whole, fraction) }); setMeasurePicker(null); }}
           onDirectMeasurements={(width, height) => { updateLine(activePickerLine.id, { width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) }); setMeasurePicker(null); }}
@@ -544,7 +544,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           pendingWidth={futureMeasure.width_in ? wholeFraction(futureMeasure.width_in) : null}
           pendingHeight={futureMeasure.height_in ? wholeFraction(futureMeasure.height_in) : null}
           onWidthWhole={(whole) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(whole, "0") })); setFuturePicker("width_fraction"); }}
-          onWidthFraction={(fraction) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(wholeFraction(current.width_in).whole, fraction) })); setFuturePicker(null); }}
+          onWidthFraction={(fraction) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(wholeFraction(current.width_in).whole, fraction) })); setFuturePicker("height_whole"); }}
           onHeightWhole={(whole) => { setFutureMeasure((current) => ({ ...current, height_in: decimal(whole, "0") })); setFuturePicker("height_fraction"); }}
           onHeightFraction={(fraction) => { setFutureMeasure((current) => ({ ...current, height_in: decimal(wholeFraction(current.height_in).whole, fraction) })); setFuturePicker(null); }}
           onDirectMeasurements={(width, height) => { setFutureMeasure((current) => ({ ...current, width_in: decimal(width.whole, width.fraction), height_in: decimal(height.whole, height.fraction) })); setFuturePicker(null); }}
