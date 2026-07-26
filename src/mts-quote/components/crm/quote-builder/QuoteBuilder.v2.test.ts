@@ -1,9 +1,27 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   changeLineItemProductTypeWithRollback,
   invalidateOptimisticV2Design,
   ProductTypeChangeRollbackError,
 } from "./QuoteBuilder";
+
+const quoteBuilderSource = readFileSync(
+  fileURLToPath(new URL("./QuoteBuilder.tsx", import.meta.url)),
+  "utf8",
+);
+
+describe("V2 quote builder load integrity", () => {
+  it("never renders a missing sales quote as an empty saved quote", () => {
+    expect(quoteBuilderSource).toContain("isError: isQuoteLoadError");
+    expect(quoteBuilderSource).toContain("isError: isLineItemsLoadError");
+    expect(quoteBuilderSource).toContain("isError: isDesignsLoadError");
+    expect(quoteBuilderSource).toContain("Quote could not be opened safely");
+    expect(quoteBuilderSource).toContain("No empty");
+    expect(quoteBuilderSource).toContain("quote was created and no price was changed.");
+  });
+});
 
 describe("V2 quote builder optimistic pricing", () => {
   it("removes the previous authoritative amount while a changed selection reprices", () => {

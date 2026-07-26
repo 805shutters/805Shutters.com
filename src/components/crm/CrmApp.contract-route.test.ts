@@ -12,4 +12,12 @@ describe("CRM customer contract route", () => {
   it("keeps Quote Workspace pointed at the Builder tab", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
   });
+
+  it("opens unconverted historical CRM quotes in an explicit read-only fallback", () => {
+    expect(source).toContain("setReadOnlyLegacyQuoteId(quoteId)");
+    expect(source).toContain("readOnly={readOnlyLegacyQuoteId === builderQuoteId}");
+    expect(source).toContain(
+      'readOnlyReason="This historical quote has not been losslessly converted into authoritative V2."',
+    );
+  });
 });

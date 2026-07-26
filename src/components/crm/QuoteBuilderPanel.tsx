@@ -17,6 +17,9 @@ type Props = {
   onSwitch?: (id: string) => void;
   /** Render inline (no modal overlay / Close button) — used inside the Quotes workspace. */
   embedded?: boolean;
+  /** Historical imports stay view-only until a lossless V2 conversion succeeds. */
+  readOnly?: boolean;
+  readOnlyReason?: string;
 };
 
 type Version = { id: string; label: string; status: string; quote_total: number; share_token: string | null; signed: boolean };
@@ -190,7 +193,16 @@ const ROOM_PRESETS = [
 
 type ProductTypeTile = { type: string; label: string; defaultProductId: string; count: number };
 
-export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwitch, embedded }: Props) {
+export function QuoteBuilderPanel({
+  session,
+  quoteId,
+  onClose,
+  onChanged,
+  onSwitch,
+  embedded,
+  readOnly = false,
+  readOnlyReason,
+}: Props) {
   const [catalog, setCatalog] = useState<UiCatalog | null>(null);
   const [quote, setQuote] = useState<CrmQuoteWithItems | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
@@ -639,6 +651,91 @@ export function QuoteBuilderPanel({ session, quoteId, onClose, onChanged, onSwit
   const isSaving = busy || pendingQuickAdds > 0;
   const copySourceLineItem =
     quote && copySourceId ? quote.lineItems.find((li) => li.id === copySourceId) ?? null : null;
+
+  if (readOnly) {
+    const readOnlyInner = (
+      <div style={embedded ? embeddedPanelStyle : panelStyle}>
+        <header style={headerStyle}>
+          <div>
+            <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, textTransform: "uppercase", opacity: 0.7 }}>
+              Historical Quote — Read Only
+            </p>
+            <h2 style={{ margin: "2px 0 0" }}>
+              {quote?.customer_name || quote?.quote_number || "Loading quote…"} — {money(quote?.quote_total)}
+            </h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close quote" style={xBtn} title="Exit to CRM">
+            ✕
+          </button>
+        </header>
+        <div style={{ padding: 16 }}>
+          <p style={{ ...errorStyle, marginTop: 0 }}>
+            {readOnlyReason ||
+              "This historical quote is not editable until its complete configuration is converted into authoritative V2."}
+          </p>
+          {error ? <p style={errorStyle}>{error}</p> : null}
+          {!quote && !error ? <p>Loading the original quote…</p> : null}
+          {quote ? (
+            <div style={{ display: "grid", gap: 12 }}>
+              {quote.lineItems.length === 0 ? (
+                <p style={{ margin: 0 }}>No historical line-item structure is available.</p>
+              ) : (
+                quote.lineItems.map((lineItem, index) => {
+                  const selected = selectedDesign(lineItem);
+                  return (
+                    <section
+                      key={lineItem.id}
+                      style={{ border: "1px solid #d8d5cf", borderRadius: 10, padding: 12, background: "#ffffff" }}
+                    >
+                      <strong>
+                        #{index + 1} {lineItem.room || "Unnamed room"} ·{" "}
+                        {lineItem.width_in == null ? "—" : formatInches(lineItem.width_in)} ×{" "}
+                        {lineItem.height_in == null ? "—" : formatInches(lineItem.height_in)} · Qty{" "}
+                        {lineItem.quantity}
+                      </strong>
+                      <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                        {lineItem.designs.map((design) => (
+                          <div
+                            key={design.id}
+                            style={{
+                              padding: 8,
+                              borderRadius: 8,
+                              background: design.id === lineItem.selected_design_id ? "#f0fdf4" : "#f5f5f2",
+                            }}
+                          >
+                            <span style={{ fontWeight: 700 }}>
+                              {design.label}
+                              {design.id === lineItem.selected_design_id ? " · selected" : ""}
+                            </span>
+                            <span style={{ marginLeft: 8 }}>
+                              {design.product_id}
+                              {design.fabric ? ` · ${design.fabric}` : ""}
+                              {design.price_status === "ok" ? ` · ${money(design.unit_price)}` : ` · ${design.price_status}`}
+                            </span>
+                          </div>
+                        ))}
+                        {!selected && (
+                          <p style={{ margin: 0, color: "#9f1239", fontWeight: 700 }}>
+                            No billable design is explicitly selected.
+                          </p>
+                        )}
+                      </div>
+                    </section>
+                  );
+                })
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+
+    return embedded ? readOnlyInner : (
+      <div className="qb-overlay" role="dialog" aria-modal="true" style={overlayStyle}>
+        {readOnlyInner}
+      </div>
+    );
+  }
 
   const inner = (
       <div style={embedded ? embeddedPanelStyle : panelStyle}>

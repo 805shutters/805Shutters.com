@@ -1,0 +1,264 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { CrmAuthError } from "@/lib/crm/auth";
+
+type JsonRecord = Record<string, unknown>;
+
+type StoredCrmQuoteRouteRow = {
+  id: string;
+  external_id?: string | null;
+  meta?: JsonRecord | null;
+  quote_total?: number | string | null;
+};
+
+type StoredSalesQuoteRouteRow = {
+  id: string;
+  quote_v2_backend?: boolean | null;
+  quote_v2_status?: string | null;
+  status?: string | null;
+};
+
+type StoredSalesLineRouteRow = {
+  id: string;
+  quote_id: string;
+  selected_design_id?: string | null;
+};
+
+type StoredSalesDesignRouteRow = {
+  id: string;
+  line_item_id: string;
+};
+
+export type SalesQuoteV2RouteResolution =
+  | {
+      status: "ready";
+      crmQuoteId: string;
+      salesQuoteId: string;
+      lineCount: number;
+      designCount: number;
+      quoteV2Backend: boolean;
+      quoteV2Status: string | null;
+      quoteStatus: string | null;
+    }
+  | {
+      status: "legacy_import_required" | "crm_native_unsupported" | "malformed";
+      crmQuoteId: string;
+      salesQuoteId: string | null;
+      reason:
+        | "no_target_identity"
+        | "target_not_found"
+        | "target_structure_empty"
+        | "conflicting_target_identity"
+        | "invalid_target_identity"
+        | "target_line_limit_exceeded"
+        | "target_structure_invalid";
+    };
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_QUOTE_LINES = 40;
+
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function externalQuoteId(value: unknown): string | null {
+  const externalId = text(value);
+  if (!externalId?.startsWith("quote:")) return null;
+  return text(externalId.slice("quote:".length));
+}
+
+export function salesQuoteV2RouteCandidate(
+  quote: StoredCrmQuoteRouteRow,
+):
+  | { status: "candidate"; salesQuoteId: string }
+  | {
+      status: "crm_native_unsupported" | "malformed";
+      salesQuoteId: string | null;
+      reason:
+        | "no_target_identity"
+        | "conflicting_target_identity"
+        | "invalid_target_identity";
+    } {
+  const meta = quote.meta ?? {};
+  const typedTarget = text(meta.target_sales_quote_id);
+  const candidates = typedTarget
+    ? [typedTarget]
+    : Array.from(
+        new Set(
+          [
+            text(meta.sales_quote_id),
+            text(meta.mts_quote_id),
+            externalQuoteId(quote.external_id),
+          ].filter((value): value is string => Boolean(value)),
+        ),
+      );
+
+  if (!candidates.length) {
+    return {
+      status: "crm_native_unsupported",
+      salesQuoteId: null,
+      reason: "no_target_identity",
+    };
+  }
+  if (candidates.length > 1) {
+    return {
+      status: "malformed",
+      salesQuoteId: null,
+      reason: "conflicting_target_identity",
+    };
+  }
+  if (!UUID_PATTERN.test(candidates[0])) {
+    return {
+      status: "malformed",
+      salesQuoteId: candidates[0],
+      reason: "invalid_target_identity",
+    };
+  }
+  return { status: "candidate", salesQuoteId: candidates[0].toLowerCase() };
+}
+
+export function classifySalesQuoteV2Route(input: {
+  crmQuote: StoredCrmQuoteRouteRow;
+  salesQuote: StoredSalesQuoteRouteRow | null;
+  lines: StoredSalesLineRouteRow[];
+  designs: StoredSalesDesignRouteRow[];
+}): SalesQuoteV2RouteResolution {
+  const candidate = salesQuoteV2RouteCandidate(input.crmQuote);
+  if (candidate.status !== "candidate") {
+    return {
+      status: candidate.status,
+      crmQuoteId: input.crmQuote.id,
+      salesQuoteId: candidate.salesQuoteId,
+      reason: candidate.reason,
+    };
+  }
+  if (!input.salesQuote || input.salesQuote.id !== candidate.salesQuoteId) {
+    return {
+      status: "legacy_import_required",
+      crmQuoteId: input.crmQuote.id,
+      salesQuoteId: candidate.salesQuoteId,
+      reason: "target_not_found",
+    };
+  }
+  if (input.lines.length > MAX_QUOTE_LINES) {
+    return {
+      status: "malformed",
+      crmQuoteId: input.crmQuote.id,
+      salesQuoteId: candidate.salesQuoteId,
+      reason: "target_line_limit_exceeded",
+    };
+  }
+  const sourceTotal = Number(input.crmQuote.quote_total ?? 0);
+  if (Number.isFinite(sourceTotal) && sourceTotal > 0 && input.lines.length === 0) {
+    return {
+      status: "legacy_import_required",
+      crmQuoteId: input.crmQuote.id,
+      salesQuoteId: candidate.salesQuoteId,
+      reason: "target_structure_empty",
+    };
+  }
+
+  const lineIds = new Set(input.lines.map((line) => line.id));
+  const designOwner = new Map(input.designs.map((design) => [design.id, design.line_item_id]));
+  const invalid =
+    lineIds.size !== input.lines.length ||
+    input.lines.some(
+      (line) =>
+        line.quote_id !== candidate.salesQuoteId ||
+        (line.selected_design_id != null &&
+          designOwner.get(line.selected_design_id) !== line.id),
+    ) ||
+    input.designs.some((design) => !lineIds.has(design.line_item_id));
+
+  if (invalid) {
+    return {
+      status: "malformed",
+      crmQuoteId: input.crmQuote.id,
+      salesQuoteId: candidate.salesQuoteId,
+      reason: "target_structure_invalid",
+    };
+  }
+
+  return {
+    status: "ready",
+    crmQuoteId: input.crmQuote.id,
+    salesQuoteId: candidate.salesQuoteId,
+    lineCount: input.lines.length,
+    designCount: input.designs.length,
+    quoteV2Backend: input.salesQuote.quote_v2_backend === true,
+    quoteV2Status: text(input.salesQuote.quote_v2_status),
+    quoteStatus: text(input.salesQuote.status),
+  };
+}
+
+export async function resolveSalesQuoteV2Route(
+  supabase: SupabaseClient,
+  crmQuoteId: string,
+): Promise<SalesQuoteV2RouteResolution> {
+  if (!UUID_PATTERN.test(crmQuoteId)) {
+    throw new CrmAuthError(400, "CRM quote ID is invalid.");
+  }
+  const { data: crmQuote, error: crmError } = await supabase
+    .from("crm_quotes")
+    .select("id,external_id,meta,quote_total")
+    .eq("id", crmQuoteId)
+    .maybeSingle();
+  if (crmError) throw new CrmAuthError(502, "The CRM quote link could not be loaded.");
+  if (!crmQuote) throw new CrmAuthError(404, "CRM quote was not found.");
+
+  const candidate = salesQuoteV2RouteCandidate(
+    crmQuote as unknown as StoredCrmQuoteRouteRow,
+  );
+  if (candidate.status !== "candidate") {
+    return classifySalesQuoteV2Route({
+      crmQuote: crmQuote as unknown as StoredCrmQuoteRouteRow,
+      salesQuote: null,
+      lines: [],
+      designs: [],
+    });
+  }
+
+  const { data: salesQuote, error: salesError } = await supabase
+    .from("sales_quotes")
+    .select("id,quote_v2_backend,quote_v2_status,status")
+    .eq("id", candidate.salesQuoteId)
+    .maybeSingle();
+  if (salesError) throw new CrmAuthError(502, "The linked V2 quote could not be loaded.");
+  if (!salesQuote) {
+    return classifySalesQuoteV2Route({
+      crmQuote: crmQuote as unknown as StoredCrmQuoteRouteRow,
+      salesQuote: null,
+      lines: [],
+      designs: [],
+    });
+  }
+
+  const { data: lines, error: linesError } = await supabase
+    .from("sales_quote_line_items")
+    .select("id,quote_id,selected_design_id")
+    .eq("quote_id", candidate.salesQuoteId);
+  if (linesError) throw new CrmAuthError(502, "The linked V2 quote lines could not be loaded.");
+
+  const lineRows = (lines ?? []) as unknown as StoredSalesLineRouteRow[];
+  let designs: StoredSalesDesignRouteRow[] = [];
+  if (lineRows.length) {
+    const { data: designRows, error: designsError } = await supabase
+      .from("sales_quote_designs")
+      .select("id,line_item_id")
+      .in(
+        "line_item_id",
+        lineRows.map((line) => line.id),
+      );
+    if (designsError) {
+      throw new CrmAuthError(502, "The linked V2 quote designs could not be loaded.");
+    }
+    designs = (designRows ?? []) as unknown as StoredSalesDesignRouteRow[];
+  }
+
+  return classifySalesQuoteV2Route({
+    crmQuote: crmQuote as unknown as StoredCrmQuoteRouteRow,
+    salesQuote: salesQuote as unknown as StoredSalesQuoteRouteRow,
+    lines: lineRows,
+    designs,
+  });
+}

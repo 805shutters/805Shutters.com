@@ -863,6 +863,7 @@ export function CrmApp({
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [cancelingCalendarEvent, setCancelingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
+  const [readOnlyLegacyQuoteId, setReadOnlyLegacyQuoteId] = useState<string | null>(null);
   const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
@@ -902,25 +903,30 @@ export function CrmApp({
     setDrill(null);
   }
 
-  function linkedSalesQuoteId(quote: CrmQuote | null | undefined) {
-    const value = quote?.meta?.mts_quote_id || quote?.meta?.sales_quote_id;
-    return typeof value === "string" && value.trim() ? value : null;
-  }
-
   function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
     const quote = quotes.find((item) => item.id === quoteId);
-    const targetQuoteId = linkedSalesQuoteId(quote) || (!quote ? quoteId : null);
 
-    if (!targetQuoteId) {
-      if (tab === "contract") void openQuoteContract(quoteId);
-      else setBuilderQuoteId(quoteId);
+    // A CRM import may retain the UUID of a quote from another database in
+    // meta.mts_quote_id. QuoteDashboard resolves that link against locally
+    // loaded sales_quotes before opening V2. Other CRM entry points must fail
+    // closed to the original quote instead of treating a foreign UUID as a
+    // local V2 record and rendering an empty $0 builder.
+    if (quote) {
+      setMessage(
+        tab === "contract"
+          ? "Contract opening is blocked until this historical quote is losslessly converted into V2."
+          : "Historical quote opened read-only because it is not structurally imported into V2."
+      );
+      setReadOnlyLegacyQuoteId(quoteId);
+      setBuilderQuoteId(quoteId);
       return;
     }
 
     setBuilderQuoteId(null);
+    setReadOnlyLegacyQuoteId(null);
     setActiveTab("quotes");
     setQuoteWorkspaceOpenRequest((request) => ({
-      quoteId: targetQuoteId,
+      quoteId,
       tab,
       requestId: (request?.requestId || 0) + 1
     }));
@@ -2750,9 +2756,17 @@ export function CrmApp({
         <QuoteBuilderPanel
           session={session}
           quoteId={builderQuoteId}
-          onClose={() => setBuilderQuoteId(null)}
+          readOnly={readOnlyLegacyQuoteId === builderQuoteId}
+          readOnlyReason="This historical quote has not been losslessly converted into authoritative V2."
+          onClose={() => {
+            setBuilderQuoteId(null);
+            setReadOnlyLegacyQuoteId(null);
+          }}
           onChanged={refresh}
-          onSwitch={setBuilderQuoteId}
+          onSwitch={(quoteId) => {
+            setBuilderQuoteId(quoteId);
+            if (readOnlyLegacyQuoteId) setReadOnlyLegacyQuoteId(quoteId);
+          }}
         />
       ) : null}
       <header className="crm-topbar">
@@ -3207,7 +3221,16 @@ export function CrmApp({
             </form>
           </CollapsiblePanel>
 
-          <OrderBoard quotes={quotes} onUpdate={updateQuote} busy={busy} onOpenBuilder={setBuilderQuoteId} onOpenContract={openQuoteContract} />
+          <OrderBoard
+            quotes={quotes}
+            onUpdate={updateQuote}
+            busy={busy}
+            onOpenBuilder={(quoteId) => {
+              setReadOnlyLegacyQuoteId(null);
+              setBuilderQuoteId(quoteId);
+            }}
+            onOpenContract={openQuoteContract}
+          />
         </section>
       ) : null}
 

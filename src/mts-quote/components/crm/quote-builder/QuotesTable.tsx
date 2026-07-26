@@ -23,6 +23,8 @@ export type QuoteTableRow = QuoteStatsSource & {
   updated_at?: string | null;
   source?: "sales" | "crm";
   sourceQuoteId?: string | null;
+  sourceSystemQuoteId?: string | null;
+  v2ImportStatus?: "ready" | "not_imported";
   salesQuote?: SalesQuote;
   generalJobNote?: string | null;
 };
@@ -116,6 +118,11 @@ export function QuotesTable({
                       <p className="mt-1 flex max-w-md items-start gap-1.5 text-xs text-amber-800">
                         <MessageSquareText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span className="line-clamp-2">{quote.generalJobNote}</span>
+                      </p>
+                    )}
+                    {quote.v2ImportStatus === "not_imported" && (
+                      <p className="mt-1 text-xs font-medium text-amber-800">
+                        V1 only — historical configuration not yet imported to V2
                       </p>
                     )}
                   </div>

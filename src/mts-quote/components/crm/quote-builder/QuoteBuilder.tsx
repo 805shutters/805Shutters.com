@@ -19,8 +19,10 @@ import {
 } from "@/lib/quote-v2/selected-design";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
+  AlertTriangle,
   Archive,
   ChevronDown,
+  Loader2,
   RotateCcw,
   Pencil,
   CopyCheck,
@@ -517,6 +519,7 @@ export function QuoteBuilder() {
     copySourceItemId,
     setCopySource,
     clearCopyTargets,
+    setActiveQuote,
     setActiveTab,
   } = useQuoteBuilderStore();
 
@@ -580,7 +583,11 @@ export function QuoteBuilder() {
   };
 
   // Fetch active quote
-  const { data: quote } = useQuery({
+  const {
+    data: quote,
+    isPending: isQuoteLoading,
+    isError: isQuoteLoadError,
+  } = useQuery({
     queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -602,7 +609,11 @@ export function QuoteBuilder() {
   }, [quote]);
 
   // Fetch line items
-  const { data: lineItems = [] } = useQuery({
+  const {
+    data: lineItems = [],
+    isPending: areLineItemsLoading,
+    isError: isLineItemsLoadError,
+  } = useQuery({
     queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
@@ -613,7 +624,7 @@ export function QuoteBuilder() {
       if (error) throw error;
       return (data || []) as SalesQuoteLineItem[];
     },
-    enabled: !!activeQuoteId,
+    enabled: !!activeQuoteId && !!quote,
   });
 
   // Fetch all designs for this quote's line items
@@ -621,7 +632,11 @@ export function QuoteBuilder() {
   const designsQueryKey = [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"];
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
   const isActiveQuotePriceLocked = isQuotePriceLocked(quote);
-  const { data: designs = [] } = useQuery({
+  const {
+    data: designs = [],
+    isPending: areDesignsLoading,
+    isError: isDesignsLoadError,
+  } = useQuery({
     queryKey: designsQueryKey,
     queryFn: async () => {
       if (lineItemIds.length === 0) return [];
@@ -1356,6 +1371,55 @@ export function QuoteBuilder() {
     return (
       <div className="p-6 text-center text-muted-foreground">
         Select or create a quote from the Dashboard to start building.
+      </div>
+    );
+  }
+
+  if (isQuoteLoading || (quote && areLineItemsLoading) || (lineItemIds.length > 0 && areDesignsLoading)) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-sm">
+          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+          Loading the saved quote structure...
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    isQuoteLoadError ||
+    !quote ||
+    isLineItemsLoadError ||
+    isDesignsLoadError
+  ) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-6">
+        <div
+          className="max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-950 shadow-sm"
+          role="alert"
+        >
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
+            <div>
+              <h2 className="text-lg font-black">Quote could not be opened safely</h2>
+              <p className="mt-2 text-sm leading-6">
+                The saved quote record or its line-item structure is unavailable in V2. No empty
+                quote was created and no price was changed.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 border-red-300 bg-white text-red-950 hover:bg-red-100"
+                onClick={() => {
+                  setActiveQuote(null);
+                  setActiveTab("dashboard");
+                }}
+              >
+                Back to quote dashboard
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
