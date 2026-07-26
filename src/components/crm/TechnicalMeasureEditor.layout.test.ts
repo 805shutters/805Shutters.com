@@ -41,7 +41,8 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("Inside Mount");
     expect(component).toContain("Outside Mount");
     expect(component).toContain("Control side");
-    expect(component).toContain("<summary>More details");
+    expect(component).not.toContain("<summary>More details");
+    expect(component).toContain("shutterMeasurementBasis");
     expect(styles).toContain("height: 100dvh;");
     expect(styles).toContain("overflow: hidden;");
   });

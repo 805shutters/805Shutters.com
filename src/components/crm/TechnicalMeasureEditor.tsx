@@ -61,6 +61,19 @@ function isShutterProduct(productId: string) {
   return productId.toLowerCase().includes("shutter");
 }
 
+function shutterMeasurementBasis(details: Record<string, unknown>) {
+  const candidates = [
+    details.measurement_basis,
+    details.measurement_type,
+    details.measure_type,
+    details.size_type,
+  ].map((value) => String(value || "").toLowerCase().replaceAll("-", "_").replaceAll(" ", "_"));
+  if (candidates.some((value) => value.includes("window_size"))) return "window_size";
+  if (candidates.some((value) => value.includes("frame_to_frame"))) return "frame_to_frame";
+  if (details.frame_type || details.frame_style || details.frame_sides) return "window_size";
+  return "frame_to_frame";
+}
+
 function productLabel(productId: string) {
   return Object.entries(PRODUCT_IDS).find(([, id]) => id === productId)?.[0] || fieldName(productId);
 }
@@ -408,6 +421,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const isExpandedWindow = (line.source_quantity || 1) > 1;
           const normanRoller = current.product_id === "roller" && String(current.details.supplier || "Norman").toLowerCase() === "norman";
           const shutterProduct = isShutterProduct(current.product_id);
+          const measurementBasis = shutterMeasurementBasis(current.details);
           const priorityDetailKeys: readonly string[] = shutterProduct ? SHUTTER_MEASURE_PRIORITY_KEYS : SHADE_MEASURE_PRIORITY_KEYS;
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
             .filter((key) => (!normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key)) && !priorityDetailKeys.includes(key));
@@ -445,15 +459,14 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
               </div>
               {shutterProduct ? <div className="technical-measure-priority-grid">
                 <label><span>Folding direction</span><input disabled={readOnly} placeholder="Left, right, bi-fold…" value={String(current.details.folding_direction || "")} onChange={(event) => updateDetail(line.id, "folding_direction", event.target.value)} /></label>
-                <div className="technical-measure-basis"><span>Measure basis</span><div><button type="button" disabled={readOnly} aria-pressed={current.details.measurement_basis === "window_size"} onClick={() => updateDetail(line.id, "measurement_basis", "window_size")}>Window Size</button><button type="button" disabled={readOnly} aria-pressed={current.details.measurement_basis === "frame_to_frame"} onClick={() => updateDetail(line.id, "measurement_basis", "frame_to_frame")}>Frame to Frame</button></div></div>
+                <div className="technical-measure-basis"><span>Measure basis</span><div><button type="button" disabled={readOnly} aria-pressed={measurementBasis === "window_size"} onClick={() => updateDetail(line.id, "measurement_basis", "window_size")}>Window Size</button><button type="button" disabled={readOnly} aria-pressed={measurementBasis === "frame_to_frame"} onClick={() => updateDetail(line.id, "measurement_basis", "frame_to_frame")}>Frame to Frame</button></div></div>
                 <label><span>Split tilt location</span><input disabled={readOnly} placeholder="None or location" value={String(current.details.split_tilt_location || "")} onChange={(event) => updateDetail(line.id, "split_tilt_location", event.target.value)} /></label>
                 <label><span>Divider rail location</span><input disabled={readOnly} placeholder="None or location" value={String(current.details.divider_rail_location || "")} onChange={(event) => updateDetail(line.id, "divider_rail_location", event.target.value)} /></label>
               </div> : <div className="technical-measure-priority-grid technical-measure-priority-grid--shade">
                 <div className="technical-measure-basis"><span>Mount</span><div><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Inside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Inside Mount")}>Inside</button><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Outside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Outside Mount")}>Outside</button></div></div>
                 <div className="technical-measure-basis"><span>Control side</span><div><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "left"} onClick={() => updateDetail(line.id, "control_side", "Left")}>Left</button><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "right"} onClick={() => updateDetail(line.id, "control_side", "Right")}>Right</button></div></div>
               </div>}
-              <details className="technical-measure-secondary">
-                <summary>More details <span>Product, color, options, notes</span></summary>
+              <div className="technical-measure-secondary">
                 <div className="technical-measure-fields">
                 <div className={`technical-measure-choice-field ${changed(baseline.quantity, current.quantity) ? "changed" : ""}`}>
                   <span>Quantity</span>
@@ -493,7 +506,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                 })}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
-              </details>
+              </div>
               <div className="technical-measure-line-navigation">
                 <button type="button" disabled={index === 0} onClick={() => showLine(index - 1)}><ChevronLeft />Previous</button>
                 <span>{current.width_in && current.height_in ? "Measurements entered" : "Width and height required"}</span>
