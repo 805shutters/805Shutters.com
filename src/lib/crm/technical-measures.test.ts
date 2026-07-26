@@ -52,11 +52,17 @@ describe("technical measure change classification", () => {
     expect(requiresTechnicalMeasureAddendum(technicalMeasureLineChanges("line-1", original, current))).toBe(true);
   });
 
-  it("treats room labels and technician notes as internal changes", () => {
+  it("treats room, opening labels, and technician notes as internal changes", () => {
     const original = baseline();
-    const current = normalizeTechnicalMeasureLineValues({ ...original, room: "Patio", notes: "Verify frame" }, original);
+    const current = normalizeTechnicalMeasureLineValues({
+      ...original,
+      room: "Patio",
+      opening_label: "B",
+      notes: "Verify frame",
+    }, original);
     const changes = technicalMeasureLineChanges("line-1", original, current);
     expect(changes.every((change) => change.kind === "internal")).toBe(true);
+    expect(changes.find((change) => change.field === "opening_label")?.label).toBe("Opening");
     expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
   });
 

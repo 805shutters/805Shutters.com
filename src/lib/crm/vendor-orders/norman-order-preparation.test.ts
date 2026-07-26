@@ -6,6 +6,7 @@ function line(): TechnicalMeasureLine {
   const values = {
     design_id: "design-1",
     room: "Office",
+    opening_label: "",
     width_in: 36,
     height_in: 60,
     quantity: 1,

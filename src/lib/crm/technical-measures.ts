@@ -17,6 +17,7 @@ export type SignatureStroke = SignaturePoint[];
 export type TechnicalMeasureLineValues = {
   design_id: string | null;
   room: string;
+  opening_label: string;
   width_in: number | null;
   height_in: number | null;
   quantity: number;
@@ -245,6 +246,7 @@ export function normalizeTechnicalMeasureLineValues(value: unknown, fallback?: T
   return {
     design_id: nullableText(source.design_id ?? fallback?.design_id),
     room: text(source.room) || fallback?.room || "Window",
+    opening_label: text(source.opening_label ?? fallback?.opening_label),
     width_in: dimension(source.width_in ?? fallback?.width_in),
     height_in: dimension(source.height_in ?? fallback?.height_in),
     quantity: Math.max(1, Math.floor(numeric(source.quantity, fallback?.quantity || 1))),
@@ -272,6 +274,7 @@ function fieldLabel(field: string) {
     width_in: "Width",
     height_in: "Height",
     quantity: "Quantity",
+    opening_label: "Opening",
     product_id: "Product",
     program_id: "Program / operating system",
     fabric: "Color / fabric",
@@ -319,6 +322,7 @@ export function technicalMeasureLineChanges(lineId: string, baseline: TechnicalM
   add("width_in", baseline.width_in, current.width_in, "measurement");
   add("height_in", baseline.height_in, current.height_in, "measurement");
   add("room", baseline.room, current.room, "internal");
+  add("opening_label", baseline.opening_label, current.opening_label, "internal");
   add("notes", baseline.notes, current.notes, "internal");
   add("quantity", baseline.quantity, current.quantity, "contract");
   add("product_id", baseline.product_id, current.product_id, "contract");

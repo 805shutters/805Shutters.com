@@ -13,6 +13,17 @@ describe("technical measure mobile controls", () => {
     expect(styles).toContain("min-height: 58px;");
   });
 
+  it("uses a compact paired room and opening identifier row", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain("technical-measure-opening-row");
+    expect(component).toContain('aria-label="Opening identifier"');
+    expect(component).toContain('placeholder="A, B, 1, 2…"');
+    expect(styles).toContain(".technical-measure-opening-row");
+    expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+  });
+
   it("offers durable future measures through the customer-file API", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const api = readFileSync(

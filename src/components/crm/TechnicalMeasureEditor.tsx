@@ -393,20 +393,33 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
             .filter((key) => !normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key));
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
-              <div className="technical-measure-line-head"><div><span>Line {index + 1}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span><h2>{current.room || "Window"}</h2></div><strong>{money(line.current_unit_price)} each</strong></div>
+              <div className="technical-measure-line-head"><span>Line {index + 1}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span><strong>{money(line.current_unit_price)} each</strong></div>
               <div className="technical-measure-dimensions">
                 <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
                 <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
               </div>
               <div className="technical-measure-fields">
-                <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
-                  <span>Room</span>
-                  <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room || "Select room"}<ChevronRight /></button>
-                  {choiceField?.lineId === line.id && choiceField.field === "room" ? (
-                    <div className="technical-measure-choice-grid">
-                      {ROOM_PRESETS.map((room) => <button type="button" aria-pressed={current.room === room} key={room} onClick={() => { updateLine(line.id, { room }); setChoiceField(null); }}>{room}</button>)}
-                    </div>
-                  ) : null}
+                <div className="technical-measure-opening-row">
+                  <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
+                    <span>Room</span>
+                    <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room || "Select room"}<ChevronRight /></button>
+                    {choiceField?.lineId === line.id && choiceField.field === "room" ? (
+                      <div className="technical-measure-choice-grid">
+                        {ROOM_PRESETS.map((room) => <button type="button" aria-pressed={current.room === room} key={room} onClick={() => { updateLine(line.id, { room }); setChoiceField(null); }}>{room}</button>)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <label className={changed(baseline.opening_label, current.opening_label) ? "changed" : ""}>
+                    <span>Opening</span>
+                    <input
+                      aria-label="Opening identifier"
+                      disabled={readOnly}
+                      maxLength={24}
+                      placeholder="A, B, 1, 2…"
+                      value={current.opening_label}
+                      onChange={(event) => updateLine(line.id, { opening_label: event.target.value })}
+                    />
+                  </label>
                 </div>
                 <div className={`technical-measure-choice-field ${changed(baseline.quantity, current.quantity) ? "changed" : ""}`}>
                   <span>Quantity</span>
