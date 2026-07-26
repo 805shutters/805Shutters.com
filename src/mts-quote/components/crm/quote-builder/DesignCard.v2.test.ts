@@ -26,6 +26,7 @@ import {
   needsShutterRoutePatch,
   parseDeferredNumberDraft,
   reconcileRollerTopTreatmentSelection,
+  resolveManufacturerOptionsUiRoute,
   resetHoneycombFrameOptions,
   resolveMotorizationUiEligibility,
   shouldRenderMotorizationControlDirect,
@@ -139,6 +140,53 @@ describe("V2 exact-interface contract", () => {
       productId: null,
       eligible: false,
       reason: "manufacturer_reselection_required",
+    });
+  });
+
+  it("does not render cross-manufacturer option panels before an exact route exists", () => {
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        undefined,
+        "Faux Wood Blinds",
+        {},
+      ),
+    ).toEqual({
+      status: "selection_required",
+      productId: null,
+      manufacturer: null,
+    });
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        { supplier: "Lotus" } as SalesQuoteDesign,
+        "Faux Wood Blinds",
+        { catalog_product_id: "smartprivacy_faux" },
+      ),
+    ).toEqual({
+      status: "selection_required",
+      productId: null,
+      manufacturer: null,
+    });
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        { supplier: "Norman" } as SalesQuoteDesign,
+        "Faux Wood Blinds",
+        { catalog_product_id: "smartprivacy_faux" },
+      ),
+    ).toEqual({
+      status: "supported",
+      productId: "smartprivacy_faux",
+      manufacturer: "Norman",
+    });
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        { supplier: "Lotus" } as SalesQuoteDesign,
+        "Faux Wood Blinds",
+        { catalog_product_id: "lotus_faux_wood_blinds" },
+      ),
+    ).toEqual({
+      status: "unsupported",
+      productId: "lotus_faux_wood_blinds",
+      manufacturer: "Lotus",
     });
   });
 

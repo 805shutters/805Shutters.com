@@ -302,6 +302,7 @@ import type {
   QuoteLabCatalogProduct,
   QuoteLabCatalogResponse,
 } from "@/lib/quote-lab/types";
+import { quoteLabProductType } from "@/lib/quote-lab/builder";
 
 let quoteLabCatalogPromise: Promise<QuoteLabCatalogResponse> | null = null;
 
@@ -1305,6 +1306,62 @@ export function motorizationEligibleControlOptions(
     : options.filter(
         (option) => !normalizedCatalogLabel(option).startsWith("motor"),
       );
+}
+
+export type ManufacturerOptionsUiRoute = Readonly<{
+  status: "selection_required" | "supported" | "unsupported";
+  productId: string | null;
+  manufacturer: string | null;
+}>;
+
+/**
+ * The shared options panels contain manufacturer-specific controls. They must
+ * never render until the persisted catalog identity matches both the supplier
+ * and the line category. Norman owns the current shades/blinds panels; the
+ * shutter panel additionally owns its explicit Onyx branch. Other catalog
+ * identities remain selectable for source routing, but their configuration
+ * panel stays blocked until a dedicated authoritative UI exists.
+ */
+export function resolveManufacturerOptionsUiRoute(
+  design: SalesQuoteDesign | undefined,
+  productType: string,
+  options: Record<string, unknown>,
+): ManufacturerOptionsUiRoute {
+  const productId =
+    stringOption(options, "catalog_product_id") ||
+    stringOption(options, "quote_lab_product_id");
+  const supplierKey = normalizedCatalogLabel(design?.supplier);
+  if (!productId || !supplierKey) {
+    return {
+      status: "selection_required",
+      productId: null,
+      manufacturer: null,
+    };
+  }
+
+  const product = getProduct(productId);
+  const productSupplierKey = normalizedCatalogLabel(product?.manufacturer);
+  if (
+    !product ||
+    !productSupplierKey ||
+    productSupplierKey !== supplierKey ||
+    quoteLabProductType(product.id) !== productType
+  ) {
+    return {
+      status: "selection_required",
+      productId: null,
+      manufacturer: null,
+    };
+  }
+
+  const supported =
+    productSupplierKey === "norman" ||
+    (productType === "Shutters" && productSupplierKey === "onyx");
+  return {
+    status: supported ? "supported" : "unsupported",
+    productId: product.id,
+    manufacturer: product.manufacturer?.trim() || design?.supplier?.trim() || null,
+  };
 }
 
 export function shouldRenderMotorizationControlDirect(field: string): boolean {
@@ -4178,6 +4235,17 @@ export function DesignCard({
   const currentDesign = designs.find((d) => d.variant === activeVariant);
   const displayedUnitPrice = Number(currentDesign?.unit_price || 0);
   const currentOptions = (currentDesign?.options_json as Record<string, unknown> | undefined) || {};
+  const manufacturerOptionsRoute = authoritativeV2
+    ? resolveManufacturerOptionsUiRoute(
+        currentDesign,
+        lineItem.product_type,
+        currentOptions,
+      )
+    : {
+        status: "supported" as const,
+        productId: null,
+        manufacturer: null,
+      };
   const displayedLineTotal = calculateLineItemDesignTotal(
     lineItem,
     currentDesign ? [currentDesign] : [],
@@ -5159,32 +5227,54 @@ export function DesignCard({
           />
         )}
 
-        {/* Design options based on product type */}
-        {isShutters ? (
-          <ShutterDesignOptions
-            design={currentDesign}
-            activeVariant={activeVariant}
-            productType={lineItem.product_type}
-            onUpdate={updateField}
-            onUpdateFields={updateFields}
-            onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
-            authoritativeV2={authoritativeV2}
-            allowManualPriceEditing={!authoritativeV2}
-          />
+        {/* Design options based on the exact persisted manufacturer route. */}
+        {manufacturerOptionsRoute.status === "supported" ? (
+          isShutters ? (
+            <ShutterDesignOptions
+              design={currentDesign}
+              activeVariant={activeVariant}
+              productType={lineItem.product_type}
+              onUpdate={updateField}
+              onUpdateFields={updateFields}
+              onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+              authoritativeV2={authoritativeV2}
+              allowManualPriceEditing={!authoritativeV2}
+            />
+          ) : (
+            <ShadesAndBlindsOptions
+              design={currentDesign}
+              productType={lineItem.product_type}
+              lineItem={lineItem}
+              onUpdate={updateField}
+              onUpdateFields={updateFields}
+              onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
+              authoritativeV2={authoritativeV2}
+              allowManualPriceEditing={!authoritativeV2}
+              sideBySideLineOptions={sideBySideLineOptions}
+              onSideBySidePairChange={handleSideBySidePairChange}
+              onClearSideBySidePartner={handleClearSideBySidePartner}
+            />
+          )
         ) : (
-          <ShadesAndBlindsOptions
-            design={currentDesign}
-            productType={lineItem.product_type}
-            lineItem={lineItem}
-            onUpdate={updateField}
-            onUpdateFields={updateFields}
-            onRecalculatePrice={isPriceLocked ? handleRecalculateLockedPrice : undefined}
-            authoritativeV2={authoritativeV2}
-            allowManualPriceEditing={!authoritativeV2}
-            sideBySideLineOptions={sideBySideLineOptions}
-            onSideBySidePairChange={handleSideBySidePairChange}
-            onClearSideBySidePartner={handleClearSideBySidePartner}
-          />
+          <div
+            role="alert"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+            data-testid="manufacturer-options-route-block"
+          >
+            <div className="flex items-center gap-2 font-bold">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                {manufacturerOptionsRoute.status === "selection_required"
+                  ? "Choose a manufacturer and product"
+                  : `${manufacturerOptionsRoute.manufacturer ?? "This manufacturer"} configuration is not available`}
+              </span>
+            </div>
+            <p className="mt-1">
+              {manufacturerOptionsRoute.status === "selection_required"
+                ? "Select an eligible catalog route above before product options can be configured or repriced. Imported legacy values are preserved as evidence but are not treated as a current manufacturer selection."
+                : "The catalog identity is retained, but this manufacturer does not yet have an authoritative product-specific configuration panel. Customer pricing and send remain blocked."}
+            </p>
+          </div>
         )}
 
         {manufacturerSpecWarnings.length > 0 && (
