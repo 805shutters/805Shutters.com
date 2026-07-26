@@ -304,14 +304,68 @@ import type {
 } from "@/lib/quote-lab/types";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
 
-let quoteLabCatalogPromise: Promise<QuoteLabCatalogResponse> | null = null;
+type CrmQuoteCatalogPayload = {
+  catalog?: {
+    source?: string;
+    effectiveDate?: string;
+    products?: Array<
+      Omit<QuoteLabCatalogProduct, "motorizationGroups"> & {
+        motorizationGroups?: string[];
+      }
+    >;
+    motorization?: QuoteLabCatalogProduct["motorizationGroups"];
+  };
+};
 
-function loadQuoteLabCatalog() {
-  quoteLabCatalogPromise ??= fetch("/api/quote-lab/catalog", { cache: "no-store" }).then((response) => {
+type QuoteBuilderCatalogResponse = Pick<
+  QuoteLabCatalogResponse,
+  "source" | "effectiveDate" | "products"
+>;
+
+let quoteBuilderCatalogPromise: Promise<QuoteBuilderCatalogResponse> | null =
+  null;
+
+export function normalizeCrmQuoteCatalog(
+  payload: CrmQuoteCatalogPayload,
+): QuoteBuilderCatalogResponse {
+  const catalog = payload.catalog;
+  if (
+    !catalog ||
+    typeof catalog.source !== "string" ||
+    typeof catalog.effectiveDate !== "string" ||
+    !Array.isArray(catalog.products) ||
+    !Array.isArray(catalog.motorization)
+  ) {
+    throw new Error("Catalog response is malformed");
+  }
+  const motorizationById = new Map(
+    catalog.motorization.map((group) => [group.groupId, group]),
+  );
+  return {
+    source: catalog.source,
+    effectiveDate: catalog.effectiveDate,
+    products: catalog.products.map((product) => ({
+      ...product,
+      motorizationGroups: (product.motorizationGroups ?? []).flatMap(
+        (groupId) => {
+          const group = motorizationById.get(groupId);
+          return group ? [group] : [];
+        },
+      ),
+    })),
+  };
+}
+
+function loadQuoteBuilderCatalog() {
+  quoteBuilderCatalogPromise ??= fetch("/api/crm/quote-catalog", {
+    cache: "no-store",
+  }).then(async (response) => {
     if (!response.ok) throw new Error("Catalog unavailable");
-    return response.json() as Promise<QuoteLabCatalogResponse>;
+    return normalizeCrmQuoteCatalog(
+      (await response.json()) as CrmQuoteCatalogPayload,
+    );
   });
-  return quoteLabCatalogPromise;
+  return quoteBuilderCatalogPromise;
 }
 
 export interface SideBySideLineOption {
@@ -5407,8 +5461,8 @@ export function ManufacturerCatalogStampChooser({
       return;
     }
     let active = true;
-    loadQuoteLabCatalog()
-      .then((payload: QuoteLabCatalogResponse) => {
+    loadQuoteBuilderCatalog()
+      .then((payload: QuoteBuilderCatalogResponse) => {
         if (active) setProducts(payload.products);
       })
       .catch(() => {
@@ -5606,8 +5660,8 @@ function QuoteLabCatalogControls({
 
   useEffect(() => {
     let active = true;
-    loadQuoteLabCatalog()
-      .then((payload: QuoteLabCatalogResponse) => { if (active) setProducts(payload.products); })
+    loadQuoteBuilderCatalog()
+      .then((payload: QuoteBuilderCatalogResponse) => { if (active) setProducts(payload.products); })
       .catch(() => { if (active) setProducts([]); });
     return () => { active = false; };
   }, []);

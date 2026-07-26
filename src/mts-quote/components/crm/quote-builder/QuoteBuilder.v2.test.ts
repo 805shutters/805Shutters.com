@@ -21,6 +21,18 @@ describe("V2 quote builder load integrity", () => {
     expect(quoteBuilderSource).toContain("No empty");
     expect(quoteBuilderSource).toContain("quote was created and no price was changed.");
   });
+
+  it("keeps customer delivery and payment-link actions visibly blocked for V2", () => {
+    expect(quoteBuilderSource).toContain(
+      "disabled={isolated || authoritativeV2}",
+    );
+    expect(quoteBuilderSource).toContain(
+      "Quote V2 delivery is blocked until the protected customer-send cutover",
+    );
+    expect(quoteBuilderSource).toContain(
+      "Quote V2 payment links are blocked until customer delivery is cut over",
+    );
+  });
 });
 
 describe("V2 quote builder optimistic pricing", () => {

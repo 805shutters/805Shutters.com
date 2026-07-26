@@ -1881,11 +1881,19 @@ export function QuoteBuilder() {
                     onClick={() =>
                       isolated
                         ? toast.info("Testing mode: sending is safely disabled.")
+                        : authoritativeV2
+                          ? toast.info("Quote V2 customer delivery remains safely disabled.")
                         : setShowSendDialog(true)
                     }
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                    disabled={isolated}
-                    title={isolated ? "Disabled in isolated Quote Lab" : "Email or text the quote link to the customer"}
+                    disabled={isolated || authoritativeV2}
+                    title={
+                      isolated
+                        ? "Disabled in isolated Quote Lab"
+                        : authoritativeV2
+                          ? "Quote V2 delivery is blocked until the protected customer-send cutover"
+                          : "Email or text the quote link to the customer"
+                    }
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quote
@@ -1898,11 +1906,19 @@ export function QuoteBuilder() {
                     onClick={() =>
                       isolated
                         ? toast.info("Testing mode: payment links are safely disabled.")
+                        : authoritativeV2
+                          ? toast.info("Quote V2 payment links remain safely disabled.")
                         : setShowPaymentLinkDialog(true)
                     }
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
-                    disabled={isolated}
-                    title={isolated ? "Disabled in isolated Quote Lab" : "Email the deposit payment link to the customer"}
+                    disabled={isolated || authoritativeV2}
+                    title={
+                      isolated
+                        ? "Disabled in isolated Quote Lab"
+                        : authoritativeV2
+                          ? "Quote V2 payment links are blocked until customer delivery is cut over"
+                          : "Email the deposit payment link to the customer"
+                    }
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Send Payment Link

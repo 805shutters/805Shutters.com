@@ -24,6 +24,7 @@ import {
   ManufacturerCatalogStampChooser,
   motorizationEligibleControlOptions,
   needsShutterRoutePatch,
+  normalizeCrmQuoteCatalog,
   parseDeferredNumberDraft,
   reconcileRollerTopTreatmentSelection,
   resolveManufacturerOptionsUiRoute,
@@ -70,6 +71,68 @@ function catalogProduct(
 }
 
 describe("V2 exact-interface contract", () => {
+  it("normalizes the CRM-authenticated catalog for manufacturer and motor routing", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)),
+      "utf8",
+    );
+    expect(source).toContain('fetch("/api/crm/quote-catalog"');
+    expect(source).not.toContain('fetch("/api/quote-lab/catalog"');
+
+    expect(
+      normalizeCrmQuoteCatalog({
+        catalog: {
+          source: "production-catalog",
+          effectiveDate: "2026-07-20",
+          products: [
+            {
+              id: "roller",
+              name: "Roller Shades",
+              productType: "Roller Shades",
+              manufacturer: "Norman",
+              system: "Roller Shades",
+              priceBasis: "suggested_retail",
+              provisional: false,
+              source: "norman-motorization-guide-2026-07",
+              programs: [
+                {
+                  id: "roller_program",
+                  name: "Roller",
+                  priceAxis: "wh",
+                  priceBasis: "suggested_retail",
+                },
+              ],
+              fabrics: [],
+              surcharges: [],
+              motorizationGroups: ["roller_motors"],
+            },
+          ],
+          motorization: [
+            {
+              groupId: "roller_motors",
+              name: "Motorization",
+              options: [
+                {
+                  id: "motor",
+                  name: "Motor",
+                  price: 100,
+                },
+              ],
+            },
+          ],
+        },
+      }).products[0],
+    ).toMatchObject({
+      id: "roller",
+      motorizationGroups: [
+        {
+          groupId: "roller_motors",
+          options: [{ id: "motor", price: 100 }],
+        },
+      ],
+    });
+  });
+
   it("keeps Motorization visible only for catalog-backed manufacturer routes", () => {
     const controlTypes = [
       "Cordless",
