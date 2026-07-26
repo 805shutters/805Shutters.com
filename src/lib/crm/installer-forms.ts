@@ -78,6 +78,25 @@ export async function createAndSendInstallerForm(
   supabase: SupabaseClient,
   quoteId: string,
 ): Promise<{ form: InstallerFormRow; email: EmailResult }> {
+  const { data: existingData, error: existingError } = await supabase
+    .from("crm_installer_forms")
+    .select("*")
+    .eq("quote_id", quoteId)
+    .maybeSingle();
+  if (existingError) {
+    throw new CrmAuthError(502, `The installer form delivery state could not be checked: ${existingError.message}`);
+  }
+
+  const existing = existingData as InstallerFormRow | null;
+  if (existing && installerFormDeliveryComplete(existing)) {
+    return {
+      form: existing,
+      email: { sent: true, id: installerFormEmailMessageId(existing), skipped: "installer form already delivered" },
+    };
+  }
+
+  if (existing) return deliverInstallerForm(supabase, existing);
+
   const { token } = await ensureShareToken(supabase, quoteId, { email: "automation:installer_form" });
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "The sold quote could not be prepared for installation.");
@@ -110,7 +129,23 @@ export async function createAndSendInstallerForm(
     .single();
   if (error || !data) throw new CrmAuthError(502, `The installer form could not be saved${error?.message ? `: ${error.message}` : "."}`);
 
-  const form = data as InstallerFormRow;
+  return deliverInstallerForm(supabase, data as InstallerFormRow);
+}
+
+function installerFormDeliveryComplete(form: InstallerFormRow): boolean {
+  const row = form as InstallerFormRow & { sent_at?: string | null };
+  return Boolean(row.sent_at) && !["email_failed", "pending_delivery"].includes(form.status);
+}
+
+function installerFormEmailMessageId(form: InstallerFormRow): string | undefined {
+  const value = (form as InstallerFormRow & { email_message_id?: string | null }).email_message_id;
+  return value || undefined;
+}
+
+async function deliverInstallerForm(
+  supabase: SupabaseClient,
+  form: InstallerFormRow,
+): Promise<{ form: InstallerFormRow; email: EmailResult }> {
   const url = installerUrl(form.public_token);
   const pdf = buildInstallerFormPdf(form, url);
   const message = buildInstallerFormEmail(form, url);
@@ -124,15 +159,23 @@ export async function createAndSendInstallerForm(
       content: pdf.toString("base64"),
       contentType: "application/pdf",
     }],
+    idempotencyKey: `805-installer-form-${form.id}`,
   });
-  await supabase.from("crm_installer_forms").update({
+  const deliveryPatch = {
     status: email.sent ? "sent" : "email_failed",
     sent_at: email.sent ? new Date().toISOString() : null,
     email_recipient: INSTALLER_FORM_RECIPIENT,
     email_message_id: email.id || null,
     email_error: email.error || email.skipped || null,
-  }).eq("id", form.id);
-  return { form: { ...form, status: email.sent ? "sent" : "email_failed" }, email };
+  };
+  const { error: deliveryError } = await supabase
+    .from("crm_installer_forms")
+    .update(deliveryPatch)
+    .eq("id", form.id);
+  if (deliveryError) {
+    throw new CrmAuthError(502, `The installer form email result could not be recorded: ${deliveryError.message}`);
+  }
+  return { form: { ...form, ...deliveryPatch }, email };
 }
 
 export async function loadInstallerFormByToken(supabase: SupabaseClient, token: string): Promise<InstallerFormPublic | null> {

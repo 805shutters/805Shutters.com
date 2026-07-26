@@ -1025,6 +1025,11 @@ export async function acceptPublicQuote(
           { email: "automation:quote_signed" }
         );
       }
+      // Retry a missing/failed installer delivery after an already-signed
+      // acceptance claim. The installer helper is quote-idempotent and does
+      // not resend a delivery whose recorded sent_at is already present.
+      const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
+      await createAndSendInstallerForm(supabase, quote.id);
     }
     return { ok: true, alreadySigned: true };
   }
