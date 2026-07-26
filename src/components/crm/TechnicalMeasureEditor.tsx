@@ -49,6 +49,18 @@ const PRODUCT_IDS: Record<(typeof PRODUCT_TYPES)[number], string> = {
   "Vinyl Blinds": "vinyl_blinds",
 };
 
+const SHUTTER_MEASURE_PRIORITY_KEYS = [
+  "folding_direction",
+  "measurement_basis",
+  "split_tilt_location",
+  "divider_rail_location",
+] as const;
+const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
+
+function isShutterProduct(productId: string) {
+  return productId.toLowerCase().includes("shutter");
+}
+
 function productLabel(productId: string) {
   return Object.entries(PRODUCT_IDS).find(([, id]) => id === productId)?.[0] || fieldName(productId);
 }
@@ -183,6 +195,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [signature, setSignature] = useState<SignatureStroke[]>([]);
   const [scopeElement, setScopeElement] = useState<HTMLElement | null>(null);
   const [activeLineIndex, setActiveLineIndex] = useState(0);
+  const [measureStarted, setMeasureStarted] = useState(false);
   const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" | "product" } | null>(null);
   const [futureMeasureOpen, setFutureMeasureOpen] = useState(false);
   const [futureMeasure, setFutureMeasure] = useState<FutureMeasureDraft>({ room: "Future Window", width_in: null, height_in: null, notes: "" });
@@ -342,7 +355,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
 
   return (
     <PortalContainerContext.Provider value={scopeElement}>
-    <main ref={setScopeElement} className="mts-quote-scope technical-measure-shell">
+    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell${measureStarted ? " technical-measure-shell--active" : ""}`}>
+      {!measureStarted ? <>
       <header className="technical-measure-header">
         <a href="/crm/technical-measures" aria-label="Back to technical measures"><ArrowLeft /></a>
         <div><span>{form.quote_snapshot.quoteNumber || "Sold contract"}</span><h1>Technical Measure</h1><p>{form.customer_snapshot.name}</p></div>
@@ -382,24 +396,28 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           <span style={{ width: `${lines.length ? (activeLineNumber / lines.length) * 100 : 0}%` }} />
         </div>
       </section>
+      <button className="technical-measure-launch" type="button" onClick={() => setMeasureStarted(true)}>
+        <Ruler /> Start Measure <ChevronRight />
+      </button>
+      </> : null}
 
-      <section className="technical-measure-lines">
+      {measureStarted ? <section className="technical-measure-lines technical-measure-workspace">
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
           const isExpandedWindow = (line.source_quantity || 1) > 1;
           const normanRoller = current.product_id === "roller" && String(current.details.supplier || "Norman").toLowerCase() === "norman";
+          const shutterProduct = isShutterProduct(current.product_id);
+          const priorityDetailKeys: readonly string[] = shutterProduct ? SHUTTER_MEASURE_PRIORITY_KEYS : SHADE_MEASURE_PRIORITY_KEYS;
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
-            .filter((key) => !normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key));
+            .filter((key) => (!normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key)) && !priorityDetailKeys.includes(key));
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
-              <div className="technical-measure-line-head"><span>Line {index + 1}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span><strong>{money(line.current_unit_price)} each</strong></div>
-              <div className="technical-measure-dimensions">
-                <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
-                <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
+              <div className="technical-measure-line-head">
+                <div><span>Line {index + 1} of {lines.length}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span><strong>{money(line.current_unit_price)} each</strong></div>
+                <button type="button" aria-label="Return to customer summary" onClick={() => setMeasureStarted(false)}><X /></button>
               </div>
-              <div className="technical-measure-fields">
-                <div className="technical-measure-opening-row">
+              <div className="technical-measure-opening-row technical-measure-opening-row--priority">
                   <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
                     <span>Room</span>
                     <button type="button" disabled={readOnly} onClick={() => setChoiceField(choiceField?.lineId === line.id && choiceField.field === "room" ? null : { lineId: line.id, field: "room" })}>{current.room || "Select room"}<ChevronRight /></button>
@@ -420,7 +438,23 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                       onChange={(event) => updateLine(line.id, { opening_label: event.target.value })}
                     />
                   </label>
-                </div>
+              </div>
+              <div className="technical-measure-dimensions">
+                <button type="button" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><Ruler /><span>Width</span><strong>{inches(current.width_in)}</strong></button>
+                <button type="button" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><Ruler /><span>Height</span><strong>{inches(current.height_in)}</strong></button>
+              </div>
+              {shutterProduct ? <div className="technical-measure-priority-grid">
+                <label><span>Folding direction</span><input disabled={readOnly} placeholder="Left, right, bi-fold…" value={String(current.details.folding_direction || "")} onChange={(event) => updateDetail(line.id, "folding_direction", event.target.value)} /></label>
+                <div className="technical-measure-basis"><span>Measure basis</span><div><button type="button" disabled={readOnly} aria-pressed={current.details.measurement_basis === "window_size"} onClick={() => updateDetail(line.id, "measurement_basis", "window_size")}>Window Size</button><button type="button" disabled={readOnly} aria-pressed={current.details.measurement_basis === "frame_to_frame"} onClick={() => updateDetail(line.id, "measurement_basis", "frame_to_frame")}>Frame to Frame</button></div></div>
+                <label><span>Split tilt location</span><input disabled={readOnly} placeholder="None or location" value={String(current.details.split_tilt_location || "")} onChange={(event) => updateDetail(line.id, "split_tilt_location", event.target.value)} /></label>
+                <label><span>Divider rail location</span><input disabled={readOnly} placeholder="None or location" value={String(current.details.divider_rail_location || "")} onChange={(event) => updateDetail(line.id, "divider_rail_location", event.target.value)} /></label>
+              </div> : <div className="technical-measure-priority-grid technical-measure-priority-grid--shade">
+                <div className="technical-measure-basis"><span>Mount</span><div><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Inside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Inside Mount")}>Inside</button><button type="button" disabled={readOnly} aria-pressed={current.details.mount_type === "Outside Mount"} onClick={() => updateDetail(line.id, "mount_type", "Outside Mount")}>Outside</button></div></div>
+                <div className="technical-measure-basis"><span>Control side</span><div><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "left"} onClick={() => updateDetail(line.id, "control_side", "Left")}>Left</button><button type="button" disabled={readOnly} aria-pressed={String(current.details.control_side || "").toLowerCase() === "right"} onClick={() => updateDetail(line.id, "control_side", "Right")}>Right</button></div></div>
+              </div>}
+              <details className="technical-measure-secondary">
+                <summary>More details <span>Product, color, options, notes</span></summary>
+                <div className="technical-measure-fields">
                 <div className={`technical-measure-choice-field ${changed(baseline.quantity, current.quantity) ? "changed" : ""}`}>
                   <span>Quantity</span>
                   <div className="technical-measure-stepper">
@@ -458,7 +492,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   );
                 })}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
-              </div>
+                </div>
+              </details>
               <div className="technical-measure-line-navigation">
                 <button type="button" disabled={index === 0} onClick={() => showLine(index - 1)}><ChevronLeft />Previous</button>
                 <span>{current.width_in && current.height_in ? "Measurements entered" : "Width and height required"}</span>
@@ -467,9 +502,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
             </article>
           );
         })}
-      </section>
+      </section> : null}
 
-      {form.requiresAddendum && !readOnly ? (
+      {!measureStarted && form.requiresAddendum && !readOnly ? (
         <section id="technical-measure-addendum" className="technical-measure-addendum">
           <div className="technical-measure-addendum-head"><FileSignature /><div><span>Customer acknowledgment required</span><h2>Contract Change Order</h2></div></div>
           <div className="technical-measure-change-list">
@@ -487,7 +522,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         <section className="technical-measure-complete"><Check /><div><strong>Signed change order on file</strong><span>{form.addendum.status === "emailed" ? `Emailed to ${form.addendum.email_recipient}` : "Customer email delivery needs attention"}</span></div><button type="button" onClick={openAddendumPdf} disabled={busy}>View PDF</button>{form.addendum.status === "email_failed" ? <button type="button" onClick={retryEmail} disabled={busy}><Mail /> Retry email</button> : null}</section>
       ) : null}
 
-      <section className="technical-measure-future" id="future-measures">
+      {!measureStarted ? <section className="technical-measure-future" id="future-measures">
         <div className="technical-measure-future-head">
           <div><span>Customer file</span><h2>Future Measures</h2><p>Save extra windows for a future quote or phase.</p></div>
           <strong>{futureMeasures.length}</strong>
@@ -516,9 +551,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
             </div>
           </div>
         ) : <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button>}
-      </section>
+      </section> : null}
 
-      {!readOnly ? <footer className="technical-measure-actions"><button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button><button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button></footer> : null}
+      {!readOnly && measureStarted ? <footer className="technical-measure-actions"><button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button><button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button></footer> : null}
 
       {measurePicker && activePickerLine ? (
         <MeasurementGridModal

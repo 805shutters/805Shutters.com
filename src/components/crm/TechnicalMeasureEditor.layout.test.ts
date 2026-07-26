@@ -25,6 +25,27 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("setFuturePicker(null); }}");
   });
 
+  it("uses a customer launch screen and one-line mobile workspace", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain("Start Measure");
+    expect(component).toContain("technical-measure-shell--active");
+    expect(component).toContain("technical-measure-workspace");
+    expect(component).toContain("Return to customer summary");
+    expect(component).toContain("Folding direction");
+    expect(component).toContain("Window Size");
+    expect(component).toContain("Frame to Frame");
+    expect(component).toContain("Split tilt location");
+    expect(component).toContain("Divider rail location");
+    expect(component).toContain("Inside Mount");
+    expect(component).toContain("Outside Mount");
+    expect(component).toContain("Control side");
+    expect(component).toContain("<summary>More details");
+    expect(styles).toContain("height: 100dvh;");
+    expect(styles).toContain("overflow: hidden;");
+  });
+
   it("uses a compact paired room and opening identifier row", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
