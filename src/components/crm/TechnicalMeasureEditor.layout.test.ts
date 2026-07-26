@@ -6,12 +6,16 @@ describe("technical measure mobile controls", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
 
-    expect(component).toContain("technical-measure-stepper");
+    expect(component).not.toContain("technical-measure-stepper");
     expect(component).toContain("technical-measure-choice-grid");
-    expect(component).toContain("PRODUCT_TYPES.map");
-    expect(component.match(/showDirectEntry={false}/g)).toHaveLength(2);
+    expect(component).toContain("SHUTTER_PANEL_CONFIGS");
+    expect(component.match(/showDirectEntry={false}/g)).toHaveLength(3);
     expect(styles).toContain(".technical-measure-dimensions { grid-template-columns: 1fr 1fr; }");
-    expect(styles).toContain("min-height: 58px;");
+    expect(component).toContain('aria-label="Select width"');
+    expect(component).toContain('aria-label="Select height"');
+    expect(component).toContain('<span aria-hidden="true">W</span>');
+    expect(component).toContain('<span aria-hidden="true">H</span>');
+    expect(styles).toContain("min-height: 40px;");
   });
 
   it("continues from width fraction directly into height selection", () => {
@@ -35,9 +39,9 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("Return to customer summary");
     expect(component).toContain("Folding direction");
     expect(component).toContain("Window Size");
-    expect(component).toContain("Frame to Frame");
-    expect(component).toContain("Split tilt location");
-    expect(component).toContain("Divider rail location");
+    expect(component).toContain("Frame-to-Frame Size");
+    expect(component).toContain("Split tilt");
+    expect(component).toContain("Divider rail");
     expect(component).toContain("Inside Mount");
     expect(component).toContain("Outside Mount");
     expect(component).toContain("Control side");
@@ -45,6 +49,25 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("shutterMeasurementBasis");
     expect(styles).toContain("height: 100dvh;");
     expect(styles).toContain("overflow: hidden;");
+  });
+
+  it("uses vendor-specific shutter buttons and pins product and supplier in the header", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain("ONYX_SIZE_TYPES");
+    expect(component).toContain("ONYX_PANEL_CONFIGS");
+    expect(component).toContain("SHUTTER_PANEL_CONFIGS");
+    expect(component).toContain("ONYX_TILT_TYPES");
+    expect(component).toContain("SHUTTER_TILT_TYPES");
+    expect(component).toContain("singleDimensionLabel={locationPicker.label}");
+    expect(component).toContain("productLabel(current.product_id)");
+    expect(component).toContain('supplier ? ` (${supplier})` : ""');
+    expect(component).toContain('HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"])');
+    expect(styles).toContain(".technical-measure-line-meta");
+    expect(service).toContain("panel_config: details.panel_config");
+    expect(service).toContain("legacyOptions = detailRecord(priceBreakdown.optionsJson)");
   });
 
   it("uses a compact paired room and opening identifier row", () => {
@@ -95,6 +118,9 @@ describe("technical measure mobile controls", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
 
     expect(component).toContain("Window ${line.source_quantity_index} of ${line.source_quantity}");
-    expect(component).toContain("disabled={readOnly || isExpandedWindow}");
+    expect(component).not.toContain("<span>Quantity</span>");
+    expect(component).not.toContain('aria-label="Increase quantity"');
+    expect(component).not.toContain('aria-label="Decrease quantity"');
+    expect(component).toContain("Add Future Measure");
   });
 });

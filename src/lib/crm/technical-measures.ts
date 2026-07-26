@@ -346,13 +346,18 @@ export function requiresTechnicalMeasureAddendum(changes: TechnicalMeasureChange
 
 function lineSnapshot(line: { room: string | null; width_in: number | null; height_in: number | null; quantity: number; notes: string | null; discount_percent: number }, design: CrmQuoteDesign): TechnicalMeasureLineValues {
   const details = { ...detailRecord(design.details) };
-  const legacyDetails = object(design.price_breakdown).details;
+  const priceBreakdown = object(design.price_breakdown);
+  const legacyDetails = priceBreakdown.details;
   if (Array.isArray(legacyDetails)) {
     for (const item of legacyDetails) {
       const row = object(item);
       const key = text(row.label).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
       if (key && !Object.prototype.hasOwnProperty.call(details, key)) details[key] = text(row.value);
     }
+  }
+  const legacyOptions = detailRecord(priceBreakdown.optionsJson);
+  for (const [key, value] of Object.entries(legacyOptions)) {
+    if (!Object.prototype.hasOwnProperty.call(details, key)) details[key] = value;
   }
   return normalizeTechnicalMeasureLineValues({
     design_id: design.id,
@@ -1005,7 +1010,7 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
     if (line.current_values.design_id) {
       const details = line.current_values.details;
       const optionsJson = { ...details, technical_measure_form_id: form.id, technical_measure_submitted_at: submittedAt };
-      const { error: designError } = await supabase.from("sales_quote_designs").update({
+      const designPatch: Record<string, unknown> = {
         product_type: line.current_values.product_id,
         fabric: line.current_values.fabric,
         mount_type: nullableText(details.mount_type),
@@ -1014,7 +1019,19 @@ async function syncTechnicalMeasureOperationalOverride(supabase: SupabaseClient,
         remote_type: nullableText(details.remote_type),
         options_json: optionsJson,
         unit_price: line.current_unit_price,
-      }).eq("id", line.current_values.design_id).eq("line_item_id", sourceLineItemId);
+      };
+      const directDesignValues = {
+        supplier: details.supplier ?? details.manufacturer,
+        material: details.material,
+        louver_size: details.louver_size ?? details.louver_size_inches,
+        tilt_type: details.tilt_type ?? details.tilt ?? details.tilt_rod,
+        hinge_color: details.hinge_color,
+        panel_config: details.panel_config ?? details.panel_configuration ?? details.folding_direction,
+      };
+      for (const [key, value] of Object.entries(directDesignValues)) {
+        if (value !== null && value !== undefined && String(value).trim()) designPatch[key] = nullableText(value);
+      }
+      const { error: designError } = await supabase.from("sales_quote_designs").update(designPatch).eq("id", line.current_values.design_id).eq("line_item_id", sourceLineItemId);
       if (designError) throw new CrmAuthError(502, "Changed product details could not be projected to the ordering record.");
     }
   }

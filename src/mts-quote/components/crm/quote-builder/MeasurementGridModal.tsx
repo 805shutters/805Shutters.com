@@ -8,6 +8,8 @@ import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilder
 interface MeasurementGridModalProps {
   open: boolean;
   showDirectEntry?: boolean;
+  singleDimensionLabel?: string;
+  wholeStart?: number;
   onClose: () => void;
   step: MeasurementStep;
   onWidthWhole: (n: number) => void;
@@ -25,6 +27,8 @@ interface MeasurementGridModalProps {
 export function MeasurementGridModal({
   open,
   showDirectEntry = true,
+  singleDimensionLabel,
+  wholeStart = 10,
   onClose,
   step,
   onWidthWhole,
@@ -45,7 +49,7 @@ export function MeasurementGridModal({
   const selectedWhole = isWidth ? pendingWidth?.whole : pendingHeight?.whole;
   const selectedFraction = isWidth ? pendingWidth?.fraction : pendingHeight?.fraction;
 
-  const label = isWidth ? "Width" : "Height";
+  const label = singleDimensionLabel || (isWidth ? "Width" : "Height");
   const sublabel = isFractionStep
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
@@ -53,7 +57,7 @@ export function MeasurementGridModal({
   const maxWholeInches = getMeasurementMaxWholeInches(isWidth, authoritativeV2);
   const maxHeightWholeInches = getMeasurementMaxWholeInches(false, authoritativeV2);
   const wholeNumbers: number[] = [];
-  for (let i = 10; i <= maxWholeInches; i++) wholeNumbers.push(i);
+  for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
   const handleWholeClick = (n: number) => {
     if (step === "width_whole") onWidthWhole(n);
@@ -104,7 +108,7 @@ export function MeasurementGridModal({
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">{label}</DialogTitle>
-            <div className="flex items-center gap-3 text-sm">
+            {!singleDimensionLabel ? <div className="flex items-center gap-3 text-sm">
               <span className={cn("font-medium", isWidth && "text-primary")}>
                 W: {widthDisplay}"
               </span>
@@ -112,7 +116,7 @@ export function MeasurementGridModal({
               <span className={cn("font-medium", !isWidth && "text-primary")}>
                 H: {heightDisplay}"
               </span>
-            </div>
+            </div> : pendingWidth ? <strong className="text-sm">{widthDisplay}&quot;</strong> : null}
           </div>
           <p className="text-sm text-muted-foreground">{sublabel}</p>
         </DialogHeader>
