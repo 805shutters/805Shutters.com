@@ -30,12 +30,22 @@ describe("active quote route historical import guard", () => {
     expect(dashboardSource).toContain(
       "/api/crm/quotes/${encodeURIComponent(crmQuoteId)}/v2-route",
     );
+    expect(dashboardSource).toContain('method: "POST"');
+    expect(dashboardSource).toContain(
+      'route.status === "legacy_import_required"',
+    );
+    expect(dashboardSource).toContain(
+      'route.status === "crm_native_unsupported"',
+    );
     expect(dashboardSource).toContain('if (route.status !== "ready")');
   });
 
-  it("opens the original CRM quote when V2 structural import is absent", () => {
+  it("opens the original CRM quote only when exact structural import is unsafe", () => {
     expect(dashboardSource).toContain(
       "Opening the original quote instead of an empty $0 V2 quote.",
+    );
+    expect(dashboardSource).toContain(
+      "Its stored identity or structure is not safe to import automatically",
     );
     expect(tableSource).toContain(
       "V1 only — historical configuration not yet imported to V2",

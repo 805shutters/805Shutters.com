@@ -623,6 +623,41 @@ export function QuoteDashboard({
     return payload as SalesQuoteV2RouteResolution;
   };
 
+  const importCrmQuoteRoute = async (
+    crmQuoteId: string,
+  ): Promise<SalesQuoteV2RouteResolution> => {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) throw new Error("Your CRM session is unavailable.");
+    const response = await fetch(
+      `/api/crm/quotes/${encodeURIComponent(crmQuoteId)}/v2-route`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idempotencyKey: `crm-import:${crmQuoteId}:${crypto.randomUUID()}`,
+        }),
+        cache: "no-store",
+      },
+    );
+    const payload = (await response.json().catch(() => null)) as
+      | { route?: SalesQuoteV2RouteResolution; message?: string }
+      | null;
+    if (!response.ok) {
+      throw new Error(
+        payload?.message ||
+          "This quote could not be structurally imported into V2.",
+      );
+    }
+    if (!payload?.route || !("status" in payload.route)) {
+      throw new Error("The quote import returned an invalid route.");
+    }
+    return payload.route;
+  };
+
   const openCrmQuoteById = async (
     crmQuoteId: string,
     tab: QuoteWorkspaceOpenTab,
@@ -630,12 +665,28 @@ export function QuoteDashboard({
     if (openingQuoteId === crmQuoteId) return;
     setOpeningQuoteId(crmQuoteId);
     try {
-      const route = await resolveCrmQuoteRoute(crmQuoteId);
+      let route = await resolveCrmQuoteRoute(crmQuoteId);
+      if (
+        route.status === "legacy_import_required" ||
+        route.status === "crm_native_unsupported"
+      ) {
+        route = await importCrmQuoteRoute(crmQuoteId);
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.salesQuotes.all,
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.salesQuotes.byAccount(
+              ACCOUNT_IDS.SHUTTERS_805,
+            ),
+          }),
+        ]);
+      }
       if (route.status !== "ready") {
         openOriginalCrmQuote(
           crmQuoteId,
           tab,
-          "Its V2 target is missing or structurally incomplete, so the original quote is opening.",
+          "Its stored identity or structure is not safe to import automatically, so the original quote is opening.",
         );
         return;
       }
