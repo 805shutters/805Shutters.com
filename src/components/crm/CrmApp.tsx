@@ -1114,6 +1114,18 @@ export function CrmApp({
           };
           error?: string;
         };
+        commercialBids: {
+          ok: boolean;
+          result?: {
+            leadsCreated: number;
+            leadsUpdated: number;
+            reviewsCreated: number;
+            ignored: number;
+            skipped: number;
+            errors: number;
+          };
+          error?: string;
+        };
       }>(session, "/api/crm/process-emails", {
         method: "POST",
         body: JSON.stringify(installationTarget ? { installationTarget } : {})
@@ -1125,9 +1137,14 @@ export function CrmApp({
         install.ok && install.result
           ? `Install: ${install.result.matched} matched, ${install.result.serviceReports || 0} completed reports, ${install.result.needsReview} review, ${install.result.unmatched} unmatched, ${install.result.skipped} skipped, ${install.result.errors} errors.`
           : `Install failed: ${install.error || "unknown error"}.`;
+      const bids = result.commercialBids;
+      const bidMessage =
+        bids.ok && bids.result
+          ? `Commercial bids: ${bids.result.leadsCreated} new, ${bids.result.leadsUpdated} updated, ${bids.result.reviewsCreated} estimate reviews, ${bids.result.ignored} ignored, ${bids.result.skipped} duplicates, ${bids.result.errors} errors.`
+          : `Commercial bid sync failed: ${bids.error || "unknown error"}.`;
 
       const targetMessage = installationTarget?.customerName ? ` for ${installationTarget.customerName}` : "";
-      setMessage(`Install email pull complete${targetMessage}. ${installMessage}`);
+      setMessage(`Email pull complete${targetMessage}. ${installMessage} ${bidMessage}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Emails could not be processed.");
     } finally {
@@ -2746,7 +2763,7 @@ export function CrmApp({
           ["command", "Command Center"],
           ["tracking", "Job Tracking"],
           ["quotes", "Quotes"],
-          ["commercial", "Commercial and Referrals"],
+          ["commercial", "Commercial Leads & Estimates"],
           ["customers", "Customer Files"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],

@@ -97,7 +97,7 @@
 
 .commercial-crm-scoreboard {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -173,7 +173,7 @@
 
 .commercial-stage-strip {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 1px;
   overflow-x: auto;
   background: var(--line);
@@ -364,6 +364,11 @@
   color: #24503a;
 }
 
+.commercial-status--review_needed {
+  background: #fff0d7;
+  color: #8a4b00;
+}
+
 .commercial-status--bid_invited,
 .commercial-status--bidding {
   background: #e6edf7;
@@ -384,6 +389,31 @@
 .commercial-account-detail {
   min-width: 0;
   background: #fbfbfa;
+}
+
+.commercial-bid-review {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  margin: 0 16px 14px;
+  padding: 12px;
+  border: 1px solid #d79532;
+  background: #fff8ed;
+  color: #563713;
+}
+
+.commercial-bid-review strong {
+  flex-basis: 100%;
+}
+
+.commercial-bid-review span,
+.commercial-bid-review a {
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.commercial-account-check.blocked {
+  opacity: .45;
 }
 
 .commercial-account-detail > form:first-child,

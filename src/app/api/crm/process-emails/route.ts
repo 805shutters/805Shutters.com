@@ -7,6 +7,10 @@ import {
   type ProcessInstallationInvoiceResult,
   processInstallationInvoiceInbox
 } from "@/lib/crm/installation-invoices";
+import {
+  type ProcessCommercialBidOpportunityResult,
+  processCommercialBidOpportunityInbox
+} from "@/lib/crm/commercial-bid-opportunities";
 
 export const runtime = "nodejs";
 
@@ -92,21 +96,26 @@ export async function POST(request: NextRequest) {
     const maxResults = typeof payload.maxResults === "number" ? payload.maxResults : undefined;
     const target = installationTargetFromPayload(payload);
 
-    const [installationInvoices] = await Promise.allSettled([
+    const [installationInvoices, commercialBids] = await Promise.allSettled([
       processInstallationInvoiceInbox(supabase, {
         actorEmail: email,
         maxResults,
         target,
         query: targetedInstallationQuery(target),
         allowTargetBlankAmountMatch: Boolean(target)
+      }),
+      processCommercialBidOpportunityInbox(supabase, {
+        actorEmail: email,
+        maxResults
       })
     ]);
 
     const response = {
-      installationInvoices: processorRun<ProcessInstallationInvoiceResult>(installationInvoices)
+      installationInvoices: processorRun<ProcessInstallationInvoiceResult>(installationInvoices),
+      commercialBids: processorRun<ProcessCommercialBidOpportunityResult>(commercialBids)
     };
 
-    const status = response.installationInvoices.ok ? 200 : 502;
+    const status = response.installationInvoices.ok || response.commercialBids.ok ? 200 : 502;
     return NextResponse.json(response, { status });
   } catch (error) {
     return crmAuthErrorResponse(error);

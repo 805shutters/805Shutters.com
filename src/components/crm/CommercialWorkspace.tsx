@@ -78,6 +78,16 @@ function relativeDue(value: string | null) {
   return `Due in ${days}d`;
 }
 
+function metaString(meta: Record<string, unknown> | null | undefined, key: string) {
+  const value = meta?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function metaStringList(meta: Record<string, unknown> | null | undefined, key: string) {
+  const value = meta?.[key];
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())) : [];
+}
+
 function splitAddress(value: string | null) {
   if (!value) return { address: "", city: "", state: "CA", postal_code: "" };
   const match = value.match(/^(.+?),\s*([^,]+),\s*([A-Z]{2})\s+(\d{5})(?:-\d{4})?(?:,\s*USA)?$/i);
@@ -492,6 +502,32 @@ export function CommercialWorkspace({ session }: { session: Session }) {
     }
   }
 
+  async function syncBidAlerts() {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const result = await commercialFetch<{
+        scanned: number;
+        classified: number;
+        leadsCreated: number;
+        leadsUpdated: number;
+        reviewsCreated: number;
+        ignored: number;
+        skipped: number;
+        errors: number;
+      }>(session, "/api/crm/commercial/bid-opportunities", { method: "POST", body: "{}" });
+      await refresh({ quiet: true });
+      if (result.leadsCreated || result.leadsUpdated) setStatusFilter("review_needed");
+      setMessage(
+        `Bid alerts: ${result.leadsCreated} new, ${result.leadsUpdated} updated, ${result.reviewsCreated} estimate reviews, ${result.ignored} ignored, ${result.skipped} duplicates, ${result.errors} errors.`
+      );
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Bid alerts could not be synced.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) return <section className="commercial-crm-loading">Loading Commercial and Referrals…</section>;
   if (!data) return <section className="commercial-crm-loading">{message || "Commercial and Referrals is unavailable."}</section>;
 
@@ -500,10 +536,13 @@ export function CommercialWorkspace({ session }: { session: Session }) {
       <header className="commercial-crm-hero">
         <div>
           <p className="eyebrow">805 Commercial</p>
-          <h2>Commercial and Referrals</h2>
-          <p>Find the right accounts, identify the decision-maker, earn bid invitations, and turn the relationships into a repeatable commercial division.</p>
+          <h2>Commercial Leads &amp; Estimates</h2>
+          <p>Review bid-portal opportunities, qualify the scope, and move real commercial projects into estimating without inventing pricing.</p>
         </div>
         <div className="commercial-crm-hero-actions">
+          <button type="button" className="crm-ghost-button" onClick={() => void syncBidAlerts()} disabled={busy}>
+            Sync bid alerts
+          </button>
           <button type="button" className="crm-ghost-button" onClick={() => void syncReplies()} disabled={busy}>
             Sync replies
           </button>
@@ -515,6 +554,7 @@ export function CommercialWorkspace({ session }: { session: Session }) {
 
       <div className="commercial-crm-scoreboard">
         <ScoreCard label="Prospects" value={data.summary.total} />
+        <ScoreCard label="Review needed" value={data.summary.reviewNeeded} tone={data.summary.reviewNeeded ? "warning" : undefined} />
         <ScoreCard label="Ready now" value={data.summary.readyToContact} />
         <ScoreCard label="Replies" value={data.summary.replies} />
         <ScoreCard label="Active bids" value={data.summary.activeBids} />
@@ -582,8 +622,8 @@ export function CommercialWorkspace({ session }: { session: Session }) {
               </div>
               {visibleAccounts.map((account) => (
                 <article className={`commercial-account-row${selectedId === account.id ? " active" : ""}`} key={account.id}>
-                  <label className="commercial-account-check" title="Select for outreach">
-                    <input type="checkbox" checked={selectedAccountIds.includes(account.id)} onChange={() => toggleOutreachAccount(account.id)} />
+                  <label className={`commercial-account-check${account.do_not_email ? " blocked" : ""}`} title={account.do_not_email ? "Bid alerts require review before outreach" : "Select for outreach"}>
+                    <input type="checkbox" checked={selectedAccountIds.includes(account.id)} onChange={() => toggleOutreachAccount(account.id)} disabled={account.do_not_email} />
                     <span className="crm-visually-hidden">Select {account.company_name}</span>
                   </label>
                   <button type="button" className="commercial-account-open" onClick={() => setSelectedId(account.id)}>
@@ -619,6 +659,23 @@ export function CommercialWorkspace({ session }: { session: Session }) {
                     {detailDraft.source_url ? <a href={detailDraft.source_url} target="_blank" rel="noreferrer">Source</a> : null}
                     {detailDraft.license_number ? <a href="https://www2.cslb.ca.gov/OnlineServices/CheckLicenseII/CheckLicense.aspx" target="_blank" rel="noreferrer">Verify license</a> : null}
                   </div>
+                  {detailDraft.status === "review_needed" ? (
+                    <div className="commercial-bid-review">
+                      <strong>Bid opportunity requires review</strong>
+                      <span>{metaString(detailDraft.meta, "portal") || detailDraft.source_name || "Bid portal"}</span>
+                      {metaString(detailDraft.meta, "location") ? <span>{metaString(detailDraft.meta, "location")}</span> : null}
+                      {metaString(detailDraft.meta, "bidDeadlineText") || metaString(detailDraft.meta, "bidDeadline") ? (
+                        <span>Bid due {metaString(detailDraft.meta, "bidDeadlineText") || metaString(detailDraft.meta, "bidDeadline")}</span>
+                      ) : null}
+                      {metaString(detailDraft.meta, "solicitationId") ? <span>Solicitation {metaString(detailDraft.meta, "solicitationId")}</span> : null}
+                      {metaStringList(detailDraft.meta, "scopeKeywords").length ? (
+                        <span>Scope: {metaStringList(detailDraft.meta, "scopeKeywords").join(", ")}</span>
+                      ) : null}
+                      {detailDraft.meta?.sourceEmail && typeof detailDraft.meta.sourceEmail === "object" && !Array.isArray(detailDraft.meta.sourceEmail) && metaString(detailDraft.meta.sourceEmail as Record<string, unknown>, "gmailUrl") ? (
+                        <a href={metaString(detailDraft.meta.sourceEmail as Record<string, unknown>, "gmailUrl") || "#"} target="_blank" rel="noreferrer">Open original email</a>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="commercial-edit-grid">
                     <label className="wide">Company<input value={detailDraft.company_name} onChange={(event) => setDetailDraft({ ...detailDraft, company_name: event.target.value })} /></label>
                     <label>Stage<select value={detailDraft.status} onChange={(event) => setDetailDraft({ ...detailDraft, status: event.target.value as CommercialStatus })}>{commercialStatuses.map((status) => <option key={status} value={status}>{commercialStatusLabels[status]}</option>)}</select></label>
@@ -799,7 +856,7 @@ function ActivityLine({ activity }: { activity: CommercialActivity }) {
   return (
     <article>
       <i aria-hidden="true" />
-      <div><span>{activity.activity_type.replaceAll("_", " ")} · {dateLabel(activity.occurred_at)}</span><strong>{activity.subject || activity.body_preview || "Activity logged"}</strong>{activity.subject && activity.body_preview ? <p>{activity.body_preview}</p> : null}{gmailUrl ? <a href={gmailUrl} target="_blank" rel="noreferrer">Open reply in Gmail</a> : null}</div>
+      <div><span>{activity.activity_type.replaceAll("_", " ")} · {dateLabel(activity.occurred_at)}</span><strong>{activity.subject || activity.body_preview || "Activity logged"}</strong>{activity.subject && activity.body_preview ? <p>{activity.body_preview}</p> : null}{gmailUrl ? <a href={gmailUrl} target="_blank" rel="noreferrer">Open source email in Gmail</a> : null}</div>
     </article>
   );
 }

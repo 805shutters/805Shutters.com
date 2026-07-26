@@ -40,6 +40,12 @@ ORDER_COGS_CRON_SECRET=<optional-cron-secret>
 GMAIL_805_CLIENT_ID=<google-oauth-client-id-with-gmail-readonly-scope>
 GMAIL_805_CLIENT_SECRET=<google-oauth-client-secret>
 GMAIL_805_REFRESH_TOKEN=<805-gmail-readonly-refresh-token>
+GMAIL_ACCESS_TOKEN_BROKER_URL=<optional-authorized-token-broker>
+GMAIL_ACCESS_TOKEN_BROKER_SECRET=<optional-token-broker-secret>
+COMMERCIAL_BID_MAILBOX=805@805shutters.com
+COMMERCIAL_BID_GMAIL_QUERY='to:805@805shutters.com newer_than:30d (from:planhubprojects.com OR from:planetbids.com OR from:publicpurchase.com OR from:caleprocure.ca.gov OR from:dgs.ca.gov OR from:eunasolutions.com)'
+COMMERCIAL_BID_GMAIL_MAX_RESULTS=50
+COMMERCIAL_BID_CRON_SECRET=<optional-cron-secret>
 ```
 
 ## Database
@@ -224,6 +230,23 @@ The puller:
 - records every processed message in `crm_order_cogs_emails`;
 - leaves ambiguous names, missing totals, job-only matches, and conflicts in
   review so they feed Missing COGS work.
+
+## Commercial bid opportunity puller
+
+The Commercial Leads & Estimates workspace monitors bid mail delivered to
+`805@805shutters.com` from PlanHub, PlanetBids, Public Purchase, Cal eProcure,
+and Euna Supplier Network. It is available through the authenticated
+`/api/crm/commercial/bid-opportunities` route and the hourly
+`/api/cron/commercial-bid-opportunities` schedule.
+
+The puller requires both a bid signal and explicit window-covering scope. It
+ignores portal marketing, trials, training, passwords, OTPs, registration and
+account notices, generic project digests without visible trade scope, and all
+Dodge outreach. Qualified projects enter the commercial ledger as
+`review_needed` with portal, project, location, deadline, scope keywords,
+solicitation reference, and original Gmail URL. It creates an `estimate_review`
+activity only when enough concrete project data is present. It never assigns
+pricing or submits a bid, and deduplicates by portal/project and Gmail message.
 
 ## Importing the MTS CRM data
 

@@ -16,6 +16,7 @@ export const commercialAccountTypes = [
 export type CommercialAccountType = (typeof commercialAccountTypes)[number];
 
 export const commercialStatuses = [
+  "review_needed",
   "new",
   "researching",
   "ready",
@@ -42,6 +43,7 @@ export type CommercialActivityType =
   | "reply_received"
   | "meeting"
   | "bid_invite"
+  | "estimate_review"
   | "bid_submitted"
   | "status_change"
   | "opt_out";
@@ -101,6 +103,7 @@ export type CommercialActivity = {
 
 export type CommercialSummary = {
   total: number;
+  reviewNeeded: number;
   readyToContact: number;
   contacted: number;
   replies: number;
@@ -175,6 +178,7 @@ export const commercialTypeLabels: Record<CommercialAccountType, string> = {
 };
 
 export const commercialStatusLabels: Record<CommercialStatus, string> = {
+  review_needed: "Review needed",
   new: "New",
   researching: "Researching",
   ready: "Ready",
@@ -190,6 +194,7 @@ export const commercialStatusLabels: Record<CommercialStatus, string> = {
 };
 
 export const commercialPipelineStatuses: CommercialStatus[] = [
+  "review_needed",
   "new",
   "researching",
   "ready",

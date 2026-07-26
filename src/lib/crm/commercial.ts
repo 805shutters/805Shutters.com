@@ -41,6 +41,7 @@ const activityTypeSet = new Set<string>([
   "reply_received",
   "meeting",
   "bid_invite",
+  "estimate_review",
   "bid_submitted",
   "status_change",
   "opt_out"
@@ -200,6 +201,7 @@ function commercialSummary(accounts: CommercialAccount[]) {
   return accounts.reduce<CommercialWorkspaceData["summary"]>(
     (summary, account) => {
       summary.total += 1;
+      if (account.status === "review_needed") summary.reviewNeeded += 1;
       if (account.status === "ready") summary.readyToContact += 1;
       if (["contacted", "replied", "meeting", "bid_invited", "bidding", "won"].includes(account.status)) summary.contacted += 1;
       if (["replied", "meeting", "bid_invited", "bidding", "won"].includes(account.status)) summary.replies += 1;
@@ -210,7 +212,7 @@ function commercialSummary(accounts: CommercialAccount[]) {
       if (!account.email) summary.missingEmail += 1;
       return summary;
     },
-    { total: 0, readyToContact: 0, contacted: 0, replies: 0, activeBids: 0, wins: 0, pipelineValue: 0, overdue: 0, missingEmail: 0 }
+    { total: 0, reviewNeeded: 0, readyToContact: 0, contacted: 0, replies: 0, activeBids: 0, wins: 0, pipelineValue: 0, overdue: 0, missingEmail: 0 }
   );
 }
 
