@@ -42,6 +42,11 @@ const PRODUCT_IDS: Record<(typeof PRODUCT_TYPES)[number], string> = {
   "Wood Blinds": "wood_blinds",
   "Vertical Blinds": "synchrony_vertical",
   "Smart Drapes": "smartdrape",
+  "Drapery Tracks": "drapery_tracks",
+  "Tension Shades": "tension_shades",
+  "Retractable Screens": "retractable_screens",
+  "Awnings": "awnings",
+  "Vinyl Blinds": "vinyl_blinds",
 };
 
 function productLabel(productId: string) {
