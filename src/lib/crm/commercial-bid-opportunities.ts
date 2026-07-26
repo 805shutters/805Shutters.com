@@ -90,6 +90,7 @@ export type ProcessCommercialBidOpportunityResult = {
 };
 
 const DEFAULT_MAILBOX = "805@805shutters.com";
+const DEFAULT_GMAIL_ACCOUNT = "805shutters@gmail.com";
 const DEFAULT_MAX_RESULTS = 50;
 
 const portalMatchers: Array<{ portal: CommercialBidPortal; pattern: RegExp }> = [
@@ -387,7 +388,8 @@ async function gmailAccessToken(mailbox: string) {
   const refreshToken = envValue(["GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN"]);
 
   if (!clientId || !clientSecret || !refreshToken) {
-    const brokered = await getBrokeredGmailAccessToken(mailbox);
+    const gmailAccount = process.env.COMMERCIAL_BID_GMAIL_ACCOUNT?.trim().toLowerCase() || DEFAULT_GMAIL_ACCOUNT;
+    const brokered = await getBrokeredGmailAccessToken(gmailAccount);
     if (brokered) return brokered;
     throw new CrmAuthError(503, "Commercial bid email monitoring is not configured for the 805 mailbox.");
   }
