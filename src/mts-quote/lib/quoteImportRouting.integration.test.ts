@@ -38,6 +38,8 @@ describe("active quote route historical import guard", () => {
       'route.status === "crm_native_unsupported"',
     );
     expect(dashboardSource).toContain('if (route.status !== "ready")');
+    expect(dashboardSource).toContain("Date.now().toString(36)");
+    expect(dashboardSource).not.toContain("crypto.randomUUID()");
   });
 
   it("opens the original CRM quote only when exact structural import is unsafe", () => {

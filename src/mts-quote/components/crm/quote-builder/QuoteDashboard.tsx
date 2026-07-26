@@ -638,7 +638,7 @@ export function QuoteDashboard({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          idempotencyKey: `crm-import:${crmQuoteId}:${crypto.randomUUID()}`,
+          idempotencyKey: `crm-import:${crmQuoteId}:${Date.now().toString(36)}`,
         }),
         cache: "no-store",
       },
