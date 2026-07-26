@@ -17,6 +17,7 @@ import {
 
 export const OWNER_COMMISSION_RATE = 0.1;
 export const ADVERTISING_RESERVE_RATE = 0.07;
+export const ADVERTISING_RESERVE_EFFECTIVE_FROM = "2026-07-20";
 
 // Fixed price the business is being purchased from Ken for. Every dollar paid to
 // Ken (opening balance + recorded checks) counts toward this payoff.
@@ -485,7 +486,7 @@ function buildEntryRow(
   const balance = roundCents(total - calculateAppliedRevenue(paidTotal, creditIn, creditOut));
   const isPaidInFull = isPaidInFullBalance(total, balance);
   const kenCut = computeKenCut({ total, override: entry.ken_cut_override });
-  const advertisingReserve = computeAdvertisingReserve(total);
+  const advertisingReserve = computeAdvertisingReserve(total, entry.sold_date);
   const installation = getInstallationFields(entry);
   const missingInstallerInvoice = isMissingInstallerInvoice({
     source: entry.source,
@@ -608,7 +609,7 @@ function buildQuoteRow(
   const status = quoteStatusForBookkeeping(quote);
   const salesOwner = normalizeSalesOwner(entry?.sales_owner || quote.sold_by);
   const kenCut = computeKenCut({ total, override: entry?.ken_cut_override });
-  const advertisingReserve = computeAdvertisingReserve(total);
+  const advertisingReserve = computeAdvertisingReserve(total, soldDate);
   const installation = getInstallationFields(entry);
   const missingInstallerInvoice = isMissingInstallerInvoice({
     source: "crm_quote",
@@ -788,7 +789,10 @@ function computeKenCut({
   return roundCents(total * OWNER_COMMISSION_RATE);
 }
 
-function computeAdvertisingReserve(total: number) {
+function computeAdvertisingReserve(total: number, soldDate: string | null | undefined) {
+  // Marketing holdback began prospectively on Monday, July 20, 2026. Jobs sold
+  // before the effective date retain their historical partner-profit math.
+  if (!soldDate || soldDate.slice(0, 10) < ADVERTISING_RESERVE_EFFECTIVE_FROM) return 0;
   return roundCents(Math.max(total, 0) * ADVERTISING_RESERVE_RATE);
 }
 

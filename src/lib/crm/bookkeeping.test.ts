@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   BUSINESS_PAYOFF_TARGET,
+  ADVERTISING_RESERVE_EFFECTIVE_FROM,
   ADVERTISING_RESERVE_RATE,
   OWNER_COMMISSION_RATE,
   buildAccountabilityQueue,
@@ -29,7 +30,7 @@ function entry(overrides: Partial<CrmBookkeepingEntry> = {}): CrmBookkeepingEntr
     job_id: null,
     source: "manual",
     customer_name: "Test Customer",
-    sold_date: "2026-05-01",
+    sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
     total_amount: 0,
     payment_type: null,
     cogs_amount: 0,
@@ -440,7 +441,14 @@ describe("paid-in-full status", () => {
 describe("Ken cut", () => {
   it("defaults to 10% of the sale total for a Mike sale", () => {
     const [row] = rowsFrom({
-      entries: [entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", sold_date: "2026-05-01" })]
+      entries: [
+        entry({
+          total_amount: 10000,
+          cogs_amount: 3000,
+          sales_owner: "mike",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM
+        })
+      ]
     });
     expect(row.kenCut).toBe(1000);
     expect(row.advertisingReserve).toBe(700);
@@ -451,7 +459,7 @@ describe("Ken cut", () => {
 
   it("charges 10% on Jessica's sales too — the June 2026 exemption is gone", () => {
     const [row] = rowsFrom({
-      entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: "2026-07-01" })]
+      entries: [entry({ total_amount: 10000, sales_owner: "jessica", sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM })]
     });
     expect(row.kenCut).toBe(1000);
   });
@@ -542,7 +550,7 @@ describe("Jessica's 50% commission", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ]
@@ -559,7 +567,7 @@ describe("Jessica's 50% commission", () => {
   it("splits Jessica's own sale even before an install invoice is matched", () => {
     const [row] = rowsFrom({
       entries: [
-        entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: "2026-07-01" })
+        entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM })
       ]
     });
     expect(row.isInstallationComplete).toBe(false);
@@ -577,7 +585,7 @@ describe("Jessica's 50% commission", () => {
           quote_total: 10000,
           materials_cost: 3000,
           sold_by: "Jessica",
-          sold_at: "2026-07-01"
+          sold_at: ADVERTISING_RESERVE_EFFECTIVE_FROM
         })
       ]
     });
@@ -595,7 +603,7 @@ describe("Jessica's 50% commission", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "mike",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ]
@@ -613,7 +621,7 @@ describe("Jessica's 50% commission", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ],
@@ -632,7 +640,7 @@ describe("Jessica's 50% commission", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ],
@@ -650,7 +658,7 @@ describe("Jessica's 50% commission", () => {
       total_amount: 10000,
       cogs_amount: 3000,
       sales_owner: "jessica",
-      sold_date: "2026-07-01",
+      sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
       installation_invoice_amount: 1000
     });
     const [owedRow] = rowsFrom({ entries: [unpaid] });
@@ -717,7 +725,7 @@ describe("Jessica's 50% commission", () => {
           total_amount: 100,
           cogs_amount: 33.33,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 0,
           installation_invoice_document_id: "doc-1"
         })
@@ -733,7 +741,7 @@ describe("Jessica's 50% commission", () => {
 describe("missing installer invoice hold", () => {
   it("flags a paid-in-full manual row with no matched installer invoice and holds Jessica's owed", () => {
     const [row] = rowsFrom({
-      entries: [entry({ id: "e1", total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: "2026-07-01" })],
+      entries: [entry({ id: "e1", total_amount: 10000, cogs_amount: 3000, sales_owner: "jessica", sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM })],
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
     expect(row.isMissingInstallerInvoice).toBe(true);
@@ -747,7 +755,7 @@ describe("missing installer invoice hold", () => {
 
   it("flags an installed quote even before it is paid in full", () => {
     const [row] = rowsFrom({
-      quotes: [quote({ id: "q1", status: "installed", quote_total: 10000, sold_by: "Jessica", sold_at: "2026-07-01" })]
+      quotes: [quote({ id: "q1", status: "installed", quote_total: 10000, sold_by: "Jessica", sold_at: ADVERTISING_RESERVE_EFFECTIVE_FROM })]
     });
     expect(row.isMissingInstallerInvoice).toBe(true);
     expect(row.jessicaCommissionOwed).toBe(0);
@@ -761,7 +769,7 @@ describe("missing installer invoice hold", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ],
@@ -806,7 +814,7 @@ describe("quote-sourced rows", () => {
           quote_total: 10000,
           materials_cost: 3000,
           sold_by: "Jessica",
-          sold_at: "2026-07-01T00:00:00.000Z"
+          sold_at: "2026-07-20T00:00:00.000Z"
         })
       ],
       entries: [
@@ -841,7 +849,7 @@ describe("sumBookkeepingRows", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         }),
         entry({ id: "e2", total_amount: 5000, cogs_amount: 1000, sales_owner: "mike", sold_date: "2026-05-01" })
@@ -858,10 +866,10 @@ describe("sumBookkeepingRows", () => {
     expect(totals.expensesTotal).toBe(400);
     expect(totals.remakeTotal).toBe(200);
     expect(totals.kenCut).toBe(1500); // 10% of 10000 + 10% of 5000
-    expect(totals.advertisingReserve).toBe(1050);
+    expect(totals.advertisingReserve).toBe(700);
     expect(totals.jessicaCommission).toBe(1850);
     expect(totals.jessicaCommissionOwed).toBe(1850);
-    expect(totals.mikeProfit).toBe(5000);
+    expect(totals.mikeProfit).toBe(5350);
   });
 
   it("tracks Ken's current-month due and running total from closed jobs only", () => {
@@ -895,7 +903,7 @@ describe("buildCommissionSummary", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "mike",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         }),
         installedEntry({
@@ -903,7 +911,7 @@ describe("buildCommissionSummary", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         }),
         installedEntry({
@@ -911,7 +919,7 @@ describe("buildCommissionSummary", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ],
@@ -945,7 +953,7 @@ describe("buildCommissionSummary", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "mike",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         }),
         installedEntry({
@@ -953,7 +961,7 @@ describe("buildCommissionSummary", () => {
           total_amount: 10000,
           cogs_amount: 3000,
           sales_owner: "jessica",
-          sold_date: "2026-07-01",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM,
           installation_invoice_amount: 1000
         })
       ],
@@ -992,6 +1000,27 @@ describe("constants", () => {
     expect(ADVERTISING_RESERVE_RATE).toBe(0.07);
   });
 
+  it("starts the advertising reserve on July 20 without changing older Jessica jobs", () => {
+    const rows = rowsFrom({
+      entries: [
+        entry({ id: "older", total_amount: 10000, sales_owner: "jessica", sold_date: "2026-07-19" }),
+        entry({
+          id: "effective",
+          total_amount: 10000,
+          sales_owner: "jessica",
+          sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM
+        })
+      ]
+    });
+    const older = rows.find((row) => row.id === "older")!;
+    const effective = rows.find((row) => row.id === "effective")!;
+
+    expect(older.advertisingReserve).toBe(0);
+    expect(older.jessicaCommission).toBe(4500);
+    expect(effective.advertisingReserve).toBe(700);
+    expect(effective.jessicaCommission).toBe(4150);
+  });
+
   it("keeps the historical 10% owner commission rate", () => {
     expect(OWNER_COMMISSION_RATE).toBe(0.1);
   });
@@ -1015,7 +1044,7 @@ describe("buildKenPayoffSummary", () => {
 
   it("accrues Ken's 10% on Jessica's paid-in-full jobs too", () => {
     const rows = rowsFrom({
-      entries: [entry({ id: "e1", total_amount: 10000, sales_owner: "jessica", sold_date: "2026-07-01" })],
+      entries: [entry({ id: "e1", total_amount: 10000, sales_owner: "jessica", sold_date: ADVERTISING_RESERVE_EFFECTIVE_FROM })],
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
     const summary = buildKenPayoffSummary({ rows, payments: [] });

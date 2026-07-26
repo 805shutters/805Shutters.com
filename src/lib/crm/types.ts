@@ -636,6 +636,12 @@ export type CrmPartnerJobLedgerItem = {
   sourceStatus: CrmBookkeepingStatus;
   total: number;
   advertisingReserve: number;
+  cogs: number;
+  kenCut: number;
+  installationCost: number;
+  expensesTotal: number;
+  remakeTotal: number;
+  remainingProfitBeforeJessica: number;
   profitAmount: number;
   paidAmount: number;
   remainingAmount: number;

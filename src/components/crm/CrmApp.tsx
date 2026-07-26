@@ -3,7 +3,12 @@
 import { DragEvent, FormEvent, Fragment, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { effectiveBookkeepingStatus, formatPaymentType, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
+import {
+  ADVERTISING_RESERVE_EFFECTIVE_FROM,
+  effectiveBookkeepingStatus,
+  formatPaymentType,
+  isPaidInFullBookkeepingRow
+} from "@/lib/crm/bookkeeping";
 import {
   calendarAppointmentDurationChoices,
   calendarAppointmentDurationLabel,
@@ -11012,9 +11017,15 @@ function PartnerPaymentsView({
                   <th>Customer</th>
                   <th>Sold</th>
                   <th>Job Status</th>
-                  <th>Total</th>
-                  <th>Advertising 7%</th>
-                  <th className="crm-payables-profit">Jessica Profit</th>
+                  <th>Gross Sale</th>
+                  <th>Marketing</th>
+                  <th>COGS</th>
+                  <th>Ken</th>
+                  <th>Installation</th>
+                  <th>Expenses</th>
+                  <th>Remakes</th>
+                  <th>Profit to Split</th>
+                  <th className="crm-payables-profit">Jessica Share</th>
                   <th>Paid To Jessica</th>
                   <th>Remaining</th>
                   <th>Payment Status</th>
@@ -11042,7 +11053,23 @@ function PartnerPaymentsView({
                       <td>{formatShortDate(item.soldDate)}</td>
                       <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
                       <td>{toLedgerCurrency(item.total)}</td>
-                      <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
+                      <td className="crm-ledger-money-warn">
+                        {toLedgerCurrency(item.advertisingReserve)}
+                        <span>
+                          {item.advertisingReserve > 0
+                            ? "7% of gross"
+                            : `0% · sold before ${formatShortDate(ADVERTISING_RESERVE_EFFECTIVE_FROM)}`}
+                        </span>
+                      </td>
+                      <td>{toLedgerCurrency(item.cogs)}</td>
+                      <td>{toLedgerCurrency(item.kenCut)}</td>
+                      <td>{toLedgerCurrency(item.installationCost)}</td>
+                      <td>{toLedgerCurrency(item.expensesTotal)}</td>
+                      <td>{toLedgerCurrency(item.remakeTotal)}</td>
+                      <td>
+                        <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
+                        <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
+                      </td>
                       <td className="crm-payables-profit">{toLedgerCurrency(item.profitAmount)}</td>
                       <td>{toLedgerCurrency(item.paidAmount)}</td>
                       <td>{toLedgerCurrency(item.remainingAmount)}</td>
