@@ -13,13 +13,11 @@ jobs:
   poll-order-cogs:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: Process manufacturer order confirmations
         env:
           ORDER_COGS_CRON_SECRET: ${{ secrets.ORDER_COGS_CRON_SECRET }}
-        run: |
-          test -n "${ORDER_COGS_CRON_SECRET}"
-          curl --fail-with-body --silent --show-error \
-            --retry 2 \
-            --request POST \
-            --header "Authorization: Bearer ${ORDER_COGS_CRON_SECRET}" \
-            https://805-one.vercel.app/api/cron/order-cogs
+          ORDER_COGS_CRON_URL: https://www.805shutters.com/api/cron/order-cogs
+          EXPECTED_ORDER_COGS_MAILBOX: 805shutters@gmail.com
+        run: node scripts/poll_order_cogs.mjs
