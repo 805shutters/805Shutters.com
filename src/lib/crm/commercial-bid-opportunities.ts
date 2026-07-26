@@ -383,12 +383,18 @@ function envValue(keys: string[]) {
 }
 
 async function gmailAccessToken(mailbox: string) {
+  const configuredGmailAccount = process.env.COMMERCIAL_BID_GMAIL_ACCOUNT?.trim().toLowerCase();
+  if (configuredGmailAccount) {
+    const brokered = await getBrokeredGmailAccessToken(configuredGmailAccount);
+    if (brokered) return brokered;
+  }
+
   const clientId = envValue(["GMAIL_805_CLIENT_ID", "GOOGLE_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_ID"]);
   const clientSecret = envValue(["GMAIL_805_CLIENT_SECRET", "GOOGLE_CLIENT_SECRET", "GOOGLE_CALENDAR_CLIENT_SECRET"]);
   const refreshToken = envValue(["GMAIL_805_REFRESH_TOKEN", "GMAIL_REFRESH_TOKEN", "GOOGLE_CALENDAR_REFRESH_TOKEN"]);
 
   if (!clientId || !clientSecret || !refreshToken) {
-    const gmailAccount = process.env.COMMERCIAL_BID_GMAIL_ACCOUNT?.trim().toLowerCase() || DEFAULT_GMAIL_ACCOUNT;
+    const gmailAccount = configuredGmailAccount || DEFAULT_GMAIL_ACCOUNT;
     const brokered = await getBrokeredGmailAccessToken(gmailAccount);
     if (brokered) return brokered;
     throw new CrmAuthError(503, "Commercial bid email monitoring is not configured for the 805 mailbox.");
