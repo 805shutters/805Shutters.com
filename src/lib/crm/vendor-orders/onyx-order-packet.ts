@@ -13,8 +13,93 @@ import type {
   TechnicalMeasureLineValues,
 } from "@/lib/crm/technical-measures";
 
-export const ONYX_ORDER_FORM_KEY = "onyx_shutters_v1" as const;
-export const ONYX_PACKET_SCHEMA_VERSION = "onyx-agent-order-packet.v2" as const;
+export const ONYX_PACKET_SCHEMA_VERSION = "onyx-agent-order-packet.v3" as const;
+
+export type OnyxPortalMaterial = "Bassia" | "Sycamore" | "Vinyl" | "VLO" | "Ash";
+export type OnyxOrderFormKey =
+  | "onyx_painted_basswood_v1"
+  | "onyx_stained_basswood_v1"
+  | "onyx_sycamore_v1"
+  | "onyx_vinyl_v1"
+  | "onyx_vlo_hybrid_v1"
+  | "onyx_us_made_vinyl_v1"
+  | "onyx_poly_composite_v1"
+  | "onyx_ash_v1"
+  | "onyx_unmapped_v1";
+
+export type OnyxOrderFormDefinition = {
+  orderFormKey: OnyxOrderFormKey;
+  quoteProgramKey: string;
+  displayName: string;
+  portalMaterial: OnyxPortalMaterial | null;
+  mappingStatus: "verified" | "portal_mapping_required";
+};
+
+export const ONYX_ORDER_FORM_REGISTRY: Record<string, OnyxOrderFormDefinition> = {
+  painted_basswood: {
+    orderFormKey: "onyx_painted_basswood_v1",
+    quoteProgramKey: "painted_basswood",
+    displayName: "Painted Basswood",
+    portalMaterial: "Bassia",
+    mappingStatus: "verified",
+  },
+  stained_basswood: {
+    orderFormKey: "onyx_stained_basswood_v1",
+    quoteProgramKey: "stained_basswood",
+    displayName: "Stained Basswood",
+    portalMaterial: "Bassia",
+    mappingStatus: "verified",
+  },
+  secamore: {
+    orderFormKey: "onyx_sycamore_v1",
+    quoteProgramKey: "secamore",
+    displayName: "Sycamore",
+    portalMaterial: "Sycamore",
+    mappingStatus: "verified",
+  },
+  sycamore: {
+    orderFormKey: "onyx_sycamore_v1",
+    quoteProgramKey: "sycamore",
+    displayName: "Sycamore",
+    portalMaterial: "Sycamore",
+    mappingStatus: "verified",
+  },
+  vinyl: {
+    orderFormKey: "onyx_vinyl_v1",
+    quoteProgramKey: "vinyl",
+    displayName: "Vinyl",
+    portalMaterial: "Vinyl",
+    mappingStatus: "verified",
+  },
+  vlo_hybrid: {
+    orderFormKey: "onyx_vlo_hybrid_v1",
+    quoteProgramKey: "vlo_hybrid",
+    displayName: "VLO Hybrid",
+    portalMaterial: "VLO",
+    mappingStatus: "verified",
+  },
+  onyx_us_made_vinyl: {
+    orderFormKey: "onyx_us_made_vinyl_v1",
+    quoteProgramKey: "onyx_us_made_vinyl",
+    displayName: "Onyx US Made Vinyl",
+    portalMaterial: null,
+    mappingStatus: "portal_mapping_required",
+  },
+  poly_composite: {
+    orderFormKey: "onyx_poly_composite_v1",
+    quoteProgramKey: "poly_composite",
+    displayName: "Poly Composite",
+    portalMaterial: null,
+    mappingStatus: "portal_mapping_required",
+  },
+  ash: {
+    orderFormKey: "onyx_ash_v1",
+    quoteProgramKey: "ash",
+    displayName: "Ash",
+    portalMaterial: "Ash",
+    mappingStatus: "verified",
+  },
+};
 
 export type OnyxOrderSourceKind = "signed_contract" | "submitted_technical_measure";
 
@@ -51,7 +136,11 @@ export type OnyxAgentOrderPacket = {
   schemaVersion: typeof ONYX_PACKET_SCHEMA_VERSION;
   manufacturerKey: "onyx";
   productFamilyKey: "shutters";
-  orderFormKey: typeof ONYX_ORDER_FORM_KEY;
+  orderFormKey: OnyxOrderFormKey;
+  quoteProgramKey: string;
+  productDisplayName: string;
+  portalMaterial: OnyxPortalMaterial | null;
+  portalMappingStatus: "verified" | "portal_mapping_required";
   portalVerifiedOn: "2026-07-27";
   packetId: string;
   status: "READY" | "BLOCKED" | "AWAITING_TECHNICAL_MEASURE";
@@ -74,7 +163,7 @@ export type OnyxAgentOrderPacket = {
     jobNotes: string;
   };
   header: {
-    materialCategory: "Shutters";
+    materialCategory: OnyxPortalMaterial | null;
     sideMark: string;
     poNumber: string | null;
     rushOrder: boolean;
@@ -279,7 +368,7 @@ export function onyxLinesFromTechnicalMeasure(form: TechnicalMeasureForm): OnyxO
     .sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
-function material(details: Record<string, CrmQuoteDetailValue>, programId: string | null): string | null {
+function material(details: Record<string, CrmQuoteDetailValue>, programId: string | null): OnyxPortalMaterial | null {
   const explicit = text(details.portal_material ?? details.material);
   const candidate = explicit || text(programId);
   const normalized = candidate.toLowerCase().replace(/[^a-z0-9]+/g, "_");
@@ -289,6 +378,43 @@ function material(details: Record<string, CrmQuoteDetailValue>, programId: strin
   if (/^vlo|mdf_hybrid/.test(normalized)) return "VLO";
   if (normalized === "ash") return "Ash";
   return null;
+}
+
+function normalizedProgramKey(value: string | null): string {
+  return text(value).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
+export function onyxOrderFormDefinition(
+  values: TechnicalMeasureLineValues,
+): OnyxOrderFormDefinition {
+  const programKey = normalizedProgramKey(values.program_id);
+  const registered = ONYX_ORDER_FORM_REGISTRY[programKey];
+  if (registered) return registered;
+  const explicitProductKey = normalizedProgramKey(
+    text(values.details?.quote_program)
+    || text(values.details?.material),
+  );
+  const explicitProduct = ONYX_ORDER_FORM_REGISTRY[explicitProductKey];
+  if (explicitProduct) return explicitProduct;
+  const explicitMaterial = material(values.details || {}, values.program_id);
+  if (explicitMaterial) {
+    const fallbackKey = explicitMaterial.toLowerCase();
+    return ONYX_ORDER_FORM_REGISTRY[fallbackKey]
+      || {
+        orderFormKey: "onyx_unmapped_v1",
+        quoteProgramKey: programKey || "unmapped",
+        displayName: text(values.program_id) || explicitMaterial,
+        portalMaterial: explicitMaterial,
+        mappingStatus: "verified",
+      };
+  }
+  return {
+    orderFormKey: "onyx_unmapped_v1",
+    quoteProgramKey: programKey || "unmapped",
+    displayName: text(values.program_id) || "Unmapped Onyx Product",
+    portalMaterial: null,
+    mappingStatus: "portal_mapping_required",
+  };
 }
 
 function widthType(value: unknown): "Window Size" | "Finish Size" | null {
@@ -361,10 +487,30 @@ function optionalCustomDimension(details: Record<string, CrmQuoteDetailValue>, k
   return dimension(details[key]);
 }
 
-function packetLine(source: OnyxOrderSourceLine, lineNumber: number, issues: string[]) {
+function packetLine(
+  source: OnyxOrderSourceLine,
+  lineNumber: number,
+  issues: string[],
+  definition: OnyxOrderFormDefinition,
+) {
   const values = source.values;
   const details = values.details || {};
-  const mappedMaterial = material(details, values.program_id);
+  const explicitMaterial = material(details, null);
+  const mappedMaterial = explicitMaterial || definition.portalMaterial;
+  if (
+    definition.portalMaterial
+    && explicitMaterial
+    && explicitMaterial !== definition.portalMaterial
+  ) {
+    issues.push(
+      `Line ${lineNumber}: explicit Onyx material ${explicitMaterial} conflicts with ${definition.displayName} routing (${definition.portalMaterial}).`,
+    );
+  }
+  if (definition.mappingStatus === "portal_mapping_required" && !explicitMaterial) {
+    issues.push(
+      `Line ${lineNumber}: ${definition.displayName} does not have a verified Onyx portal material mapping.`,
+    );
+  }
   const shutterType = text(details.onyx_order_type ?? details.shutter_type) || null;
   const frameType = text(details.frame_type) || null;
   const mappedWidthType = widthType(details.size_type ?? details.width_type);
@@ -497,10 +643,19 @@ export function buildOnyxAgentOrderPacket(
   sourceLines: OnyxOrderSourceLine[],
 ): OnyxAgentOrderPacket | null {
   if (!sourceLines.length) return null;
+  const definition = onyxOrderFormDefinition(sourceLines[0].values);
   const blockingIssues: string[] = [];
+  for (const sourceLine of sourceLines) {
+    const lineDefinition = onyxOrderFormDefinition(sourceLine.values);
+    if (lineDefinition.orderFormKey !== definition.orderFormKey) {
+      blockingIssues.push(
+        `Line ${sourceLine.sourceOpeningId}: ${lineDefinition.displayName} must use its own ${lineDefinition.orderFormKey} document.`,
+      );
+    }
+  }
   const lines = sourceLines
     .sort((left, right) => left.sortOrder - right.sortOrder)
-    .map((line, index) => packetLine(line, index + 1, blockingIssues));
+    .map((line, index) => packetLine(line, index + 1, blockingIssues, definition));
   if (!context.customerName.trim()) blockingIssues.push("Customer name is required.");
   if (!context.jobsiteAddress?.trim()) blockingIssues.push("Jobsite address is required.");
   if (!context.quoteNumber?.trim()) blockingIssues.push("Quote number is required.");
@@ -520,9 +675,13 @@ export function buildOnyxAgentOrderPacket(
     schemaVersion: ONYX_PACKET_SCHEMA_VERSION,
     manufacturerKey: "onyx",
     productFamilyKey: "shutters",
-    orderFormKey: ONYX_ORDER_FORM_KEY,
+    orderFormKey: definition.orderFormKey,
+    quoteProgramKey: definition.quoteProgramKey,
+    productDisplayName: definition.displayName,
+    portalMaterial: definition.portalMaterial,
+    portalMappingStatus: definition.mappingStatus,
     portalVerifiedOn: "2026-07-27",
-    packetId: `onyx:${context.quoteId}:${sourceHash.slice(0, 16)}`,
+    packetId: `onyx:${context.quoteId}:${definition.orderFormKey}:${sourceHash.slice(0, 16)}`,
     status,
     blockingIssues,
     allowedAction: "draft_entry_only",
@@ -543,7 +702,7 @@ export function buildOnyxAgentOrderPacket(
       jobNotes: context.jobNotes,
     },
     header: {
-      materialCategory: "Shutters",
+      materialCategory: definition.portalMaterial,
       sideMark: context.customerName,
       poNumber: context.quoteNumber,
       rushOrder: sourceLines.some((line) =>
@@ -558,6 +717,20 @@ export function buildOnyxAgentOrderPacket(
     lines,
     attachments: [],
   };
+}
+
+export function buildOnyxAgentOrderPackets(
+  context: OnyxPacketContext,
+  sourceLines: OnyxOrderSourceLine[],
+): OnyxAgentOrderPacket[] {
+  const groups = new Map<OnyxOrderFormKey, OnyxOrderSourceLine[]>();
+  for (const sourceLine of sourceLines) {
+    const key = onyxOrderFormDefinition(sourceLine.values).orderFormKey;
+    groups.set(key, [...(groups.get(key) || []), sourceLine]);
+  }
+  return [...groups.values()]
+    .map((group) => buildOnyxAgentOrderPacket(context, group))
+    .filter((packet): packet is OnyxAgentOrderPacket => Boolean(packet));
 }
 
 export function onyxPreparationSummary(
@@ -601,7 +774,7 @@ export async function upsertOnyxCustomerFileArtifact(
   supabase: SupabaseClient,
   packet: OnyxAgentOrderPacket,
 ) {
-  const externalId = `onyx-order:${packet.source.quoteId}`;
+  const externalId = `onyx-order:${packet.source.quoteId}:${packet.orderFormKey}`;
   const { data: existing } = await supabase
     .from("crm_customer_contracts")
     .select("meta")
@@ -624,7 +797,7 @@ export async function upsertOnyxCustomerFileArtifact(
     job_id: packet.source.jobId,
     quote_id: packet.source.quoteId,
     bookkeeping_entry_id: null,
-    title: `Onyx Order Packet - ${packet.source.quoteNumber || packet.source.customerName}`,
+    title: `Onyx ${packet.productDisplayName} Order Packet - ${packet.source.quoteNumber || packet.source.customerName}`,
     contract_url: `/api/crm/vendor-order-packets/onyx/${encodeURIComponent(packet.source.quoteId)}`,
     share_token: null,
     status: packet.status.toLowerCase(),
@@ -636,7 +809,11 @@ export async function upsertOnyxCustomerFileArtifact(
       source: "manufacturer_order_packet",
       manufacturer_key: "onyx",
       product_family_key: "shutters",
-      order_form_key: ONYX_ORDER_FORM_KEY,
+      order_form_key: packet.orderFormKey,
+      quote_program_key: packet.quoteProgramKey,
+      product_display_name: packet.productDisplayName,
+      portal_material: packet.portalMaterial,
+      portal_mapping_status: packet.portalMappingStatus,
       authoritative_source: packet.source.kind,
       current_packet: packet,
       packet_history: history.slice(-20),

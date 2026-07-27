@@ -152,10 +152,10 @@ describe("Onyx shutter order preparation", () => {
       requestedBy: "sales-user-1",
     });
     expect(queued.issueCount).toBeGreaterThan(0);
-    expect(queued.taskId).toMatch(/^onyx:quote-1:[a-f0-9]{16}$/);
+    expect(queued.taskId).toMatch(/^onyx:quote-1:onyx_poly_composite_v1:[a-f0-9]{16}$/);
     expect(queued.payload).toMatchObject({
-      schemaVersion: "onyx-agent-order-packet.v2",
-      orderFormKey: "onyx_shutters_v1",
+      schemaVersion: "onyx-agent-order-packet.v3",
+      orderFormKey: "onyx_poly_composite_v1",
       source: { kind: "submitted_technical_measure" },
     });
     await expect(enqueueVendorOrderPreparation(source, "sales-user-1")).resolves.toMatchObject({

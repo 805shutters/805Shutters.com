@@ -46,7 +46,7 @@ import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity } from "@/lib/brand-identity";
 import {
-  buildOnyxAgentOrderPacket,
+  buildOnyxAgentOrderPackets,
   onyxLinesFromSignedContract,
   upsertOnyxCustomerFileArtifact,
 } from "@/lib/crm/vendor-orders/onyx-order-packet";
@@ -864,7 +864,7 @@ async function syncSignedQuoteArtifacts(
   if (pub.hasOnyxShutters) {
     const built = await loadQuoteBuilder(supabase, quote.id);
     const onyxLines = onyxLinesFromSignedContract(built);
-    const packet = buildOnyxAgentOrderPacket({
+    const packets = buildOnyxAgentOrderPackets({
       sourceKind: "signed_contract",
       sourceId: `contract:${quote.id}`,
       contractId: null,
@@ -883,7 +883,7 @@ async function syncSignedQuoteArtifacts(
     }, onyxLines);
     // A customer may sign a subset of a mixed quote that excludes its Onyx
     // alternative. In that case there is intentionally no Onyx packet.
-    if (packet) await upsertOnyxCustomerFileArtifact(supabase, packet);
+    await Promise.all(packets.map((packet) => upsertOnyxCustomerFileArtifact(supabase, packet)));
   }
 }
 

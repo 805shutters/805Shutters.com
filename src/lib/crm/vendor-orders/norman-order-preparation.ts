@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { TechnicalMeasureForm } from "@/lib/crm/technical-measures";
 import { buildNormanRollerDraftPlan, type NormanRollerProfile } from "./norman-roller";
 import {
-  buildOnyxAgentOrderPacket,
+  buildOnyxAgentOrderPackets,
   isOnyxShutterValues,
   onyxLinesFromTechnicalMeasure,
   onyxPreparationSummary,
@@ -118,11 +118,11 @@ export async function enqueueNormanRollerPreparation(
   };
 }
 
-export function enqueueOnyxShutterPreparation(
+export function enqueueOnyxShutterPreparations(
   form: TechnicalMeasureForm,
   requestedBy?: string,
-): VendorOrderPreparationSummary {
-  const packet = buildOnyxAgentOrderPacket({
+): VendorOrderPreparationSummary[] {
+  const packets = buildOnyxAgentOrderPackets({
     sourceKind: "submitted_technical_measure",
     sourceId: form.id,
     contractId: form.contract_id,
@@ -138,7 +138,17 @@ export function enqueueOnyxShutterPreparation(
     jobsiteAddress: [form.customer_snapshot.address, form.customer_snapshot.city].filter(Boolean).join(", ") || null,
     jobNotes: String(form.meta.job_notes || ""),
   }, onyxLinesFromTechnicalMeasure(form));
-  return onyxPreparationSummary(packet, requestedBy);
+  return packets.length
+    ? packets.map((packet) => onyxPreparationSummary(packet, requestedBy))
+    : [onyxPreparationSummary(null, requestedBy)];
+}
+
+/** Compatibility wrapper for callers that only accept one vendor preparation. */
+export function enqueueOnyxShutterPreparation(
+  form: TechnicalMeasureForm,
+  requestedBy?: string,
+): VendorOrderPreparationSummary {
+  return enqueueOnyxShutterPreparations(form, requestedBy)[0];
 }
 
 export async function enqueueVendorOrderPreparations(
@@ -147,9 +157,9 @@ export async function enqueueVendorOrderPreparations(
 ): Promise<VendorOrderPreparationSummary[]> {
   const [norman, onyx] = await Promise.all([
     enqueueNormanRollerPreparation(form, requestedBy),
-    Promise.resolve(enqueueOnyxShutterPreparation(form, requestedBy)),
+    Promise.resolve(enqueueOnyxShutterPreparations(form, requestedBy)),
   ]);
-  return [norman, onyx].filter((preparation) => preparation.status !== "skipped");
+  return [norman, ...onyx].filter((preparation) => preparation.status !== "skipped");
 }
 
 /** Compatibility wrapper for older callers. New submission code must use the plural fan-out. */

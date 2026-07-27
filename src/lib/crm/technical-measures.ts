@@ -955,13 +955,11 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
       vendor_order_preparations: orderPreparations,
     };
     await supabase.from("crm_technical_measure_forms").update({ meta: nextMeta }).eq("id", form.id);
-    const onyx = orderPreparations.find((item) => item.manufacturer === "Onyx");
-    if (onyx?.payload) {
-      await upsertOnyxCustomerFileArtifact(
-        supabase,
-        onyx.payload as unknown as OnyxAgentOrderPacket,
-      );
-    }
+    const onyx = orderPreparations.filter((item) => item.manufacturer === "Onyx" && item.payload);
+    await Promise.all(onyx.map((item) => upsertOnyxCustomerFileArtifact(
+      supabase,
+      item.payload as unknown as OnyxAgentOrderPacket,
+    )));
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
@@ -1011,13 +1009,11 @@ export async function backfillSubmittedVendorOrderPreparation(
     })
     .eq("id", form.id);
   if (error) throw new CrmAuthError(502, "The submitted measure could not be queued for order entry.");
-  const onyx = orderPreparations.find((item) => item.manufacturer === "Onyx");
-  if (onyx?.payload) {
-    await upsertOnyxCustomerFileArtifact(
-      supabase,
-      onyx.payload as unknown as OnyxAgentOrderPacket,
-    );
-  }
+  const onyx = orderPreparations.filter((item) => item.manufacturer === "Onyx" && item.payload);
+  await Promise.all(onyx.map((item) => upsertOnyxCustomerFileArtifact(
+    supabase,
+    item.payload as unknown as OnyxAgentOrderPacket,
+  )));
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: form.job_id,

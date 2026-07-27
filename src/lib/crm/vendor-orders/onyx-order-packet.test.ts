@@ -3,6 +3,7 @@ import type { CrmQuoteWithItems } from "@/lib/crm/types";
 import type { TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
 import {
   buildOnyxAgentOrderPacket,
+  buildOnyxAgentOrderPackets,
   onyxLinesFromSignedContract,
   type OnyxOrderSourceLine,
   type OnyxPacketContext,
@@ -84,7 +85,10 @@ describe("Onyx agent order packet", () => {
       status: "READY",
       manufacturerKey: "onyx",
       productFamilyKey: "shutters",
-      orderFormKey: "onyx_shutters_v1",
+      orderFormKey: "onyx_vinyl_v1",
+      quoteProgramKey: "vinyl",
+      productDisplayName: "Vinyl",
+      portalMaterial: "Vinyl",
       allowedAction: "draft_entry_only",
       source: {
         kind: "submitted_technical_measure",
@@ -188,5 +192,48 @@ describe("Onyx agent order packet", () => {
     expect(lines).toHaveLength(2);
     expect(lines.map((line) => line.sourceQuantityIndex)).toEqual([1, 2]);
     expect(lines.every((line) => line.sourceQuoteLineItemId === "line-onyx")).toBe(true);
+  });
+
+  it("creates a separate stored document for every exact Onyx product program", () => {
+    const packets = buildOnyxAgentOrderPackets(context(), [
+      sourceLine(),
+      sourceLine({
+        lineId: "measure-line-2",
+        sourceOpeningId: "measure-line-2",
+        sourceQuoteLineItemId: "quote-line-2",
+        sortOrder: 2,
+        values: values({
+          program_id: "painted_basswood",
+          details: { ...values().details, material: "Bassia" },
+        }),
+      }),
+    ]);
+
+    expect(packets.map((packet) => packet.orderFormKey)).toEqual([
+      "onyx_vinyl_v1",
+      "onyx_painted_basswood_v1",
+    ]);
+    expect(packets.every((packet) => packet.lines.length === 1)).toBe(true);
+  });
+
+  it("creates but blocks a US-made vinyl page until its portal material mapping is verified", () => {
+    const packet = buildOnyxAgentOrderPacket(context(), [
+      sourceLine({
+        values: values({
+          program_id: "onyx_us_made_vinyl",
+          details: { ...values().details, material: null },
+        }),
+      }),
+    ]);
+
+    expect(packet).toMatchObject({
+      orderFormKey: "onyx_us_made_vinyl_v1",
+      productDisplayName: "Onyx US Made Vinyl",
+      portalMappingStatus: "portal_mapping_required",
+      status: "BLOCKED",
+    });
+    expect(packet?.blockingIssues).toContain(
+      "Line 1: Onyx US Made Vinyl does not have a verified Onyx portal material mapping.",
+    );
   });
 });
