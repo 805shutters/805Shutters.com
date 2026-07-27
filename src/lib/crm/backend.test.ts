@@ -24,7 +24,9 @@ import {
   updateCrmInstallationInvoiceEmail,
   updateCrmQuote,
   updateCrmSettings,
-  vendorOrderTaskFromRow
+  vendorOrderTaskFromDraftRow,
+  vendorOrderTaskFromRow,
+  vendorOrderTasksFromRow
 } from "./backend";
 import { CrmAuthError } from "./auth";
 import {
@@ -473,6 +475,7 @@ describe("vendorOrderTaskFromRow", () => {
   it("projects only safe queued-task metadata for the CRM action card", () => {
     const task = vendorOrderTaskFromRow(queuedRow);
     expect(task).toEqual({
+      recordId: null,
       taskId: "task_12345678",
       formId: "form-123",
       jobId: "job-123",
@@ -482,8 +485,15 @@ describe("vendorOrderTaskFromRow", () => {
       manufacturer: "Norman",
       productType: "roller",
       status: "queued",
+      sourceKind: "submitted_technical_measure",
       submittedAt: "2026-07-26T18:00:00.000Z",
-      message: "Ready for saved-draft entry."
+      message: "Ready for saved-draft entry.",
+      routingKeys: [],
+      productNames: [],
+      lineCount: 1,
+      portalUrl: null,
+      orderPacketUrl: null,
+      manufacturerOrderRef: null,
     });
     expect(task).not.toHaveProperty("payload");
   });
@@ -514,6 +524,61 @@ describe("vendorOrderTaskFromRow", () => {
       meta: { vendor_order_preparation: { ...queuedRow.meta.vendor_order_preparation, status: "review_ready" } }
     })).toBeNull();
     expect(vendorOrderTaskFromRow({ ...queuedRow, submitted_at: null })).toBeNull();
+  });
+
+  it("fans one submitted measure into one safe dashboard task per manufacturer", () => {
+    const preparations = ["Norman", "Onyx", "Lotus", "Polar"].map((manufacturer, index) => ({
+      taskId: `${manufacturer.toLowerCase()}:form-123:${index}`,
+      manufacturer,
+      productType: index ? "mixed" : "roller",
+      status: "queued",
+      message: `${manufacturer} is ready.`,
+      routingKeys: [`${manufacturer.toLowerCase()}:product`],
+      productNames: [`${manufacturer} Product`],
+      lineCount: index + 1,
+      portalUrl: `https://${manufacturer.toLowerCase()}.example.test/order`,
+      orderPacketUrl: "/api/crm/vendor-order-packets/quote-123",
+      payload: { customer: { name: "must not reach dashboard" } },
+    }));
+    const tasks = vendorOrderTasksFromRow({
+      ...queuedRow,
+      meta: { vendor_order_preparations: preparations },
+    });
+    expect(tasks.map((task) => task.manufacturer)).toEqual(["Norman", "Onyx", "Lotus", "Polar"]);
+    expect(tasks.every((task) => task.customerName === "Ready Customer")).toBe(true);
+    expect(tasks.every((task) => !("payload" in task))).toBe(true);
+  });
+
+  it("projects durable signed-contract tasks with lifecycle metadata", () => {
+    expect(vendorOrderTaskFromDraftRow({
+      id: "draft-1",
+      external_task_id: "contract:quote-123:lotus:abc",
+      technical_measure_form_id: null,
+      crm_job_id: "job-123",
+      crm_quote_id: "quote-123",
+      manufacturer: "Lotus",
+      product_type: "lotus_roller_shades",
+      status: "review_ready",
+      source_kind: "signed_contract",
+      requested_at: "2026-07-27T18:00:00.000Z",
+      customer_snapshot: { name: "Ready Customer" },
+      quote_snapshot: { quoteNumber: "805-0200" },
+      routing_keys: ["lotus:lotus_roller_shades"],
+      product_names: ["Lotus Roller Shades"],
+      line_count: 2,
+      portal_url: "https://www.lotusblind.com/",
+      order_packet_url: "/api/crm/vendor-order-packets/quote-123?manufacturer=lotus&format=html",
+      manufacturer_order_ref: null,
+      message: "Lotus order is ready for review.",
+    })).toMatchObject({
+      recordId: "draft-1",
+      formId: null,
+      manufacturer: "Lotus",
+      status: "review_ready",
+      sourceKind: "signed_contract",
+      customerName: "Ready Customer",
+      lineCount: 2,
+    });
   });
 });
 

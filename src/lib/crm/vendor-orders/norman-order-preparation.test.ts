@@ -5,8 +5,10 @@ import {
   enqueueNormanRollerPreparation,
   enqueueOnyxShutterPreparation,
   enqueueVendorOrderPreparation,
+  enqueueVendorOrderPreparations,
   validateNormanRollerMeasureForSubmission,
 } from "./norman-order-preparation";
+import { resolveManufacturerTechnicalMeasureSchema } from "./manufacturer-technical-measure-schemas";
 
 function line(): TechnicalMeasureLine {
   const values = {
@@ -134,7 +136,7 @@ describe("Norman Roller order preparation", () => {
 });
 
 describe("Onyx shutter order preparation", () => {
-  it("queues submitted Onyx shutters without relabeling them as Norman", async () => {
+  it("routes submitted Onyx shutters without relabeling them as Norman", async () => {
     const source = form();
     source.lines[0].current_values.product_id = "shutter";
     source.lines[0].current_values.details = {
@@ -147,19 +149,97 @@ describe("Onyx shutter order preparation", () => {
     expect(queued).toMatchObject({
       manufacturer: "Onyx",
       productType: "shutters",
-      status: "queued",
+      status: "needs_input",
       requestedBy: "sales-user-1",
-      issueCount: 0,
     });
-    expect(queued.taskId).toMatch(/^onyx:form-1:[a-f0-9]{12}$/);
+    expect(queued.issueCount).toBeGreaterThan(0);
+    expect(queued.taskId).toMatch(/^onyx:quote-1:onyx_poly_composite_v1:[a-f0-9]{16}$/);
     expect(queued.payload).toMatchObject({
-      adapterVersion: "onyx-shutter-measure-v1",
-      ready: true,
+      schemaVersion: "onyx-agent-order-packet.v3",
+      orderFormKey: "onyx_poly_composite_v1",
+      source: { kind: "submitted_technical_measure" },
     });
     await expect(enqueueVendorOrderPreparation(source, "sales-user-1")).resolves.toMatchObject({
       manufacturer: "Onyx",
-      productType: "shutters",
+      productType: "poly_composite",
       status: "queued",
     });
+  });
+
+  it("fans a mixed measure out to both manufacturer packets", async () => {
+    process.env.NORMAN_SHIP_TO_PROFILE_ID = "dealer-camarillo";
+    const source = form();
+    const onyx = line();
+    onyx.id = "measure-line-2";
+    onyx.quote_line_item_id = "quote-line-2";
+    onyx.sort_order = 2;
+    onyx.current_values.product_id = "onyx_shutters";
+    onyx.current_values.details = {
+      supplier: "Onyx",
+      material: "Vinyl",
+      onyx_order_type: "Regular",
+      frame_type: "VZ Crest",
+      size_type: "W - Window Size",
+      frame_sides: "4",
+      color: "101_White",
+      louver_size: '3 1/2"',
+      hinge_color: "White",
+      astragal: "No",
+      tilt_type: "C - Front Center Tiltrod",
+      panel_config: "LR",
+      window_type: "Single",
+      divider_rail: "No",
+      split_tilt_rod: "No",
+    };
+    source.lines.push(onyx);
+
+    const preparations = await enqueueVendorOrderPreparations(source, "sales-user-1");
+    expect(preparations.map((item) => item.manufacturer)).toEqual(["Norman", "Onyx"]);
+    expect(preparations).toHaveLength(2);
+  });
+
+  it("creates one packet per manufacturer and repeats the same customer identity", async () => {
+    process.env.NORMAN_SHIP_TO_PROFILE_ID = "dealer-camarillo";
+    const source = form();
+    const variants: Array<{ supplier: string; product_id: string; details: Record<string, string> }> = [
+      { supplier: "Norman", product_id: "roller", details: { supplier: "Norman" } },
+      { supplier: "Onyx", product_id: "shutter", details: { supplier: "Onyx", material: "Poly Composite" } },
+      { supplier: "Lotus", product_id: "lotus_roller_shades", details: { supplier: "Lotus" } },
+      { supplier: "Polar", product_id: "interior_roller", details: { supplier: "Polar" } },
+    ];
+    source.lines = variants.map((variant, index) => {
+      const next = line();
+      next.id = `measure-line-${index + 1}`;
+      next.quote_line_item_id = `quote-line-${index + 1}`;
+      next.current_values.product_id = variant.product_id;
+      next.current_values.details = { ...next.current_values.details, ...variant.details };
+      next.measure_schema = resolveManufacturerTechnicalMeasureSchema(next.current_values);
+      return next;
+    });
+
+    const preparations = await enqueueVendorOrderPreparations(source, "sales-user-1");
+    expect(preparations.map((item) => item.manufacturer)).toEqual(["Norman", "Onyx", "Lotus", "Polar"]);
+    expect(preparations).toHaveLength(4);
+    for (const preparation of preparations) {
+      expect(preparation.lineCount).toBe(1);
+      expect(preparation.orderPacketUrl).toBe(
+        `/api/crm/vendor-order-packets/quote-1?manufacturer=${preparation.manufacturer.toLowerCase()}&format=html`,
+      );
+      if (preparation.manufacturer !== "Norman") {
+        expect(preparation.payload).toMatchObject({
+          customer: { id: "customer-1", name: "Jane Customer" },
+        });
+      }
+    }
+  });
+
+  it("fails closed instead of silently dropping an unresolved line", async () => {
+    const source = form();
+    source.lines[0].current_values.product_id = "unknown-product";
+    source.lines[0].current_values.program_id = null;
+    source.lines[0].current_values.details = {};
+    source.lines[0].measure_schema = null;
+    await expect(enqueueVendorOrderPreparations(source, "sales-user-1"))
+      .rejects.toThrow("Exact manufacturer and product routing is missing for line 1.");
   });
 });

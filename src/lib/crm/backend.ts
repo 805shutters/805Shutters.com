@@ -1445,49 +1445,107 @@ function jobStatusForBookkeepingRow(row: CrmBookkeepingRow): CrmJobStatus {
   return "sold";
 }
 
-export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | null {
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(optionalText).filter((item): item is string => Boolean(item))
+    : [];
+}
+
+export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
   const row = objectMeta(value);
-  const order = objectMeta(objectMeta(row.meta).vendor_order_preparation);
+  const meta = objectMeta(row.meta);
+  const orders = Array.isArray(meta.vendor_order_preparations)
+    ? meta.vendor_order_preparations
+    : meta.vendor_order_preparation
+      ? [meta.vendor_order_preparation]
+      : [];
   const customer = objectMeta(row.customer_snapshot);
   const quote = objectMeta(row.quote_snapshot);
-  const taskId = optionalText(order.taskId);
   const formId = optionalText(row.id);
   const jobId = optionalText(row.job_id);
   const quoteId = optionalText(row.quote_id);
   const submittedAt = optionalText(row.submitted_at);
-  const manufacturer = order.manufacturer === "Norman" || order.manufacturer === "Onyx"
-    ? order.manufacturer
+  if (!formId || !jobId || !quoteId || !submittedAt) return [];
+  const seen = new Set<string>();
+  return orders.flatMap((value) => {
+    const order = objectMeta(value);
+    const taskId = optionalText(order.taskId);
+    const manufacturer = ["Norman", "Onyx", "Lotus", "Polar"].includes(String(order.manufacturer))
+      ? order.manufacturer as CrmVendorOrderTask["manufacturer"]
+      : null;
+    const productType = optionalText(order.productType);
+    if (!taskId || seen.has(taskId) || !manufacturer || !productType || order.status !== "queued") return [];
+    seen.add(taskId);
+    const productNames = stringArray(order.productNames);
+    return [{
+      recordId: null,
+      taskId,
+      formId,
+      jobId,
+      quoteId,
+      customerName: optionalText(customer.name) || "Customer",
+      quoteNumber: optionalText(quote.quoteNumber),
+      manufacturer,
+      productType,
+      status: "queued" as const,
+      sourceKind: "submitted_technical_measure" as const,
+      submittedAt,
+      message: optionalText(order.message) || `${manufacturer} order entry is ready to start.`,
+      routingKeys: stringArray(order.routingKeys),
+      productNames,
+      lineCount: Math.max(1, Number(order.lineCount) || 1),
+      portalUrl: optionalText(order.portalUrl),
+      orderPacketUrl: optionalText(order.orderPacketUrl),
+      manufacturerOrderRef: null,
+    }];
+  });
+}
+
+export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | null {
+  return vendorOrderTasksFromRow(value)[0] || null;
+}
+
+export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask | null {
+  const row = objectMeta(value);
+  const recordId = optionalText(row.id);
+  const taskId = optionalText(row.external_task_id);
+  const jobId = optionalText(row.crm_job_id);
+  const quoteId = optionalText(row.crm_quote_id);
+  const requestedAt = optionalText(row.requested_at);
+  const manufacturer = ["Norman", "Onyx", "Lotus", "Polar"].includes(String(row.manufacturer))
+    ? row.manufacturer as CrmVendorOrderTask["manufacturer"]
     : null;
-  const productType = order.productType === "roller" || order.productType === "shutters"
-    ? order.productType
+  const status = ["needs_input", "queued", "processing", "review_ready", "failed"].includes(String(row.status))
+    ? row.status as CrmVendorOrderTask["status"]
     : null;
-  const supportedScope = (manufacturer === "Norman" && productType === "roller")
-    || (manufacturer === "Onyx" && productType === "shutters");
-  if (
-    !taskId ||
-    !formId ||
-    !jobId ||
-    !quoteId ||
-    !submittedAt ||
-    !manufacturer ||
-    !productType ||
-    !supportedScope ||
-    order.status !== "queued"
-  ) {
-    return null;
-  }
+  const sourceKind = row.source_kind === "signed_contract" || row.source_kind === "submitted_technical_measure"
+    ? row.source_kind
+    : null;
+  if (!recordId || !taskId || !jobId || !quoteId || !requestedAt || !manufacturer || !status || !sourceKind) return null;
+  const customer = objectMeta(row.customer_snapshot);
+  const quote = objectMeta(row.quote_snapshot);
   return {
+    recordId,
     taskId,
-    formId,
+    formId: optionalText(row.technical_measure_form_id),
     jobId,
     quoteId,
     customerName: optionalText(customer.name) || "Customer",
     quoteNumber: optionalText(quote.quoteNumber),
     manufacturer,
-    productType,
-    status: "queued",
-    submittedAt,
-    message: optionalText(order.message) || `${manufacturer} order entry is ready to start.`,
+    productType: optionalText(row.product_type) || "product",
+    status,
+    sourceKind,
+    submittedAt: requestedAt,
+    message: optionalText(row.message)
+      || optionalText(row.error_message)
+      || `${manufacturer} order entry is ${status.replaceAll("_", " ")}.`,
+    routingKeys: stringArray(row.routing_keys),
+    productNames: stringArray(row.product_names),
+    lineCount: Math.max(1, Number(row.line_count) || 1),
+    portalUrl: optionalText(row.portal_url),
+    orderPacketUrl: optionalText(row.order_packet_url),
+    manufacturerOrderRef: optionalText(row.manufacturer_order_ref),
   };
 }
 
@@ -1510,6 +1568,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     orderCogsEmailFallbackEventsResult,
     commissionPaymentsResult,
     commissionPaymentAllocationsResult,
+    vendorOrderDraftsResult,
     vendorOrderTasksResult,
     settingsResult
   ] = await Promise.all([
@@ -1577,12 +1636,16 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .order("created_at", { ascending: true })
       .limit(4000),
     supabase
+      .from("crm_vendor_order_drafts")
+      .select("id,external_task_id,technical_measure_form_id,crm_job_id,crm_quote_id,manufacturer,product_type,status,source_kind,requested_at,customer_snapshot,quote_snapshot,routing_keys,product_names,line_count,portal_url,order_packet_url,manufacturer_order_ref,message,error_message")
+      .order("requested_at", { ascending: false })
+      .limit(1000),
+    supabase
       .from("crm_technical_measure_forms")
       .select("id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot")
       .eq("status", "submitted")
-      .eq("meta->vendor_order_preparation->>status", "queued")
-      .order("submitted_at", { ascending: true })
-      .limit(250),
+      .order("submitted_at", { ascending: false })
+      .limit(1000),
     supabase.from("crm_settings").select("*")
   ]);
 
@@ -1630,8 +1693,12 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM commission payment allocations could not be loaded.", commissionPaymentAllocationsResult.error.message);
   }
 
+  if (vendorOrderDraftsResult.error) {
+    console.warn("CRM durable vendor order tasks could not be loaded.", vendorOrderDraftsResult.error.message);
+  }
+
   if (vendorOrderTasksResult.error) {
-    console.warn("CRM vendor order tasks could not be loaded.", vendorOrderTasksResult.error.message);
+    console.warn("CRM legacy vendor order tasks could not be loaded.", vendorOrderTasksResult.error.message);
   }
 
   if (settingsResult.error) {
@@ -1682,9 +1749,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const commissionPaymentAllocations = (
     commissionPaymentAllocationsResult.error ? [] : commissionPaymentAllocationsResult.data || []
   ) as CrmCommissionPaymentAllocation[];
-  const vendorOrderTasks = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || [])
-    .map(vendorOrderTaskFromRow)
+  const durableVendorOrderTasks = (vendorOrderDraftsResult.error ? [] : vendorOrderDraftsResult.data || [])
+    .map(vendorOrderTaskFromDraftRow)
     .filter((task): task is CrmVendorOrderTask => Boolean(task));
+  const durableTaskIds = new Set(durableVendorOrderTasks.map((task) => task.taskId));
+  const legacyVendorOrderTasks = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || [])
+    .flatMap(vendorOrderTasksFromRow)
+    .filter((task) => !durableTaskIds.has(task.taskId));
+  const vendorOrderTasks = [...durableVendorOrderTasks, ...legacyVendorOrderTasks];
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
     value: number;

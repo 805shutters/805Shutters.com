@@ -30,7 +30,10 @@ import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales
 import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
-import { createQuoteV2Draft } from "@mts/lib/quoteV2ServerClient";
+import {
+  createQuoteV2Draft,
+  listQuoteV2Records,
+} from "@mts/lib/quoteV2ServerClient";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
@@ -159,6 +162,9 @@ export function QuoteDashboard({
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: queryKeys.salesQuotes.byAccount(activeAccountId),
     queryFn: async () => {
+      if (serverOwnedV2 && activeAccountId === ACCOUNT_IDS.SHUTTERS_805) {
+        return listQuoteV2Records(supabase);
+      }
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
         .select("*")

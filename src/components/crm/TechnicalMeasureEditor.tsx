@@ -29,6 +29,7 @@ import {
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
+import { ManufacturerTechnicalMeasureFields } from "@/components/crm/ManufacturerTechnicalMeasureFields";
 import {
   applyOfflineTechnicalMeasureDraft,
   cacheTechnicalMeasureDraft,
@@ -245,10 +246,15 @@ function fieldName(key: string) {
   return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function orderPreparation(form: TechnicalMeasureForm | null) {
-  const value = form?.meta.vendor_order_preparation;
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as {
+function orderPreparations(form: TechnicalMeasureForm | null) {
+  const plural = form?.meta.vendor_order_preparations;
+  const values = Array.isArray(plural)
+    ? plural
+    : form?.meta.vendor_order_preparation
+      ? [form.meta.vendor_order_preparation]
+      : [];
+  return values.flatMap((value) => value && typeof value === "object" && !Array.isArray(value)
+    ? [value as {
         status?: string;
         message?: string;
         issueCount?: number;
@@ -256,8 +262,10 @@ function orderPreparation(form: TechnicalMeasureForm | null) {
         portalDraftId?: string | null;
         manufacturer?: string;
         productType?: string;
-      }
-    : null;
+        lineCount?: number;
+        orderPacketUrl?: string | null;
+      }]
+    : []);
 }
 
 function SignaturePad({ value, onChange }: { value: SignatureStroke[]; onChange: (value: SignatureStroke[]) => void }) {
@@ -634,17 +642,19 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     finally { setBusy(false); }
   }
 
-  async function backfillVendorOrder() {
+  async function backfillVendorOrder(force = false) {
     if (!session) return;
     setBusy(true); setMessage(null);
     try {
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(
         session,
         `/api/crm/technical-measures/${formId}/vendor-order-backfill`,
-        { method: "POST", body: "{}" },
+        { method: "POST", body: JSON.stringify({ force }) },
       );
       hydrate(result.form, false);
-      setMessage("Onyx shutter order added to the CRM order-entry queue.");
+      setMessage(force
+        ? "Manufacturer orders rebuilt from all submitted measurement lines."
+        : "Manufacturer orders added to the CRM order-entry queue.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The submitted measure could not be queued for order entry.");
     } finally {
@@ -692,13 +702,19 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const pendingWidth = activePickerLine ? wholeFraction(activePickerLine.current_values.width_in) : null;
   const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
   const readOnly = form?.status === "submitted";
-  const vendorOrderPreparation = orderPreparation(form);
-  const canBackfillOnyxOrder = readOnly
-    && !vendorOrderPreparation
-    && lines.some((line) => {
-      const details = line.current_values.details || {};
-      return isShutterProduct(line.current_values.product_id) && isOnyxShutter(line.current_values.product_id, details);
-    });
+  const vendorOrderPreparations = orderPreparations(form);
+  const canBackfillVendorOrders = readOnly && vendorOrderPreparations.length === 0 && lines.length > 0;
+  const queuedLineCount = vendorOrderPreparations.reduce(
+    (total, preparation) => total + Math.max(0, Number(preparation.lineCount) || 0),
+    0,
+  );
+  const canRebuildVendorOrders = readOnly
+    && vendorOrderPreparations.length > 0
+    && lines.length > 0
+    && (
+      queuedLineCount !== lines.length
+      || vendorOrderPreparations.some((preparation) => !preparation.orderPacketUrl)
+    );
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const futureMeasures = form?.futureMeasures || [];
 
@@ -734,21 +750,30 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </nav>
 
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
-      {vendorOrderPreparation ? (
-        <section className="technical-measure-order-status" data-status={vendorOrderPreparation.status}>
-          <div><span>{String(vendorOrderPreparation.manufacturer || "Vendor")} {String(vendorOrderPreparation.productType || "order")} preparation</span><strong>{String(vendorOrderPreparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
-          <p>{vendorOrderPreparation.message}</p>
-          {vendorOrderPreparation.issueCount ? <small>{vendorOrderPreparation.issueCount} item{vendorOrderPreparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
-          {vendorOrderPreparation.portalDraftId ? <small>Norman draft: {vendorOrderPreparation.portalDraftId}</small> : null}
+      {vendorOrderPreparations.map((preparation) => (
+        <section className="technical-measure-order-status" data-status={preparation.status} key={`${preparation.manufacturer}:${preparation.taskId}`}>
+          <div><span>{String(preparation.manufacturer || "Vendor")} {String(preparation.productType || "order")} preparation</span><strong>{String(preparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
+          <p>{preparation.message}</p>
+          {preparation.issueCount ? <small>{preparation.issueCount} item{preparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
+          {preparation.portalDraftId ? <small>Norman draft: {preparation.portalDraftId}</small> : null}
           <b>Review every line before placing or submitting the order.</b>
         </section>
-      ) : null}
-      {canBackfillOnyxOrder ? (
+      ))}
+      {canBackfillVendorOrders ? (
         <section className="technical-measure-order-status" data-status="needs_input">
-          <div><span>Onyx shutters order preparation</span><strong>Not queued</strong></div>
-          <p>This submitted measure predates the Onyx CRM order-entry queue.</p>
+          <div><span>Manufacturer order preparation</span><strong>Not queued</strong></div>
+          <p>This submitted measure predates the manufacturer-separated CRM order queue.</p>
           <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
-            Queue Onyx Order
+            Queue Manufacturer Orders
+          </button>
+        </section>
+      ) : null}
+      {canRebuildVendorOrders ? (
+        <section className="technical-measure-order-status" data-status="needs_input">
+          <div><span>Manufacturer order preparation</span><strong>Reset required</strong></div>
+          <p>The queued order no longer matches all submitted measurement lines. Rebuild it from the submitted technical measure before portal entry.</p>
+          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder(true)}>
+            Rebuild Manufacturer Orders
           </button>
         </section>
       ) : null}
@@ -791,6 +816,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const tiltType = detailText(current.details, "tilt_type", "tilt", "tilt_rod");
           const baselineTiltType = detailText(baseline.details, "tilt_type", "tilt", "tilt_rod");
           const supplier = detailText(current.details, "supplier", "manufacturer");
+          const measureSchema = line.measure_schema;
           const customOpening = customOpeningLineId === line.id
             || (!!current.opening_label && !OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number]));
           const splitTiltLocation = detailText(current.details, "split_tilt_location")
@@ -887,7 +913,21 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                     onFabric={({ fabric, programId }) => updateLine(line.id, { fabric, program_id: programId })}
                   />
                 ) : null}
-                {detailKeys.map((key) => {
+                {!onyxShutter && !normanRoller && measureSchema ? (
+                  <ManufacturerTechnicalMeasureFields
+                    schema={measureSchema}
+                    values={current}
+                    disabled={readOnly}
+                    onDetail={(key, value) => updateDetail(line.id, key, value)}
+                  />
+                ) : null}
+                {!onyxShutter && !normanRoller && !measureSchema ? (
+                  <div className="technical-measure-schema-blocked" role="alert">
+                    <strong>Product-specific measure form unavailable</strong>
+                    <span>The manufacturer and exact product/program must be resolved before this line can be measured for ordering.</span>
+                  </div>
+                ) : null}
+                {(onyxShutter || normanRoller || !measureSchema) ? detailKeys.map((key) => {
                   const value = current.details[key];
                   const isBoolean = typeof value === "boolean" || typeof baseline.details[key] === "boolean";
                   const options = shutterProduct ? shutterDetailOptions(key, onyxShutter) : null;
@@ -903,7 +943,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   ) : (
                     <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} /></label>
                   );
-                })}
+                }) : null}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>

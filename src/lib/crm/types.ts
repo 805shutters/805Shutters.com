@@ -798,17 +798,25 @@ export type CrmKenPayoffSummary = {
 };
 
 export type CrmVendorOrderTask = {
+  recordId: string | null;
   taskId: string;
-  formId: string;
+  formId: string | null;
   jobId: string;
   quoteId: string;
   customerName: string;
   quoteNumber: string | null;
-  manufacturer: "Norman" | "Onyx";
-  productType: "roller" | "shutters";
-  status: "queued";
+  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
+  productType: string;
+  status: "needs_input" | "queued" | "processing" | "review_ready" | "failed";
+  sourceKind: "signed_contract" | "submitted_technical_measure";
   submittedAt: string;
   message: string;
+  routingKeys: string[];
+  productNames: string[];
+  lineCount: number;
+  portalUrl: string | null;
+  orderPacketUrl: string | null;
+  manufacturerOrderRef: string | null;
 };
 
 export type CrmDashboardData = {

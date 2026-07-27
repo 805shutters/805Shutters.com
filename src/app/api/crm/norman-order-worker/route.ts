@@ -21,6 +21,20 @@ function preparation(meta: unknown): Preparation {
   return object(object(meta).vendor_order_preparation) as Preparation;
 }
 
+function withPreparation(meta: Record<string, unknown>, next: Preparation) {
+  const plural = Array.isArray(meta.vendor_order_preparations)
+    ? meta.vendor_order_preparations.map((item) => {
+        const candidate = object(item);
+        return candidate.taskId === next.taskId ? next : item;
+      })
+    : [next];
+  return {
+    ...meta,
+    vendor_order_preparation: next,
+    vendor_order_preparations: plural,
+  };
+}
+
 function requireWorkerAccess(request: NextRequest) {
   const secret = process.env.NORMAN_ORDER_WORKER_SECRET?.trim();
   if (!secret) throw new CrmAuthError(503, "Norman order worker is not configured.");
@@ -51,13 +65,17 @@ async function claimTask(supabase: NonNullable<ReturnType<typeof getSupabaseServ
     const next = { ...current, status: "processing", startedAt, message: "Norman Roller portal entry is in progress." };
     const { data: claimed, error: claimError } = await supabase
       .from("crm_technical_measure_forms")
-      .update({ meta: { ...meta, vendor_order_preparation: next } })
+      .update({ meta: withPreparation(meta, next) })
       .eq("id", row.id)
       .eq("meta->vendor_order_preparation->>status", "queued")
       .select("id")
       .maybeSingle();
     if (claimError) throw new CrmAuthError(502, `Norman queue claim failed: ${claimError.message}`);
     if (claimed) {
+      await supabase
+        .from("crm_vendor_order_drafts")
+        .update({ status: "processing", started_at: startedAt, message: next.message })
+        .eq("external_task_id", current.taskId);
       return {
         id: current.taskId,
         technical_measure_form_id: row.id,
@@ -112,7 +130,7 @@ async function completeTask(
       };
   const { data: updated, error: updateError } = await supabase
     .from("crm_technical_measure_forms")
-    .update({ meta: { ...meta, vendor_order_preparation: next } })
+    .update({ meta: withPreparation(meta, next) })
     .eq("id", formId)
     .eq("meta->vendor_order_preparation->>status", "processing")
     .eq("meta->vendor_order_preparation->>taskId", taskId)
@@ -120,6 +138,22 @@ async function completeTask(
     .maybeSingle();
   if (updateError) throw new CrmAuthError(502, `Norman completion update failed: ${updateError.message}`);
   if (!updated) throw new CrmAuthError(409, "Norman measure task completion lost its processing lock.");
+  await supabase
+    .from("crm_vendor_order_drafts")
+    .update(status === "review_ready"
+      ? {
+          status,
+          review_ready_at: completedAt,
+          portal_draft_id: portalDraftId,
+          screenshot_path: screenshotPath,
+          message: next.message,
+        }
+      : {
+          status,
+          error_message: errorMessage,
+          message: next.message,
+        })
+    .eq("external_task_id", taskId);
 
   if (status !== "review_ready") return { status, taskId, formId };
 
@@ -147,7 +181,7 @@ async function completeTask(
   const alertedPreparation = { ...next, reviewAlert: alertStatus };
   const { error: alertStatusError } = await supabase
     .from("crm_technical_measure_forms")
-    .update({ meta: { ...meta, vendor_order_preparation: alertedPreparation } })
+    .update({ meta: withPreparation(meta, alertedPreparation) })
     .eq("id", formId)
     .eq("meta->vendor_order_preparation->>status", "review_ready")
     .eq("meta->vendor_order_preparation->>taskId", taskId);

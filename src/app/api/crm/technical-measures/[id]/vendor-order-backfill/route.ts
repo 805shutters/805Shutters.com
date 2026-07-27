@@ -8,10 +8,12 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user, displayName } = await requireCrmUser(request);
     const { id } = await context.params;
+    const body = await request.json().catch(() => ({})) as { force?: boolean };
     const form = await backfillSubmittedVendorOrderPreparation(
       supabase,
       id,
       { email, userId: user.id, displayName },
+      { force: body.force === true },
     );
     return NextResponse.json({ form });
   } catch (error) {

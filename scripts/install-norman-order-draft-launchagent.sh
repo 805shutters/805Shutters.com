@@ -50,7 +50,7 @@ cat > "$bridge_plist" <<PLIST
   <key>Label</key><string>${bridge_label}</string>
   <key>ProgramArguments</key><array>
     <string>/bin/zsh</string><string>-lc</string>
-    <string>cd '${repo_dir}' &amp;&amp; npm run orders:norman:bridge</string>
+    <string>cd '${repo_dir}' &amp;&amp; npm run orders:manufacturer:bridge</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -71,6 +71,7 @@ cat > "$chrome_plist" <<PLIST
     <string>--user-data-dir=${chrome_profile_dir}</string>
     <string>--no-first-run</string>
     <string>https://www.normanwindowcoverings.com/Login/default.asp</string>
+    <string>https://admin.onyxshutters.com/OrderList.aspx</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>${log_dir}/norman-order-chrome.log</string>
@@ -97,5 +98,5 @@ install_agent "$chrome_label" "$chrome_plist"
 install_agent "$bridge_label" "$bridge_plist"
 install_agent "$poll_label" "$poll_plist"
 
-echo "Installed Norman Chrome, review bridge, and two-minute saved-draft poller."
-echo "Log into Norman account RA00743 in the dedicated Chrome window. Final order submission remains disabled."
+echo "Installed manufacturer-order Chrome, review bridge, and two-minute Norman saved-draft poller."
+echo "Sign into each manufacturer in the dedicated Chrome window when prompted. Final order submission remains disabled."
