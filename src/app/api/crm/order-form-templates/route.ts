@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
-import { manufacturerOrderFormRegistry } from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
+import {
+  manufacturerOrderFormRegistry,
+  technicalMeasureTemplateRelativePath,
+} from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
 
 export const runtime = "nodejs";
 
@@ -22,6 +25,8 @@ export async function GET(request: NextRequest) {
         docx_url: `/order-form-templates/${entry.template_docx}`,
         pdf_url: `/order-form-templates/${entry.template_docx.replace(/\.docx$/i, ".pdf")}`,
         schema_url: `/order-form-templates/${entry.schema}`,
+        measure_docx_url: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "docx")}`,
+        measure_pdf_url: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "pdf")}`,
       }))
       .sort((left, right) =>
         left.manufacturer.localeCompare(right.manufacturer)
@@ -57,6 +62,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       registry_version: 1,
       packet_rule: "One customer cover page plus one dedicated manufacturer/product page per contract line item.",
+      line_pairing_rule: "Each exact manufacturer/product routing key owns one technical-measure document and one ordering document. Contract values seed both; submitted technical-measure values override the linked line before order release.",
+      measure_template_count: templates.length,
       templates,
       packets,
     });

@@ -16,6 +16,10 @@ describe("manufacturer technical measure schemas", () => {
       expect(schema?.productName).toBe(entry.product_name);
       expect(schema?.fields.length).toBeGreaterThan(0);
       expect(new Set(schema?.fields.map((field) => field.key)).size).toBe(schema?.fields.length);
+      expect(schema?.technicalMeasureDocxUrl).toMatch(/^\/technical-measure-templates\/.+\.docx$/);
+      expect(schema?.technicalMeasurePdfUrl).toMatch(/^\/technical-measure-templates\/.+\.pdf$/);
+      expect(schema?.orderTemplateDocxUrl).toMatch(/^\/order-form-templates\/.+\.docx$/);
+      expect(schema?.orderTemplatePdfUrl).toMatch(/^\/order-form-templates\/.+\.pdf$/);
     }
   });
 
@@ -34,6 +38,8 @@ describe("manufacturer technical measure schemas", () => {
     expect(roller?.fields.map((field) => field.key)).not.toContain("panel_config");
     expect(onyx?.fields.map((field) => field.key)).toContain("panel_config");
     expect(onyx?.fields.map((field) => field.key)).not.toContain("railroad_seam_placement");
+    expect(roller?.technicalMeasureDocxUrl).not.toBe(onyx?.technicalMeasureDocxUrl);
+    expect(roller?.orderTemplateDocxUrl).not.toBe(onyx?.orderTemplateDocxUrl);
   });
 
   it("fails closed when manufacturer or product identity is not exact", () => {

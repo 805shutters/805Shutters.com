@@ -17,6 +17,8 @@ type OrderFormTemplate = {
   docx_url: string;
   pdf_url: string;
   schema_url: string;
+  measure_docx_url: string;
+  measure_pdf_url: string;
 };
 
 type GeneratedPacket = {
@@ -36,6 +38,8 @@ type GeneratedPacket = {
 type LibraryResponse = {
   registry_version: number;
   packet_rule: string;
+  line_pairing_rule: string;
+  measure_template_count: number;
   templates: OrderFormTemplate[];
   packets: GeneratedPacket[];
 };
@@ -82,6 +86,7 @@ export function OrderFormLibrary({ session }: { session: Session }) {
   const [data, setData] = useState<LibraryResponse | null>(null);
   const [query, setQuery] = useState("");
   const [manufacturer, setManufacturer] = useState<(typeof manufacturers)[number]>("all");
+  const [libraryMode, setLibraryMode] = useState<"order" | "measure">("order");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -152,20 +157,52 @@ export function OrderFormLibrary({ session }: { session: Session }) {
       <header className="order-form-library-head">
         <div>
           <p className="eyebrow">Agentic Ordering</p>
-          <h2>Manufacturer Order Documents</h2>
+          <h2>Manufacturer Measure &amp; Order Documents</h2>
           <p>
-            One authoritative template per CRM product. Signed contracts seed the customer packet;
-            submitted technical measures replace the affected order values.
+            Every contract line is routed to one product-specific technical-measure page and its
+            matching manufacturer ordering page. Submitted measure values override the linked
+            contract line before order release.
           </p>
         </div>
         <div className="order-form-library-summary" aria-label="Order form library summary">
           <strong>{data?.templates.length || 43}</strong>
-          <span>Dedicated forms</span>
+          <span>Linked document pairs</span>
           <small>Registry v{data?.registry_version || 1}</small>
         </div>
       </header>
 
       {message ? <p className="crm-alert">{message}</p> : null}
+
+      <nav className="order-form-library-modes" aria-label="Manufacturer document sections">
+        <button
+          type="button"
+          className={libraryMode === "order" ? "active" : ""}
+          onClick={() => setLibraryMode("order")}
+        >
+          <strong>Ordering Documents</strong>
+          <span>{data?.templates.length || 43} portal-matched forms</span>
+        </button>
+        <button
+          type="button"
+          className={libraryMode === "measure" ? "active" : ""}
+          onClick={() => setLibraryMode("measure")}
+        >
+          <strong>Technical Measure Documents</strong>
+          <span>{data?.measure_template_count || 43} product-specific forms</span>
+        </button>
+      </nav>
+
+      <section className="order-form-library-section-head">
+        <div>
+          <p className="eyebrow">{libraryMode === "order" ? "Order Entry" : "Technician App"}</p>
+          <h3>{libraryMode === "order" ? "Ordering Documents" : "Technical Measure Documents"}</h3>
+        </div>
+        <p>
+          {libraryMode === "order"
+            ? "Portal-sequenced ordering pages populated from the signed contract or the submitted technical measure."
+            : "Editable product-specific field sheets seeded by the signed contract and authoritative when the technician submits changes."}
+        </p>
+      </section>
 
       <div className="order-form-library-counts">
         {manufacturers.slice(1).map((name) => (
@@ -202,8 +239,8 @@ export function OrderFormLibrary({ session }: { session: Session }) {
         </label>
       </div>
 
-      {loading ? <p className="crm-empty">Loading the order document library…</p> : null}
-      {!loading && !visible.length ? <p className="crm-empty">No order forms match that search.</p> : null}
+      {loading ? <p className="crm-empty">Loading the manufacturer document library…</p> : null}
+      {!loading && !visible.length ? <p className="crm-empty">No documents match that search.</p> : null}
 
       <div className="order-form-library-grid">
         {visible.map((template) => {
@@ -221,19 +258,38 @@ export function OrderFormLibrary({ session }: { session: Session }) {
               <code>{template.routing_key}</code>
               <dl>
                 <div>
-                  <dt>Workflow</dt>
-                  <dd>{template.workflow}</dd>
+                  <dt>{libraryMode === "order" ? "Workflow" : "Measure source"}</dt>
+                  <dd>{libraryMode === "order" ? template.workflow : "Signed contract → technician override"}</dd>
                 </div>
                 <div>
-                  <dt>Template</dt>
-                  <dd>Version {template.template_version}</dd>
+                  <dt>Linked pair</dt>
+                  <dd>Measure + order v{template.template_version}</dd>
                 </div>
               </dl>
               <div className="order-form-card-actions">
-                <a href={template.pdf_url} target="_blank" rel="noreferrer">Open form</a>
-                <a href={template.docx_url} download>Download DOCX</a>
+                <a
+                  href={libraryMode === "order" ? template.pdf_url : template.measure_pdf_url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open {libraryMode === "order" ? "order" : "measure"} form
+                </a>
+                <a
+                  href={libraryMode === "order" ? template.docx_url : template.measure_docx_url}
+                  download
+                >
+                  Download DOCX
+                </a>
                 <a href={template.schema_url} target="_blank" rel="noreferrer">Schema</a>
               </div>
+              <a
+                className="order-form-linked-document"
+                href={libraryMode === "order" ? template.measure_pdf_url : template.pdf_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open linked {libraryMode === "order" ? "measure" : "order"} document
+              </a>
               <a className="order-form-source" href={template.source_url} target="_blank" rel="noreferrer">
                 Manufacturer source
               </a>
@@ -250,7 +306,7 @@ export function OrderFormLibrary({ session }: { session: Session }) {
           </div>
           <span>{data?.packets.length || 0} recent</span>
         </div>
-        <p>{data?.packet_rule}</p>
+        <p>{data?.line_pairing_rule || data?.packet_rule}</p>
         {data?.packets.length ? (
           <div className="order-form-packet-list">
             {data.packets.map((packet) => (

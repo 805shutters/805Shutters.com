@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   resolveManufacturerOrderForm,
+  technicalMeasureTemplateRelativePath,
   type OrderFormRegistryEntry,
   type OrderFormSourceValues,
 } from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
@@ -40,6 +41,10 @@ export type ManufacturerTechnicalMeasureSchema = {
   productName: string;
   productKind: string;
   orderSchemaPath: string;
+  orderTemplateDocxUrl: string;
+  orderTemplatePdfUrl: string;
+  technicalMeasureDocxUrl: string;
+  technicalMeasurePdfUrl: string;
   sourceReference: string;
   verification: string;
   fields: ManufacturerTechnicalMeasureField[];
@@ -332,6 +337,10 @@ export function resolveManufacturerTechnicalMeasureSchema(
     productName: entry.product_name,
     productKind: entry.product_kind,
     orderSchemaPath: entry.schema,
+    orderTemplateDocxUrl: `/order-form-templates/${entry.template_docx}`,
+    orderTemplatePdfUrl: `/order-form-templates/${entry.template_docx.replace(/\.docx$/i, ".pdf")}`,
+    technicalMeasureDocxUrl: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "docx")}`,
+    technicalMeasurePdfUrl: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "pdf")}`,
     sourceReference: entry.source_reference,
     verification: entry.verification,
     fields: schemaFields(entry),

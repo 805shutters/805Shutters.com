@@ -42,7 +42,10 @@ export type AgenticOrderManifestLine = {
   routingKey: string | null;
   productName: string | null;
   templateUrl: string | null;
+  templatePdfUrl: string | null;
   schemaUrl: string | null;
+  technicalMeasureTemplateUrl: string | null;
+  technicalMeasureTemplatePdfUrl: string | null;
   templateVersion: number;
   sourceValues: OrderFormSourceValues;
   status: "ready" | "order_review_required";
@@ -188,6 +191,21 @@ function key(value: unknown): string {
     .replace(/^_+|_+$/g, "");
 }
 
+function titleSlug(value: unknown): string {
+  return key(value)
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("-");
+}
+
+export function technicalMeasureTemplateRelativePath(
+  entry: OrderFormRegistryEntry,
+  extension: "docx" | "pdf",
+): string {
+  return `${entry.manufacturer.toLowerCase()}/805-Shutters-${entry.manufacturer}-${titleSlug(entry.product_name)}-Technical-Measure-Form.${extension}`;
+}
+
 function combined(values: OrderFormSourceValues): Record<string, unknown> {
   return {
     ...values,
@@ -272,7 +290,10 @@ export function buildAgenticOrderManifest(input: {
         routingKey: null,
         productName: null,
         templateUrl: null,
+        templatePdfUrl: null,
         schemaUrl: null,
+        technicalMeasureTemplateUrl: null,
+        technicalMeasureTemplatePdfUrl: null,
         templateVersion: 1,
         sourceValues: line.values,
         status: "order_review_required",
@@ -287,7 +308,10 @@ export function buildAgenticOrderManifest(input: {
       routingKey: entry.routing_key,
       productName: entry.product_name,
       templateUrl: `/order-form-templates/${entry.template_docx}`,
+      templatePdfUrl: `/order-form-templates/${entry.template_docx.replace(/\.docx$/i, ".pdf")}`,
       schemaUrl: `/order-form-templates/${entry.schema}`,
+      technicalMeasureTemplateUrl: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "docx")}`,
+      technicalMeasureTemplatePdfUrl: `/technical-measure-templates/${technicalMeasureTemplateRelativePath(entry, "pdf")}`,
       templateVersion: 1,
       sourceValues: line.values,
       status: safeToRelease ? "ready" : "order_review_required",

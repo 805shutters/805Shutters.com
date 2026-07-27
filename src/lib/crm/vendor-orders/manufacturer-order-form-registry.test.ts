@@ -6,6 +6,7 @@ import {
   buildAgenticOrderManifest,
   manufacturerOrderFormRegistry,
   resolveManufacturerOrderForm,
+  technicalMeasureTemplateRelativePath,
 } from "./manufacturer-order-form-registry";
 
 describe("manufacturer ordering-form registry", () => {
@@ -25,6 +26,15 @@ describe("manufacturer ordering-form registry", () => {
       expect(existsSync(join(templateRoot, entry.template_docx)), entry.template_docx).toBe(true);
       expect(existsSync(join(templateRoot, entry.template_docx.replace(/\.docx$/i, ".pdf"))), entry.template_docx).toBe(true);
       expect(existsSync(join(templateRoot, entry.schema)), entry.schema).toBe(true);
+      const measureRoot = join(process.cwd(), "public", "technical-measure-templates");
+      expect(
+        existsSync(join(measureRoot, technicalMeasureTemplateRelativePath(entry, "docx"))),
+        entry.routing_key,
+      ).toBe(true);
+      expect(
+        existsSync(join(measureRoot, technicalMeasureTemplateRelativePath(entry, "pdf"))),
+        entry.routing_key,
+      ).toBe(true);
     }
   });
 
@@ -66,6 +76,37 @@ describe("manufacturer ordering-form registry", () => {
       "polar:titan_patio",
     ]);
     expect(manifest.lineItemPages).toHaveLength(4);
+    expect(manifest.lineItemPages.every((line) =>
+      line.technicalMeasureTemplateUrl?.startsWith("/technical-measure-templates/")
+      && line.templateUrl?.startsWith("/order-form-templates/"),
+    )).toBe(true);
+    expect(new Set(manifest.lineItemPages.map((line) => line.technicalMeasureTemplateUrl)).size).toBe(4);
+  });
+
+  it("keeps Lotus, Norman, and Onyx contract lines married to distinct measure and order pairs", () => {
+    const manifest = buildAgenticOrderManifest({
+      customerId: "customer-mixed",
+      quoteId: "805-mixed",
+      measureStatus: "measure_required",
+      technicalMeasureSubmitted: false,
+      lines: [
+        { id: "lotus", values: { manufacturer: "Lotus", product_id: "lotus_roller_shades" } },
+        { id: "norman", values: { manufacturer: "Norman", product_id: "roller" } },
+        { id: "onyx", values: { manufacturer: "Onyx", product_id: "onyx_shutters", program_id: "vinyl" } },
+      ],
+    });
+
+    expect(manifest.lineItemPages.map((line) => ({
+      routingKey: line.routingKey,
+      measure: line.technicalMeasureTemplateUrl,
+      order: line.templateUrl,
+    }))).toEqual([
+      expect.objectContaining({ routingKey: "lotus:lotus_roller_shades" }),
+      expect.objectContaining({ routingKey: "norman:roller" }),
+      expect.objectContaining({ routingKey: "onyx:vinyl" }),
+    ]);
+    expect(new Set(manifest.lineItemPages.map((line) => line.technicalMeasureTemplateUrl)).size).toBe(3);
+    expect(new Set(manifest.lineItemPages.map((line) => line.templateUrl)).size).toBe(3);
   });
 
   it("blocks a line rather than guessing when exact product routing is missing", () => {
