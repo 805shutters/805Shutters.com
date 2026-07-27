@@ -13,6 +13,13 @@ const migration = readFileSync(
   new URL("../../../supabase/migrations/20260726120000_create_crm_feedback_requests.sql", import.meta.url),
   "utf8"
 );
+const claimRenewalMigration = readFileSync(
+  new URL(
+    "../../../supabase/migrations/20260727211718_renew_crm_feedback_processing_claims.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("Hermes CRM feedback integration contract", () => {
   it("exposes only exact approval-gated queue statuses", () => {
@@ -42,5 +49,10 @@ describe("Hermes CRM feedback integration contract", () => {
     expect(migration).toContain("interval '10 minutes'");
     expect(migration).toContain("external_event_id text unique");
     expect(migration).toContain("request.hermes_claimed_by = p_claimed_by");
+    expect(claimRenewalMigration).toContain("'implementing', 'deploying'");
+  });
+
+  it("keeps every transition conditional on the exact claim token", () => {
+    expect(topicRoute).toContain('.eq("hermes_claim_token", body.claimToken)');
   });
 });

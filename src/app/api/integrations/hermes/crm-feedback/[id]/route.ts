@@ -146,7 +146,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       : {})
   };
   const { data: updated, error } = await supabase
-    .from("crm_feedback_requests").update(patch).eq("id", id).eq("revision", topic.revision).select("*").maybeSingle();
+    .from("crm_feedback_requests")
+    .update(patch)
+    .eq("id", id)
+    .eq("revision", topic.revision)
+    .eq("hermes_claim_token", body.claimToken)
+    .select("*")
+    .maybeSingle();
   if (error || !updated) return NextResponse.json({ message: "Topic transition could not be saved." }, { status: 502 });
 
   if (body.action === "submit_completed_proposal") {
