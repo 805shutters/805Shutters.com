@@ -77,10 +77,13 @@ export async function POST(request: NextRequest) {
   const supabase = getSupabaseServiceClient();
   if (!supabase) return NextResponse.json({ sent: false, queued: false, skipped: "database_not_configured" });
 
-  const { error } = await supabase.from("visitor_alert_events").insert({
-    viewed_at: parseViewedAt(payload.startedAt),
-    referrer: cleanReferrer(payload.referrer) || null,
-    location: null,
+  const { error } = await supabase.from("crm_activity_events").insert({
+    created_at: parseViewedAt(payload.startedAt),
+    entity_type: "system",
+    action: "visitor_alert_queued",
+    metadata: {
+      referrer: cleanReferrer(payload.referrer) || null,
+    },
   });
   if (error) {
     console.warn("Could not queue visitor alert:", error.message);
@@ -99,12 +102,13 @@ export async function GET(request: NextRequest) {
   const now = new Date();
   const beginning = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const { data: events, error } = await supabase
-    .from("visitor_alert_events")
-    .select("id, referrer")
-    .is("sent_at", null)
-    .gte("viewed_at", beginning.toISOString())
-    .lt("viewed_at", now.toISOString())
-    .order("viewed_at", { ascending: true })
+    .from("crm_activity_events")
+    .select("id, metadata")
+    .eq("entity_type", "system")
+    .eq("action", "visitor_alert_queued")
+    .gte("created_at", beginning.toISOString())
+    .lt("created_at", now.toISOString())
+    .order("created_at", { ascending: true })
     .limit(150);
   if (error) {
     console.warn("Could not read visitor alert digest:", error.message);
@@ -112,12 +116,21 @@ export async function GET(request: NextRequest) {
   }
   if (!events?.length) return NextResponse.json({ sent: false, count: 0 });
 
-  const result = await sendTelegramMessage({ text: buildHourlyDigest(events) });
+  const result = await sendTelegramMessage({
+    text: buildHourlyDigest(
+      events.map((event) => ({
+        referrer: referrerFromMetadata(event.metadata),
+      })),
+    ),
+  });
   if (!result.sent) return NextResponse.json({ ...result, count: events.length }, { status: 503 });
 
   const { error: markSentError } = await supabase
-    .from("visitor_alert_events")
-    .update({ sent_at: new Date().toISOString() })
+    .from("crm_activity_events")
+    .update({
+      action: "visitor_alert_sent",
+      after_data: { sent_at: new Date().toISOString() },
+    })
     .in("id", events.map((event) => event.id));
   if (markSentError) console.warn("Could not mark visitor digest events sent:", markSentError.message);
 
@@ -161,6 +174,12 @@ function referrerSource(referrer: string | null) {
   if (host.includes("google.")) return "Google";
   if (host.includes("yelp.")) return "Yelp";
   return host.replace(/^www\./, "") || "Unknown";
+}
+
+function referrerFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const referrer = (metadata as { referrer?: unknown }).referrer;
+  return typeof referrer === "string" ? referrer : null;
 }
 
 function parseViewedAt(value: unknown) {
