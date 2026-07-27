@@ -12,13 +12,15 @@ describe("CRM vendor-order launch workflow", () => {
   });
 
   it("routes every manufacturer through its own submitted-measure task", () => {
-    expect(source).toContain('"Continue Order Entry" : "Start Order Entry"');
-    expect(source).toContain("task.portalUrl");
+    expect(source).toContain('"Continue Ordering Agent" : "Run Ordering Agent"');
+    expect(source).toContain("manufacturerOrderBridgeLaunchUrl");
+    expect(source).toContain('["queued", "processing"].includes(entry.vendorOrderTask.status)');
+    expect(source).toContain("If sign-in is required");
     expect(source).toContain("task.productNames.join");
     expect(source).toContain("task.lineCount");
     expect(source).toContain("onVendorOrderLaunch(entry.vendorOrderTask");
     expect(source).toContain("The order will not be placed.");
-    expect(source).toContain("Review the manufacturer packet before placing the order.");
+    expect(source).toContain("If sign-in is required, complete it in the opened manufacturer tab and retry.");
     expect(source).toContain("same customer and job identity");
     expect(source).toContain('label: "Mark Review Ready"');
     expect(source).toContain('label: "Confirm Manufacturer Order"');

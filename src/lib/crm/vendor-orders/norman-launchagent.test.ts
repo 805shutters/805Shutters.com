@@ -13,7 +13,7 @@ describe("Norman order launch agents", () => {
     expect(installer).toContain("com.805shutters.norman-order-drafts");
     expect(installer).toContain("com.805shutters.norman-order-bridge");
     expect(installer).toContain("orders:norman:next");
-    expect(installer).toContain("orders:norman:bridge");
+    expect(installer).toContain("orders:manufacturer:bridge");
     expect(installer).toContain("<key>StartInterval</key><integer>120</integer>");
     expect(installer).toContain("<key>KeepAlive</key><true/>");
     expect(installer).toContain("<key>EnvironmentVariables</key>");
@@ -24,6 +24,7 @@ describe("Norman order launch agents", () => {
     expect(installer).toContain("com.805shutters.norman-order-chrome");
     expect(installer).toContain("--remote-debugging-port=9222");
     expect(installer).toContain("NormanChrome");
+    expect(installer).toContain("https://admin.onyxshutters.com/OrderList.aspx");
     expect(installer).not.toMatch(/NORMAN_(?:USERNAME|PASSWORD)/);
   });
 

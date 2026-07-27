@@ -50,7 +50,7 @@ import {
   soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
-import { normanOrderBridgeLaunchUrl } from "@/lib/crm/vendor-orders/norman-order-launch";
+import { manufacturerOrderBridgeLaunchUrl } from "@/lib/crm/vendor-orders/manufacturer-order-launch";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import {
@@ -1042,17 +1042,15 @@ export function CrmApp({
   async function startVendorOrderEntry(task: CrmVendorOrderTask) {
     let opened: Window | null = null;
     try {
-      const launchUrl = task.manufacturer === "Norman" && task.productType === "roller"
-        ? normanOrderBridgeLaunchUrl(task.taskId)
-        : task.portalUrl;
+      const launchUrl = manufacturerOrderBridgeLaunchUrl({
+        taskId: task.taskId,
+        manufacturer: task.manufacturer,
+      });
       if (!launchUrl) throw new Error(`${task.manufacturer} ordering portal is not configured.`);
       opened = window.open("about:blank", "_blank");
       if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
-      if (task.recordId && task.status !== "processing") await updateVendorOrderTask(task, "start");
       opened.location.href = launchUrl;
-      setMessage(task.manufacturer === "Norman" && task.productType === "roller"
-        ? `Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`
-        : `Opening ${task.manufacturer} order entry for ${task.customerName}. Review the manufacturer packet before placing the order.`);
+      setMessage(`Starting review-only ${task.manufacturer} order entry for ${task.customerName}. If sign-in is required, complete it in the opened manufacturer tab and retry. The order will not be placed.`);
     } catch (error) {
       opened?.close();
       setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
@@ -7457,10 +7455,10 @@ function DrillDetailCard({
           onClick: () => onVendorOrderPacket(entry.vendorOrderTask as CrmVendorOrderTask)
         }
       : null,
-    entry.vendorOrderTask && entry.vendorOrderTask.status !== "needs_input" && onVendorOrderLaunch
+    entry.vendorOrderTask && ["queued", "processing"].includes(entry.vendorOrderTask.status) && onVendorOrderLaunch
       ? {
           key: "start-vendor-order",
-          label: entry.vendorOrderTask.status === "processing" ? "Continue Order Entry" : "Start Order Entry",
+          label: entry.vendorOrderTask.status === "processing" ? "Continue Ordering Agent" : "Run Ordering Agent",
           detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} ${entry.vendorOrderTask.sourceKind === "signed_contract" ? "contract" : "submitted-measure"} line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
           tone: "warning",
           disabled: busy,
