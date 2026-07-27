@@ -16708,8 +16708,9 @@ body:has(.financing-banner) .site-header-shell {
 .technical-measure-quick-options { display: flex; flex-wrap: wrap; gap: 4px; }
 .technical-measure-quick-options button { min-height: 32px; flex: 1 1 44px; border: 1px solid #c6c6c0; background: #f7f7f4; padding: 4px 7px; color: #20231f; font-size: 10px; font-weight: 800; }
 .technical-measure-quick-options button[aria-pressed="true"] { border-color: #171717; background: #171717; color: #fff; }
-.technical-measure-current-choice { display: flex; width: min(100%, 140px); min-height: 32px; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #171717; background: #171717; padding: 4px 10px; color: #fff; font-size: 13px; font-weight: 900; }
-.technical-measure-current-choice svg { width: 15px; height: 15px; transform: rotate(90deg); }
+.technical-measure-current-choice { display: flex; width: 100%; min-height: 32px; align-items: center; justify-content: space-between; gap: 8px; overflow: hidden; border: 1px solid #171717; background: #171717; padding: 4px 10px; color: #fff; font-size: 13px; font-weight: 900; }
+.technical-measure-current-choice > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.technical-measure-current-choice svg { width: 15px; height: 15px; flex: 0 0 auto; transform: rotate(90deg); }
 .technical-measure-current-choice[aria-expanded="true"] svg { transform: rotate(-90deg); }
 .technical-measure-folding-options { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .technical-measure-line-head > button { display: grid; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 50%; background: #f0f0ec; }

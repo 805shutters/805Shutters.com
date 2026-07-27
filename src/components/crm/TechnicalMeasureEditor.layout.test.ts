@@ -84,7 +84,12 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("SHUTTER_TILT_TYPES");
     expect(component).toContain("singleDimensionLabel={locationPicker.label}");
     expect(component).toContain('detailChoice.key === "__panel_config"');
+    expect(component).toContain('detailChoice.key === "__frame_type"');
+    expect(component).toContain('detailChoice.key === "__tilt_type"');
     expect(component).toContain("technical-measure-folding-options");
+    expect(component).toContain("<span>Frame type</span>");
+    expect(component).toContain("<span>Tilt Type</span>");
+    expect(component).toContain("shutterProduct ? <div");
     expect(component).toContain("productLabel(current.product_id)");
     expect(component).toContain('supplier ? ` (${supplier})` : ""');
     expect(component).toContain('HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"])');

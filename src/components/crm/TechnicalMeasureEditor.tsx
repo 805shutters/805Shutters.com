@@ -71,6 +71,11 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
   "folding_direction",
   "panel_config",
   "panel_configuration",
+  "frame_type",
+  "frame_style",
+  "tilt_type",
+  "tilt",
+  "tilt_rod",
   "measurement_basis",
   "measurement_type",
   "measure_type",
@@ -506,6 +511,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const measurementBasis = shutterMeasurementBasis(current.details);
           const measurementBasisOptions = shutterMeasurementBasisOptions(onyxShutter);
           const panelConfiguration = detailText(current.details, "panel_config", "panel_configuration", "folding_direction");
+          const frameType = detailText(current.details, "frame_type", "frame_style");
+          const tiltType = detailText(current.details, "tilt_type", "tilt", "tilt_rod");
+          const baselineTiltType = detailText(baseline.details, "tilt_type", "tilt", "tilt_rod");
           const supplier = detailText(current.details, "supplier", "manufacturer");
           const customOpening = customOpeningLineId === line.id
             || (!!current.opening_label && !OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number]));
@@ -553,10 +561,15 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                 </div> : null}
               </div>
               {shutterProduct ? <div className="technical-measure-priority-grid">
-                <div className="technical-measure-quick-field technical-measure-quick-field--wide technical-measure-folding">
+                <div className="technical-measure-quick-field technical-measure-folding">
                   <span>Folding direction</span>
-                  <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__panel_config"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? null : { lineId: line.id, key: "__panel_config" })}>{panelConfiguration || "Select"}<ChevronRight /></button>
+                  <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__panel_config"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? null : { lineId: line.id, key: "__panel_config" })}><span>{panelConfiguration || "Select"}</span><ChevronRight /></button>
                   {detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? <div className="technical-measure-choice-grid technical-measure-folding-options">{shutterDetailOptions("panel_config", onyxShutter)?.map((option) => <button type="button" aria-pressed={panelConfiguration === option} key={option} onClick={() => { updateDetail(line.id, "panel_config", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
+                </div>
+                <div className="technical-measure-quick-field technical-measure-frame">
+                  <span>Frame type</span>
+                  <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__frame_type"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__frame_type" ? null : { lineId: line.id, key: "__frame_type" })}><span>{frameType || "Select"}</span><ChevronRight /></button>
+                  {detailChoice?.lineId === line.id && detailChoice.key === "__frame_type" ? <div className="technical-measure-choice-grid technical-measure-detail-options">{shutterDetailOptions("frame_type", onyxShutter)?.map((option) => <button type="button" aria-pressed={frameType === option} key={option} onClick={() => { updateDetail(line.id, "frame_type", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
                 </div>
                 <div className="technical-measure-quick-field">
                   <span>Split tilt</span>
@@ -580,7 +593,11 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
               </div>}
               <div className="technical-measure-secondary">
                 <div className="technical-measure-fields">
-                <label className={changed(baseline.program_id, current.program_id) ? "changed" : ""}><span>Program / Operating System</span><input disabled={readOnly} value={current.program_id || ""} onChange={(event) => updateLine(line.id, { program_id: event.target.value || null })} /></label>
+                {shutterProduct ? <div className={`technical-measure-choice-field ${changed(baselineTiltType, tiltType) ? "changed" : ""}`}>
+                  <span>Tilt Type</span>
+                  <button type="button" disabled={readOnly} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__tilt_type" ? null : { lineId: line.id, key: "__tilt_type" })}>{tiltType || "Select"}<ChevronRight /></button>
+                  {detailChoice?.lineId === line.id && detailChoice.key === "__tilt_type" ? <div className="technical-measure-choice-grid technical-measure-detail-options">{shutterDetailOptions("tilt_type", onyxShutter)?.map((option) => <button type="button" aria-pressed={tiltType === option} key={option} onClick={() => { updateDetail(line.id, "tilt_type", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
+                </div> : <label className={changed(baseline.program_id, current.program_id) ? "changed" : ""}><span>Program / Operating System</span><input disabled={readOnly} value={current.program_id || ""} onChange={(event) => updateLine(line.id, { program_id: event.target.value || null })} /></label>}
                 {shutterProduct ? <div className={`technical-measure-choice-field ${changed(baseline.fabric, current.fabric) ? "changed" : ""}`}>
                   <span>Material</span>
                   <button type="button" disabled={readOnly} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__material" ? null : { lineId: line.id, key: "__material" })}>{current.fabric || "Select"}<ChevronRight /></button>
