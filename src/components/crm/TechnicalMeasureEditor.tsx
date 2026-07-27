@@ -540,18 +540,20 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                     />
                   </label>
               </div>
-              <div className="technical-measure-dimensions">
+              <div className={`technical-measure-dimensions${shutterProduct ? " technical-measure-dimensions--with-basis" : ""}`}>
                 <button type="button" aria-label="Select width" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
+                {shutterProduct ? <div className="technical-measure-dimension-basis" aria-label={onyxShutter ? "W/F" : "Measurement type"}>
+                  <button type="button" disabled={readOnly} aria-label="Window size" aria-pressed={measurementBasis === "window_size"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[0].label)}>WS</button>
+                  <button type="button" disabled={readOnly} aria-label="Frame to frame" aria-pressed={measurementBasis === "frame_to_frame"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[1].label)}>F2F</button>
+                </div> : null}
                 <button type="button" aria-label="Select height" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
               </div>
               {shutterProduct ? <div className="technical-measure-priority-grid">
-                <div className="technical-measure-quick-field technical-measure-quick-field--wide">
+                <div className="technical-measure-quick-field technical-measure-quick-field--wide technical-measure-folding">
                   <span>Folding direction</span>
-                  <div className="technical-measure-quick-options">
-                    {shutterDetailOptions("panel_config", onyxShutter)?.map((option) => <button type="button" disabled={readOnly} aria-pressed={panelConfiguration === option} key={option} onClick={() => updateDetail(line.id, "panel_config", option)}>{option}</button>)}
-                  </div>
+                  <button className="technical-measure-current-choice" type="button" disabled={readOnly} aria-expanded={detailChoice?.lineId === line.id && detailChoice.key === "__panel_config"} onClick={() => setDetailChoice(detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? null : { lineId: line.id, key: "__panel_config" })}>{panelConfiguration || "Select"}<ChevronRight /></button>
+                  {detailChoice?.lineId === line.id && detailChoice.key === "__panel_config" ? <div className="technical-measure-choice-grid technical-measure-folding-options">{shutterDetailOptions("panel_config", onyxShutter)?.map((option) => <button type="button" aria-pressed={panelConfiguration === option} key={option} onClick={() => { updateDetail(line.id, "panel_config", option); setDetailChoice(null); }}>{option}</button>)}</div> : null}
                 </div>
-                <div className="technical-measure-basis"><span>{onyxShutter ? "W/F" : "Measurement Type"}</span><div>{measurementBasisOptions.map((option) => <button type="button" disabled={readOnly} aria-pressed={measurementBasis === option.value} key={option.value} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", option.label)}>{option.label}</button>)}</div></div>
                 <div className="technical-measure-quick-field">
                   <span>Split tilt</span>
                   <div className="technical-measure-quick-options">

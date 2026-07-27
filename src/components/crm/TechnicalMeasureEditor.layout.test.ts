@@ -15,7 +15,10 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain('aria-label="Select height"');
     expect(component).toContain('<span aria-hidden="true">W</span>');
     expect(component).toContain('<span aria-hidden="true">H</span>');
-    expect(styles).toContain("min-height: 40px;");
+    expect(component).toContain(">WS</button>");
+    expect(component).toContain(">F2F</button>");
+    expect(styles).toContain("technical-measure-dimensions--with-basis");
+    expect(styles).toContain("min-height: 38px;");
   });
 
   it("continues from width fraction directly into height selection", () => {
@@ -62,6 +65,8 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("ONYX_TILT_TYPES");
     expect(component).toContain("SHUTTER_TILT_TYPES");
     expect(component).toContain("singleDimensionLabel={locationPicker.label}");
+    expect(component).toContain('detailChoice.key === "__panel_config"');
+    expect(component).toContain("technical-measure-folding-options");
     expect(component).toContain("productLabel(current.product_id)");
     expect(component).toContain('supplier ? ` (${supplier})` : ""');
     expect(component).toContain('HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"])');
