@@ -1064,6 +1064,7 @@ export async function backfillSubmittedVendorOrderPreparation(
   supabase: SupabaseClient,
   formId: string,
   actor: CrmActor,
+  options: { force?: boolean } = {},
 ) {
   const form = await loadTechnicalMeasureForm(supabase, formId);
   if (form.status !== "submitted" || !form.submitted_at) {
@@ -1086,9 +1087,35 @@ export async function backfillSubmittedVendorOrderPreparation(
       : [];
   }));
   if (
+    !options.force
+    &&
     expectedManufacturers.size > 0
     && Array.from(expectedManufacturers).every((manufacturer) => activeManufacturers.has(manufacturer))
   ) {
+    try {
+      await persistVendorOrderPreparations(supabase, {
+        sourceKind: "submitted_technical_measure",
+        sourceId: form.id,
+        sourceRevision: `submitted_technical_measure:${form.id}:${form.submitted_at}`,
+        technicalMeasureFormId: form.id,
+        jobId: form.job_id,
+        quoteId: form.quote_id,
+        customerSnapshot: {
+          id: form.customer_id,
+          ...form.customer_snapshot,
+        },
+        quoteSnapshot: form.quote_snapshot,
+      }, existingPreparations as VendorOrderPreparationSummary[]);
+    } catch (error) {
+      console.warn("Durable manufacturer queue is not available; keeping the submitted-measure queue metadata active.", error);
+    }
+    return form;
+  }
+  const orderPreparations = await enqueueVendorOrderPreparations(form, actor.userId);
+  if (!orderPreparations.length) {
+    throw new CrmAuthError(409, "This measure does not contain an exactly routed manufacturer order.");
+  }
+  try {
     await persistVendorOrderPreparations(supabase, {
       sourceKind: "submitted_technical_measure",
       sourceId: form.id,
@@ -1101,26 +1128,10 @@ export async function backfillSubmittedVendorOrderPreparation(
         ...form.customer_snapshot,
       },
       quoteSnapshot: form.quote_snapshot,
-    }, existingPreparations as VendorOrderPreparationSummary[]);
-    return form;
+    }, orderPreparations);
+  } catch (error) {
+    console.warn("Durable manufacturer queue is not available; rebuilding the submitted-measure queue metadata.", error);
   }
-  const orderPreparations = await enqueueVendorOrderPreparations(form, actor.userId);
-  if (!orderPreparations.length) {
-    throw new CrmAuthError(409, "This measure does not contain an exactly routed manufacturer order.");
-  }
-  await persistVendorOrderPreparations(supabase, {
-    sourceKind: "submitted_technical_measure",
-    sourceId: form.id,
-    sourceRevision: `submitted_technical_measure:${form.id}:${form.submitted_at}`,
-    technicalMeasureFormId: form.id,
-    jobId: form.job_id,
-    quoteId: form.quote_id,
-    customerSnapshot: {
-      id: form.customer_id,
-      ...form.customer_snapshot,
-    },
-    quoteSnapshot: form.quote_snapshot,
-  }, orderPreparations);
   const legacyPreparation = orderPreparations.find((item) => item.manufacturer === "Norman")
     || orderPreparations[0];
   const { error } = await supabase
@@ -1145,6 +1156,7 @@ export async function backfillSubmittedVendorOrderPreparation(
     action: "technical_measure.vendor_order_backfill",
     metadata: {
       formId: form.id,
+      force: options.force === true,
       preparations: orderPreparations.map((preparation) => ({
         manufacturer: preparation.manufacturer,
         productType: preparation.productType,

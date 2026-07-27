@@ -142,9 +142,14 @@ describe("technical measure mobile controls", () => {
     const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
 
     expect(component).toContain("Queue Manufacturer Orders");
+    expect(component).toContain("Rebuild Manufacturer Orders");
+    expect(component).toContain("queuedLineCount !== lines.length");
+    expect(component).toContain("JSON.stringify({ force })");
     expect(component).toContain("/vendor-order-backfill");
     expect(api).toContain("requireCrmUser");
+    expect(api).toContain("body.force === true");
     expect(api).toContain("backfillSubmittedVendorOrderPreparation");
+    expect(service).toContain("options: { force?: boolean } = {}");
     expect(service).toContain('action: "technical_measure.vendor_order_backfill"');
   });
 

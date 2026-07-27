@@ -262,6 +262,8 @@ function orderPreparations(form: TechnicalMeasureForm | null) {
         portalDraftId?: string | null;
         manufacturer?: string;
         productType?: string;
+        lineCount?: number;
+        orderPacketUrl?: string | null;
       }]
     : []);
 }
@@ -640,17 +642,19 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     finally { setBusy(false); }
   }
 
-  async function backfillVendorOrder() {
+  async function backfillVendorOrder(force = false) {
     if (!session) return;
     setBusy(true); setMessage(null);
     try {
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(
         session,
         `/api/crm/technical-measures/${formId}/vendor-order-backfill`,
-        { method: "POST", body: "{}" },
+        { method: "POST", body: JSON.stringify({ force }) },
       );
       hydrate(result.form, false);
-      setMessage("Onyx shutter order added to the CRM order-entry queue.");
+      setMessage(force
+        ? "Manufacturer orders rebuilt from all submitted measurement lines."
+        : "Manufacturer orders added to the CRM order-entry queue.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The submitted measure could not be queued for order entry.");
     } finally {
@@ -700,6 +704,17 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const readOnly = form?.status === "submitted";
   const vendorOrderPreparations = orderPreparations(form);
   const canBackfillVendorOrders = readOnly && vendorOrderPreparations.length === 0 && lines.length > 0;
+  const queuedLineCount = vendorOrderPreparations.reduce(
+    (total, preparation) => total + Math.max(0, Number(preparation.lineCount) || 0),
+    0,
+  );
+  const canRebuildVendorOrders = readOnly
+    && vendorOrderPreparations.length > 0
+    && lines.length > 0
+    && (
+      queuedLineCount !== lines.length
+      || vendorOrderPreparations.some((preparation) => !preparation.orderPacketUrl)
+    );
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const futureMeasures = form?.futureMeasures || [];
 
@@ -750,6 +765,15 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           <p>This submitted measure predates the manufacturer-separated CRM order queue.</p>
           <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
             Queue Manufacturer Orders
+          </button>
+        </section>
+      ) : null}
+      {canRebuildVendorOrders ? (
+        <section className="technical-measure-order-status" data-status="needs_input">
+          <div><span>Manufacturer order preparation</span><strong>Reset required</strong></div>
+          <p>The queued order no longer matches all submitted measurement lines. Rebuild it from the submitted technical measure before portal entry.</p>
+          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder(true)}>
+            Rebuild Manufacturer Orders
           </button>
         </section>
       ) : null}
