@@ -8,10 +8,14 @@ import { getMeasureNeededMeta, MEASURE_NEEDED_META_KEY } from "@/lib/crm/measure
 import type { CrmJob, CrmQuote, CrmQuoteDesign, CrmQuoteDetailValue } from "@/lib/crm/types";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
 import {
-  enqueueVendorOrderPreparation,
+  enqueueVendorOrderPreparations,
   validateNormanRollerMeasureForSubmission,
   type VendorOrderPreparationSummary,
 } from "@/lib/crm/vendor-orders/norman-order-preparation";
+import {
+  upsertOnyxCustomerFileArtifact,
+  type OnyxAgentOrderPacket,
+} from "@/lib/crm/vendor-orders/onyx-order-packet";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -933,24 +937,37 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
     const measure = getMeasureNeededMeta(row.meta);
     await supabase.from("crm_jobs").update({ meta: { ...object(row.meta), [MEASURE_NEEDED_META_KEY]: { ...measure, status: "measured", measured_at: submittedAt, measured_by: actor.email, form_id: form.id, form_status: "submitted" } } }).eq("id", form.job_id);
   }
-  let orderPreparation: VendorOrderPreparationSummary | null = null;
+  let orderPreparations: VendorOrderPreparationSummary[] = [];
   const submittedForm = await loadTechnicalMeasureForm(supabase, form.id);
   try {
-    orderPreparation = await enqueueVendorOrderPreparation(submittedForm, actor.userId);
+    orderPreparations = await enqueueVendorOrderPreparations(submittedForm, actor.userId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Vendor order preparation could not be queued.";
-    orderPreparation = { manufacturer: "Norman", productType: "roller", status: "queue_failed", taskId: null, issueCount: 0, message };
+    orderPreparations = [{ manufacturer: "Norman", productType: "roller", status: "queue_failed", taskId: null, issueCount: 0, message }];
     console.error("Vendor order preparation queue failed", { formId: form.id, error });
   }
-  if (orderPreparation.status !== "skipped") {
-    const nextMeta = { ...submittedForm.meta, vendor_order_preparation: orderPreparation };
+  if (orderPreparations.length) {
+    const legacyPreparation = orderPreparations.find((item) => item.manufacturer === "Norman")
+      || orderPreparations[0];
+    const nextMeta = {
+      ...submittedForm.meta,
+      vendor_order_preparation: legacyPreparation,
+      vendor_order_preparations: orderPreparations,
+    };
     await supabase.from("crm_technical_measure_forms").update({ meta: nextMeta }).eq("id", form.id);
+    const onyx = orderPreparations.find((item) => item.manufacturer === "Onyx");
+    if (onyx?.payload) {
+      await upsertOnyxCustomerFileArtifact(
+        supabase,
+        onyx.payload as unknown as OnyxAgentOrderPacket,
+      );
+    }
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: form.job_id,
     action: "technical_measure.submit",
-    metadata: { formId: form.id, submittedAt, orderPreparation },
+    metadata: { formId: form.id, submittedAt, orderPreparations },
   });
   return loadTechnicalMeasureForm(supabase, form.id);
 }
@@ -964,33 +981,54 @@ export async function backfillSubmittedVendorOrderPreparation(
   if (form.status !== "submitted" || !form.submitted_at) {
     throw new CrmAuthError(409, "Only a submitted technical measure can be queued for order entry.");
   }
-  const existing = form.meta.vendor_order_preparation;
-  if (
-    existing
-    && typeof existing === "object"
-    && !Array.isArray(existing)
-    && ["queued", "processing", "review_ready"].includes(String((existing as Record<string, unknown>).status || ""))
-  ) {
+  const existingPreparations = Array.isArray(form.meta.vendor_order_preparations)
+    ? form.meta.vendor_order_preparations
+    : form.meta.vendor_order_preparation
+      ? [form.meta.vendor_order_preparation]
+      : [];
+  if (existingPreparations.some((item) =>
+    item
+    && typeof item === "object"
+    && !Array.isArray(item)
+    && ["queued", "processing", "review_ready"].includes(String((item as Record<string, unknown>).status || "")),
+  )) {
     return form;
   }
-  const orderPreparation = await enqueueVendorOrderPreparation(form, actor.userId);
-  if (orderPreparation.status === "skipped") {
+  const orderPreparations = await enqueueVendorOrderPreparations(form, actor.userId);
+  if (!orderPreparations.length) {
     throw new CrmAuthError(409, "This measure does not contain a supported Norman Roller or Onyx shutter order.");
   }
+  const legacyPreparation = orderPreparations.find((item) => item.manufacturer === "Norman")
+    || orderPreparations[0];
   const { error } = await supabase
     .from("crm_technical_measure_forms")
-    .update({ meta: { ...form.meta, vendor_order_preparation: orderPreparation } })
+    .update({
+      meta: {
+        ...form.meta,
+        vendor_order_preparation: legacyPreparation,
+        vendor_order_preparations: orderPreparations,
+      },
+    })
     .eq("id", form.id);
   if (error) throw new CrmAuthError(502, "The submitted measure could not be queued for order entry.");
+  const onyx = orderPreparations.find((item) => item.manufacturer === "Onyx");
+  if (onyx?.payload) {
+    await upsertOnyxCustomerFileArtifact(
+      supabase,
+      onyx.payload as unknown as OnyxAgentOrderPacket,
+    );
+  }
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: form.job_id,
     action: "technical_measure.vendor_order_backfill",
     metadata: {
       formId: form.id,
-      manufacturer: orderPreparation.manufacturer,
-      productType: orderPreparation.productType,
-      taskId: orderPreparation.taskId,
+      preparations: orderPreparations.map((preparation) => ({
+        manufacturer: preparation.manufacturer,
+        productType: preparation.productType,
+        taskId: preparation.taskId,
+      })),
     },
   });
   return loadTechnicalMeasureForm(supabase, form.id);

@@ -5,6 +5,7 @@ import {
   enqueueNormanRollerPreparation,
   enqueueOnyxShutterPreparation,
   enqueueVendorOrderPreparation,
+  enqueueVendorOrderPreparations,
   validateNormanRollerMeasureForSubmission,
 } from "./norman-order-preparation";
 
@@ -134,7 +135,7 @@ describe("Norman Roller order preparation", () => {
 });
 
 describe("Onyx shutter order preparation", () => {
-  it("queues submitted Onyx shutters without relabeling them as Norman", async () => {
+  it("routes submitted Onyx shutters without relabeling them as Norman", async () => {
     const source = form();
     source.lines[0].current_values.product_id = "shutter";
     source.lines[0].current_values.details = {
@@ -147,19 +148,52 @@ describe("Onyx shutter order preparation", () => {
     expect(queued).toMatchObject({
       manufacturer: "Onyx",
       productType: "shutters",
-      status: "queued",
+      status: "needs_input",
       requestedBy: "sales-user-1",
-      issueCount: 0,
     });
-    expect(queued.taskId).toMatch(/^onyx:form-1:[a-f0-9]{12}$/);
+    expect(queued.issueCount).toBeGreaterThan(0);
+    expect(queued.taskId).toMatch(/^onyx:quote-1:[a-f0-9]{16}$/);
     expect(queued.payload).toMatchObject({
-      adapterVersion: "onyx-shutter-measure-v1",
-      ready: true,
+      schemaVersion: "onyx-agent-order-packet.v2",
+      orderFormKey: "onyx_shutters_v1",
+      source: { kind: "submitted_technical_measure" },
     });
     await expect(enqueueVendorOrderPreparation(source, "sales-user-1")).resolves.toMatchObject({
       manufacturer: "Onyx",
       productType: "shutters",
-      status: "queued",
+      status: "needs_input",
     });
+  });
+
+  it("fans a mixed measure out to both manufacturer packets", async () => {
+    process.env.NORMAN_SHIP_TO_PROFILE_ID = "dealer-camarillo";
+    const source = form();
+    const onyx = line();
+    onyx.id = "measure-line-2";
+    onyx.quote_line_item_id = "quote-line-2";
+    onyx.sort_order = 2;
+    onyx.current_values.product_id = "onyx_shutters";
+    onyx.current_values.details = {
+      supplier: "Onyx",
+      material: "Vinyl",
+      onyx_order_type: "Regular",
+      frame_type: "VZ Crest",
+      size_type: "W - Window Size",
+      frame_sides: "4",
+      color: "101_White",
+      louver_size: '3 1/2"',
+      hinge_color: "White",
+      astragal: "No",
+      tilt_type: "C - Front Center Tiltrod",
+      panel_config: "LR",
+      window_type: "Single",
+      divider_rail: "No",
+      split_tilt_rod: "No",
+    };
+    source.lines.push(onyx);
+
+    const preparations = await enqueueVendorOrderPreparations(source, "sales-user-1");
+    expect(preparations.map((item) => item.manufacturer)).toEqual(["Norman", "Onyx"]);
+    expect(preparations).toHaveLength(2);
   });
 });

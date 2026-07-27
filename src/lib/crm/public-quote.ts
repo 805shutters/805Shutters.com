@@ -15,7 +15,7 @@ import {
   technicalMeasureSmsLine,
   type TechnicalMeasureDecision,
 } from "@/lib/crm/measure-needed-state";
-import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
+import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, loadQuoteBuilder, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJob, CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
@@ -45,6 +45,11 @@ import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShop
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity } from "@/lib/brand-identity";
+import {
+  buildOnyxAgentOrderPacket,
+  onyxLinesFromSignedContract,
+  upsertOnyxCustomerFileArtifact,
+} from "@/lib/crm/vendor-orders/onyx-order-packet";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -796,6 +801,7 @@ async function syncSignedQuoteArtifacts(
   pub: PublicQuote,
   signedAt: string,
   printedName: string,
+  technicalMeasure: TechnicalMeasureDecision,
 ) {
   const { data: job } = quote.job_id
     ? await supabase
@@ -854,6 +860,31 @@ async function syncSignedQuoteArtifacts(
     { onConflict: "external_source,external_id" },
   );
   if (error) throw new CrmAuthError(502, "Quote was signed, but the customer contract file could not be saved.");
+
+  if (pub.hasOnyxShutters) {
+    const built = await loadQuoteBuilder(supabase, quote.id);
+    const onyxLines = onyxLinesFromSignedContract(built);
+    const packet = buildOnyxAgentOrderPacket({
+      sourceKind: "signed_contract",
+      sourceId: `contract:${quote.id}`,
+      contractId: null,
+      technicalMeasureId: null,
+      jobId: quote.job_id || jobRow?.id || "",
+      quoteId: quote.id,
+      quoteNumber: quote.quote_number,
+      generatedAt: signedAt,
+      customerId: customer?.id || null,
+      customerName,
+      customerPhone: quote.customer_phone || jobRow?.phone || null,
+      customerEmail: quote.customer_email || jobRow?.email || null,
+      jobsiteAddress: pub.customerAddress || jobRow?.address || null,
+      jobNotes: quote.notes || jobRow?.notes || "",
+      holdForTechnicalMeasure: technicalMeasure === "needed",
+    }, onyxLines);
+    // A customer may sign a subset of a mixed quote that excludes its Onyx
+    // alternative. In that case there is intentionally no Onyx packet.
+    if (packet) await upsertOnyxCustomerFileArtifact(supabase, packet);
+  }
 }
 
 /**
@@ -998,6 +1029,12 @@ export async function acceptPublicQuote(
       // the sold job, bookkeeping entry, contract artifact, and source quote
       // ledger to the correct state (idempotent ops).
       const soldSync = await syncSoldBookkeeping(supabase, quote, pub.total);
+      const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
+        supabase,
+        quote,
+        soldSync.job,
+        "quote_signed_retry"
+      );
       await syncSignedQuoteArtifacts(
         supabase,
         quote,
@@ -1005,6 +1042,7 @@ export async function acceptPublicQuote(
         pub,
         quote.signed_at,
         printedName,
+        technicalMeasure,
       );
       await syncLinkedSalesQuoteSignature(supabase, quote, {
         signedAt: quote.signed_at,
@@ -1012,12 +1050,6 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
-        supabase,
-        quote,
-        soldSync.job,
-        "quote_signed_retry"
-      );
       if (technicalMeasure === "needed" && soldSync.job) {
         await ensureTechnicalMeasureForm(
           supabase,
@@ -1209,6 +1241,7 @@ export async function acceptPublicQuote(
     signedPub,
     now,
     printedName,
+    technicalMeasure,
   );
   await syncLinkedSalesQuoteSignature(supabase, signedQuote, {
     signedAt: now,
