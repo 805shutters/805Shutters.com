@@ -90,6 +90,76 @@ function packetHtml(input: {
     </section>${lineHtml}</body></html>`;
 }
 
+function dimension(value: unknown) {
+  const parsed = object(value);
+  const whole = Number(parsed.whole);
+  const fraction = String(parsed.fraction || "").trim();
+  if (!Number.isFinite(whole)) return "";
+  return `${whole}${fraction ? ` ${fraction}` : ""}`;
+}
+
+function onyxPacketHtml(packetValue: unknown) {
+  const packet = object(packetValue);
+  const source = object(packet.source);
+  const header = object(packet.header);
+  const lines = Array.isArray(packet.lines) ? packet.lines.map(object) : [];
+  const coverRows = [
+    ["Customer", source.customerName],
+    ["Phone", source.customerPhone],
+    ["Email", source.customerEmail],
+    ["Jobsite", source.jobsiteAddress],
+    ["Quote / PO", source.quoteNumber || header.poNumber],
+    ["Product", packet.productDisplayName],
+    ["Onyx material", header.materialCategory || "VERIFY IN LIVE ONYX PORTAL"],
+    ["Side mark", header.sideMark],
+    ["Order note", header.orderNote],
+    ["Job notes", source.jobNotes],
+  ].filter(([, value]) => value);
+  const fieldLabels: Array<[string, string]> = [
+    ["material", "Material"],
+    ["shutterType", "Type"],
+    ["frameType", "Frame Type"],
+    ["widthType", "W/F"],
+    ["frameNo", "Frame No."],
+    ["color", "Color"],
+    ["louver", "Louver"],
+    ["hingeColor", "Hinge Color"],
+    ["stile", "Stile"],
+    ["tiltRod", "Tilt Rod"],
+    ["panelConfig", "Folding / Panel"],
+    ["windowType", "Window Type"],
+    ["dividerRail", "Divider Rail"],
+    ["splitTiltRod", "Split Tilt Rod"],
+    ["itemNote", "Item Note"],
+  ];
+  const lineHtml = lines.map((line, index) => {
+    const rows: Array<[string, unknown]> = [
+      ["Room / Opening", line.room],
+      ["Quantity", line.portalLineQuantity || 1],
+      ["Width A", dimension(line.widthA)],
+      ["Height B", dimension(line.heightB)],
+      ...fieldLabels.map(([key, label]) => [label, line[key]] as [string, unknown]),
+      ["Divider Position", dimension(line.dividerPosition)],
+      ["Split Position", dimension(line.splitPosition)],
+      ["Other Options", Array.isArray(line.otherOptions) ? line.otherOptions.join(", ") : line.otherOptions],
+    ];
+    return `<section class="onyx-page">
+      <header><div><span>ONYX SHUTTERS · LINE ${index + 1} OF ${lines.length}</span><h2>${escapeHtml(packet.productDisplayName || "Shutter")}</h2></div><b>${escapeHtml(line.room || `Line ${index + 1}`)}</b></header>
+      <table>${rows.filter(([, value]) => value !== null && value !== undefined && value !== "").map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table>
+      <footer>Review against the submitted technical measure before entering or submitting this line in Onyx.</footer>
+    </section>`;
+  }).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+    <title>Onyx Order Packet · ${escapeHtml(source.customerName)}</title>
+    <style>
+      :root{font-family:Arial,sans-serif;color:#111;background:#ecebe7}body{margin:0;padding:20px}.onyx-page{box-sizing:border-box;max-width:980px;min-height:calc(100vh - 40px);margin:0 auto 20px;background:#fff;border:1px solid #bdbbb4;padding:24px}.cover{border-top:10px solid #111}.eyebrow,header span{font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#666}h1,h2{margin:5px 0 18px}.category{display:inline-block;margin:10px 0 22px;padding:8px 12px;background:#111;color:#fff;font-weight:800;letter-spacing:.08em;text-transform:uppercase}header{display:flex;justify-content:space-between;gap:18px;border-bottom:4px solid #111;margin-bottom:12px}header b{align-self:center;font-size:18px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #c9c7c0;padding:9px;text-align:left;vertical-align:top}th{width:31%;font-size:12px;text-transform:uppercase;background:#f3f2ee}footer{margin-top:18px;padding-top:12px;border-top:1px solid #aaa;font-size:12px;font-weight:700}@media print{body{padding:0;background:#fff}.onyx-page{min-height:100vh;margin:0;border:0;page-break-after:always}.onyx-page:last-child{page-break-after:auto}}@media(max-width:600px){body{padding:8px}.onyx-page{padding:14px}th{width:40%}}
+    </style></head><body>
+    <section class="onyx-page cover"><p class="eyebrow">805 Shutters · Agentic Ordering Form</p><h1>Onyx Order</h1><div class="category">${escapeHtml(packet.productDisplayName || "Shutter")}</div>
+      <table>${coverRows.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table>
+      <footer>${escapeHtml(packet.allowedAction || "draft_entry_only")} · Do not submit without final human review.</footer>
+    </section>${lineHtml}</body></html>`;
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ quoteId: string }> },
@@ -108,6 +178,30 @@ export async function GET(
       .eq("external_id", `manufacturer-order-manifest:${quoteId}`)
       .maybeSingle();
     if (error) throw new CrmAuthError(502, "The agentic ordering packet could not be loaded.");
+    if (!data && manufacturer === "onyx") {
+      const { data: onyxArtifacts, error: onyxError } = await supabase
+        .from("crm_customer_contracts")
+        .select("id,title,status,updated_at,meta")
+        .eq("external_source", "manufacturer_order_packet")
+        .like("external_id", `onyx-order:${quoteId}:%`)
+        .order("title");
+      if (onyxError) throw new CrmAuthError(502, "The Onyx ordering packet could not be loaded.");
+      if (!onyxArtifacts?.length) throw new CrmAuthError(404, "The Onyx ordering packet was not found.");
+      const packets = onyxArtifacts.map((row) => object(object(row.meta).current_packet)).filter((packet) => Object.keys(packet).length);
+      if (request.nextUrl.searchParams.get("format") === "html") {
+        const combinedPacket = packets.length === 1
+          ? packets[0]
+          : {
+              ...packets[0],
+              productDisplayName: "Mixed Onyx Products",
+              lines: packets.flatMap((packet) => Array.isArray(packet.lines) ? packet.lines : []),
+            };
+        return new NextResponse(onyxPacketHtml(combinedPacket), {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+      return NextResponse.json({ packets, manufacturer: "onyx" });
+    }
     if (!data) throw new CrmAuthError(404, "The agentic ordering packet was not found.");
     const meta = data.meta && typeof data.meta === "object" && !Array.isArray(data.meta)
       ? data.meta as Record<string, unknown>
