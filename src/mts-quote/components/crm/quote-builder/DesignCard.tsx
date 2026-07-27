@@ -6740,6 +6740,7 @@ function ShadesAndBlindsOptions({
 }) {
   const [openOptionField, setOpenOptionField] = useState<string | null>(null);
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [priceOverrideMessage, setPriceOverrideMessage] = useState("");
   const requestedOpenOptionFieldRef = useRef<string | null | undefined>(undefined);
   const motorizationEligibility = resolveMotorizationUiEligibility(
     design,
@@ -9733,7 +9734,63 @@ function ShadesAndBlindsOptions({
   const gridOptions = getGridOptions();
   const optionsJson = (design?.options_json as Record<string, unknown>) || {};
 
-  const handleManualPriceChange = (price: number) => {
+  const handleManualPriceChange = async (price: number) => {
+    if (authoritativeV2 && design) {
+      setPriceOverrideMessage("Saving audited price override…");
+      try {
+        const supabase = getSupabaseBrowserClient();
+        if (!supabase) throw new Error("CRM connection is unavailable.");
+        const [{ data: sessionData }, { data: quote }] = await Promise.all([
+          supabase.auth.getSession(),
+          supabase
+            .from("sales_quotes")
+            .select("quote_v2_revision")
+            .eq("id", _lineItem.quote_id)
+            .single(),
+        ]);
+        const response = await fetch(
+          `/api/crm/sales-quotes/${_lineItem.quote_id}/v2/custom-mode`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${sessionData.session?.access_token || ""}`,
+            },
+            body: JSON.stringify({
+              lineItemId: _lineItem.id,
+              designId: design.id,
+              expectedRevision: Number(quote?.quote_v2_revision || 0),
+              idempotencyKey: `authoritative-price-${design.id}-${Date.now()}`,
+              useAuthoritativeCost: true,
+              freightCost: 0,
+              otherCost: 0,
+              profitMode: "dollar",
+              profitValue: 125,
+              finalSellPrice: price,
+              roomName: _lineItem.room_name || "",
+              designName: design.variant || "",
+              widthWhole: _lineItem.width_whole,
+              widthFraction: _lineItem.width_fraction,
+              heightWhole: _lineItem.height_whole,
+              heightFraction: _lineItem.height_fraction,
+            }),
+          },
+        );
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(body.message || "The authoritative price override could not be saved.");
+        }
+        setPriceOverrideMessage("Audited override saved. Refreshing…");
+        window.location.reload();
+      } catch (error) {
+        setPriceOverrideMessage(
+          error instanceof Error
+            ? error.message
+            : "The authoritative price override could not be saved.",
+        );
+      }
+      return;
+    }
     onUpdateFields({
       unit_price: price,
       options_json: { ...optionsJson, manual_price_override: true },
@@ -10144,12 +10201,13 @@ function ShadesAndBlindsOptions({
           data-testid="lotus-faux-authority-status"
           role="alert"
         >
-          <strong>Lotus configuration is internal and unresolved.</strong>{" "}
+          <strong>Lotus pricing is draft-only.</strong>{" "}
           The selected West A26.v1 source program records the FLX identity,
-          dimensions, and mount, but the supplied book states no effective
-          date and defines no customer retail. Customer price, Custom Mode,
-          and send remain blocked. For a three-blind opening, enter all three
-          measured blind widths; the center is never inferred.
+          dimensions, mount, and manufacturer wholesale grid. Draft retail is
+          wholesale plus the selected internal line margin, with a complete
+          audit trail. Sending remains blocked because the supplied book states
+          no effective date. For a three-blind opening, enter all three measured
+          blind widths; the center is never inferred.
         </div>
       ) : null}
       <ConfirmedOptionStrip
@@ -10259,7 +10317,7 @@ function ShadesAndBlindsOptions({
               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
-              {allowManualPriceEditing ? (
+              {allowManualPriceEditing || authoritativeV2 ? (
                 <DeferredNumberInput
                   value={design?.unit_price || ""}
                   onCommit={handleManualPriceChange}
@@ -10291,9 +10349,14 @@ function ShadesAndBlindsOptions({
               </Button>
             )}
           </div>
+          {priceOverrideMessage ? (
+            <p className="mt-1 text-xs font-semibold text-violet-900">
+              {priceOverrideMessage}
+            </p>
+          ) : null}
         </div>
       )}
-      {authoritativeV2 && design && !lotusFauxWood ? (
+      {authoritativeV2 && design ? (
         <CustomModePanel lineItem={_lineItem} design={design} />
       ) : null}
     </div>

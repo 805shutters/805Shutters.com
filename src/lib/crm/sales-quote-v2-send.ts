@@ -393,6 +393,17 @@ export function prepareV2CustomerSendPayload(
   if (!("backend" in repriced) || repriced.backend !== "v2") {
     fail("The server-authoritative V2 engine did not handle this quote.");
   }
+  if (
+    repriced.designs.some(
+      (entry) =>
+        entry.result.ok &&
+        entry.result.productId === "lotus_faux_wood_blinds",
+    )
+  ) {
+    fail(
+      "Lotus FLX remains draft-only until the supplied manufacturer grid has authoritative effective-date and fitment confirmation.",
+    );
+  }
   const hasStandardSnapshot = [...storedByDesignId.values()].some(
     (stored) => stored.catalogVersion !== "custom-override-v1",
   );

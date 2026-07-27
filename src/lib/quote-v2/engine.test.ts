@@ -131,6 +131,93 @@ describe("Quote V2 authoritative pricing engine", () => {
     );
   });
 
+  it("prices Norman SmartPrivacy from manufacturer wholesale plus $125 per original line", () => {
+    const context = selection(
+      "smartprivacy_faux",
+      "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      {
+        mount_type: "Inside Mount",
+        product_line: "SmartPrivacy",
+        slat_size: '2"',
+        color: "Pure White",
+        faux_configuration_version: "faux-wood-v2",
+        faux_blind_count: 1,
+      },
+      {
+        manufacturerId: "norman",
+        widthInches: 30,
+        heightInches: 48,
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        quantity: 1,
+      },
+      includeInternalCost: true,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      productStatus: "documented_limited",
+      validationStatus: "valid",
+      wholesaleUnitPrice: 61.38,
+      unitPrice: 186.38,
+      total: 186.38,
+    });
+    if (!result.ok) return;
+    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
+    expect(JSON.stringify(toCustomerQuotePriceResult(result))).not.toMatch(
+      /wholesale|margin|profit|cost/i,
+    );
+  });
+
+  it("sums three explicit SmartPrivacy blind grid cells and adds $125 only once", () => {
+    const widths = [23, 48.125, 23];
+    const context = selection(
+      "smartprivacy_faux",
+      "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      {
+        mount_type: "Inside Mount",
+        product_line: "SmartPrivacy",
+        slat_size: '2"',
+        color: "Pure White",
+        faux_configuration_version: "faux-wood-v2",
+        faux_blind_count: 3,
+        faux_blind_widths_inches: widths,
+      },
+      {
+        manufacturerId: "norman",
+        widthInches: 94.125,
+        heightInches: 70.25,
+      },
+    );
+    const result = priceQuoteV2Selection({
+      selection: context,
+      priceInput: {
+        productId: context.productId,
+        programId: context.programId ?? undefined,
+        widthInches: context.widthInches,
+        heightInches: context.heightInches,
+        componentWidthsInches: widths,
+        quantity: 1,
+      },
+      includeInternalCost: true,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      componentMatchedWidths: [24, 54, 24],
+      wholesaleUnitPrice: 256.41,
+      unitPrice: 381.41,
+      total: 381.41,
+    });
+    if (!result.ok) return;
+    expect(result.unitPrice - result.wholesaleUnitPrice!).toBe(125);
+  });
+
   it("does not apply Norman policy to a non-Norman catalog product with a forged label", () => {
     const context = selection("polar_interior_roller", "group_1", {}, {
       manufacturerId: "norman",

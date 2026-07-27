@@ -69,6 +69,11 @@ const UUID_PATTERN =
 const IDEMPOTENCY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/;
 const CUSTOMER_PRICING_FAILURE =
   "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.";
+const SOURCE_COST_PLUS_PRODUCTS = new Set([
+  "faux_wood",
+  "smartprivacy_faux",
+  "lotus_faux_wood_blinds",
+]);
 
 function plainRecord(value: unknown): JsonRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
@@ -474,7 +479,8 @@ export function prepareSalesQuoteV2PricingBatch(input: Readonly<{
       !forcedBlocked &&
       result.ok &&
       result.validationStatus === "valid" &&
-      result.internalCost?.freightStatus !== "unresolved" &&
+      (result.internalCost?.freightStatus !== "unresolved" ||
+        SOURCE_COST_PLUS_PRODUCTS.has(priced.selection.productId)) &&
       internalSnapshot !== null &&
       priced.snapshot !== null;
     const priceStatus: V2PriceStatus = authoritative

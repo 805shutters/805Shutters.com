@@ -327,6 +327,83 @@ describe("authoritative sales quote V2 pricing save", () => {
     }
   });
 
+  it("persists Norman source-cost-plus retail as authoritative despite order-level freight", async () => {
+    const rows = validRows({
+      designOptions: {
+        catalog_product_id: "smartprivacy_faux",
+        quote_lab_product_id: "smartprivacy_faux",
+        catalog_program_id:
+          "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+        fabric_program_id:
+          "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+        quote_lab_program_id:
+          "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+        catalog_manufacturer: "Norman",
+        catalog_product_type: "Faux Wood Blinds",
+        faux_configuration_version: "faux-wood-v2",
+        faux_blind_count: 1,
+        product_line: "SmartPrivacy",
+        slat_size: '2"',
+        color: "Pure White",
+      },
+    });
+    Object.assign(rows.sales_quote_line_items[0], {
+      product_type: "Faux Wood Blinds",
+      width_whole: 30,
+      height_whole: 48,
+    });
+    Object.assign(rows.sales_quote_designs[0], {
+      product_type: "Faux Wood Blinds",
+      material: "SmartPrivacy 2-inch Pure White",
+      shade_type: null,
+      lift_system: null,
+      valance: null,
+      fabric: null,
+    });
+    const { client, rpcCalls } = fakeSupabase(rows, [
+      {
+        quote_id: QUOTE_ID,
+        design_id: DESIGN_ID,
+        snapshot_id: "88888888-8888-4888-8888-888888888888",
+        new_revision: 8,
+        quote_status: "priced",
+        quote_total: 186.38,
+        priced_design_count: 1,
+        blocked_design_count: 0,
+        product_cost_total: 61.38,
+      },
+    ]);
+    const response = await saveSalesQuoteV2AuthoritativePrice(client, {
+      quoteId: QUOTE_ID,
+      lineItemId: LINE_ID,
+      designId: DESIGN_ID,
+      expectedRevision: 7,
+      idempotencyKey: "price-save:faux-cost-plus",
+      actorId: ACTOR_ID,
+      serverDate: "2026-07-27",
+    });
+    expect(response).toMatchObject({
+      priceStatus: "authoritative",
+      quoteTotal: 186.38,
+      price: {
+        ok: true,
+        productId: "smartprivacy_faux",
+        unitPrice: 186.38,
+        total: 186.38,
+      },
+    });
+    const saved = (
+      rpcCalls[0].args.p_results as Array<Record<string, unknown>>
+    )[0];
+    expect(saved).toMatchObject({
+      priceStatus: "authoritative",
+      internalCostSnapshot: {
+        productCostUnit: 61.38,
+        productCostTotal: 61.38,
+      },
+    });
+  });
+
   it("persists fail-closed validation without an authoritative or cost snapshot", async () => {
     const rows = validRows();
     delete (

@@ -667,8 +667,12 @@ export function priceDesign(input: PriceInput): PriceResult {
   }
   const componentWidths = input.componentWidthsInches;
   if (componentWidths !== undefined) {
+    const supportedMultiComponentProduct =
+      product.id === "roller" ||
+      product.id === "faux_wood" ||
+      product.id === "smartprivacy_faux";
     if (
-      product.id !== "roller" ||
+      !supportedMultiComponentProduct ||
       !Array.isArray(componentWidths) ||
       componentWidths.length < 2 ||
       componentWidths.length > 4 ||
@@ -678,7 +682,7 @@ export function priceDesign(input: PriceInput): PriceResult {
     ) {
       return fail(
         "CONFIGURATION_INCOMPLETE",
-        "Multi-component Roller pricing requires two to four positive component order widths.",
+        "Multi-component pricing requires two to four positive measured component widths for this product.",
         warnings,
       );
     }
@@ -686,7 +690,10 @@ export function priceDesign(input: PriceInput): PriceResult {
       (sum, width) => sum + Number(width),
       0,
     );
-    if (Math.abs(componentWidthTotal - W) > 0.000_001) {
+    if (
+      product.id === "roller" &&
+      Math.abs(componentWidthTotal - W) > 0.000_001
+    ) {
       return fail(
         "CONFIGURATION_INCOMPLETE",
         `Roller component widths total ${componentWidthTotal}\", but the assembled order width is ${W}\".`,
@@ -752,7 +759,7 @@ export function priceDesign(input: PriceInput): PriceResult {
     baseLookups.push(lookup);
   }
   const baseLookup = baseLookups[0];
-  let configurationUnits = 1;
+  let configurationUnits = componentWidths?.length ?? 1;
   for (const sel of input.surcharges ?? []) {
     const surcharge = findProductSurcharge(product, sel.id);
     if (!surcharge) continue;
@@ -764,7 +771,11 @@ export function priceDesign(input: PriceInput): PriceResult {
         : surcharge.baseQuantityMultiplier ?? 1;
     configurationUnits = Math.max(configurationUnits, multiplier);
   }
-  if (componentWidths && configurationUnits !== componentWidths.length) {
+  if (
+    product.id === "roller" &&
+    componentWidths &&
+    configurationUnits !== componentWidths.length
+  ) {
     return fail(
       "CONFIGURATION_INCOMPLETE",
       `The priced Roller configuration represents ${configurationUnits} shades, but ${componentWidths.length} component widths were supplied.`,

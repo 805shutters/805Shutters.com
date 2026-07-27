@@ -347,7 +347,7 @@ describe("fresh portal-order source reconciliations", () => {
     }
   });
 
-  it("retains all three Lotus portal lines without inventing customer retail", () => {
+  it("prices only the owner-authorized Lotus faux line and keeps the cart non-sendable", () => {
     const recipe = group("fresh-lotus-three-product-cart");
     const quote = reprice(recipe);
     const [aluminum, faux, stockVertical] = quote.designs;
@@ -382,13 +382,17 @@ describe("fresh portal-order source reconciliations", () => {
     expect(aluminum.result.ok ? null : aluminum.result.code).toBe(
       "CUSTOMER_RETAIL_UNDEFINED",
     );
-    expect(faux.result.ok ? null : faux.result.code).toBe(
-      "CUSTOMER_RETAIL_UNDEFINED",
-    );
+    expect(faux.result).toMatchObject({
+      ok: true,
+      wholesaleUnitPrice: 53.97,
+      unitPrice: 178.97,
+      total: 178.97,
+    });
     expect(stockVertical.result.ok ? null : stockVertical.result.code).toBe(
       "PROGRAM_NOT_RESOLVED",
     );
-    expect(quote.total).toBe(0);
+    expect(quote.total).toBe(178.97);
+    expect(quote.sendability.sendable).toBe(false);
   });
 
   it("replays Onyx 30x72 with the actual 3.5-inch louver and blocks the live-source conflict", () => {

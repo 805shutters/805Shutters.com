@@ -532,9 +532,9 @@
       ],
       "expectedFreshRuntime": {
         "catalogAsOf": "2026-08-01",
-        "customerTotalCents": 0,
+        "customerTotalCents": 17897,
         "sendable": false,
-        "policyNote": "The portal and book expose dealer amounts only. Customer retail must remain undefined; the stock vertical SKU is not a supported V2 price program.",
+        "policyNote": "The owner-selected Lotus faux-wood book cost receives the explicit $125 draft line margin. Lotus FLX remains send-blocked pending effective-date and fitment authority; the other dealer-only or unsupported lines remain unpriced.",
         "costSummary": {
           "status": "incomplete",
           "productCostCents": 8181,
@@ -557,14 +557,15 @@
           },
           {
             "lineId": "fresh-lotus-cart-cfcx4872w",
-            "ok": false,
-            "resultCode": "CUSTOMER_RETAIL_UNDEFINED",
-            "customerTotalCents": 0,
+            "ok": true,
+            "resultCode": null,
+            "customerTotalCents": 17897,
             "wholesaleTotalCents": 5397,
-            "requiredValidationRuleIds": [],
+            "requiredValidationRuleIds": [
+              "lotus.faux.configuration.legacy_untyped"
+            ],
             "requiredSendabilityReasonCodes": [
-              "product_status_not_sendable",
-              "price_not_authoritative"
+              "hard_block"
             ]
           },
           {

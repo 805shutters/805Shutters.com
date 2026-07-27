@@ -81,16 +81,19 @@ export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStat
   // mistaken for permission to send a customer quote.
   lotus_vinyl_blinds: "restriction_source_incomplete",
   lotus_mini_blinds: "restriction_source_incomplete",
-  lotus_faux_wood_blinds: "restriction_source_incomplete",
+  // The owner-selected West A26.v1 grid is usable for internal/draft
+  // source-cost-plus pricing. Customer delivery remains separately blocked
+  // until the supplier source has an effective date and fitment confirmation.
+  lotus_faux_wood_blinds: "documented_limited",
   lotus_roller_shades: "restriction_source_incomplete",
   lotus_vertical_blinds: "restriction_source_incomplete",
   citylights_aluminum: "restriction_source_incomplete",
-  faux_wood: "restriction_source_incomplete",
+  faux_wood: "documented_limited",
   palladian_shelf: "restriction_source_incomplete",
   perfectsheer: "restriction_source_incomplete",
   smartdrape: "restriction_source_incomplete",
   smartfold: "restriction_source_incomplete",
-  smartprivacy_faux: "restriction_source_incomplete",
+  smartprivacy_faux: "documented_limited",
   wood_blinds: "restriction_source_incomplete",
   polar_interior_roller: "restriction_source_incomplete",
   polar_elite_patio: "restriction_source_incomplete",

@@ -1048,18 +1048,15 @@ describe("V2 exact-interface contract", () => {
     );
   });
 
-  it("renders a dedicated Lotus authority state and never enables Custom Mode for it", () => {
+  it("renders Lotus draft pricing with audited Custom Mode while keeping send blocked", () => {
     const source = readFileSync(
       fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)),
       "utf8",
     );
     expect(source).toContain('data-testid="lotus-faux-authority-status"');
-    expect(source).toContain(
-      "Customer price, Custom Mode,",
-    );
-    expect(source).toContain(
-      "authoritativeV2 && design && !lotusFauxWood",
-    );
+    expect(source).toContain("Lotus pricing is draft-only.");
+    expect(source).toContain("authoritativeV2 && design");
+    expect(source).toContain("Sending remains blocked");
     expect(source).toContain(
       'options: ["Inside Mount", "Outside Mount", "Side Mount"] as const',
     );

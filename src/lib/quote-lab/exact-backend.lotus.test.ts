@@ -120,9 +120,11 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     if (!("backend" in result) || result.backend !== "v2") return;
 
     expect(result.designs[0]?.result).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      productStatus: "restriction_source_incomplete",
+      ok: true,
+      productStatus: "documented_limited",
+      wholesaleUnitPrice: 98.4,
+      unitPrice: 223.4,
+      total: 223.4,
     });
     expect(result.designs[0]?.costResult).toMatchObject({
       ok: true,
@@ -131,7 +133,17 @@ describe("Quote Lab Lotus manufacturer selection", () => {
       programId: "lotus_flx_2in_bright_white_custom",
     });
     expect(result.sendability.sendable).toBe(false);
-    expect(result.customerQuote.total).toBe(0);
+    expect(result.sendability.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "hard_block",
+        }),
+      ]),
+    );
+    expect(
+      result.sendability.lines[0]?.blockingIssues.map((issue) => issue.ruleId),
+    ).toContain("lotus.faux.send_authority_pending");
+    expect(result.customerQuote.total).toBe(223.4);
   });
 
   it("blocks Lotus FLX split repricing until the center width is explicitly entered", () => {

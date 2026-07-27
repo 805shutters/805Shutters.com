@@ -765,7 +765,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
     expect(afterPolar.systemAfter.sendable).toBe(false);
   });
 
-  it("blocks all Lotus customer prices while retaining each exact dealer cost", () => {
+  it("prices only owner-authorized Lotus faux wood while retaining exact dealer costs and send blocks", () => {
     const cases = [
       [
         "lotus-mini-aluminum-17x36",
@@ -816,16 +816,30 @@ describe("portal parity AFTER live runtime outcomes", () => {
           heightInches,
         ),
       );
-      expect(runtime).toMatchObject({
-        ok: false,
-        code: "CUSTOMER_RETAIL_UNDEFINED",
-        validationStatus: "blocked",
-      });
-      expect(expected.systemAfter).toMatchObject({
-        status: "customer_retail_blocked",
-        displayedTotalCents: 0,
-        sendable: false,
-      });
+      if (productId === "lotus_faux_wood_blinds") {
+        expect(runtime).toMatchObject({
+          ok: true,
+          validationStatus: "valid",
+          wholesaleUnitPrice: 23.57,
+          unitPrice: 148.57,
+        });
+        expect(expected.systemAfter).toMatchObject({
+          status: "customer_retail_blocked",
+          displayedTotalCents: 0,
+          sendable: false,
+        });
+      } else {
+        expect(runtime).toMatchObject({
+          ok: false,
+          code: "CUSTOMER_RETAIL_UNDEFINED",
+          validationStatus: "blocked",
+        });
+        expect(expected.systemAfter).toMatchObject({
+          status: "customer_retail_blocked",
+          displayedTotalCents: 0,
+          sendable: false,
+        });
+      }
     }
   });
 
@@ -1160,6 +1174,8 @@ describe("portal parity AFTER live runtime outcomes", () => {
       const exactAdapterTotalCents =
         auditCase.id === "polar-elite-suntex90-manual-three-line"
           ? 0
+          : auditCase.id === "lotus-faux-wood-bright-white-17x36"
+            ? 14_857
           : auditCase.systemAfter.displayedTotalCents;
       expect(cents(quote.total), `${auditCase.id} exact-interface total`).toBe(
         exactAdapterTotalCents,

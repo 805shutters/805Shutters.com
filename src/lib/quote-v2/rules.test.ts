@@ -421,9 +421,7 @@ describe("Quote V2 authoritative manufacturer rules", () => {
         heightInches: 70.25,
       },
     );
-    expect(productRuleStatusForSelection(base)).toBe(
-      "restriction_source_incomplete",
-    );
+    expect(productRuleStatusForSelection(base)).toBe("documented_limited");
     expect(ruleIds(base)).toContain(
       "lotus.faux.split.three_widths_required",
     );

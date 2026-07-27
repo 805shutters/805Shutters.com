@@ -6,6 +6,7 @@ import {
 } from "@/lib/quote/catalog";
 import type { CatalogProduct, CatalogProgram } from "@/lib/quote/catalog/types";
 import {
+  priceDealerNetDesign,
   priceDesign,
   type PriceBreakdown,
   type PriceFailure,
@@ -103,6 +104,12 @@ export type QuoteV2PriceRequest = {
 
 const CUSTOMER_PRICING_FAILURE_MESSAGE =
   "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.";
+const DEFAULT_SOURCE_COST_PLUS_MARGIN_PER_LINE = 125;
+const SOURCE_COST_PLUS_PRODUCTS = new Set([
+  "faux_wood",
+  "smartprivacy_faux",
+  "lotus_faux_wood_blinds",
+]);
 
 function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -888,6 +895,204 @@ function catalogCostRetail(
   };
 }
 
+/**
+ * Convert a dealer-net-only manufacturer program into the same immutable
+ * source shape used by the component ledger. For split faux-wood openings,
+ * every measured blind width is looked up independently and summed; a missing
+ * center width is rejected earlier by the manufacturer rule set.
+ */
+function dealerNetSourceBreakdown(priceInput: PriceInput): PriceResult {
+  const product = getProduct(priceInput.productId);
+  const program = product
+    ? getProgram(product, priceInput.programId ?? "")
+    : undefined;
+  if (!product || !program) {
+    const unresolved = priceDealerNetDesign(priceInput);
+    return unresolved.ok
+      ? {
+          ok: false,
+          code: "CONFIGURATION_INCOMPLETE",
+          error: "The selected dealer-net program identity is unavailable.",
+          warnings: [],
+        }
+      : unresolved;
+  }
+  const widths =
+    priceInput.componentWidthsInches?.length
+      ? priceInput.componentWidthsInches
+      : [priceInput.widthInches];
+  const componentResults = widths.map((widthInches) =>
+    priceDealerNetDesign({
+      ...priceInput,
+      widthInches,
+      componentWidthsInches: undefined,
+      quantity: 1,
+    }),
+  );
+  const failure = componentResults.find((result) => !result.ok);
+  if (failure && !failure.ok) return failure;
+  const priced = componentResults.filter(
+    (result): result is Extract<typeof result, { ok: true }> => result.ok,
+  );
+  if (!priced.length) {
+    return {
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      error: "The selected manufacturer grid returned no source cost.",
+      warnings: [],
+    };
+  }
+
+  const optionLines = new Map<
+    string,
+    {
+      label: string;
+      amount: number;
+      billingScope: "per_window" | "once";
+      detail?: string;
+    }
+  >();
+  priced.forEach((component, componentIndex) => {
+    component.dealerNetOptionLines.forEach((line) => {
+      const current = optionLines.get(line.id);
+      const amount =
+        line.billingScope === "once" && componentIndex > 0 ? 0 : line.amount;
+      optionLines.set(line.id, {
+        label: line.label,
+        amount: roundMoney((current?.amount ?? 0) + amount),
+        billingScope: line.billingScope,
+        ...(line.detail ? { detail: line.detail } : {}),
+      });
+    });
+  });
+  const surchargeLines: PriceLine[] = [...optionLines.entries()].map(
+    ([id, line]) => ({
+      id,
+      label: line.label,
+      amount: line.amount,
+      wholesaleAmount: line.amount,
+      kind: "flat",
+      ...(line.detail ? { detail: line.detail } : {}),
+    }),
+  );
+  const base = sumMoney(priced.map((result) => result.dealerNetBaseCost));
+  const perWindowOptions = sumMoney(
+    [...optionLines.values()]
+      .filter((line) => line.billingScope === "per_window")
+      .map((line) => line.amount),
+  );
+  const onceTotal = sumMoney(
+    [...optionLines.values()]
+      .filter((line) => line.billingScope === "once")
+      .map((line) => line.amount),
+  );
+  const quantity = Math.max(1, Math.floor(Number(priceInput.quantity) || 1));
+  const unitPrice = sumMoney([base, perWindowOptions]);
+  const total = moneyFromCents(
+    moneyCents(unitPrice) * quantity + moneyCents(onceTotal),
+  );
+  const matchedWidths = priced
+    .map((result) => result.matchedWidth)
+    .filter((width): width is number => typeof width === "number");
+  const matchedHeights = priced
+    .map((result) => result.matchedHeight)
+    .filter((height): height is number => typeof height === "number");
+  const actualSqft = priced.reduce(
+    (totalSqft, result) => totalSqft + (result.sqft ?? 0),
+    0,
+  );
+  const billableSqft = priced.reduce(
+    (totalSqft, result) => totalSqft + (result.billableSqft ?? 0),
+    0,
+  );
+  return {
+    ok: true,
+    productId: product.id,
+    programId: program.id,
+    programName: program.name,
+    matchedWidth: matchedWidths.length
+      ? Math.max(...matchedWidths)
+      : priceInput.widthInches,
+    matchedHeight: matchedHeights[0] ?? null,
+    ...(widths.length > 1
+      ? { componentMatchedWidths: matchedWidths }
+      : {}),
+    ...(actualSqft > 0 ? { sqft: actualSqft } : {}),
+    ...(billableSqft > 0 ? { billableSqft } : {}),
+    base,
+    configurationUnits: widths.length,
+    wholesaleBase: base,
+    surchargeLines,
+    unitPrice,
+    discountPercent: 0,
+    discountAmount: 0,
+    wholesaleUnitPrice: unitPrice,
+    quantity,
+    onceTotal,
+    total,
+    wholesaleTotal: total,
+    warnings: [
+      "Draft retail is derived from the owner-selected manufacturer wholesale grid; the source and margin policy are retained in the internal audit.",
+    ],
+    costStatus:
+      product.freightStatus === "unresolved" ||
+      product.freightStatus === "order_level"
+        ? "incomplete"
+        : "complete",
+  };
+}
+
+/**
+ * Internal retail policy for custom faux-wood lines. The customer price is
+ * manufacturer wholesale plus one explicit margin per original quote line.
+ * The margin is folded into the customer base amount so neither customer
+ * payloads nor documents can expose an internal profit line.
+ */
+function sourceCostPlusRetail(
+  costResult: PriceBreakdown,
+  marginPerLine = DEFAULT_SOURCE_COST_PLUS_MARGIN_PER_LINE,
+): PriceBreakdown {
+  if (
+    costResult.wholesaleBase == null ||
+    costResult.wholesaleUnitPrice == null ||
+    costResult.wholesaleTotal == null ||
+    costResult.surchargeLines.some((line) => line.wholesaleAmount == null)
+  ) {
+    return costResult;
+  }
+  const quantity = Math.max(1, costResult.quantity);
+  const marginPerUnit = moneyFromCents(
+    Math.round(moneyCents(marginPerLine) / quantity),
+  );
+  const surchargeLines = costResult.surchargeLines.map((line) => ({
+    ...line,
+    amount: line.wholesaleAmount!,
+  }));
+  const onceWholesale = moneyFromCents(
+    moneyCents(costResult.wholesaleTotal) -
+      moneyCents(costResult.wholesaleUnitPrice) * quantity,
+  );
+  const base = sumMoney([costResult.wholesaleBase, marginPerUnit]);
+  const unitPrice = sumMoney([
+    costResult.wholesaleUnitPrice,
+    marginPerUnit,
+  ]);
+  return {
+    ...costResult,
+    base,
+    surchargeLines,
+    unitPrice,
+    discountPercent: 0,
+    discountAmount: 0,
+    onceTotal: onceWholesale,
+    total: sumMoney([costResult.wholesaleTotal, marginPerLine]),
+    warnings: [
+      ...costResult.warnings,
+      "Draft customer retail uses the internal source-cost-plus policy for this line.",
+    ],
+  };
+}
+
 type ProgramPriceComposition = {
   familyId: string | null;
   baselineProgramId: string | null;
@@ -1412,13 +1617,22 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
       )
     : undefined;
   const effectivePriceBasis = selectedProgram?.priceBasis ?? product?.priceBasis;
-  const sourceResult = priceDesign(authoritativePriceInput);
-  const result =
+  const sourceResult =
+    effectivePriceBasis === "dealer_net" &&
+    SOURCE_COST_PLUS_PRODUCTS.has(selection.productId)
+      ? dealerNetSourceBreakdown(authoritativePriceInput)
+      : priceDesign(authoritativePriceInput);
+  const scheduledCostResult =
     effectivePriceBasis === "dealer_net"
       ? sourceResult
       : sourceResult.ok
         ? catalogCostRetail(sourceResult, selection)
         : sourceResult;
+  const result =
+    scheduledCostResult.ok &&
+    SOURCE_COST_PLUS_PRODUCTS.has(selection.productId)
+      ? sourceCostPlusRetail(scheduledCostResult)
+      : scheduledCostResult;
   if (!result.ok) {
     return {
       ...result,

@@ -299,6 +299,12 @@ function exactPriceInput(
   preserveUnsupportedSurcharges = false,
 ): PriceInput {
   const options = (design.options_json as Record<string, unknown> | undefined) ?? {};
+  const fauxComponentWidths = authoritativeSelection
+    ? (
+        authoritativeSelection.configuration.lotus_blind_widths_inches ??
+        authoritativeSelection.configuration.faux_blind_widths_inches
+      )
+    : undefined;
   return {
     productId,
     programId: resolveProgramId(productId, design),
@@ -316,6 +322,14 @@ function exactPriceInput(
         ? rollerComponentOrderWidthsForPricing(
             authoritativeSelection,
           ) ?? undefined
+        : authoritativeSelection &&
+            ["faux_wood", "smartprivacy_faux", "lotus_faux_wood_blinds"].includes(
+              productId,
+            ) &&
+            Array.isArray(fauxComponentWidths)
+          ? fauxComponentWidths
+              .map(Number)
+              .filter((width) => Number.isFinite(width) && width > 0)
         : undefined,
     quantity:
       authoritativeSelection?.quantity ??
@@ -1259,9 +1273,32 @@ function repriceExactQuoteBuilderV2(
         pricedSelectionFingerprint !== result.selectionFingerprint ||
         pricedCatalogVersion !== result.catalogVersion ||
         !storedDealerPolicyIsCurrent);
+    const sendOnlyIssues =
+      result.ok && result.productId === "lotus_faux_wood_blinds"
+        ? [
+            ...result.validationIssues,
+            {
+              severity: "hard_block" as const,
+              ruleId: "lotus.faux.send_authority_pending",
+              source:
+                result.validationIssues[0]?.source ??
+                (() => {
+                  throw new Error(
+                    "Lotus FLX pricing requires pinned source provenance.",
+                  );
+                })(),
+              selectedValues: {
+                productId: result.productId,
+                programId: result.programId,
+              },
+              explanation:
+                "Lotus FLX remains draft-only until the supplied manufacturer grid has authoritative effective-date and fitment confirmation.",
+            },
+          ]
+        : result.validationIssues;
     const evaluation = evaluateSendability({
       productStatus: result.productStatus,
-      issues: result.validationIssues,
+      issues: sendOnlyIssues,
       selectedDesignId: entry.design.id,
       priceStatus: !result.ok ? "unpriceable" : stale ? "stale" : "authoritative",
       selectionFingerprint: result.selectionFingerprint,

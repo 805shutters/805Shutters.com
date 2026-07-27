@@ -19,7 +19,7 @@ const finite = (value: unknown, label: string) => {
 
 export function parseCustomModeBody(value: unknown) {
   const body = record(value);
-  const allowed = new Set(["lineItemId","designId","expectedRevision","idempotencyKey","manufacturerCost","freightCost","otherCost","profitMode","profitValue","finalSellPrice","roomName","designName","widthWhole","widthFraction","heightWhole","heightFraction"]);
+  const allowed = new Set(["lineItemId","designId","expectedRevision","idempotencyKey","useAuthoritativeCost","manufacturerCost","freightCost","otherCost","profitMode","profitValue","finalSellPrice","roomName","designName","widthWhole","widthFraction","heightWhole","heightFraction"]);
   const unexpected = Object.keys(body).filter((key) => !allowed.has(key));
   if (unexpected.length) throw new CrmAuthError(400, `Custom Mode rejected fields: ${unexpected.join(", ")}.`);
   const profitMode = body.profitMode === "margin" ? "margin" : body.profitMode === "dollar" ? "dollar" : null;
@@ -35,8 +35,12 @@ export function parseCustomModeBody(value: unknown) {
       }
       return value;
     })(),
+    useAuthoritativeCost: body.useAuthoritativeCost === true,
     financial: {
-      manufacturerCost: finite(body.manufacturerCost, "manufacturerCost"),
+      manufacturerCost:
+        body.useAuthoritativeCost === true
+          ? 0
+          : finite(body.manufacturerCost, "manufacturerCost"),
       freightCost: finite(body.freightCost, "freightCost"),
       otherCost: finite(body.otherCost, "otherCost"),
       profitMode,
@@ -89,9 +93,32 @@ export async function applySalesQuoteV2CustomMode(
   if (rootSnapshotError || !snapshot || snapshot.catalog_version === "custom-override-v1") {
     throw new CrmAuthError(409, "The immutable standard V2 snapshot is unavailable.");
   }
-  const financials = calculateCustomMode(input.financial);
   const originalSnapshot = record(snapshot.retail_snapshot);
   const originalRetail = record(originalSnapshot.retail);
+  const quantity = Math.max(1, Math.floor(Number(originalRetail.quantity) || 1));
+  const originalInternal = record(snapshot.internal_cost_snapshot);
+  const authoritativeUnitCost = Number(originalInternal.productCostUnit);
+  if (
+    input.useAuthoritativeCost &&
+    (!Number.isFinite(authoritativeUnitCost) || authoritativeUnitCost < 0)
+  ) {
+    throw new CrmAuthError(
+      409,
+      "The immutable manufacturer-grid wholesale cost is unavailable.",
+    );
+  }
+  const requestedLineMargin = input.financial.profitValue;
+  const effectiveFinancial: CustomModeInput = {
+    ...input.financial,
+    manufacturerCost: input.useAuthoritativeCost
+      ? authoritativeUnitCost
+      : input.financial.manufacturerCost,
+    profitValue:
+      input.financial.profitMode === "dollar"
+        ? input.financial.profitValue / quantity
+        : input.financial.profitValue,
+  };
+  const financials = calculateCustomMode(effectiveFinancial);
   const customFingerprint = createHash("sha256")
     .update(`${input.designId}:${input.expectedRevision + 1}:${input.idempotencyKey}`)
     .digest("hex");
@@ -105,6 +132,11 @@ export async function applySalesQuoteV2CustomMode(
   const provenance = {
     mode: "custom_override",
     internalOnly: true,
+    costResolution: input.useAuthoritativeCost
+      ? "authoritative_manufacturer_grid"
+      : "explicit_internal_cost",
+    marginScope:
+      input.financial.profitMode === "dollar" ? "quote_line" : "unit_margin",
     originalSnapshotId: snapshot.id,
     originalCatalogVersion: snapshot.catalog_version,
     originalSelectionFingerprint: snapshot.selection_fingerprint,
@@ -113,9 +145,15 @@ export async function applySalesQuoteV2CustomMode(
   };
   const internal = {
     mode: "custom_override",
-    manufacturerCost: input.financial.manufacturerCost,
-    freightCost: input.financial.freightCost,
-    otherCost: input.financial.otherCost,
+    costResolution: provenance.costResolution,
+    manufacturerCost: effectiveFinancial.manufacturerCost,
+    freightCost: effectiveFinancial.freightCost,
+    otherCost: effectiveFinancial.otherCost,
+    requestedLineMargin,
+    effectiveUnitMargin:
+      input.financial.profitMode === "dollar"
+        ? effectiveFinancial.profitValue
+        : null,
     ...financials,
   };
   const { data, error: rpcError } = await supabase.rpc("apply_quote_v2_custom_override", {
@@ -123,7 +161,10 @@ export async function applySalesQuoteV2CustomMode(
     p_expected_revision: input.expectedRevision, p_idempotency_key: input.idempotencyKey,
     p_actor_id: actorId, p_line_patch: input.linePatch, p_design_patch: input.designPatch,
     p_retail_snapshot: retail, p_internal_snapshot: internal,
-    p_provenance_snapshot: provenance, p_override_input: input.financial,
+    p_provenance_snapshot: provenance, p_override_input: {
+      ...input.financial,
+      useAuthoritativeCost: input.useAuthoritativeCost,
+    },
     p_override_financials: financials,
   });
   if (rpcError) throw new CrmAuthError(409, rpcError.message);
