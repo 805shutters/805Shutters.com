@@ -29,7 +29,6 @@ import {
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
-import type { SalesQuoteV2RouteResolution } from "@/lib/crm/sales-quote-v2-route-resolver";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 import { createQuoteV2Draft } from "@mts/lib/quoteV2ServerClient";
 
@@ -145,7 +144,6 @@ export function QuoteDashboard({
   const [showNewQuoteDialog, setShowNewQuoteDialog] = useState(false);
   const [portfolioQuote, setPortfolioQuote] = useState<SalesQuote | null>(null);
   const [appointmentQuoteIds, setAppointmentQuoteIds] = useState<Record<string, string>>({});
-  const [openingQuoteId, setOpeningQuoteId] = useState<string | null>(null);
 
   const visibleAccounts = quoteOperatorMode
     ? QUOTE_ACCOUNTS.filter((account) => account.id === ACCOUNT_IDS.SHUTTERS_805)
@@ -596,133 +594,9 @@ export function QuoteDashboard({
     },
   });
 
-  const openOriginalCrmQuote = (
-    quoteId: string,
-    tab: QuoteWorkspaceOpenTab,
-    description = "Opening the original quote instead of an empty $0 V2 quote.",
-  ) => {
-    toast.warning("This historical quote is not structurally imported into V2.", {
-      description,
-    });
-    onOpenCrmQuote?.(quoteId, tab);
-  };
-
-  const resolveCrmQuoteRoute = async (
-    crmQuoteId: string,
-  ): Promise<SalesQuoteV2RouteResolution> => {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) throw new Error("Your CRM session is unavailable.");
-    const response = await fetch(
-      `/api/crm/quotes/${encodeURIComponent(crmQuoteId)}/v2-route`,
-      {
-        method: "GET",
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      },
-    );
-    const payload = (await response.json().catch(() => null)) as
-      | SalesQuoteV2RouteResolution
-      | { message?: string }
-      | null;
-    if (!response.ok) {
-      throw new Error(
-        payload && "message" in payload && payload.message
-          ? payload.message
-          : "The quote import link could not be verified.",
-      );
-    }
-    if (!payload || !("status" in payload)) {
-      throw new Error("The quote import resolver returned an invalid response.");
-    }
-    return payload as SalesQuoteV2RouteResolution;
-  };
-
-  const importCrmQuoteRoute = async (
-    crmQuoteId: string,
-  ): Promise<SalesQuoteV2RouteResolution> => {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) throw new Error("Your CRM session is unavailable.");
-    const response = await fetch(
-      `/api/crm/quotes/${encodeURIComponent(crmQuoteId)}/v2-route`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          idempotencyKey: `crm-import:${crmQuoteId}:${Date.now().toString(36)}`,
-        }),
-        cache: "no-store",
-      },
-    );
-    const payload = (await response.json().catch(() => null)) as
-      | { route?: SalesQuoteV2RouteResolution; message?: string }
-      | null;
-    if (!response.ok) {
-      throw new Error(
-        payload?.message ||
-          "This quote could not be structurally imported into V2.",
-      );
-    }
-    if (!payload?.route || !("status" in payload.route)) {
-      throw new Error("The quote import returned an invalid route.");
-    }
-    return payload.route;
-  };
-
-  const openCrmQuoteById = async (
-    crmQuoteId: string,
-    tab: QuoteWorkspaceOpenTab,
-  ) => {
-    if (openingQuoteId === crmQuoteId) return;
-    setOpeningQuoteId(crmQuoteId);
-    try {
-      let route = await resolveCrmQuoteRoute(crmQuoteId);
-      if (
-        route.status === "legacy_import_required" ||
-        route.status === "crm_native_unsupported"
-      ) {
-        route = await importCrmQuoteRoute(crmQuoteId);
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.salesQuotes.all,
-          }),
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.salesQuotes.byAccount(
-              ACCOUNT_IDS.SHUTTERS_805,
-            ),
-          }),
-        ]);
-      }
-      if (route.status !== "ready") {
-        openOriginalCrmQuote(
-          crmQuoteId,
-          tab,
-          "Its stored identity or structure is not safe to import automatically, so the original quote is opening.",
-        );
-        return;
-      }
-      setActiveQuote(route.salesQuoteId);
-      setActiveTab(tab);
-    } catch (error) {
-      openOriginalCrmQuote(
-        crmQuoteId,
-        tab,
-        error instanceof Error
-          ? `${error.message} The original quote is opening.`
-          : "The V2 link could not be verified. The original quote is opening.",
-      );
-    } finally {
-      setOpeningQuoteId(null);
-    }
-  };
-
   const openQuoteRow = async (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
     if (quote.source === "crm") {
-      await openCrmQuoteById(quote.id, tab);
+      onOpenCrmQuote?.(quote.id, tab);
       return;
     }
     const targetId = quoteBuilderTargetId(quote);
@@ -737,7 +611,7 @@ export function QuoteDashboard({
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
     if (appointment.crm_quote_id) {
-      void openCrmQuoteById(appointment.crm_quote_id, "builder");
+      onOpenCrmQuote?.(appointment.crm_quote_id, "builder");
       return;
     }
 

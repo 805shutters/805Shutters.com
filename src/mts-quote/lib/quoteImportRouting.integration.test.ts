@@ -19,8 +19,8 @@ const crmAppSource = readFileSync(
   "utf8",
 );
 
-describe("active quote route historical import guard", () => {
-  it("resolves CRM source IDs against local sales quote rows before opening V2", () => {
+describe("active quote route historical boundary", () => {
+  it("keeps CRM source rows out of V2 and opens their original records", () => {
     expect(dashboardSource).toContain(
       "resolveCrmQuoteBuilderRoute(quote, localSalesQuoteIds)",
     );
@@ -28,27 +28,10 @@ describe("active quote route historical import guard", () => {
       'sourceQuoteId: route.kind === "v2" ? route.salesQuoteId : null',
     );
     expect(dashboardSource).toContain(
-      "/api/crm/quotes/${encodeURIComponent(crmQuoteId)}/v2-route",
+      "onOpenCrmQuote?.(quote.id, tab)",
     );
-    expect(dashboardSource).toContain('method: "POST"');
-    expect(dashboardSource).toContain(
-      'route.status === "legacy_import_required"',
-    );
-    expect(dashboardSource).toContain(
-      'route.status === "crm_native_unsupported"',
-    );
-    expect(dashboardSource).toContain('if (route.status !== "ready")');
-    expect(dashboardSource).toContain("Date.now().toString(36)");
-    expect(dashboardSource).not.toContain("crypto.randomUUID()");
-  });
-
-  it("opens the original CRM quote only when exact structural import is unsafe", () => {
-    expect(dashboardSource).toContain(
-      "Opening the original quote instead of an empty $0 V2 quote.",
-    );
-    expect(dashboardSource).toContain(
-      "Its stored identity or structure is not safe to import automatically",
-    );
+    expect(dashboardSource).not.toContain("/v2-route");
+    expect(dashboardSource).not.toContain("importCrmQuoteRoute");
     expect(tableSource).toContain(
       "V1 only — historical configuration not yet imported to V2",
     );
@@ -56,9 +39,8 @@ describe("active quote route historical import guard", () => {
 
   it("does not blindly treat CRM source-system UUIDs as local V2 quote IDs", () => {
     expect(crmAppSource).not.toContain("function linkedSalesQuoteId");
-    expect(crmAppSource).toContain(
-      "Historical quote opened read-only because it is not structurally imported into V2.",
-    );
+    expect(crmAppSource).toContain("else setBuilderQuoteId(quoteId)");
+    expect(crmAppSource).not.toContain("readOnlyLegacyQuoteId");
   });
 
   it("verifies appointment quote targets before writing them to the V2 store", () => {

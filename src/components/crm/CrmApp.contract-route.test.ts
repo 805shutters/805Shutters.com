@@ -13,11 +13,10 @@ describe("CRM customer contract route", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
   });
 
-  it("opens unconverted historical CRM quotes in an explicit read-only fallback", () => {
-    expect(source).toContain("setReadOnlyLegacyQuoteId(quoteId)");
-    expect(source).toContain("readOnly={readOnlyLegacyQuoteId === builderQuoteId}");
-    expect(source).toContain(
-      'readOnlyReason="This historical quote has not been losslessly converted into authoritative V2."',
-    );
+  it("opens historical CRM quotes in the unchanged original builder", () => {
+    expect(source).toContain('if (tab === "contract") void openQuoteContract(quoteId)');
+    expect(source).toContain("else setBuilderQuoteId(quoteId)");
+    expect(source).not.toContain("readOnlyLegacyQuoteId");
+    expect(source).not.toContain("Historical quote opened read-only");
   });
 });
