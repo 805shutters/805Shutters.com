@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   requireCrmUser: vi.fn(),
   parseBody: vi.fn(),
   createDraft: vi.fn(),
+  queryOrder: vi.fn(),
 }));
 
 vi.mock("@/lib/crm/auth", () => {
@@ -34,7 +35,7 @@ vi.mock("@/lib/crm/sales-quote-v2-structure", () => ({
   createSalesQuoteV2Draft: mocks.createDraft,
 }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 const ACTOR_ID = "44444444-4444-4444-8444-444444444444";
 const QUOTE_ID = "11111111-1111-4111-8111-111111111111";
@@ -43,9 +44,20 @@ describe("POST authoritative Quote V2 draft", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.requireCrmUser.mockResolvedValue({
-      supabase: { service: true },
+      supabase: {
+        from: vi.fn(() => ({
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              is: vi.fn(() => ({
+                order: mocks.queryOrder,
+              })),
+            })),
+          })),
+        })),
+      },
       user: { id: ACTOR_ID },
     });
+    mocks.queryOrder.mockResolvedValue({ data: [], error: null });
     mocks.parseBody.mockReturnValue({
       idempotencyKey: "draft:create:route",
       quotePatch: { customerName: "Test Customer" },
@@ -83,7 +95,7 @@ describe("POST authoritative Quote V2 draft", () => {
     expect(mocks.requireCrmUser).toHaveBeenCalledWith(request);
     expect(mocks.parseBody).toHaveBeenCalledWith(rawBody);
     expect(mocks.createDraft).toHaveBeenCalledWith(
-      { service: true },
+      expect.objectContaining({ from: expect.any(Function) }),
       ACTOR_ID,
       {
         idempotencyKey: "draft:create:route",
@@ -96,5 +108,30 @@ describe("POST authoritative Quote V2 draft", () => {
         quoteId: QUOTE_ID,
       }),
     );
+  });
+
+  it("lists active Quote V2 records through the authenticated server", async () => {
+    const quotes = [
+      {
+        id: QUOTE_ID,
+        quote_number: "805-0152",
+        customer_name: "Lior Elazary",
+        status: "draft",
+      },
+    ];
+    mocks.queryOrder.mockResolvedValue({ data: quotes, error: null });
+    const request = new NextRequest(
+      "http://localhost/api/crm/sales-quotes/v2",
+      { headers: { authorization: "Bearer test-token" } },
+    );
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    expect(mocks.requireCrmUser).toHaveBeenCalledWith(request);
+    expect(mocks.queryOrder).toHaveBeenCalledWith("created_at", {
+      ascending: false,
+    });
+    expect(await response.json()).toEqual({ quotes });
   });
 });

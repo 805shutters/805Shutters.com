@@ -1,5 +1,6 @@
 import type { QuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import type {
+  SalesQuote,
   SalesQuoteDesign,
   SalesQuoteLineItem,
 } from "@mts/types/quote";
@@ -322,6 +323,28 @@ async function postAuthenticated<T>(
     throw new Error("Quote V2 returned an invalid response.");
   }
   return payload as T;
+}
+
+export async function listQuoteV2Records(
+  database: QuoteBuilderDatabase,
+): Promise<SalesQuote[]> {
+  const token = await crmAccessToken(database);
+  const response = await fetch("/api/crm/sales-quotes/v2", {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | { quotes?: SalesQuote[]; message?: string }
+    | null;
+  if (!response.ok) {
+    throw new Error(
+      payload?.message || `Quote V2 request failed (${response.status}).`,
+    );
+  }
+  if (!Array.isArray(payload?.quotes)) {
+    throw new Error("Quote V2 returned an invalid quote list.");
+  }
+  return payload.quotes;
 }
 
 export function createQuoteV2Draft(
