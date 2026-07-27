@@ -441,6 +441,15 @@
   scrollbar-width: thin;
 }
 
+.mts-quote-scope .quote-alternative-bar {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.mts-quote-scope .quote-alternative-bar > div {
+  min-width: max-content;
+}
+
 .mts-quote-scope .quote-add-controls {
   display: grid;
   gap: 2px;

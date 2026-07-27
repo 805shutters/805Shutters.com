@@ -1819,6 +1819,12 @@ export function QuoteBuilder() {
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
+        <nav
+          className="quote-alternative-bar border-b border-[#d8d8d2] bg-white/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/85"
+          aria-label="Quote alternatives"
+        >
+          <QuoteGroupTabs />
+        </nav>
         <div className={cn("quote-command-menu", isCommandMenuOpen && "quote-command-menu--open")}>
           <button
             type="button"
@@ -2081,9 +2087,6 @@ export function QuoteBuilder() {
                   <X className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-            <div className="quote-command-tabs mt-3 border-t border-[#d8d8d2] pt-3">
-              <QuoteGroupTabs />
             </div>
             <div className="quote-command-project-discounts mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#d8d8d2] pt-3">
               <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800">

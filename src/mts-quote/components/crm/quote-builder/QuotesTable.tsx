@@ -16,6 +16,8 @@ import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashbo
 
 export type QuoteTableRow = QuoteStatsSource & {
   quote_number?: string | null;
+  quote_group_id?: string | null;
+  quote_letter?: string | null;
   customer_name?: string | null;
   customer_address?: string | null;
   total_amount?: number | null;
@@ -107,7 +109,19 @@ export function QuotesTable({
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => onOpen(quote)}
               >
-                <TableCell className="font-mono text-sm">{quote.quote_number}</TableCell>
+                <TableCell className="font-mono text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>{quote.quote_number}</span>
+                    {quote.quote_group_id && quote.quote_letter && (
+                      <span
+                        className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-sans text-[10px] font-black uppercase tracking-[0.12em] text-slate-700"
+                        aria-label={`Quote alternative ${quote.quote_letter}`}
+                      >
+                        Quote {quote.quote_letter}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium">{quote.customer_name || "—"}</p>

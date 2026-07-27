@@ -33,6 +33,15 @@ describe("V2 quote builder load integrity", () => {
       "Quote V2 payment links are blocked until customer delivery is cut over",
     );
   });
+
+  it("keeps A/B/C quote alternatives visible when the actions drawer is collapsed", () => {
+    expect(quoteBuilderSource).toMatch(
+      /quote-alternative-bar[\s\S]*<QuoteGroupTabs \/>[\s\S]*quote-command-menu/,
+    );
+    expect(quoteBuilderSource).not.toMatch(
+      /quote-command-tabs[\s\S]*<QuoteGroupTabs \/>/,
+    );
+  });
 });
 
 describe("V2 quote builder optimistic pricing", () => {
