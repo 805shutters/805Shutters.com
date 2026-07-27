@@ -29,6 +29,7 @@ import {
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
+import { ManufacturerTechnicalMeasureFields } from "@/components/crm/ManufacturerTechnicalMeasureFields";
 import {
   applyOfflineTechnicalMeasureDraft,
   cacheTechnicalMeasureDraft,
@@ -791,6 +792,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const tiltType = detailText(current.details, "tilt_type", "tilt", "tilt_rod");
           const baselineTiltType = detailText(baseline.details, "tilt_type", "tilt", "tilt_rod");
           const supplier = detailText(current.details, "supplier", "manufacturer");
+          const measureSchema = line.measure_schema;
           const customOpening = customOpeningLineId === line.id
             || (!!current.opening_label && !OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number]));
           const splitTiltLocation = detailText(current.details, "split_tilt_location")
@@ -887,7 +889,21 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                     onFabric={({ fabric, programId }) => updateLine(line.id, { fabric, program_id: programId })}
                   />
                 ) : null}
-                {detailKeys.map((key) => {
+                {!onyxShutter && !normanRoller && measureSchema ? (
+                  <ManufacturerTechnicalMeasureFields
+                    schema={measureSchema}
+                    values={current}
+                    disabled={readOnly}
+                    onDetail={(key, value) => updateDetail(line.id, key, value)}
+                  />
+                ) : null}
+                {!onyxShutter && !normanRoller && !measureSchema ? (
+                  <div className="technical-measure-schema-blocked" role="alert">
+                    <strong>Product-specific measure form unavailable</strong>
+                    <span>The manufacturer and exact product/program must be resolved before this line can be measured for ordering.</span>
+                  </div>
+                ) : null}
+                {(onyxShutter || normanRoller || !measureSchema) ? detailKeys.map((key) => {
                   const value = current.details[key];
                   const isBoolean = typeof value === "boolean" || typeof baseline.details[key] === "boolean";
                   const options = shutterProduct ? shutterDetailOptions(key, onyxShutter) : null;
@@ -903,7 +919,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   ) : (
                     <label className={changed(baseline.details[key], value) ? "changed" : ""} key={key}><span>{fieldName(key)}</span><input disabled={readOnly} value={value == null ? "" : String(value)} onChange={(event) => updateDetail(line.id, key, event.target.value)} /></label>
                   );
-                })}
+                }) : null}
                 <label className={`technical-measure-notes ${changed(baseline.notes, current.notes) ? "changed" : ""}`}><span>Technician Notes</span><textarea disabled={readOnly} rows={3} value={current.notes} onChange={(event) => updateLine(line.id, { notes: event.target.value })} /></label>
                 </div>
               </div>

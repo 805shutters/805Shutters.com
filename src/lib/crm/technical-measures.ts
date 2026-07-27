@@ -20,6 +20,11 @@ import {
   buildTechnicalMeasureOrderManifest,
   upsertManufacturerOrderManifestArtifact,
 } from "@/lib/crm/vendor-orders/manufacturer-order-artifacts";
+import {
+  resolveManufacturerTechnicalMeasureSchema,
+  type ManufacturerTechnicalMeasureSchema,
+} from "@/lib/crm/vendor-orders/manufacturer-technical-measure-schemas";
+import { detectOrderFormManufacturer } from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -83,6 +88,7 @@ export type TechnicalMeasureLine = {
   current_unit_price: number;
   price_status: string;
   changes: TechnicalMeasureChange[];
+  measure_schema?: ManufacturerTechnicalMeasureSchema | null;
   source_quote_line_item_id?: string;
   source_quantity_index?: number;
   source_quantity?: number;
@@ -528,6 +534,12 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
     const baseline = normalizeTechnicalMeasureLineValues(row.baseline);
     const current = normalizeTechnicalMeasureLineValues(row.current_values, baseline);
     const provenance = provenanceByMeasureLineId.get(text(row.quote_line_item_id));
+    const measureSchema = resolveManufacturerTechnicalMeasureSchema({
+      product_id: current.product_id,
+      program_id: current.program_id,
+      quantity: current.quantity,
+      details: current.details,
+    });
     return {
       ...row,
       baseline,
@@ -535,6 +547,7 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
       baseline_unit_price: numeric(row.baseline_unit_price),
       current_unit_price: numeric(row.current_unit_price),
       changes: technicalMeasureLineChanges(String(row.id), baseline, current),
+      measure_schema: measureSchema,
       source_quote_line_item_id: text(provenance?.source_quote_line_item_id) || text(row.quote_line_item_id),
       source_quantity_index: Math.max(1, Math.floor(numeric(provenance?.source_quantity_index, 1))),
       source_quantity: Math.max(1, Math.floor(numeric(provenance?.source_quantity, baseline.quantity))),
@@ -922,6 +935,33 @@ export async function signTechnicalMeasureAddendum(
 }
 
 async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
+  const releaseIssues = form.lines.flatMap((line, index) => {
+    const values = line.current_values;
+    const label = `Line ${index + 1} (${values.room || "Window"})`;
+    const issues: string[] = [];
+    if (!values.width_in) issues.push(`${label}: width`);
+    if (!values.height_in) issues.push(`${label}: height`);
+    const manufacturer = detectOrderFormManufacturer({
+      product_id: values.product_id,
+      program_id: values.program_id,
+      details: values.details,
+    });
+    if (manufacturer && !line.measure_schema) {
+      issues.push(`${label}: exact ${manufacturer} product/program`);
+    }
+    if (line.measure_schema?.fields.some((field) => field.key === "mount_type" && field.required)) {
+      const mount = text(values.details.mount_type ?? values.details.onyx_mount);
+      if (!mount) issues.push(`${label}: mount type`);
+    }
+    return issues;
+  });
+  if (releaseIssues.length) {
+    const visible = releaseIssues.slice(0, 8);
+    throw new CrmAuthError(
+      409,
+      `Complete the product-specific measure before submitting: ${visible.join(", ")}${releaseIssues.length > visible.length ? `, plus ${releaseIssues.length - visible.length} more` : ""}.`,
+    );
+  }
   const normanIssues = validateNormanRollerMeasureForSubmission(form);
   if (normanIssues.length) {
     const fields = Array.from(new Set(normanIssues.map((issue) => issue.field))).slice(0, 8);
