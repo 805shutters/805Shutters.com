@@ -12,7 +12,7 @@ describe("CRM vendor-order launch workflow", () => {
   });
 
   it("routes every manufacturer through its own submitted-measure task", () => {
-    expect(source).toContain('label: "Start Order Entry"');
+    expect(source).toContain('"Continue Order Entry" : "Start Order Entry"');
     expect(source).toContain("task.portalUrl");
     expect(source).toContain("task.productNames.join");
     expect(source).toContain("task.lineCount");
@@ -20,5 +20,14 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain("The order will not be placed.");
     expect(source).toContain("Review the manufacturer packet before placing the order.");
     expect(source).toContain("same customer and job identity");
+    expect(source).toContain('label: "Mark Review Ready"');
+    expect(source).toContain('label: "Confirm Manufacturer Order"');
+  });
+
+  it("opens protected order packets through the active CRM session", () => {
+    expect(source).toContain("async function openVendorOrderPacket");
+    expect(source).toContain("Authorization: `Bearer ${session.access_token}`");
+    expect(source).toContain("URL.createObjectURL(await response.blob())");
+    expect(source).toContain("onVendorOrderPacket(entry.vendorOrderTask");
   });
 });

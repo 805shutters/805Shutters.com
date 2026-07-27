@@ -223,7 +223,7 @@ describe("Onyx shutter order preparation", () => {
     for (const preparation of preparations) {
       expect(preparation.lineCount).toBe(1);
       expect(preparation.orderPacketUrl).toBe(
-        `/api/crm/vendor-order-packets/quote-1?manufacturer=${preparation.manufacturer.toLowerCase()}`,
+        `/api/crm/vendor-order-packets/quote-1?manufacturer=${preparation.manufacturer.toLowerCase()}&format=html`,
       );
       if (preparation.manufacturer !== "Norman") {
         expect(preparation.payload).toMatchObject({

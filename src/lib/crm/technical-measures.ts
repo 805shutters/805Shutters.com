@@ -26,6 +26,7 @@ import {
   type ManufacturerTechnicalMeasureSchema,
 } from "@/lib/crm/vendor-orders/manufacturer-technical-measure-schemas";
 import { detectOrderFormManufacturer } from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
+import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -1003,6 +1004,19 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
   });
   try {
     orderPreparations = await enqueueVendorOrderPreparations(submittedForm, actor.userId);
+    await persistVendorOrderPreparations(supabase, {
+      sourceKind: "submitted_technical_measure",
+      sourceId: submittedForm.id,
+      sourceRevision: `submitted_technical_measure:${submittedForm.id}:${submittedAt}`,
+      technicalMeasureFormId: submittedForm.id,
+      jobId: submittedForm.job_id,
+      quoteId: submittedForm.quote_id,
+      customerSnapshot: {
+        id: submittedForm.customer_id,
+        ...submittedForm.customer_snapshot,
+      },
+      quoteSnapshot: submittedForm.quote_snapshot,
+    }, orderPreparations);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Vendor order preparation could not be queued.";
     const manufacturer = submittedForm.lines[0]?.measure_schema?.manufacturer;
@@ -1075,12 +1089,38 @@ export async function backfillSubmittedVendorOrderPreparation(
     expectedManufacturers.size > 0
     && Array.from(expectedManufacturers).every((manufacturer) => activeManufacturers.has(manufacturer))
   ) {
+    await persistVendorOrderPreparations(supabase, {
+      sourceKind: "submitted_technical_measure",
+      sourceId: form.id,
+      sourceRevision: `submitted_technical_measure:${form.id}:${form.submitted_at}`,
+      technicalMeasureFormId: form.id,
+      jobId: form.job_id,
+      quoteId: form.quote_id,
+      customerSnapshot: {
+        id: form.customer_id,
+        ...form.customer_snapshot,
+      },
+      quoteSnapshot: form.quote_snapshot,
+    }, existingPreparations as VendorOrderPreparationSummary[]);
     return form;
   }
   const orderPreparations = await enqueueVendorOrderPreparations(form, actor.userId);
   if (!orderPreparations.length) {
     throw new CrmAuthError(409, "This measure does not contain an exactly routed manufacturer order.");
   }
+  await persistVendorOrderPreparations(supabase, {
+    sourceKind: "submitted_technical_measure",
+    sourceId: form.id,
+    sourceRevision: `submitted_technical_measure:${form.id}:${form.submitted_at}`,
+    technicalMeasureFormId: form.id,
+    jobId: form.job_id,
+    quoteId: form.quote_id,
+    customerSnapshot: {
+      id: form.customer_id,
+      ...form.customer_snapshot,
+    },
+    quoteSnapshot: form.quote_snapshot,
+  }, orderPreparations);
   const legacyPreparation = orderPreparations.find((item) => item.manufacturer === "Norman")
     || orderPreparations[0];
   const { error } = await supabase

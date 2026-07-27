@@ -72,6 +72,10 @@ async function claimTask(supabase: NonNullable<ReturnType<typeof getSupabaseServ
       .maybeSingle();
     if (claimError) throw new CrmAuthError(502, `Norman queue claim failed: ${claimError.message}`);
     if (claimed) {
+      await supabase
+        .from("crm_vendor_order_drafts")
+        .update({ status: "processing", started_at: startedAt, message: next.message })
+        .eq("external_task_id", current.taskId);
       return {
         id: current.taskId,
         technical_measure_form_id: row.id,
@@ -134,6 +138,22 @@ async function completeTask(
     .maybeSingle();
   if (updateError) throw new CrmAuthError(502, `Norman completion update failed: ${updateError.message}`);
   if (!updated) throw new CrmAuthError(409, "Norman measure task completion lost its processing lock.");
+  await supabase
+    .from("crm_vendor_order_drafts")
+    .update(status === "review_ready"
+      ? {
+          status,
+          review_ready_at: completedAt,
+          portal_draft_id: portalDraftId,
+          screenshot_path: screenshotPath,
+          message: next.message,
+        }
+      : {
+          status,
+          error_message: errorMessage,
+          message: next.message,
+        })
+    .eq("external_task_id", taskId);
 
   if (status !== "review_ready") return { status, taskId, formId };
 

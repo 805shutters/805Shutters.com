@@ -133,7 +133,7 @@ describe("technical measure mobile controls", () => {
     expect(service).toContain('title: `Future Measures (${entries.length})`');
   });
 
-  it("offers an authenticated Onyx backfill for submitted historical measures", () => {
+  it("offers an authenticated manufacturer-order backfill for submitted historical measures", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const api = readFileSync(
       "src/app/api/crm/technical-measures/[id]/vendor-order-backfill/route.ts",
@@ -141,7 +141,7 @@ describe("technical measure mobile controls", () => {
     );
     const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
 
-    expect(component).toContain("Queue Onyx Order");
+    expect(component).toContain("Queue Manufacturer Orders");
     expect(component).toContain("/vendor-order-backfill");
     expect(api).toContain("requireCrmUser");
     expect(api).toContain("backfillSubmittedVendorOrderPreparation");

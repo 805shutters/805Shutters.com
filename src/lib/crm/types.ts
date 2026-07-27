@@ -798,15 +798,17 @@ export type CrmKenPayoffSummary = {
 };
 
 export type CrmVendorOrderTask = {
+  recordId: string | null;
   taskId: string;
-  formId: string;
+  formId: string | null;
   jobId: string;
   quoteId: string;
   customerName: string;
   quoteNumber: string | null;
   manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
   productType: string;
-  status: "queued";
+  status: "needs_input" | "queued" | "processing" | "review_ready" | "failed";
+  sourceKind: "signed_contract" | "submitted_technical_measure";
   submittedAt: string;
   message: string;
   routingKeys: string[];
@@ -814,6 +816,7 @@ export type CrmVendorOrderTask = {
   lineCount: number;
   portalUrl: string | null;
   orderPacketUrl: string | null;
+  manufacturerOrderRef: string | null;
 };
 
 export type CrmDashboardData = {

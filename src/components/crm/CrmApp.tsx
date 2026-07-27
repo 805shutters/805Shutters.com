@@ -1004,19 +1004,83 @@ export function CrmApp({
     if (payload) setDrill(payload);
   }
 
-  function startVendorOrderEntry(task: CrmVendorOrderTask) {
+  async function updateVendorOrderTask(
+    task: CrmVendorOrderTask,
+    action: "start" | "review_ready" | "retry" | "confirm" | "cancel",
+  ) {
+    if (!session || !task.recordId) {
+      if (action === "start") return;
+      throw new Error("This legacy task must be backfilled before its lifecycle can be updated.");
+    }
+    const payload: Record<string, unknown> = { action };
+    if (action === "confirm") {
+      const manufacturerOrderRef = window.prompt(`Enter the ${task.manufacturer} order or confirmation number:`);
+      if (manufacturerOrderRef === null) return;
+      if (!manufacturerOrderRef.trim()) throw new Error("A manufacturer order or confirmation number is required.");
+      payload.manufacturerOrderRef = manufacturerOrderRef.trim();
+      const confirmationUrl = window.prompt("Optional manufacturer confirmation URL:", "");
+      if (confirmationUrl?.trim()) payload.confirmationUrl = confirmationUrl.trim();
+      const confirmationNotes = window.prompt("Optional confirmation notes:", "");
+      if (confirmationNotes?.trim()) payload.confirmationNotes = confirmationNotes.trim();
+    }
+    setBusy(true);
+    try {
+      await crmFetch(session, `/api/crm/vendor-order-tasks/${task.recordId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      await refresh();
+      setDrill(null);
+      setMessage(action === "confirm"
+        ? `${task.manufacturer} order confirmed and removed from Ready to Order.`
+        : `${task.manufacturer} order moved to ${action.replaceAll("_", " ")}.`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startVendorOrderEntry(task: CrmVendorOrderTask) {
+    let opened: Window | null = null;
     try {
       const launchUrl = task.manufacturer === "Norman" && task.productType === "roller"
         ? normanOrderBridgeLaunchUrl(task.taskId)
         : task.portalUrl;
       if (!launchUrl) throw new Error(`${task.manufacturer} ordering portal is not configured.`);
-      const opened = window.open(launchUrl, "_blank");
+      opened = window.open("about:blank", "_blank");
       if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
+      if (task.recordId && task.status !== "processing") await updateVendorOrderTask(task, "start");
+      opened.location.href = launchUrl;
       setMessage(task.manufacturer === "Norman" && task.productType === "roller"
         ? `Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`
         : `Opening ${task.manufacturer} order entry for ${task.customerName}. Review the manufacturer packet before placing the order.`);
     } catch (error) {
+      opened?.close();
       setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
+    }
+  }
+
+  async function openVendorOrderPacket(task: CrmVendorOrderTask) {
+    if (!session || !task.orderPacketUrl) {
+      setMessage("This manufacturer order packet is not available.");
+      return;
+    }
+    const opened = window.open("about:blank", "_blank");
+    try {
+      if (!opened) throw new Error("Allow pop-ups for the CRM, then press View Order Packet again.");
+      opened.opener = null;
+      const response = await fetch(task.orderPacketUrl, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(typeof body.message === "string" ? body.message : "The manufacturer order packet could not be loaded.");
+      }
+      const packetUrl = URL.createObjectURL(await response.blob());
+      opened.location.replace(packetUrl);
+      window.setTimeout(() => URL.revokeObjectURL(packetUrl), 60_000);
+    } catch (error) {
+      opened?.close();
+      setMessage(error instanceof Error ? error.message : "The manufacturer order packet could not be opened.");
     }
   }
 
@@ -2829,7 +2893,9 @@ export function CrmApp({
             onSaveField={saveDrillField}
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
+            onVendorOrderPacket={openVendorOrderPacket}
             onVendorOrderLaunch={startVendorOrderEntry}
+            onVendorOrderAction={updateVendorOrderTask}
           />
         </div>
       ) : null}
@@ -4853,13 +4919,16 @@ function buildSummaryDrill(
               task.productNames.join(", "),
               formatShortDate(task.submittedAt),
             ].filter(Boolean).join(" · "),
-            value: "Queued",
+            value: task.status.replaceAll("_", " "),
             jobId: task.jobId,
             job,
             file,
             vendorOrderTask: task,
             notes: [
               task.message,
+              task.sourceKind === "signed_contract"
+                ? "Ordering authority: signed contract; no technical measure was required."
+                : "Ordering authority: submitted technical measure overriding the signed contract.",
               "This packet contains only this manufacturer's lines and repeats the same customer and job identity used by the other manufacturer packets.",
               "Review the packet against the submitted technical measure before placing, submitting, checking out, confirming, or finalizing the order.",
             ],
@@ -6069,7 +6138,12 @@ type DrillPanelProps = {
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
+  onVendorOrderPacket?: (task: CrmVendorOrderTask) => void;
   onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
+  onVendorOrderAction?: (
+    task: CrmVendorOrderTask,
+    action: "start" | "review_ready" | "retry" | "confirm" | "cancel",
+  ) => void;
 };
 
 function DrillSearchResultsPanel({
@@ -6087,7 +6161,9 @@ function DrillSearchResultsPanel({
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction,
-  onVendorOrderLaunch
+  onVendorOrderPacket,
+  onVendorOrderLaunch,
+  onVendorOrderAction
 }: DrillPanelProps & {
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
@@ -6188,6 +6264,8 @@ function DrillSearchResultsPanel({
                 onSaveField={onSaveField}
                 onLedgerLineAction={onLedgerLineAction}
                 onPaymentPlanAction={onPaymentPlanAction}
+                onVendorOrderPacket={onVendorOrderPacket}
+                onVendorOrderAction={onVendorOrderAction}
                 onVendorOrderLaunch={onVendorOrderLaunch}
               />
             </div>
@@ -6885,7 +6963,9 @@ function DrillDetailPanel({
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction,
-  onVendorOrderLaunch
+  onVendorOrderPacket,
+  onVendorOrderLaunch,
+  onVendorOrderAction
 }: DrillPanelProps) {
   return (
     <section className="crm-drill-inline" aria-label={payload.title}>
@@ -6918,7 +6998,9 @@ function DrillDetailPanel({
             onSaveField={onSaveField}
             onLedgerLineAction={onLedgerLineAction}
             onPaymentPlanAction={onPaymentPlanAction}
+            onVendorOrderPacket={onVendorOrderPacket}
             onVendorOrderLaunch={onVendorOrderLaunch}
+            onVendorOrderAction={onVendorOrderAction}
           />
         ))}
         {!payload.entries.length ? <p className="crm-empty">No customers in this segment.</p> : null}
@@ -6939,7 +7021,9 @@ function DrillDetailCard({
   onSaveField,
   onLedgerLineAction,
   onPaymentPlanAction,
-  onVendorOrderLaunch
+  onVendorOrderPacket,
+  onVendorOrderLaunch,
+  onVendorOrderAction
 }: {
   entry: DrillEntry;
   payload: DrillPayload;
@@ -6952,7 +7036,9 @@ function DrillDetailCard({
   onSaveField: (entry: DrillEntry, patch: DrillFieldPatch) => Promise<boolean>;
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
+  onVendorOrderPacket?: (task: CrmVendorOrderTask) => void;
   onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
+  onVendorOrderAction?: DrillPanelProps["onVendorOrderAction"];
 }) {
   const row = entry.row;
   const job = entry.job;
@@ -7362,23 +7448,51 @@ function DrillDetailCard({
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
-    entry.vendorOrderTask?.orderPacketUrl
+    entry.vendorOrderTask?.orderPacketUrl && onVendorOrderPacket
       ? {
           key: "view-vendor-order-packet",
           label: "View Order Packet",
           detail: `${entry.vendorOrderTask.manufacturer} lines only`,
           disabled: busy,
-          onClick: () => window.open(entry.vendorOrderTask?.orderPacketUrl || "", "_blank", "noopener,noreferrer")
+          onClick: () => onVendorOrderPacket(entry.vendorOrderTask as CrmVendorOrderTask)
         }
       : null,
-    entry.vendorOrderTask && onVendorOrderLaunch
+    entry.vendorOrderTask && entry.vendorOrderTask.status !== "needs_input" && onVendorOrderLaunch
       ? {
           key: "start-vendor-order",
-          label: "Start Order Entry",
-          detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} submitted-measure line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
+          label: entry.vendorOrderTask.status === "processing" ? "Continue Order Entry" : "Start Order Entry",
+          detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} ${entry.vendorOrderTask.sourceKind === "signed_contract" ? "contract" : "submitted-measure"} line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
           tone: "warning",
           disabled: busy,
           onClick: () => onVendorOrderLaunch(entry.vendorOrderTask as CrmVendorOrderTask)
+        }
+      : null,
+    entry.vendorOrderTask?.status === "processing" && onVendorOrderAction
+      ? {
+          key: "vendor-order-review-ready",
+          label: "Mark Review Ready",
+          detail: "Portal entry complete · final submission still requires review",
+          disabled: busy,
+          onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "review_ready")
+        }
+      : null,
+    entry.vendorOrderTask?.status === "review_ready" && onVendorOrderAction
+      ? {
+          key: "vendor-order-confirm",
+          label: "Confirm Manufacturer Order",
+          detail: "Record the manufacturer confirmation number",
+          tone: "warning",
+          disabled: busy,
+          onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "confirm")
+        }
+      : null,
+    (entry.vendorOrderTask?.status === "needs_input" || entry.vendorOrderTask?.status === "failed") && onVendorOrderAction
+      ? {
+          key: "vendor-order-retry",
+          label: "Return to Ready Queue",
+          detail: "Use after correcting the missing product details",
+          disabled: busy,
+          onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "retry")
         }
       : null,
     measureFormId

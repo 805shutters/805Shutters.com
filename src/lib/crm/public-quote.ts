@@ -54,6 +54,10 @@ import {
   buildSignedContractOrderManifest,
   upsertManufacturerOrderManifestArtifact,
 } from "@/lib/crm/vendor-orders/manufacturer-order-artifacts";
+import {
+  buildSignedContractVendorOrderPreparations,
+  persistVendorOrderPreparations,
+} from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -881,6 +885,34 @@ async function syncSignedQuoteArtifacts(
     sourceKind: "signed_contract",
     sourceId: `contract:${quote.id}`,
   });
+  if (technicalMeasure !== "needed") {
+    const sourceRevision = `signed_contract:${quote.id}:${signedAt}`;
+    const taskContext = {
+      sourceKind: "signed_contract" as const,
+      sourceId: `contract:${quote.id}`,
+      sourceRevision,
+      technicalMeasureFormId: null,
+      jobId: quote.job_id || jobRow?.id || "",
+      quoteId: quote.id,
+      customerSnapshot: {
+        id: customer?.id || null,
+        name: customerName,
+        phone: quote.customer_phone || jobRow?.phone || null,
+        email: quote.customer_email || jobRow?.email || null,
+        address: quote.customer_address || jobRow?.address || null,
+        city: jobRow?.city || null,
+      },
+      quoteSnapshot: {
+        quoteNumber: quote.quote_number,
+        signedAt,
+      },
+    };
+    const preparations = buildSignedContractVendorOrderPreparations({
+      manifest: orderManifest,
+      context: taskContext,
+    });
+    await persistVendorOrderPreparations(supabase, taskContext, preparations);
+  }
 
   if (pub.hasOnyxShutters) {
     const onyxLines = onyxLinesFromSignedContract(built);

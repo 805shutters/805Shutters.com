@@ -8,7 +8,7 @@ import {
   onyxPreparationSummary,
 } from "./onyx-order-packet";
 import {
-  manufacturerOrderFormRegistry,
+  manufacturerOrderPortalUrl,
   type OrderFormManufacturer,
 } from "./manufacturer-order-form-registry";
 import { resolveManufacturerTechnicalMeasureSchema } from "./manufacturer-technical-measure-schemas";
@@ -188,14 +188,13 @@ export async function enqueueVendorOrderPreparations(
 
   const label = (manufacturer: OrderFormManufacturer) =>
     `${manufacturer.charAt(0).toUpperCase()}${manufacturer.slice(1)}` as VendorOrderPreparationSummary["manufacturer"];
-  const registry = manufacturerOrderFormRegistry();
   const requestedAt = new Date().toISOString();
 
   return Promise.all(Array.from(grouped.entries()).map(async ([manufacturer, lines]) => {
     const routingKeys = Array.from(new Set(lines.map(({ schema }) => schema.routingKey)));
     const productNames = Array.from(new Set(lines.map(({ schema }) => schema.productName)));
-    const portalUrl = registry.manufacturers[manufacturer][0]?.source_url;
-    const orderPacketUrl = `/api/crm/vendor-order-packets/${encodeURIComponent(form.quote_id)}?manufacturer=${encodeURIComponent(manufacturer)}`;
+    const portalUrl = manufacturerOrderPortalUrl(manufacturer);
+    const orderPacketUrl = `/api/crm/vendor-order-packets/${encodeURIComponent(form.quote_id)}?manufacturer=${encodeURIComponent(manufacturer)}&format=html`;
     const allNormanRoller = manufacturer === "norman"
       && lines.every(({ line }) => normanRollerLines({ ...form, lines: [line] }).length === 1);
     if (allNormanRoller) {

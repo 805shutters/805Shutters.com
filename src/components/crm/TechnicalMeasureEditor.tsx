@@ -246,10 +246,15 @@ function fieldName(key: string) {
   return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function orderPreparation(form: TechnicalMeasureForm | null) {
-  const value = form?.meta.vendor_order_preparation;
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? value as {
+function orderPreparations(form: TechnicalMeasureForm | null) {
+  const plural = form?.meta.vendor_order_preparations;
+  const values = Array.isArray(plural)
+    ? plural
+    : form?.meta.vendor_order_preparation
+      ? [form.meta.vendor_order_preparation]
+      : [];
+  return values.flatMap((value) => value && typeof value === "object" && !Array.isArray(value)
+    ? [value as {
         status?: string;
         message?: string;
         issueCount?: number;
@@ -257,8 +262,8 @@ function orderPreparation(form: TechnicalMeasureForm | null) {
         portalDraftId?: string | null;
         manufacturer?: string;
         productType?: string;
-      }
-    : null;
+      }]
+    : []);
 }
 
 function SignaturePad({ value, onChange }: { value: SignatureStroke[]; onChange: (value: SignatureStroke[]) => void }) {
@@ -693,13 +698,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const pendingWidth = activePickerLine ? wholeFraction(activePickerLine.current_values.width_in) : null;
   const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
   const readOnly = form?.status === "submitted";
-  const vendorOrderPreparation = orderPreparation(form);
-  const canBackfillOnyxOrder = readOnly
-    && !vendorOrderPreparation
-    && lines.some((line) => {
-      const details = line.current_values.details || {};
-      return isShutterProduct(line.current_values.product_id) && isOnyxShutter(line.current_values.product_id, details);
-    });
+  const vendorOrderPreparations = orderPreparations(form);
+  const canBackfillVendorOrders = readOnly && vendorOrderPreparations.length === 0 && lines.length > 0;
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const futureMeasures = form?.futureMeasures || [];
 
@@ -735,21 +735,21 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </nav>
 
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
-      {vendorOrderPreparation ? (
-        <section className="technical-measure-order-status" data-status={vendorOrderPreparation.status}>
-          <div><span>{String(vendorOrderPreparation.manufacturer || "Vendor")} {String(vendorOrderPreparation.productType || "order")} preparation</span><strong>{String(vendorOrderPreparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
-          <p>{vendorOrderPreparation.message}</p>
-          {vendorOrderPreparation.issueCount ? <small>{vendorOrderPreparation.issueCount} item{vendorOrderPreparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
-          {vendorOrderPreparation.portalDraftId ? <small>Norman draft: {vendorOrderPreparation.portalDraftId}</small> : null}
+      {vendorOrderPreparations.map((preparation) => (
+        <section className="technical-measure-order-status" data-status={preparation.status} key={`${preparation.manufacturer}:${preparation.taskId}`}>
+          <div><span>{String(preparation.manufacturer || "Vendor")} {String(preparation.productType || "order")} preparation</span><strong>{String(preparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
+          <p>{preparation.message}</p>
+          {preparation.issueCount ? <small>{preparation.issueCount} item{preparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
+          {preparation.portalDraftId ? <small>Norman draft: {preparation.portalDraftId}</small> : null}
           <b>Review every line before placing or submitting the order.</b>
         </section>
-      ) : null}
-      {canBackfillOnyxOrder ? (
+      ))}
+      {canBackfillVendorOrders ? (
         <section className="technical-measure-order-status" data-status="needs_input">
-          <div><span>Onyx shutters order preparation</span><strong>Not queued</strong></div>
-          <p>This submitted measure predates the Onyx CRM order-entry queue.</p>
+          <div><span>Manufacturer order preparation</span><strong>Not queued</strong></div>
+          <p>This submitted measure predates the manufacturer-separated CRM order queue.</p>
           <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
-            Queue Onyx Order
+            Queue Manufacturer Orders
           </button>
         </section>
       ) : null}

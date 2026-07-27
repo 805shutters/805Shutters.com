@@ -275,6 +275,11 @@ export function manufacturerOrderFormRegistry(): RegistryShape {
   return REGISTRY;
 }
 
+export function manufacturerOrderPortalUrl(manufacturer: OrderFormManufacturer): string {
+  if (manufacturer === "onyx") return "https://admin.onyxshutters.com/OrderList.aspx";
+  return REGISTRY.manufacturers[manufacturer][0]?.source_url || "";
+}
+
 export function buildAgenticOrderManifest(input: {
   customerId: string;
   quoteId: string;

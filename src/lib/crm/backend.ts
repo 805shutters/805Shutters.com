@@ -1478,6 +1478,7 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
     seen.add(taskId);
     const productNames = stringArray(order.productNames);
     return [{
+      recordId: null,
       taskId,
       formId,
       jobId,
@@ -1487,6 +1488,7 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
       manufacturer,
       productType,
       status: "queued" as const,
+      sourceKind: "submitted_technical_measure" as const,
       submittedAt,
       message: optionalText(order.message) || `${manufacturer} order entry is ready to start.`,
       routingKeys: stringArray(order.routingKeys),
@@ -1494,12 +1496,57 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
       lineCount: Math.max(1, Number(order.lineCount) || 1),
       portalUrl: optionalText(order.portalUrl),
       orderPacketUrl: optionalText(order.orderPacketUrl),
+      manufacturerOrderRef: null,
     }];
   });
 }
 
 export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | null {
   return vendorOrderTasksFromRow(value)[0] || null;
+}
+
+export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask | null {
+  const row = objectMeta(value);
+  const recordId = optionalText(row.id);
+  const taskId = optionalText(row.external_task_id);
+  const jobId = optionalText(row.crm_job_id);
+  const quoteId = optionalText(row.crm_quote_id);
+  const requestedAt = optionalText(row.requested_at);
+  const manufacturer = ["Norman", "Onyx", "Lotus", "Polar"].includes(String(row.manufacturer))
+    ? row.manufacturer as CrmVendorOrderTask["manufacturer"]
+    : null;
+  const status = ["needs_input", "queued", "processing", "review_ready", "failed"].includes(String(row.status))
+    ? row.status as CrmVendorOrderTask["status"]
+    : null;
+  const sourceKind = row.source_kind === "signed_contract" || row.source_kind === "submitted_technical_measure"
+    ? row.source_kind
+    : null;
+  if (!recordId || !taskId || !jobId || !quoteId || !requestedAt || !manufacturer || !status || !sourceKind) return null;
+  const customer = objectMeta(row.customer_snapshot);
+  const quote = objectMeta(row.quote_snapshot);
+  return {
+    recordId,
+    taskId,
+    formId: optionalText(row.technical_measure_form_id),
+    jobId,
+    quoteId,
+    customerName: optionalText(customer.name) || "Customer",
+    quoteNumber: optionalText(quote.quoteNumber),
+    manufacturer,
+    productType: optionalText(row.product_type) || "product",
+    status,
+    sourceKind,
+    submittedAt: requestedAt,
+    message: optionalText(row.message)
+      || optionalText(row.error_message)
+      || `${manufacturer} order entry is ${status.replaceAll("_", " ")}.`,
+    routingKeys: stringArray(row.routing_keys),
+    productNames: stringArray(row.product_names),
+    lineCount: Math.max(1, Number(row.line_count) || 1),
+    portalUrl: optionalText(row.portal_url),
+    orderPacketUrl: optionalText(row.order_packet_url),
+    manufacturerOrderRef: optionalText(row.manufacturer_order_ref),
+  };
 }
 
 export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
@@ -1521,6 +1568,7 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     orderCogsEmailFallbackEventsResult,
     commissionPaymentsResult,
     commissionPaymentAllocationsResult,
+    vendorOrderDraftsResult,
     vendorOrderTasksResult,
     settingsResult
   ] = await Promise.all([
@@ -1588,6 +1636,11 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .order("created_at", { ascending: true })
       .limit(4000),
     supabase
+      .from("crm_vendor_order_drafts")
+      .select("id,external_task_id,technical_measure_form_id,crm_job_id,crm_quote_id,manufacturer,product_type,status,source_kind,requested_at,customer_snapshot,quote_snapshot,routing_keys,product_names,line_count,portal_url,order_packet_url,manufacturer_order_ref,message,error_message")
+      .order("requested_at", { ascending: false })
+      .limit(1000),
+    supabase
       .from("crm_technical_measure_forms")
       .select("id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot")
       .eq("status", "submitted")
@@ -1640,8 +1693,12 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
     console.warn("CRM commission payment allocations could not be loaded.", commissionPaymentAllocationsResult.error.message);
   }
 
+  if (vendorOrderDraftsResult.error) {
+    console.warn("CRM durable vendor order tasks could not be loaded.", vendorOrderDraftsResult.error.message);
+  }
+
   if (vendorOrderTasksResult.error) {
-    console.warn("CRM vendor order tasks could not be loaded.", vendorOrderTasksResult.error.message);
+    console.warn("CRM legacy vendor order tasks could not be loaded.", vendorOrderTasksResult.error.message);
   }
 
   if (settingsResult.error) {
@@ -1692,8 +1749,14 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
   const commissionPaymentAllocations = (
     commissionPaymentAllocationsResult.error ? [] : commissionPaymentAllocationsResult.data || []
   ) as CrmCommissionPaymentAllocation[];
-  const vendorOrderTasks = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || [])
-    .flatMap(vendorOrderTasksFromRow);
+  const durableVendorOrderTasks = (vendorOrderDraftsResult.error ? [] : vendorOrderDraftsResult.data || [])
+    .map(vendorOrderTaskFromDraftRow)
+    .filter((task): task is CrmVendorOrderTask => Boolean(task));
+  const durableTaskIds = new Set(durableVendorOrderTasks.map((task) => task.taskId));
+  const legacyVendorOrderTasks = (vendorOrderTasksResult.error ? [] : vendorOrderTasksResult.data || [])
+    .flatMap(vendorOrderTasksFromRow)
+    .filter((task) => !durableTaskIds.has(task.taskId));
+  const vendorOrderTasks = [...durableVendorOrderTasks, ...legacyVendorOrderTasks];
   const settingsRows = (settingsResult.error ? [] : settingsResult.data || []) as Array<{
     key: string;
     value: number;
