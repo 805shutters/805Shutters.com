@@ -18,7 +18,10 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain(">WS</button>");
     expect(component).toContain(">F2F</button>");
     expect(styles).toContain("technical-measure-dimensions--with-basis");
-    expect(styles).toContain("min-height: 38px;");
+    expect(styles).toContain("border-radius: 7px;");
+    expect(styles).toContain("min-height: 42px;");
+    expect(component.indexOf('aria-label="Select width"')).toBeLessThan(component.indexOf('aria-label="Select height"'));
+    expect(component.indexOf('aria-label="Select height"')).toBeLessThan(component.indexOf('className="technical-measure-dimension-basis"'));
   });
 
   it("continues from width fraction directly into height selection", () => {

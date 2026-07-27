@@ -546,11 +546,11 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
               </div>
               <div className={`technical-measure-dimensions${shutterProduct ? " technical-measure-dimensions--with-basis" : ""}`}>
                 <button type="button" aria-label="Select width" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
+                <button type="button" aria-label="Select height" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
                 {shutterProduct ? <div className="technical-measure-dimension-basis" aria-label={onyxShutter ? "W/F" : "Measurement type"}>
                   <button type="button" disabled={readOnly} aria-label="Window size" aria-pressed={measurementBasis === "window_size"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[0].label)}>WS</button>
                   <button type="button" disabled={readOnly} aria-label="Frame to frame" aria-pressed={measurementBasis === "frame_to_frame"} onClick={() => updateDetail(line.id, onyxShutter ? "size_type" : "measurement_basis", measurementBasisOptions[1].label)}>F2F</button>
                 </div> : null}
-                <button type="button" aria-label="Select height" disabled={readOnly} className={changed(baseline.height_in, current.height_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "height_whole" })}><span aria-hidden="true">H</span><strong>{inches(current.height_in)}</strong></button>
               </div>
               {shutterProduct ? <div className="technical-measure-priority-grid">
                 <div className="technical-measure-quick-field technical-measure-quick-field--wide technical-measure-folding">
