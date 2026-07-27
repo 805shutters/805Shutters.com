@@ -136,7 +136,7 @@ describe("Norman Roller order preparation", () => {
 describe("Onyx shutter order preparation", () => {
   it("queues submitted Onyx shutters without relabeling them as Norman", async () => {
     const source = form();
-    source.lines[0].current_values.product_id = "shutters";
+    source.lines[0].current_values.product_id = "shutter";
     source.lines[0].current_values.details = {
       supplier: "Onyx",
       frame_type: "VZ Crest",

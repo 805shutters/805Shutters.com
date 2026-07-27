@@ -697,8 +697,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     && !vendorOrderPreparation
     && lines.some((line) => {
       const details = line.current_values.details || {};
-      const supplier = String(details.supplier ?? details.manufacturer ?? details.catalog_manufacturer ?? "").trim().toLowerCase();
-      return line.current_values.product_id === "shutters" && supplier === "onyx";
+      return isShutterProduct(line.current_values.product_id) && isOnyxShutter(line.current_values.product_id, details);
     });
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const futureMeasures = form?.futureMeasures || [];

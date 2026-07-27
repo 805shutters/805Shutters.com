@@ -61,7 +61,7 @@ export function onyxShutterLines(form: TechnicalMeasureForm) {
       ?? details.catalog_manufacturer
       ?? "",
     ).trim().toLowerCase();
-    return values.product_id === "shutters" && manufacturer === "onyx";
+    return values.product_id.toLowerCase().includes("shutter") && manufacturer.includes("onyx");
   });
 }
 
