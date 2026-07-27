@@ -21,6 +21,12 @@ describe("Hermes 805 feedback worker configuration", () => {
     expect(installer).toContain("StartInterval");
   });
 
+  it("loads only the dedicated 805 shared secret from Keychain", () => {
+    expect(worker).toContain('"hermes-805-shared-secret"');
+    expect(worker).toContain('"hermes-805"');
+    expect(worker).not.toContain('"hermes-mts-shared-secret"');
+  });
+
   it("uses only the isolated 805 Hermes profile", () => {
     expect(worker).toContain('"--profile", "shutters805"');
     expect(worker).toContain('`${process.env.HOME}/.hermes/profiles/shutters805/.env`');

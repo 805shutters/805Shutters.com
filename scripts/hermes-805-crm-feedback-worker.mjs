@@ -383,11 +383,29 @@ async function loadEnvFile(envPath) {
   }
 }
 
+async function loadSharedSecret() {
+  const configured = process.env.HERMES_805_SHARED_SECRET?.trim();
+  if (configured) return configured;
+  try {
+    const { stdout } = await execFileAsync("/usr/bin/security", [
+      "find-generic-password",
+      "-a",
+      "hermes-805",
+      "-s",
+      "hermes-805-shared-secret",
+      "-w",
+    ]);
+    return stdout.trim();
+  } catch {
+    return "";
+  }
+}
+
 async function main() {
   const profileEnv = process.env.HERMES_805_ENV_FILE
     || `${process.env.HOME}/.hermes/profiles/shutters805/.env`;
   await loadEnvFile(profileEnv);
-  const secret = process.env.HERMES_805_SHARED_SECRET?.trim();
+  const secret = await loadSharedSecret();
   if (!secret) {
     console.error("crm_feedback_worker state=configuration_blocked reason=shared_secret_missing");
     process.exitCode = 78;
