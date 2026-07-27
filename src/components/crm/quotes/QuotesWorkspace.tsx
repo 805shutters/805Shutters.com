@@ -1,38 +1,18 @@
 "use client";
 
 import type { Session } from "@supabase/supabase-js";
-import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
+import type { CrmJob, CrmQuote } from "@/lib/crm/types";
+import { QuotesWorkspace as QuoteV1Workspace } from "./QuotesWorkspace.legacy";
 
-// The Quotes workspace (Dashboard / Builder / Contract) renders the ported
-// quote builder from src/mts-quote against the dedicated 805 Supabase project,
-// while also using CRM-passed jobs/quotes to keep the dashboard tiles aligned
-// with the live CRM lifecycle state.
-// QuotesWorkspace.legacy.tsx remains intact as the rollback implementation,
-// but it is intentionally not reachable from the CRM interface.
+// Quote V1 is the production CRM workspace. Quote V2 remains preserved under
+// src/mts-quote and its supporting APIs, but it has no normal CRM entry point.
 type Props = {
   session: Session;
   jobs: CrmJob[];
   quotes: CrmQuote[];
-  events: CrmCalendarEvent[];
-  customers: CrmCustomer[];
-  openRequest?: QuoteWorkspaceOpenRequest | null;
-  onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
-  onOpenCalendarDate?: (date: string) => void;
   onChanged: () => void;
 };
 
-export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, onOpenCalendarDate, onOpenCrmQuote, onChanged }: Props) {
-  return (
-    <QuoteWorkspace
-      crmJobs={jobs}
-      crmQuotes={quotes}
-      crmCalendarEvents={events}
-      crmCustomers={customers}
-      openRequest={openRequest}
-      onOpenCrmCalendarDate={onOpenCalendarDate}
-      onOpenCrmQuote={onOpenCrmQuote}
-      onChanged={onChanged}
-    />
-  );
+export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
+  return <QuoteV1Workspace session={session} jobs={jobs} quotes={quotes} onChanged={onChanged} />;
 }

@@ -96,11 +96,6 @@ type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
 type PaymentLinkChannel = "email" | "sms";
 type QuoteWorkspaceOpenTab = "builder" | "contract";
-type QuoteWorkspaceOpenRequest = {
-  quoteId: string;
-  tab: QuoteWorkspaceOpenTab;
-  requestId: number;
-};
 type PartnerPaymentRequest = {
   person: CrmPaymentPerson;
   paid_on?: string | null;
@@ -865,7 +860,6 @@ export function CrmApp({
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [cancelingCalendarEvent, setCancelingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
-  const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
   const [activeJobStatus, setActiveJobStatus] = useState<JobStatusFilter>(null);
@@ -905,24 +899,12 @@ export function CrmApp({
   }
 
   function openQuoteWorkspaceQuote(quoteId: string, tab: QuoteWorkspaceOpenTab = "builder") {
-    const quote = quotes.find((item) => item.id === quoteId);
-
-    // Historical CRM quotes remain in the original quote system. V2 is only
-    // used for quotes created in V2; opening an old quote must never import,
-    // convert, reprice, or replace its saved configuration.
-    if (quote) {
-      if (tab === "contract") void openQuoteContract(quoteId);
-      else setBuilderQuoteId(quoteId);
+    if (tab === "contract") {
+      void openQuoteContract(quoteId);
       return;
     }
 
-    setBuilderQuoteId(null);
-    setActiveTab("quotes");
-    setQuoteWorkspaceOpenRequest((request) => ({
-      quoteId,
-      tab,
-      requestId: (request?.requestId || 0) + 1
-    }));
+    setBuilderQuoteId(quoteId);
   }
 
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {
@@ -2831,17 +2813,7 @@ export function CrmApp({
           session={session}
           jobs={jobs}
           quotes={quotes}
-          events={events}
-          customers={customers}
           onChanged={refresh}
-          onOpenCalendarDate={(date) => {
-            setCalendarDate(date);
-            setCalendarView("week");
-            setCalendarManagementMode("appointments");
-            setActiveTab("calendar");
-          }}
-          openRequest={quoteWorkspaceOpenRequest}
-          onOpenCrmQuote={openQuoteWorkspaceQuote}
         />
       ) : null}
 
