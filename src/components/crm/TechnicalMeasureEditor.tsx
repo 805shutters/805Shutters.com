@@ -29,6 +29,24 @@ import {
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
+import {
+  applyOfflineTechnicalMeasureDraft,
+  cacheTechnicalMeasureDraft,
+  cacheTechnicalMeasureForm,
+  cacheTechnicalMeasureList,
+  flushTechnicalMeasureQueue,
+  lastOfflineMeasureOwner,
+  queueTechnicalMeasureOperation,
+  readCachedTechnicalMeasureDraft,
+  readCachedTechnicalMeasureForm,
+  readCachedTechnicalMeasureList,
+  rememberOfflineMeasureOwner,
+  removeCachedTechnicalMeasureDraft,
+  removeQueuedTechnicalMeasureOperation,
+  queuedTechnicalMeasureOperations,
+  technicalMeasureDraftPayload,
+  type OfflineMeasureQueueEntry,
+} from "@/lib/crm/technical-measure-offline";
 
 type EditableLine = TechnicalMeasureForm["lines"][number] & { current_values: TechnicalMeasureLineValues };
 type FutureMeasureDraft = { room: string; width_in: number | null; height_in: number | null; notes: string };
@@ -159,8 +177,44 @@ async function crmFetch<T>(session: Session, path: string, init: RequestInit = {
     headers: { ...(init.headers || {}), Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(typeof body.message === "string" ? body.message : "CRM request failed.");
+  if (!response.ok) throw new CrmRequestError(
+    typeof body.message === "string" ? body.message : "CRM request failed.",
+    response.status,
+  );
   return body as T;
+}
+
+class CrmRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+function shouldQueueCrmError(error: unknown) {
+  return !(error instanceof CrmRequestError) || error.status >= 500 || error.status === 408 || error.status === 429;
+}
+
+async function downloadTechnicalMeasureForms(
+  session: Session,
+  owner: string,
+  forms: Array<Record<string, unknown>>,
+) {
+  const ids = forms.map((form) => String(form.id || "")).filter(Boolean);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(4, ids.length) }, async () => {
+    while (cursor < ids.length) {
+      const formId = ids[cursor++];
+      try {
+        const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}`);
+        const draft = await readCachedTechnicalMeasureDraft(owner, formId);
+        await cacheTechnicalMeasureForm(owner, applyOfflineTechnicalMeasureDraft(result.form, draft));
+      } catch {
+        // A previously downloaded copy remains available. One inaccessible form must
+        // not prevent the rest of the technician's route from downloading.
+      }
+    }
+  });
+  await Promise.all(workers);
 }
 
 function wholeFraction(value: number | null) {
@@ -297,6 +351,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [futureMeasureOpen, setFutureMeasureOpen] = useState(false);
   const [futureMeasure, setFutureMeasure] = useState<FutureMeasureDraft>({ room: "Future Window", width_in: null, height_in: null, notes: "" });
   const [futurePicker, setFuturePicker] = useState<MeasurementStep | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
+  const [pendingSync, setPendingSync] = useState(false);
+  const hydratedRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSyncedPayloadRef = useRef("");
+  const syncInFlightRef = useRef(false);
+  const linesRef = useRef<EditableLine[]>([]);
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return; }
@@ -306,17 +367,46 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     return () => { active = false; data.subscription.unsubscribe(); };
   }, [supabase]);
 
+  function owner(activeSession = session) {
+    return rememberOfflineMeasureOwner(activeSession?.user.email || lastOfflineMeasureOwner());
+  }
+
+  function hydrate(nextForm: TechnicalMeasureForm, fromOffline: boolean) {
+    setForm(nextForm);
+    setLines(nextForm.lines);
+    linesRef.current = nextForm.lines;
+    setActiveLineIndex((current) => Math.min(current, Math.max(nextForm.lines.length - 1, 0)));
+    setSignerName(nextForm.customer_snapshot.name || "");
+    setOfflineMode(fromOffline);
+    lastSyncedPayloadRef.current = fromOffline ? "" : JSON.stringify(technicalMeasureDraftPayload(nextForm.lines));
+    hydratedRef.current = true;
+  }
+
   async function load(activeSession = session) {
-    if (!activeSession) return;
     setLoading(true);
+    const activeOwner = owner(activeSession);
     try {
+      const cached = activeOwner ? await readCachedTechnicalMeasureForm(activeOwner, formId) : null;
+      const cachedDraft = activeOwner ? await readCachedTechnicalMeasureDraft(activeOwner, formId) : null;
+      if (cached) hydrate(applyOfflineTechnicalMeasureDraft(cached, cachedDraft), true);
+      if (!activeSession) return;
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(activeSession, `/api/crm/technical-measures/${formId}`);
-      setForm(result.form);
-      setLines(result.form.lines);
-      setActiveLineIndex((current) => Math.min(current, Math.max(result.form.lines.length - 1, 0)));
-      setSignerName(result.form.customer_snapshot.name || "");
+      const localDraft = await readCachedTechnicalMeasureDraft(activeOwner, formId);
+      const hydrated = applyOfflineTechnicalMeasureDraft(result.form, localDraft);
+      hydrate(hydrated, Boolean(localDraft));
+      await cacheTechnicalMeasureForm(activeOwner, hydrated);
+      if (localDraft) {
+        await queueTechnicalMeasureOperation(activeOwner, formId, "draft", localDraft);
+        setPendingSync(true);
+      }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Technical measure could not be loaded.");
+      const cached = activeOwner ? await readCachedTechnicalMeasureForm(activeOwner, formId) : null;
+      if (cached) {
+        setOfflineMode(true);
+        setMessage("Offline mode · this measure is saved on this phone.");
+      } else {
+        setMessage(error instanceof Error ? error.message : "Technical measure could not be loaded.");
+      }
     } finally {
       setLoading(false);
     }
@@ -324,48 +414,185 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
 
   useEffect(() => { void load(); }, [session?.access_token, formId]);
 
+  useEffect(() => {
+    if (!hydratedRef.current || !form || form.status === "submitted" || !lines.length) return;
+    linesRef.current = lines;
+    const activeOwner = owner();
+    const payload = technicalMeasureDraftPayload(lines);
+    const serialized = JSON.stringify(payload);
+    if (serialized === lastSyncedPayloadRef.current) return;
+    void Promise.all([
+      cacheTechnicalMeasureDraft(activeOwner, form, lines),
+      queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload),
+    ]);
+    setPendingSync(true);
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      if (syncInFlightRef.current) return;
+      syncInFlightRef.current = true;
+      void saveDraft(lines).then((result) => {
+        if (!result.queued) lastSyncedPayloadRef.current = serialized;
+      }).finally(() => {
+        syncInFlightRef.current = false;
+      });
+    }, 700);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [lines, form?.id, form?.status]);
+
+  useEffect(() => {
+    const preserve = () => {
+      if (!form || form.status === "submitted" || !linesRef.current.length) return;
+      const activeOwner = owner();
+      const payload = technicalMeasureDraftPayload(linesRef.current);
+      if (JSON.stringify(payload) === lastSyncedPayloadRef.current) return;
+      void Promise.all([
+        cacheTechnicalMeasureDraft(activeOwner, form, linesRef.current),
+        queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload),
+      ]);
+    };
+    window.addEventListener("pagehide", preserve);
+    document.addEventListener("visibilitychange", preserve);
+    return () => {
+      window.removeEventListener("pagehide", preserve);
+      document.removeEventListener("visibilitychange", preserve);
+    };
+  }, [form, session?.user.email]);
+
+  useEffect(() => {
+    async function synchronize() {
+      if (!session || !navigator.onLine) return;
+      const activeOwner = owner(session);
+      const completed = await flushTechnicalMeasureQueue(activeOwner, async (entry) => {
+        const path = entry.operation === "draft"
+          ? `/api/crm/technical-measures/${entry.formId}`
+          : `/api/crm/technical-measures/${entry.formId}/submit`;
+        const method = entry.operation === "draft" ? "PATCH" : "POST";
+        return (await crmFetch<{ form: TechnicalMeasureForm }>(session, path, {
+          method,
+          body: JSON.stringify(entry.payload),
+        })).form;
+      });
+      const current = completed.filter(({ entry }) => entry.formId === formId).at(-1);
+      if (current) {
+        hydrate(current.form, false);
+        if (current.entry.operation === "submit") {
+          setMessage("Measure submitted");
+          setSubmitSuccess(true);
+          window.setTimeout(() => window.location.assign("/crm/mobile"), 1300);
+        } else {
+          setMessage("Saved changes uploaded.");
+        }
+      }
+      setPendingSync((await queuedTechnicalMeasureOperations(activeOwner)).some((entry) => entry.formId === formId));
+      setOfflineMode(false);
+    }
+    const onOnline = () => void synchronize();
+    const onOffline = () => setOfflineMode(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    if (navigator.onLine) void synchronize();
+    else setOfflineMode(true);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [session?.access_token, formId]);
+
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
-    setLines((current) => current.map((line) => line.id === lineId ? { ...line, current_values: { ...line.current_values, ...patch } } : line));
+    setLines((current) => {
+      const next = current.map((line) => line.id === lineId ? { ...line, current_values: { ...line.current_values, ...patch } } : line);
+      linesRef.current = next;
+      return next;
+    });
   }
 
   function updateDetail(lineId: string, key: string, value: string | boolean) {
-    setLines((current) => current.map((line) => line.id === lineId ? {
-      ...line,
-      current_values: { ...line.current_values, details: { ...line.current_values.details, [key]: value } },
-    } : line));
+    setLines((current) => {
+      const next = current.map((line) => line.id === lineId ? {
+        ...line,
+        current_values: { ...line.current_values, details: { ...line.current_values.details, [key]: value } },
+      } : line);
+      linesRef.current = next;
+      return next;
+    });
   }
 
-  async function saveDraft() {
-    if (!session) throw new Error("CRM session is unavailable.");
-    const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ lines: lines.map((line) => ({ id: line.id, currentValues: line.current_values })) }),
-    });
-    setForm(result.form);
-    setLines(result.form.lines);
-    return result.form;
+  async function saveDraft(sourceLines = linesRef.current) {
+    if (!form) throw new Error("Technical measure is unavailable.");
+    const activeOwner = owner();
+    const payload = technicalMeasureDraftPayload(sourceLines);
+    await cacheTechnicalMeasureDraft(activeOwner, form, sourceLines);
+    if (!session || !navigator.onLine) {
+      await queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload);
+      setOfflineMode(true);
+      setPendingSync(true);
+      return { form: applyOfflineTechnicalMeasureDraft(form, payload), queued: true };
+    }
+    try {
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+      hydrate(result.form, false);
+      await Promise.all([
+        cacheTechnicalMeasureForm(activeOwner, result.form),
+        removeQueuedTechnicalMeasureOperation(activeOwner, formId, "draft"),
+        removeCachedTechnicalMeasureDraft(activeOwner, formId),
+      ]);
+      setPendingSync(false);
+      return { form: result.form, queued: false };
+    } catch (error) {
+      if (!shouldQueueCrmError(error)) throw error;
+      await queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload);
+      setOfflineMode(true);
+      setPendingSync(true);
+      return { form: applyOfflineTechnicalMeasureDraft(form, payload), queued: true };
+    }
   }
 
   async function handleSave() {
     setBusy(true); setMessage(null);
-    try { const saved = await saveDraft(); setMessage(saved.requiresAddendum ? "Draft saved. Customer signature is required for the highlighted contract changes." : "Technical measure draft saved."); }
+    try {
+      const saved = await saveDraft();
+      setMessage(saved.queued ? "Saved on this phone · it will upload automatically when service returns." : "Technical measure draft saved.");
+    }
     catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be saved."); }
     finally { setBusy(false); }
   }
 
   async function handleSubmit() {
-    if (!session) return;
+    if (!form) return;
     setBusy(true); setMessage(null);
     try {
       const saved = await saveDraft();
-      if (saved.requiresAddendum) {
+      if (saved.form.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
         setMeasureStarted(false);
         window.setTimeout(() => document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" }), 0);
         return;
       }
-      const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
-      setForm(result.form); setLines(result.form.lines);
+      if (saved.queued || !navigator.onLine || !session) {
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", {});
+        setPendingSync(true);
+        setOfflineMode(true);
+        setMessage("Measure saved on this phone · it will submit automatically when service returns.");
+        return;
+      }
+      let result: { form: TechnicalMeasureForm };
+      try {
+        result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
+      } catch (error) {
+        if (!shouldQueueCrmError(error)) throw error;
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", {});
+        setPendingSync(true);
+        setOfflineMode(true);
+        setMessage("Measure saved on this phone · it will submit automatically when service returns.");
+        return;
+      }
+      hydrate(result.form, false);
+      await cacheTechnicalMeasureForm(owner(), result.form);
       setMessage("Measure submitted");
       setSubmitSuccess(true);
       window.setTimeout(() => window.location.assign("/crm/mobile"), 1300);
@@ -449,12 +676,18 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   }
 
   if (authLoading || loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /><p>Loading technical measure...</p></main>;
-  if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in with an approved CRM account.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(`/crm/technical-measures/${formId}`)}`}>Continue with Google</a></main>;
+  if (!session && !form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in once while connected to download your measures for offline access.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(`/crm/technical-measures/${formId}`)}`}>Continue with Google</a></main>;
   if (!form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical measure unavailable</h1>{message ? <p>{message}</p> : null}<a href="/crm/technical-measures">Return to measures</a></main>;
 
   return (
     <PortalContainerContext.Provider value={scopeElement}>
     <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell${measureStarted ? " technical-measure-shell--active" : ""}`}>
+      {(offlineMode || pendingSync) ? (
+        <div className="technical-measure-offline-status" data-offline={offlineMode}>
+          <span>{offlineMode ? "Offline" : "Saving"}</span>
+          <strong>{!session ? "Saved on phone · sign in when connected to upload" : offlineMode ? "Saved on this phone" : "Uploading saved changes…"}</strong>
+        </div>
+      ) : null}
       {!measureStarted ? <>
       <header className="technical-measure-header">
         <a href="/crm/technical-measures" aria-label="Back to technical measures"><ArrowLeft /></a>
@@ -501,6 +734,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </> : null}
 
       {measureStarted ? <section className="technical-measure-lines technical-measure-workspace">
+        {message ? <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div> : null}
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
@@ -757,28 +991,83 @@ export function TechnicalMeasureList() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
+  const [offlineMode, setOfflineMode] = useState(false);
+  const [downloadedCount, setDownloadedCount] = useState(0);
   const [schedulingFormId, setSchedulingFormId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
   useEffect(() => {
-    if (!supabase) { setLoading(false); return; }
+    if (!supabase) {
+      void (async () => {
+        const cached = await readCachedTechnicalMeasureList(lastOfflineMeasureOwner());
+        setForms(cached);
+        setDownloadedCount(cached.length);
+        setOfflineMode(true);
+        setLoading(false);
+      })();
+      return;
+    }
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
-      if (data.session) {
-        const jobId = new URLSearchParams(window.location.search).get("jobId");
-        const path = jobId ? `/api/crm/technical-measures?jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures";
-        try {
-          setLoadError(null);
-          setForms((await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms);
-        } catch (error) {
-          setLoadError(error instanceof Error ? error.message : "Technical measures could not be loaded.");
-        } finally {
-          setLoading(false);
+      const activeOwner = rememberOfflineMeasureOwner(data.session?.user.email || lastOfflineMeasureOwner());
+      const cached = activeOwner ? await readCachedTechnicalMeasureList(activeOwner) : [];
+      if (cached.length) {
+        setForms(cached);
+        setDownloadedCount(cached.length);
+      }
+      if (!data.session) {
+        setOfflineMode(!navigator.onLine);
+        setLoading(false);
+        return;
+      }
+      const jobId = new URLSearchParams(window.location.search).get("jobId");
+      const path = jobId ? `/api/crm/technical-measures?jobId=${encodeURIComponent(jobId)}` : "/api/crm/technical-measures";
+      try {
+        setLoadError(null);
+        if (navigator.onLine) {
+          await flushTechnicalMeasureQueue(activeOwner, async (entry) => {
+            const endpoint = entry.operation === "draft"
+              ? `/api/crm/technical-measures/${entry.formId}`
+              : `/api/crm/technical-measures/${entry.formId}/submit`;
+            return (await crmFetch<{ form: TechnicalMeasureForm }>(data.session!, endpoint, {
+              method: entry.operation === "draft" ? "PATCH" : "POST",
+              body: JSON.stringify(entry.payload),
+            })).form;
+          });
         }
-      } else setLoading(false);
+        const nextForms = (await crmFetch<{ forms: Array<Record<string, unknown>> }>(data.session, path)).forms;
+        setForms(nextForms);
+        await cacheTechnicalMeasureList(activeOwner, nextForms);
+        await downloadTechnicalMeasureForms(data.session, activeOwner, nextForms);
+        setDownloadedCount(nextForms.length);
+        navigator.serviceWorker?.controller?.postMessage({
+          type: "CACHE_MEASURE_ROUTES",
+          urls: nextForms.map((form) => `/crm/technical-measures/${String(form.id)}`),
+        });
+        setOfflineMode(false);
+      } catch (error) {
+        if (cached.length) {
+          setOfflineMode(true);
+          setLoadError("Offline mode · downloaded measures are available on this phone.");
+        } else {
+          setLoadError(error instanceof Error ? error.message : "Technical measures could not be loaded.");
+        }
+      } finally {
+        setLoading(false);
+      }
     });
   }, [supabase]);
+  useEffect(() => {
+    const onOnline = () => window.location.reload();
+    const onOffline = () => setOfflineMode(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
   if (loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /></main>;
-  if (!session) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
+  if (!session && !forms.length) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measures</h1><p>Sign in once while connected to download measures for offline use.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent("/crm/technical-measures")}`}>Continue with Google</a></main>;
   const pendingForms = forms.filter((form) => form.status !== "submitted");
   const unscheduledForms = pendingForms.filter((form) => {
     const meta = form.meta as Record<string, unknown> | null;
@@ -895,6 +1184,12 @@ export function TechnicalMeasureList() {
   };
   return (
     <main className="mts-quote-scope technical-measure-shell technical-measure-queue">
+      {(offlineMode || downloadedCount > 0) ? (
+        <div className="technical-measure-offline-status" data-offline={offlineMode}>
+          <span>{offlineMode ? "Offline" : "Offline ready"}</span>
+          <strong>{!session ? `${downloadedCount} saved · sign in when connected to sync` : `${downloadedCount} measure${downloadedCount === 1 ? "" : "s"} saved on this phone`}</strong>
+        </div>
+      ) : null}
       <header className="technical-measure-header"><a href="/crm/mobile"><ArrowLeft /></a><div><span>805 Shutters CRM</span><h1>Measures</h1><p>{unscheduledForms.length} need scheduling · {scheduledForms.length} scheduled</p></div></header>
       <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
         <a href="/crm/mobile"><CalendarDays />Appointments</a>

@@ -16588,6 +16588,10 @@ body:has(.financing-banner) .site-header-shell {
   color: #17482f;
   font-weight: 700;
 }
+.technical-measure-offline-status { position: sticky; z-index: 32; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 7px 14px; border-bottom: 1px solid #b9c8bc; background: #eef7f0; color: #1f5f35; font-size: 12px; }
+.technical-measure-offline-status span { font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.technical-measure-offline-status strong { font-size: 12px; }
+.technical-measure-offline-status[data-offline="true"] { border-color: #d4a33d; background: #fff5dc; color: #704900; }
 .technical-measure-alert--active { position: fixed; z-index: 35; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); width: min(560px, calc(100% - 24px)); margin: 0; transform: translateX(-50%); border: 1px solid #d1a546; border-left: 4px solid #9a6600; background: #fff8e7; color: #674500; box-shadow: 0 12px 30px rgba(0,0,0,.16); }
 .technical-measure-submit-success { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(255,255,255,.94); }
 .technical-measure-submit-success > div { display: grid; min-width: min(310px, 100%); justify-items: center; gap: 9px; padding: 30px 24px; border: 1px solid #77a986; border-radius: 16px; background: #edf8f0; color: #1d5f35; box-shadow: 0 18px 50px rgba(29,95,53,.18); text-align: center; }
