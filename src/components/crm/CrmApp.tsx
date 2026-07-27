@@ -35,6 +35,7 @@ import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
+import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
 import {
   awaitingProductRows,
   balanceDueCompletedRows,
@@ -90,7 +91,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
+type CrmTab = "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "order-forms" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2793,6 +2794,7 @@ export function CrmApp({
           ["quotes", "Quotes"],
           ["commercial", "Commercial Leads & Estimates"],
           ["customers", "Customer Files"],
+          ["order-forms", "Order Forms"],
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
           ["installation", "Installation"],
@@ -2851,6 +2853,8 @@ export function CrmApp({
       ) : null}
 
       {activeTab === "commercial" && session ? <CommercialWorkspace session={session} /> : null}
+
+      {activeTab === "order-forms" && session ? <OrderFormLibrary session={session} /> : null}
 
       {activeTab === "intelligence" ? (
         <SalesIntelligencePage

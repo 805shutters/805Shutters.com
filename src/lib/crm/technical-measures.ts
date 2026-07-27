@@ -16,6 +16,10 @@ import {
   upsertOnyxCustomerFileArtifact,
   type OnyxAgentOrderPacket,
 } from "@/lib/crm/vendor-orders/onyx-order-packet";
+import {
+  buildTechnicalMeasureOrderManifest,
+  upsertManufacturerOrderManifestArtifact,
+} from "@/lib/crm/vendor-orders/manufacturer-order-artifacts";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -939,6 +943,18 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
   }
   let orderPreparations: VendorOrderPreparationSummary[] = [];
   const submittedForm = await loadTechnicalMeasureForm(supabase, form.id);
+  const orderManifest = buildTechnicalMeasureOrderManifest(submittedForm);
+  await upsertManufacturerOrderManifestArtifact(supabase, orderManifest, {
+    customerId: submittedForm.customer_id || "",
+    customerName: submittedForm.customer_snapshot.name,
+    jobId: submittedForm.job_id,
+    quoteId: submittedForm.quote_id,
+    quoteNumber: submittedForm.quote_snapshot.quoteNumber,
+    measureStatus: "measure_required",
+    generatedAt: submittedAt,
+    sourceKind: "submitted_technical_measure",
+    sourceId: submittedForm.id,
+  });
   try {
     orderPreparations = await enqueueVendorOrderPreparations(submittedForm, actor.userId);
   } catch (error) {

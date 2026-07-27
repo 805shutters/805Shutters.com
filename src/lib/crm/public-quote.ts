@@ -50,6 +50,10 @@ import {
   onyxLinesFromSignedContract,
   upsertOnyxCustomerFileArtifact,
 } from "@/lib/crm/vendor-orders/onyx-order-packet";
+import {
+  buildSignedContractOrderManifest,
+  upsertManufacturerOrderManifestArtifact,
+} from "@/lib/crm/vendor-orders/manufacturer-order-artifacts";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -861,8 +865,24 @@ async function syncSignedQuoteArtifacts(
   );
   if (error) throw new CrmAuthError(502, "Quote was signed, but the customer contract file could not be saved.");
 
+  const built = await loadQuoteBuilder(supabase, quote.id);
+  const orderManifestContext = {
+    customerId: customer?.id || "",
+    customerName,
+    jobId: quote.job_id || jobRow?.id || "",
+    quoteId: quote.id,
+    quoteNumber: quote.quote_number,
+    measureStatus: technicalMeasure === "needed" ? "measure_required" as const : "no_measure" as const,
+    generatedAt: signedAt,
+  };
+  const orderManifest = buildSignedContractOrderManifest(built, orderManifestContext);
+  await upsertManufacturerOrderManifestArtifact(supabase, orderManifest, {
+    ...orderManifestContext,
+    sourceKind: "signed_contract",
+    sourceId: `contract:${quote.id}`,
+  });
+
   if (pub.hasOnyxShutters) {
-    const built = await loadQuoteBuilder(supabase, quote.id);
     const onyxLines = onyxLinesFromSignedContract(built);
     const packets = buildOnyxAgentOrderPackets({
       sourceKind: "signed_contract",

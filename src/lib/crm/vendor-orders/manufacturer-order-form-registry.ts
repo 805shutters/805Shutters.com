@@ -43,6 +43,8 @@ export type AgenticOrderManifestLine = {
   productName: string | null;
   templateUrl: string | null;
   schemaUrl: string | null;
+  templateVersion: number;
+  sourceValues: OrderFormSourceValues;
   status: "ready" | "order_review_required";
   reason: string | null;
 };
@@ -228,6 +230,8 @@ export function buildAgenticOrderManifest(input: {
         productName: null,
         templateUrl: null,
         schemaUrl: null,
+        templateVersion: 1,
+        sourceValues: line.values,
         status: "order_review_required",
         reason: "Manufacturer and exact product/program must resolve to one dedicated ordering form.",
       };
@@ -241,6 +245,8 @@ export function buildAgenticOrderManifest(input: {
       productName: entry.product_name,
       templateUrl: `/order-form-templates/${entry.template_docx}`,
       schemaUrl: `/order-form-templates/${entry.schema}`,
+      templateVersion: 1,
+      sourceValues: line.values,
       status: safeToRelease ? "ready" : "order_review_required",
       reason: safeToRelease ? null : `Ordering-form verification gate: ${entry.verification}`,
     };

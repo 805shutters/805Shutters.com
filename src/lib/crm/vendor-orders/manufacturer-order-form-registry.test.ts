@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import {
   buildAgenticOrderManifest,
@@ -13,6 +15,24 @@ describe("manufacturer ordering-form registry", () => {
     expect(registry.manufacturers.norman).toHaveLength(19);
     expect(registry.manufacturers.lotus).toHaveLength(5);
     expect(registry.manufacturers.polar).toHaveLength(11);
+  });
+
+  it("ships every registered DOCX, PDF preview, and schema with the CRM", () => {
+    const registry = manufacturerOrderFormRegistry();
+    const entries = Object.values(registry.manufacturers).flat();
+    for (const entry of entries) {
+      const templateRoot = join(process.cwd(), "public", "order-form-templates");
+      expect(existsSync(join(templateRoot, entry.template_docx)), entry.template_docx).toBe(true);
+      expect(existsSync(join(templateRoot, entry.template_docx.replace(/\.docx$/i, ".pdf"))), entry.template_docx).toBe(true);
+      expect(existsSync(join(templateRoot, entry.schema)), entry.schema).toBe(true);
+    }
+  });
+
+  it("exposes the library as a dedicated CRM navigation page", () => {
+    const source = readFileSync(join(process.cwd(), "src/components/crm/CrmApp.tsx"), "utf8");
+    expect(source).toContain('["order-forms", "Order Forms"]');
+    expect(source).toContain('activeTab === "order-forms"');
+    expect(source).toContain("<OrderFormLibrary session={session} />");
   });
 
   it.each([
