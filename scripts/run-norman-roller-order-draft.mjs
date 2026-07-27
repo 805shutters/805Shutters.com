@@ -13,6 +13,7 @@ import path from "node:path";
 const HOME_URL = "https://www.normanwindowcoverings.com/Login/default.asp";
 const ROLLER_URL = "https://www.normanwindowcoverings.com/Login/RollerShadesRR/SessionCtrl.asp?pgmcode=RR";
 const BLOCKED_ACTION = /\b(check\s*out|checkout|submit\s+order|place\s+order|confirm\s+order|process\s+order|send\s+order|finalize\s+order)\b/i;
+const TASK_ID_PATTERN = /^[a-zA-Z0-9:_-]{8,180}$/;
 const args = parseArgs(process.argv.slice(2));
 const bridgeRuns = new Map();
 let connectedBrowser = null;
@@ -378,7 +379,7 @@ async function handleBridgeRequest(request, response) {
     }
     if (url.pathname !== "/start") return sendText(response, 404, "Not found.");
     const taskId = url.searchParams.get("taskId") || "";
-    if (!/^[a-zA-Z0-9_-]{8,120}$/.test(taskId)) return sendText(response, 400, "The queued task identifier is invalid.");
+    if (!TASK_ID_PATTERN.test(taskId)) return sendText(response, 400, "The queued task identifier is invalid.");
     const currentRun = bridgeRuns.get(taskId);
     if (!currentRun || currentRun.status === "failed" || currentRun.status === "skipped") {
       bridgeRuns.set(taskId, { status: "starting", message: "Checking the logged-in Norman browser session before claiming the queued task." });

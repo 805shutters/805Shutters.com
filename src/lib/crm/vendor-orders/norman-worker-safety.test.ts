@@ -40,6 +40,7 @@ describe("Norman order worker safety boundary", () => {
     expect(worker).toContain('url.pathname !== "/start"');
     expect(worker).toContain("isLoopbackAddress");
     expect(worker).toContain("Review-only safety is enforced");
+    expect(worker).toContain("a-zA-Z0-9:_-");
   });
 
   it("does not permit placed, ordered, or submitted queue states", () => {

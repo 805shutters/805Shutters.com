@@ -38,7 +38,17 @@ function profileFromEnvironment(): NormanRollerProfile {
 }
 
 export function normanRollerLines(form: TechnicalMeasureForm) {
-  return form.lines.filter((line) => line.current_values.product_id === "roller");
+  return form.lines.filter((line) => {
+    const values = line.current_values;
+    const details = values.details || {};
+    const manufacturer = String(
+      details.supplier
+      ?? details.manufacturer
+      ?? details.catalog_manufacturer
+      ?? "",
+    ).trim().toLowerCase();
+    return values.product_id === "roller" && manufacturer === "norman";
+  });
 }
 
 export function buildNormanRollerPreparation(form: TechnicalMeasureForm, now = new Date()) {

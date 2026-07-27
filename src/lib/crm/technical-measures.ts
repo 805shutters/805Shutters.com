@@ -7,7 +7,11 @@ import { loadQuoteBuilder } from "@/lib/crm/quote-builder";
 import { getMeasureNeededMeta, MEASURE_NEEDED_META_KEY } from "@/lib/crm/measure-needed-state";
 import type { CrmJob, CrmQuote, CrmQuoteDesign, CrmQuoteDetailValue } from "@/lib/crm/types";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
-import { enqueueNormanRollerPreparation, type VendorOrderPreparationSummary } from "@/lib/crm/vendor-orders/norman-order-preparation";
+import {
+  enqueueNormanRollerPreparation,
+  validateNormanRollerMeasureForSubmission,
+  type VendorOrderPreparationSummary,
+} from "@/lib/crm/vendor-orders/norman-order-preparation";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -910,6 +914,15 @@ export async function signTechnicalMeasureAddendum(
 }
 
 async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
+  const normanIssues = validateNormanRollerMeasureForSubmission(form);
+  if (normanIssues.length) {
+    const fields = Array.from(new Set(normanIssues.map((issue) => issue.field))).slice(0, 8);
+    const remaining = Math.max(0, new Set(normanIssues.map((issue) => issue.field)).size - fields.length);
+    throw new CrmAuthError(
+      409,
+      `Complete Norman ordering details before submitting: ${fields.join(", ")}${remaining ? `, plus ${remaining} more` : ""}.`,
+    );
+  }
   const submittedAt = new Date().toISOString();
   await syncTechnicalMeasureOperationalOverride(supabase, form, submittedAt);
   const { error } = await supabase.from("crm_technical_measure_forms").update({ status: "submitted", submitted_at: submittedAt, technician_email: actor.email, technician_name: actor.displayName || form.technician_name }).eq("id", form.id);

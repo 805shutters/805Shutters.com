@@ -739,7 +739,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const baseline = line.baseline;
           const current = line.current_values;
           const isExpandedWindow = (line.source_quantity || 1) > 1;
-          const normanRoller = current.product_id === "roller" && String(current.details.supplier || "Norman").toLowerCase() === "norman";
+          const normanRoller = current.product_id === "roller"
+            && detailText(current.details, "supplier", "manufacturer", "catalog_manufacturer").toLowerCase() === "norman";
           const shutterProduct = isShutterProduct(current.product_id);
           const onyxShutter = shutterProduct && isOnyxShutter(current.product_id, current.details);
           const measurementBasis = shutterMeasurementBasis(current.details);

@@ -88,6 +88,16 @@ describe("Norman Roller order preparation", () => {
     expect(validateNormanRollerMeasureForSubmission(source)).toContainEqual(expect.objectContaining({ field: "fabric_color_code" }));
   });
 
+  it("does not route ambiguous or other-manufacturer rollers into Norman", () => {
+    const ambiguous = form();
+    delete ambiguous.lines[0].current_values.details.supplier;
+    expect(buildNormanRollerPreparation(ambiguous)).toBeNull();
+
+    const lotus = form();
+    lotus.lines[0].current_values.details.supplier = "Lotus";
+    expect(buildNormanRollerPreparation(lotus)).toBeNull();
+  });
+
   it("builds a queued immutable payload when the Norman profile is configured", () => {
     process.env.NORMAN_SHIP_TO_PROFILE_ID = "dealer-camarillo";
     const prepared = buildNormanRollerPreparation(form(), new Date("2026-07-22T18:00:00.000Z"));
