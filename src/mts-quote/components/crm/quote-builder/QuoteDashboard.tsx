@@ -40,6 +40,7 @@ interface QuoteDashboardProps {
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
   crmCustomers?: CrmCustomer[];
+  onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
@@ -130,6 +131,7 @@ export function QuoteDashboard({
   crmQuotes = [],
   crmCalendarEvents = [],
   crmCustomers = [],
+  onChanged,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
@@ -564,20 +566,32 @@ export function QuoteDashboard({
     },
   });
 
-  // Delete quote
+  // Delete every quote type through authenticated server-owned routes.
   const deleteQuote = useMutation({
-    mutationFn: async (quoteId: string) => {
-      if (serverOwnedV2) {
-        throw new Error(
-          "Quote V2 deletion is blocked; archive support must be server-owned.",
-        );
+    mutationFn: async (quote: QuoteTableRow) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+
+      const path = quote.source === "crm"
+        ? `/api/crm/quotes/${encodeURIComponent(quote.id)}`
+        : `/api/crm/sales-quotes/${encodeURIComponent(quote.sourceQuoteId || quote.id)}`;
+      const response = await fetch(path, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Quote could not be deleted.");
       }
-      const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      onChanged?.();
       toast.success("Quote deleted");
+    },
+    onError: (error) => {
+      toast.error("Failed to delete quote: " + error.message);
     },
   });
 
@@ -778,7 +792,7 @@ export function QuoteDashboard({
           if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
         }}
         onCopy={(id) => copyQuote.mutate(id)}
-        onDelete={(id) => deleteQuote.mutate(id)}
+        onDelete={(quote) => deleteQuote.mutate(quote)}
         title={FILTER_LABELS[activeFilter]}
       />
 

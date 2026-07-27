@@ -2909,6 +2909,83 @@ export async function createCrmQuote(supabase: CrmSupabaseClient, payload: Recor
   return data as CrmQuote;
 }
 
+export async function deleteSalesQuote(
+  supabase: CrmSupabaseClient,
+  id: string,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("sales_quotes")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Quote was not found.");
+
+  const { error } = await supabase.from("sales_quotes").delete().eq("id", id);
+  if (error) {
+    logSupabaseError("sales_quotes delete failed", error);
+    throw new CrmAuthError(502, "Quote could not be deleted.");
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: id,
+    action: "delete",
+    before: existing,
+    metadata: { source: "sales_quotes" }
+  });
+  return { deleted: true, quoteId: id };
+}
+
+export async function deleteCrmQuote(
+  supabase: CrmSupabaseClient,
+  id: string,
+  actor: CrmActor
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("crm_quotes")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError || !existing) throw new CrmAuthError(404, "Quote was not found.");
+
+  const meta = existing.meta && typeof existing.meta === "object"
+    ? existing.meta as Record<string, unknown>
+    : {};
+  const externalId = typeof existing.external_id === "string" && existing.external_id.startsWith("quote:")
+    ? existing.external_id.slice("quote:".length)
+    : null;
+  const linkedSalesQuoteId = [
+    meta.target_sales_quote_id,
+    meta.sales_quote_id,
+    meta.mts_quote_id,
+    externalId
+  ].find((value): value is string => typeof value === "string" && Boolean(value.trim())) || null;
+
+  const { error } = await supabase.from("crm_quotes").delete().eq("id", id);
+  if (error) {
+    logSupabaseError("crm_quotes delete failed", error);
+    throw new CrmAuthError(502, "Quote could not be deleted.");
+  }
+
+  if (linkedSalesQuoteId) {
+    const linkedDelete = await supabase.from("sales_quotes").delete().eq("id", linkedSalesQuoteId);
+    if (linkedDelete.error) {
+      logSupabaseError("linked sales_quotes delete failed", linkedDelete.error);
+      throw new CrmAuthError(502, "The CRM quote was deleted, but its linked V2 quote could not be deleted.");
+    }
+  }
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: id,
+    action: "delete",
+    before: existing,
+    metadata: { jobId: existing.job_id, linkedSalesQuoteId }
+  });
+  return { deleted: true, quoteId: id, linkedSalesQuoteId };
+}
+
 export async function updateCrmQuote(
   supabase: CrmSupabaseClient,
   id: string,

@@ -37,7 +37,7 @@ interface QuotesTableProps {
   onOpen: (quote: QuoteTableRow) => void;
   onPortfolio: (quote: QuoteTableRow) => void;
   onCopy: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (quote: QuoteTableRow) => void;
   title?: string;
 }
 
@@ -161,18 +161,21 @@ export function QuotesTable({
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     {isCrmQuote ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpen(quote);
-                        }}
-                        title="Open quote"
-                      >
-                        <ExternalLink className="mr-1.5 h-4 w-4" />
-                        Open
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpen(quote);
+                          }}
+                          title="Open quote"
+                        >
+                          <ExternalLink className="mr-1.5 h-4 w-4" />
+                          Open
+                        </Button>
+                        <DeleteQuoteButton quote={quote} onDelete={onDelete} />
+                      </>
                     ) : (
                       <>
                         <Button
@@ -198,22 +201,7 @@ export function QuotesTable({
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const label = quote.quote_number || quote.customer_name || "this quote";
-                            if (!window.confirm(`Delete quote ${label}? This cannot be undone.`)) {
-                              return;
-                            }
-                            onDelete(salesQuoteId);
-                          }}
-                          title="Delete quote"
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <DeleteQuoteButton quote={quote} onDelete={onDelete} />
                       </>
                     )}
                   </div>
@@ -235,5 +223,31 @@ export function QuotesTable({
         </div>
       )}
     </div>
+  );
+}
+
+function DeleteQuoteButton({
+  quote,
+  onDelete,
+}: {
+  quote: QuoteTableRow;
+  onDelete: (quote: QuoteTableRow) => void;
+}) {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={(event) => {
+        event.stopPropagation();
+        const label = quote.quote_number || quote.customer_name || "this quote";
+        if (!window.confirm(`Permanently delete quote ${label}? This cannot be undone.`)) return;
+        onDelete(quote);
+      }}
+      title="Delete quote"
+      aria-label={`Delete quote ${quote.quote_number || quote.customer_name || ""}`.trim()}
+      className="text-destructive hover:text-destructive"
+    >
+      <Trash2 className="h-4 w-4" />
+    </Button>
   );
 }

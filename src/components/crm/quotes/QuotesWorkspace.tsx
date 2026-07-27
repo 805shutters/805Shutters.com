@@ -22,7 +22,7 @@ type Props = {
   onChanged: () => void;
 };
 
-export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, onOpenCalendarDate, onOpenCrmQuote }: Props) {
+export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, onOpenCalendarDate, onOpenCrmQuote, onChanged }: Props) {
   return (
     <QuoteWorkspace
       crmJobs={jobs}
@@ -32,6 +32,7 @@ export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, 
       openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}
       onOpenCrmQuote={onOpenCrmQuote}
+      onChanged={onChanged}
     />
   );
 }
