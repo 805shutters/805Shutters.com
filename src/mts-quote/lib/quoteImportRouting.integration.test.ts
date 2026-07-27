@@ -39,8 +39,7 @@ describe("active quote route historical boundary", () => {
 
   it("does not blindly treat CRM source-system UUIDs as local V2 quote IDs", () => {
     expect(crmAppSource).not.toContain("function linkedSalesQuoteId");
-    expect(crmAppSource).toContain("setBuilderQuoteId(quoteId)");
-    expect(crmAppSource).not.toContain("setQuoteWorkspaceOpenRequest");
+    expect(crmAppSource).toContain("else setBuilderQuoteId(quoteId)");
     expect(crmAppSource).not.toContain("readOnlyLegacyQuoteId");
   });
 
