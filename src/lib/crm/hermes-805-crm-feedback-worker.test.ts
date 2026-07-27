@@ -11,6 +11,7 @@ import {
 } from "../../../scripts/hermes-805-crm-feedback-worker.mjs";
 
 const topic = {
+  company_scope: "805",
   id: "11111111-1111-4111-8111-111111111111",
   revision: 3,
   title: "Fix calendar filter",
@@ -38,20 +39,21 @@ describe("Hermes 805 CRM feedback worker", () => {
     await client.claim(topic);
 
     expect(fetchImpl.mock.calls[0][0]).toBe(
-      "https://www.805shutters.com/api/integrations/hermes/crm-feedback/?limit=20",
+      "https://www.805shutters.com/api/integrations/hermes/805/crm-feedback/?limit=20",
     );
     expect(fetchImpl.mock.calls[0][1].headers["x-hermes-secret"]).toBe("private");
+    expect(fetchImpl.mock.calls[0][1].headers["x-hermes-company"]).toBe("805");
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       action: "claim",
       id: topic.id,
       revision: 3,
-      claimedBy: "home-mac-hermes",
+      claimedBy: "home-mac-hermes-805",
     });
   });
 
   it("creates stable revision-specific event IDs", () => {
     expect(createExternalEventId(topic, "submit_assessment")).toBe(
-      "home-mac-hermes:11111111-1111-4111-8111-111111111111:r3:submit_assessment",
+      "home-mac-hermes-805:11111111-1111-4111-8111-111111111111:r3:submit_assessment",
     );
   });
 
@@ -93,6 +95,15 @@ describe("Hermes 805 CRM feedback worker", () => {
     };
     await processRequest(approved, { client, releaseEnabled: false });
     expect(client.act).not.toHaveBeenCalled();
+  });
+
+  it("rejects an MTS topic before claiming it", async () => {
+    const client = { claim: vi.fn() };
+    await expect(processRequest(
+      { ...topic, company_scope: "mts" },
+      { client },
+    )).rejects.toThrow(/company/i);
+    expect(client.claim).not.toHaveBeenCalled();
   });
 
   it("restricts execution to the configured 805 workspace", () => {

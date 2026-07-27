@@ -6,7 +6,7 @@ import {
 } from "@/lib/crm/feedback-workflow";
 import type { CrmFeedbackRequest } from "@/lib/crm/feedback-types";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { answerWillieCallback } from "@/lib/notify/willie-telegram";
+import { answerEightOhFiveCallback } from "@/lib/notify/eight-oh-five-telegram";
 
 export const runtime = "nodejs";
 
@@ -20,7 +20,7 @@ type TelegramUpdate = {
 };
 
 export async function POST(request: NextRequest) {
-  const configuredSecret = process.env.WILLIE_TELEGRAM_WEBHOOK_SECRET?.trim();
+  const configuredSecret = process.env.SHUTTERS_805_TELEGRAM_WEBHOOK_SECRET?.trim();
   const suppliedSecret = request.headers.get("x-telegram-bot-api-secret-token")?.trim();
   if (!configuredSecret || suppliedSecret !== configuredSecret) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -31,18 +31,23 @@ export async function POST(request: NextRequest) {
   const parsed = parseFeedbackCallbackData(callback?.data || "");
   if (!callback?.id || !parsed) return NextResponse.json({ ok: true });
 
-  const expectedChat = process.env.WILLIE_TELEGRAM_CHAT_ID?.trim();
+  const expectedChat = process.env.SHUTTERS_805_TELEGRAM_CHAT_ID?.trim();
   const actualChat = String(callback.message?.chat?.id || "");
   if (!expectedChat || actualChat !== expectedChat) {
-    await answerWillieCallback(callback.id, "This chat is not authorized for CRM approvals.");
+    await answerEightOhFiveCallback(callback.id, "This chat is not authorized for 805 CRM approvals.");
     return NextResponse.json({ ok: true });
   }
 
   const supabase = getSupabaseServiceClient();
   if (!supabase) return NextResponse.json({ ok: false }, { status: 503 });
-  const { data } = await supabase.from("crm_feedback_requests").select("*").eq("id", parsed.id).maybeSingle();
+  const { data } = await supabase
+    .from("crm_feedback_requests")
+    .select("*")
+    .eq("id", parsed.id)
+    .eq("company_scope", "805")
+    .maybeSingle();
   if (!data) {
-    await answerWillieCallback(callback.id, "This feedback topic no longer exists.");
+    await answerEightOhFiveCallback(callback.id, "This 805 feedback topic no longer exists.");
     return NextResponse.json({ ok: true });
   }
 
@@ -53,6 +58,7 @@ export async function POST(request: NextRequest) {
       : callback.from?.first_name || String(callback.from?.id || "Michael");
     const now = new Date().toISOString();
     const approval = {
+      company_scope: "805",
       request_id: parsed.id,
       request_revision: parsed.revision,
       approval_type: parsed.type,
@@ -87,6 +93,7 @@ export async function POST(request: NextRequest) {
     if (updateError || !updated) throw new Error("Topic state changed before approval was recorded.");
 
     await supabase.from("crm_feedback_messages").insert({
+      company_scope: "805",
       request_id: parsed.id,
       author_type: "michael",
       author_email: null,
@@ -96,9 +103,9 @@ export async function POST(request: NextRequest) {
       revision: parsed.revision,
       metadata: { approval_type: parsed.type, telegram_callback_query_id: callback.id }
     });
-    await answerWillieCallback(callback.id, `${parsed.type === "implementation" ? "Implementation" : "Push/deployment"} approved for this topic only.`);
+    await answerEightOhFiveCallback(callback.id, `${parsed.type === "implementation" ? "Implementation" : "Push/deployment"} approved for this 805 topic only.`);
   } catch (error) {
-    await answerWillieCallback(callback.id, error instanceof Error ? error.message : "Approval could not be recorded.");
+    await answerEightOhFiveCallback(callback.id, error instanceof Error ? error.message : "805 approval could not be recorded.");
   }
   return NextResponse.json({ ok: true });
 }

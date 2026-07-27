@@ -21,10 +21,11 @@ describe("Hermes 805 feedback worker configuration", () => {
     expect(installer).toContain("StartInterval");
   });
 
-  it("uses the default MTS Hermes profile and never the reserved 805 bot", () => {
-    expect(worker).not.toContain('"--profile", "shutters805"');
-    expect(worker).toContain('`${process.env.HOME}/.hermes/.env`');
-    expect(installer).toContain('$HOME/.hermes/logs');
-    expect(installer).not.toContain("profiles/shutters805");
+  it("uses only the isolated 805 Hermes profile", () => {
+    expect(worker).toContain('"--profile", "shutters805"');
+    expect(worker).toContain('`${process.env.HOME}/.hermes/profiles/shutters805/.env`');
+    expect(worker).not.toContain("HERMES_MTS_WORKSPACE");
+    expect(worker).not.toContain("HERMES_MTS_ENV_FILE");
+    expect(installer).toContain("$HOME/.hermes/profiles/shutters805/logs");
   });
 });

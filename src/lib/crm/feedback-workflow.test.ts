@@ -17,10 +17,12 @@ describe("CRM feedback approval isolation", () => {
   it("round-trips topic-specific Telegram callback data", () => {
     const id = "0a1b2c3d-4e5f-6789-abcd-ef0123456789";
     expect(parseFeedbackCallbackData(feedbackCallbackData(id, 7, "deployment"))).toEqual({
+      company: "805",
       id,
       revision: 7,
       type: "deployment"
     });
+    expect(parseFeedbackCallbackData(`feedback:mts:${id}:7:deployment`)).toBeNull();
     expect(parseFeedbackCallbackData("approve")).toBeNull();
   });
 });

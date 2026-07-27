@@ -2,23 +2,23 @@ import { feedbackCallbackData, type FeedbackApprovalType } from "@/lib/crm/feedb
 
 type WillieResult = { sent: boolean; messageId?: number; skipped?: string; error?: string };
 
-export function isWillieTelegramConfigured() {
+export function isEightOhFiveTelegramConfigured() {
   return Boolean(
-    process.env.WILLIE_TELEGRAM_BOT_TOKEN?.trim() &&
-    process.env.WILLIE_TELEGRAM_CHAT_ID?.trim()
+    process.env.SHUTTERS_805_TELEGRAM_BOT_TOKEN?.trim() &&
+    process.env.SHUTTERS_805_TELEGRAM_CHAT_ID?.trim()
   );
 }
 
-export async function sendWillieFeedbackApproval(input: {
+export async function sendEightOhFiveFeedbackApproval(input: {
   id: string;
   revision: number;
   type: FeedbackApprovalType;
   title: string;
   summary: string;
 }): Promise<WillieResult> {
-  const token = process.env.WILLIE_TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = process.env.WILLIE_TELEGRAM_CHAT_ID?.trim();
-  if (!token || !chatId) return { sent: false, skipped: "Willie Telegram is not configured" };
+  const token = process.env.SHUTTERS_805_TELEGRAM_BOT_TOKEN?.trim();
+  const chatId = process.env.SHUTTERS_805_TELEGRAM_CHAT_ID?.trim();
+  if (!token || !chatId) return { sent: false, skipped: "805 Telegram is not configured" };
 
   const actionLabel = input.type === "implementation"
     ? "Approve implementation"
@@ -63,8 +63,8 @@ export async function sendWillieFeedbackApproval(input: {
   }
 }
 
-export async function answerWillieCallback(callbackQueryId: string, text: string) {
-  const token = process.env.WILLIE_TELEGRAM_BOT_TOKEN?.trim();
+export async function answerEightOhFiveCallback(callbackQueryId: string, text: string) {
+  const token = process.env.SHUTTERS_805_TELEGRAM_BOT_TOKEN?.trim();
   if (!token) return;
   await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
     method: "POST",

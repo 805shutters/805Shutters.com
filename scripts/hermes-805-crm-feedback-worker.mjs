@@ -7,9 +7,9 @@ import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 const execFileAsync = promisify(execFile);
-const WORKER_ID = "home-mac-hermes";
+const WORKER_ID = "home-mac-hermes-805";
 const DEFAULT_BASE_URL = "https://www.805shutters.com";
-const POLL_PATH = "/api/integrations/hermes/crm-feedback/?limit=20";
+const POLL_PATH = "/api/integrations/hermes/805/crm-feedback/?limit=20";
 const ASSESSMENT_FIELDS = [
   "problem",
   "desiredOutcome",
@@ -104,6 +104,7 @@ export class CrmFeedbackClient {
       headers: {
         "content-type": "application/json",
         "x-hermes-secret": this.secret,
+        "x-hermes-company": "805",
         ...(options.headers || {}),
       },
     });
@@ -118,7 +119,7 @@ export class CrmFeedbackClient {
   }
 
   claim(request, action = "claim") {
-    return this.request("/api/integrations/hermes/crm-feedback/", {
+    return this.request("/api/integrations/hermes/805/crm-feedback/", {
       method: "PATCH",
       body: JSON.stringify({
         action,
@@ -134,7 +135,7 @@ export class CrmFeedbackClient {
   }
 
   act(request, claimToken, action, payload = {}) {
-    return this.request(`/api/integrations/hermes/crm-feedback/${encodeURIComponent(request.id)}/`, {
+    return this.request(`/api/integrations/hermes/805/crm-feedback/${encodeURIComponent(request.id)}/`, {
       method: "PATCH",
       body: JSON.stringify({
         action,
@@ -171,11 +172,11 @@ All fields are required.`;
 
 export async function runHermesDecision(request, {
   hermesBin = process.env.HERMES_BIN || `${process.env.HOME}/.local/bin/hermes`,
-  cwd = process.env.HERMES_MTS_WORKSPACE || process.env.HERMES_805_WORKSPACE || process.cwd(),
+  cwd = process.env.HERMES_805_WORKSPACE || process.cwd(),
 } = {}) {
   const { stdout } = await execFileAsync(
     hermesBin,
-    ["--oneshot", decisionPrompt(request), "--source", "tool"],
+    ["--profile", "shutters805", "--oneshot", decisionPrompt(request), "--source", "tool"],
     { cwd, maxBuffer: 2_000_000, timeout: 15 * 60 * 1000 },
   );
   return parseHermesDecision(stdout);
@@ -312,6 +313,9 @@ export async function processRequest(request, options) {
     deploymentRunner,
     releaseEnabled = false,
   } = options;
+  if (request.company_scope !== "805") {
+    throw new Error("805 worker rejected a non-805 company topic");
+  }
   const claimed = await client.claim(request);
   const current = claimed.request;
   const claimToken = claimed.claimToken;
@@ -380,8 +384,8 @@ async function loadEnvFile(envPath) {
 }
 
 async function main() {
-  const profileEnv = process.env.HERMES_MTS_ENV_FILE
-    || `${process.env.HOME}/.hermes/.env`;
+  const profileEnv = process.env.HERMES_805_ENV_FILE
+    || `${process.env.HOME}/.hermes/profiles/shutters805/.env`;
   await loadEnvFile(profileEnv);
   const secret = process.env.HERMES_805_SHARED_SECRET?.trim();
   if (!secret) {
