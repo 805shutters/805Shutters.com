@@ -16,6 +16,8 @@ describe("Norman order launch agents", () => {
     expect(installer).toContain("orders:norman:bridge");
     expect(installer).toContain("<key>StartInterval</key><integer>120</integer>");
     expect(installer).toContain("<key>KeepAlive</key><true/>");
+    expect(installer).toContain("<key>EnvironmentVariables</key>");
+    expect(installer).toContain("<key>PATH</key>");
   });
 
   it("starts a dedicated debuggable Chrome profile without storing portal credentials", () => {

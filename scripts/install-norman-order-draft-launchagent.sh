@@ -8,6 +8,7 @@ repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 launch_agents_dir="$HOME/Library/LaunchAgents"
 log_dir="$HOME/Library/Logs/805Shutters"
 chrome_profile_dir="$HOME/Library/Application Support/805Shutters/NormanChrome"
+runtime_path="$(dirname "$(command -v node)"):/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 if ! security find-generic-password -a order-drafts -s 805-norman-worker-secret >/dev/null 2>&1; then
   echo "The Norman worker secret is missing from macOS Keychain." >&2
@@ -36,6 +37,7 @@ cat > "$poll_plist" <<PLIST
   </array>
   <key>StartInterval</key><integer>120</integer>
   <key>RunAtLoad</key><true/>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${runtime_path}</string></dict>
   <key>StandardOutPath</key><string>${log_dir}/norman-order-drafts.log</string>
   <key>StandardErrorPath</key><string>${log_dir}/norman-order-drafts-error.log</string>
 </dict></plist>
@@ -52,6 +54,7 @@ cat > "$bridge_plist" <<PLIST
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>${runtime_path}</string></dict>
   <key>StandardOutPath</key><string>${log_dir}/norman-order-bridge.log</string>
   <key>StandardErrorPath</key><string>${log_dir}/norman-order-bridge-error.log</string>
 </dict></plist>
