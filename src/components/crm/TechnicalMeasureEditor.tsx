@@ -271,6 +271,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [measurePicker, setMeasurePicker] = useState<{ lineId: string; step: MeasurementStep } | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [signerName, setSignerName] = useState("");
@@ -352,13 +353,15 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       const saved = await saveDraft();
       if (saved.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
-        document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" });
+        setMeasureStarted(false);
+        window.setTimeout(() => document.getElementById("technical-measure-addendum")?.scrollIntoView({ behavior: "smooth" }), 0);
         return;
       }
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
       setForm(result.form); setLines(result.form.lines);
-      const preparation = orderPreparation(result.form);
-      setMessage(preparation?.message || "Technical measure submitted and saved to the customer file.");
+      setMessage("Measure submitted");
+      setSubmitSuccess(true);
+      window.setTimeout(() => window.location.assign("/crm/mobile"), 1300);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be submitted."); }
     finally { setBusy(false); }
   }
@@ -619,6 +622,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           );
         })}
       </section> : null}
+      {measureStarted && message && !submitSuccess ? <div className="technical-measure-alert technical-measure-alert--active" role="alert">{message}</div> : null}
 
       {!measureStarted && form.requiresAddendum && !readOnly ? (
         <section id="technical-measure-addendum" className="technical-measure-addendum">
@@ -720,6 +724,9 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           onDirectMeasurements={() => undefined}
         /> : null;
       })() : null}
+      {submitSuccess ? <div className="technical-measure-submit-success" role="status" aria-live="assertive">
+        <div><Check aria-hidden="true" /><strong>Measure submitted</strong><span>Returning to the mobile dashboard…</span></div>
+      </div> : null}
     </main>
     </PortalContainerContext.Provider>
   );

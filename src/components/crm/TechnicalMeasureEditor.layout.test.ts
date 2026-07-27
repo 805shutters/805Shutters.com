@@ -32,6 +32,21 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain("setFuturePicker(null); }}");
   });
 
+  it("shows completion feedback and returns successful measures to the mobile dashboard", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const styles = readFileSync("src/app/globals.css", "utf8");
+
+    expect(component).toContain('setMessage("Measure submitted")');
+    expect(component).toContain("setSubmitSuccess(true)");
+    expect(component).toContain('window.location.assign("/crm/mobile")');
+    expect(component).toContain("technical-measure-submit-success");
+    expect(component).toContain("Returning to the mobile dashboard…");
+    expect(component).toContain("technical-measure-alert--active");
+    expect(component).toContain("setMeasureStarted(false)");
+    expect(styles).toContain(".technical-measure-submit-success");
+    expect(styles).toContain(".technical-measure-alert--active");
+  });
+
   it("uses a customer launch screen and one-line mobile workspace", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
