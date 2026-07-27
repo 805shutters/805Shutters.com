@@ -171,11 +171,11 @@ All fields are required.`;
 
 export async function runHermesDecision(request, {
   hermesBin = process.env.HERMES_BIN || `${process.env.HOME}/.local/bin/hermes`,
-  cwd = process.env.HERMES_805_WORKSPACE || process.cwd(),
+  cwd = process.env.HERMES_MTS_WORKSPACE || process.env.HERMES_805_WORKSPACE || process.cwd(),
 } = {}) {
   const { stdout } = await execFileAsync(
     hermesBin,
-    ["--profile", "shutters805", "--oneshot", decisionPrompt(request), "--source", "tool"],
+    ["--oneshot", decisionPrompt(request), "--source", "tool"],
     { cwd, maxBuffer: 2_000_000, timeout: 15 * 60 * 1000 },
   );
   return parseHermesDecision(stdout);
@@ -380,8 +380,8 @@ async function loadEnvFile(envPath) {
 }
 
 async function main() {
-  const profileEnv = process.env.HERMES_805_ENV_FILE
-    || `${process.env.HOME}/.hermes/profiles/shutters805/.env`;
+  const profileEnv = process.env.HERMES_MTS_ENV_FILE
+    || `${process.env.HOME}/.hermes/.env`;
   await loadEnvFile(profileEnv);
   const secret = process.env.HERMES_805_SHARED_SECRET?.trim();
   if (!secret) {

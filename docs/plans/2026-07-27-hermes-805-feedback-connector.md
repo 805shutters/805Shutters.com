@@ -4,7 +4,7 @@
 
 **Goal:** Run a supervised local Hermes worker for Jessica's revision-scoped 805 CRM feedback workflow.
 
-**Architecture:** A dependency-injected Node worker owns queue polling and topic transitions. The local `shutters805` Hermes CLI produces strictly validated JSON; Codex and release commands are gated by exact API states and local configuration.
+**Architecture:** A dependency-injected Node worker owns queue polling and topic transitions. The default Hermes MTS bot produces strictly validated JSON; Codex and release commands are gated by exact API states and local configuration. The dedicated 805 bot remains outside this workflow.
 
 **Tech Stack:** Node.js 20, native `fetch`, Hermes CLI, Vitest, macOS launchd, Next.js integration API.
 
@@ -28,7 +28,7 @@
 - Test: `scripts/hermes-805-crm-feedback-worker.test.mjs`
 
 1. Add failing tests for strict Hermes JSON parsing and authorized workspace validation.
-2. Invoke the `shutters805` profile in one-shot mode for clarification/assessment only.
+2. Invoke the default Hermes MTS profile in one-shot mode for clarification/assessment only.
 3. Dispatch approved implementation through Codex only inside the configured 805 workspace.
 4. Require explicit release enablement for approved deployments.
 
