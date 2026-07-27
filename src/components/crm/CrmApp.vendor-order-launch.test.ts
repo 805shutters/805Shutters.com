@@ -11,10 +11,12 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain('openSummaryDrill("readyToOrder")');
   });
 
-  it("offers an intentional review-only launch action from the customer drill card", () => {
+  it("routes each supported manufacturer without relabeling Onyx as Norman", () => {
     expect(source).toContain('label: "Start Order Entry"');
-    expect(source).toContain('detail: "Review-only Norman draft"');
+    expect(source).toContain('entry.vendorOrderTask?.manufacturer === "Norman" ? "Review-only Norman draft" : "Onyx shutters from submitted measure"');
     expect(source).toContain("onVendorOrderLaunch(entry.vendorOrderTask");
     expect(source).toContain("The order will not be placed.");
+    expect(source).toContain('"https://admin.onyxshutters.com/OrderList.aspx"');
+    expect(source).toContain("Use the submitted technical measure and review before placing.");
   });
 });

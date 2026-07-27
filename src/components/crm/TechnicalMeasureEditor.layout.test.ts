@@ -133,6 +133,21 @@ describe("technical measure mobile controls", () => {
     expect(service).toContain('title: `Future Measures (${entries.length})`');
   });
 
+  it("offers an authenticated Onyx backfill for submitted historical measures", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const api = readFileSync(
+      "src/app/api/crm/technical-measures/[id]/vendor-order-backfill/route.ts",
+      "utf8",
+    );
+    const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
+
+    expect(component).toContain("Queue Onyx Order");
+    expect(component).toContain("/vendor-order-backfill");
+    expect(api).toContain("requireCrmUser");
+    expect(api).toContain("backfillSubmittedVendorOrderPreparation");
+    expect(service).toContain('action: "technical_measure.vendor_order_backfill"');
+  });
+
   it("separates scheduling work and exposes customer contact and map actions", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const api = readFileSync(

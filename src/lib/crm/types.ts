@@ -804,8 +804,8 @@ export type CrmVendorOrderTask = {
   quoteId: string;
   customerName: string;
   quoteNumber: string | null;
-  manufacturer: "Norman";
-  productType: "roller";
+  manufacturer: "Norman" | "Onyx";
+  productType: "roller" | "shutters";
   status: "queued";
   submittedAt: string;
   message: string;

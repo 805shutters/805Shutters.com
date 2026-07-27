@@ -488,6 +488,26 @@ describe("vendorOrderTaskFromRow", () => {
     expect(task).not.toHaveProperty("payload");
   });
 
+  it("projects queued Onyx shutter tasks without relabeling them as Norman", () => {
+    const task = vendorOrderTaskFromRow({
+      ...queuedRow,
+      meta: {
+        vendor_order_preparation: {
+          ...queuedRow.meta.vendor_order_preparation,
+          manufacturer: "Onyx",
+          productType: "shutters",
+          taskId: "onyx:form-123:abcdef123456",
+        },
+      },
+    });
+    expect(task).toMatchObject({
+      manufacturer: "Onyx",
+      productType: "shutters",
+      status: "queued",
+      taskId: "onyx:form-123:abcdef123456",
+    });
+  });
+
   it("does not expose non-queued or unsubmitted vendor work", () => {
     expect(vendorOrderTaskFromRow({
       ...queuedRow,

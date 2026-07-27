@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { TechnicalMeasureForm, TechnicalMeasureLine } from "@/lib/crm/technical-measures";
-import { buildNormanRollerPreparation, enqueueNormanRollerPreparation, validateNormanRollerMeasureForSubmission } from "./norman-order-preparation";
+import {
+  buildNormanRollerPreparation,
+  enqueueNormanRollerPreparation,
+  enqueueOnyxShutterPreparation,
+  enqueueVendorOrderPreparation,
+  validateNormanRollerMeasureForSubmission,
+} from "./norman-order-preparation";
 
 function line(): TechnicalMeasureLine {
   const values = {
@@ -124,5 +130,36 @@ describe("Norman Roller order preparation", () => {
     });
     expect(queued.taskId).toMatch(/^norman:form-1:[a-f0-9]{12}$/);
     expect(queued.payload).toMatchObject({ adapter: "norman_roller", safety: "saved_draft_only", ready: true });
+  });
+});
+
+describe("Onyx shutter order preparation", () => {
+  it("queues submitted Onyx shutters without relabeling them as Norman", async () => {
+    const source = form();
+    source.lines[0].current_values.product_id = "shutters";
+    source.lines[0].current_values.details = {
+      supplier: "Onyx",
+      frame_type: "VZ Crest",
+      material: "Poly Composite",
+      color: "101_White",
+    };
+    const queued = enqueueOnyxShutterPreparation(source, "sales-user-1");
+    expect(queued).toMatchObject({
+      manufacturer: "Onyx",
+      productType: "shutters",
+      status: "queued",
+      requestedBy: "sales-user-1",
+      issueCount: 0,
+    });
+    expect(queued.taskId).toMatch(/^onyx:form-1:[a-f0-9]{12}$/);
+    expect(queued.payload).toMatchObject({
+      adapterVersion: "onyx-shutter-measure-v1",
+      ready: true,
+    });
+    await expect(enqueueVendorOrderPreparation(source, "sales-user-1")).resolves.toMatchObject({
+      manufacturer: "Onyx",
+      productType: "shutters",
+      status: "queued",
+    });
   });
 });

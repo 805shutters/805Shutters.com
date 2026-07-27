@@ -1455,14 +1455,23 @@ export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | nul
   const jobId = optionalText(row.job_id);
   const quoteId = optionalText(row.quote_id);
   const submittedAt = optionalText(row.submitted_at);
+  const manufacturer = order.manufacturer === "Norman" || order.manufacturer === "Onyx"
+    ? order.manufacturer
+    : null;
+  const productType = order.productType === "roller" || order.productType === "shutters"
+    ? order.productType
+    : null;
+  const supportedScope = (manufacturer === "Norman" && productType === "roller")
+    || (manufacturer === "Onyx" && productType === "shutters");
   if (
     !taskId ||
     !formId ||
     !jobId ||
     !quoteId ||
     !submittedAt ||
-    order.manufacturer !== "Norman" ||
-    order.productType !== "roller" ||
+    !manufacturer ||
+    !productType ||
+    !supportedScope ||
     order.status !== "queued"
   ) {
     return null;
@@ -1474,11 +1483,11 @@ export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | nul
     quoteId,
     customerName: optionalText(customer.name) || "Customer",
     quoteNumber: optionalText(quote.quoteNumber),
-    manufacturer: "Norman",
-    productType: "roller",
+    manufacturer,
+    productType,
     status: "queued",
     submittedAt,
-    message: optionalText(order.message) || "Norman Roller saved-draft entry is ready to start.",
+    message: optionalText(order.message) || `${manufacturer} order entry is ready to start.`,
   };
 }
 
@@ -1571,8 +1580,6 @@ export async function loadCrmDashboardData(supabase: CrmSupabaseClient) {
       .from("crm_technical_measure_forms")
       .select("id,job_id,quote_id,submitted_at,meta,customer_snapshot,quote_snapshot")
       .eq("status", "submitted")
-      .eq("meta->vendor_order_preparation->>manufacturer", "Norman")
-      .eq("meta->vendor_order_preparation->>productType", "roller")
       .eq("meta->vendor_order_preparation->>status", "queued")
       .order("submitted_at", { ascending: true })
       .limit(250),

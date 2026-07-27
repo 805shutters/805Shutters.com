@@ -1005,11 +1005,16 @@ export function CrmApp({
 
   function startVendorOrderEntry(task: CrmVendorOrderTask) {
     try {
-      const opened = window.open(normanOrderBridgeLaunchUrl(task.taskId), "_blank");
+      const launchUrl = task.manufacturer === "Norman"
+        ? normanOrderBridgeLaunchUrl(task.taskId)
+        : "https://admin.onyxshutters.com/OrderList.aspx";
+      const opened = window.open(launchUrl, "_blank");
       if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
-      setMessage(`Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`);
+      setMessage(task.manufacturer === "Norman"
+        ? `Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`
+        : `Opening Onyx order entry for ${task.customerName}. Use the submitted technical measure and review before placing.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The local Norman order runner could not be opened.");
+      setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
     }
   }
 
@@ -4837,7 +4842,7 @@ function buildSummaryDrill(
             id: `vendor-order-${task.taskId}`,
             name: task.customerName,
             customerName: task.customerName,
-            meta: [task.quoteNumber, `${task.manufacturer} Roller`, formatShortDate(task.submittedAt)].filter(Boolean).join(" · "),
+            meta: [task.quoteNumber, `${task.manufacturer} ${task.productType === "roller" ? "Roller" : "Shutters"}`, formatShortDate(task.submittedAt)].filter(Boolean).join(" · "),
             value: "Queued",
             jobId: task.jobId,
             job,
@@ -4845,7 +4850,9 @@ function buildSummaryDrill(
             vendorOrderTask: task,
             notes: [
               task.message,
-              "The automation creates a review-ready saved draft only. It cannot place, submit, checkout, confirm, or finalize an order.",
+              task.manufacturer === "Norman"
+                ? "The automation creates a review-ready saved draft only. It cannot place, submit, checkout, confirm, or finalize an order."
+                : "Open the Onyx order page with the submitted measure and review every line before placing the order.",
             ],
           };
         }),
@@ -7350,7 +7357,7 @@ function DrillDetailCard({
       ? {
           key: "start-vendor-order",
           label: "Start Order Entry",
-          detail: "Review-only Norman draft",
+          detail: entry.vendorOrderTask?.manufacturer === "Norman" ? "Review-only Norman draft" : "Onyx shutters from submitted measure",
           tone: "warning",
           disabled: busy,
           onClick: () => onVendorOrderLaunch(entry.vendorOrderTask as CrmVendorOrderTask)

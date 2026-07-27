@@ -248,7 +248,15 @@ function fieldName(key: string) {
 function orderPreparation(form: TechnicalMeasureForm | null) {
   const value = form?.meta.vendor_order_preparation;
   return value && typeof value === "object" && !Array.isArray(value)
-    ? value as { status?: string; message?: string; issueCount?: number; taskId?: string | null; portalDraftId?: string | null }
+    ? value as {
+        status?: string;
+        message?: string;
+        issueCount?: number;
+        taskId?: string | null;
+        portalDraftId?: string | null;
+        manufacturer?: string;
+        productType?: string;
+      }
     : null;
 }
 
@@ -626,6 +634,24 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     finally { setBusy(false); }
   }
 
+  async function backfillVendorOrder() {
+    if (!session) return;
+    setBusy(true); setMessage(null);
+    try {
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(
+        session,
+        `/api/crm/technical-measures/${formId}/vendor-order-backfill`,
+        { method: "POST", body: "{}" },
+      );
+      hydrate(result.form, false);
+      setMessage("Onyx shutter order added to the CRM order-entry queue.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The submitted measure could not be queued for order entry.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleFutureMeasure() {
     if (!session || !futureMeasure.width_in || !futureMeasure.height_in) {
       setMessage("Select both width and height for the future window.");
@@ -667,6 +693,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const pendingHeight = activePickerLine ? wholeFraction(activePickerLine.current_values.height_in) : null;
   const readOnly = form?.status === "submitted";
   const vendorOrderPreparation = orderPreparation(form);
+  const canBackfillOnyxOrder = readOnly
+    && !vendorOrderPreparation
+    && lines.some((line) => {
+      const details = line.current_values.details || {};
+      const supplier = String(details.supplier ?? details.manufacturer ?? details.catalog_manufacturer ?? "").trim().toLowerCase();
+      return line.current_values.product_id === "shutters" && supplier === "onyx";
+    });
   const activeLineNumber = Math.min(activeLineIndex + 1, Math.max(lines.length, 1));
   const futureMeasures = form?.futureMeasures || [];
 
@@ -704,11 +737,20 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
       {vendorOrderPreparation ? (
         <section className="technical-measure-order-status" data-status={vendorOrderPreparation.status}>
-          <div><span>Norman Roller order preparation</span><strong>{String(vendorOrderPreparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
+          <div><span>{String(vendorOrderPreparation.manufacturer || "Vendor")} {String(vendorOrderPreparation.productType || "order")} preparation</span><strong>{String(vendorOrderPreparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
           <p>{vendorOrderPreparation.message}</p>
-          {vendorOrderPreparation.issueCount ? <small>{vendorOrderPreparation.issueCount} item{vendorOrderPreparation.issueCount === 1 ? "" : "s"} must be corrected before Norman portal entry.</small> : null}
+          {vendorOrderPreparation.issueCount ? <small>{vendorOrderPreparation.issueCount} item{vendorOrderPreparation.issueCount === 1 ? "" : "s"} must be corrected before vendor portal entry.</small> : null}
           {vendorOrderPreparation.portalDraftId ? <small>Norman draft: {vendorOrderPreparation.portalDraftId}</small> : null}
-          <b>Review-only: the automation cannot place or submit the order.</b>
+          <b>Review every line before placing or submitting the order.</b>
+        </section>
+      ) : null}
+      {canBackfillOnyxOrder ? (
+        <section className="technical-measure-order-status" data-status="needs_input">
+          <div><span>Onyx shutters order preparation</span><strong>Not queued</strong></div>
+          <p>This submitted measure predates the Onyx CRM order-entry queue.</p>
+          <button type="button" className="technical-measure-primary" disabled={busy} onClick={() => void backfillVendorOrder()}>
+            Queue Onyx Order
+          </button>
         </section>
       ) : null}
 
