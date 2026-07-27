@@ -255,8 +255,19 @@ describe("V2 exact-interface contract", () => {
         { catalog_product_id: "lotus_faux_wood_blinds" },
       ),
     ).toEqual({
-      status: "unsupported",
+      status: "supported",
       productId: "lotus_faux_wood_blinds",
+      manufacturer: "Lotus",
+    });
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        { supplier: "Lotus" } as SalesQuoteDesign,
+        "Roller Shades",
+        { catalog_product_id: "lotus_roller_shades" },
+      ),
+    ).toEqual({
+      status: "unsupported",
+      productId: "lotus_roller_shades",
       manufacturer: "Lotus",
     });
   });

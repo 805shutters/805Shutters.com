@@ -1428,10 +1428,11 @@ export type ManufacturerOptionsUiRoute = Readonly<{
 /**
  * The shared options panels contain manufacturer-specific controls. They must
  * never render until the persisted catalog identity matches both the supplier
- * and the line category. Norman owns the current shades/blinds panels; the
- * shutter panel additionally owns its explicit Onyx branch. Other catalog
- * identities remain selectable for source routing, but their configuration
- * panel stays blocked until a dedicated authoritative UI exists.
+ * and the line category. Norman owns the shared shades/blinds panels; the
+ * shutter panel additionally owns its explicit Onyx branch, and Lotus owns
+ * only its dedicated faux-wood route. Other catalog identities remain
+ * selectable for source routing, but their configuration panel stays blocked
+ * until a dedicated authoritative UI exists.
  */
 export function resolveManufacturerOptionsUiRoute(
   design: SalesQuoteDesign | undefined,
@@ -1467,7 +1468,10 @@ export function resolveManufacturerOptionsUiRoute(
 
   const supported =
     productSupplierKey === "norman" ||
-    (productType === "Shutters" && productSupplierKey === "onyx");
+    (productType === "Shutters" && productSupplierKey === "onyx") ||
+    (productType === "Faux Wood Blinds" &&
+      productSupplierKey === "lotus" &&
+      isLotusFauxWoodProductId(product.id));
   return {
     status: supported ? "supported" : "unsupported",
     productId: product.id,
