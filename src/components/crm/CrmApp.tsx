@@ -89,7 +89,7 @@ import {
   crmQuoteStatuses
 } from "@/lib/crm/types";
 
-type CrmTab = "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "availability" | "payoff";
+type CrmTab = "command" | "intelligence" | "tracking" | "quotes" | "commercial" | "customers" | "jobs" | "bookkeeping" | "payments" | "installation" | "orders" | "calendar" | "payoff";
 type CrmAppMode = "full" | "ken";
 type JobStatusFilter = CrmJobStatus | null;
 type CustomerFileFilter = "need_to_schedule" | "scheduled" | "quoted" | "sold" | "ordered" | "completed";
@@ -2807,8 +2807,7 @@ export function CrmApp({
           ["bookkeeping", "Bookkeeping"],
           ["payments", "Payables"],
           ["installation", "Installation"],
-          ["calendar", "Calendar"],
-          ["availability", "Open Times"]
+          ["calendar", "Calendar"]
         ].map(([tab, label]) => (
           <button
             type="button"
@@ -3305,10 +3304,6 @@ export function CrmApp({
             </>
           )}
         </>
-      ) : null}
-
-      {activeTab === "availability" && session ? (
-        <AvailabilityBoard session={session} events={events} />
       ) : null}
 
       {activeTab === "payoff" ? (
