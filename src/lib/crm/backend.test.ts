@@ -24,7 +24,8 @@ import {
   updateCrmInstallationInvoiceEmail,
   updateCrmQuote,
   updateCrmSettings,
-  vendorOrderTaskFromRow
+  vendorOrderTaskFromRow,
+  vendorOrderTasksFromRow
 } from "./backend";
 import { CrmAuthError } from "./auth";
 import {
@@ -483,7 +484,12 @@ describe("vendorOrderTaskFromRow", () => {
       productType: "roller",
       status: "queued",
       submittedAt: "2026-07-26T18:00:00.000Z",
-      message: "Ready for saved-draft entry."
+      message: "Ready for saved-draft entry.",
+      routingKeys: [],
+      productNames: [],
+      lineCount: 1,
+      portalUrl: null,
+      orderPacketUrl: null,
     });
     expect(task).not.toHaveProperty("payload");
   });
@@ -514,6 +520,29 @@ describe("vendorOrderTaskFromRow", () => {
       meta: { vendor_order_preparation: { ...queuedRow.meta.vendor_order_preparation, status: "review_ready" } }
     })).toBeNull();
     expect(vendorOrderTaskFromRow({ ...queuedRow, submitted_at: null })).toBeNull();
+  });
+
+  it("fans one submitted measure into one safe dashboard task per manufacturer", () => {
+    const preparations = ["Norman", "Onyx", "Lotus", "Polar"].map((manufacturer, index) => ({
+      taskId: `${manufacturer.toLowerCase()}:form-123:${index}`,
+      manufacturer,
+      productType: index ? "mixed" : "roller",
+      status: "queued",
+      message: `${manufacturer} is ready.`,
+      routingKeys: [`${manufacturer.toLowerCase()}:product`],
+      productNames: [`${manufacturer} Product`],
+      lineCount: index + 1,
+      portalUrl: `https://${manufacturer.toLowerCase()}.example.test/order`,
+      orderPacketUrl: "/api/crm/vendor-order-packets/quote-123",
+      payload: { customer: { name: "must not reach dashboard" } },
+    }));
+    const tasks = vendorOrderTasksFromRow({
+      ...queuedRow,
+      meta: { vendor_order_preparations: preparations },
+    });
+    expect(tasks.map((task) => task.manufacturer)).toEqual(["Norman", "Onyx", "Lotus", "Polar"]);
+    expect(tasks.every((task) => task.customerName === "Ready Customer")).toBe(true);
+    expect(tasks.every((task) => !("payload" in task))).toBe(true);
   });
 });
 

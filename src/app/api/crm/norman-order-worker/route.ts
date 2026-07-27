@@ -21,6 +21,20 @@ function preparation(meta: unknown): Preparation {
   return object(object(meta).vendor_order_preparation) as Preparation;
 }
 
+function withPreparation(meta: Record<string, unknown>, next: Preparation) {
+  const plural = Array.isArray(meta.vendor_order_preparations)
+    ? meta.vendor_order_preparations.map((item) => {
+        const candidate = object(item);
+        return candidate.taskId === next.taskId ? next : item;
+      })
+    : [next];
+  return {
+    ...meta,
+    vendor_order_preparation: next,
+    vendor_order_preparations: plural,
+  };
+}
+
 function requireWorkerAccess(request: NextRequest) {
   const secret = process.env.NORMAN_ORDER_WORKER_SECRET?.trim();
   if (!secret) throw new CrmAuthError(503, "Norman order worker is not configured.");
@@ -51,7 +65,7 @@ async function claimTask(supabase: NonNullable<ReturnType<typeof getSupabaseServ
     const next = { ...current, status: "processing", startedAt, message: "Norman Roller portal entry is in progress." };
     const { data: claimed, error: claimError } = await supabase
       .from("crm_technical_measure_forms")
-      .update({ meta: { ...meta, vendor_order_preparation: next } })
+      .update({ meta: withPreparation(meta, next) })
       .eq("id", row.id)
       .eq("meta->vendor_order_preparation->>status", "queued")
       .select("id")
@@ -112,7 +126,7 @@ async function completeTask(
       };
   const { data: updated, error: updateError } = await supabase
     .from("crm_technical_measure_forms")
-    .update({ meta: { ...meta, vendor_order_preparation: next } })
+    .update({ meta: withPreparation(meta, next) })
     .eq("id", formId)
     .eq("meta->vendor_order_preparation->>status", "processing")
     .eq("meta->vendor_order_preparation->>taskId", taskId)
@@ -147,7 +161,7 @@ async function completeTask(
   const alertedPreparation = { ...next, reviewAlert: alertStatus };
   const { error: alertStatusError } = await supabase
     .from("crm_technical_measure_forms")
-    .update({ meta: { ...meta, vendor_order_preparation: alertedPreparation } })
+    .update({ meta: withPreparation(meta, alertedPreparation) })
     .eq("id", formId)
     .eq("meta->vendor_order_preparation->>status", "review_ready")
     .eq("meta->vendor_order_preparation->>taskId", taskId);

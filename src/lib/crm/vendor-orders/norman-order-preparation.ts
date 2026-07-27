@@ -7,14 +7,24 @@ import {
   onyxLinesFromTechnicalMeasure,
   onyxPreparationSummary,
 } from "./onyx-order-packet";
+import {
+  manufacturerOrderFormRegistry,
+  type OrderFormManufacturer,
+} from "./manufacturer-order-form-registry";
+import { resolveManufacturerTechnicalMeasureSchema } from "./manufacturer-technical-measure-schemas";
 
 export type VendorOrderPreparationSummary = {
-  manufacturer: "Norman" | "Onyx";
-  productType: "roller" | "shutters";
+  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
+  productType: string;
   status: "skipped" | "awaiting_measure" | "needs_input" | "queued" | "processing" | "review_ready" | "failed" | "queue_failed";
   taskId: string | null;
   issueCount: number;
   message: string;
+  routingKeys?: string[];
+  productNames?: string[];
+  lineCount?: number;
+  portalUrl?: string;
+  orderPacketUrl?: string;
   requestedAt?: string;
   requestedBy?: string | null;
   sourceHash?: string;
@@ -155,11 +165,117 @@ export async function enqueueVendorOrderPreparations(
   form: TechnicalMeasureForm,
   requestedBy?: string,
 ): Promise<VendorOrderPreparationSummary[]> {
-  const [norman, onyx] = await Promise.all([
-    enqueueNormanRollerPreparation(form, requestedBy),
-    Promise.resolve(enqueueOnyxShutterPreparations(form, requestedBy)),
-  ]);
-  return [norman, ...onyx].filter((preparation) => preparation.status !== "skipped");
+  const grouped = new Map<OrderFormManufacturer, Array<{
+    line: TechnicalMeasureForm["lines"][number];
+    schema: NonNullable<TechnicalMeasureForm["lines"][number]["measure_schema"]>;
+  }>>();
+  const unresolvedLines: number[] = [];
+  for (const line of form.lines) {
+    const schema = line.measure_schema || resolveManufacturerTechnicalMeasureSchema(line.current_values);
+    if (!schema) {
+      unresolvedLines.push(line.sort_order);
+      continue;
+    }
+    const manufacturer = schema.manufacturer.toLowerCase() as OrderFormManufacturer;
+    if (!["norman", "onyx", "lotus", "polar"].includes(manufacturer)) continue;
+    const lines = grouped.get(manufacturer) || [];
+    lines.push({ line, schema });
+    grouped.set(manufacturer, lines);
+  }
+  if (unresolvedLines.length) {
+    throw new Error(`Exact manufacturer and product routing is missing for line${unresolvedLines.length === 1 ? "" : "s"} ${unresolvedLines.join(", ")}.`);
+  }
+
+  const label = (manufacturer: OrderFormManufacturer) =>
+    `${manufacturer.charAt(0).toUpperCase()}${manufacturer.slice(1)}` as VendorOrderPreparationSummary["manufacturer"];
+  const registry = manufacturerOrderFormRegistry();
+  const requestedAt = new Date().toISOString();
+
+  return Promise.all(Array.from(grouped.entries()).map(async ([manufacturer, lines]) => {
+    const routingKeys = Array.from(new Set(lines.map(({ schema }) => schema.routingKey)));
+    const productNames = Array.from(new Set(lines.map(({ schema }) => schema.productName)));
+    const portalUrl = registry.manufacturers[manufacturer][0]?.source_url;
+    const orderPacketUrl = `/api/crm/vendor-order-packets/${encodeURIComponent(form.quote_id)}?manufacturer=${encodeURIComponent(manufacturer)}`;
+    const allNormanRoller = manufacturer === "norman"
+      && lines.every(({ line }) => normanRollerLines({ ...form, lines: [line] }).length === 1);
+    if (allNormanRoller) {
+      const specialized = await enqueueNormanRollerPreparation({ ...form, lines: lines.map(({ line }) => line) }, requestedBy);
+      return {
+        ...specialized,
+        routingKeys,
+        productNames,
+        lineCount: lines.length,
+        portalUrl,
+        orderPacketUrl,
+      };
+    }
+
+    const sourceHash = createHash("sha256").update(JSON.stringify({
+      formId: form.id,
+      submittedAt: form.submitted_at,
+      manufacturer,
+      lines: lines.map(({ line, schema }) => ({
+        id: line.id,
+        routingKey: schema.routingKey,
+        values: line.current_values,
+      })),
+    })).digest("hex");
+    const manufacturerLabel = label(manufacturer);
+    const payload = {
+      schemaVersion: "manufacturer-order-queue.v1",
+      safety: "review_before_submission",
+      source: {
+        kind: "submitted_technical_measure",
+        formId: form.id,
+        submittedAt: form.submitted_at,
+        contractId: form.contract_id,
+      },
+      customer: {
+        id: form.customer_id,
+        name: form.customer_snapshot.name,
+        phone: form.customer_snapshot.phone,
+        email: form.customer_snapshot.email,
+        address: form.customer_snapshot.address,
+        city: form.customer_snapshot.city,
+      },
+      jobId: form.job_id,
+      quoteId: form.quote_id,
+      quoteNumber: form.quote_snapshot.quoteNumber,
+      manufacturer: manufacturerLabel,
+      routingKeys,
+      productNames,
+      orderPacketUrl,
+      lines: lines.map(({ line, schema }) => ({
+        technicalMeasureLineId: line.id,
+        sourceLineId: line.source_quote_line_item_id || line.quote_line_item_id,
+        routingKey: schema.routingKey,
+        productName: schema.productName,
+        values: line.current_values,
+        technicalMeasureDocxUrl: schema.technicalMeasureDocxUrl,
+        technicalMeasurePdfUrl: schema.technicalMeasurePdfUrl,
+        orderTemplateDocxUrl: schema.orderTemplateDocxUrl,
+        orderTemplatePdfUrl: schema.orderTemplatePdfUrl,
+        orderSchemaPath: schema.orderSchemaPath,
+      })),
+    };
+    return {
+      manufacturer: manufacturerLabel,
+      productType: productNames.length === 1 ? lines[0].schema.productKey : "mixed",
+      status: "queued",
+      taskId: `${manufacturer}:${form.id}:${sourceHash.slice(0, 12)}`,
+      issueCount: 0,
+      message: `${manufacturerLabel} order packet is ready for review and portal entry.`,
+      requestedAt,
+      requestedBy: requestedBy || null,
+      sourceHash,
+      routingKeys,
+      productNames,
+      lineCount: lines.length,
+      portalUrl,
+      orderPacketUrl,
+      payload,
+    } satisfies VendorOrderPreparationSummary;
+  }));
 }
 
 /** Compatibility wrapper for older callers. New submission code must use the plural fan-out. */

@@ -804,11 +804,16 @@ export type CrmVendorOrderTask = {
   quoteId: string;
   customerName: string;
   quoteNumber: string | null;
-  manufacturer: "Norman" | "Onyx";
-  productType: "roller" | "shutters";
+  manufacturer: "Norman" | "Onyx" | "Lotus" | "Polar";
+  productType: string;
   status: "queued";
   submittedAt: string;
   message: string;
+  routingKeys: string[];
+  productNames: string[];
+  lineCount: number;
+  portalUrl: string | null;
+  orderPacketUrl: string | null;
 };
 
 export type CrmDashboardData = {

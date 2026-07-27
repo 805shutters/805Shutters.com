@@ -250,6 +250,8 @@ function candidateProductKeys(values: OrderFormSourceValues): string[] {
     source.product_name,
     source.productName,
     source.category,
+    source.material,
+    source.onyx_material,
   ].map(key).filter(Boolean);
 }
 

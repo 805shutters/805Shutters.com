@@ -1006,14 +1006,15 @@ export function CrmApp({
 
   function startVendorOrderEntry(task: CrmVendorOrderTask) {
     try {
-      const launchUrl = task.manufacturer === "Norman"
+      const launchUrl = task.manufacturer === "Norman" && task.productType === "roller"
         ? normanOrderBridgeLaunchUrl(task.taskId)
-        : "https://admin.onyxshutters.com/OrderList.aspx";
+        : task.portalUrl;
+      if (!launchUrl) throw new Error(`${task.manufacturer} ordering portal is not configured.`);
       const opened = window.open(launchUrl, "_blank");
       if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
-      setMessage(task.manufacturer === "Norman"
+      setMessage(task.manufacturer === "Norman" && task.productType === "roller"
         ? `Starting review-only Norman order entry for ${task.customerName}. The order will not be placed.`
-        : `Opening Onyx order entry for ${task.customerName}. Use the submitted technical measure and review before placing.`);
+        : `Opening ${task.manufacturer} order entry for ${task.customerName}. Review the manufacturer packet before placing the order.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
     }
@@ -4836,7 +4837,7 @@ function buildSummaryDrill(
       if (!vendorOrderTasks) return null;
       return {
         title: "Ready to Order",
-        subtitle: "Submitted technical measures queued for review-only vendor entry",
+        subtitle: "Submitted technical measures separated into review-only manufacturer orders",
         metric,
         placement: "summary",
         entries: vendorOrderTasks.map((task) => {
@@ -4846,7 +4847,12 @@ function buildSummaryDrill(
             id: `vendor-order-${task.taskId}`,
             name: task.customerName,
             customerName: task.customerName,
-            meta: [task.quoteNumber, `${task.manufacturer} ${task.productType === "roller" ? "Roller" : "Shutters"}`, formatShortDate(task.submittedAt)].filter(Boolean).join(" · "),
+            meta: [
+              task.quoteNumber,
+              `${task.manufacturer} · ${task.lineCount} line${task.lineCount === 1 ? "" : "s"}`,
+              task.productNames.join(", "),
+              formatShortDate(task.submittedAt),
+            ].filter(Boolean).join(" · "),
             value: "Queued",
             jobId: task.jobId,
             job,
@@ -4854,9 +4860,8 @@ function buildSummaryDrill(
             vendorOrderTask: task,
             notes: [
               task.message,
-              task.manufacturer === "Norman"
-                ? "The automation creates a review-ready saved draft only. It cannot place, submit, checkout, confirm, or finalize an order."
-                : "Open the Onyx order page with the submitted measure and review every line before placing the order.",
+              "This packet contains only this manufacturer's lines and repeats the same customer and job identity used by the other manufacturer packets.",
+              "Review the packet against the submitted technical measure before placing, submitting, checking out, confirming, or finalizing the order.",
             ],
           };
         }),
@@ -7357,11 +7362,20 @@ function DrillDetailCard({
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
+    entry.vendorOrderTask?.orderPacketUrl
+      ? {
+          key: "view-vendor-order-packet",
+          label: "View Order Packet",
+          detail: `${entry.vendorOrderTask.manufacturer} lines only`,
+          disabled: busy,
+          onClick: () => window.open(entry.vendorOrderTask?.orderPacketUrl || "", "_blank", "noopener,noreferrer")
+        }
+      : null,
     entry.vendorOrderTask && onVendorOrderLaunch
       ? {
           key: "start-vendor-order",
           label: "Start Order Entry",
-          detail: entry.vendorOrderTask?.manufacturer === "Norman" ? "Review-only Norman draft" : "Onyx shutters from submitted measure",
+          detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} submitted-measure line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
           tone: "warning",
           disabled: busy,
           onClick: () => onVendorOrderLaunch(entry.vendorOrderTask as CrmVendorOrderTask)

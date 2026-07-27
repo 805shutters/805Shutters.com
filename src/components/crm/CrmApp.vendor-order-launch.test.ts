@@ -11,12 +11,14 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain('openSummaryDrill("readyToOrder")');
   });
 
-  it("routes each supported manufacturer without relabeling Onyx as Norman", () => {
+  it("routes every manufacturer through its own submitted-measure task", () => {
     expect(source).toContain('label: "Start Order Entry"');
-    expect(source).toContain('entry.vendorOrderTask?.manufacturer === "Norman" ? "Review-only Norman draft" : "Onyx shutters from submitted measure"');
+    expect(source).toContain("task.portalUrl");
+    expect(source).toContain("task.productNames.join");
+    expect(source).toContain("task.lineCount");
     expect(source).toContain("onVendorOrderLaunch(entry.vendorOrderTask");
     expect(source).toContain("The order will not be placed.");
-    expect(source).toContain('"https://admin.onyxshutters.com/OrderList.aspx"');
-    expect(source).toContain("Use the submitted technical measure and review before placing.");
+    expect(source).toContain("Review the manufacturer packet before placing the order.");
+    expect(source).toContain("same customer and job identity");
   });
 });
