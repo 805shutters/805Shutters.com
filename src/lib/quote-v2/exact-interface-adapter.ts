@@ -538,6 +538,40 @@ export function selectionContextFromExactInterface(
   );
   alias(configuration, "vertical_left_width_inches", sourceOptions.vertical_left_width_inches);
   alias(configuration, "vertical_right_width_inches", sourceOptions.vertical_right_width_inches);
+  alias(configuration, "lotus_program_code", sourceOptions.lotus_program_code);
+  alias(
+    configuration,
+    "lotus_configuration_version",
+    sourceOptions.lotus_configuration_version,
+  );
+  alias(configuration, "lotus_finish", sourceOptions.lotus_finish);
+  alias(configuration, "lotus_blind_count", sourceOptions.lotus_blind_count);
+  alias(
+    configuration,
+    "lotus_blind_widths_inches",
+    sourceOptions.lotus_blind_widths_inches ??
+      leadingNumberArray(
+        sourceOptions,
+        (index) => `lotus_blind_${index}_width_inches`,
+        3,
+      ),
+  );
+  alias(
+    configuration,
+    "faux_configuration_version",
+    sourceOptions.faux_configuration_version,
+  );
+  alias(configuration, "faux_blind_count", sourceOptions.faux_blind_count);
+  alias(
+    configuration,
+    "faux_blind_widths_inches",
+    sourceOptions.faux_blind_widths_inches ??
+      leadingNumberArray(
+        sourceOptions,
+        (index) => `faux_blind_${index}_width_inches`,
+        3,
+      ),
+  );
 
   if (input.productId === "onyx_shutters") {
     alias(configuration, "material", canonicalOnyxMaterial(design.material));

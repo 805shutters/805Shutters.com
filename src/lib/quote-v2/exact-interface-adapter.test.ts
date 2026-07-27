@@ -94,6 +94,64 @@ describe("V2 exact-interface adapter", () => {
     expect(lotus.manufacturerId).toBe("lotus");
   });
 
+  it("carries Lotus FLX mount and explicit three-blind widths without deriving the center", () => {
+    const lotus = selectionContextFromExactInterface(
+      {
+        ...line,
+        product_type: "Faux Wood Blinds",
+        width_whole: 94,
+        width_fraction: "3/8",
+        height_whole: 70,
+        height_fraction: "1/4",
+        quantity: 1,
+      },
+      {
+        supplier: "Lotus",
+        material: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+        mount_type: "Outside Mount",
+        options_json: {
+          quote_v2_backend: true,
+          catalog_product_id: "lotus_faux_wood_blinds",
+          catalog_program_id: "lotus_flx_2in_bright_white_custom",
+          lotus_configuration_version: "lotus-faux-v2",
+          lotus_program_code: "FLX",
+          product_line: "FLX",
+          slat_size: '2"',
+          color: "Bright White",
+          lotus_finish: "Smooth",
+          lotus_blind_count: 3,
+          lotus_blind_1_width_inches: 23,
+          lotus_blind_2_width_inches: null,
+          lotus_blind_3_width_inches: 23,
+        },
+      },
+      {
+        productId: "lotus_faux_wood_blinds",
+        programId: "lotus_flx_2in_bright_white_custom",
+      },
+    );
+
+    expect(lotus).toMatchObject({
+      manufacturerId: "lotus",
+      productId: "lotus_faux_wood_blinds",
+      widthInches: 94.375,
+      heightInches: 70.25,
+      configuration: {
+        supplier: "Lotus",
+        mount_type: "Outside Mount",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FLX",
+        lotus_blind_count: 3,
+        lotus_blind_widths_inches: [23],
+      },
+    });
+    expect(lotus.configuration.lotus_blind_widths_inches).not.toEqual([
+      23,
+      48.375,
+      23,
+    ]);
+  });
+
   it("preserves present malformed schedule input for fail-closed validation", () => {
     for (const schedule of [null, "", "not-a-number", Number.NaN]) {
       const context = selectionContextFromExactInterface(

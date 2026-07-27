@@ -888,6 +888,29 @@ const productDetails: Record<string, QuoteDetailField[]> = {
     ...shadeControlFields,
     ...installationFields,
   ],
+  lotus_faux_wood_blinds: [
+    {
+      id: "mount_type",
+      label: "Mount",
+      type: "select",
+      options: [
+        { value: "inside", label: "Inside mount" },
+        { value: "outside", label: "Outside mount" },
+        { value: "side", label: "Side mount" },
+      ],
+    },
+    {
+      id: "lotus_blind_count",
+      label: "Blinds for this opening",
+      type: "select",
+      options: [
+        { value: "1", label: "One blind" },
+        { value: "3", label: "Three blinds" },
+      ],
+      customerVisible: false,
+    },
+    ...installationFields,
+  ],
   wood_blinds: [
     ...mountFields,
     { id: "slat_size", label: "Slat size", type: "select", options: [{ value: "2", label: "2 in" }, { value: "2_1_2", label: "2 1/2 in" }] },

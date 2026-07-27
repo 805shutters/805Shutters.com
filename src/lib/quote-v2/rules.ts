@@ -26,6 +26,7 @@ import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generat
 import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
 import { validateNormanShadeMotorization } from "./norman-shade-motorization";
+import { lotusFauxWoodProgramProfile } from "./lotus-faux-wood";
 
 type RuleSource = {
   sourceId: SourceManifestId;
@@ -56,6 +57,9 @@ const VERTICAL_GUIDE: RuleSource = {
 };
 const POLAR_DEALER_BOOK: RuleSource = {
   sourceId: "polar-shades-dealer-book-current-2026-07-18",
+};
+const LOTUS_WEST_A26: RuleSource = {
+  sourceId: "lotus-west-a26-v1",
 };
 
 function programMatchesGroup(programId: string | null, priceGroup: string): boolean {
@@ -123,6 +127,14 @@ function values(context: SelectionContext, keys: string[]): SelectionRecord {
   return Object.fromEntries(
     keys.map((key) => [key, context.configuration[key] ?? context.options[key] ?? null]),
   );
+}
+
+function numericArray(value: SelectionValue | undefined): number[] | null {
+  if (!Array.isArray(value)) return null;
+  const parsed = value.map((entry) => finiteNumber(entry));
+  return parsed.some((entry) => entry === null)
+    ? null
+    : (parsed as number[]);
 }
 
 function requireText(
@@ -1248,6 +1260,207 @@ function validateSynchronyVertical(context: SelectionContext): ValidationIssue[]
   return issues;
 }
 
+function validateLotusFauxWood(
+  context: SelectionContext,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const profile = lotusFauxWoodProgramProfile(context.programId);
+  const source = {
+    ...LOTUS_WEST_A26,
+    ...(profile ? { page: profile.sourcePage } : {}),
+  };
+  const typedConfiguration =
+    text(configValue(context, "lotus_configuration_version")) ===
+    "lotus-faux-v2";
+
+  if (!typedConfiguration) {
+    issues.push(
+      issue(
+        "warning",
+        "lotus.faux.configuration.legacy_untyped",
+        source,
+        { programId: context.programId },
+        "This is a historical Lotus cost-evidence selection without the manufacturer-specific FLX V2 configuration contract. It remains non-sendable and must be reselected before customer use.",
+      ),
+    );
+    return issues;
+  }
+
+  if (!profile) {
+    issues.push(
+      issue(
+        "hard_block",
+        "lotus.faux.program.required",
+        source,
+        { programId: context.programId },
+        "Select an exact Lotus faux-wood source program before this configuration can be reviewed.",
+      ),
+    );
+    return issues;
+  }
+
+  requireText(
+    context,
+    issues,
+    "lotus.faux",
+    [
+      { key: "mount_type", label: "Mount type" },
+      { key: "lotus_program_code", label: "Lotus program" },
+      { key: "slat_size", label: "Slat size" },
+      { key: "color", label: "Color" },
+    ],
+    source,
+  );
+
+  const exactFields = [
+    ["lotus_program_code", profile.programCode],
+    ["product_line", profile.programCode],
+    ["slat_size", profile.slatSize],
+    ["color", profile.color],
+    ["lotus_finish", profile.finish],
+  ] as const;
+  for (const [field, expected] of exactFields) {
+    const selected = text(configValue(context, field));
+    if (!selected || normalizeIdentity(selected) === normalizeIdentity(expected)) {
+      continue;
+    }
+    issues.push(
+      issue(
+        "hard_block",
+        `lotus.faux.program.${field}_mismatch`,
+        source,
+        { [field]: selected, programId: profile.programId },
+        `${profile.programCode} requires ${field.replaceAll("_", " ")} '${expected}'. Reselect the Lotus program instead of mixing manufacturer options.`,
+      ),
+    );
+  }
+
+  const mount = normalized(configValue(context, "mount_type"));
+  if (
+    mount &&
+    !["inside mount", "outside mount", "side mount"].includes(mount)
+  ) {
+    issues.push(
+      issue(
+        "hard_block",
+        "lotus.faux.mount.unsupported_input",
+        source,
+        { mount_type: text(configValue(context, "mount_type")) },
+        "Lotus faux wood records only Inside Mount, Outside Mount, or Side Mount in this draft configuration route.",
+      ),
+    );
+  }
+
+  const blindCount = finiteNumber(
+    configValue(context, "lotus_blind_count"),
+  );
+  if (blindCount !== 1 && blindCount !== 3) {
+    issues.push(
+      issue(
+        "hard_block",
+        "lotus.faux.blind_count.required",
+        source,
+        { lotus_blind_count: blindCount },
+        "Select whether this original opening uses one blind or a three-blind split.",
+      ),
+    );
+  }
+
+  if (blindCount === 3) {
+    const widths = numericArray(
+      configValue(context, "lotus_blind_widths_inches"),
+    );
+    if (!widths || widths.length !== 3 || widths.some((width) => width <= 0)) {
+      issues.push(
+        issue(
+          "hard_block",
+          "lotus.faux.split.three_widths_required",
+          source,
+          {
+            lotus_blind_count: blindCount,
+            lotus_blind_widths_inches: widths,
+          },
+          "A three-blind Lotus opening requires the measured left, center, and right blind widths. The center width is never inferred.",
+        ),
+      );
+    } else if (widths.some((width) => width > profile.maxWidth)) {
+      issues.push(
+        issue(
+          "hard_block",
+          "lotus.faux.split.component_width_exceeds_program",
+          source,
+          {
+            lotus_blind_widths_inches: widths,
+            max_component_width_inches: profile.maxWidth,
+          },
+          `${profile.programCode} accepts no component wider than ${profile.maxWidth} inches in the supplied dealer grid.`,
+        ),
+      );
+    }
+  }
+
+  issues.push(
+    issue(
+      "warning",
+      "lotus.faux.authority.needs_effective_date_and_fitment",
+      source,
+      {
+        programId: profile.programId,
+        mount_type: text(configValue(context, "mount_type")) || null,
+      },
+      "The supplied Lotus West A26.v1 book has no stated effective date, and this route does not claim manufacturer fitment approval. Keep the line internal and draft-only pending authority.",
+    ),
+  );
+  return issues;
+}
+
+function validateNormanFauxWoodSplit(
+  context: SelectionContext,
+): ValidationIssue[] {
+  if (
+    text(configValue(context, "faux_configuration_version")) !==
+    "faux-wood-v2"
+  ) {
+    return [];
+  }
+  const source: RuleSource = {
+    sourceId: "norman-retail-guide-2026-07",
+  };
+  const issues: ValidationIssue[] = [];
+  const blindCount = finiteNumber(configValue(context, "faux_blind_count"));
+  if (blindCount !== 1 && blindCount !== 3) {
+    issues.push(
+      issue(
+        "hard_block",
+        "faux.blind_count.required",
+        source,
+        { faux_blind_count: blindCount },
+        "Select whether this original opening uses one blind or a three-blind split.",
+      ),
+    );
+  }
+  if (blindCount === 3) {
+    const widths = numericArray(
+      configValue(context, "faux_blind_widths_inches"),
+    );
+    if (!widths || widths.length !== 3 || widths.some((width) => width <= 0)) {
+      issues.push(
+        issue(
+          "hard_block",
+          "faux.split.three_widths_required",
+          source,
+          {
+            faux_blind_count: blindCount,
+            faux_blind_widths_inches: widths,
+          },
+          "A three-blind faux-wood opening requires the measured left, center, and right blind widths. The center width is never inferred.",
+        ),
+      );
+    }
+  }
+  return issues;
+}
+
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
   // The pinned July 2026 Motorization Guide now supplies exact motor-family,
@@ -1290,6 +1503,13 @@ export function validateSelection(context: SelectionContext): readonly Validatio
       break;
     case "polar_elite_patio":
       issues.push(...validatePolarElitePortalConflict(context));
+      break;
+    case "lotus_faux_wood_blinds":
+      issues.push(...validateLotusFauxWood(context));
+      break;
+    case "smartprivacy_faux":
+    case "faux_wood":
+      issues.push(...validateNormanFauxWoodSplit(context));
       break;
     default:
       break;

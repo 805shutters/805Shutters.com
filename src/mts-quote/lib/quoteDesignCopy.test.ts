@@ -122,6 +122,7 @@ describe("quote design copy target matching", () => {
   it("zeros copied prices and strips snapshots, costs, provenance, and relationship IDs", () => {
     const sourceOptions = {
       quote_lab_product_id: "roller",
+      catalog_product_id: "roller",
       quote_lab_program_id: "roller-program",
       catalog_manufacturer: "Norman",
       catalog_program_id: "roller-program",
@@ -157,6 +158,7 @@ describe("quote design copy target matching", () => {
     expect(copied.unit_price).toBe(0);
     expect(copied.options_json).toMatchObject({
       quote_lab_product_id: "roller",
+      catalog_product_id: "roller",
       quote_lab_program_id: "roller-program",
       catalog_manufacturer: "Norman",
       catalog_program_id: "roller-program",

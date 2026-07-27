@@ -969,6 +969,93 @@ describe("V2 exact-interface contract", () => {
     });
   });
 
+  it("projects the exact Lotus FLX route and clears Norman-only configuration", () => {
+    const lotus = catalogProduct(
+      "lotus_faux_wood_blinds",
+      "Lotus",
+      [
+        {
+          id: "lotus_flx_2in_bright_white_custom",
+          name: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+          priceAxis: "wh",
+          priceBasis: "dealer_net",
+        },
+        {
+          id: "lotus_flxe_2in_embossed_bright_white_custom",
+          name: "2-inch Faux Wood, Embossed Bright White - Custom Cut",
+          priceAxis: "wh",
+          priceBasis: "dealer_net",
+        },
+      ],
+      {
+        name: "Lotus Faux Wood Blinds",
+        productType: "Faux Wood Blinds",
+        system: "Lotus Faux Wood Blinds",
+      },
+    );
+    const patch = buildCatalogSelectionPatch(
+      {
+        quote_v2_backend: true,
+        product_line: "SmartPrivacy",
+        color: "Pure White",
+        catalog_product_id: "smartprivacy_faux",
+        catalog_manufacturer: "Norman",
+        authoritative_price_status: "authoritative",
+        authoritative_v2_snapshot: { stale: true },
+      },
+      lotus,
+      "lotus_flx_2in_bright_white_custom",
+    );
+
+    expect(patch).toMatchObject({
+      supplier: "Lotus",
+      material: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+      mount_type: null,
+      unit_price: 0,
+      options_json: {
+        quote_v2_backend: true,
+        catalog_product_id: "lotus_faux_wood_blinds",
+        quote_lab_product_id: "lotus_faux_wood_blinds",
+        catalog_program_id: "lotus_flx_2in_bright_white_custom",
+        quote_lab_program_id: "lotus_flx_2in_bright_white_custom",
+        catalog_manufacturer: "Lotus",
+        catalog_product_type: "Faux Wood Blinds",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FLX",
+        product_line: "FLX",
+        slat_size: '2"',
+        color: "Bright White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 1,
+      },
+    });
+    expect(patch.options_json).not.toHaveProperty(
+      "authoritative_price_status",
+    );
+    expect(patch.options_json).not.toHaveProperty(
+      "authoritative_v2_snapshot",
+    );
+  });
+
+  it("renders a dedicated Lotus authority state and never enables Custom Mode for it", () => {
+    const source = readFileSync(
+      fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)),
+      "utf8",
+    );
+    expect(source).toContain('data-testid="lotus-faux-authority-status"');
+    expect(source).toContain(
+      "Customer price, Custom Mode,",
+    );
+    expect(source).toContain(
+      "authoritativeV2 && design && !lotusFauxWood",
+    );
+    expect(source).toContain(
+      'options: ["Inside Mount", "Outside Mount", "Side Mount"] as const',
+    );
+    expect(source).toContain('field: "json:faux_blind_count"');
+    expect(source).toContain('field: "json:faux_blind_2_width_inches"');
+  });
+
   it("shows the compact chooser only for V2 categories with multiple usable products", () => {
     const norman = catalogProduct("roller", "Norman", [
       { id: "norman_pg1", name: "Norman PG1", priceAxis: "wh" },

@@ -1974,7 +1974,11 @@ export const PERFECTSHEER_FABRICS = [
 ] as const;
 
 // Faux Wood Blind Options
-export const FAUX_WOOD_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
+export const FAUX_WOOD_MOUNT_TYPES = [
+  "Inside Mount",
+  "Outside Mount",
+  "Side Mount",
+] as const;
 export const FAUX_WOOD_SLAT_SIZES = ['2"', '2.5"'] as const;
 export const FAUX_WOOD_PRODUCT_LINES = ["SmartPrivacy", "Ultimate"] as const;
 

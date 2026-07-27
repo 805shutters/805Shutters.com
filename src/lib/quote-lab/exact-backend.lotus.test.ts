@@ -82,6 +82,114 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     }))).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
   });
 
+  it("reprices an exact Lotus FLX configuration on the server but keeps customer send blocked", () => {
+    const flxLine = {
+      ...line("Faux Wood Blinds"),
+      room_name: "Dining",
+      width_whole: 70,
+      height_whole: 94,
+    };
+    const flxDesign = {
+      ...design({
+        quote_v2_backend: true,
+        catalog_product_id: "lotus_faux_wood_blinds",
+        quote_lab_product_id: "lotus_faux_wood_blinds",
+        catalog_program_id: "lotus_flx_2in_bright_white_custom",
+        quote_lab_program_id: "lotus_flx_2in_bright_white_custom",
+        catalog_manufacturer: "Lotus",
+        catalog_product_type: "Faux Wood Blinds",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FLX",
+        product_line: "FLX",
+        slat_size: '2"',
+        color: "Bright White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 1,
+      }),
+      product_type: "Faux Wood Blinds",
+      supplier: "Lotus",
+      material: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+      mount_type: "Inside Mount",
+    } as SalesQuoteDesign;
+    const result = repriceExactQuoteBuilder({
+      lines: [flxLine],
+      designs: [flxDesign],
+      selectedVariantByLine: { [flxLine.id]: "A" },
+    });
+    expect("backend" in result && result.backend).toBe("v2");
+    if (!("backend" in result) || result.backend !== "v2") return;
+
+    expect(result.designs[0]?.result).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_RETAIL_UNDEFINED",
+      productStatus: "restriction_source_incomplete",
+    });
+    expect(result.designs[0]?.costResult).toMatchObject({
+      ok: true,
+      basis: "dealer_net",
+      productId: "lotus_faux_wood_blinds",
+      programId: "lotus_flx_2in_bright_white_custom",
+    });
+    expect(result.sendability.sendable).toBe(false);
+    expect(result.customerQuote.total).toBe(0);
+  });
+
+  it("blocks Lotus FLX split repricing until the center width is explicitly entered", () => {
+    const splitLine = {
+      ...line("Faux Wood Blinds"),
+      room_name: "Family",
+      width_whole: 94,
+      width_fraction: "3/8",
+      height_whole: 70,
+      height_fraction: "1/4",
+    };
+    const splitDesign = {
+      ...design({
+        quote_v2_backend: true,
+        catalog_product_id: "lotus_faux_wood_blinds",
+        quote_lab_product_id: "lotus_faux_wood_blinds",
+        catalog_program_id: "lotus_flx_2in_bright_white_custom",
+        quote_lab_program_id: "lotus_flx_2in_bright_white_custom",
+        catalog_manufacturer: "Lotus",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FLX",
+        product_line: "FLX",
+        slat_size: '2"',
+        color: "Bright White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 3,
+        lotus_blind_1_width_inches: 23,
+        lotus_blind_2_width_inches: null,
+        lotus_blind_3_width_inches: 23,
+      }),
+      product_type: "Faux Wood Blinds",
+      supplier: "Lotus",
+      material: "2-inch Faux Wood, Smooth Bright White - Custom Cut",
+      mount_type: "Inside Mount",
+    } as SalesQuoteDesign;
+    const result = repriceExactQuoteBuilder({
+      lines: [splitLine],
+      designs: [splitDesign],
+      selectedVariantByLine: { [splitLine.id]: "A" },
+    });
+    expect("backend" in result && result.backend).toBe("v2");
+    if (!("backend" in result) || result.backend !== "v2") return;
+
+    expect(result.designs[0]?.result).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+    });
+    const priced = result.designs[0]?.result;
+    expect(
+      priced && "validationIssues" in priced
+        ? priced.validationIssues.map((entry) => entry.ruleId)
+        : [],
+    ).toContain("lotus.faux.split.three_widths_required");
+    expect(result.designs[0]?.costResult.ok).toBe(false);
+    expect(result.sendability.sendable).toBe(false);
+  });
+
   it("blocks every line in a full 40-line Lotus quote until retail policy exists", () => {
     const lines = Array.from({ length: 40 }, (_, index) => ({
       ...line("Mini Blinds"),

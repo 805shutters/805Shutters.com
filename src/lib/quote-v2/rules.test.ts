@@ -399,6 +399,95 @@ describe("Quote V2 authoritative manufacturer rules", () => {
     ).toBe("restriction_source_incomplete");
   });
 
+  it("keeps Lotus FLX manufacturer identity separate and never infers a missing center split", () => {
+    const base = selection(
+      "lotus_faux_wood_blinds",
+      {
+        supplier: "Lotus",
+        mount_type: "Outside Mount",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FLX",
+        product_line: "FLX",
+        slat_size: '2"',
+        color: "Bright White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 3,
+        lotus_blind_widths_inches: [23],
+      },
+      {
+        manufacturerId: "lotus",
+        programId: "lotus_flx_2in_bright_white_custom",
+        widthInches: 94.375,
+        heightInches: 70.25,
+      },
+    );
+    expect(productRuleStatusForSelection(base)).toBe(
+      "restriction_source_incomplete",
+    );
+    expect(ruleIds(base)).toContain(
+      "lotus.faux.split.three_widths_required",
+    );
+    expect(ruleIds(base)).toContain(
+      "lotus.faux.authority.needs_effective_date_and_fitment",
+    );
+
+    const complete = {
+      ...base,
+      configuration: {
+        ...base.configuration,
+        lotus_blind_widths_inches: [23, 48.375, 23],
+      },
+    };
+    expect(ruleIds(complete)).not.toContain(
+      "lotus.faux.split.three_widths_required",
+    );
+    expect(hardBlocks(validateSelection(complete))).toHaveLength(0);
+
+    const mixedManufacturer = {
+      ...complete,
+      configuration: {
+        ...complete.configuration,
+        product_line: "SmartPrivacy",
+      },
+    };
+    expect(ruleIds(mixedManufacturer)).toContain(
+      "lotus.faux.program.product_line_mismatch",
+    );
+  });
+
+  it("records three Norman faux-wood blinds per opening without deriving the center", () => {
+    const context = selection(
+      "smartprivacy_faux",
+      {
+        mount_type: "Side Mount",
+        product_line: "SmartPrivacy",
+        slat_size: '2"',
+        color: "Pure White",
+        faux_configuration_version: "faux-wood-v2",
+        faux_blind_count: 3,
+        faux_blind_widths_inches: [23],
+      },
+      {
+        programId:
+          "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+        widthInches: 94.125,
+        heightInches: 70.25,
+      },
+    );
+    expect(ruleIds(context)).toContain(
+      "faux.split.three_widths_required",
+    );
+    expect(
+      ruleIds({
+        ...context,
+        configuration: {
+          ...context.configuration,
+          faux_blind_widths_inches: [23, 48.125, 23],
+        },
+      }),
+    ).not.toContain("faux.split.three_widths_required");
+  });
+
   it("uses collection plus color identity and exact application inventories for Honeycomb", () => {
     expect(
       ruleIds(selection("honeycomb", {

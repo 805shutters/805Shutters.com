@@ -227,6 +227,12 @@ import {
   rollerMotorChargeForPowerConfiguration,
 } from "@/lib/quote-v2/roller-motor";
 import {
+  LOTUS_FAUX_WOOD_PRODUCT_ID,
+  isLotusFauxWoodProductId,
+  lotusFauxWoodConfigurationForProgram,
+  lotusFauxWoodProgramProfile,
+} from "@/lib/quote-v2/lotus-faux-wood";
+import {
   ROLLER_MOTORIZATION_SELECTIONS_KEY,
   rollerBaseMotorUnitsForConfiguration,
   type CanonicalMotorizationSelection,
@@ -2041,7 +2047,11 @@ export function buildLegacyHoneycombCellSizeFrameOptions(
 
 export function buildCleanCatalogSelectionOptions(
   current: Record<string, unknown>,
-  product: { id: string; manufacturer?: string | null },
+  product: {
+    id: string;
+    manufacturer?: string | null;
+    productType?: string | null;
+  },
   programId: string | null,
 ): Record<string, unknown> {
   const preservedKeys = [
@@ -2062,8 +2072,12 @@ export function buildCleanCatalogSelectionOptions(
     quote_lab_program_id: programId,
     catalog_program_id: programId,
     catalog_manufacturer: product.manufacturer ?? null,
+    catalog_product_type: product.productType ?? null,
     surcharges: [],
     [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+    ...(isLotusFauxWoodProductId(product.id)
+      ? lotusFauxWoodConfigurationForProgram(programId)
+      : {}),
   };
 }
 
@@ -2623,9 +2637,20 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
         (field) => allFields.includes(field)
       );
     case "Faux Wood Blinds":
-      return ["mount_type", "json:slat_size", "json:product_line", "json:color"].filter((field) =>
-        allFields.includes(field)
-      );
+      return [
+        "mount_type",
+        "json:slat_size",
+        "json:product_line",
+        "json:color",
+        "json:lotus_blind_count",
+        "json:lotus_blind_1_width_inches",
+        "json:lotus_blind_2_width_inches",
+        "json:lotus_blind_3_width_inches",
+        "json:faux_blind_count",
+        "json:faux_blind_1_width_inches",
+        "json:faux_blind_2_width_inches",
+        "json:faux_blind_3_width_inches",
+      ].filter((field) => allFields.includes(field));
     case "Wood Blinds":
       return ["mount_type", "json:slat_size", "json:color"].filter((field) =>
         allFields.includes(field)
@@ -6721,6 +6746,18 @@ function ShadesAndBlindsOptions({
   const requestOpenOptionField = (field: string | null) => {
     requestedOpenOptionFieldRef.current = field;
   };
+  const selectedCatalogProductId =
+    stringOption(
+      (design?.options_json as Record<string, unknown> | undefined) || {},
+      "catalog_product_id",
+    ) ||
+    stringOption(
+      (design?.options_json as Record<string, unknown> | undefined) || {},
+      "quote_lab_product_id",
+    );
+  const lotusFauxWood =
+    productType === "Faux Wood Blinds" &&
+    selectedCatalogProductId === LOTUS_FAUX_WOOD_PRODUCT_ID;
 
   const handleUpdate = (field: string, value: unknown) => {
     requestedOpenOptionFieldRef.current = undefined;
@@ -7962,7 +7999,8 @@ function ShadesAndBlindsOptions({
     if (
       productType === "Faux Wood Blinds" &&
       authoritativeV2 &&
-      field === "json:product_line"
+      field === "json:product_line" &&
+      !lotusFauxWood
     ) {
       const productLine = typeof value === "string" ? value : null;
       const productId = productLine === "SmartPrivacy" ? "smartprivacy_faux" : "faux_wood";
@@ -7986,7 +8024,57 @@ function ShadesAndBlindsOptions({
           quote_lab_program_id: programId,
           catalog_program_id: programId,
           catalog_manufacturer: "Norman",
+          faux_configuration_version: "faux-wood-v2",
+          faux_blind_count: 1,
+          faux_blind_1_width_inches: null,
+          faux_blind_2_width_inches: null,
+          faux_blind_3_width_inches: null,
           [ROLLER_MOTORIZATION_SELECTIONS_KEY]: [],
+        },
+      });
+      return;
+    }
+
+    if (
+      productType === "Faux Wood Blinds" &&
+      authoritativeV2 &&
+      !lotusFauxWood &&
+      field === "json:faux_blind_count"
+    ) {
+      const blindCount = Number(value);
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          faux_blind_count: blindCount,
+          ...(blindCount === 3
+            ? {}
+            : {
+                faux_blind_1_width_inches: null,
+                faux_blind_2_width_inches: null,
+                faux_blind_3_width_inches: null,
+              }),
+        },
+      });
+      return;
+    }
+
+    if (
+      lotusFauxWood &&
+      authoritativeV2 &&
+      field === "json:lotus_blind_count"
+    ) {
+      const blindCount = Number(value);
+      onUpdateFields({
+        options_json: {
+          ...currentJson,
+          lotus_blind_count: blindCount,
+          ...(blindCount === 3
+            ? {}
+            : {
+                lotus_blind_1_width_inches: null,
+                lotus_blind_2_width_inches: null,
+                lotus_blind_3_width_inches: null,
+              }),
         },
       });
       return;
@@ -9237,6 +9325,97 @@ function ShadesAndBlindsOptions({
       }
 
       case "Faux Wood Blinds": {
+        if (lotusFauxWood) {
+          const selectedProgramId =
+            stringOption(
+              (design?.options_json as Record<string, unknown> | undefined) || {},
+              "catalog_program_id",
+            ) ||
+            stringOption(
+              (design?.options_json as Record<string, unknown> | undefined) || {},
+              "quote_lab_program_id",
+            );
+          const profile = lotusFauxWoodProgramProfile(selectedProgramId);
+          const blindCount = Number(
+            (design?.options_json as Record<string, unknown> | undefined)
+              ?.lotus_blind_count,
+          );
+          return [
+            {
+              key: "mount",
+              label: "Mount Type",
+              field: "mount_type",
+              type: "buttons",
+              options: ["Inside Mount", "Outside Mount", "Side Mount"] as const,
+            },
+            {
+              key: "slat_size",
+              label: "Slat Size",
+              field: "json:slat_size",
+              type: "buttons",
+              options: profile ? ([profile.slatSize] as const) : ([] as const),
+            },
+            {
+              key: "product_line",
+              label: "Lotus Program",
+              field: "json:product_line",
+              type: "buttons",
+              options: profile ? ([profile.programCode] as const) : ([] as const),
+            },
+            {
+              key: "color",
+              label: "Color",
+              field: "json:color",
+              type: "buttons",
+              options: profile ? ([profile.color] as const) : ([] as const),
+            },
+            {
+              key: "lotus_blind_count",
+              label: "Blinds for this opening",
+              field: "json:lotus_blind_count",
+              type: "buttons",
+              options: ["1", "3"] as const,
+            },
+            ...(blindCount === 3
+              ? ([
+                  {
+                    key: "lotus_blind_1_width_inches",
+                    label: "Left blind width",
+                    field: "json:lotus_blind_1_width_inches",
+                    type: "number",
+                    min: 1,
+                    max: 95,
+                    step: "0.0625",
+                    unit: '"',
+                  },
+                  {
+                    key: "lotus_blind_2_width_inches",
+                    label: "Center blind width",
+                    field: "json:lotus_blind_2_width_inches",
+                    type: "number",
+                    min: 1,
+                    max: 95,
+                    step: "0.0625",
+                    unit: '"',
+                  },
+                  {
+                    key: "lotus_blind_3_width_inches",
+                    label: "Right blind width",
+                    field: "json:lotus_blind_3_width_inches",
+                    type: "number",
+                    min: 1,
+                    max: 95,
+                    step: "0.0625",
+                    unit: '"',
+                  },
+                ] satisfies GridOption[])
+              : []),
+          ] satisfies GridOption[];
+        }
+        const blindCount = Number(
+          (design?.options_json as Record<string, unknown> | undefined)
+            ?.faux_blind_count,
+        );
         return [
           {
             key: "mount",
@@ -9266,6 +9445,47 @@ function ShadesAndBlindsOptions({
             type: "select",
             options: [] as readonly string[],
           },
+          {
+            key: "faux_blind_count",
+            label: "Blinds for this opening",
+            field: "json:faux_blind_count",
+            type: "buttons",
+            options: ["1", "3"] as const,
+          },
+          ...(blindCount === 3
+            ? ([
+                {
+                  key: "faux_blind_1_width_inches",
+                  label: "Left blind width",
+                  field: "json:faux_blind_1_width_inches",
+                  type: "number",
+                  min: 1,
+                  max: 96,
+                  step: "0.0625",
+                  unit: '"',
+                },
+                {
+                  key: "faux_blind_2_width_inches",
+                  label: "Center blind width",
+                  field: "json:faux_blind_2_width_inches",
+                  type: "number",
+                  min: 1,
+                  max: 96,
+                  step: "0.0625",
+                  unit: '"',
+                },
+                {
+                  key: "faux_blind_3_width_inches",
+                  label: "Right blind width",
+                  field: "json:faux_blind_3_width_inches",
+                  type: "number",
+                  min: 1,
+                  max: 96,
+                  step: "0.0625",
+                  unit: '"',
+                },
+              ] satisfies GridOption[])
+            : []),
         ];
       }
 
@@ -9914,6 +10134,20 @@ function ShadesAndBlindsOptions({
 
   return (
     <div className="space-y-3">
+      {lotusFauxWood ? (
+        <div
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+          data-testid="lotus-faux-authority-status"
+          role="alert"
+        >
+          <strong>Lotus configuration is internal and unresolved.</strong>{" "}
+          The selected West A26.v1 source program records the FLX identity,
+          dimensions, and mount, but the supplied book states no effective
+          date and defines no customer retail. Customer price, Custom Mode,
+          and send remain blocked. For a three-blind opening, enter all three
+          measured blind widths; the center is never inferred.
+        </div>
+      ) : null}
       <ConfirmedOptionStrip
         items={confirmedOptions}
         editingField={openOptionField}
@@ -10055,7 +10289,7 @@ function ShadesAndBlindsOptions({
           </div>
         </div>
       )}
-      {authoritativeV2 && design ? (
+      {authoritativeV2 && design && !lotusFauxWood ? (
         <CustomModePanel lineItem={_lineItem} design={design} />
       ) : null}
     </div>
