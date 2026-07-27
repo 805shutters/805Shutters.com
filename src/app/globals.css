@@ -16872,6 +16872,50 @@ body:has(.financing-banner) .site-header-shell {
 .technical-measure-progress span { color: #62645f; font-size: 11px; font-weight: 800; text-transform: uppercase; }
 .technical-measure-list-heading h2 { margin: 3px 0 0; font-size: 22px; }
 .technical-measure-list-heading > strong { display: grid; width: 34px; height: 34px; place-items: center; background: #171717; color: #fff; }
+
+/* Warm CRM treatment for the technician measure queue. */
+.technical-measure-queue { background: linear-gradient(180deg, #fff 0, #fbf7ef 220px, #f8f2e7 100%); }
+.technical-measure-queue .technical-measure-workspaces { border-color: #e6d8bd; background: #eadfc9; }
+.technical-measure-queue .technical-measure-workspaces a { background: #fffdf9; color: #696157; }
+.technical-measure-queue .technical-measure-workspaces a.active { box-shadow: inset 0 -4px #c68c1e; background: #fff8e9; color: #4b3311; }
+.technical-measure-queue .technical-measure-list { gap: 13px; }
+.technical-measure-queue .technical-measure-queue-card {
+  gap: 11px;
+  overflow: hidden;
+  border-color: #eadfc9;
+  border-radius: 14px;
+  background: rgba(255,255,255,.94);
+  padding: 16px 16px 15px 19px;
+  box-shadow: 0 8px 24px rgba(73,50,20,.08);
+}
+.technical-measure-queue .technical-measure-queue-card::before { position: absolute; inset: 0 auto 0 0; width: 4px; background: linear-gradient(180deg, #d8a23c, #b87915); content: ""; }
+.technical-measure-queue .technical-measure-list-section--scheduled .technical-measure-queue-card::before { background: linear-gradient(180deg, #5d9770, #34704b); }
+.technical-measure-queue .technical-measure-list-section--completed .technical-measure-queue-card::before { background: linear-gradient(180deg, #747a72, #4f554e); }
+.technical-measure-queue .technical-measure-queue-card:hover { border-color: #d2aa63; box-shadow: 0 10px 28px rgba(73,50,20,.12); }
+.technical-measure-queue .technical-measure-queue-main strong { color: #241b11; font-size: 18px; }
+.technical-measure-queue .technical-measure-queue-main small { color: #8a7454; font-weight: 750; }
+.technical-measure-queue .technical-measure-queue-main > svg { color: #b87915; }
+.technical-measure-queue .technical-measure-address { border-radius: 8px; background: #fbf4e7; padding: 8px 10px; color: #554936; }
+.technical-measure-queue .technical-measure-address svg { color: #b87915; }
+.technical-measure-queue .technical-measure-queue-actions a,
+.technical-measure-queue .technical-measure-queue-actions button {
+  border-color: #dfc99e;
+  border-radius: 9px;
+  background: #fffaf0;
+  color: #4c3515;
+  font-weight: 850;
+  box-shadow: 0 2px 7px rgba(88,59,18,.06);
+}
+.technical-measure-queue .technical-measure-queue-actions a:hover { border-color: #c68c1e; background: #fff3d7; }
+.technical-measure-queue .technical-measure-queue-actions button { border-color: #bd7c13; background: linear-gradient(180deg, #dca847, #c78a20); color: #211706; box-shadow: 0 5px 12px rgba(155,100,17,.2); }
+.technical-measure-queue .technical-measure-queue-actions button:hover { background: linear-gradient(180deg, #e7b759, #cc8d22); }
+.technical-measure-queue .technical-measure-queue-actions button[data-scheduled="true"] { border-color: #57906b; background: linear-gradient(180deg, #edf8f0, #dfeee4); color: #205d37; box-shadow: none; }
+.technical-measure-queue .technical-measure-queue-card > em { border-color: #dfc99e; border-radius: 999px; background: #fff6e2; padding-inline: 9px; color: #73501b; font-weight: 800; }
+.technical-measure-queue .technical-measure-list-section--scheduled,
+.technical-measure-queue .technical-measure-list-section--completed { margin-top: 20px; border-color: #dfcfb2; }
+.technical-measure-queue .technical-measure-list-heading span { color: #9a6b20; letter-spacing: .06em; }
+.technical-measure-queue .technical-measure-list-heading h2 { color: #2b2115; }
+.technical-measure-queue .technical-measure-list-heading > strong { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(145deg, #2c241a, #17130f); color: #f7cf7d; box-shadow: 0 5px 12px rgba(39,28,14,.17); }
 .technical-measure-schedule-backdrop { position: fixed; z-index: 100; inset: 0; display: grid; align-items: end; justify-items: center; padding: 18px; background: rgba(10,10,10,.5); }
 .technical-measure-schedule-dialog { display: grid; width: min(560px, 100%); gap: 18px; padding: 22px; border: 1px solid #171717; background: #fff; box-shadow: 0 20px 70px rgba(0,0,0,.24); }
 .technical-measure-schedule-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
