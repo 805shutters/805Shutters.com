@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
       .from("sales_quotes")
       .select("*")
       .eq("account_id", ACCOUNT_IDS.SHUTTERS_805)
-      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (error) throw error;

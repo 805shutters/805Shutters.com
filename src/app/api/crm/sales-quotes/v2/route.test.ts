@@ -48,9 +48,7 @@ describe("POST authoritative Quote V2 draft", () => {
         from: vi.fn(() => ({
           select: vi.fn(() => ({
             eq: vi.fn(() => ({
-              is: vi.fn(() => ({
-                order: mocks.queryOrder,
-              })),
+              order: mocks.queryOrder,
             })),
           })),
         })),
