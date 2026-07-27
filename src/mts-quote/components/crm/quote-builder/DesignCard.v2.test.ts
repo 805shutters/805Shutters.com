@@ -76,8 +76,9 @@ describe("V2 exact-interface contract", () => {
       fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)),
       "utf8",
     );
-    expect(source).toContain('fetch("/api/crm/quote-catalog"');
-    expect(source).not.toContain('fetch("/api/quote-lab/catalog"');
+    expect(source).toContain('"/api/crm/quote-catalog"');
+    expect(source).toContain('Authorization: `Bearer ${session.access_token}`');
+    expect(source).toContain('"/api/quote-lab/catalog"');
 
     expect(
       normalizeCrmQuoteCatalog({
@@ -116,6 +117,13 @@ describe("V2 exact-interface contract", () => {
                   id: "motor",
                   name: "Motor",
                   price: 100,
+                  priceByProduct: { roller: 125 },
+                },
+                {
+                  id: "unsupported_motor",
+                  name: "Unsupported Motor",
+                  price: 200,
+                  priceByProduct: { roller: null },
                 },
               ],
             },
@@ -127,7 +135,7 @@ describe("V2 exact-interface contract", () => {
       motorizationGroups: [
         {
           groupId: "roller_motors",
-          options: [{ id: "motor", price: 100 }],
+          options: [{ id: "motor", price: 125 }],
         },
       ],
     });

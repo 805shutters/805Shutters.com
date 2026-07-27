@@ -303,6 +303,7 @@ import type {
   QuoteLabCatalogResponse,
 } from "@/lib/quote-lab/types";
 import { quoteLabProductType } from "@/lib/quote-lab/builder";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 type CrmQuoteCatalogPayload = {
   catalog?: {
@@ -313,7 +314,16 @@ type CrmQuoteCatalogPayload = {
         motorizationGroups?: string[];
       }
     >;
-    motorization?: QuoteLabCatalogProduct["motorizationGroups"];
+    motorization?: Array<{
+      groupId: string;
+      name: string;
+      options: Array<{
+        id: string;
+        name: string;
+        price: number | null;
+        priceByProduct?: Record<string, number | null>;
+      }>;
+    }>;
   };
 };
 
@@ -322,8 +332,10 @@ type QuoteBuilderCatalogResponse = Pick<
   "source" | "effectiveDate" | "products"
 >;
 
-let quoteBuilderCatalogPromise: Promise<QuoteBuilderCatalogResponse> | null =
-  null;
+const quoteBuilderCatalogPromises = new Map<
+  "crm" | "quote-lab",
+  Promise<QuoteBuilderCatalogResponse>
+>();
 
 export function normalizeCrmQuoteCatalog(
   payload: CrmQuoteCatalogPayload,
@@ -346,26 +358,65 @@ export function normalizeCrmQuoteCatalog(
     effectiveDate: catalog.effectiveDate,
     products: catalog.products.map((product) => ({
       ...product,
-      motorizationGroups: (product.motorizationGroups ?? []).flatMap(
-        (groupId) => {
-          const group = motorizationById.get(groupId);
-          return group ? [group] : [];
-        },
-      ),
+      productType: quoteLabProductType(product.id) ?? product.productType,
+      motorizationGroups: (product.motorizationGroups ?? []).flatMap((groupId) => {
+        const group = motorizationById.get(groupId);
+        if (!group) return [];
+        return [{
+          ...group,
+          options: group.options.flatMap((option) => {
+            const hasProductPrice = Boolean(
+              option.priceByProduct && product.id in option.priceByProduct,
+            );
+            const mappedPrice = hasProductPrice
+              ? option.priceByProduct?.[product.id]
+              : option.price;
+            if (hasProductPrice && mappedPrice == null) return [];
+            return [{
+              id: option.id,
+              name: option.name,
+              price: mappedPrice ?? null,
+            }];
+          }),
+        }];
+      }),
     })),
   };
 }
 
-function loadQuoteBuilderCatalog() {
-  quoteBuilderCatalogPromise ??= fetch("/api/crm/quote-catalog", {
-    cache: "no-store",
-  }).then(async (response) => {
+async function loadQuoteBuilderCatalog() {
+  const browserClient = getSupabaseBrowserClient();
+  const { data } = browserClient
+    ? await browserClient.auth.getSession()
+    : { data: { session: null } };
+  const session = data.session;
+  const mode = session ? "crm" : "quote-lab";
+  const cached = quoteBuilderCatalogPromises.get(mode);
+  if (cached) return cached;
+
+  const request = fetch(
+    mode === "crm" ? "/api/crm/quote-catalog" : "/api/quote-lab/catalog",
+    {
+      cache: "no-store",
+      headers: session
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : undefined,
+    },
+  ).then(async (response) => {
     if (!response.ok) throw new Error("Catalog unavailable");
-    return normalizeCrmQuoteCatalog(
-      (await response.json()) as CrmQuoteCatalogPayload,
-    );
+    return mode === "crm"
+      ? normalizeCrmQuoteCatalog(
+          (await response.json()) as CrmQuoteCatalogPayload,
+        )
+      : (await response.json()) as QuoteBuilderCatalogResponse;
   });
-  return quoteBuilderCatalogPromise;
+  quoteBuilderCatalogPromises.set(mode, request);
+  request.catch(() => {
+    if (quoteBuilderCatalogPromises.get(mode) === request) {
+      quoteBuilderCatalogPromises.delete(mode);
+    }
+  });
+  return request;
 }
 
 export interface SideBySideLineOption {
