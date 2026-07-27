@@ -96,9 +96,12 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain("technical-measure-opening-row");
     expect(component).toContain('aria-label="Opening identifier"');
-    expect(component).toContain('placeholder="A, B, 1, 2…"');
+    expect(component).toContain('OPENING_LABELS = ["A", "B", "C", "D", "E", "F"]');
+    expect(component).toContain("OPENING_LABELS.map");
+    expect(component).not.toContain('placeholder="A, B, 1, 2…"');
     expect(styles).toContain(".technical-measure-opening-row");
-    expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(styles).toContain("grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);");
+    expect(styles).toContain(".technical-measure-opening-choice");
   });
 
   it("offers durable future measures through the customer-file API", () => {

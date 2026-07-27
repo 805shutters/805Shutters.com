@@ -84,6 +84,7 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
 ] as const;
 const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
 const HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"]);
+const OPENING_LABELS = ["A", "B", "C", "D", "E", "F"] as const;
 
 function isShutterProduct(productId: string) {
   return productId.toLowerCase().includes("shutter");
@@ -531,17 +532,12 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                       </div>
                     ) : null}
                   </div>
-                  <label className={changed(baseline.opening_label, current.opening_label) ? "changed" : ""}>
+                  <div className={`technical-measure-opening-choice ${changed(baseline.opening_label, current.opening_label) ? "changed" : ""}`}>
                     <span>Opening</span>
-                    <input
-                      aria-label="Opening identifier"
-                      disabled={readOnly}
-                      maxLength={24}
-                      placeholder="A, B, 1, 2…"
-                      value={current.opening_label}
-                      onChange={(event) => updateLine(line.id, { opening_label: event.target.value })}
-                    />
-                  </label>
+                    <div aria-label="Opening identifier">
+                      {OPENING_LABELS.map((opening) => <button type="button" disabled={readOnly} aria-pressed={current.opening_label === opening} key={opening} onClick={() => updateLine(line.id, { opening_label: opening })}>{opening}</button>)}
+                    </div>
+                  </div>
               </div>
               <div className={`technical-measure-dimensions${shutterProduct ? " technical-measure-dimensions--with-basis" : ""}`}>
                 <button type="button" aria-label="Select width" disabled={readOnly} className={changed(baseline.width_in, current.width_in) ? "changed" : ""} onClick={() => setMeasurePicker({ lineId: line.id, step: "width_whole" })}><span aria-hidden="true">W</span><strong>{inches(current.width_in)}</strong></button>
