@@ -2921,9 +2921,17 @@ export async function deleteSalesQuote(
     .maybeSingle();
   if (existingError || !existing) throw new CrmAuthError(404, "Quote was not found.");
 
-  const { error } = await supabase.from("sales_quotes").delete().eq("id", id);
+  const deletedAt = new Date().toISOString();
+  const { error } = await supabase
+    .from("sales_quotes")
+    .update({
+      deleted_at: deletedAt,
+      deleted_by: actor.email,
+      deleted_by_user_id: actor.userId || null
+    })
+    .eq("id", id);
   if (error) {
-    logSupabaseError("sales_quotes delete failed", error);
+    logSupabaseError("sales_quotes soft delete failed", error);
     throw new CrmAuthError(502, "Quote could not be deleted.");
   }
 
@@ -2932,7 +2940,7 @@ export async function deleteSalesQuote(
     entityId: id,
     action: "delete",
     before: existing,
-    metadata: { source: "sales_quotes" }
+    metadata: { source: "sales_quotes", deletedAt }
   });
   return { deleted: true, quoteId: id };
 }
@@ -2969,9 +2977,16 @@ export async function deleteCrmQuote(
   }
 
   if (linkedSalesQuoteId) {
-    const linkedDelete = await supabase.from("sales_quotes").delete().eq("id", linkedSalesQuoteId);
+    const linkedDelete = await supabase
+      .from("sales_quotes")
+      .update({
+        deleted_at: new Date().toISOString(),
+        deleted_by: actor.email,
+        deleted_by_user_id: actor.userId || null
+      })
+      .eq("id", linkedSalesQuoteId);
     if (linkedDelete.error) {
-      logSupabaseError("linked sales_quotes delete failed", linkedDelete.error);
+      logSupabaseError("linked sales_quotes soft delete failed", linkedDelete.error);
       throw new CrmAuthError(502, "The CRM quote was deleted, but its linked V2 quote could not be deleted.");
     }
   }

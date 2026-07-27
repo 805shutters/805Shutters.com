@@ -165,6 +165,7 @@ export function QuoteDashboard({
         .from("sales_quotes")
         .select("*")
         .eq("account_id", activeAccountId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as SalesQuote[];

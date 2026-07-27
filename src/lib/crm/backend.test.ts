@@ -11,6 +11,7 @@ import {
   deleteCrmCustomerFile,
   deleteCrmJobExpense,
   deleteCrmLedgerRow,
+  deleteSalesQuote,
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
   resolveFullPartnerPaymentAmount,
@@ -1636,6 +1637,58 @@ function deleteRecorder(opts: { entry?: Record<string, unknown> | null; quote?: 
 }
 
 const actor = { email: "boss@805shutters.com", userId: "user-1" };
+
+describe("deleteSalesQuote", () => {
+  it("soft-deletes the quote so append-only V2 audit history is preserved", async () => {
+    const updates: Array<Record<string, unknown>> = [];
+    const inserts: Array<Record<string, unknown>> = [];
+
+    class QueryRecorder {
+      constructor(private table: string) {}
+      select() { return this; }
+      eq() { return this; }
+      update(payload: Record<string, unknown>) {
+        if (this.table === "sales_quotes") updates.push(payload);
+        return this;
+      }
+      insert(payload: Record<string, unknown>) {
+        if (this.table === "crm_activity_events") inserts.push(payload);
+        return this;
+      }
+      async maybeSingle() {
+        return this.table === "sales_quotes"
+          ? { data: { id: "quote-v2-1", quote_number: "805-0200" }, error: null }
+          : { data: null, error: null };
+      }
+      then<TResult1 = unknown, TResult2 = never>(
+        onfulfilled?: ((value: { error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+      ) {
+        return Promise.resolve({ error: null }).then(onfulfilled, onrejected);
+      }
+    }
+
+    const supabase = {
+      from(table: string) {
+        return new QueryRecorder(table);
+      }
+    } as unknown as Parameters<typeof deleteSalesQuote>[0];
+
+    await deleteSalesQuote(supabase, "quote-v2-1", actor);
+
+    expect(updates).toHaveLength(1);
+    expect(updates[0]).toMatchObject({
+      deleted_by: actor.email,
+      deleted_by_user_id: actor.userId
+    });
+    expect(updates[0].deleted_at).toEqual(expect.any(String));
+    expect(inserts[0]).toMatchObject({
+      entity_type: "quote",
+      entity_id: "quote-v2-1",
+      action: "delete"
+    });
+  });
+});
 
 function customerDeleteRecorder() {
   const tables: Record<string, Array<Record<string, unknown>>> = {

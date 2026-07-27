@@ -63,6 +63,9 @@ export interface SalesQuote {
   manufacturer_name: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at?: string | null;
+  deleted_by?: string | null;
+  deleted_by_user_id?: string | null;
   /**
    * Authoritative V2 rows are server-owned. These fields are optional so
    * historical/legacy query fixtures remain backwards compatible.
