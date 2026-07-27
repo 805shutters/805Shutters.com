@@ -1,0 +1,51 @@
+name: Send daily website activity digest
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: visitor-digest
+  cancel-in-progress: false
+
+jobs:
+  send-visitor-digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send the prior 24-hour website digest
+        env:
+          VISITOR_ALERTS_CRON_SECRET: ${{ secrets.VISITOR_ALERTS_CRON_SECRET }}
+        run: |
+          response_file="$(mktemp)"
+          status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response_file" \
+              --write-out "%{http_code}" \
+              --header "Authorization: Bearer ${VISITOR_ALERTS_CRON_SECRET}" \
+              "https://www.805shutters.com/api/visitor-alerts/"
+          )"
+
+          node - "$status" "$response_file" <<'NODE'
+          const fs = require("node:fs");
+
+          const status = Number(process.argv[2]);
+          const body = fs.readFileSync(process.argv[3], "utf8");
+          let result;
+          try {
+            result = JSON.parse(body);
+          } catch {
+            throw new Error(`Visitor digest returned non-JSON with HTTP ${status}`);
+          }
+
+          if (status < 200 || status >= 300) {
+            throw new Error(`Visitor digest failed with HTTP ${status}: ${JSON.stringify(result)}`);
+          }
+          if (result.sent !== true && result.count !== 0) {
+            throw new Error(`Visitor digest did not complete: ${JSON.stringify(result)}`);
+          }
+
+          console.log(result.sent ? `Visitor digest sent for ${result.count} visits.` : "No visitor digest was due.");
+          NODE
