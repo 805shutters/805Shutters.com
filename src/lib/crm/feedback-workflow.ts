@@ -26,13 +26,14 @@ export function assertTopicApprovalAllowed(
 }
 
 export function feedbackCallbackData(id: string, revision: number, type: FeedbackApprovalType) {
-  return `feedback:${id}:${revision}:${type}`;
+  return `feedback:805:${id}:${revision}:${type}`;
 }
 
 export function parseFeedbackCallbackData(value: string) {
-  const match = /^feedback:([0-9a-f-]{36}):(\d+):(implementation|deployment)$/.exec(value);
+  const match = /^feedback:805:([0-9a-f-]{36}):(\d+):(implementation|deployment)$/.exec(value);
   if (!match) return null;
   return {
+    company: "805" as const,
     id: match[1],
     revision: Number(match[2]),
     type: match[3] as FeedbackApprovalType

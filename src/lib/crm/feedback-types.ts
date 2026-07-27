@@ -26,6 +26,7 @@ export type CrmFeedbackRequest = {
   updated_at: string;
   created_by: string | null;
   created_by_email: string;
+  company_scope: "805";
   title: string;
   description: string;
   status: CrmFeedbackStatus;

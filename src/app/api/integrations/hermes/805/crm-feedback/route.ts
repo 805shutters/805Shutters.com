@@ -9,7 +9,8 @@ const ELIGIBLE_STATUSES = ["clarifying", "implementation_approved", "deployment_
 function authorized(request: NextRequest) {
   const configured = process.env.HERMES_805_SHARED_SECRET?.trim();
   const supplied = request.headers.get("x-hermes-secret")?.trim();
-  return Boolean(configured && supplied && configured === supplied);
+  const company = request.headers.get("x-hermes-company")?.trim();
+  return Boolean(configured && supplied && configured === supplied && company === "805");
 }
 
 export async function GET(request: NextRequest) {
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
   const { data: topics, error } = await supabase
     .from("crm_feedback_requests")
     .select("*")
+    .eq("company_scope", "805")
     .in("status", ELIGIBLE_STATUSES)
     .order("updated_at", { ascending: true })
     .limit(limit);
@@ -83,7 +85,8 @@ export async function PATCH(request: NextRequest) {
   const { data: claimedRows, error } = await supabase.rpc("claim_crm_feedback_request", {
     p_request_id: topicId,
     p_revision: revision,
-    p_claimed_by: workerId
+    p_claimed_by: workerId,
+    p_company_scope: "805"
   });
   const claimed = Array.isArray(claimedRows) ? claimedRows[0] : null;
   if (error || !claimed) return NextResponse.json({ message: "Topic is stale, ineligible, or already has a live claim." }, { status: 409 });

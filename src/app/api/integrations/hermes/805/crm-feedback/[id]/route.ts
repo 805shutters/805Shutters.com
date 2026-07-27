@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
-import { sendWillieFeedbackApproval } from "@/lib/notify/willie-telegram";
+import { sendEightOhFiveFeedbackApproval } from "@/lib/notify/eight-oh-five-telegram";
 
 export const runtime = "nodejs";
 
 function authorized(request: NextRequest) {
   const configured = process.env.HERMES_805_SHARED_SECRET?.trim();
   const supplied = request.headers.get("x-hermes-secret")?.trim();
-  return Boolean(configured && supplied && configured === supplied);
+  const company = request.headers.get("x-hermes-company")?.trim();
+  return Boolean(configured && supplied && configured === supplied && company === "805");
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -26,7 +27,12 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     proposedWork?: Record<string, unknown>;
     verificationEvidence?: Record<string, unknown>;
   };
-  const { data: topic } = await supabase.from("crm_feedback_requests").select("*").eq("id", id).maybeSingle();
+  const { data: topic } = await supabase
+    .from("crm_feedback_requests")
+    .select("*")
+    .eq("id", id)
+    .eq("company_scope", "805")
+    .maybeSingle();
   if (!topic) return NextResponse.json({ message: "Feedback topic was not found." }, { status: 404 });
   if (body.revision !== topic.revision) return NextResponse.json({ message: "Topic revision is stale." }, { status: 409 });
   if (body.externalEventId?.trim()) {
@@ -55,6 +61,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     }
 
     const { error: messageError } = await supabase.from("crm_feedback_messages").insert({
+      company_scope: "805",
       request_id: id,
       author_type: "hermes",
       body: body.message.trim(),
@@ -84,7 +91,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       .maybeSingle();
     if (updateError || !updated) return NextResponse.json({ message: "Hermes topic update lost its claim." }, { status: 409 });
     if (ready) {
-      const notification = await sendWillieFeedbackApproval({
+      const notification = await sendEightOhFiveFeedbackApproval({
         id,
         revision: topic.revision,
         type: "implementation",
@@ -121,6 +128,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     mark_completed: "Hermes completed and verified the approved deployment."
   };
   const { error: eventError } = await supabase.from("crm_feedback_messages").insert({
+    company_scope: "805",
     request_id: id,
     author_type: "hermes",
     body: body.message?.trim() || defaultMessages[transitionAction],
@@ -146,11 +154,17 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       : {})
   };
   const { data: updated, error } = await supabase
-    .from("crm_feedback_requests").update(patch).eq("id", id).eq("revision", topic.revision).select("*").maybeSingle();
+    .from("crm_feedback_requests")
+    .update(patch)
+    .eq("id", id)
+    .eq("revision", topic.revision)
+    .eq("hermes_claim_token", body.claimToken)
+    .select("*")
+    .maybeSingle();
   if (error || !updated) return NextResponse.json({ message: "Topic transition could not be saved." }, { status: 502 });
 
   if (body.action === "submit_completed_proposal") {
-    const notification = await sendWillieFeedbackApproval({
+    const notification = await sendEightOhFiveFeedbackApproval({
       id,
       revision: topic.revision,
       type: "deployment",

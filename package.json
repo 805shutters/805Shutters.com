@@ -24,6 +24,8 @@
     "migration:inventory": "python3 scripts/generate_migration_inventory.py",
     "orders:norman:next": "node scripts/run-norman-roller-order-draft.mjs",
     "orders:norman:bridge": "node scripts/run-norman-roller-order-draft.mjs --serve",
+    "hermes:crm-feedback:once": "node scripts/hermes-805-crm-feedback-worker.mjs",
+    "hermes:crm-feedback:install": "zsh scripts/install-hermes-805-crm-feedback-launchagent.sh",
     "orders:manufacturer:next": "node scripts/run-norman-roller-order-draft.mjs",
     "orders:manufacturer:bridge": "node scripts/run-norman-roller-order-draft.mjs --serve",
     "quote-v2:sources:verify": "node scripts/verify-quote-v2-sources.mjs"
