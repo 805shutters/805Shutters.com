@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "routing_key": "norman:palladian_shelf",
+  "manufacturer": "Norman",
+  "product_key": "palladian_shelf",
+  "product_name": "Palladian Window Shelf",
+  "product_kind": "Shelf",
+  "source_precedence": [
+    "submitted_technical_measure",
+    "signed_contract"
+  ],
+  "required_release_gate": "all_required_fields_complete_and_dependencies_valid",
+  "ordered_fields": [
+    "customer_name",
+    "crm_customer_id",
+    "contract_number",
+    "order_packet_id",
+    "project_address",
+    "customer_phone",
+    "customer_email",
+    "salesperson",
+    "measure_status",
+    "final_order_source",
+    "line_item_number",
+    "room_location",
+    "quantity",
+    "side_mark_po",
+    "mount_type",
+    "ordered_width",
+    "ordered_height",
+    "shelf_ordered_with_product",
+    "shelf_width",
+    "shelf_depth",
+    "opening_angle_arch",
+    "color_name",
+    "color_code",
+    "mounted_product_type",
+    "mounted_product_line_item",
+    "mounting_surface_notes",
+    "hardware_bracket_notes",
+    "special_instructions"
+  ]
+}

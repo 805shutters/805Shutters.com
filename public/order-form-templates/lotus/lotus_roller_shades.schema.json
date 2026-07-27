@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "routing_key": "lotus:lotus_roller_shades",
+  "manufacturer": "Lotus",
+  "product_key": "lotus_roller_shades",
+  "product_name": "Lotus Roller Shades",
+  "product_kind": "Roller shade",
+  "source_precedence": [
+    "submitted_technical_measure",
+    "signed_contract"
+  ],
+  "required_release_gate": "all_required_fields_complete_and_dependencies_valid",
+  "ordered_fields": [
+    "customer_name",
+    "crm_customer_id",
+    "contract_number",
+    "order_packet_id",
+    "project_address",
+    "customer_phone",
+    "customer_email",
+    "salesperson",
+    "measure_status",
+    "final_order_source",
+    "line_item_number",
+    "room_location",
+    "quantity",
+    "side_mark_po",
+    "mount_type",
+    "ordered_width",
+    "ordered_height",
+    "product_type",
+    "width",
+    "length",
+    "color",
+    "mount_special_instructions"
+  ]
+}

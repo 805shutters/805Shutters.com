@@ -1,0 +1,1192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://805shutters.com/schemas/onyx-agent-order-packet.v1.json",
+  "title": "805 Shutters Onyx Agent Order Packet",
+  "description": "Canonical source of truth for deterministic draft entry into the authenticated Onyx Shutters ordering portal.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "portal_verified_on",
+    "packet_id",
+    "status",
+    "blocking_issues",
+    "allowed_action",
+    "source",
+    "header",
+    "lines",
+    "attachments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "onyx-agent-order-packet.v1"
+    },
+    "portal_verified_on": {
+      "const": "2026-07-27"
+    },
+    "packet_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": [
+        "READY",
+        "BLOCKED"
+      ]
+    },
+    "blocking_issues": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "allowed_action": {
+      "const": "draft_entry_only",
+      "description": "Checkout and Submit require a later approval-controlled packet."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "technical_measure_id",
+        "job_id",
+        "quote_number",
+        "generated_at",
+        "customer_name",
+        "customer_phone",
+        "customer_email",
+        "jobsite_address",
+        "job_notes"
+      ],
+      "properties": {
+        "technical_measure_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "quote_number": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "customer_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "customer_phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "customer_email": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "jobsite_address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "job_notes": {
+          "type": "string"
+        }
+      }
+    },
+    "header": {
+      "$ref": "#/$defs/header"
+    },
+    "lines": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One expanded line object produces exactly one Onyx replica page. The final packet page count is lines.length + 1 cover page.",
+      "items": {
+        "$ref": "#/$defs/line"
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/attachment"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "READY"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "blocking_issues": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "BLOCKED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "blocking_issues": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "fraction": {
+      "enum": [
+        "",
+        "1/2",
+        "1/4",
+        "3/4",
+        "1/8",
+        "3/8",
+        "5/8",
+        "7/8",
+        "1/16",
+        "3/16",
+        "5/16",
+        "7/16",
+        "9/16",
+        "11/16",
+        "13/16",
+        "15/16"
+      ]
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "whole",
+        "fraction"
+      ],
+      "properties": {
+        "whole": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        },
+        "fraction": {
+          "$ref": "#/$defs/fraction"
+        }
+      }
+    },
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "material_category",
+        "side_mark",
+        "po_number",
+        "rush_order",
+        "order_note",
+        "ship_to_name",
+        "ship_note",
+        "portal_date_check",
+        "portal_ship_via_check"
+      ],
+      "properties": {
+        "material_category": {
+          "const": "Shutters"
+        },
+        "side_mark": {
+          "type": "string",
+          "minLength": 1
+        },
+        "po_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rush_order": {
+          "type": "boolean"
+        },
+        "order_note": {
+          "type": "string"
+        },
+        "ship_to_name": {
+          "const": "Bill to"
+        },
+        "ship_note": {
+          "type": "string"
+        },
+        "portal_date_check": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Account-controlled portal value to verify visually."
+        },
+        "portal_ship_via_check": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Account-controlled portal value to verify visually."
+        }
+      }
+    },
+    "french_door": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cut_out",
+        "height_c",
+        "height_d",
+        "height_e",
+        "height_f",
+        "projection",
+        "glass_with_grill"
+      ],
+      "properties": {
+        "cut_out": {
+          "enum": [
+            "B",
+            "C",
+            "D"
+          ]
+        },
+        "height_c": {
+          "$ref": "#/$defs/dimension"
+        },
+        "height_d": {
+          "$ref": "#/$defs/dimension"
+        },
+        "height_e": {
+          "$ref": "#/$defs/dimension"
+        },
+        "height_f": {
+          "type": "number",
+          "minimum": -300,
+          "maximum": 300,
+          "description": "May be negative. Portal instruction: center of handle to window edge minus 1 3/4."
+        },
+        "projection": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 300
+        },
+        "glass_with_grill": {
+          "type": "boolean"
+        }
+      }
+    },
+    "specialty_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orientation_viewed_from",
+        "template_attachment_id",
+        "notes"
+      ],
+      "properties": {
+        "orientation_viewed_from": {
+          "enum": [
+            "Inside",
+            "Outside"
+          ]
+        },
+        "template_attachment_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "line": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "line_number",
+        "source_opening_id",
+        "portal_line_quantity",
+        "compatibility_verification",
+        "material",
+        "shutter_type",
+        "frame_type",
+        "width_type",
+        "frame_no",
+        "color",
+        "louver",
+        "hinge_color",
+        "stile",
+        "tilt_rod",
+        "liberty_arch",
+        "other_options",
+        "room",
+        "width_a",
+        "height_b",
+        "panel_config",
+        "item_note",
+        "window_type",
+        "divider_rail",
+        "divider_position",
+        "divider_exact_position",
+        "split_tilt_rod",
+        "split_position",
+        "scribe",
+        "extension",
+        "double_hung",
+        "motor",
+        "french_door",
+        "specialty_reference"
+      ],
+      "properties": {
+        "line_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_opening_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "portal_line_quantity": {
+          "const": 1,
+          "description": "Onyx does not expose an editable quantity control on the line form. Expand quantities into separate line records."
+        },
+        "compatibility_verification": {
+          "enum": [
+            "matrix_verified",
+            "live_portal_verified"
+          ],
+          "description": "Selections not covered by the dated compatibility matrix require live portal verification before the packet may be READY."
+        },
+        "material": {
+          "enum": [
+            "Bassia",
+            "Sycamore",
+            "Vinyl",
+            "VLO",
+            "Ash"
+          ]
+        },
+        "shutter_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width_type": {
+          "enum": [
+            "Window Size",
+            "Finish Size"
+          ]
+        },
+        "frame_no": {
+          "enum": [
+            "4 side",
+            "3 side",
+            "3 Side With Sill Plate_Bottom",
+            "3 Side With Sill Plate_Top",
+            "3 Side With Sill Plate_Right",
+            "3 Side With Sill Plate_Left",
+            "3 Side With Floor Clearance",
+            "2 side"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "minLength": 1
+        },
+        "louver": {
+          "enum": [
+            "2 1/2",
+            "3 1/2",
+            "4 1/2",
+            "5 1/2"
+          ]
+        },
+        "hinge_color": {
+          "enum": [
+            "White",
+            "Cream",
+            "Antique Brass",
+            "Bright Brass",
+            "Nickle",
+            "Black",
+            "Paint to Match"
+          ]
+        },
+        "stile": {
+          "enum": [
+            "Astragal",
+            "Rabbet"
+          ]
+        },
+        "tilt_rod": {
+          "enum": [
+            "Center",
+            "Hidden1 (Notch on Stile)",
+            "Hidden2 (Notch on Louver)",
+            "Hidden3",
+            "Off Set"
+          ]
+        },
+        "liberty_arch": {
+          "type": "boolean"
+        },
+        "other_options": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "Hidden Hinge",
+              "Raised Panel",
+              "Flush Rail",
+              "Solid Flat Panel"
+            ]
+          }
+        },
+        "room": {
+          "type": "string",
+          "minLength": 1
+        },
+        "width_a": {
+          "$ref": "#/$defs/dimension"
+        },
+        "height_b": {
+          "$ref": "#/$defs/dimension"
+        },
+        "panel_config": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Z]+$"
+        },
+        "item_note": {
+          "type": "string"
+        },
+        "window_type": {
+          "enum": [
+            "Single",
+            "Corner Left",
+            "Corner Right",
+            "Bay",
+            "French Door No Cutout",
+            "Side By Side"
+          ]
+        },
+        "divider_rail": {
+          "enum": [
+            "Standard",
+            "No",
+            "Center",
+            "2/3 From Bottom",
+            "Custom"
+          ]
+        },
+        "divider_position": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/dimension"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "divider_exact_position": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "split_tilt_rod": {
+          "enum": [
+            "Standard",
+            "No",
+            "Center",
+            "2/3 From Bottom",
+            "Custom"
+          ]
+        },
+        "split_position": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/dimension"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scribe": {
+          "type": "boolean"
+        },
+        "extension": {
+          "type": "boolean"
+        },
+        "double_hung": {
+          "type": "boolean"
+        },
+        "motor": {
+          "type": "boolean"
+        },
+        "french_door": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/french_door"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "specialty_reference": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/specialty_reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "divider_rail": {
+                "const": "Custom"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "divider_position": {
+                "$ref": "#/$defs/dimension"
+              },
+              "divider_exact_position": {
+                "type": "boolean"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "divider_position": {
+                "type": "null"
+              },
+              "divider_exact_position": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "hinge_color": {
+                    "const": "Paint to Match"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "stile": {
+                    "const": "Rabbet"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "other_options": {
+                    "contains": {
+                      "const": "Hidden Hinge"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "compatibility_verification": {
+                "const": "live_portal_verified"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking",
+                  "Sunburst",
+                  "Half Circle",
+                  "Elongated Eyebrow",
+                  "Eyebrow",
+                  "Circle",
+                  "Oval",
+                  "Quarterburst",
+                  "Octagon",
+                  "Sunburst Shutters",
+                  "Arch Shutters",
+                  "Elongated Eyebrow Shutters",
+                  "Half Rake L",
+                  "Full Rake",
+                  "Half Rake R",
+                  "Barn Door"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "specialty_reference": {
+                "$ref": "#/$defs/specialty_reference"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "split_tilt_rod": {
+                "const": "Custom"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "split_position": {
+                "$ref": "#/$defs/dimension"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "split_position": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "shutter_type": {
+                "const": "French Door"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "french_door": {
+                "$ref": "#/$defs/french_door"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "french_door": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "const": "Vinyl"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "Regular",
+                  "Cafe",
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking"
+                ]
+              },
+              "frame_type": {
+                "enum": [
+                  "VZ Small",
+                  "VZ Large",
+                  "VL Outside",
+                  "VL Outside FS",
+                  "VL Inside",
+                  "VL Inside FS",
+                  "VZ Fine",
+                  "VZ Fine FS",
+                  "VZ Crest",
+                  "VZ Crest FS",
+                  "VZ Crown",
+                  "VZ Crown FS",
+                  "VDecor 2",
+                  "Panel Only"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "100_Pure White",
+                  "101_White",
+                  "102_Studio",
+                  "103_Blanco",
+                  "105_Snow",
+                  "106_Silk White",
+                  "107_Swiss Coffee",
+                  "110_Creamy",
+                  "120_Butter",
+                  "130_Gray",
+                  "150_Onyx Black",
+                  "190_Paint (Primed)",
+                  "191_Norman Paint",
+                  "192_Sunland Paint",
+                  "900_Custom Paint"
+                ]
+              },
+              "louver": {
+                "enum": [
+                  "2 1/2",
+                  "3 1/2",
+                  "4 1/2"
+                ]
+              },
+              "tilt_rod": {
+                "enum": [
+                  "Center",
+                  "Hidden2 (Notch on Louver)",
+                  "Hidden3",
+                  "Off Set"
+                ]
+              },
+              "other_options": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Raised Panel",
+                    "Solid Flat Panel"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "const": "Bassia"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "Regular",
+                  "Cafe",
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking",
+                  "French Door",
+                  "Sunburst",
+                  "Half Circle",
+                  "Elongated Eyebrow",
+                  "Eyebrow",
+                  "Circle",
+                  "Oval",
+                  "Quarterburst",
+                  "Octagon",
+                  "Sunburst Shutters",
+                  "Arch Shutters",
+                  "Elongated Eyebrow Shutters",
+                  "Half Rake L",
+                  "Full Rake",
+                  "Half Rake R",
+                  "Barn Door"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "100_Pure White",
+                  "101_White",
+                  "102_Studio",
+                  "103_Blanco",
+                  "105_Snow",
+                  "106_Silk White",
+                  "107_Swiss Coffee",
+                  "110_Creamy",
+                  "120_Butter",
+                  "130_Gray",
+                  "150_Onyx Black",
+                  "190_Paint (Primed)",
+                  "191_Norman Paint",
+                  "192_Sunland Paint",
+                  "200_Nature",
+                  "201_Honey",
+                  "215_Java",
+                  "216_Rose",
+                  "220_Mahogany",
+                  "230_Black Walnut",
+                  "235_Auburn Chestnut",
+                  "240_Walnut",
+                  "250_Chestnut",
+                  "290_Stain (Raw)",
+                  "291_Norman Stain",
+                  "292_Sunland Stain",
+                  "404_Pewter",
+                  "407_Almond",
+                  "414_Wenge",
+                  "900_Custom Paint",
+                  "901_Custom Stain"
+                ]
+              },
+              "louver": {
+                "enum": [
+                  "2 1/2",
+                  "3 1/2",
+                  "4 1/2",
+                  "5 1/2"
+                ]
+              },
+              "other_options": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Raised Panel",
+                    "Flush Rail",
+                    "Solid Flat Panel"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "const": "Sycamore"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "Regular",
+                  "Cafe",
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "100_Pure White",
+                  "101_White",
+                  "102_Studio",
+                  "103_Blanco",
+                  "105_Snow",
+                  "106_Silk White",
+                  "107_Swiss Coffee",
+                  "110_Creamy",
+                  "120_Butter",
+                  "130_Gray",
+                  "150_Onyx Black",
+                  "190_Paint (Primed)",
+                  "191_Norman Paint",
+                  "192_Sunland Paint",
+                  "900_Custom Paint"
+                ]
+              },
+              "other_options": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Raised Panel",
+                    "Flush Rail",
+                    "Solid Flat Panel"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "const": "Ash"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "Regular",
+                  "Cafe",
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking",
+                  "French Door",
+                  "Sunburst",
+                  "Half Circle",
+                  "Elongated Eyebrow",
+                  "Eyebrow",
+                  "Circle",
+                  "Oval",
+                  "Quarterburst",
+                  "Octagon",
+                  "Sunburst Shutters",
+                  "Arch Shutters",
+                  "Elongated Eyebrow Shutters",
+                  "Half Rake L",
+                  "Full Rake",
+                  "Half Rake R"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "100_Pure White",
+                  "101_White",
+                  "102_Studio",
+                  "103_Blanco",
+                  "105_Snow",
+                  "106_Silk White",
+                  "107_Swiss Coffee",
+                  "110_Creamy",
+                  "120_Butter",
+                  "130_Gray",
+                  "150_Onyx Black",
+                  "190_Paint (Primed)",
+                  "191_Norman Paint",
+                  "192_Sunland Paint",
+                  "200_Nature",
+                  "201_Honey",
+                  "215_Java",
+                  "216_Rose",
+                  "220_Mahogany",
+                  "230_Black Walnut",
+                  "235_Auburn Chestnut",
+                  "240_Walnut",
+                  "250_Chestnut",
+                  "290_Stain (Raw)",
+                  "291_Norman Stain",
+                  "292_Sunland Stain",
+                  "404_Pewter",
+                  "407_Almond",
+                  "414_Wenge",
+                  "900_Custom Paint",
+                  "901_Custom Stain"
+                ]
+              },
+              "other_options": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Raised Panel",
+                    "Flush Rail",
+                    "Solid Flat Panel"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "enum": [
+                  "Bassia",
+                  "Sycamore",
+                  "VLO",
+                  "Ash"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "frame_type": {
+                "enum": [
+                  "Decor 2",
+                  "Decor 2 FS",
+                  "Decor 3",
+                  "Decor 3 FS",
+                  "Z Fine",
+                  "Z Fine FS",
+                  "Z Crown",
+                  "Z Crown FS",
+                  "Z Trim",
+                  "Z Trim FS",
+                  "Z Crest",
+                  "Z Crest FS",
+                  "Z Lite",
+                  "L Outside",
+                  "L Outside FS",
+                  "L Inside",
+                  "L Inside FS",
+                  "L Bullnose Outside",
+                  "L Bullnose Outside FS",
+                  "L Bullnose Inside",
+                  "L Bullnose Inside FS",
+                  "Hang Strip",
+                  "Panel Only"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "enum": [
+                  "Sycamore",
+                  "VLO",
+                  "Ash"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "louver": {
+                "enum": [
+                  "2 1/2",
+                  "3 1/2",
+                  "4 1/2"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "material": {
+                "const": "VLO"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "shutter_type": {
+                "enum": [
+                  "Regular",
+                  "Cafe",
+                  "ByPass-Close",
+                  "ByPass-Open",
+                  "Bi-Fold Tracking",
+                  "French Door"
+                ]
+              },
+              "color": {
+                "enum": [
+                  "100_Pure White",
+                  "101_White",
+                  "102_Studio",
+                  "103_Blanco",
+                  "105_Snow",
+                  "106_Silk White",
+                  "107_Swiss Coffee",
+                  "110_Creamy",
+                  "150_Onyx Black",
+                  "190_Paint (Primed)",
+                  "191_Norman Paint",
+                  "192_Sunland Paint",
+                  "900_Custom Paint"
+                ]
+              },
+              "tilt_rod": {
+                "enum": [
+                  "Center",
+                  "Hidden2 (Notch on Louver)",
+                  "Hidden3",
+                  "Off Set"
+                ]
+              },
+              "other_options": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "enum": [
+                    "Raised Panel",
+                    "Flush Rail",
+                    "Solid Flat Panel"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attachment_id",
+        "line_number",
+        "file_name",
+        "purpose"
+      ],
+      "properties": {
+        "attachment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line_number": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "file_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
