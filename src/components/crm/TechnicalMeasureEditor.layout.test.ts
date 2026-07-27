@@ -96,12 +96,18 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain("technical-measure-opening-row");
     expect(component).toContain('aria-label="Opening identifier"');
-    expect(component).toContain('OPENING_LABELS = ["A", "B", "C", "D", "E", "F"]');
+    expect(component).toContain('OPENING_LABELS = ["A", "B", "C", "D"]');
     expect(component).toContain("OPENING_LABELS.map");
+    expect(component).toContain(">Custom</button>");
+    expect(component).toContain('aria-label="Custom opening identifier"');
+    expect(component).toContain('placeholder="Enter custom opening"');
+    expect(component).toContain("customOpeningLineId");
     expect(component).not.toContain('placeholder="A, B, 1, 2…"');
     expect(styles).toContain(".technical-measure-opening-row");
     expect(styles).toContain("grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);");
     expect(styles).toContain(".technical-measure-opening-choice");
+    expect(styles).toContain(".technical-measure-opening-custom-button");
+    expect(styles).toContain("grid-column: span 2;");
   });
 
   it("offers durable future measures through the customer-file API", () => {

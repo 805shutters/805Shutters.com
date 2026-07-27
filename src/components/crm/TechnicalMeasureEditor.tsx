@@ -84,7 +84,7 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
 ] as const;
 const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
 const HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"]);
-const OPENING_LABELS = ["A", "B", "C", "D", "E", "F"] as const;
+const OPENING_LABELS = ["A", "B", "C", "D"] as const;
 
 function isShutterProduct(productId: string) {
   return productId.toLowerCase().includes("shutter");
@@ -281,6 +281,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [activeLineIndex, setActiveLineIndex] = useState(0);
   const [measureStarted, setMeasureStarted] = useState(false);
   const [choiceField, setChoiceField] = useState<{ lineId: string; field: "room" } | null>(null);
+  const [customOpeningLineId, setCustomOpeningLineId] = useState<string | null>(null);
   const [detailChoice, setDetailChoice] = useState<{ lineId: string; key: string } | null>(null);
   const [locationPicker, setLocationPicker] = useState<{
     lineId: string;
@@ -506,6 +507,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const measurementBasisOptions = shutterMeasurementBasisOptions(onyxShutter);
           const panelConfiguration = detailText(current.details, "panel_config", "panel_configuration", "folding_direction");
           const supplier = detailText(current.details, "supplier", "manufacturer");
+          const customOpening = customOpeningLineId === line.id
+            || (!!current.opening_label && !OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number]));
           const splitTiltLocation = detailText(current.details, "split_tilt_location")
             || (/^(yes|true)$/i.test(detailText(current.details, "split_tilt")) ? "Center" : "None");
           const dividerRailLocation = detailText(current.details, "divider_rail_location")
@@ -535,8 +538,10 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   <div className={`technical-measure-opening-choice ${changed(baseline.opening_label, current.opening_label) ? "changed" : ""}`}>
                     <span>Opening</span>
                     <div aria-label="Opening identifier">
-                      {OPENING_LABELS.map((opening) => <button type="button" disabled={readOnly} aria-pressed={current.opening_label === opening} key={opening} onClick={() => updateLine(line.id, { opening_label: opening })}>{opening}</button>)}
+                      {OPENING_LABELS.map((opening) => <button type="button" disabled={readOnly} aria-pressed={current.opening_label === opening} key={opening} onClick={() => { updateLine(line.id, { opening_label: opening }); setCustomOpeningLineId((active) => active === line.id ? null : active); }}>{opening}</button>)}
+                      <button className="technical-measure-opening-custom-button" type="button" disabled={readOnly} aria-pressed={customOpening} onClick={() => { setCustomOpeningLineId(line.id); if (OPENING_LABELS.includes(current.opening_label as (typeof OPENING_LABELS)[number])) updateLine(line.id, { opening_label: "" }); }}>Custom</button>
                     </div>
+                    {customOpening ? <input className="technical-measure-custom-opening" aria-label="Custom opening identifier" disabled={readOnly} autoFocus placeholder="Enter custom opening" value={current.opening_label} onChange={(event) => updateLine(line.id, { opening_label: event.target.value })} /> : null}
                   </div>
               </div>
               <div className={`technical-measure-dimensions${shutterProduct ? " technical-measure-dimensions--with-basis" : ""}`}>
