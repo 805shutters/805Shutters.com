@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   MANUFACTURER_ORDER_QUEUE_URLS,
-  manufacturerOrderBridgeLaunchUrl,
+  manufacturerOrderChromeLaunchUrl,
 } from "./manufacturer-order-launch";
 
 describe("manufacturer order launch bridge", () => {
@@ -14,21 +14,19 @@ describe("manufacturer order launch bridge", () => {
     });
   });
 
-  it("launches the local review-only agent with an opaque task and exact manufacturer", () => {
-    expect(manufacturerOrderBridgeLaunchUrl({
+  it("opens the exact manufacturer queue in the current Chrome profile", () => {
+    expect(manufacturerOrderChromeLaunchUrl({
       taskId: "onyx:form-123:abcdef123456",
       manufacturer: "Onyx",
-    })).toBe(
-      "http://127.0.0.1:47635/start?taskId=onyx%3Aform-123%3Aabcdef123456&manufacturer=onyx",
-    );
+    })).toBe("https://admin.onyxshutters.com/OrderList.aspx");
   });
 
   it("rejects malformed tasks and unknown manufacturers", () => {
-    expect(() => manufacturerOrderBridgeLaunchUrl({
+    expect(() => manufacturerOrderChromeLaunchUrl({
       taskId: "bad&portal=https://example.com",
       manufacturer: "Onyx",
     })).toThrow(/identifier is invalid/i);
-    expect(() => manufacturerOrderBridgeLaunchUrl({
+    expect(() => manufacturerOrderChromeLaunchUrl({
       taskId: "valid-task-123",
       manufacturer: "Other",
     })).toThrow(/not configured/i);

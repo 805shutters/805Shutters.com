@@ -50,7 +50,7 @@ import {
   soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
-import { manufacturerOrderBridgeLaunchUrl } from "@/lib/crm/vendor-orders/manufacturer-order-launch";
+import { manufacturerOrderChromeLaunchUrl } from "@/lib/crm/vendor-orders/manufacturer-order-launch";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import {
@@ -1042,15 +1042,15 @@ export function CrmApp({
   async function startVendorOrderEntry(task: CrmVendorOrderTask) {
     let opened: Window | null = null;
     try {
-      const launchUrl = manufacturerOrderBridgeLaunchUrl({
+      const launchUrl = manufacturerOrderChromeLaunchUrl({
         taskId: task.taskId,
         manufacturer: task.manufacturer,
       });
       if (!launchUrl) throw new Error(`${task.manufacturer} ordering portal is not configured.`);
       opened = window.open("about:blank", "_blank");
-      if (!opened) throw new Error("Allow pop-ups for the CRM, then press Start Order Entry again.");
+      if (!opened) throw new Error("Allow pop-ups for the CRM, then open the ordering agent again.");
       opened.location.href = launchUrl;
-      setMessage(`Starting review-only ${task.manufacturer} order entry for ${task.customerName}. If sign-in is required, complete it in the opened manufacturer tab and retry. The order will not be placed.`);
+      setMessage(`Opened ${task.manufacturer} in this Chrome profile for supervised agent entry for ${task.customerName}. Sign in there if prompted. The order will not be placed. Final review is required.`);
     } catch (error) {
       opened?.close();
       setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
@@ -7458,7 +7458,7 @@ function DrillDetailCard({
     entry.vendorOrderTask && ["queued", "processing"].includes(entry.vendorOrderTask.status) && onVendorOrderLaunch
       ? {
           key: "start-vendor-order",
-          label: entry.vendorOrderTask.status === "processing" ? "Continue Ordering Agent" : "Run Ordering Agent",
+          label: "Open Ordering Agent in Chrome",
           detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} ${entry.vendorOrderTask.sourceKind === "signed_contract" ? "contract" : "submitted-measure"} line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
           tone: "warning",
           disabled: busy,

@@ -8,28 +8,19 @@ const installer = fs.readFileSync(
   "utf8",
 );
 
-describe("Norman order launch agents", () => {
-  it("installs the automatic poller and the CRM launch bridge", () => {
+describe("local Chrome ordering agent", () => {
+  it("disables the legacy background poller and launch bridge", () => {
     expect(installer).toContain("com.805shutters.norman-order-drafts");
     expect(installer).toContain("com.805shutters.norman-order-bridge");
-    expect(installer).toContain("orders:norman:next");
-    expect(installer).toContain("orders:manufacturer:bridge");
-    expect(installer).toContain("<key>StartInterval</key><integer>120</integer>");
-    expect(installer).toContain("<key>KeepAlive</key><true/>");
-    expect(installer).toContain("<key>EnvironmentVariables</key>");
-    expect(installer).toContain("<key>PATH</key>");
+    expect(installer).toContain("launchctl bootout");
+    expect(installer).toContain("DisabledLaunchAgents");
   });
 
-  it("starts a dedicated debuggable Chrome profile without storing portal credentials", () => {
+  it("does not start a dedicated debuggable Chrome profile", () => {
     expect(installer).toContain("com.805shutters.norman-order-chrome");
-    expect(installer).toContain("--remote-debugging-port=9222");
-    expect(installer).toContain("NormanChrome");
-    expect(installer).toContain("https://admin.onyxshutters.com/OrderList.aspx");
+    expect(installer).not.toContain("--remote-debugging-port=9222");
+    expect(installer).not.toContain("NormanChrome");
+    expect(installer).toContain("existing Chrome profile");
     expect(installer).not.toMatch(/NORMAN_(?:USERNAME|PASSWORD)/);
-  });
-
-  it("fails closed unless the protected worker secret already exists in Keychain", () => {
-    expect(installer).toContain("security find-generic-password");
-    expect(installer).toContain("805-norman-worker-secret");
   });
 });
