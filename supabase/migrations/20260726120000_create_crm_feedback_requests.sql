@@ -21,6 +21,9 @@ create table if not exists public.crm_feedback_requests (
   completed_at timestamptz,
   willie_message_id bigint,
   willie_notification_error text,
+  hermes_claim_token uuid,
+  hermes_claimed_at timestamptz,
+  hermes_claimed_by text,
   constraint crm_feedback_requests_title_length check (char_length(btrim(title)) between 3 and 160),
   constraint crm_feedback_requests_description_length check (char_length(btrim(description)) between 10 and 10000),
   constraint crm_feedback_requests_status_check check (
@@ -47,6 +50,7 @@ create table if not exists public.crm_feedback_messages (
   body text not null,
   revision integer not null,
   metadata jsonb not null default '{}'::jsonb,
+  external_event_id text unique,
   constraint crm_feedback_messages_author_check check (author_type in ('jessica', 'hermes', 'michael', 'system')),
   constraint crm_feedback_messages_body_length check (char_length(btrim(body)) between 1 and 10000)
 );
@@ -93,3 +97,42 @@ on public.crm_feedback_messages for all to service_role using (true) with check 
 drop policy if exists "service role can manage feedback approvals" on public.crm_feedback_approvals;
 create policy "service role can manage feedback approvals"
 on public.crm_feedback_approvals for all to service_role using (true) with check (true);
+
+create or replace function public.claim_crm_feedback_request(
+  p_request_id uuid,
+  p_revision integer,
+  p_claimed_by text
+)
+returns setof public.crm_feedback_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return query
+  update public.crm_feedback_requests as request
+  set
+    hermes_claim_token = case
+      when request.hermes_claimed_by = p_claimed_by
+        and request.hermes_claimed_at > now() - interval '10 minutes'
+        and request.hermes_claim_token is not null
+      then request.hermes_claim_token
+      else gen_random_uuid()
+    end,
+    hermes_claimed_at = now(),
+    hermes_claimed_by = p_claimed_by
+  where request.id = p_request_id
+    and request.revision = p_revision
+    and request.status in ('clarifying', 'implementation_approved', 'deployment_approved')
+    and (
+      request.hermes_claim_token is null
+      or request.hermes_claimed_at is null
+      or request.hermes_claimed_at <= now() - interval '10 minutes'
+      or request.hermes_claimed_by = p_claimed_by
+    )
+  returning request.*;
+end;
+$$;
+
+revoke all on function public.claim_crm_feedback_request(uuid, integer, text) from public;
+grant execute on function public.claim_crm_feedback_request(uuid, integer, text) to service_role;

@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
-import { evaluateFeedbackWithHermes } from "@/lib/crm/feedback-hermes";
 import { activeCrmFeedbackStatuses, type CrmFeedbackMessage, type CrmFeedbackRequest } from "@/lib/crm/feedback-types";
-import { sendWillieFeedbackApproval } from "@/lib/notify/willie-telegram";
 
 export const runtime = "nodejs";
 const JESSICA_EMAIL = "jessica@805shutters.com";
@@ -33,62 +31,6 @@ async function listFeedback(supabase: Awaited<ReturnType<typeof requireCrmUser>>
     ...request,
     messages: grouped.get(request.id) || []
   })) as CrmFeedbackRequest[];
-}
-
-async function evaluateAndSave(
-  supabase: Awaited<ReturnType<typeof requireCrmUser>>["supabase"],
-  request: CrmFeedbackRequest
-) {
-  const { data: messages } = await supabase
-    .from("crm_feedback_messages")
-    .select("*")
-    .eq("request_id", request.id)
-    .order("created_at", { ascending: true });
-  const decision = await evaluateFeedbackWithHermes({
-    title: request.title,
-    description: request.description,
-    conversation: (messages || []).map((item) => ({ author_type: item.author_type, body: item.body }))
-  });
-  const status = decision.clear ? "ready_for_implementation_approval" : "clarifying";
-  const { error: updateError } = await supabase
-    .from("crm_feedback_requests")
-    .update({
-      status,
-      hermes_assessment: decision.assessment || null,
-      proposed_work: decision.proposedWork || null,
-      willie_message_id: null,
-      willie_notification_error: null
-    })
-    .eq("id", request.id)
-    .eq("revision", request.revision);
-  if (updateError) throw new CrmAuthError(502, "Hermes assessment could not be saved.");
-
-  await supabase.from("crm_feedback_messages").insert({
-    request_id: request.id,
-    author_type: "hermes",
-    author_email: null,
-    body: decision.reply,
-    revision: request.revision,
-    metadata: { clear: decision.clear }
-  });
-
-  if (decision.clear) {
-    const summary = JSON.stringify({
-      assessment: decision.assessment || {},
-      proposedWork: decision.proposedWork || {}
-    }, null, 2);
-    const notification = await sendWillieFeedbackApproval({
-      id: request.id,
-      revision: request.revision,
-      type: "implementation",
-      title: request.title,
-      summary
-    });
-    await supabase.from("crm_feedback_requests").update({
-      willie_message_id: notification.messageId || null,
-      willie_notification_error: notification.sent ? null : notification.error || notification.skipped || "Notification failed"
-    }).eq("id", request.id).eq("revision", request.revision);
-  }
 }
 
 export async function GET(request: NextRequest) {
@@ -127,7 +69,6 @@ export async function POST(request: NextRequest) {
       revision: 1,
       metadata: { submission: true, title }
     });
-    await evaluateAndSave(supabase, { ...data, messages: [] } as CrmFeedbackRequest);
     return NextResponse.json({ requests: await listFeedback(supabase) }, { status: 201 });
   } catch (error) {
     return crmAuthErrorResponse(error);

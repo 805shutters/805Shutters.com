@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
-import { evaluateFeedbackWithHermes } from "@/lib/crm/feedback-hermes";
 import type { CrmFeedbackRequest } from "@/lib/crm/feedback-types";
-import { sendWillieFeedbackApproval } from "@/lib/notify/willie-telegram";
 
 export const runtime = "nodejs";
 const JESSICA_EMAIL = "jessica@805shutters.com";
@@ -52,41 +50,13 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       metadata: { resubmission: true, title, full_description: description }
     });
 
-    const { data: conversation } = await supabase
-      .from("crm_feedback_messages").select("author_type,body").eq("request_id", id).order("created_at");
-    const decision = await evaluateFeedbackWithHermes({
-      title,
-      description,
-      conversation: conversation || []
-    });
-    const status = decision.clear ? "ready_for_implementation_approval" : "clarifying";
     await supabase.from("crm_feedback_requests").update({
-      status,
-      hermes_assessment: decision.assessment || null,
-      proposed_work: decision.proposedWork || null
+      status: "clarifying",
+      hermes_claim_token: null,
+      hermes_claimed_at: null,
+      hermes_claimed_by: null
     }).eq("id", id).eq("revision", revision);
-    await supabase.from("crm_feedback_messages").insert({
-      request_id: id,
-      author_type: "hermes",
-      body: decision.reply,
-      revision,
-      metadata: { clear: decision.clear }
-    });
-
-    if (decision.clear) {
-      const notification = await sendWillieFeedbackApproval({
-        id,
-        revision,
-        type: "implementation",
-        title,
-        summary: JSON.stringify({ assessment: decision.assessment, proposedWork: decision.proposedWork }, null, 2)
-      });
-      await supabase.from("crm_feedback_requests").update({
-        willie_message_id: notification.messageId || null,
-        willie_notification_error: notification.sent ? null : notification.error || notification.skipped || "Notification failed"
-      }).eq("id", id).eq("revision", revision);
-    }
-    return NextResponse.json({ request: { ...updated, status } as CrmFeedbackRequest });
+    return NextResponse.json({ request: { ...updated, status: "clarifying" } as CrmFeedbackRequest });
   } catch (error) {
     return crmAuthErrorResponse(error);
   }
