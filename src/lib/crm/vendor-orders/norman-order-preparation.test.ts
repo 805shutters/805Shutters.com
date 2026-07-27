@@ -82,7 +82,7 @@ function form(): TechnicalMeasureForm {
 afterEach(() => { delete process.env.NORMAN_SHIP_TO_PROFILE_ID; });
 
 describe("Norman Roller order preparation", () => {
-  it("blocks measure submission before the required Norman data is complete", () => {
+  it("reports incomplete Norman fields for downstream order preparation", () => {
     const source = form();
     source.lines[0].current_values.details.fabric_color_code = "";
     expect(validateNormanRollerMeasureForSubmission(source)).toContainEqual(expect.objectContaining({ field: "fabric_color_code" }));

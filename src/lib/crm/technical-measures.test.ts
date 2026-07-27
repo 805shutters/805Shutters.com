@@ -8,6 +8,7 @@ import {
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
   soldJobNeedsTechnicalMeasureForm,
+  technicalMeasureDraftDisposition,
   technicalMeasureScheduling,
   technicalMeasureLineChanges,
   type TechnicalMeasureAddendum,
@@ -117,6 +118,24 @@ describe("technical measure change classification", () => {
     const changes = technicalMeasureLineChanges("line-1", original, current);
     expect(changes.every((change) => change.kind === "internal")).toBe(true);
     expect(requiresTechnicalMeasureAddendum(changes)).toBe(false);
+  });
+
+  it("keeps signed pricing out of technical-measure completion even when product details changed", () => {
+    const original = baseline();
+    const current = normalizeTechnicalMeasureLineValues({
+      ...original,
+      fabric: "101_White",
+      details: { ...original.details, tilt_type: "C - Front Center Tiltrod" },
+    }, original);
+    const changes = technicalMeasureLineChanges("line-1", original, current);
+
+    expect(changes.some((change) => change.kind === "contract")).toBe(true);
+    expect(technicalMeasureDraftDisposition({ baseline_total: 1248 }, changes)).toEqual({
+      status: "draft",
+      currentTotal: 1248,
+      requiresAddendum: false,
+      changeCount: changes.length,
+    });
   });
 });
 

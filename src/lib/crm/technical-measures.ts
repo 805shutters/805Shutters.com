@@ -2,12 +2,12 @@ import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
-import { computeQuoteMoney, parseAdjustments, priceDesignFields, round2, selectedDesign } from "@/lib/crm/quote-builder";
+import { parseAdjustments, round2, selectedDesign } from "@/lib/crm/quote-builder";
 import { loadQuoteBuilder } from "@/lib/crm/quote-builder";
 import { getMeasureNeededMeta, MEASURE_NEEDED_META_KEY } from "@/lib/crm/measure-needed-state";
 import type { CrmJob, CrmQuote, CrmQuoteDesign, CrmQuoteDetailValue } from "@/lib/crm/types";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
-import { enqueueNormanRollerPreparation, validateNormanRollerMeasureForSubmission, type VendorOrderPreparationSummary } from "@/lib/crm/vendor-orders/norman-order-preparation";
+import { enqueueNormanRollerPreparation, type VendorOrderPreparationSummary } from "@/lib/crm/vendor-orders/norman-order-preparation";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -541,7 +541,7 @@ function decorateForm(form: Record<string, unknown>, lineRows: Record<string, un
     addendum: addendumRow ? ({ ...addendumRow, changes: Array.isArray(addendumRow.changes) ? addendumRow.changes : [] } as unknown as TechnicalMeasureAddendum) : null,
     changes,
     contractChanges,
-    requiresAddendum: contractChanges.length > 0,
+    requiresAddendum: addendumRow?.status === "required",
     futureMeasures: futureMeasures(meta.future_measures),
     scheduling: technicalMeasureScheduling(meta.measure_scheduling),
   } as TechnicalMeasureForm;
@@ -791,13 +791,16 @@ export async function reconcileSoldTechnicalMeasureForms(
   return { created, failed };
 }
 
-function revisedContractTotal(form: TechnicalMeasureForm, lines: TechnicalMeasureLine[]) {
-  const subtotal = lines.reduce((sum, line) => {
-    const unit = line.current_unit_price;
-    const discount = Math.min(100, Math.max(0, line.current_values.discount_percent));
-    return sum + unit * line.current_values.quantity * (1 - discount / 100);
-  }, 0);
-  return computeQuoteMoney(round2(subtotal), form.quote_snapshot.adjustments as ReturnType<typeof parseAdjustments>).total;
+export function technicalMeasureDraftDisposition(
+  form: Pick<TechnicalMeasureForm, "baseline_total">,
+  changes: TechnicalMeasureChange[],
+) {
+  return {
+    status: "draft" as const,
+    currentTotal: form.baseline_total,
+    requiresAddendum: false,
+    changeCount: changes.length,
+  };
 }
 
 export async function saveTechnicalMeasureDraft(
@@ -816,46 +819,28 @@ export async function saveTechnicalMeasureDraft(
       : line.current_values;
     if (!current.product_id) throw new CrmAuthError(400, `${current.room}: product is required.`);
     const changes = technicalMeasureLineChanges(line.id, line.baseline, current);
-    const hasContractChange = changes.some((change) => change.kind === "contract");
-    const hasMeasurementChange = changes.some((change) => change.kind === "measurement");
-    let unitPrice = line.baseline_unit_price;
-    let priceStatus = "ok";
-    if (hasContractChange || hasMeasurementChange) {
-      const priced = priceDesignFields({
-        product_id: current.product_id,
-        program_id: current.program_id,
-        fabric: current.fabric,
-        details: current.details,
-        motorization: current.motorization,
-        surcharges: current.surcharges,
-      }, { width_in: current.width_in, height_in: current.height_in }, current.discount_percent);
-      if (priced.price_status === "ok") unitPrice = priced.unit_price;
-      else if (hasContractChange) priceStatus = priced.price_status;
-    }
     const { error } = await supabase.from("crm_technical_measure_lines").update({
       current_values: current,
-      current_unit_price: unitPrice,
-      price_status: priceStatus,
+      current_unit_price: line.baseline_unit_price,
+      price_status: "ok",
     }).eq("id", line.id).eq("form_id", formId);
     if (error) throw new CrmAuthError(502, "Technical measure changes could not be saved.");
-    nextLines.push({ ...line, current_values: current, current_unit_price: unitPrice, price_status: priceStatus, changes });
+    nextLines.push({ ...line, current_values: current, current_unit_price: line.baseline_unit_price, price_status: "ok", changes });
   }
   const contractChanges = nextLines.flatMap((line) => line.changes).filter((change) => change.kind === "contract");
-  if (nextLines.some((line) => line.price_status !== "ok")) throw new CrmAuthError(409, "A changed contract item could not be priced. Correct it before continuing.");
-  const currentTotal = contractChanges.length ? revisedContractTotal(form, nextLines) : form.baseline_total;
-  const nextStatus = contractChanges.length ? "awaiting_signature" : "draft";
+  const disposition = technicalMeasureDraftDisposition(form, nextLines.flatMap((line) => line.changes));
   const { error: formError } = await supabase.from("crm_technical_measure_forms").update({
-    status: nextStatus,
-    current_total: currentTotal,
+    status: disposition.status,
+    current_total: disposition.currentTotal,
     technician_email: actor.email,
     technician_name: actor.displayName || form.technician_name,
   }).eq("id", formId);
   if (formError) throw new CrmAuthError(502, "Technical measure form could not be saved.");
 
   const { data: job } = await supabase.from("crm_jobs").select("*").eq("id", form.job_id).maybeSingle();
-  if (job) await updateJobMeasureFormMeta(supabase, job as CrmJob, formId, nextStatus);
-  await syncRequiredAddendum(supabase, form, contractChanges, currentTotal);
-  await recordCrmActivity(supabase, actor, { entityType: "job", entityId: form.job_id, action: "technical_measure.save", metadata: { formId, changeCount: nextLines.flatMap((line) => line.changes).length, requiresAddendum: contractChanges.length > 0 } });
+  if (job) await updateJobMeasureFormMeta(supabase, job as CrmJob, formId, disposition.status);
+  await syncRequiredAddendum(supabase, form, [], disposition.currentTotal);
+  await recordCrmActivity(supabase, actor, { entityType: "job", entityId: form.job_id, action: "technical_measure.save", metadata: { formId, changeCount: disposition.changeCount, contractChangeCount: contractChanges.length, requiresAddendum: disposition.requiresAddendum } });
   return loadTechnicalMeasureForm(supabase, formId);
 }
 
@@ -925,11 +910,6 @@ export async function signTechnicalMeasureAddendum(
 }
 
 async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
-  const preparationIssues = validateNormanRollerMeasureForSubmission(form);
-  if (preparationIssues.length) {
-    const first = preparationIssues[0];
-    throw new CrmAuthError(409, `${first.message} ${preparationIssues.length === 1 ? "" : `Correct ${preparationIssues.length} Norman ordering fields before completing the measure.`}`.trim());
-  }
   const submittedAt = new Date().toISOString();
   await syncTechnicalMeasureOperationalOverride(supabase, form, submittedAt);
   const { error } = await supabase.from("crm_technical_measure_forms").update({ status: "submitted", submitted_at: submittedAt, technician_email: actor.email, technician_name: actor.displayName || form.technician_name }).eq("id", form.id);
