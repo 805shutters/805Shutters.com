@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildInstallerFormPdf, calculateInstallerCod, type InstallerFormRow } from "./installer-forms";
+import {
+  buildInstallerFormPdf,
+  calculateInstallerCod,
+  installerWorkflowFromMeta,
+  type InstallerFormRow,
+} from "./installer-forms";
 
 describe("installer COD adjustment", () => {
   it("withholds half of each unique not-installed line item", () => {
@@ -54,12 +59,47 @@ describe("805 Shutters Installation Form PDF", () => {
       accepted: false,
       signer_name: null,
       signed_at: null,
+      meta: {},
     };
     const raw = buildInstallerFormPdf(form, "https://805shutters.com/installer-form/secret").toString("latin1");
     expect(raw).toContain("805 SHUTTERS INSTALLATION FORM");
     expect(raw).toContain("Living Room");
     expect(raw).toContain("Width x Height: 36 x 48");
-    expect(raw).toContain("COD TO COLLECT: $1500.00");
+    expect(raw).toContain("JOB OUTCOME");
+    expect(raw).toContain("Open the editable technician workflow");
     expect(raw).not.toContain("1234.56");
+    expect(raw).not.toContain("1500.00");
+  });
+});
+
+describe("editable installer workflow state", () => {
+  it("loads a persisted technician outcome and revision", () => {
+    expect(installerWorkflowFromMeta({
+      status: "partially_installed",
+      issues: [{ lineId: "line-1", notInstalled: true, details: "Missing bracket" }],
+      meta: {
+        workflow: {
+          outcome: "incomplete",
+          reasonCode: "missing_product",
+          notes: "Return with replacement bracket.",
+          revision: 3,
+          updatedAt: "2026-07-27T01:00:00.000Z",
+        },
+      },
+    })).toEqual({
+      outcome: "incomplete",
+      reasonCode: "missing_product",
+      notes: "Return with replacement bracket.",
+      revision: 3,
+      updatedAt: "2026-07-27T01:00:00.000Z",
+    });
+  });
+
+  it("falls back safely for pre-workflow installer rows", () => {
+    expect(installerWorkflowFromMeta({
+      status: "partially_installed",
+      issues: [{ lineId: "line-1", notInstalled: true, details: "" }],
+      meta: {},
+    }).outcome).toBe("partially_completed");
   });
 });

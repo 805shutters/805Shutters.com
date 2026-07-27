@@ -8,6 +8,16 @@ import { brandIdentity } from "@/lib/brand-identity";
 export const INSTALLER_FORM_RECIPIENT = "mtsinstallations@gmail.com";
 export const INSTALLER_REPORT_RECIPIENT = "805@805shutters.com";
 
+export type InstallerOutcome = "completed" | "partially_completed" | "incomplete";
+
+export type InstallerWorkflow = {
+  outcome: InstallerOutcome;
+  reasonCode: string;
+  notes: string;
+  revision: number;
+  updatedAt: string | null;
+};
+
 type InstallerLineSnapshot = {
   id: string;
   room: string;
@@ -39,11 +49,32 @@ export type InstallerFormRow = {
   accepted: boolean;
   signer_name: string | null;
   signed_at: string | null;
+  meta?: Record<string, unknown>;
 };
 
-export type InstallerFormPublic = Omit<InstallerFormRow, "line_snapshot"> & {
+export type InstallerFormPublic = Omit<
+  InstallerFormRow,
+  "line_snapshot" | "cod_original" | "cod_adjusted" | "cod_withheld" | "meta"
+> & {
   lines: Array<Omit<InstallerLineSnapshot, "lineTotal">>;
+  workflow: InstallerWorkflow;
 };
+
+const INSTALLER_OUTCOMES = new Set<InstallerOutcome>([
+  "completed",
+  "partially_completed",
+  "incomplete",
+]);
+const INSTALLER_REASON_CODES = new Set([
+  "",
+  "missing_product",
+  "damaged_product",
+  "wrong_product",
+  "fit_or_measurement",
+  "site_access",
+  "customer_request",
+  "other",
+]);
 
 function money(value: unknown) {
   return Number(Number(value || 0).toFixed(2));
@@ -182,16 +213,32 @@ export async function loadInstallerFormByToken(supabase: SupabaseClient, token: 
   const { data } = await supabase.from("crm_installer_forms").select("*").eq("public_token", token).maybeSingle();
   if (!data) return null;
   const form = data as InstallerFormRow;
+  const {
+    line_snapshot: lineSnapshot,
+    cod_original: _codOriginal,
+    cod_adjusted: _codAdjusted,
+    cod_withheld: _codWithheld,
+    meta: _meta,
+    ...publicForm
+  } = form;
   return {
-    ...form,
-    lines: (form.line_snapshot || []).map(({ lineTotal: _lineTotal, ...line }) => line),
+    ...publicForm,
+    lines: (lineSnapshot || []).map(({ lineTotal: _lineTotal, ...line }) => line),
+    workflow: installerWorkflowFromMeta(form),
   };
 }
 
 export async function submitInstallerForm(
   supabase: SupabaseClient,
   token: string,
-  input: { accepted?: unknown; signerName?: unknown; issues?: unknown },
+  input: {
+    accepted?: unknown;
+    signerName?: unknown;
+    issues?: unknown;
+    outcome?: unknown;
+    reasonCode?: unknown;
+    notes?: unknown;
+  },
 ) {
   const { data } = await supabase.from("crm_installer_forms").select("*").eq("public_token", token).maybeSingle();
   if (!data) throw new CrmAuthError(404, "Installer form was not found.");
@@ -211,9 +258,54 @@ export async function submitInstallerForm(
     if (notInstalled || details) issuesByLine.set(lineId, { lineId, notInstalled, details });
   });
   const issues = [...issuesByLine.values()];
+  const outcome = normalizeInstallerOutcome(input.outcome, issues);
+  const reasonCode = String(input.reasonCode || "").trim();
+  const notes = String(input.notes || "").trim().slice(0, 4000);
+  if (!INSTALLER_REASON_CODES.has(reasonCode)) {
+    throw new CrmAuthError(400, "Choose a valid incomplete-work reason.");
+  }
+  const hasNotInstalled = issues.some((issue) => issue.notInstalled);
+  if (outcome === "completed" && hasNotInstalled) {
+    throw new CrmAuthError(400, "A completed installation cannot include a not-installed line item.");
+  }
+  if (outcome === "partially_completed" && !hasNotInstalled) {
+    throw new CrmAuthError(400, "Mark at least one line item as not installed for a partially completed job.");
+  }
+  if (outcome === "incomplete" && !reasonCode && !notes && issues.length === 0) {
+    throw new CrmAuthError(400, "Add an incomplete-work reason, notes, or a line-item issue.");
+  }
   const { withheld, adjusted } = calculateInstallerCod(form.cod_original, form.line_snapshot, issues);
   const signedAt = new Date().toISOString();
-  const status = issues.some((issue) => issue.notInstalled) ? "partially_installed" : "completed";
+  const status = outcome === "completed" ? "completed" : "partially_installed";
+  const previousWorkflow = installerWorkflowFromMeta(form);
+  const revision = previousWorkflow.revision + 1;
+  const previousMeta = form.meta && typeof form.meta === "object" ? form.meta : {};
+  const previousHistory = Array.isArray(previousMeta.report_history)
+    ? previousMeta.report_history.slice(-19)
+    : [];
+  const meta = {
+    ...previousMeta,
+    schema: "805_installer_form_v2",
+    workflow: {
+      outcome,
+      reasonCode,
+      notes,
+      revision,
+      updatedAt: signedAt,
+    },
+    report_history: [
+      ...previousHistory,
+      {
+        outcome,
+        reasonCode,
+        notes,
+        signerName,
+        issues,
+        revision,
+        updatedAt: signedAt,
+      },
+    ],
+  };
   const { error } = await supabase.from("crm_installer_forms").update({
     status,
     issues,
@@ -222,6 +314,7 @@ export async function submitInstallerForm(
     accepted: true,
     signer_name: signerName,
     signed_at: signedAt,
+    meta,
   }).eq("id", form.id);
   if (error) throw new CrmAuthError(502, "The installation report could not be saved.");
 
@@ -231,15 +324,68 @@ export async function submitInstallerForm(
         return `${line?.room || "Window"}: ${issue.notInstalled ? "NOT INSTALLED" : "Issue noted"}${issue.details ? ` — ${issue.details}` : ""}`;
       }).join("\n")
     : "No installation issues reported.";
-  const subject = `${status === "completed" ? "Completed" : "Partial"} installation report — ${form.customer_snapshot.name}`;
-  const text = `${subject}\n\nInstaller: ${signerName}\nContract: ${form.customer_snapshot.quoteNumber || form.quote_id}\n\n${issueText}\n\nOriginal COD: $${money(form.cod_original).toFixed(2)}\nWithheld for incomplete line items: $${withheld.toFixed(2)}\nCOD to collect now: $${adjusted.toFixed(2)}\n\nOpen form: ${installerUrl(token)}`;
+  const outcomeLabel = installerOutcomeLabel(outcome);
+  const subject = `${previousWorkflow.revision ? "Updated" : "New"} ${outcomeLabel.toLowerCase()} installation report — ${form.customer_snapshot.name}`;
+  const workflowText = `Outcome: ${outcomeLabel}${reasonCode ? `\nReason: ${installerReasonLabel(reasonCode)}` : ""}${notes ? `\nTechnician notes: ${notes}` : ""}`;
+  const text = `${subject}\n\nInstaller: ${signerName}\nContract: ${form.customer_snapshot.quoteNumber || form.quote_id}\nRevision: ${revision}\n\n${workflowText}\n\n${issueText}\n\nOpen form: ${installerUrl(token)}`;
   const reportEmail = await sendEmail({
     to: INSTALLER_REPORT_RECIPIENT,
     subject,
     text,
-    html: `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>${html(subject)}</h1><p><strong>Installer:</strong> ${html(signerName)}<br><strong>Contract:</strong> ${html(form.customer_snapshot.quoteNumber || form.quote_id)}</p><pre style="font:14px/1.5 Arial,sans-serif;white-space:pre-wrap">${html(issueText)}</pre><p><strong>Original COD:</strong> $${money(form.cod_original).toFixed(2)}<br><strong>Withheld:</strong> $${withheld.toFixed(2)}<br><strong>COD to collect now:</strong> $${adjusted.toFixed(2)}</p><p><a href="${html(installerUrl(token))}">Open installation form</a></p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>${html(subject)}</h1><p><strong>Installer:</strong> ${html(signerName)}<br><strong>Contract:</strong> ${html(form.customer_snapshot.quoteNumber || form.quote_id)}<br><strong>Revision:</strong> ${revision}</p><pre style="font:14px/1.5 Arial,sans-serif;white-space:pre-wrap">${html(workflowText)}\n\n${html(issueText)}</pre><p><a href="${html(installerUrl(token))}">Open installation form</a></p></div>`,
   });
-  return { status, codOriginal: money(form.cod_original), codWithheld: withheld, codAdjusted: adjusted, reportEmail };
+  return {
+    status,
+    outcome,
+    savedAt: signedAt,
+    revision,
+    reportEmail: { sent: reportEmail.sent },
+  };
+}
+
+export function installerWorkflowFromMeta(form: Pick<InstallerFormRow, "status" | "issues" | "meta">): InstallerWorkflow {
+  const meta = form.meta && typeof form.meta === "object" ? form.meta : {};
+  const workflow = meta.workflow && typeof meta.workflow === "object"
+    ? meta.workflow as Record<string, unknown>
+    : {};
+  const fallbackOutcome: InstallerOutcome = form.status === "partially_installed"
+    ? form.issues?.some((issue) => issue.notInstalled)
+      ? "partially_completed"
+      : "incomplete"
+    : "completed";
+  const candidate = String(workflow.outcome || "");
+  return {
+    outcome: INSTALLER_OUTCOMES.has(candidate as InstallerOutcome)
+      ? candidate as InstallerOutcome
+      : fallbackOutcome,
+    reasonCode: INSTALLER_REASON_CODES.has(String(workflow.reasonCode || ""))
+      ? String(workflow.reasonCode || "")
+      : "",
+    notes: String(workflow.notes || "").slice(0, 4000),
+    revision: Math.max(0, Number.isSafeInteger(Number(workflow.revision)) ? Number(workflow.revision) : 0),
+    updatedAt: typeof workflow.updatedAt === "string" ? workflow.updatedAt : null,
+  };
+}
+
+function normalizeInstallerOutcome(
+  value: unknown,
+  issues: Array<{ notInstalled: boolean }>,
+): InstallerOutcome {
+  const candidate = String(value || "");
+  if (INSTALLER_OUTCOMES.has(candidate as InstallerOutcome)) {
+    return candidate as InstallerOutcome;
+  }
+  return issues.some((issue) => issue.notInstalled) ? "partially_completed" : "completed";
+}
+
+function installerOutcomeLabel(outcome: InstallerOutcome) {
+  if (outcome === "partially_completed") return "Partially completed";
+  if (outcome === "incomplete") return "Incomplete";
+  return "Completed";
+}
+
+function installerReasonLabel(reasonCode: string) {
+  return reasonCode.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function calculateInstallerCod(
@@ -256,8 +402,8 @@ export function calculateInstallerCod(
 export function buildInstallerFormEmail(form: InstallerFormRow, url: string) {
   const contract = form.customer_snapshot.quoteNumber ? `Contract ${form.customer_snapshot.quoteNumber}` : "Sold job";
   const subject = `805 Shutters Installation Form — ${form.customer_snapshot.name}`;
-  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the live form to report line-item issues, mark windows not installed, calculate the adjusted COD, and sign off:\n${url}\n\nA price-redacted PDF is attached.`;
-  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without line-item pricing.</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open installation form</a></p><p>Use the live form to identify an affected window, explain the issue, mark it not installed when applicable, calculate the COD adjustment, and complete installer sign-off.</p></div>`;
+  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached.`;
+  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without pricing.</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
   return { subject, text, html: body };
 }
 
@@ -290,9 +436,10 @@ export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
   write("I confirm that the installed items were reviewed with the customer and all exceptions are reported above.");
   write("Installer name/signature: __________________________________  Date: ______________");
   y -= 8;
-  write(`COD TO COLLECT: $${money(form.cod_original).toFixed(2)}`, 13, true);
-  write("For each line marked Not installed, withhold 50% of that line item's value. The live form calculates the adjusted COD.");
-  write(`Complete and report issues: ${url}`, 8);
+  write("JOB OUTCOME: [ ] Complete  [ ] Partially complete  [ ] Incomplete", 10, true);
+  write("Incomplete reason: __________________________________________________________");
+  write("Technician notes: ___________________________________________________________");
+  write(`Open the editable technician workflow: ${url}`, 8);
 
   const objects: string[] = [];
   const pageIds = pages.map((_, index) => 5 + index * 2);

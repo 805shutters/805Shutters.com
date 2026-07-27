@@ -10,6 +10,7 @@ describe("installer form sold-path delivery", () => {
   const installerForms = source("./installer-forms.ts");
   const publicQuote = source("./public-quote.ts");
   const salesQuoteSend = source("./sales-quote-send.ts");
+  const installerClient = source("../../app/installer-form/[token]/InstallerFormClient.tsx");
 
   it("uses one form and one provider idempotency key per sold quote", () => {
     expect(installerForms).toContain('.eq("quote_id", quoteId)');
@@ -28,5 +29,14 @@ describe("installer form sold-path delivery", () => {
     expect(publicQuote.match(/createAndSendInstallerForm\(supabase,/g)).toHaveLength(2);
     expect(publicQuote).toContain("quote_signed_retry");
     expect(salesQuoteSend).toContain("const installerForm = await createAndSendInstallerForm");
+  });
+
+  it("keeps the token workflow editable and customer pricing out of the public client", () => {
+    expect(installerForms).toContain('"cod_original" | "cod_adjusted" | "cod_withheld"');
+    expect(installerForms).toContain("report_history");
+    expect(installerClient).toContain("Save report update");
+    expect(installerClient).not.toContain("form.cod_original");
+    expect(installerClient).not.toContain("codAdjusted");
+    expect(installerClient).not.toContain("codWithheld");
   });
 });
