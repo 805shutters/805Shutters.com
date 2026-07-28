@@ -22,6 +22,7 @@
     "audit:ai-crawlers": "python3 scripts/analyze_ai_crawler_activity.py --output reports/ai-crawler-activity.md --json reports/ai-crawler-activity.json",
     "indexnow:submit": "python3 scripts/submit_indexnow.py --base-url https://www.805shutters.com",
     "migration:inventory": "python3 scripts/generate_migration_inventory.py",
+    "audit:quote-v1-preservation": "node scripts/audit-quote-v1-preservation.mjs",
     "orders:norman:next": "node scripts/run-norman-roller-order-draft.mjs",
     "orders:norman:bridge": "node scripts/run-norman-roller-order-draft.mjs --serve",
     "hermes:crm-feedback:once": "node scripts/hermes-805-crm-feedback-worker.mjs",
