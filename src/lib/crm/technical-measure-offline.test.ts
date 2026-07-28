@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   applyOfflineTechnicalMeasureDraft,
+  reconcileTechnicalMeasureDraftResponse,
   technicalMeasureQueuePlan,
   type OfflineMeasureQueueEntry,
 } from "./technical-measure-offline";
@@ -62,6 +63,49 @@ describe("technical measure offline queue", () => {
     });
 
     expect(restored.lines[0].current_values).toEqual(currentValues);
+  });
+
+  it("does not let an older autosave response replace a newer measurement", () => {
+    const currentValues = {
+      design_id: "design-1",
+      room: "Office",
+      opening_label: "A",
+      width_in: null,
+      height_in: null,
+      quantity: 1,
+      notes: "",
+      product_id: "roller",
+      program_id: "soluna",
+      fabric: "White",
+      details: {},
+      motorization: [],
+      surcharges: [],
+      discount_percent: 0,
+    };
+    const serverForm = {
+      id: "form-1",
+      lines: [{ id: "line-1", current_values: { ...currentValues, width_in: 42 } }],
+    } as unknown as TechnicalMeasureForm;
+    const sentDraft = {
+      lines: [{ id: "line-1", currentValues: { ...currentValues, width_in: 42 } }],
+    };
+    const latestDraft = {
+      lines: [{
+        id: "line-1",
+        currentValues: { ...currentValues, width_in: 42.125, height_in: 106 },
+      }],
+    };
+
+    const reconciled = reconcileTechnicalMeasureDraftResponse(
+      serverForm,
+      sentDraft,
+      latestDraft,
+    );
+
+    expect(reconciled.hasNewerDraft).toBe(true);
+    expect(reconciled.form.lines[0].current_values).toEqual(
+      latestDraft.lines[0].currentValues,
+    );
   });
 
   it("ships a navigation shell for offline list and individual measure routes", () => {

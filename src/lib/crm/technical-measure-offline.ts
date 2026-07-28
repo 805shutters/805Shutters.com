@@ -138,6 +138,13 @@ export function technicalMeasureDraftPayload(
   return { lines: lines.map((line) => ({ id: line.id, currentValues: line.current_values })) };
 }
 
+export function technicalMeasureDraftsMatch(
+  left: OfflineMeasureDraftPayload,
+  right: OfflineMeasureDraftPayload,
+) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function applyOfflineTechnicalMeasureDraft(
   form: TechnicalMeasureForm,
   draft: OfflineMeasureDraftPayload | null,
@@ -150,6 +157,20 @@ export function applyOfflineTechnicalMeasureDraft(
       const currentValues = currentById.get(line.id);
       return currentValues ? { ...line, current_values: currentValues } : line;
     }),
+  };
+}
+
+export function reconcileTechnicalMeasureDraftResponse(
+  serverForm: TechnicalMeasureForm,
+  sentDraft: OfflineMeasureDraftPayload,
+  latestDraft: OfflineMeasureDraftPayload,
+) {
+  const hasNewerDraft = !technicalMeasureDraftsMatch(sentDraft, latestDraft);
+  return {
+    form: hasNewerDraft
+      ? applyOfflineTechnicalMeasureDraft(serverForm, latestDraft)
+      : serverForm,
+    hasNewerDraft,
   };
 }
 
@@ -243,6 +264,43 @@ export async function flushTechnicalMeasureQueue(
   for (const entry of await queuedTechnicalMeasureOperations(owner)) {
     try {
       const form = await send(entry);
+      const queueKey = recordKey(owner, `${entry.formId}:${entry.operation}`);
+      const currentEntry = await withStore<OfflineMeasureQueueEntry | undefined>(
+        "queue",
+        "readonly",
+        (store) => store.get(queueKey),
+      );
+      const queuedEntryChanged = Boolean(
+        currentEntry
+        && (
+          currentEntry.updatedAt !== entry.updatedAt
+          || JSON.stringify(currentEntry.payload) !== JSON.stringify(entry.payload)
+        ),
+      );
+      const currentDraft = entry.operation === "draft"
+        ? await getRecord<OfflineMeasureDraftPayload>("drafts", recordKey(owner, entry.formId))
+        : undefined;
+      const draftChanged = Boolean(
+        entry.operation === "draft"
+        && currentDraft
+        && !technicalMeasureDraftsMatch(
+          entry.payload as OfflineMeasureDraftPayload,
+          currentDraft.value,
+        ),
+      );
+
+      if (queuedEntryChanged || draftChanged) {
+        await cacheTechnicalMeasureForm(
+          owner,
+          currentDraft
+            ? applyOfflineTechnicalMeasureDraft(form, currentDraft.value)
+            : form,
+        );
+        // A newer local edit arrived while this request was in flight. Keep it
+        // queued, and never advance a pending submission past that newer draft.
+        break;
+      }
+
       await cacheTechnicalMeasureForm(owner, form);
       await removeQueuedTechnicalMeasureOperation(owner, entry.formId, entry.operation);
       if (entry.operation === "draft") await deleteRecord("drafts", recordKey(owner, entry.formId));

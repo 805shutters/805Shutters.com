@@ -30,6 +30,11 @@ import { PortalContainerContext } from "@mts/lib/portal-container";
 import { NormanRollerMeasureFields, NORMAN_ROLLER_MEASURE_DETAIL_KEYS } from "@/components/crm/NormanRollerMeasureFields";
 import { ManufacturerTechnicalMeasureFields } from "@/components/crm/ManufacturerTechnicalMeasureFields";
 import {
+  compactTechnicalMeasureCompletionSummary,
+  technicalMeasureCompletionIssues,
+  type TechnicalMeasureCompletionIssue,
+} from "@/lib/crm/technical-measure-completion";
+import {
   applyOfflineTechnicalMeasureDraft,
   cacheTechnicalMeasureDraft,
   cacheTechnicalMeasureForm,
@@ -44,6 +49,7 @@ import {
   removeCachedTechnicalMeasureDraft,
   removeQueuedTechnicalMeasureOperation,
   queuedTechnicalMeasureOperations,
+  reconcileTechnicalMeasureDraftResponse,
   technicalMeasureDraftPayload,
   type OfflineMeasureQueueEntry,
 } from "@/lib/crm/technical-measure-offline";
@@ -368,10 +374,11 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [futurePicker, setFuturePicker] = useState<MeasurementStep | null>(null);
   const [offlineMode, setOfflineMode] = useState(false);
   const [pendingSync, setPendingSync] = useState(false);
+  const [completionIssues, setCompletionIssues] = useState<TechnicalMeasureCompletionIssue[]>([]);
   const hydratedRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncedPayloadRef = useRef("");
-  const syncInFlightRef = useRef(false);
+  const draftSyncPromiseRef = useRef<Promise<{ form: TechnicalMeasureForm; queued: boolean }> | null>(null);
   const linesRef = useRef<EditableLine[]>([]);
 
   useEffect(() => {
@@ -443,13 +450,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     setPendingSync(true);
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
     autosaveTimerRef.current = setTimeout(() => {
-      if (syncInFlightRef.current) return;
-      syncInFlightRef.current = true;
-      void saveDraft(lines).then((result) => {
-        if (!result.queued) lastSyncedPayloadRef.current = serialized;
-      }).finally(() => {
-        syncInFlightRef.current = false;
-      });
+      void flushLatestDraft();
     }, 700);
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
@@ -516,6 +517,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   }, [session?.access_token, formId]);
 
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
+    setMessage(null);
+    setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
       const next = current.map((line) => line.id === lineId ? { ...line, current_values: { ...line.current_values, ...patch } } : line);
       linesRef.current = next;
@@ -524,6 +527,8 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   }
 
   function updateDetail(lineId: string, key: string, value: string | boolean) {
+    setMessage(null);
+    setCompletionIssues((current) => current.filter((issue) => issue.lineId !== lineId));
     setLines((current) => {
       const next = current.map((line) => line.id === lineId ? {
         ...line,
@@ -534,7 +539,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     });
   }
 
-  async function saveDraft(sourceLines = linesRef.current) {
+  async function persistDraftOnce(sourceLines: EditableLine[]) {
     if (!form) throw new Error("Technical measure is unavailable.");
     const activeOwner = owner();
     const payload = technicalMeasureDraftPayload(sourceLines);
@@ -543,13 +548,32 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       await queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload);
       setOfflineMode(true);
       setPendingSync(true);
-      return { form: applyOfflineTechnicalMeasureDraft(form, payload), queued: true };
+      return {
+        form: applyOfflineTechnicalMeasureDraft(form, payload),
+        queued: true,
+        superseded: false,
+      };
     }
     try {
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}`, {
         method: "PATCH",
         body: JSON.stringify(payload),
       });
+      const latestLines = linesRef.current;
+      const latestPayload = technicalMeasureDraftPayload(latestLines);
+      const reconciled = reconcileTechnicalMeasureDraftResponse(
+        result.form,
+        payload,
+        latestPayload,
+      );
+      if (reconciled.hasNewerDraft) {
+        await Promise.all([
+          cacheTechnicalMeasureDraft(activeOwner, result.form, latestLines),
+          queueTechnicalMeasureOperation(activeOwner, formId, "draft", latestPayload),
+        ]);
+        setPendingSync(true);
+        return { form: reconciled.form, queued: false, superseded: true };
+      }
       hydrate(result.form, false);
       await Promise.all([
         cacheTechnicalMeasureForm(activeOwner, result.form),
@@ -557,20 +581,50 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         removeCachedTechnicalMeasureDraft(activeOwner, formId),
       ]);
       setPendingSync(false);
-      return { form: result.form, queued: false };
+      return { form: result.form, queued: false, superseded: false };
     } catch (error) {
       if (!shouldQueueCrmError(error)) throw error;
       await queueTechnicalMeasureOperation(activeOwner, formId, "draft", payload);
       setOfflineMode(true);
       setPendingSync(true);
-      return { form: applyOfflineTechnicalMeasureDraft(form, payload), queued: true };
+      return {
+        form: applyOfflineTechnicalMeasureDraft(form, payload),
+        queued: true,
+        superseded: false,
+      };
+    }
+  }
+
+  async function flushLatestDraft() {
+    if (draftSyncPromiseRef.current) return draftSyncPromiseRef.current;
+
+    const pending = (async () => {
+      while (true) {
+        const sourceLines = linesRef.current;
+        const serialized = JSON.stringify(technicalMeasureDraftPayload(sourceLines));
+        const result = await persistDraftOnce(sourceLines);
+        if (result.queued) return { form: result.form, queued: true };
+        if (!result.superseded) {
+          lastSyncedPayloadRef.current = serialized;
+          return { form: result.form, queued: false };
+        }
+        // The technician changed another measurement while the request was in
+        // flight. Immediately persist the newest snapshot instead of letting
+        // the older response reset the form.
+      }
+    })();
+    draftSyncPromiseRef.current = pending;
+    try {
+      return await pending;
+    } finally {
+      if (draftSyncPromiseRef.current === pending) draftSyncPromiseRef.current = null;
     }
   }
 
   async function handleSave() {
     setBusy(true); setMessage(null);
     try {
-      const saved = await saveDraft();
+      const saved = await flushLatestDraft();
       setMessage(saved.queued ? "Saved on this phone · it will upload automatically when service returns." : "Technical measure draft saved.");
     }
     catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be saved."); }
@@ -581,7 +635,14 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     if (!form) return;
     setBusy(true); setMessage(null);
     try {
-      const saved = await saveDraft();
+      const saved = await flushLatestDraft();
+      const issues = technicalMeasureCompletionIssues(saved.form);
+      setCompletionIssues(issues);
+      if (issues.length) {
+        setActiveLineIndex(issues[0].lineIndex);
+        setMessage(compactTechnicalMeasureCompletionSummary(issues));
+        return;
+      }
       if (saved.form.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
         setMeasureStarted(false);
@@ -619,7 +680,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     if (!session) return;
     setBusy(true); setMessage(null);
     try {
-      await saveDraft();
+      await flushLatestDraft();
       const result = await crmFetch<{ form: TechnicalMeasureForm; email: { sent: boolean; error?: string; skipped?: string } }>(session, `/api/crm/technical-measures/${formId}/sign`, {
         method: "POST",
         body: JSON.stringify({ acknowledged, signerName, signatureStrokes: signature }),
@@ -799,7 +860,6 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </> : null}
 
       {measureStarted ? <section className="technical-measure-lines technical-measure-workspace">
-        {message ? <div className="technical-measure-alert technical-measure-alert--active" role="status">{message}</div> : null}
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
@@ -825,14 +885,34 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           const priorityDetailKeys: readonly string[] = shutterProduct ? SHUTTER_MEASURE_PRIORITY_KEYS : SHADE_MEASURE_PRIORITY_KEYS;
           const detailKeys = Array.from(new Set([...Object.keys(baseline.details), ...Object.keys(current.details)]))
             .filter((key) => (!normanRoller || !NORMAN_ROLLER_MEASURE_DETAIL_KEYS.has(key)) && !priorityDetailKeys.includes(key) && !HEADER_DETAIL_KEYS.has(key));
+          const lineCompletionIssues = completionIssues.filter((issue) => issue.lineId === line.id);
           return (
             <article className={`technical-measure-line${index === activeLineIndex ? " technical-measure-line--active" : " technical-measure-line--inactive"}`} key={line.id}>
-              <div className="technical-measure-line-head">
-                <div>
-                  <span>Line {index + 1} of {lines.length}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span>
-                  <div className="technical-measure-line-meta"><strong>{money(line.current_unit_price)} each</strong><b>{productLabel(current.product_id)}{supplier ? ` (${supplier})` : ""}</b></div>
+              <div className="technical-measure-line-top">
+                <div className="technical-measure-line-head">
+                  <div>
+                    <span>Line {index + 1} of {lines.length}{isExpandedWindow ? ` · Window ${line.source_quantity_index} of ${line.source_quantity}` : ""}</span>
+                    <div className="technical-measure-line-meta"><strong>{money(line.current_unit_price)} each</strong><b>{productLabel(current.product_id)}{supplier ? ` (${supplier})` : ""}</b></div>
+                  </div>
+                  <button type="button" aria-label="Return to customer summary" onClick={() => setMeasureStarted(false)}><X /></button>
                 </div>
-                <button type="button" aria-label="Return to customer summary" onClick={() => setMeasureStarted(false)}><X /></button>
+                {(message || lineCompletionIssues.length) ? (
+                  <div className="technical-measure-alert technical-measure-alert--active" role={lineCompletionIssues.length ? "alert" : "status"}>
+                    {lineCompletionIssues.length ? (
+                      <>
+                        <strong>Finish this line</strong>
+                        <ul>
+                          {lineCompletionIssues.map((issue) => (
+                            <li key={`${issue.lineId}-${issue.field}`}>
+                              <b>{issue.label}:</b> {issue.instruction}
+                            </li>
+                          ))}
+                        </ul>
+                        {message ? <small>{message}</small> : null}
+                      </>
+                    ) : message}
+                  </div>
+                ) : null}
               </div>
               <div className="technical-measure-opening-row technical-measure-opening-row--priority">
                   <div className={`technical-measure-choice-field ${changed(baseline.room, current.room) ? "changed" : ""}`}>
@@ -955,7 +1035,6 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
           );
         })}
       </section> : null}
-      {measureStarted && message && !submitSuccess ? <div className="technical-measure-alert technical-measure-alert--active" role="alert">{message}</div> : null}
 
       {!measureStarted && form.requiresAddendum && !readOnly ? (
         <section id="technical-measure-addendum" className="technical-measure-addendum">

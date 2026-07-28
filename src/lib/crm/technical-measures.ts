@@ -25,8 +25,12 @@ import {
   resolveManufacturerTechnicalMeasureSchema,
   type ManufacturerTechnicalMeasureSchema,
 } from "@/lib/crm/vendor-orders/manufacturer-technical-measure-schemas";
-import { detectOrderFormManufacturer } from "@/lib/crm/vendor-orders/manufacturer-order-form-registry";
 import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
+import {
+  compactTechnicalMeasureCompletionSummary,
+  technicalMeasureCompletionIssues,
+  type TechnicalMeasureCompletionIssue,
+} from "@/lib/crm/technical-measure-completion";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -937,45 +941,29 @@ export async function signTechnicalMeasureAddendum(
 }
 
 async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
-  const releaseIssues = form.lines.flatMap((line, index) => {
-    const values = line.current_values;
-    const label = `Line ${index + 1} (${values.room || "Window"})`;
-    const issues: string[] = [];
-    if (!values.width_in) issues.push(`${label}: width`);
-    if (!values.height_in) issues.push(`${label}: height`);
-    const manufacturer = detectOrderFormManufacturer({
-      product_id: values.product_id,
-      program_id: values.program_id,
-      details: values.details,
-    });
-    if (!line.measure_schema) {
-      issues.push(`${label}: exact ${manufacturer || "manufacturer"} product/program`);
-    }
-    for (const field of line.measure_schema?.fields.filter((item) => item.required) || []) {
-      const value = values.details[field.key];
-      const answered = typeof value === "boolean"
-        ? true
-        : typeof value === "number"
-          ? Number.isFinite(value)
-          : text(value).length > 0;
-      if (!answered) issues.push(`${label}: ${field.label}`);
-    }
-    return issues;
-  });
-  if (releaseIssues.length) {
-    const visible = releaseIssues.slice(0, 8);
-    throw new CrmAuthError(
-      409,
-      `Complete the product-specific measure before submitting: ${visible.join(", ")}${releaseIssues.length > visible.length ? `, plus ${releaseIssues.length - visible.length} more` : ""}.`,
-    );
-  }
+  const completionIssues = technicalMeasureCompletionIssues(form);
   const normanIssues = validateNormanRollerMeasureForSubmission(form);
-  if (normanIssues.length) {
-    const fields = Array.from(new Set(normanIssues.map((issue) => issue.field))).slice(0, 8);
-    const remaining = Math.max(0, new Set(normanIssues.map((issue) => issue.field)).size - fields.length);
+  const knownIssueKeys = new Set(completionIssues.map((issue) => `${issue.lineId}:${issue.field}`));
+  for (const issue of normanIssues) {
+    if (!issue.lineId) continue;
+    const lineIndex = form.lines.findIndex((line) => line.id === issue.lineId);
+    if (lineIndex < 0 || knownIssueKeys.has(`${issue.lineId}:${issue.field}`)) continue;
+    const line = form.lines[lineIndex];
+    completionIssues.push({
+      lineId: issue.lineId,
+      lineIndex,
+      lineNumber: lineIndex + 1,
+      room: line.current_values.room || "Window",
+      field: issue.field,
+      label: issue.field.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
+      instruction: issue.message,
+    } satisfies TechnicalMeasureCompletionIssue);
+    knownIssueKeys.add(`${issue.lineId}:${issue.field}`);
+  }
+  if (completionIssues.length) {
     throw new CrmAuthError(
       409,
-      `Complete Norman ordering details before submitting: ${fields.join(", ")}${remaining ? `, plus ${remaining} more` : ""}.`,
+      compactTechnicalMeasureCompletionSummary(completionIssues),
     );
   }
   const submittedAt = new Date().toISOString();
