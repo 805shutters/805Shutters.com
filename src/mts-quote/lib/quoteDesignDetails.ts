@@ -68,12 +68,7 @@ export function getQuoteDesignDetails(design: SalesQuoteDesign): QuoteDesignDeta
 
   const options = design.options_json || {};
   const fabricColor = formatFabricColorDetail(options);
-  if (fabricColor) {
-    details.push({
-      label: design.product_type === "Mini Blinds" ? "Color" : "Fabric Color",
-      value: fabricColor,
-    });
-  }
+  if (fabricColor) details.push({ label: "Fabric Color", value: fabricColor });
 
   Object.entries(options).forEach(([key, value]) => {
     if (!hasValue(value) || INTERNAL_OPTION_KEYS.has(key)) return;

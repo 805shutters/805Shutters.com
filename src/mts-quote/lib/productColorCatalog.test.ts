@@ -15,7 +15,6 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(getMtsProductColorRows("Sheer Shades")).toHaveLength(32);
     expect(getMtsProductColorRows("Smart Drapes")).toHaveLength(74);
     expect(getMtsProductColorRows("Vertical Blinds")).toHaveLength(42);
-    expect(getMtsProductColorRows("Mini Blinds")).toHaveLength(33);
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "SmartPrivacy" })).toHaveLength(16);
     expect(getMtsProductColorRows("Faux Wood Blinds", { product_line: "Ultimate" })).toHaveLength(16);
     expect(getMtsProductColorRows("Wood Blinds")).toHaveLength(26);
@@ -63,12 +62,6 @@ describe("MTS Norman product color catalog adapter", () => {
       collection: "Classic",
       colorCode: "8071",
     });
-    expect(searchMtsProductColors("Mini Blinds", { slat_size: '2"' }, "7020")[0]).toMatchObject({
-      productId: "citylights_aluminum",
-      colorCode: "7020",
-      colorName: "Ivory",
-    });
-    expect(searchMtsProductColors("Mini Blinds", { slat_size: '1"' }, "7020")).toHaveLength(0);
     expect(searchMtsProductColors("Faux Wood Blinds", { product_line: "Ultimate" }, "E008")[0]).toMatchObject({
       productId: "faux_wood",
       colorCode: "E008",
@@ -85,7 +78,6 @@ describe("MTS Norman product color catalog adapter", () => {
     expect(supportsMtsProductColorSearch("Roman Shades", "json:roman_fabric_category")).toBe(false);
     expect(supportsMtsProductColorSearch("Roller Shades", "fabric")).toBe(false);
     expect(supportsMtsProductColorSearch("Faux Wood Blinds", "json:color")).toBe(true);
-    expect(supportsMtsProductColorSearch("Mini Blinds", "json:color")).toBe(true);
     expect(supportsMtsProductColorSearch("Faux Wood Blinds", "json:product_line")).toBe(false);
     expect(supportsMtsProductColorSearch("Vertical Blinds", "json:vertical_color")).toBe(true);
     expect(supportsMtsProductColorSearch("Vertical Blinds", "json:fabric_group")).toBe(false);
@@ -100,7 +92,6 @@ describe("MTS Norman product color pricing routes", () => {
       ["Sheer Shades", {}],
       ["Smart Drapes", {}],
       ["Vertical Blinds", {}],
-      ["Mini Blinds", {}],
       ["Faux Wood Blinds", { product_line: "SmartPrivacy" }],
       ["Faux Wood Blinds", { product_line: "Ultimate" }],
       ["Wood Blinds", {}],
@@ -137,58 +128,9 @@ describe("MTS Norman product color pricing routes", () => {
       "ultimate"
     );
     expect(getMtsGridKeyForCatalogProgram("Wood Blinds", "wood_blinds_2in_and_2_1_2in_slats")).toBe("ultimate");
-    expect(
-      getMtsGridKeyForCatalogProgram(
-        "Mini Blinds",
-        "citylights_aluminum_1in_slats_cordless_pgusa"
-      )
-    ).toBe("citylights_aluminum");
   });
 
   it("prices selected catalog rows through their catalog program instead of the visible label", () => {
-    expect(
-      getProductPriceBreakdown({
-        productType: "Mini Blinds",
-        width: 25,
-        height: 43,
-        slatSize: '1"',
-        catalogProgramId: "citylights_aluminum_1in_slats_cordless_pgusa",
-      })
-    ).toMatchObject({
-      price: 273,
-      gridKey: "citylights_aluminum",
-      matchedWidth: 28,
-      matchedHeight: 48,
-      pricingMethod: "grid",
-    });
-
-    expect(
-      getProductPriceBreakdown({
-        productType: "Mini Blinds",
-        width: 79,
-        height: 42,
-        slatSize: '1"',
-      })
-    ).toMatchObject({ price: null, pricingMethod: "grid" });
-
-    expect(
-      getProductPriceBreakdown({
-        productType: "Mini Blinds",
-        width: 79,
-        height: 42,
-        slatSize: '2"',
-      })
-    ).toMatchObject({ price: 435, matchedWidth: 84, matchedHeight: 42 });
-
-    expect(
-      getProductPriceBreakdown({
-        productType: "Mini Blinds",
-        width: 96,
-        height: 90,
-        slatSize: '2"',
-      })
-    ).toMatchObject({ price: null, pricingMethod: "grid" });
-
     expect(
       getProductPriceBreakdown({
         productType: "Roman Shades",

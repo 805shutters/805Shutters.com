@@ -13,11 +13,9 @@ describe("CRM customer contract route", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
   });
 
-  it("opens every CRM quote in the unchanged original builder or contract", () => {
-    expect(source).toContain('if (tab === "contract") {');
-    expect(source).toContain("void openQuoteContract(quoteId)");
-    expect(source).toContain("setBuilderQuoteId(quoteId)");
-    expect(source).not.toContain("setQuoteWorkspaceOpenRequest");
+  it("opens historical CRM quotes in the unchanged original builder", () => {
+    expect(source).toContain('if (tab === "contract") void openQuoteContract(quoteId)');
+    expect(source).toContain("else setBuilderQuoteId(quoteId)");
     expect(source).not.toContain("readOnlyLegacyQuoteId");
     expect(source).not.toContain("Historical quote opened read-only");
   });

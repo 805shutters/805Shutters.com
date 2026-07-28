@@ -1232,7 +1232,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
 });
 
 describe("portal parity AFTER stale-price and privacy boundaries", () => {
-  it("keeps the source-backed Roller shim selectable in the active existing UI", () => {
+  it("keeps the post-July-10 Roller shim out of the restored active UI", () => {
     const designCardSource = readFileSync(
       path.join(
         root,
@@ -1240,7 +1240,7 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
       ),
       "utf8",
     );
-    expect(designCardSource).toMatch(
+    expect(designCardSource).not.toMatch(
       /key:\s*"shim"[\s\S]{0,160}label:\s*"Shim"[\s\S]{0,160}field:\s*"json:shim"/,
     );
   });

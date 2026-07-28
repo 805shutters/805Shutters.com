@@ -11,13 +11,6 @@ import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { Label } from "@mts/components/ui/label";
 import { Switch } from "@mts/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@mts/components/ui/dialog";
-import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -34,7 +27,6 @@ import {
   Pencil,
   User,
   Mail,
-  MessageSquareText,
   Phone,
   MapPin,
   Eye,
@@ -53,7 +45,6 @@ import {
   calculateQuoteDesignSubtotal,
   calculateQuoteTotalBreakdown,
   buildQuoteInstallerNotesMeta,
-  getQuoteBuilderNote,
   getQuoteEmailNote,
   parseQuoteAdminControls,
   shouldPersistQuoteDesignSubtotal,
@@ -63,11 +54,11 @@ import {
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
 import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
+import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
+import { send805SoldQuoteNotification } from "@mts/lib/quoteSoldNotification";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
-
-type TechnicalMeasureDecision = "needed" | "not_needed";
 
 const paymentIcons: Record<string, typeof FileText> = {
   check: FileText,
@@ -103,7 +94,7 @@ const CONTRACT_HEADERS: Record<
   }
 > = {
   [ACCOUNT_IDS.SHUTTERS_805]: {
-    title: "Shutters - Shades - Blinds",
+    title: "805 SHUTTERS",
     phone: "(805) 806-9344",
     website: "805shutters.com",
     email: "805@805shutters.com",
@@ -122,7 +113,6 @@ export function QuoteContract() {
   const [editingInfo, setEditingInfo] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
-  const [showMeasurePrompt, setShowMeasurePrompt] = useState(false);
   const [adminControls, setAdminControls] = useState<QuoteAdminControls>({
     showExtras: false,
     showDiscount: false,
@@ -254,30 +244,33 @@ export function QuoteContract() {
 
   // Mark as sold
   const markAsSold = useMutation({
-    mutationFn: async (measureDecision: TechnicalMeasureDecision) => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
-      const response = await fetch(`/api/crm/sales-quotes/${activeQuoteId}/sold`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ measureDecision }),
-      });
-      const payload = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) throw new Error(payload.message || "The sold workflow failed.");
+    mutationFn: async () => {
+      const salesOwnerPatch =
+        quote?.account_id === ACCOUNT_IDS.SHUTTERS_805 && !quote.sales_owner
+          ? await getCurrentQuoteSalesOwnerPatch()
+          : null;
+      const { error } = await (supabase as any)
+        .from("sales_quotes")
+        .update({
+          status: "sold",
+          signed_at: new Date().toISOString(),
+          ...(salesOwnerPatch || {}),
+        })
+        .eq("id", activeQuoteId!);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      toast.success("Contract sold: CRM, bookkeeping, and notifications updated.");
-      setShowMeasurePrompt(false);
+      if (activeQuoteId) {
+        void send805SoldQuoteNotification({
+          supabaseClient: supabase as any,
+          quoteId: activeQuoteId,
+        }).catch((error: Error) => {
+          toast.error(error.message || "Quote marked sold, but sold SMS failed");
+        });
+      }
+      toast.success("Quote marked as sold! Customer card will be created.");
       setActiveTab("dashboard");
-    },
-    onError: (error: Error) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      toast.error(error.message || "The sold workflow failed.");
     },
   });
 
@@ -477,7 +470,6 @@ export function QuoteContract() {
   const depositAmount = totalAmount * 0.5;
   const balanceAmount = totalAmount - depositAmount;
   const customerEmailNote = quote ? getQuoteEmailNote(quote) : "";
-  const generalJobNote = quote ? getQuoteBuilderNote(quote) : "";
 
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
@@ -750,19 +742,11 @@ export function QuoteContract() {
                 />
               </div>
               <div className="col-span-full space-y-1">
-                <Label htmlFor="contract-general-job-notes">General Job Notes</Label>
-                <textarea
-                  id="contract-general-job-notes"
-                  defaultValue={generalJobNote}
-                  onBlur={(e) =>
-                    updateQuote.mutate({
-                      installer_notes: buildQuoteInstallerNotesMeta(quote, {
-                        __quoteBuilderNote: e.target.value.trim(),
-                      }),
-                    })
-                  }
-                  placeholder="Internal sales or ordering notes..."
-                  className="min-h-[88px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm text-gray-900 shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                <Label>Installer Notes</Label>
+                <Input
+                  defaultValue={quote.installer_notes || ""}
+                  onBlur={(e) => updateQuote.mutate({ installer_notes: e.target.value })}
+                  placeholder="Optional notes..."
                 />
               </div>
             </div>
@@ -796,17 +780,6 @@ export function QuoteContract() {
                   <p className="font-medium">{quote.customer_address || "—"}</p>
                 </div>
               </div>
-              {generalJobNote && (
-                <div className="flex items-start gap-2 md:col-span-2">
-                  <MessageSquareText className="h-4 w-4 mt-0.5 text-amber-700" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">General Job Notes</p>
-                    <p className="whitespace-pre-wrap text-sm font-medium text-amber-900">
-                      {generalJobNote}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </CardContent>
@@ -1313,16 +1286,12 @@ export function QuoteContract() {
 
         <Button
           size="lg"
-          onClick={() => setShowMeasurePrompt(true)}
-          disabled={markAsSold.isPending}
+          onClick={() => markAsSold.mutate()}
+          disabled={markAsSold.isPending || quote.status === "sold"}
           className="bg-emerald-600 hover:bg-emerald-700"
         >
           <CheckCircle2 className="h-5 w-5 mr-2" />
-          {markAsSold.isPending
-            ? "Running Sold Workflow..."
-            : quote.status === "sold"
-              ? "Complete Sold Workflow"
-              : "Mark as Sold"}
+          {quote.status === "sold" ? "Already Sold" : "Mark as Sold"}
         </Button>
       </div>
 
@@ -1331,43 +1300,6 @@ export function QuoteContract() {
         onClose={() => setShowSendDialog(false)}
         quote={quote}
       />
-
-      <Dialog open={showMeasurePrompt} onOpenChange={(open) => !markAsSold.isPending && setShowMeasurePrompt(open)}>
-        <DialogContent className="w-[calc(100vw-1rem)] max-w-[460px]">
-          <DialogHeader>
-            <DialogTitle>Technical measure?</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm leading-relaxed text-muted-foreground">
-            Choose one before finalizing this in-home sale.
-          </div>
-          <DialogFooter className="!grid gap-2 sm:!grid-cols-2">
-            <Button
-              type="button"
-              onClick={() => markAsSold.mutate("needed")}
-              disabled={markAsSold.isPending}
-              className="w-full bg-amber-600 text-white hover:bg-amber-700"
-            >
-              Measure Needed
-            </Button>
-            <Button
-              type="button"
-              onClick={() => markAsSold.mutate("not_needed")}
-              disabled={markAsSold.isPending}
-              className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a]"
-            >
-              No Measure Needed
-            </Button>
-          </DialogFooter>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setShowMeasurePrompt(false)}
-            disabled={markAsSold.isPending}
-          >
-            Cancel
-          </Button>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

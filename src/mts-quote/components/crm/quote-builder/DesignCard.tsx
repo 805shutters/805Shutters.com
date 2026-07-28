@@ -126,9 +126,6 @@ import {
   PERFECTSHEER_MOUNT_TYPES,
   PERFECTSHEER_LIGHT_CONTROL,
   PERFECTSHEER_LIFT_SYSTEMS,
-  MINI_BLIND_MOUNT_TYPES,
-  MINI_BLIND_SLAT_SIZES,
-  MINI_BLIND_FINISHES,
   FAUX_WOOD_MOUNT_TYPES,
   FAUX_WOOD_SLAT_SIZES,
   FAUX_WOOD_PRODUCT_LINES,
@@ -199,34 +196,17 @@ import { getHoneycombShadeSpecWarnings } from "@mts/lib/honeycombShadeSpecs";
 import { getRollerShadeSpecWarnings } from "@mts/lib/rollerShadeSpecs";
 import { getRomanShadeSpecWarnings } from "@mts/lib/romanShadeSpecs";
 import {
-  getMiniBlindAutomaticSurcharges,
-  getMiniBlindDefaultLightControl,
-  getMiniBlindFinishFromColor,
-  getMiniBlindLightControlOptions,
-  getMiniBlindSpecWarnings,
-} from "@mts/lib/miniBlindOptions";
-import {
   calculateDiscountedPrice,
   removeQuoteDesignDiscount,
   type QuoteDiscountPercent,
 } from "@mts/lib/quoteDiscounts";
-import {
-  getAutomaticShutterOptionSurcharges,
-  getInvisibleTiltPanelRate,
-  isInvisibleTiltPanelSelectionMissing,
-} from "@mts/lib/shutterOptionSurcharges";
-import {
-  PricingAuditPanel,
-  type PricingAuditSurcharge,
-} from "@mts/components/crm/quote-builder/PricingAuditPanel";
+import { getAutomaticShutterOptionSurcharges } from "@mts/lib/shutterOptionSurcharges";
 import {
   FAUX_WOOD_SURCHARGES,
   HONEYCOMB_SURCHARGES,
   MOTORIZATION_OPTIONS,
-  NORMAN_SHUTTER_PROGRAMS,
   ONYX_SHUTTER_FIXED_SURCHARGES,
   ONYX_SHUTTER_PERCENTAGE_SURCHARGES,
-  ONYX_SHUTTER_PROGRAMS,
   PERFECTSHEER_SURCHARGES,
   ROLLER_MOTORIZATION,
   ROLLER_SURCHARGES,
@@ -240,7 +220,6 @@ import {
   VERTICAL_SURCHARGES,
   WOOD_BLIND_SURCHARGES,
   type MotorOption,
-  type ShutterProgram,
   type Surcharge,
 } from "@mts/lib/pricingData";
 import { useRetailPriceStore } from "@mts/stores/retailPriceStore";
@@ -522,12 +501,6 @@ function getAutomaticOptionSurcharges(
 
   if (productType === "Shutters") {
     for (const surcharge of getAutomaticShutterOptionSurcharges(design, productType)) {
-      appendSurcharge(surcharges, surcharge);
-    }
-  }
-
-  if (productType === "Mini Blinds") {
-    for (const surcharge of getMiniBlindAutomaticSurcharges(opts)) {
       appendSurcharge(surcharges, surcharge);
     }
   }
@@ -1043,68 +1016,97 @@ function normalizeLineItemQuantity(value: unknown): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function getShutterProgramPricing(
-  supplier: string | null | undefined,
-  programName: string | undefined
-): ShutterProgram | null {
-  if (!supplier || !programName) return null;
-  const programs = supplier === "Onyx" ? ONYX_SHUTTER_PROGRAMS : NORMAN_SHUTTER_PROGRAMS;
-  return programs.find((program) => program.name === programName) ?? null;
-}
-
 function PriceExplanation({
   design,
   productType,
-  widthIn,
-  heightIn,
   rawSqft,
   sqft,
-  quantity,
-  currentRetailPerSqft,
 }: {
   design: SalesQuoteDesign | undefined;
   productType: string;
-  widthIn: number;
-  heightIn: number;
   rawSqft: number | null;
   sqft: number | null;
-  quantity: number;
-  currentRetailPerSqft: number | null;
 }) {
   const options = (design?.options_json as Record<string, unknown> | undefined) || {};
-  const automaticSurcharges = getAutomaticOptionSurcharges(productType, design, widthIn);
-  const automaticIds = new Set(automaticSurcharges.map((item) => item.id));
-  const selectedSurcharges = dedupeQuoteSurcharges([
-    ...automaticSurcharges,
-    ...getSelectedSurcharges(design),
-  ]);
-  const programName = getShutterProgramName(design);
-  const shutterProgram =
-    productType === "Shutters"
-      ? getShutterProgramPricing(design?.supplier, programName)
-      : null;
-  const auditSurcharges: PricingAuditSurcharge[] = selectedSurcharges.map((item) => ({
-    ...item,
-    automatic: automaticIds.has(item.id),
-  }));
+  const isManual = options.manual_price_override === true;
+  const hasStoredPricing =
+    options.base_price !== undefined ||
+    options.pricing_grid_width !== undefined ||
+    options.surcharge_total !== undefined ||
+    options.discount_percent !== undefined;
+  const hasPrice = Boolean(design && (hasStoredPricing || isManual || design.unit_price));
+
+  const gridWidth = Number(options.pricing_grid_width);
+  const gridHeight = Number(options.pricing_grid_height);
+  const hasGridMatch = Number.isFinite(gridWidth) && Number.isFinite(gridHeight);
+  const discountPercent = Number(options.discount_percent) || 0;
+  const surchargeTotal = Number(options.surcharge_total) || 0;
 
   return (
-    <PricingAuditPanel
-      productType={productType}
-      supplier={design?.supplier ?? null}
-      programName={programName ?? null}
-      widthIn={widthIn}
-      heightIn={heightIn}
-      rawSqft={rawSqft}
-      billableSqft={sqft}
-      quantity={quantity}
-      savedUnitPrice={Number(design?.unit_price) || 0}
-      options={options}
-      currentRetailPerSqft={currentRetailPerSqft}
-      wholesaleRate={shutterProgram?.wholesalePrice ?? null}
-      tariffPercent={shutterProgram?.tariff ?? 0}
-      surcharges={auditSurcharges}
-    />
+    <details className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+      <summary className="cursor-pointer font-semibold text-slate-900">Why this price?</summary>
+      <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+        <div>
+          <span className="font-semibold">Product:</span> {productType}
+        </div>
+        {!hasPrice && (
+          <div>
+            <span className="font-semibold">Status:</span> waiting for saved selections and measurements
+          </div>
+        )}
+        {isManual && (
+          <div>
+            <span className="font-semibold">Mode:</span> manual customer price
+          </div>
+        )}
+        {hasGridMatch && (
+          <div>
+            <span className="font-semibold">Grid cell:</span> {gridWidth}&quot; W x {gridHeight}
+            &quot; H
+          </div>
+        )}
+        {!!options.pricing_grid_key && (
+          <div>
+            <span className="font-semibold">Grid:</span> {String(options.pricing_grid_key)}
+          </div>
+        )}
+        {options.pricing_grid_price !== undefined && (
+          <div>
+            <span className="font-semibold">Grid price:</span>{" "}
+            {formatMoney(options.pricing_grid_price)}
+          </div>
+        )}
+        {options.base_price !== undefined && (
+          <div>
+            <span className="font-semibold">Base:</span> {formatMoney(options.base_price)}
+          </div>
+        )}
+        <div>
+          <span className="font-semibold">Surcharges:</span> {formatMoney(surchargeTotal)}
+        </div>
+        {discountPercent > 0 && (
+          <>
+            <div>
+              <span className="font-semibold">Discount:</span> {discountPercent}% (
+              {formatMoney(options.discount_amount)})
+            </div>
+            <div>
+              <span className="font-semibold">Discount source:</span>{" "}
+              {formatMoney(options.discount_source_price)}
+            </div>
+          </>
+        )}
+        {productType === "Shutters" && rawSqft !== null && sqft !== null && (
+          <div>
+            <span className="font-semibold">Sq ft:</span> {rawSqft.toFixed(2)} actual,{" "}
+            {sqft.toFixed(2)} priced
+          </div>
+        )}
+        <div>
+          <span className="font-semibold">Final:</span> {formatMoney(design?.unit_price || 0)}
+        </div>
+      </div>
+    </details>
   );
 }
 
@@ -1187,9 +1189,6 @@ function getDependentProductColorField(productType: string, changedField: string
     return "fabric";
   }
   if (productType === "Faux Wood Blinds" && changedField === "json:product_line") {
-    return "json:color";
-  }
-  if (productType === "Mini Blinds" && changedField === "json:slat_size") {
     return "json:color";
   }
   if (productType === "Vertical Blinds" && changedField === "json:fabric_group") {
@@ -1430,10 +1429,6 @@ function getShadeMandatoryFields(productType: string, options: GridOption[]): st
     case "Sheer Shades":
       return ["mount_type", "json:light_control", "lift_system", "fabric"].filter((field) =>
         allFields.includes(field)
-      );
-    case "Mini Blinds":
-      return ["mount_type", "json:slat_size", "json:color", "json:light_control"].filter(
-        (field) => allFields.includes(field)
       );
     case "Faux Wood Blinds":
       return ["mount_type", "json:slat_size", "json:product_line", "json:color"].filter((field) =>
@@ -2098,7 +2093,6 @@ function isTrackedOrSpecialty(design: SalesQuoteDesign | undefined): boolean {
 }
 
 function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): GridOption[] {
-  const invisibleTiltPanelRate = getInvisibleTiltPanelRate(design);
   const isOnyxPolyProgram =
     !!design?.material &&
     ONYX_POLY_MATERIALS.includes(design.material as (typeof ONYX_POLY_MATERIALS)[number]);
@@ -2162,9 +2156,7 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
       },
       {
         key: "panel_config",
-        label: invisibleTiltPanelRate
-          ? `Invisible Tilt Panels ($${invisibleTiltPanelRate}/panel)`
-          : "Panel Configuration",
+        label: "Panel Configuration",
         field: "panel_config",
         type: "select",
         options: ONYX_PANEL_CONFIGS,
@@ -2238,9 +2230,7 @@ function getStandardShutterGridOptions(design: SalesQuoteDesign | undefined): Gr
     },
     {
       key: "panel_config",
-      label: invisibleTiltPanelRate
-        ? `Invisible Tilt Panels ($${invisibleTiltPanelRate}/panel)`
-        : "Panel Configuration",
+      label: "Panel Configuration",
       field: "panel_config",
       type: "select",
       options: SHUTTER_PANEL_CONFIGS,
@@ -2843,17 +2833,10 @@ export function DesignCard({
     mountType: currentDesign?.mount_type,
     lining: stringOption(currentOptions, "lining"),
   });
-  const miniBlindSpecWarnings = getMiniBlindSpecWarnings({
-    productType: lineItem.product_type,
-    widthInches: widthIn,
-    heightInches: heightIn,
-    slatSize: stringOption(currentOptions, "slat_size"),
-  });
   const manufacturerSpecWarnings = [
     ...rollerShadeSpecWarnings,
     ...honeycombShadeSpecWarnings,
     ...romanShadeSpecWarnings,
-    ...miniBlindSpecWarnings,
   ];
 
   const currentRetailPerSqft =
@@ -2866,9 +2849,6 @@ export function DesignCard({
       line_item_id: lineItem.id,
       variant: activeVariant,
       product_type: lineItem.product_type,
-      ...(lineItem.product_type === "Mini Blinds"
-        ? { supplier: "Norman", material: "CityLights Cordless Aluminum Blinds" }
-        : {}),
       ...fields,
     });
   };
@@ -2915,7 +2895,6 @@ export function DesignCard({
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
-      slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
     });
     const basePrice = priceBreakdown.price;
@@ -3001,7 +2980,6 @@ export function DesignCard({
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize,
-      slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
     });
     const basePrice = priceBreakdown.price;
@@ -3141,7 +3119,6 @@ export function DesignCard({
       supplier: currentDesign.supplier || undefined,
       retailPriceOverride: retailOverride,
       cellSize, // Pass cell size for honeycomb routing
-      slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
     });
     const basePrice = priceBreakdown.price;
@@ -3214,25 +3191,6 @@ export function DesignCard({
           },
         });
       }
-    } else if (
-      lineItem.product_type === "Mini Blinds" &&
-      (Number(currentDesign.unit_price) !== 0 ||
-        Number(opts.base_price) !== 0 ||
-        Number(opts.surcharge_total) !== 0)
-    ) {
-      updateFields({
-        unit_price: 0,
-        options_json: {
-          ...opts,
-          base_price: 0,
-          surcharge_total: 0,
-          pricing_method: "grid",
-          pricing_grid_key: priceBreakdown.gridKey || "citylights_aluminum",
-          pricing_grid_price: null,
-          pricing_grid_width: null,
-          pricing_grid_height: null,
-        },
-      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -3538,12 +3496,8 @@ export function DesignCard({
         <PriceExplanation
           design={currentDesign}
           productType={lineItem.product_type}
-          widthIn={widthIn}
-          heightIn={heightIn}
           rawSqft={rawSqft}
           sqft={sqft}
-          quantity={quantity}
-          currentRetailPerSqft={currentRetailPerSqft}
         />
 
         {/* Copy actions */}
@@ -3779,13 +3733,6 @@ function ShutterDesignOptions({
           optionalOptions={editableOptionRows.optional}
           renderSlot={renderOptionSlot}
         />
-      )}
-
-      {isInvisibleTiltPanelSelectionMissing(workingDesign) && (
-        <div className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
-          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          Select the panel configuration to calculate the invisible-tilt surcharge.
-        </div>
       )}
 
       {/* For Tracked/Specialty shutters, use the old step-by-step flow */}
@@ -4209,21 +4156,6 @@ function ShadesAndBlindsOptions({
           ...currentJson,
           premium_hardware: value,
           ...(value === "Yes" ? {} : { premium_hardware_color: null }),
-        },
-      });
-      return;
-    }
-
-    if (productType === "Mini Blinds" && field === "json:slat_size") {
-      const slatSize = typeof value === "string" ? value : null;
-      if (slatSize) setOpenOptionField("json:color");
-      onUpdateFields({
-        options_json: {
-          ...withoutProductColorDetails(currentJson),
-          slat_size: slatSize,
-          color: null,
-          light_control: getMiniBlindDefaultLightControl(slatSize),
-          side_mount_bracket: slatSize === '2"' ? currentJson.side_mount_bracket : null,
         },
       });
       return;
@@ -5190,63 +5122,6 @@ function ShadesAndBlindsOptions({
         ];
       }
 
-      case "Mini Blinds": {
-        const slatSize = getFieldValue(design, "json:slat_size");
-        return [
-          {
-            key: "mount",
-            label: "Mount Type",
-            field: "mount_type",
-            type: "buttons",
-            options: MINI_BLIND_MOUNT_TYPES,
-          },
-          {
-            key: "slat_size",
-            label: "Slat Size",
-            field: "json:slat_size",
-            type: "buttons",
-            options: MINI_BLIND_SLAT_SIZES,
-          },
-          {
-            key: "color",
-            label: "Color",
-            field: "json:color",
-            type: "select",
-            options: [] as readonly string[],
-          },
-          {
-            key: "slat_finish",
-            label: "Slat Finish",
-            field: "json:slat_finish",
-            type: "buttons",
-            options: MINI_BLIND_FINISHES,
-          },
-          {
-            key: "light_control",
-            label: "Light Control",
-            field: "json:light_control",
-            type: "buttons",
-            options: getMiniBlindLightControlOptions(slatSize),
-          },
-          ...(slatSize === '2"'
-            ? [{
-                key: "side_mount_bracket",
-                label: "Side Mount Bracket",
-                field: "json:side_mount_bracket",
-                type: "yes-no" as const,
-                noFirst: true,
-              }]
-            : []),
-          {
-            key: "shim",
-            label: "Shim",
-            field: "json:shim",
-            type: "yes-no",
-            noFirst: true,
-          },
-        ];
-      }
-
       case "Wood Blinds":
         return [
           {
@@ -5479,10 +5354,6 @@ function ShadesAndBlindsOptions({
     if (productType === "Faux Wood Blinds") {
       const inferredProductLine = getFauxWoodProductLineFromProductId(fabricColor.productId);
       if (inferredProductLine) nextJson.product_line = inferredProductLine;
-    }
-
-    if (productType === "Mini Blinds") {
-      nextJson.slat_finish = getMiniBlindFinishFromColor(fabricColor.colorName);
     }
 
     onUpdateFields({

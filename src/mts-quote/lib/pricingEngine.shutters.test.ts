@@ -3,11 +3,6 @@ import { getShutterPrice } from "./pricingEngine";
 import { NORMAN_SHUTTER_PROGRAMS, ONYX_SHUTTER_PROGRAMS } from "./pricingData";
 
 describe("MTS quote shutter square-foot defaults", () => {
-  it("uses $12/sqft wholesale for Onyx Poly Composite", () => {
-    const poly = ONYX_SHUTTER_PROGRAMS.find((program) => program.name === "Poly Composite");
-    expect(poly?.wholesalePrice).toBe(12);
-  });
-
   it("uses the configured shutter retail square-foot rates", () => {
     const cases = [
       ["Poly", "Onyx", "Poly Composite", 31],

@@ -15,7 +15,7 @@ interface MeasurementGridModalProps {
   onWidthFraction: (f: string) => void;
   onHeightWhole: (n: number) => void;
   onHeightFraction: (f: string) => void;
-  onDirectMeasurements: (
+  onDirectMeasurements?: (
     width: { whole: number; fraction: string },
     height: { whole: number; fraction: string },
   ) => void;
@@ -25,7 +25,7 @@ interface MeasurementGridModalProps {
 
 export function MeasurementGridModal({
   open,
-  showDirectEntry = true,
+  showDirectEntry = false,
   singleDimensionLabel,
   wholeStart = 10,
   onClose,
@@ -49,7 +49,7 @@ export function MeasurementGridModal({
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  const maxWholeInches = isWidth ? 250 : 119;
+  const maxWholeInches = showDirectEntry && isWidth ? 250 : 119;
   const wholeNumbers: number[] = [];
   for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
@@ -86,7 +86,7 @@ export function MeasurementGridModal({
       return;
     }
     setDirectError("");
-    onDirectMeasurements(width, height);
+    onDirectMeasurements?.(width, height);
   };
 
   return (

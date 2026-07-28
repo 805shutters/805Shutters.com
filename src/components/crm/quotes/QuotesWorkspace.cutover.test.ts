@@ -4,42 +4,40 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("./QuotesWorkspace.legacy", () => ({
-  QuotesWorkspace: () => createElement("div", { "data-testid": "quote-v1-workspace" }, "Quote V1 workspace"),
+vi.mock("@mts/QuoteWorkspace", () => ({
+  QuoteWorkspace: () => createElement("div", { "data-testid": "july-10-quote-workspace" }, "July 10 quote workspace"),
 }));
 
 const source = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.tsx", import.meta.url)), "utf8");
-const legacySource = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.legacy.tsx", import.meta.url)), "utf8");
 const mobileSource = readFileSync(fileURLToPath(new URL("../CrmMobileQuotesApp.tsx", import.meta.url)), "utf8");
-const builderSource = readFileSync(fileURLToPath(new URL("../QuoteBuilderPanel.tsx", import.meta.url)), "utf8");
+const quoteWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/QuoteWorkspace.tsx", import.meta.url)), "utf8");
 
-describe("Quote V1-only routing", () => {
-  it("renders V1 on desktop and mobile with no V2 workspace entry point", async () => {
-    expect(source).toContain("<QuoteV1Workspace");
-    expect(source).toContain('from "./QuotesWorkspace.legacy"');
-    expect(source).not.toContain('from "@mts/QuoteWorkspace"');
-    expect(mobileSource).toContain('from "@/components/crm/quotes/QuotesWorkspace"');
-    expect(mobileSource).not.toContain('from "@mts/QuoteWorkspace"');
+describe("July 10 quote-system routing", () => {
+  it("renders the historical quote workspace on desktop and mobile", async () => {
+    expect(source).toContain("<QuoteWorkspace");
+    expect(source).toContain('from "@mts/QuoteWorkspace"');
+    expect(source).not.toContain('from "./QuotesWorkspace.legacy"');
+    expect(mobileSource).toContain('from "@mts/QuoteWorkspace"');
 
     const { QuotesWorkspace } = await import("./QuotesWorkspace");
     const markup = renderToStaticMarkup(createElement(QuotesWorkspace, {
       session: {} as never,
       jobs: [],
       quotes: [],
+      events: [],
       onChanged: () => undefined,
     }));
-    expect(markup).toContain("Quote V1 workspace");
+    expect(markup).toContain("July 10 quote workspace");
   });
 
-  it("keeps V1 create, reopen, builder, and full contract routes connected", () => {
-    expect(legacySource).toContain('method: "POST"');
-    expect(legacySource).toContain('"/api/crm/quotes"');
-    expect(legacySource).toContain("openBuilder(result.quote.id)");
-    expect(legacySource).toContain("router.push(`/crm/quote/${quoteId}`)");
-    expect(legacySource).toContain("onOpen={openBuilder}");
-    expect(legacySource).toContain('tabBtn("contract", "Contract"');
-    expect(legacySource).toContain("onOpenContractLink={openCustomerContract}");
-    expect(legacySource).toContain("`/api/crm/quotes/${quoteId}/share`");
-    expect(builderSource).toContain("`/api/crm/quotes/${quoteId}/builder`");
+  it("keeps the historical dashboard, builder, pricing, and contract tabs connected", () => {
+    expect(quoteWorkspaceSource).toContain('value: "dashboard"');
+    expect(quoteWorkspaceSource).toContain('value: "builder"');
+    expect(quoteWorkspaceSource).toContain('value: "pricing"');
+    expect(quoteWorkspaceSource).toContain('value: "contract"');
+    expect(quoteWorkspaceSource).toContain("<QuoteDashboard");
+    expect(quoteWorkspaceSource).toContain("<QuoteBuilder");
+    expect(quoteWorkspaceSource).toContain("<PricingGrids");
+    expect(quoteWorkspaceSource).toContain("<QuoteContract");
   });
 });

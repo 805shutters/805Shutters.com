@@ -907,22 +907,6 @@ export function QuoteBuilder() {
     }
   };
 
-  const handleDirectMeasurements = (
-    width: { whole: number; fraction: string },
-    height: { whole: number; fraction: string },
-  ) => {
-    if (!measuringItemId) return;
-    updateLineItem.mutate({
-      id: measuringItemId,
-      width_whole: width.whole,
-      width_fraction: width.fraction,
-      height_whole: height.whole,
-      height_fraction: height.fraction,
-    });
-    setMeasuringItemId(null);
-    resetMeasurement();
-  };
-
   const handleCopyAll = (sourceId: string) => {
     const sourceItem = lineItems.find((item) => item.id === sourceId);
     if (!sourceItem) return;
@@ -1343,7 +1327,7 @@ export function QuoteBuilder() {
                     htmlFor="quote-builder-note"
                     className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
                   >
-                    General Job Notes
+                    Quote Note
                   </label>
                   {updateQuote.isPending && (
                     <span className="text-xs font-semibold text-amber-700">Saving...</span>
@@ -1354,7 +1338,7 @@ export function QuoteBuilder() {
                   value={quoteNoteDraft}
                   onChange={(event) => setQuoteNoteDraft(event.target.value)}
                   onBlur={saveQuoteBuilderNote}
-                  placeholder="Internal sales or ordering notes..."
+                  placeholder="Add quote-level notes..."
                   className="min-h-16 max-h-28 resize-y border-slate-200 bg-white text-sm"
                 />
               </div>
@@ -1507,7 +1491,6 @@ export function QuoteBuilder() {
         onWidthFraction={setWidthFraction}
         onHeightWhole={setHeightWhole}
         onHeightFraction={handleHeightFraction}
-        onDirectMeasurements={handleDirectMeasurements}
         pendingWidth={pendingWidth}
         pendingHeight={pendingHeight}
       />

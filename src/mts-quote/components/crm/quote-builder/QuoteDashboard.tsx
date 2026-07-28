@@ -16,7 +16,6 @@ import { toast } from "sonner";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { STATUS_LABELS } from "@mts/lib/quoteStatus";
 import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
-import { getQuoteBuilderNote } from "@mts/lib/quoteTotals";
 import { losAngelesDateString, losAngelesTimeString } from "@/lib/booking/availability";
 import {
   filterCalendarAppointmentsForStatsTile,
@@ -24,7 +23,7 @@ import {
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
-import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 interface QuoteDashboardProps {
@@ -33,7 +32,6 @@ interface QuoteDashboardProps {
   crmJobs?: CrmJob[];
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
-  crmCustomers?: CrmCustomer[];
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
@@ -129,7 +127,6 @@ export function QuoteDashboard({
   crmJobs = [],
   crmQuotes = [],
   crmCalendarEvents = [],
-  crmCustomers = [],
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
@@ -201,7 +198,6 @@ export function QuoteDashboard({
         quote_number: quote.quote_number || quote.quote_label || quote.id.slice(0, 8),
         customer_name: crmQuoteCustomerName(quote, job),
         customer_address: quote.customer_address || job?.address || null,
-        generalJobNote: (quote.notes || "").trim() || null,
         appointment_date: dateOnly(job?.appointment_start),
         total_amount: quote.quote_total ?? job?.quote_total ?? job?.estimated_total ?? 0,
         sent_at: quote.sent_at,
@@ -227,7 +223,6 @@ export function QuoteDashboard({
         source: "sales" as const,
         sourceQuoteId: quote.id,
         salesQuote: quote,
-        generalJobNote: getQuoteBuilderNote(quote) || null,
       }));
 
     return [...crmRows, ...salesRows].sort((a, b) => {
@@ -612,7 +607,6 @@ export function QuoteDashboard({
         onSubmit={(data) => createQuote.mutate(data)}
         isPending={createQuote.isPending}
         accountOptions={visibleAccounts}
-        customers={crmCustomers}
       />
 
       <QuotePortfolioDialog

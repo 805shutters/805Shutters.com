@@ -23,10 +23,10 @@ describe("quote note metadata", () => {
     );
   });
 
-  it("hides blank or whitespace-only general job notes", () => {
+  it("preserves the original raw general job-note behavior", () => {
     expect(getQuoteBuilderNote({ installer_notes: null })).toBe("");
-    expect(getQuoteBuilderNote({ installer_notes: "   \n  " })).toBe("");
-    expect(getQuoteBuilderNote({ installer_notes: JSON.stringify({ __quoteBuilderNote: "  " }) })).toBe("");
+    expect(getQuoteBuilderNote({ installer_notes: "   \n  " })).toBe("   \n  ");
+    expect(getQuoteBuilderNote({ installer_notes: JSON.stringify({ __quoteBuilderNote: "  " }) })).toBe("  ");
   });
 
   it("preserves admin controls and unrelated metadata when updating the general job note", () => {
