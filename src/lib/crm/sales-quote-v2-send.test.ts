@@ -371,7 +371,11 @@ describe("V2 production send boundary", () => {
         { email: "rep@805shutters.com", userId: "rep" },
         { emails: ["customer@example.com"], phone: "8055550100" },
       ),
-    ).rejects.toThrow("Line item line-v2 is missing selected_design_id");
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        "V2 send blocked: Line item line-v2 is missing selected_design_id.",
+    });
 
     expect(mutations).toEqual([]);
     expect(sendQuoteToCustomerMock).not.toHaveBeenCalled();

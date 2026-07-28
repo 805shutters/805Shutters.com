@@ -19,6 +19,7 @@ import {
 import {
   prepareV2CustomerSendPayloadFromDatabase,
   type PreparedV2CustomerQuote,
+  V2SendPreparationError,
 } from "@/lib/crm/sales-quote-v2-send";
 import { sendSms } from "@/lib/notify/twilio";
 import {
@@ -189,9 +190,17 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
-  const preparedV2 = isServerMarkedV2SalesQuote(quote)
-    ? await prepareV2CustomerSendPayloadFromDatabase(supabase, quote)
-    : null;
+  let preparedV2: PreparedV2CustomerQuote | null = null;
+  if (isServerMarkedV2SalesQuote(quote)) {
+    try {
+      preparedV2 = await prepareV2CustomerSendPayloadFromDatabase(supabase, quote);
+    } catch (error) {
+      if (error instanceof V2SendPreparationError) {
+        throw new CrmAuthError(409, `V2 send blocked: ${error.message}`);
+      }
+      throw error;
+    }
+  }
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   const contactPatch: AnyRow = {};
