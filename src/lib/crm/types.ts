@@ -571,6 +571,7 @@ export type CrmSummary = {
   missingCogs: number;
   awaitingProduct: number;
   measureNeeded: number;
+  measureScheduled: number;
 };
 
 export type CrmCommissionPayment = {

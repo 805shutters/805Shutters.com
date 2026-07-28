@@ -1,5 +1,5 @@
 import { effectiveBookkeepingStatus, isPaidInFullBookkeepingRow } from "@/lib/crm/bookkeeping";
-import { isMeasureNeededJob } from "@/lib/crm/measure-needed-state";
+import { getMeasureNeededMeta, isMeasureNeededJob } from "@/lib/crm/measure-needed-state";
 import {
   CrmBookkeepingRow,
   CrmBookkeepingStatus,
@@ -92,6 +92,14 @@ export function measureNeededJobs(jobs: CrmJob[]) {
   return jobs.filter(isMeasureNeededJob);
 }
 
+export function measureScheduledJobs(jobs: CrmJob[]) {
+  return measureNeededJobs(jobs).filter((job) => getMeasureNeededMeta(job.meta).schedule_status === "scheduled");
+}
+
+export function measureUnscheduledJobs(jobs: CrmJob[]) {
+  return measureNeededJobs(jobs).filter((job) => getMeasureNeededMeta(job.meta).schedule_status !== "scheduled");
+}
+
 // Completed (work done) job stages — installed, invoiced, or closed.
 const COMPLETED_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingStatus>(["installed", "invoiced", "closed"]);
 
@@ -155,7 +163,8 @@ export function buildDashboardSummaryMetrics({
   const openBalances = openBalanceRows(rows);
   const depositNeeded = depositNeededRows(rows);
   const balanceDueCompleted = balanceDueCompletedRows(rows);
-  const measureNeeded = measureNeededJobs(jobs);
+  const measureNeeded = measureUnscheduledJobs(jobs);
+  const measureScheduled = measureScheduledJobs(jobs);
 
   return {
     openJobs: distinctRowsByJob(openRows).length,
@@ -173,6 +182,7 @@ export function buildDashboardSummaryMetrics({
     balanceDueCompletedAmount: balanceDueCompleted.reduce((total, row) => total + Math.max(Number(row.balance) || 0, 0), 0),
     missingCogs: missingCogs.length,
     awaitingProduct: distinctRowsByJob(awaitingProduct).length,
-    measureNeeded: measureNeeded.length
+    measureNeeded: measureNeeded.length,
+    measureScheduled: measureScheduled.length
   };
 }

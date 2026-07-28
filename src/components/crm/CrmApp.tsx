@@ -2813,6 +2813,7 @@ export function CrmApp({
   const balanceDueCompletedCount = summary?.balanceDueCompleted || 0;
   const missingCogsCount = summary?.missingCogs || 0;
   const measureNeededCount = summary?.measureNeeded || 0;
+  const measureScheduledCount = summary?.measureScheduled || 0;
   const readyToOrderCount = vendorOrderTasks.length;
   const globalDrill = drill && (activeTab !== "command" || drill.placement === "summary") ? drill : null;
   const commandDrill = activeTab === "command" && drill?.placement !== "summary" ? drill : null;
@@ -2848,7 +2849,11 @@ export function CrmApp({
           <Metric label="Balance Due" value={balanceDueCompletedCount} tone={balanceDueCompletedCount > 0 ? "danger" : undefined} onClick={() => openSummaryDrill("balanceDueCompleted")} />
           <Metric label="Missing COGS" value={missingCogsCount} tone={missingCogsCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("missingCogs")} />
           <Metric label="Awaiting Product" value={data?.summary.awaitingProduct || 0} onClick={() => openSummaryDrill("awaitingProduct")} />
-          <Metric label="Measure Needed" value={measureNeededCount} tone={measureNeededCount > 0 ? "warning" : undefined} onClick={() => openSummaryDrill("measureNeeded")} />
+          <MeasureMetric
+            needed={measureNeededCount}
+            scheduled={measureScheduledCount}
+            onClick={() => openSummaryDrill("measureNeeded")}
+          />
         </section>
       </header>
 
@@ -3500,6 +3505,43 @@ function Metric({
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function MeasureMetric({
+  needed,
+  scheduled,
+  onClick
+}: {
+  needed: number;
+  scheduled: number;
+  onClick: () => void;
+}) {
+  const hasOutstandingMeasures = needed + scheduled > 0;
+  const className = [
+    "crm-metric",
+    "crm-metric-button",
+    "crm-measure-metric",
+    hasOutstandingMeasures ? "crm-metric--warning" : ""
+  ].filter(Boolean).join(" ");
+
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      aria-label={`Measures: ${needed} needed, ${scheduled} scheduled`}
+    >
+      <span className="crm-measure-metric-title">Measure</span>
+      <span className="crm-measure-metric-value">
+        <small>Needed</small>
+        <strong>{needed}</strong>
+      </span>
+      <span className="crm-measure-metric-value">
+        <small>Scheduled</small>
+        <strong>{scheduled}</strong>
+      </span>
+    </button>
   );
 }
 

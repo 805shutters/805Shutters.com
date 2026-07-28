@@ -5159,6 +5159,40 @@ body.qb-fullscreen .crm-app-shell {
   border-color: #b91c1c;
 }
 
+.crm-measure-metric {
+  grid-column: span 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+.crm-measure-metric .crm-measure-metric-title {
+  grid-column: 1 / -1;
+}
+
+.crm-measure-metric-value {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.crm-measure-metric-value + .crm-measure-metric-value {
+  padding-left: 12px;
+  border-left: 1px solid currentColor;
+}
+
+.crm-measure-metric-value small {
+  color: inherit;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-measure-metric-value strong {
+  display: block;
+}
+
 .crm-global-search {
   display: grid;
   gap: 14px;
