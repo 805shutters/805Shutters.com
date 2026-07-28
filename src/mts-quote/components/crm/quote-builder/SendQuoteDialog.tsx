@@ -67,7 +67,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   const [phone, setPhone] = useState(quote.customer_phone ?? "");
   const [customMessage, setCustomMessage] = useState(() => getQuoteEmailNote(quote));
   const [bypassHours, setBypassHours] = useState(false);
-  const [sendAsIs, setSendAsIs] = useState(false);
+  const [sendAsIs, setSendAsIs] = useState(quote.quote_v2_backend === true);
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     setPhone(quote.customer_phone ?? "");
     setCustomMessage(getQuoteEmailNote(quote));
     setBypassHours(false);
-    setSendAsIs(false);
+    setSendAsIs(quote.quote_v2_backend === true);
     setLinkCopied(false);
   }, [open, quote]);
 
