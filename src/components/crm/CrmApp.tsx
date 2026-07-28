@@ -50,7 +50,6 @@ import {
   soldLifecycleJobs
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
-import { manufacturerOrderChromeLaunchUrl } from "@/lib/crm/vendor-orders/manufacturer-order-launch";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
 import {
@@ -1039,21 +1038,27 @@ export function CrmApp({
     }
   }
 
-  async function startVendorOrderEntry(task: CrmVendorOrderTask) {
-    let opened: Window | null = null;
+  async function emailVendorOrderPacket(task: CrmVendorOrderTask) {
+    if (!session || !task.recordId) {
+      setMessage("This manufacturer order packet must be backfilled before it can be emailed.");
+      return;
+    }
+    setBusy(true);
     try {
-      const launchUrl = manufacturerOrderChromeLaunchUrl({
-        taskId: task.taskId,
-        manufacturer: task.manufacturer,
+      const result = await crmFetch<{
+        sent: boolean;
+        recipient: string;
+        attachments: string[];
+      }>(session, `/api/crm/vendor-order-tasks/${task.recordId}/email`, {
+        method: "POST",
       });
-      if (!launchUrl) throw new Error(`${task.manufacturer} ordering portal is not configured.`);
-      opened = window.open("about:blank", "_blank");
-      if (!opened) throw new Error("Allow pop-ups for the CRM, then open the ordering agent again.");
-      opened.location.href = launchUrl;
-      setMessage(`Opened ${task.manufacturer} in this Chrome profile for supervised agent entry for ${task.customerName}. Sign in there if prompted. The order will not be placed. Final review is required.`);
+      setMessage(
+        `${task.manufacturer} Codex order packet emailed to ${result.recipient} with ${result.attachments.length} attachments. The task remains Ready to Order.`,
+      );
     } catch (error) {
-      opened?.close();
-      setMessage(error instanceof Error ? error.message : "The vendor order entry page could not be opened.");
+      setMessage(error instanceof Error ? error.message : "The Codex order packet could not be emailed.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -2892,7 +2897,7 @@ export function CrmApp({
             onLedgerLineAction={applyLedgerLineAction}
             onPaymentPlanAction={applyPaymentPlanAction}
             onVendorOrderPacket={openVendorOrderPacket}
-            onVendorOrderLaunch={startVendorOrderEntry}
+            onVendorOrderEmail={emailVendorOrderPacket}
             onVendorOrderAction={updateVendorOrderTask}
           />
         </div>
@@ -6137,7 +6142,7 @@ type DrillPanelProps = {
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
   onVendorOrderPacket?: (task: CrmVendorOrderTask) => void;
-  onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
+  onVendorOrderEmail?: (task: CrmVendorOrderTask) => void;
   onVendorOrderAction?: (
     task: CrmVendorOrderTask,
     action: "start" | "review_ready" | "retry" | "confirm" | "cancel",
@@ -6160,7 +6165,7 @@ function DrillSearchResultsPanel({
   onLedgerLineAction,
   onPaymentPlanAction,
   onVendorOrderPacket,
-  onVendorOrderLaunch,
+  onVendorOrderEmail,
   onVendorOrderAction
 }: DrillPanelProps & {
   quotes: CrmQuote[];
@@ -6264,7 +6269,7 @@ function DrillSearchResultsPanel({
                 onPaymentPlanAction={onPaymentPlanAction}
                 onVendorOrderPacket={onVendorOrderPacket}
                 onVendorOrderAction={onVendorOrderAction}
-                onVendorOrderLaunch={onVendorOrderLaunch}
+                onVendorOrderEmail={onVendorOrderEmail}
               />
             </div>
           ) : null}
@@ -6962,7 +6967,7 @@ function DrillDetailPanel({
   onLedgerLineAction,
   onPaymentPlanAction,
   onVendorOrderPacket,
-  onVendorOrderLaunch,
+  onVendorOrderEmail,
   onVendorOrderAction
 }: DrillPanelProps) {
   return (
@@ -6997,7 +7002,7 @@ function DrillDetailPanel({
             onLedgerLineAction={onLedgerLineAction}
             onPaymentPlanAction={onPaymentPlanAction}
             onVendorOrderPacket={onVendorOrderPacket}
-            onVendorOrderLaunch={onVendorOrderLaunch}
+            onVendorOrderEmail={onVendorOrderEmail}
             onVendorOrderAction={onVendorOrderAction}
           />
         ))}
@@ -7020,7 +7025,7 @@ function DrillDetailCard({
   onLedgerLineAction,
   onPaymentPlanAction,
   onVendorOrderPacket,
-  onVendorOrderLaunch,
+  onVendorOrderEmail,
   onVendorOrderAction
 }: {
   entry: DrillEntry;
@@ -7035,7 +7040,7 @@ function DrillDetailCard({
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
   onVendorOrderPacket?: (task: CrmVendorOrderTask) => void;
-  onVendorOrderLaunch?: (task: CrmVendorOrderTask) => void;
+  onVendorOrderEmail?: (task: CrmVendorOrderTask) => void;
   onVendorOrderAction?: DrillPanelProps["onVendorOrderAction"];
 }) {
   const row = entry.row;
@@ -7455,14 +7460,14 @@ function DrillDetailCard({
           onClick: () => onVendorOrderPacket(entry.vendorOrderTask as CrmVendorOrderTask)
         }
       : null,
-    entry.vendorOrderTask && ["queued", "processing"].includes(entry.vendorOrderTask.status) && onVendorOrderLaunch
+    entry.vendorOrderTask && ["queued", "processing"].includes(entry.vendorOrderTask.status) && onVendorOrderEmail
       ? {
-          key: "start-vendor-order",
-          label: "Open Ordering Agent in Chrome",
-          detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} ${entry.vendorOrderTask.sourceKind === "signed_contract" ? "contract" : "submitted-measure"} line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"}`,
+          key: "email-codex-order-packet",
+          label: "Email Codex Order Packet",
+          detail: `${entry.vendorOrderTask.manufacturer} · ${entry.vendorOrderTask.lineCount} ${entry.vendorOrderTask.sourceKind === "signed_contract" ? "contract" : "submitted-measure"} line${entry.vendorOrderTask.lineCount === 1 ? "" : "s"} · sends to 805@805shutters.com`,
           tone: "warning",
           disabled: busy,
-          onClick: () => onVendorOrderLaunch(entry.vendorOrderTask as CrmVendorOrderTask)
+          onClick: () => onVendorOrderEmail(entry.vendorOrderTask as CrmVendorOrderTask)
         }
       : null,
     entry.vendorOrderTask?.status === "processing" && onVendorOrderAction

@@ -11,16 +11,15 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain('openSummaryDrill("readyToOrder")');
   });
 
-  it("routes every manufacturer through its own submitted-measure task", () => {
-    expect(source).toContain('"Open Ordering Agent in Chrome"');
-    expect(source).toContain("manufacturerOrderChromeLaunchUrl");
+  it("emails every manufacturer packet to the 805 Codex intake inbox", () => {
+    expect(source).toContain('"Email Codex Order Packet"');
+    expect(source).toContain("/email");
     expect(source).toContain('["queued", "processing"].includes(entry.vendorOrderTask.status)');
-    expect(source).toContain("this Chrome profile");
+    expect(source).toContain("805@805shutters.com");
     expect(source).toContain("task.productNames.join");
     expect(source).toContain("task.lineCount");
-    expect(source).toContain("onVendorOrderLaunch(entry.vendorOrderTask");
-    expect(source).toContain("The order will not be placed.");
-    expect(source).toContain("Sign in there if prompted.");
+    expect(source).toContain("onVendorOrderEmail(entry.vendorOrderTask");
+    expect(source).toContain("The task remains Ready to Order.");
     expect(source).toContain("same customer and job identity");
     expect(source).toContain('label: "Mark Review Ready"');
     expect(source).toContain('label: "Confirm Manufacturer Order"');
