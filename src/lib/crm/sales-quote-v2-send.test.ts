@@ -125,6 +125,8 @@ function authoritativeRollerFixture() {
         },
       },
     },
+    quote_v2_selection: repriced.designs[0]
+      .selection as unknown as Record<string, unknown>,
     quote_v2_price_status: "authoritative",
     quote_v2_selection_fingerprint: result.selectionFingerprint,
     quote_v2_priced_catalog_version: result.catalogVersion,
@@ -436,6 +438,53 @@ describe("V2 production send boundary", () => {
         serverDate: "2026-07-31",
       }),
     ).toThrow("Authoritative V2 validation blocked sending");
+  });
+
+  it("allows an explicit send-as-is choice to use only the immutable saved retail snapshot", () => {
+    const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
+    const payload = prepareV2CustomerSendPayload({
+      quote: authoritativeQuote(total),
+      lineItems: [line],
+      designs: [design],
+      snapshots: [storedSnapshot],
+      sendAsIs: true,
+      serverDate: "2026-07-31",
+    });
+
+    expect(payload.total).toBe(total);
+    expect(payload.lines).toHaveLength(1);
+    expect(payload.lines[0].price.total).toBe(total);
+    expect(JSON.stringify(payload)).not.toMatch(
+      /dealer_cost|freight_cost|internalCost|margin|options_json/,
+    );
+  });
+
+  it("does not let send-as-is bypass missing selections or immutable snapshots", async () => {
+    const mutations: string[] = [];
+    const quote = {
+      id: "quote-v2",
+      status: "draft",
+      quote_v2_backend: true,
+      quote_v2_status: "priced",
+      quote_v2_revision: QUOTE_REVISION,
+      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
+      total_amount: 100,
+    };
+
+    await expect(
+      sendSalesQuoteToCustomer(
+        invalidV2Supabase(quote, mutations),
+        "quote-v2",
+        { email: "rep@805shutters.com", userId: "rep" },
+        { sendAsIs: true },
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      message:
+        "V2 send blocked: Line item line-v2 is missing selected_design_id.",
+    });
+    expect(mutations).toEqual([]);
+    expect(sendQuoteToCustomerMock).not.toHaveBeenCalled();
   });
 
   it("uses the Los Angeles midnight boundary when the default send date is derived", () => {

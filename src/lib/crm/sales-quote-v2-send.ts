@@ -11,6 +11,7 @@ import type {
   SalesQuoteDesign,
   SalesQuoteLineItem,
 } from "@mts/types/quote";
+import type { SelectionContext } from "@/lib/quote-v2/core";
 import {
   customerConfigurationFromSelection,
   type V2CustomerConfiguration,
@@ -81,6 +82,8 @@ type PrepareV2CustomerSendInput = {
   designs: V2PersistedDesign[];
   /** Customer-safe columns from the append-only authoritative snapshot table. */
   snapshots: V2RetailSnapshotRow[];
+  /** Deliberate staff override: send the immutable saved retail snapshot without current-source repricing. */
+  sendAsIs?: boolean;
   /** Injectable only so catalog cutover boundaries can be tested deterministically. */
   serverDate?: string;
 };
@@ -381,6 +384,69 @@ export function prepareV2CustomerSendPayload(
     fail("The quote catalog identity does not match its selected current snapshots.");
   }
 
+  if (input.sendAsIs) {
+    const customerLines: PreparedV2CustomerQuote["lines"] = input.lineItems.map((line) => {
+      const selectedDesignId = text(line.selected_design_id);
+      if (!selectedDesignId) return fail(`Line item ${line.id} is missing selected_design_id.`);
+      const design = selectedDesigns.find((entry) => entry.id === selectedDesignId);
+      const stored = storedByDesignId.get(selectedDesignId);
+      if (!design || !stored) {
+        return fail(`Selected design ${selectedDesignId} has no immutable saved snapshot.`);
+      }
+      const selection = record(design.quote_v2_selection);
+      if (!selection) {
+        return fail(`Selected design ${selectedDesignId} is missing its saved V2 selection.`);
+      }
+      let configuration: V2CustomerConfiguration;
+      try {
+        configuration = customerConfigurationFromSelection(
+          selection as unknown as SelectionContext,
+        );
+      } catch (error) {
+        return fail(
+          `Selected design ${selectedDesignId} has an invalid customer configuration: ${
+            error instanceof Error ? error.message : "unknown error"
+          }`,
+        );
+      }
+      const customerPrice = projectV2CustomerRetailPrice(stored.snapshot.retail);
+      const quantity = Math.max(1, Math.floor(Number(line.quantity) || 1));
+      if (
+        !sameMoney(design.unit_price, customerPrice.unitPrice) ||
+        !sameMoney(stored.snapshotRow.retail_total, customerPrice.total) ||
+        customerPrice.quantity !== quantity
+      ) {
+        return fail(
+          `Selected design ${selectedDesignId} does not match its immutable saved retail snapshot.`,
+        );
+      }
+      return {
+        lineItemId: line.id,
+        selectedDesignId,
+        selectedVariant: design.variant.trim(),
+        room: text(line.room_name),
+        productType: text(line.product_type),
+        widthInches: decimalMeasurement(line.width_whole, line.width_fraction),
+        heightInches: decimalMeasurement(line.height_whole, line.height_fraction),
+        quantity,
+        configuration,
+        price: customerPrice,
+      };
+    });
+    const total = money(
+      customerLines.reduce((sum, line) => sum + line.price.total, 0),
+    );
+    if (
+      !sameMoney(
+        persistedMoney(input.quote.total_amount, "Stored quote total"),
+        total,
+      )
+    ) {
+      fail("The stored quote total does not match its immutable saved retail snapshots.");
+    }
+    return { backend: "authoritative_v2", total, lines: customerLines };
+  }
+
   const serverDate = input.serverDate ?? quoteV2ServerCatalogDate();
   let repriced: ReturnType<typeof repriceExactQuoteBuilderForServerDate>;
   try {
@@ -528,6 +594,7 @@ export function prepareV2CustomerSendPayload(
 export async function prepareV2CustomerSendPayloadFromDatabase(
   supabase: SupabaseClient,
   quote: AnyRow,
+  options: { sendAsIs?: boolean } = {},
 ): Promise<PreparedV2CustomerQuote> {
   requireQuoteIdentity(quote);
   const { data: lineItems, error: lineError } = await supabase
@@ -597,5 +664,6 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
     lineItems: lines,
     designs: selectedDesigns,
     snapshots: (snapshots || []) as unknown as V2RetailSnapshotRow[],
+    sendAsIs: options.sendAsIs === true,
   });
 }

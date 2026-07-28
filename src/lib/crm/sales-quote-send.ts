@@ -12,6 +12,7 @@ import {
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { recordCrmActivity } from "@/lib/crm/backend";
 import {
   isServerMarkedV2SalesQuote,
   guardV2SalesQuoteBeforeLegacySend,
@@ -41,6 +42,7 @@ export type SendSalesQuoteOptions = {
   emailType?: "quote_only" | "sold_contract";
   bypassHours?: boolean;
   measureDecision?: TechnicalMeasureDecision;
+  sendAsIs?: boolean;
 };
 
 export async function markSalesQuoteSold(
@@ -190,10 +192,22 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
+  if (
+    options.sendAsIs !== undefined &&
+    typeof options.sendAsIs !== "boolean"
+  ) {
+    throw new CrmAuthError(400, "Send as is must be a boolean choice.");
+  }
+  const sendAsIs = options.sendAsIs === true;
+  if (sendAsIs && !isServerMarkedV2SalesQuote(quote)) {
+    throw new CrmAuthError(400, "Send as is is available only for V2 quotes.");
+  }
   let preparedV2: PreparedV2CustomerQuote | null = null;
   if (isServerMarkedV2SalesQuote(quote)) {
     try {
-      preparedV2 = await prepareV2CustomerSendPayloadFromDatabase(supabase, quote);
+      preparedV2 = await prepareV2CustomerSendPayloadFromDatabase(supabase, quote, {
+        sendAsIs,
+      });
     } catch (error) {
       if (error instanceof V2SendPreparationError) {
         throw new CrmAuthError(409, `V2 send blocked: ${error.message}`);
@@ -233,6 +247,19 @@ export async function sendSalesQuoteToCustomer(
   });
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
+  if (sendAsIs && preparedV2) {
+    await recordCrmActivity(supabase, actor, {
+      entityType: "quote",
+      entityId: crmQuoteId,
+      action: "quote_v2.send_as_is",
+      metadata: {
+        sourceSalesQuoteId: salesQuoteId,
+        quoteRevision: quote.quote_v2_revision,
+        catalogVersion: quote.quote_v2_catalog_version,
+        savedCustomerTotal: preparedV2.total,
+      },
+    });
+  }
   return result;
 }
 
