@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { repriceExactQuoteBuilderForQuoteLabPreview } from "@/lib/quote-lab/exact-backend";
 import { QUOTE_V2_ROLLER_PREVIEW_VERSION } from "@/lib/quote-v2/catalog";
 import { createImmutablePriceSnapshot } from "@/lib/quote-v2/engine";
@@ -7,7 +7,6 @@ import type {
   SalesQuoteDesign,
   SalesQuoteLineItem,
 } from "@mts/types/quote";
-import { sendSalesQuoteToCustomer } from "./sales-quote-send";
 import {
   guardV2SalesQuoteBeforeLegacySend,
   isServerMarkedV2SalesQuote,
@@ -22,12 +21,6 @@ import {
 
 const SNAPSHOT_ID = "55555555-5555-4555-8555-555555555555";
 const QUOTE_REVISION = 7;
-
-const sendQuoteToCustomerMock = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/crm/public-quote", () => ({
-  sendQuoteToCustomer: sendQuoteToCustomerMock,
-  sendQuotePaymentLinkToCustomer: vi.fn(),
-}));
 
 function rollerLine(): SalesQuoteLineItem & { selected_design_id: string } {
   return {
@@ -232,43 +225,6 @@ describe("V2 customer retail projection", () => {
   });
 });
 
-function invalidV2Supabase(
-  quote: Record<string, unknown>,
-  mutations: string[],
-): SupabaseClient {
-  return {
-    from(table: string) {
-      const chain: Record<string, unknown> = {};
-      chain.select = vi.fn(() => chain);
-      chain.eq = vi.fn(() => chain);
-      chain.maybeSingle = vi.fn(async () => ({
-        data: table === "sales_quotes" ? quote : null,
-        error: null,
-      }));
-      chain.order = vi.fn(async () => ({
-        data:
-          table === "sales_quote_line_items"
-            ? [
-                {
-                  ...rollerLine(),
-                  selected_design_id: null,
-                },
-              ]
-            : [],
-        error: null,
-      }));
-      chain.in = vi.fn(async () => ({ data: [], error: null }));
-      for (const operation of ["update", "upsert", "insert", "delete"]) {
-        chain[operation] = vi.fn(() => {
-          mutations.push(`${operation}:${table}`);
-          return chain;
-        });
-      }
-      return chain;
-    },
-  } as unknown as SupabaseClient;
-}
-
 function persistedV2Supabase(
   rows: Record<string, Array<Record<string, unknown>>>,
 ) {
@@ -321,10 +277,6 @@ function persistedV2Supabase(
   return { client: client as unknown as SupabaseClient, selects };
 }
 
-beforeEach(() => {
-  sendQuoteToCustomerMock.mockReset();
-});
-
 describe("V2 production send boundary", () => {
   it("exposes the dedicated production V2 send capability", () => {
     expect(V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED).toBe(true);
@@ -349,38 +301,6 @@ describe("V2 production send boundary", () => {
     );
     expect(result).toBeNull();
     expect(from).not.toHaveBeenCalled();
-  });
-
-  it("blocks an invalid marked V2 quote before contact writes, mirrors, email, or SMS", async () => {
-    const mutations: string[] = [];
-    const quote = {
-      id: "quote-v2",
-      status: "draft",
-      quote_v2_backend: true,
-      quote_v2_status: "priced",
-      quote_v2_revision: QUOTE_REVISION,
-      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
-      total_amount: 100,
-      customer_email: null,
-      customer_phone: null,
-    };
-    const supabase = invalidV2Supabase(quote, mutations);
-
-    await expect(
-      sendSalesQuoteToCustomer(
-        supabase,
-        "quote-v2",
-        { email: "rep@805shutters.com", userId: "rep" },
-        { emails: ["customer@example.com"], phone: "8055550100" },
-      ),
-    ).rejects.toMatchObject({
-      status: 409,
-      message:
-        "V2 send blocked: Line item line-v2 is missing selected_design_id.",
-    });
-
-    expect(mutations).toEqual([]);
-    expect(sendQuoteToCustomerMock).not.toHaveBeenCalled();
   });
 
   it("revalidates selected-only snapshots and emits a retail-only customer payload", () => {
@@ -457,34 +377,6 @@ describe("V2 production send boundary", () => {
     expect(JSON.stringify(payload)).not.toMatch(
       /dealer_cost|freight_cost|internalCost|margin|options_json/,
     );
-  });
-
-  it("does not let send-as-is bypass missing selections or immutable snapshots", async () => {
-    const mutations: string[] = [];
-    const quote = {
-      id: "quote-v2",
-      status: "draft",
-      quote_v2_backend: true,
-      quote_v2_status: "priced",
-      quote_v2_revision: QUOTE_REVISION,
-      quote_v2_catalog_version: QUOTE_V2_ROLLER_PREVIEW_VERSION,
-      total_amount: 100,
-    };
-
-    await expect(
-      sendSalesQuoteToCustomer(
-        invalidV2Supabase(quote, mutations),
-        "quote-v2",
-        { email: "rep@805shutters.com", userId: "rep" },
-        { sendAsIs: true },
-      ),
-    ).rejects.toMatchObject({
-      status: 409,
-      message:
-        "V2 send blocked: Line item line-v2 is missing selected_design_id.",
-    });
-    expect(mutations).toEqual([]);
-    expect(sendQuoteToCustomerMock).not.toHaveBeenCalled();
   });
 
   it("uses the Los Angeles midnight boundary when the default send date is derived", () => {

@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateSalesQuoteMirrorPricing,
+  resolveSalesQuoteCustomerWorkflow,
   salesQuotesToMirror,
   upsertSalesQuoteMirrorRow,
 } from "./sales-quote-send";
+
+describe("resolveSalesQuoteCustomerWorkflow", () => {
+  it("routes ordinary sales quotes through V1", () => {
+    expect(resolveSalesQuoteCustomerWorkflow({ id: "quote-v1" })).toBe("v1");
+  });
+
+  it("keeps V2-marked historical rows on V1 so saved configuration details are preserved", () => {
+    expect(
+      resolveSalesQuoteCustomerWorkflow({
+        id: "historical-quote",
+        quote_v2_backend: true,
+        quote_v2_status: "ready",
+      }),
+    ).toBe("v1");
+  });
+});
 
 describe("salesQuotesToMirror", () => {
   it("includes every A/B/C sibling and keeps the patched active quote", () => {

@@ -46,6 +46,20 @@ export type SendSalesQuoteOptions = {
   sendAsIs?: boolean;
 };
 
+export type SalesQuoteCustomerWorkflow = "v1" | "v2";
+
+/**
+ * Customer-facing quotes and contracts are intentionally routed through the
+ * historical V1 records. Keep the V2 implementation and stored data intact,
+ * but do not select it for any sales quote, including rows previously marked
+ * with quote_v2_backend.
+ */
+export function resolveSalesQuoteCustomerWorkflow(
+  _quote: AnyRow,
+): SalesQuoteCustomerWorkflow {
+  return "v1";
+}
+
 export async function markSalesQuoteSold(
   supabase: CrmSupabaseClient,
   salesQuoteId: string,
@@ -54,7 +68,9 @@ export async function markSalesQuoteSold(
 ) {
   const measureDecision = requireTechnicalMeasureDecision(options.measureDecision);
   const original = await loadSalesQuote(supabase, salesQuoteId);
-  await guardV2SalesQuoteBeforeLegacySend(supabase, original);
+  if (resolveSalesQuoteCustomerWorkflow(original) === "v2") {
+    await guardV2SalesQuoteBeforeLegacySend(supabase, original);
+  }
   const signedAt = original.signed_at || new Date().toISOString();
   const { error } = await supabase
     .from("sales_quotes")
@@ -200,11 +216,9 @@ export async function sendSalesQuoteToCustomer(
     throw new CrmAuthError(400, "Send as is must be a boolean choice.");
   }
   const sendAsIs = options.sendAsIs === true;
-  if (sendAsIs && !isServerMarkedV2SalesQuote(quote)) {
-    throw new CrmAuthError(400, "Send as is is available only for V2 quotes.");
-  }
+  const customerWorkflow = resolveSalesQuoteCustomerWorkflow(quote);
   let preparedV2: PreparedV2CustomerQuote | null = null;
-  if (isServerMarkedV2SalesQuote(quote)) {
+  if (customerWorkflow === "v2" && isServerMarkedV2SalesQuote(quote)) {
     try {
       preparedV2 = await prepareV2CustomerSendPayloadFromDatabase(supabase, quote, {
         sendAsIs,
@@ -478,7 +492,9 @@ export async function sendSalesQuotePaymentLinkToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
-  await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
+  if (resolveSalesQuoteCustomerWorkflow(quote) === "v2") {
+    await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
+  }
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   const contactPatch: AnyRow = {};
@@ -697,7 +713,12 @@ async function markSalesQuoteSent(
   };
 
   if (quote.status === "draft") patch.status = "sent";
-  if (isServerMarkedV2SalesQuote(quote)) patch.quote_v2_status = "sent";
+  if (
+    resolveSalesQuoteCustomerWorkflow(quote) === "v2" &&
+    isServerMarkedV2SalesQuote(quote)
+  ) {
+    patch.quote_v2_status = "sent";
+  }
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   if (requestedEmails.length) patch.customer_email = requestedEmails[0];
