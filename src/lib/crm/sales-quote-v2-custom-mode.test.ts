@@ -50,8 +50,11 @@ describe("Quote V2 Custom Mode persistence and safety", () => {
     expect(send).not.toContain("customerPrice: stored.snapshotRow.internal_cost_snapshot");
   });
 
-  it("keeps external delivery behind the existing explicit send guard", () => {
+  it("keeps Custom Mode off legacy mutation paths after dedicated sending is enabled", () => {
     const guard=readFileSync(fileURLToPath(new URL("./sales-quote-v2-send-guard.ts",import.meta.url)),"utf8");
-    expect(guard).toContain("external delivery and the sent lifecycle transition remain disabled");
+    const send=readFileSync(fileURLToPath(new URL("./sales-quote-send.ts",import.meta.url)),"utf8");
+    expect(guard).toContain("This legacy quote mutation is not available for V2");
+    expect(send).toContain("prepareV2CustomerSendPayloadFromDatabase");
+    expect(send).toContain("mirrorSalesQuoteV2ForCustomerSend");
   });
 });
