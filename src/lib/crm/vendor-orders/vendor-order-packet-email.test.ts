@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { buildVendorOrderPacketEmail } from "./vendor-order-packet-email";
 
 describe("vendor order packet email", () => {
-  it("builds a manufacturer-specific Codex packet for the 805 inbox", () => {
-    const result = buildVendorOrderPacketEmail({
+  it("builds a simple manufacturer PDF packet for the 805 inbox", async () => {
+    const result = await buildVendorOrderPacketEmail({
       id: "task-123",
       manufacturer: "Onyx",
       product_type: "vinyl",
@@ -26,15 +26,17 @@ describe("vendor order packet email", () => {
     });
 
     expect(result.recipient).toBe("805@805shutters.com");
-    expect(result.subject).toContain("Earline Costello · Onyx · 805-0138");
-    expect(result.text).toContain("Prepare the manufacturer order as a draft");
+    expect(result.subject).toBe("Earline Costello - Agentic Order Form");
+    expect(result.text).toBe("Manufacturers: Onyx");
+    expect(result.html).toBe("<p>Manufacturers: Onyx</p>");
     expect(result.attachments.map((attachment) => attachment.filename)).toEqual([
-      "805-0138-Onyx-Codex-Order-Packet.html",
-      "805-0138-Onyx-Codex-Order-Packet.json",
+      "Earline-Costello-Onyx-Agentic-Order-Form.pdf",
     ]);
-    const json = JSON.parse(Buffer.from(result.attachments[1].content, "base64").toString("utf8"));
-    expect(json.safety).toBe("draft_entry_only_review_before_submission");
-    expect(json.order.lines[0].sourceValues).toMatchObject({
+    const pdf = Buffer.from(result.attachments[0].content, "base64").toString("latin1");
+    expect(pdf.startsWith("%PDF-")).toBe(true);
+    expect(result.packet.safety).toBe("draft_entry_only_review_before_submission");
+    const order = result.packet.order as { lines: Array<{ sourceValues: Record<string, unknown> }> };
+    expect(order.lines[0].sourceValues).toMatchObject({
       room: "Living Room",
       width_in: 22.5,
       height_in: 70.5,

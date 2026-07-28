@@ -24,7 +24,7 @@ export async function POST(
       throw new CrmAuthError(409, "This manufacturer order packet is no longer active.");
     }
 
-    const message = buildVendorOrderPacketEmail(task);
+    const message = await buildVendorOrderPacketEmail(task);
     const result = await sendEmail({
       to: message.recipient,
       subject: message.subject,

@@ -1,3 +1,5 @@
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+
 type VendorOrderEmailTask = {
   id: string;
   manufacturer: string;
@@ -56,7 +58,117 @@ function printableValues(value: unknown): Array<[string, string]> {
     ]);
 }
 
-export function buildVendorOrderPacketEmail(task: VendorOrderEmailTask) {
+function pdfSafe(value: unknown) {
+  return String(value ?? "").replace(/[^\x20-\x7E]/g, "-");
+}
+
+function wrapPdfText(
+  value: unknown,
+  font: { widthOfTextAtSize(text: string, size: number): number },
+  size: number,
+  maxWidth: number,
+) {
+  const words = pdfSafe(value).split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (!current || font.widthOfTextAtSize(candidate, size) <= maxWidth) current = candidate;
+    else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
+async function buildPacketPdf(input: {
+  customerName: string;
+  quoteNumber: string;
+  manufacturer: string;
+  productName: string;
+  sourceLabel: string;
+  customer: Record<string, unknown>;
+  lines: Record<string, unknown>[];
+}) {
+  const pdf = await PDFDocument.create();
+  const regular = await pdf.embedFont(StandardFonts.Helvetica);
+  const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const ink = rgb(0.07, 0.07, 0.07);
+  const muted = rgb(0.36, 0.35, 0.33);
+  const rule = rgb(0.76, 0.75, 0.71);
+  const wash = rgb(0.95, 0.94, 0.91);
+  const pageWidth = 612;
+  const pageHeight = 792;
+  const margin = 48;
+
+  const addHeader = (page: ReturnType<typeof pdf.addPage>, eyebrow: string, title: string) => {
+    page.drawRectangle({ x: margin, y: pageHeight - 50, width: pageWidth - margin * 2, height: 5, color: ink });
+    page.drawText(pdfSafe(eyebrow).toUpperCase(), { x: margin, y: pageHeight - 76, size: 9, font: bold, color: muted });
+    const titleLines = wrapPdfText(title, bold, 23, pageWidth - margin * 2);
+    titleLines.forEach((line, index) => {
+      page.drawText(line, { x: margin, y: pageHeight - 105 - index * 26, size: 23, font: bold, color: ink });
+    });
+    return pageHeight - 124 - Math.max(0, titleLines.length - 1) * 26;
+  };
+
+  const drawRows = (
+    page: ReturnType<typeof pdf.addPage>,
+    rows: Array<[string, unknown]>,
+    startY: number,
+  ) => {
+    let y = startY;
+    for (const [label, value] of rows) {
+      const valueLines = wrapPdfText(value, regular, 10, 332);
+      const height = Math.max(28, 12 + valueLines.length * 12);
+      page.drawRectangle({ x: margin, y: y - height, width: 142, height, color: wash, borderColor: rule, borderWidth: 0.6 });
+      page.drawRectangle({ x: margin + 142, y: y - height, width: 374, height, borderColor: rule, borderWidth: 0.6 });
+      page.drawText(pdfSafe(label).toUpperCase(), { x: margin + 8, y: y - 18, size: 8, font: bold, color: muted });
+      valueLines.forEach((line, index) => {
+        page.drawText(line, { x: margin + 152, y: y - 18 - index * 12, size: 10, font: regular, color: ink });
+      });
+      y -= height;
+    }
+    return y;
+  };
+
+  const drawFooter = (page: ReturnType<typeof pdf.addPage>, pageNumber: number) => {
+    page.drawText("805 Shutters - Agentic Order Form", { x: margin, y: 30, size: 8, font: regular, color: muted });
+    page.drawText(`Page ${pageNumber}`, { x: pageWidth - margin - 32, y: 30, size: 8, font: regular, color: muted });
+  };
+
+  const cover = pdf.addPage([pageWidth, pageHeight]);
+  let y = addHeader(cover, "805 Shutters - Agentic Order Form", `${input.customerName} - ${input.manufacturer}`);
+  y = drawRows(cover, [
+    ["Customer", input.customerName],
+    ["Contract / quote", input.quoteNumber],
+    ["Manufacturer", input.manufacturer],
+    ["Product", input.productName],
+    ["Source", input.sourceLabel],
+    ["Line items", input.lines.length || 1],
+    ["Phone", input.customer.phone],
+    ["Email", input.customer.email],
+    ["Project address", input.customer.address || input.customer.city],
+  ], y - 8);
+  drawFooter(cover, 1);
+
+  input.lines.forEach((line, index) => {
+    const page = pdf.addPage([pageWidth, pageHeight]);
+    const lineTitle = String(line.productName || line.room || `Line ${index + 1}`);
+    const startY = addHeader(
+      page,
+      `${input.manufacturer} - Line ${index + 1} of ${input.lines.length}`,
+      lineTitle,
+    );
+    drawRows(page, printableValues(line.sourceValues || line.values || line), startY - 8);
+    drawFooter(page, index + 2);
+  });
+
+  return Buffer.from(await pdf.save()).toString("base64");
+}
+
+export async function buildVendorOrderPacketEmail(task: VendorOrderEmailTask) {
   const customer = object(task.customer_snapshot);
   const quote = object(task.quote_snapshot);
   const payload = object(task.payload);
@@ -67,7 +179,6 @@ export function buildVendorOrderPacketEmail(task: VendorOrderEmailTask) {
   const sourceLabel = task.source_kind === "submitted_technical_measure"
     ? "Submitted technical measure"
     : "Signed contract";
-  const prompt = `Enter the attached ${manufacturer} order packet using my logged-in Chrome. Prepare the manufacturer order as a draft, audit every line, and stop before checkout, submission, payment, or final confirmation.`;
   const packet = {
     schemaVersion: "codex-order-packet.v1",
     safety: "draft_entry_only_review_before_submission",
@@ -86,48 +197,22 @@ export function buildVendorOrderPacketEmail(task: VendorOrderEmailTask) {
     lineCount: Math.max(1, Number(task.line_count) || payloadLines.length || 1),
     portalUrl: task.portal_url,
     orderPacketUrl: task.order_packet_url,
-    codexPrompt: prompt,
     order: payload,
   };
-  const coverRows: Array<[string, unknown]> = [
-    ["Customer", customerName],
-    ["Quote / PO", quoteNumber],
-    ["Manufacturer", manufacturer],
-    ["Product", stringArray(task.product_names).join(", ") || task.product_type],
-    ["Source of truth", sourceLabel],
-    ["Line items", packet.lineCount],
-    ["Portal", task.portal_url],
-  ];
-  const lineSections = payloadLines.map((line, index) => {
-    const values = printableValues(line.sourceValues || line.values || line);
-    return `<section class="line">
-      <header><span>LINE ${index + 1} OF ${payloadLines.length}</span><h2>${escapeHtml(line.productName || line.room || `Line ${index + 1}`)}</h2><b>${escapeHtml(line.routingKey || manufacturer)}</b></header>
-      <table>${values.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table>
-    </section>`;
-  }).join("");
-  const htmlAttachment = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-    <title>${escapeHtml(manufacturer)} Codex Order Packet - ${escapeHtml(customerName)}</title>
-    <style>
-      :root{font-family:Arial,sans-serif;color:#111;background:#ecebe7}body{margin:0;padding:20px}.page,.line{box-sizing:border-box;max-width:980px;margin:0 auto 20px;background:#fff;border:1px solid #bdbbb4;padding:24px}.page{border-top:10px solid #111}.eyebrow,header span{font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#666}h1,h2{margin:5px 0 18px}.prompt{border:2px solid #111;padding:14px;font-weight:700;white-space:pre-wrap}header{border-bottom:4px solid #111;margin-bottom:12px}header b{display:block;margin:0 0 12px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #c9c7c0;padding:9px;text-align:left;vertical-align:top}th{width:31%;font-size:12px;text-transform:uppercase;background:#f3f2ee}@media print{body{padding:0;background:#fff}.page,.line{min-height:100vh;margin:0;border:0;page-break-after:always}.line:last-child{page-break-after:auto}}
-    </style></head><body>
-    <section class="page"><p class="eyebrow">805 Shutters · Codex Order Packet</p><h1>${escapeHtml(manufacturer)} Order</h1>
-      <table>${coverRows.filter(([, value]) => value).map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join("")}</table>
-      <h2>Instruction for Codex</h2><div class="prompt">${escapeHtml(prompt)}</div>
-    </section>${lineSections}</body></html>`;
-  const baseName = `${slug(quoteNumber || customerName)}-${slug(manufacturer)}-Codex-Order-Packet`;
-  const subject = `Codex order packet: ${customerName} · ${manufacturer}${quoteNumber ? ` · ${quoteNumber}` : ""}`;
-  const text = `The complete ${manufacturer} order packet for ${customerName} is attached.\n\nSource: ${sourceLabel}\nLine items: ${packet.lineCount}\n${quoteNumber ? `Quote / PO: ${quoteNumber}\n` : ""}\nCodex instruction:\n${prompt}\n\nAttachments:\n- ${baseName}.html\n- ${baseName}.json\n\nThis packet is for draft entry and review only. It does not authorize manufacturer submission or payment.`;
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:680px;margin:0 auto;padding:24px">
-    <p style="font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#666">805 Shutters · Codex Order Packet</p>
-    <h1 style="font-size:25px;margin:6px 0 16px">${escapeHtml(customerName)} · ${escapeHtml(manufacturer)}</h1>
-    <p>The complete manufacturer-specific order packet is attached in a readable document and structured JSON.</p>
-    <table style="width:100%;border-collapse:collapse;margin:18px 0">
-      ${coverRows.filter(([, value]) => value).map(([label, value]) => `<tr><th style="text-align:left;border-top:1px solid #ddd;padding:9px;width:34%">${escapeHtml(label)}</th><td style="border-top:1px solid #ddd;padding:9px">${escapeHtml(value)}</td></tr>`).join("")}
-    </table>
-    <h2 style="font-size:18px">Paste this instruction into Codex</h2>
-    <div style="border:2px solid #111;padding:14px;font-weight:700">${escapeHtml(prompt)}</div>
-    <p style="font-size:12px;color:#555;margin-top:20px">Draft entry and review only. This email does not authorize checkout, submission, payment, or final confirmation.</p>
-  </div>`;
+  const productName = stringArray(task.product_names).join(", ") || task.product_type;
+  const baseName = `${slug(customerName)}-${slug(manufacturer)}-Agentic-Order-Form`;
+  const subject = `${customerName} - Agentic Order Form`;
+  const text = `Manufacturers: ${manufacturer}`;
+  const html = `<p>Manufacturers: ${escapeHtml(manufacturer)}</p>`;
+  const pdfContent = await buildPacketPdf({
+    customerName,
+    quoteNumber,
+    manufacturer,
+    productName,
+    sourceLabel,
+    customer,
+    lines: payloadLines,
+  });
 
   return {
     recipient: CODEX_ORDER_RECIPIENT,
@@ -137,14 +222,9 @@ export function buildVendorOrderPacketEmail(task: VendorOrderEmailTask) {
     idempotencyKey: `vendor-order-packet-${task.id}-${task.source_revision}`.slice(0, 255),
     attachments: [
       {
-        filename: `${baseName}.html`,
-        content: Buffer.from(htmlAttachment, "utf8").toString("base64"),
-        contentType: "text/html; charset=utf-8",
-      },
-      {
-        filename: `${baseName}.json`,
-        content: Buffer.from(JSON.stringify(packet, null, 2), "utf8").toString("base64"),
-        contentType: "application/json",
+        filename: `${baseName}.pdf`,
+        content: pdfContent,
+        contentType: "application/pdf",
       },
     ],
     packet,
