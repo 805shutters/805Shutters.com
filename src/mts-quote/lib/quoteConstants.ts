@@ -85,11 +85,6 @@ export const PRODUCT_TYPES = [
   "Wood Blinds",
   "Vertical Blinds",
   "Smart Drapes",
-  "Drapery Tracks",
-  "Tension Shades",
-  "Retractable Screens",
-  "Awnings",
-  "Vinyl Blinds",
 ] as const;
 
 export type ProductType = (typeof PRODUCT_TYPES)[number];
@@ -174,8 +169,6 @@ export const ONYX_ORDER_SHUTTER_TYPES = ["Regular", "By Pass", "Bi Fold", "Frenc
 export const ONYX_SIZE_TYPES = ["W - Window Size", "F - Frame to Frame"] as const;
 
 export const ONYX_MOUNT_TYPES = ["IM", "OM"] as const;
-
-export const ONYX_FRAME_SIDE_OPTIONS = ["3", "4"] as const;
 
 export const ONYX_TRACK_TYPES = ["Bypass", "Bifold"] as const;
 
@@ -633,13 +626,7 @@ export const PAYMENT_METHODS = [
 
 // Roller Shade Options
 export const ROLLER_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
-export const ROLLER_SHADE_TYPES = [
-  "Single Shade",
-  "Dual Rollers",
-  "Coupled Shades",
-  "LightGuard 360 with T-Post",
-  "Common Valance",
-] as const;
+export const ROLLER_SHADE_TYPES = ["Single Shade", "Dual Rollers", "Common Valance"] as const;
 export const ROLLER_LIFT_SYSTEMS = [
   "Cordless",
   "Continuous Cord Loop",
@@ -666,44 +653,6 @@ export const ROLLER_PREMIUM_HARDWARE_COLORS = [
   "Black",
   "Bronze",
   "Anodized Silver",
-] as const;
-// V2 configuration evidence used by the authoritative restriction matrices.
-// Existing shade-type and valance fields remain intact for legacy quotes.
-export const ROLLER_APPLICATIONS = [
-  "Single Shade",
-  "Dual Roller",
-  "Coupled Shades",
-  "Independently Operated Coupled Shades",
-  "LightGuard 360",
-  "LightGuard 360 with T-Post",
-  "Common Valance",
-] as const;
-export const ROLLER_COUPLING_ARRANGEMENTS = [
-  "Standard Coupled",
-  "Independently Operated",
-] as const;
-export const ROLLER_TOP_TREATMENT_CLASSES = [
-  "No Top Treatment",
-  "Square Fascia",
-  "Curved Fascia",
-  "Fabric Valance",
-  "Wood Valance",
-  "Cassette",
-  "LightGuard 360 Housing",
-] as const;
-export const ROLLER_TUBE_CLASSES = [
-  "All Tubes",
-  '1 3/4" (43mm) Tube',
-  '2" (52mm) Tube',
-] as const;
-export const ROLLER_POWER_CONFIGURATIONS = [
-  "Automate ARC Motor",
-  "Automate Low Voltage DC Motor",
-  "Norman Smart AC Adapter Plug-In 36W",
-  "Norman Smart AC Adapter Plug-In 65W & Low Voltage Hard Wire",
-  "Norman Smart Rechargeable Battery with Charging Wand & AC Adapter Charger",
-  "Norman Smart Rechargeable Battery with AC Adapter Charger",
-  "AutoWand",
 ] as const;
 
 // Roller Shade Fabrics - COMPLETE catalog from 818 site (70 fabrics, 4 categories)
@@ -983,23 +932,6 @@ export const ROMAN_POLE_OPTIONS = ["None", "Pole with Attachment", "Attachment O
 export const ROMAN_POLE_LENGTHS = ['36"', '60"'] as const;
 export const ROMAN_LININGS = ["Translucent", "Blackout"] as const;
 export const ROMAN_BACK_HEM_BARS = ["Plain", "Fabric-Wrapped"] as const;
-export const ROMAN_FABRIC_ORIENTATIONS = [
-  "Standard / Non-Railroaded",
-  "Railroaded",
-] as const;
-export const ROMAN_SEAMING_OPTIONS = [
-  "No Seams",
-  "Vertical Seams",
-  "Horizontal Seams",
-] as const;
-export const ROMAN_RIBBON_TAPE_COLORS = [
-  "T001 - White",
-  "T002 - Ivory",
-  "T169 - Grey Beige",
-  "T201 - Black",
-  "T402 - Light Cocoa",
-  "T5124 - Dusty Grey",
-] as const;
 export const ROMAN_HOLD_DOWNS = ["None", "Magnetic"] as const;
 export const ROMAN_MAGNET_COLORS = [
   "Antique Brass",
@@ -1752,60 +1684,6 @@ export const HONEYCOMB_LIFT_SYSTEMS = [
   "Top Down-Bottom Up",
 ] as const;
 export const HONEYCOMB_LIGHT_CONTROL = ["Light Filtering", "Room Darkening", "Blackout"] as const;
-export const HONEYCOMB_APPLICATIONS = [
-  "Standard",
-  "Side-by-Side",
-  "SmartFit with Frame",
-  "SmartFit for Sloped Windows with Frame",
-  "Specialty Shapes",
-  "Patio Door Vertical",
-  "Motorized Skylights",
-] as const;
-export const HONEYCOMB_FRAME_APPLICATIONS = [
-  "SmartFit with Frame",
-  "SmartFit for Sloped Windows with Frame",
-] as const;
-export const HONEYCOMB_FRAME_TYPES = [
-  'Vintage L Frame (1/4" Light Block)',
-  'Vintage L Frame (3/4" Light Block)',
-  "Vintage Hang Strip with Insert (No Light Block)",
-  "Beaded L Frame",
-  '1 1/4" Beaded Z Frame',
-  '1 1/2" Bullnose Z Frame',
-  '2" Belair Z Frame',
-  '2" Bullnose Z Frame',
-  '3" Crown Z Frame',
-  '2" Camber Deco Frame',
-  '2" Classic Deco Frame',
-  '3" Ridge Deco Frame',
-] as const;
-export const HONEYCOMB_SLOPED_FRAME_TYPES = [
-  "Beaded L Frame",
-  '2" Belair Z Frame',
-  '2" Bullnose Z Frame',
-] as const;
-export const HONEYCOMB_SPECIALTY_SHAPES = [
-  "Perfect Arch (Half Round)",
-  "Arch on Top Left",
-  "Arch on Top Right",
-  "Triangle",
-  "Quarter Round Left",
-  "Quarter Round Right",
-  "Angle Top Left",
-  "Angle Top Right",
-  "Eyebrow",
-  "Elongated Eyebrow",
-  "Half Eyebrow Left",
-  "Half Eyebrow Right",
-] as const;
-export const HONEYCOMB_SPLIT_SPLICE_OPTIONS = [
-  "Right Stack",
-  "Left Stack",
-  "Traveling Center Stack",
-  "Center Opening - Split Evenly",
-  "Center Opening - Custom Split",
-] as const;
-export const HONEYCOMB_SIDE_BY_SIDE_POSITIONS = ["Left Shade", "Right Shade"] as const;
 
 // Honeycomb Shade Fabrics - COMPLETE catalog from 818 site (19 fabric lines)
 export const HONEYCOMB_FABRICS = [
@@ -1974,11 +1852,7 @@ export const PERFECTSHEER_FABRICS = [
 ] as const;
 
 // Faux Wood Blind Options
-export const FAUX_WOOD_MOUNT_TYPES = [
-  "Inside Mount",
-  "Outside Mount",
-  "Side Mount",
-] as const;
+export const FAUX_WOOD_MOUNT_TYPES = ["Inside Mount", "Outside Mount"] as const;
 export const FAUX_WOOD_SLAT_SIZES = ['2"', '2.5"'] as const;
 export const FAUX_WOOD_PRODUCT_LINES = ["SmartPrivacy", "Ultimate"] as const;
 
@@ -2040,60 +1914,50 @@ export const VERTICAL_FABRIC_GROUPS = [
 export const VERTICAL_COLORS = [
   "Pure White Collection: Classic",
   "Silk White Collection: Classic",
-  "Pearl Collection: Classic",
-  "Sea Mist Collection: Classic",
-  "Metropolitan Collection: Classic",
-  "Pure White Collection: S-Curved",
-  "Silk White Collection: S-Curved",
-  "Pearl Collection: S-Curved",
-  "Sea Mist Collection: S-Curved",
-  "Metropolitan Collection: S-Curved",
   "Designer White Collection: Sandblasted",
+  "Pure White Collection: Shantung",
+  "Pure White Collection: Linen",
+  "Pure White Collection: Adobe",
+  "Pearl Collection: Classic",
   "Bright White Collection: Sandblasted",
+  "Bright White Collection: Adobe",
   "Crisp Linen Collection: Sandblasted",
+  "Bright White Collection: Shantung",
+  "Wheat Collection: Linen",
+  "Chic Gray Collection: Linen",
+  "Botanical Garden Collection: Grasscloth",
   "Taupe Gray Collection: Sandblasted",
   "Mustard Green Collection: Flaxen",
   "Honey Wheat Collection: Flaxen",
-  "Platinum Collection: Flaxen",
-  "Magnetic Gray Collection: Flaxen",
-  "Pure White Collection: Adobe",
-  "Bright White Collection: Adobe",
+  "Sea Mist Collection: Classic",
+  "Mist Collection: Willow",
   "Latte Collection: Adobe",
   "Taupe Collection: Adobe",
-  "Shark Fin Collection: Adobe",
-  "Pure White Collection: Shantung",
-  "Bright White Collection: Shantung",
   "Latte Collection: Shantung",
-  "Metropolitan Collection: Shantung",
+  "Limed White Collection: Faux Wood",
+  "Birch Collection: Willow",
+  "Natural Gray Collection: Willow",
+  "Driftwood Collection: Faux Wood",
+  "Oak Collection: Faux Wood",
+  "Cloud Collection: Willow",
   "Cement Collection: Shantung",
   "Lilac Collection: Shantung",
-  "Laurel Pink Collection: Shantung",
-  "Pure White Collection: Linen",
-  "Wheat Collection: Linen",
-  "Chic Gray Collection: Linen",
-  "Metropolitan Collection: Linen",
-  "Dusty Blue Collection: Linen",
-  "Merlot Collection: Linen",
-  "Botanical Garden Collection: Grasscloth",
-  "Mist Collection: Willow",
-  "Birch Collection: Willow",
   "Burnished Clay Collection: Willow",
-  "Natural Gray Collection: Willow",
-  "Limed White Collection: Faux Wood",
+  "Platinum Collection: Flaxen",
+  "Shark Fin Collection: Adobe",
+  "Metropolitan Collection: Linen",
+  "Metropolitan Collection: Classic",
+  "Metropolitan Collection: Shantung",
   "Silver Birch Collection: Faux Wood",
+  "Magnetic Gray Collection: Flaxen",
+  "Dusty Blue Collection: Linen",
+  "Laurel Pink Collection: Shantung",
+  "Merlot Collection: Linen",
   "Chestnut Collection: Faux Wood",
-  "Oak Collection: Faux Wood",
-  "Driftwood Collection: Faux Wood",
 ] as const;
 
 export const VERTICAL_STACK_OPTIONS = ["Stack Right", "Stack Left"] as const;
 export const VERTICAL_CONTROL_TYPES = ["Cordless Wand Operation"] as const;
-export const VERTICAL_DRAW_OPTIONS = ["Left Draw", "Right Draw"] as const;
-export const VERTICAL_SIDE_BY_SIDE_POSITIONS = [
-  "Not Side-by-Side",
-  "Left Blind",
-  "Right Blind",
-] as const;
 
 export function getVerticalColorsForGroup(fabricGroup: string): readonly string[] {
   if (!fabricGroup || fabricGroup === "Classic collection") {

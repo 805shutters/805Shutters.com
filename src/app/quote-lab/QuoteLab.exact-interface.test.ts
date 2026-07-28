@@ -20,11 +20,10 @@ describe("Quote Lab exact interface contract", () => {
     expect(source).not.toContain("QuoteLabBuilder");
   });
 
-  it("preserves existing categories, the four Polar categories, and adds Lotus Vinyl Blinds", () => {
+  it("preserves the original production quote categories", () => {
     expect(PRODUCT_TYPES).toEqual([
       "Shutters", "Roller Shades", "Roman Shades", "Honeycomb Shades", "Sheer Shades",
       "Mini Blinds", "Faux Wood Blinds", "Wood Blinds", "Vertical Blinds", "Smart Drapes",
-      "Drapery Tracks", "Tension Shades", "Retractable Screens", "Awnings", "Vinyl Blinds",
     ]);
   });
 });

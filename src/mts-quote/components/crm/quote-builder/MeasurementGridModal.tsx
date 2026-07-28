@@ -1,9 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@mts/components/ui/dialog";
 import { cn } from "@mts/lib/utils";
 import { FRACTIONS } from "@mts/lib/quoteConstants";
 import type { MeasurementStep } from "@mts/stores/quoteBuilderStore";
-import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
 
 interface MeasurementGridModalProps {
   open: boolean;
@@ -39,23 +38,18 @@ export function MeasurementGridModal({
   pendingWidth,
   pendingHeight,
 }: MeasurementGridModalProps) {
-  const { authoritativeV2 } = useQuoteBuilderDatabase();
   const [directWidth, setDirectWidth] = useState("");
   const [directHeight, setDirectHeight] = useState("");
   const [directError, setDirectError] = useState("");
-  const pickerScrollRef = useRef<HTMLDivElement>(null);
   const isWidth = step === "width_whole" || step === "width_fraction";
   const isFractionStep = step === "width_fraction" || step === "height_fraction";
-  const selectedWhole = isWidth ? pendingWidth?.whole : pendingHeight?.whole;
-  const selectedFraction = isWidth ? pendingWidth?.fraction : pendingHeight?.fraction;
 
   const label = singleDimensionLabel || (isWidth ? "Width" : "Height");
   const sublabel = isFractionStep
     ? `Select fraction for ${label.toLowerCase()}`
     : `Select whole inches for ${label.toLowerCase()}`;
 
-  const maxWholeInches = getMeasurementMaxWholeInches(isWidth, authoritativeV2);
-  const maxHeightWholeInches = getMeasurementMaxWholeInches(false, authoritativeV2);
+  const maxWholeInches = isWidth ? 250 : 119;
   const wholeNumbers: number[] = [];
   for (let i = wholeStart; i <= maxWholeInches; i++) wholeNumbers.push(i);
 
@@ -84,18 +78,11 @@ export function MeasurementGridModal({
     setDirectError("");
   }, [open, pendingWidth, pendingHeight]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
-    pickerScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
-  }, [open, step]);
-
   const submitDirectMeasurements = () => {
     const width = parseDirectMeasurement(directWidth, 250);
-    const height = parseDirectMeasurement(directHeight, maxHeightWholeInches);
+    const height = parseDirectMeasurement(directHeight, 119);
     if (!width || !height) {
-      setDirectError(
-        `Enter a width from 1 to 250 15/16 and a height from 1 to ${maxHeightWholeInches} 15/16 inches.`,
-      );
+      setDirectError("Enter a width from 1 to 250 15/16 and a height from 1 to 119 15/16 inches.");
       return;
     }
     setDirectError("");
@@ -104,7 +91,7 @@ export function MeasurementGridModal({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="mts-measure-dialog p-4 sm:p-6">
+      <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[760px] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-bold">{label}</DialogTitle>
@@ -121,7 +108,7 @@ export function MeasurementGridModal({
           <p className="text-sm text-muted-foreground">{sublabel}</p>
         </DialogHeader>
 
-        <div ref={pickerScrollRef} className="mts-measure-dialog-scroll">
+        <div className="mt-4">
           {showDirectEntry ? <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
             <div className="mb-2 text-sm font-semibold">Enter measurements instead</div>
             <div className="grid grid-cols-2 gap-3">
@@ -148,7 +135,7 @@ export function MeasurementGridModal({
                   type="number"
                   inputMode="decimal"
                   min="1"
-                  max={`${maxHeightWholeInches}.9375`}
+                  max="119.9375"
                   step="0.0625"
                   value={directHeight}
                   onChange={(event) => setDirectHeight(event.target.value)}
@@ -173,19 +160,14 @@ export function MeasurementGridModal({
 
           {/* Whole number grid */}
           {!isFractionStep && (
-            <div
-              className="mts-measure-whole-grid"
-              data-testid="measurement-whole-number-grid"
-            >
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(4rem,1fr))] gap-2">
               {wholeNumbers.map((n) => (
                 <button
                   key={n}
-                  type="button"
                   onClick={() => handleWholeClick(n)}
-                  aria-pressed={n === selectedWhole}
                   className={cn(
-                    "mts-measure-whole-button",
-                    n === selectedWhole && "mts-measure-whole-button--selected"
+                    "h-11 rounded border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
+                    "bg-card border-border"
                   )}
                 >
                   {n}
@@ -200,13 +182,10 @@ export function MeasurementGridModal({
               {FRACTIONS.map((f) => (
                 <button
                   key={f}
-                  type="button"
                   onClick={() => handleFractionClick(f)}
-                  aria-pressed={f === selectedFraction}
                   className={cn(
                     "h-12 rounded-lg border text-sm font-medium transition-all hover:bg-primary hover:text-primary-foreground hover:border-primary",
-                    "bg-card border-border",
-                    f === selectedFraction && "border-foreground bg-foreground text-background"
+                    "bg-card border-border"
                   )}
                 >
                   {f === "0" ? "0 (even)" : f}
@@ -231,14 +210,6 @@ export function parseDirectMeasurement(
   const fraction = FRACTIONS[totalSixteenths % 16];
   if (whole > maxWholeInches || !fraction) return null;
   return { whole, fraction };
-}
-
-export function getMeasurementMaxWholeInches(
-  isWidth: boolean,
-  authoritativeV2: boolean,
-): number {
-  if (isWidth) return 250;
-  return authoritativeV2 ? 250 : 119;
 }
 
 function measurementToDecimalString(measurement: { whole: number; fraction: string }): string {

@@ -18,7 +18,6 @@ import {
   ONYX_TILT_TYPES,
   ONYX_WOOD_FRAME_TYPES,
   NORMAN_WOODLORE_FRAME_TYPES,
-  PRODUCT_TYPES,
   ROOM_PRESETS,
   SHUTTER_HINGE_COLORS,
   SHUTTER_LOUVER_SIZES,
@@ -68,7 +67,7 @@ function measureScheduleLabel(scheduling: Record<string, unknown> | null) {
   return `${scheduleTimeFormatter.format(new Date(startAt))} – ${scheduleTimeFormatter.format(new Date(endAt))}`;
 }
 
-const PRODUCT_IDS: Record<(typeof PRODUCT_TYPES)[number], string> = {
+const PRODUCT_IDS: Record<string, string> = {
   "Shutters": "norman_shutters",
   "Roller Shades": "roller",
   "Roman Shades": "roman",

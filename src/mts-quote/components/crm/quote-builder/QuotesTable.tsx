@@ -16,8 +16,6 @@ import { getQuoteStatsStatus, type QuoteStatsSource } from "@mts/lib/quoteDashbo
 
 export type QuoteTableRow = QuoteStatsSource & {
   quote_number?: string | null;
-  quote_group_id?: string | null;
-  quote_letter?: string | null;
   customer_name?: string | null;
   customer_address?: string | null;
   total_amount?: number | null;
@@ -25,8 +23,6 @@ export type QuoteTableRow = QuoteStatsSource & {
   updated_at?: string | null;
   source?: "sales" | "crm";
   sourceQuoteId?: string | null;
-  sourceSystemQuoteId?: string | null;
-  v2ImportStatus?: "ready" | "not_imported";
   salesQuote?: SalesQuote;
   generalJobNote?: string | null;
 };
@@ -37,7 +33,7 @@ interface QuotesTableProps {
   onOpen: (quote: QuoteTableRow) => void;
   onPortfolio: (quote: QuoteTableRow) => void;
   onCopy: (id: string) => void;
-  onDelete: (quote: QuoteTableRow) => void;
+  onDelete: (id: string) => void;
   title?: string;
 }
 
@@ -109,19 +105,7 @@ export function QuotesTable({
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => onOpen(quote)}
               >
-                <TableCell className="font-mono text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span>{quote.quote_number}</span>
-                    {quote.quote_group_id && quote.quote_letter && (
-                      <span
-                        className="rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 font-sans text-[10px] font-black uppercase tracking-[0.12em] text-slate-700"
-                        aria-label={`Quote alternative ${quote.quote_letter}`}
-                      >
-                        Quote {quote.quote_letter}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
+                <TableCell className="font-mono text-sm">{quote.quote_number}</TableCell>
                 <TableCell>
                   <div>
                     <p className="font-medium">{quote.customer_name || "—"}</p>
@@ -132,11 +116,6 @@ export function QuotesTable({
                       <p className="mt-1 flex max-w-md items-start gap-1.5 text-xs text-amber-800">
                         <MessageSquareText className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span className="line-clamp-2">{quote.generalJobNote}</span>
-                      </p>
-                    )}
-                    {quote.v2ImportStatus === "not_imported" && (
-                      <p className="mt-1 text-xs font-medium text-amber-800">
-                        V1 only — historical configuration not yet imported to V2
                       </p>
                     )}
                   </div>
@@ -161,21 +140,18 @@ export function QuotesTable({
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
                     {isCrmQuote ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpen(quote);
-                          }}
-                          title="Open quote"
-                        >
-                          <ExternalLink className="mr-1.5 h-4 w-4" />
-                          Open
-                        </Button>
-                        <DeleteQuoteButton quote={quote} onDelete={onDelete} />
-                      </>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpen(quote);
+                        }}
+                        title="Open quote"
+                      >
+                        <ExternalLink className="mr-1.5 h-4 w-4" />
+                        Open
+                      </Button>
                     ) : (
                       <>
                         <Button
@@ -201,7 +177,22 @@ export function QuotesTable({
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
-                        <DeleteQuoteButton quote={quote} onDelete={onDelete} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const label = quote.quote_number || quote.customer_name || "this quote";
+                            if (!window.confirm(`Delete quote ${label}? This cannot be undone.`)) {
+                              return;
+                            }
+                            onDelete(salesQuoteId);
+                          }}
+                          title="Delete quote"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </>
                     )}
                   </div>
@@ -223,31 +214,5 @@ export function QuotesTable({
         </div>
       )}
     </div>
-  );
-}
-
-function DeleteQuoteButton({
-  quote,
-  onDelete,
-}: {
-  quote: QuoteTableRow;
-  onDelete: (quote: QuoteTableRow) => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      onClick={(event) => {
-        event.stopPropagation();
-        const label = quote.quote_number || quote.customer_name || "this quote";
-        if (!window.confirm(`Permanently delete quote ${label}? This cannot be undone.`)) return;
-        onDelete(quote);
-      }}
-      title="Delete quote"
-      aria-label={`Delete quote ${quote.quote_number || quote.customer_name || ""}`.trim()}
-      className="text-destructive hover:text-destructive"
-    >
-      <Trash2 className="h-4 w-4" />
-    </Button>
   );
 }

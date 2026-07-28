@@ -67,7 +67,6 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
   const [phone, setPhone] = useState(quote.customer_phone ?? "");
   const [customMessage, setCustomMessage] = useState(() => getQuoteEmailNote(quote));
   const [bypassHours, setBypassHours] = useState(false);
-  const [sendAsIs, setSendAsIs] = useState(quote.quote_v2_backend === true);
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
@@ -78,7 +77,6 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
     setPhone(quote.customer_phone ?? "");
     setCustomMessage(getQuoteEmailNote(quote));
     setBypassHours(false);
-    setSendAsIs(quote.quote_v2_backend === true);
     setLinkCopied(false);
   }, [open, quote]);
 
@@ -114,7 +112,6 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
           emailType,
           bypassHours,
           measureDecision,
-          sendAsIs: quote.quote_v2_backend === true && sendAsIs,
         }),
       });
       const data = (await response.json().catch(() => ({}))) as SendQuoteResponse;
@@ -385,27 +382,6 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
               </div>
             </DialogSection>
 
-            {quote.quote_v2_backend === true && (
-              <DialogSection
-                title="Saved quote override"
-                description="Use this when you intentionally want the customer to receive the currently saved quote without repricing it."
-              >
-                <label className="flex cursor-pointer items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950">
-                  <Checkbox
-                    checked={sendAsIs}
-                    onCheckedChange={(value) => setSendAsIs(value === true)}
-                    className="mt-0.5"
-                  />
-                  <span className="leading-relaxed">
-                    <span className="block font-semibold">Send this quote exactly as saved</span>
-                    Uses the selected immutable customer prices and total even when current
-                    manufacturer-source validation would block repricing. This decision is recorded
-                    in CRM activity.
-                  </span>
-                </label>
-              </DialogSection>
-            )}
-
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
               <DialogSection title="Share link" description="Customer review page for this quote.">
                 <div className="flex min-w-0 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 p-2">
@@ -465,11 +441,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
                 className="w-full bg-amber-600 text-white hover:bg-amber-700 sm:w-auto"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sendQuote.isPending
-                  ? "Sending..."
-                  : sendAsIs
-                    ? "Send As Is - Measure Needed"
-                    : "Send Contract - Measure Needed"}
+                {sendQuote.isPending ? "Sending..." : "Send Contract - Measure Needed"}
               </Button>
               <Button
                 onClick={() => sendQuote.mutate({ measureDecision: "not_needed" })}
@@ -477,11 +449,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
                 className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {sendQuote.isPending
-                  ? "Sending..."
-                  : sendAsIs
-                    ? "Send As Is - No Measure Needed"
-                    : "Send Contract - No Measure Needed"}
+                {sendQuote.isPending ? "Sending..." : "Send Contract - No Measure Needed"}
               </Button>
             </>
           ) : (
@@ -491,7 +459,7 @@ export function SendQuoteDialog({ open, onClose, quote }: SendQuoteDialogProps) 
               className="w-full bg-[#0b0b0b] hover:bg-[#1c1c1a] sm:w-auto"
             >
               <Send className="h-4 w-4 mr-2" />
-              {sendQuote.isPending ? "Sending..." : sendAsIs ? "Send As Is" : sendLabel}
+              {sendQuote.isPending ? "Sending..." : sendLabel}
             </Button>
           )}
         </DialogFooter>

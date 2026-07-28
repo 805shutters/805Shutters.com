@@ -11,32 +11,20 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { Fragment, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { Fragment, lazy, Suspense, useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
 import { cn } from "@mts/lib/utils";
 import { ACCOUNT_IDS } from "@mts/lib/accounts";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
+import { QuoteDashboard } from "@mts/components/crm/quote-builder/QuoteDashboard";
 import { PortalContainerContext } from "@mts/lib/portal-container";
-import {
-  QuoteBuilderDatabaseProvider,
-  useQuoteBuilderDatabase,
-} from "@mts/integrations/supabase/quoteBuilderDatabase";
-import { supabase } from "@mts/integrations/supabase/client";
-import { queryKeys } from "@mts/lib/queryKeys";
-import { resolveActiveQuoteRuntime } from "@mts/lib/quoteRuntimeRouting";
-import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 
-// The quote tools pull in the full product catalog, pricing engine,
+// The builder and contract pull in the full product catalog, pricing engine,
 // and design controls. Loading them with the dashboard made older iPads parse
 // several hundred KB of JavaScript before the quote list could appear.
-const QuoteDashboard = lazy(() =>
-  import("@mts/components/crm/quote-builder/QuoteDashboard").then((module) => ({
-    default: module.QuoteDashboard,
-  }))
-);
 const QuoteBuilder = lazy(() =>
   import("@mts/components/crm/quote-builder/QuoteBuilder").then((module) => ({
     default: module.QuoteBuilder,
@@ -57,57 +45,6 @@ function QuoteTabLoading() {
   return <div className="p-8 text-center text-sm text-muted-foreground">Loading quote tools...</div>;
 }
 
-function ActiveQuoteRuntimeProvider({
-  activeQuoteId,
-  children,
-}: {
-  activeQuoteId: string | null;
-  children: ReactNode;
-}) {
-  const parentRuntime = useQuoteBuilderDatabase();
-  const {
-    data: activeQuote,
-    isPending,
-    isError,
-  } = useQuery({
-    queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
-    queryFn: async () => {
-      const { data, error } = await (parentRuntime.database as any)
-        .from("sales_quotes")
-        .select("*")
-        .eq("id", activeQuoteId!)
-        .single();
-      if (error) throw error;
-      return data as SalesQuote;
-    },
-    enabled: !!activeQuoteId,
-  });
-
-  if (!activeQuoteId || isPending) return <QuoteTabLoading />;
-  if (isError || !activeQuote) {
-    return (
-      <div className="p-8 text-center text-sm text-red-700">
-        The saved quote record could not be loaded. No quote data was changed.
-      </div>
-    );
-  }
-
-  const activeRuntime = resolveActiveQuoteRuntime(activeQuote);
-
-  return (
-    <QuoteBuilderDatabaseProvider
-      database={parentRuntime.database}
-      isolated={parentRuntime.isolated}
-      preferStoredTotal={parentRuntime.preferStoredTotal}
-      authoritativeV2={activeRuntime.authoritativeV2}
-      serverOwnedV2={activeRuntime.serverOwnedV2}
-      showLabCatalogControls={parentRuntime.showLabCatalogControls}
-    >
-      {children}
-    </QuoteBuilderDatabaseProvider>
-  );
-}
-
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard, requiresQuote: false },
   { value: "builder", label: "Builder", icon: Hammer, requiresQuote: true },
@@ -123,7 +60,6 @@ type QuoteWorkspaceProps = {
   openRequest?: QuoteWorkspaceOpenRequest | null;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
-  onChanged?: () => void;
 };
 
 export type QuoteWorkspaceOpenTab = "builder" | "contract";
@@ -141,7 +77,6 @@ export function QuoteWorkspace({
   openRequest,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
-  onChanged,
 }: QuoteWorkspaceProps = {}) {
   const [queryClient] = useState(() => new QueryClient());
   const [scopeEl, setScopeEl] = useState<HTMLDivElement | null>(null);
@@ -167,19 +102,13 @@ export function QuoteWorkspace({
   };
 
   return (
-    <QuoteBuilderDatabaseProvider
-      database={supabase}
-      authoritativeV2
-      serverOwnedV2
-      preferStoredTotal
-    >
-      <QueryClientProvider client={queryClient}>
-        <PortalContainerContext.Provider value={scopeEl}>
-          <div
-            ref={setScopeEl}
-            className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
-            data-theme="light"
-          >
+    <QueryClientProvider client={queryClient}>
+      <PortalContainerContext.Provider value={scopeEl}>
+        <div
+          ref={setScopeEl}
+          className="mts-quote-scope min-h-full bg-[#f3f3f0] light"
+          data-theme="light"
+        >
           {/* Tab buttons (hidden in the full-screen builder — its slim bar carries the toggle + X) */}
           {effectiveTab !== "builder" && (
             <div className="sticky top-0 z-40 border-b border-[#d6d5cf] bg-white/95 px-4 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-5">
@@ -225,26 +154,21 @@ export function QuoteWorkspace({
           {/* Tab content */}
           <div>
             {effectiveTab === "dashboard" && (
-              <Suspense fallback={<QuoteTabLoading />}>
-                <QuoteDashboard
-                  quoteOperatorMode
-                  newQuoteRequest={newQuoteRequest}
-                  crmJobs={crmJobs}
-                  crmQuotes={crmQuotes}
-                  crmCalendarEvents={crmCalendarEvents}
-                  crmCustomers={crmCustomers}
-                  onOpenCrmCalendarDate={onOpenCrmCalendarDate}
-                  onOpenCrmQuote={onOpenCrmQuote}
-                  onChanged={onChanged}
-                />
-              </Suspense>
+              <QuoteDashboard
+                quoteOperatorMode={false}
+                newQuoteRequest={newQuoteRequest}
+                crmJobs={crmJobs}
+                crmQuotes={crmQuotes}
+                crmCalendarEvents={crmCalendarEvents}
+                crmCustomers={crmCustomers}
+                onOpenCrmCalendarDate={onOpenCrmCalendarDate}
+                onOpenCrmQuote={onOpenCrmQuote}
+              />
             )}
             {effectiveTab === "builder" && (
-              <ActiveQuoteRuntimeProvider activeQuoteId={activeQuoteId}>
-                <Suspense fallback={<QuoteTabLoading />}>
-                  <QuoteBuilder />
-                </Suspense>
-              </ActiveQuoteRuntimeProvider>
+              <Suspense fallback={<QuoteTabLoading />}>
+                <QuoteBuilder />
+              </Suspense>
             )}
             {effectiveTab === "pricing" && (
               <Suspense fallback={<QuoteTabLoading />}>
@@ -252,19 +176,16 @@ export function QuoteWorkspace({
               </Suspense>
             )}
             {effectiveTab === "contract" && (
-              <ActiveQuoteRuntimeProvider activeQuoteId={activeQuoteId}>
-                <Suspense fallback={<QuoteTabLoading />}>
-                  <QuoteContract />
-                </Suspense>
-              </ActiveQuoteRuntimeProvider>
+              <Suspense fallback={<QuoteTabLoading />}>
+                <QuoteContract />
+              </Suspense>
             )}
           </div>
 
-            <Toaster richColors position="top-right" />
-          </div>
-        </PortalContainerContext.Provider>
-      </QueryClientProvider>
-    </QuoteBuilderDatabaseProvider>
+          <Toaster richColors position="top-right" />
+        </div>
+      </PortalContainerContext.Provider>
+    </QueryClientProvider>
   );
 }
 

@@ -8,8 +8,9 @@ import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpen
 // quote builder from src/mts-quote against the dedicated 805 Supabase project,
 // while also using CRM-passed jobs/quotes to keep the dashboard tiles aligned
 // with the live CRM lifecycle state.
-// QuotesWorkspace.legacy.tsx remains intact as the rollback implementation,
-// but it is intentionally not reachable from the CRM interface.
+//
+// The previous from-scratch implementation is kept in QuotesWorkspace.legacy.tsx
+// as a fallback and is no longer the active path.
 type Props = {
   session: Session;
   jobs: CrmJob[];
@@ -22,7 +23,7 @@ type Props = {
   onChanged: () => void;
 };
 
-export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, onOpenCalendarDate, onOpenCrmQuote, onChanged }: Props) {
+export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, onOpenCalendarDate, onOpenCrmQuote }: Props) {
   return (
     <QuoteWorkspace
       crmJobs={jobs}
@@ -32,7 +33,6 @@ export function QuotesWorkspace({ jobs, quotes, events, customers, openRequest, 
       openRequest={openRequest}
       onOpenCrmCalendarDate={onOpenCalendarDate}
       onOpenCrmQuote={onOpenCrmQuote}
-      onChanged={onChanged}
     />
   );
 }

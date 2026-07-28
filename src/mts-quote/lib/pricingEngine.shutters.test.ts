@@ -17,7 +17,7 @@ describe("MTS quote shutter square-foot defaults", () => {
       ["Stained Wood - Norman", "Norman", "Normandy Stained", 46],
       ["Stained Wood - Onyx", "Onyx", "Stained Basswood", 42],
       ["Onyx Vinyl", "Onyx", "Vinyl", 31],
-      ["Onyx USA Made", "Onyx", "Onyx US Made Vinyl", 34],
+      ["Onyx USA Made", "Onyx", "Onyx US Made Vinyl", 33],
     ] as const;
 
     for (const [label, supplier, program, retailPrice] of cases) {

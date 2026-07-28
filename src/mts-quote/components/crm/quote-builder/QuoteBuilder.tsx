@@ -1,28 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { ProductTypeButtons } from "./ProductTypeButtons";
 import { RoomPresetButtons } from "./RoomPresetButtons";
 import { MeasurementGridModal } from "./MeasurementGridModal";
 import { DesignCard } from "./DesignCard";
-import { resolveManufacturerStamp } from "./manufacturerStamp";
 import { Button } from "@mts/components/ui/button";
 import { Input } from "@mts/components/ui/input";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
-import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
-import {
-  QUOTE_V2_SELECTED_DESIGN_MARKER,
-  resolveSelectedQuoteDesign,
-} from "@/lib/quote-v2/selected-design";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
-  AlertTriangle,
   Archive,
   ChevronDown,
-  Loader2,
   RotateCcw,
   Pencil,
   CopyCheck,
@@ -48,9 +40,8 @@ import {
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { getQuoteStatsStatus } from "@mts/lib/quoteDashboardFilters";
 import {
-  buildCopiedDesignSet,
+  buildCopiedDesignRows,
   buildCopiedLineItemPatch,
-  buildExternalRelationshipCleanupRows,
   getMatchingCopyTargetIds,
   lineItemsHaveMatchingProductType,
 } from "@mts/lib/quoteDesignCopy";
@@ -68,15 +59,6 @@ import {
   shouldPersistQuoteDesignSubtotal,
 } from "@mts/lib/quoteTotals";
 import { isQuotePriceLocked } from "@mts/lib/quotePriceLock";
-import {
-  mutateQuoteV2Structure,
-  priceQuoteV2,
-  quoteV2DesignPatch,
-  quoteV2LinePatch,
-  quoteV2QuotePatch,
-  type QuoteV2StructureOperation,
-  type QuoteV2StructureResponse,
-} from "@mts/lib/quoteV2ServerClient";
 import {
   formatDimensions,
   formatDimensionsOrNull,
@@ -124,132 +106,6 @@ const STACK_OPTION_EXCLUDED_KEYS = new Set([
   "discount_amount",
   "manual_price_override",
 ]);
-
-const V2_OPTIMISTIC_PRICE_KEYS = new Set([
-  "authoritative_price_breakdown",
-  "authoritative_cost_breakdown",
-  "authoritative_once_total",
-  "authoritative_v2_snapshot",
-  "priced_selection_fingerprint",
-  "priced_catalog_version",
-  "base_price",
-  "surcharge_total",
-  "discount_amount",
-]);
-
-export function invalidateOptimisticV2Design(
-  current: Partial<SalesQuoteDesign> | undefined,
-  patch: Partial<SalesQuoteDesign>
-): SalesQuoteDesign {
-  // Supabase replaces a provided JSON column; mirror that exact behavior in
-  // the optimistic row. Merging a deliberately clean product/program payload
-  // back into the previous JSON resurrects hidden fabric, motor, and catalog
-  // identities long enough for a fast follow-up edit to save them again.
-  const options = patch.options_json !== undefined
-    ? { ...(patch.options_json as Record<string, unknown>) }
-    : { ...((current?.options_json as Record<string, unknown> | undefined) ?? {}) };
-  for (const key of V2_OPTIMISTIC_PRICE_KEYS) delete options[key];
-  return {
-    ...(current ?? {}),
-    ...patch,
-    unit_price: 0,
-    options_json: {
-      ...options,
-      authoritative_price_status: "stale",
-      authoritative_price_error: "Repricing the latest selection…",
-    },
-  } as SalesQuoteDesign;
-}
-
-export class ProductTypeChangeRollbackError extends Error {
-  readonly cleanupError: unknown;
-  readonly rollbackError: unknown;
-
-  constructor(
-    lineItemId: string,
-    previousProductType: string,
-    cleanupError: unknown,
-    rollbackError: unknown,
-  ) {
-    const describe = (error: unknown) => {
-      if (error instanceof Error) return error.message;
-      if (
-        error &&
-        typeof error === "object" &&
-        "message" in error &&
-        typeof error.message === "string"
-      ) {
-        return error.message;
-      }
-      return String(error || "Unknown error");
-    };
-    super(
-      `Design cleanup failed for line ${lineItemId}: ${describe(cleanupError)} ` +
-        `Rollback to ${previousProductType} also failed: ${describe(rollbackError)}`,
-    );
-    this.name = "ProductTypeChangeRollbackError";
-    this.cleanupError = cleanupError;
-    this.rollbackError = rollbackError;
-    this.cause = cleanupError;
-  }
-}
-
-type ProductTypeChangeOperation = () => Promise<unknown | null>;
-
-async function captureProductTypeChangeError(
-  operation: ProductTypeChangeOperation,
-): Promise<unknown | null> {
-  try {
-    return (await operation()) ?? null;
-  } catch (error) {
-    return error;
-  }
-}
-
-/**
- * Supabase cannot make the line update and design deletion one browser-side
- * transaction. Compensate immediately if cleanup fails so the old designs are
- * never intentionally left attached to a different product category.
- */
-export async function changeLineItemProductTypeWithRollback({
-  lineItemId,
-  previousProductType,
-  nextProductType,
-  updateProductType,
-  deleteDesigns,
-}: {
-  lineItemId: string;
-  previousProductType: string;
-  nextProductType: string;
-  updateProductType: (productType: string) => Promise<unknown | null>;
-  deleteDesigns: ProductTypeChangeOperation;
-}): Promise<void> {
-  if (previousProductType === nextProductType) return;
-
-  const updateError = await captureProductTypeChangeError(() =>
-    updateProductType(nextProductType),
-  );
-  if (updateError) throw updateError;
-
-  const cleanupError = await captureProductTypeChangeError(deleteDesigns);
-  if (!cleanupError) return;
-
-  const rollbackError = await captureProductTypeChangeError(() =>
-    updateProductType(previousProductType),
-  );
-  if (rollbackError) {
-    throw new ProductTypeChangeRollbackError(
-      lineItemId,
-      previousProductType,
-      cleanupError,
-      rollbackError,
-    );
-  }
-
-  // Preserve the exact cleanup error for callers and telemetry when rollback
-  // restored the prior category successfully.
-  throw cleanupError;
-}
 
 const STACK_OPTION_LABELS: Record<string, string> = {
   catalog_program_id: "Program",
@@ -432,22 +288,16 @@ function StackedLineItemRow({
   item,
   lineNumberLabel,
   designs,
-  authoritativeV2,
   onUnstack,
 }: {
   item: SalesQuoteLineItem;
   lineNumberLabel: string;
   designs: SalesQuoteDesign[];
-  authoritativeV2: boolean;
   onUnstack: () => void;
 }) {
   const details = buildStackedDesignSummary(designs);
   const dimensions = formatDimensionsOrNull(item) ?? "Size needed";
-  const selectedDesign = resolveSelectedQuoteDesign(designs);
-  const manufacturerStamp = resolveManufacturerStamp(selectedDesign);
-  const total = calculateLineItemDesignTotal(item, designs, {
-    mode: authoritativeV2 ? "authoritative_v2" : "legacy",
-  });
+  const total = calculateLineItemDesignTotal(item, designs);
   const title = `Click to unstack line ${lineNumberLabel}. ${item.room_name}. ${dimensions}. ${item.product_type}. ${details}. ${formatStackMoney(total)}.`;
 
   return (
@@ -462,28 +312,7 @@ function StackedLineItemRow({
         {lineNumberLabel}
       </span>
       <span className="truncate text-xs font-black text-slate-950">{item.room_name}</span>
-      <span className="inline-flex min-w-0 items-center gap-1">
-        <span className="truncate font-mono text-[11px] font-bold text-slate-700">
-          {dimensions}
-        </span>
-        {manufacturerStamp && (
-          <span
-            aria-label={`Manufacturer: ${manufacturerStamp.label}`}
-            className={cn(
-              "quote-line-manufacturer-stamp quote-line-manufacturer-stamp--stacked",
-              `quote-line-manufacturer-stamp--${manufacturerStamp.tone}`,
-            )}
-            data-manufacturer={manufacturerStamp.label}
-            data-testid="stacked-manufacturer-stamp"
-            title={`Manufacturer: ${manufacturerStamp.label}`}
-          >
-            <span className="quote-line-manufacturer-stamp-caption">MFR</span>
-            <span className="quote-line-manufacturer-stamp-name">
-              {manufacturerStamp.label}
-            </span>
-          </span>
-        )}
-      </span>
+      <span className="truncate font-mono text-[11px] font-bold text-slate-700">{dimensions}</span>
       <span className={cn("quote-stacked-product-badge", getStackedProductTypeClass(item.product_type))}>
         <span className="quote-stacked-product-badge__label">
           {item.product_type}
@@ -501,13 +330,6 @@ function StackedLineItemRow({
 }
 
 export function QuoteBuilder() {
-  const {
-    database: supabase,
-    isolated,
-    authoritativeV2,
-    serverOwnedV2,
-    preferStoredTotal,
-  } = useQuoteBuilderDatabase();
   const {
     activeQuoteId,
     selectedProductType,
@@ -529,16 +351,10 @@ export function QuoteBuilder() {
     copySourceItemId,
     setCopySource,
     clearCopyTargets,
-    setActiveQuote,
     setActiveTab,
   } = useQuoteBuilderStore();
 
   const queryClient = useQueryClient();
-  const quoteQueryKey = queryKeys.salesQuotes.detail(activeQuoteId || "");
-  const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
-  const designsQueryKey = [...quoteQueryKey, "designs"] as const;
-  const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const observedLineItemsQuoteIdRef = useRef<string | null>(null);
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
   // The class is removed on unmount (e.g. when the X switches back to the
@@ -562,11 +378,6 @@ export function QuoteBuilder() {
 
   const syncQuoteTotal = async (options: { allowZero?: boolean } = {}) => {
     if (!activeQuoteId) return;
-    if (serverOwnedV2) {
-      throw new Error(
-        "Quote V2 totals are server-owned and cannot be written by the browser.",
-      );
-    }
 
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
@@ -575,25 +386,19 @@ export function QuoteBuilder() {
     if (lineItemsError) throw lineItemsError;
 
     const latestLineItemIds = (latestLineItems ?? []).map((item: SalesQuoteLineItem) => item.id);
-    let latestDesigns: Pick<
-      SalesQuoteDesign,
-      "line_item_id" | "variant" | "unit_price" | "options_json"
-    >[] = [];
+    let latestDesigns: Pick<SalesQuoteDesign, "line_item_id" | "unit_price">[] = [];
 
     if (latestLineItemIds.length > 0) {
       const { data: designRows, error: designsError } = await (supabase as any)
         .from("sales_quote_designs")
-        .select("line_item_id, variant, unit_price, options_json")
+        .select("line_item_id, unit_price")
         .in("line_item_id", latestLineItemIds);
       if (designsError) throw designsError;
       latestDesigns = designRows ?? [];
     }
 
-    const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
-    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
-      mode: totalMode,
-    });
-    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, { ...options, mode: totalMode })) return;
+    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns);
+    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, options)) return;
 
     const { error: quoteError } = await (supabase as any)
       .from("sales_quotes")
@@ -603,12 +408,8 @@ export function QuoteBuilder() {
   };
 
   // Fetch active quote
-  const {
-    data: quote,
-    isPending: isQuoteLoading,
-    isError: isQuoteLoadError,
-  } = useQuery({
-    queryKey: quoteQueryKey,
+  const { data: quote } = useQuery({
+    queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
@@ -629,12 +430,8 @@ export function QuoteBuilder() {
   }, [quote]);
 
   // Fetch line items
-  const {
-    data: lineItems = [],
-    isPending: areLineItemsLoading,
-    isError: isLineItemsLoadError,
-  } = useQuery({
-    queryKey: lineItemsQueryKey,
+  const { data: lineItems = [] } = useQuery({
+    queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("sales_quote_line_items")
@@ -644,18 +441,15 @@ export function QuoteBuilder() {
       if (error) throw error;
       return (data || []) as SalesQuoteLineItem[];
     },
-    enabled: !!activeQuoteId && !!quote,
+    enabled: !!activeQuoteId,
   });
 
   // Fetch all designs for this quote's line items
   const lineItemIds = lineItems.map((i) => i.id);
+  const designsQueryKey = [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"];
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
   const isActiveQuotePriceLocked = isQuotePriceLocked(quote);
-  const {
-    data: designs = [],
-    isPending: areDesignsLoading,
-    isError: isDesignsLoadError,
-  } = useQuery({
+  const { data: designs = [] } = useQuery({
     queryKey: designsQueryKey,
     queryFn: async () => {
       if (lineItemIds.length === 0) return [];
@@ -664,143 +458,14 @@ export function QuoteBuilder() {
         .select("*")
         .in("line_item_id", lineItemIds);
       if (error) throw error;
-      const rows = (data || []) as SalesQuoteDesign[];
-      if (!authoritativeV2) return rows;
-      const selectedByLine = new Map(
-        lineItems.map((line) => [line.id, line.selected_design_id ?? null]),
-      );
-      return rows.map((design) => ({
-        ...design,
-        [QUOTE_V2_SELECTED_DESIGN_MARKER]:
-          selectedByLine.get(design.line_item_id) === design.id,
-      }));
+      return (data || []) as SalesQuoteDesign[];
     },
     enabled: lineItemIds.length > 0,
   });
 
-  const refreshServerOwnedV2Rows = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: quoteQueryKey }),
-      queryClient.invalidateQueries({ queryKey: lineItemsQueryKey }),
-      queryClient.invalidateQueries({ queryKey: designsQueryKey }),
-    ]);
-  };
-
-  const updateServerOwnedV2QuoteCache = (
-    response:
-      | QuoteV2StructureResponse
-      | Awaited<ReturnType<typeof priceQuoteV2>>,
-  ) => {
-    queryClient.setQueryData<SalesQuote>(quoteQueryKey, (current) => {
-      if (!current) return current;
-      if ("quoteTotal" in response) {
-        return {
-          ...current,
-          quote_v2_revision: response.revision,
-          quote_v2_status: response.quoteStatus as SalesQuote["quote_v2_status"],
-          total_amount: response.quoteTotal,
-        };
-      }
-      return {
-        ...current,
-        quote_v2_revision: response.revision,
-        quote_v2_status: response.quoteV2Status,
-        total_amount: 0,
-        product_cost: 0,
-        profit_amount: 0,
-      };
-    });
-  };
-
-  /**
-   * Serialize edits because every authoritative structural request uses
-   * optimistic concurrency. The server invalidates all quote money, then the
-   * existing price endpoint reconstructs the full quote from saved selections.
-   */
-  const mutateAndRepriceServerOwnedV2 = (
-    operations: readonly QuoteV2StructureOperation[],
-    preferredLineItemId?: string,
-  ): Promise<void> => {
-    const execute = async () => {
-      if (!activeQuoteId) throw new Error("No active quote is open.");
-      const cachedQuote =
-        queryClient.getQueryData<SalesQuote>(quoteQueryKey) ?? quote;
-      if (!cachedQuote?.quote_v2_backend) {
-        throw new Error(
-          "Historical quote conversion is required before this quote can be changed in V2.",
-        );
-      }
-      const expectedRevision = Number(cachedQuote.quote_v2_revision);
-      if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
-        throw new Error(
-          "This Quote V2 draft has no valid revision. Reload it before editing.",
-        );
-      }
-
-      let structure: QuoteV2StructureResponse | null = null;
-      try {
-        structure = await mutateQuoteV2Structure(
-          supabase,
-          activeQuoteId,
-          expectedRevision,
-          operations,
-        );
-        updateServerOwnedV2QuoteCache(structure);
-
-        if (structure.lineCount > 0) {
-          const preferredDesignId = preferredLineItemId
-            ? structure.selectedDesigns[preferredLineItemId]
-            : null;
-          const selectedEntry =
-            preferredLineItemId && preferredDesignId
-              ? ([preferredLineItemId, preferredDesignId] as const)
-              : Object.entries(structure.selectedDesigns).find(
-                  (entry): entry is [string, string] =>
-                    typeof entry[1] === "string" && entry[1].length > 0,
-                );
-          if (!selectedEntry) {
-            throw new Error(
-              "Every Quote V2 line needs one selected design before pricing.",
-            );
-          }
-
-          const priced = await priceQuoteV2(supabase, activeQuoteId, {
-            lineItemId: selectedEntry[0],
-            designId: selectedEntry[1],
-            expectedRevision: structure.revision,
-          });
-          updateServerOwnedV2QuoteCache(priced);
-        }
-      } finally {
-        if (structure) {
-          await refreshServerOwnedV2Rows();
-        }
-      }
-    };
-
-    const queued = v2MutationQueueRef.current.then(execute, execute);
-    v2MutationQueueRef.current = queued.then(
-      () => undefined,
-      () => undefined,
-    );
-    return queued;
-  };
-
   // Update customer info
   const updateQuote = useMutation({
     mutationFn: async (updates: Partial<SalesQuote>) => {
-      if (serverOwnedV2) {
-        const patch = quoteV2QuotePatch(
-          updates as unknown as Record<string, unknown>,
-        );
-        if (Object.keys(patch).length === 0) {
-          throw new Error("That Quote V2 field is not structurally editable.");
-        }
-        await mutateAndRepriceServerOwnedV2([
-          { type: "quote.update", patch },
-        ]);
-        return;
-      }
       const { error } = await (supabase as any)
         .from("sales_quotes")
         .update(updates)
@@ -809,13 +474,8 @@ export function QuoteBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Quote details could not be saved",
-      );
     },
   });
 
@@ -846,15 +506,7 @@ export function QuoteBuilder() {
   };
 
   useEffect(() => {
-    if (!quote || areLineItemsLoading) return;
-
-    // Loading an existing quote is read-only. Only normalize stacked metadata
-    // after a later, user-initiated line-item change for this same quote.
-    if (observedLineItemsQuoteIdRef.current !== activeQuoteId) {
-      observedLineItemsQuoteIdRef.current = activeQuoteId;
-      return;
-    }
-    if (stackedLineItemIds.length === 0) return;
+    if (!quote || stackedLineItemIds.length === 0) return;
 
     const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
     const changed =
@@ -875,41 +527,6 @@ export function QuoteBuilder() {
       height_whole?: number;
       height_fraction?: string;
     }) => {
-      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
-        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
-      }
-      if (serverOwnedV2) {
-        const lineItemId = crypto.randomUUID();
-        const designId = crypto.randomUUID();
-        await mutateAndRepriceServerOwnedV2(
-          [
-            {
-              type: "line.create",
-              lineItemId,
-              patch: {
-                roomName: item.room_name,
-                productType: item.product_type,
-                widthWhole: item.width_whole ?? 0,
-                widthFraction: item.width_fraction ?? "0",
-                heightWhole: item.height_whole ?? 0,
-                heightFraction: item.height_fraction ?? "0",
-                quantity: 1,
-                sortOrder: lineItems.length,
-              },
-            },
-            {
-              type: "design.upsert",
-              lineItemId,
-              designId,
-              variant: "A",
-              selectDesign: true,
-              patch: { productType: item.product_type },
-            },
-          ],
-          lineItemId,
-        );
-        return;
-      }
       const { error } = await (supabase as any).from("sales_quote_line_items").insert({
         quote_id: activeQuoteId!,
         room_name: item.room_name,
@@ -924,35 +541,19 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal({ allowZero: true });
-      }
+      await syncQuoteTotal({ allowZero: true });
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Line item could not be added");
     },
   });
 
   // Update line item measurements
   const updateLineItem = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string } & Partial<SalesQuoteLineItem>) => {
-      if (serverOwnedV2) {
-        const patch = quoteV2LinePatch(updates);
-        if (Object.keys(patch).length === 0) {
-          throw new Error("That Quote V2 line field is not structurally editable.");
-        }
-        await mutateAndRepriceServerOwnedV2(
-          [{ type: "line.update", lineItemId: id, patch }],
-          id,
-        );
-        return;
-      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .update(updates)
@@ -960,88 +561,40 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Line item could not be updated",
-      );
     },
   });
 
   const changeLineItemProductType = useMutation({
-    mutationFn: async ({
-      id,
-      productType,
-      previousProductType,
-    }: {
-      id: string;
-      productType: string;
-      previousProductType: string;
-    }) => {
-      if (serverOwnedV2) {
-        if (productType === previousProductType) return;
-        const designId = crypto.randomUUID();
-        await mutateAndRepriceServerOwnedV2(
-          [
-            {
-              type: "line.update",
-              lineItemId: id,
-              patch: { productType },
-            },
-            {
-              type: "design.upsert",
-              lineItemId: id,
-              designId,
-              variant: "A",
-              selectDesign: true,
-              patch: { productType },
-            },
-          ],
-          id,
-        );
-        return;
-      }
-      await changeLineItemProductTypeWithRollback({
-        lineItemId: id,
-        previousProductType,
-        nextProductType: productType,
-        updateProductType: async (nextProductType) => {
-          const { error } = await (supabase as any)
-            .from("sales_quote_line_items")
-            .update({ product_type: nextProductType })
-            .eq("id", id);
-          return error;
-        },
-        deleteDesigns: async () => {
-          const { error } = await (supabase as any)
-            .from("sales_quote_designs")
-            .delete()
-            .eq("line_item_id", id);
-          return error;
-        },
-      });
+    mutationFn: async ({ id, productType }: { id: string; productType: string }) => {
+      const { error: updateError } = await (supabase as any)
+        .from("sales_quote_line_items")
+        .update({ product_type: productType })
+        .eq("id", id);
+      if (updateError) throw updateError;
+
+      const { error: deleteDesignsError } = await (supabase as any)
+        .from("sales_quote_designs")
+        .delete()
+        .eq("line_item_id", id);
+      if (deleteDesignsError) throw deleteDesignsError;
     },
     onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       queryClient.invalidateQueries({
-        queryKey: designsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
       toast.success("Product type changed. Design details cleared for the new quote.");
     },
@@ -1053,12 +606,6 @@ export function QuoteBuilder() {
   // Delete line item
   const deleteLineItem = useMutation({
     mutationFn: async (id: string) => {
-      if (serverOwnedV2) {
-        await mutateAndRepriceServerOwnedV2([
-          { type: "line.delete", lineItemId: id },
-        ]);
-        return;
-      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .delete()
@@ -1067,133 +614,40 @@ export function QuoteBuilder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
     },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Line item could not be deleted",
-      );
-    },
   });
-
-  const upsertCopiedDesignSet = async (
-    sourceDesigns: SalesQuoteDesign[],
-    targetLineItemId: string
-  ) => {
-    const copied = buildCopiedDesignSet(sourceDesigns, targetLineItemId, {
-      invalidateAuthoritativePrice: authoritativeV2,
-    });
-    if (copied.rows.length === 0) return copied;
-
-    const { error } = await (supabase as any)
-      .from("sales_quote_designs")
-      .upsert(copied.rows, { onConflict: "line_item_id,variant" });
-    if (error) throw error;
-
-    // The isolated V2 database records the selected alternative when it sees a
-    // single-row upsert. Re-upserting just the source selection also remains a
-    // harmless normal upsert for the legacy Supabase adapter.
-    if (copied.rows.length > 1 && copied.selectedVariant) {
-      const selectedRow = copied.rows.find(
-        (row) => row.variant === copied.selectedVariant
-      );
-      if (selectedRow) {
-        const { error: selectionError } = await (supabase as any)
-          .from("sales_quote_designs")
-          .upsert(selectedRow, { onConflict: "line_item_id,variant" });
-        if (selectionError) throw selectionError;
-      }
-    }
-
-    return copied;
-  };
 
   // Copy line item
   const copyLineItem = useMutation({
     mutationFn: async (id: string) => {
-      if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
-        throw new Error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
-      }
-      if (serverOwnedV2) {
-        const targetLineItemId = crypto.randomUUID();
-        await mutateAndRepriceServerOwnedV2(
-          [
-            {
-              type: "line.copy",
-              sourceLineItemId: id,
-              targetLineItemId,
-              sortOrder: lineItems.length,
-            },
-          ],
-          targetLineItemId,
-        );
-        return targetLineItemId;
-      }
       const source = lineItems.find((i) => i.id === id);
       if (!source) return;
-      const sourceDesigns = designs.filter((design) => design.line_item_id === id);
-      let copiedLineId: string | null = null;
-
-      try {
-        const { data: copiedLine, error } = await (supabase as any)
-          .from("sales_quote_line_items")
-          .insert({
-            quote_id: activeQuoteId!,
-            room_name: source.room_name,
-            product_type: source.product_type,
-            width_whole: source.width_whole,
-            width_fraction: source.width_fraction,
-            height_whole: source.height_whole,
-            height_fraction: source.height_fraction,
-            quantity: source.quantity,
-            sort_order: lineItems.length,
-          })
-          .select("*")
-          .single();
-        if (error) throw error;
-        if (!copiedLine?.id) throw new Error("The copied line item did not return an ID.");
-        copiedLineId = copiedLine.id;
-
-        await upsertCopiedDesignSet(sourceDesigns, copiedLine.id);
-        return copiedLine.id;
-      } catch (error) {
-        if (copiedLineId) {
-          await (supabase as any)
-            .from("sales_quote_line_items")
-            .delete()
-            .eq("id", copiedLineId);
-        }
-        throw error;
-      }
+      const { error } = await (supabase as any).from("sales_quote_line_items").insert({
+        quote_id: activeQuoteId!,
+        room_name: source.room_name,
+        product_type: source.product_type,
+        width_whole: source.width_whole,
+        width_fraction: source.width_fraction,
+        height_whole: source.height_whole,
+        height_fraction: source.height_fraction,
+        quantity: source.quantity,
+        sort_order: lineItems.length,
+      });
+      if (error) throw error;
     },
-    onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal({ allowZero: true });
-      }
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
-      });
-      queryClient.invalidateQueries({
-        queryKey: designsQueryKey,
-      });
-      queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       toast.success("Line item copied");
-    },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Line item could not be copied");
     },
   });
 
   // Fresh start - clear all line items
   const freshStart = useMutation({
     mutationFn: async () => {
-      if (serverOwnedV2) {
-        await mutateAndRepriceServerOwnedV2([{ type: "lines.clear" }]);
-        return;
-      }
       const { error } = await (supabase as any)
         .from("sales_quote_line_items")
         .delete()
@@ -1201,22 +655,15 @@ export function QuoteBuilder() {
       if (error) throw error;
     },
     onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
       selectProduct(null);
       toast.success("All line items cleared");
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Line items could not be cleared",
-      );
     },
   });
 
@@ -1226,31 +673,6 @@ export function QuoteBuilder() {
     mutationFn: async (
       design: Partial<SalesQuoteDesign> & { line_item_id: string; variant: string }
     ) => {
-      if (serverOwnedV2) {
-        const latestDesigns =
-          queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey) ??
-          designs;
-        const existing = latestDesigns.find(
-          (row) =>
-            row.line_item_id === design.line_item_id &&
-            row.variant === design.variant,
-        );
-        const designId = existing?.id ?? crypto.randomUUID();
-        await mutateAndRepriceServerOwnedV2(
-          [
-            {
-              type: "design.upsert",
-              lineItemId: design.line_item_id,
-              designId,
-              variant: design.variant,
-              selectDesign: true,
-              patch: quoteV2DesignPatch(design),
-            },
-          ],
-          design.line_item_id,
-        );
-        return;
-      }
       const { error } = await (supabase as any).from("sales_quote_designs").upsert(design, {
         onConflict: "line_item_id,variant",
       });
@@ -1265,33 +687,11 @@ export function QuoteBuilder() {
           (row) => row.line_item_id === design.line_item_id && row.variant === design.variant
         );
 
-        const markSelected = (rows: SalesQuoteDesign[]) =>
-          authoritativeV2
-            ? rows.map((row) =>
-                row.line_item_id === design.line_item_id
-                  ? {
-                      ...row,
-                      [QUOTE_V2_SELECTED_DESIGN_MARKER]:
-                        row.variant === design.variant,
-                    }
-                  : row,
-              )
-            : rows;
-
-        if (index === -1) {
-          return markSelected([
-            ...current,
-            authoritativeV2
-              ? invalidateOptimisticV2Design(undefined, design)
-              : design as SalesQuoteDesign,
-          ]);
-        }
+        if (index === -1) return [...current, design as SalesQuoteDesign];
 
         const next = [...current];
-        next[index] = authoritativeV2
-          ? invalidateOptimisticV2Design(next[index], design)
-          : { ...next[index], ...design };
-        return markSelected(next);
+        next[index] = { ...next[index], ...design };
+        return next;
       });
 
       return { previousDesigns };
@@ -1300,19 +700,14 @@ export function QuoteBuilder() {
       if (context?.previousDesigns) {
         queryClient.setQueryData(designsQueryKey, context.previousDesigns);
       }
-      toast.error(
-        _error instanceof Error ? _error.message : "Design could not be saved",
-      );
     },
     onSuccess: async () => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
     },
   });
@@ -1343,42 +738,8 @@ export function QuoteBuilder() {
 
       if (targets.length === 0) throw new Error("No matching line items selected to copy to.");
 
-      if (serverOwnedV2) {
-        const linePatch = quoteV2LinePatch(
-          buildCopiedLineItemPatch(sourceItem),
-        );
-        const operations = targets.flatMap<QuoteV2StructureOperation>(
-          (targetLineItemId) => [
-            {
-              type: "line.update",
-              lineItemId: targetLineItemId,
-              patch: linePatch,
-            },
-            {
-              type: "design.copySet",
-              sourceLineItemId: sourceItemId,
-              targetLineItemId,
-            },
-          ],
-        );
-        await mutateAndRepriceServerOwnedV2(operations, targets[0]);
-        return targets;
-      }
-
       const sourceVariants = sourceDesigns.map((sd) => sd.variant);
       const sourceVariantFilter = `(${sourceVariants.map((variant) => `"${variant}"`).join(",")})`;
-
-      const relationshipCleanupRows = authoritativeV2
-        ? buildExternalRelationshipCleanupRows(designs, targets)
-        : [];
-      if (relationshipCleanupRows.length > 0) {
-        const { error: relationshipCleanupError } = await (supabase as any)
-          .from("sales_quote_designs")
-          .upsert(relationshipCleanupRows, {
-            onConflict: "line_item_id,variant",
-          });
-        if (relationshipCleanupError) throw relationshipCleanupError;
-      }
 
       for (const targetId of targets) {
         const { error: lineItemError } = await (supabase as any)
@@ -1387,7 +748,12 @@ export function QuoteBuilder() {
           .eq("id", targetId);
         if (lineItemError) throw lineItemError;
 
-        await upsertCopiedDesignSet(sourceDesigns, targetId);
+        const clonedDesigns = buildCopiedDesignRows(sourceDesigns, targetId);
+
+        const { error } = await (supabase as any)
+          .from("sales_quote_designs")
+          .upsert(clonedDesigns, { onConflict: "line_item_id,variant" });
+        if (error) throw error;
 
         const { error: staleVariantError } = await (supabase as any)
           .from("sales_quote_designs")
@@ -1400,17 +766,15 @@ export function QuoteBuilder() {
       return targets;
     },
     onSuccess: async (copiedTargetIds, variables) => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
-        queryKey: lineItemsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "line-items"],
       });
       queryClient.invalidateQueries({
-        queryKey: designsQueryKey,
+        queryKey: [...queryKeys.salesQuotes.detail(activeQuoteId || ""), "designs"],
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
       if (variables.mode === "all") {
         clearCopyTargets();
@@ -1460,31 +824,6 @@ export function QuoteBuilder() {
         applyQuoteDesignDiscount(design, percent)
       );
 
-      if (serverOwnedV2) {
-        const selectedByLine = new Map(
-          lineItems.map((line) => [line.id, line.selected_design_id ?? null]),
-        );
-        const operations = targetDesigns.map<QuoteV2StructureOperation>(
-          (design, index) => ({
-            type: "design.upsert",
-            lineItemId: design.line_item_id,
-            designId: design.id,
-            variant: design.variant,
-            selectDesign:
-              selectedByLine.get(design.line_item_id) === design.id,
-            patch: quoteV2DesignPatch(discountedRows[index]),
-          }),
-        );
-        await mutateAndRepriceServerOwnedV2(
-          operations,
-          targetDesigns[0]?.line_item_id,
-        );
-        return {
-          count: targetDesigns.length,
-          rows: discountedRows,
-        };
-      }
-
       const { error } = await (supabase as any).from("sales_quote_designs").upsert(discountedRows, {
         onConflict: "line_item_id,variant",
       });
@@ -1498,9 +837,6 @@ export function QuoteBuilder() {
     onMutate: async ({ percent, lineItemIds: targetLineItemIds }) => {
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
       const previousDesigns = queryClient.getQueryData<SalesQuoteDesign[]>(designsQueryKey);
-      if (serverOwnedV2) {
-        return { previousDesigns };
-      }
       const targetIds = new Set(targetLineItemIds);
 
       queryClient.setQueryData<SalesQuoteDesign[]>(designsQueryKey, (current = []) =>
@@ -1520,14 +856,12 @@ export function QuoteBuilder() {
       toast.error(error instanceof Error ? error.message : "Discount could not be applied");
     },
     onSuccess: async (result, variables) => {
-      if (!serverOwnedV2) {
-        await syncQuoteTotal();
-      }
+      await syncQuoteTotal();
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
       });
       queryClient.invalidateQueries({
-        queryKey: quoteQueryKey,
+        queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
       });
       toast.success(
         `${variables.percent}% discount applied to ${result.count} design${
@@ -1541,10 +875,6 @@ export function QuoteBuilder() {
   const handleRoomSelect = (room: string) => {
     if (!selectedProductType) {
       toast.error("Select a product type first");
-      return;
-    }
-    if (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES) {
-      toast.error(`A V2 quote can contain no more than ${QUOTE_LAB_MAX_LINES} line items.`);
       return;
     }
     addLineItem.mutate({
@@ -1737,89 +1067,6 @@ export function QuoteBuilder() {
     );
   }
 
-  if (isQuoteLoading || (quote && areLineItemsLoading) || (lineItemIds.length > 0 && areDesignsLoading)) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-6">
-        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-4 text-sm font-semibold text-slate-700 shadow-sm">
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-          Loading the saved quote structure...
-        </div>
-      </div>
-    );
-  }
-
-  if (
-    isQuoteLoadError ||
-    !quote ||
-    isLineItemsLoadError ||
-    isDesignsLoadError
-  ) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-6">
-        <div
-          className="max-w-xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-950 shadow-sm"
-          role="alert"
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
-            <div>
-              <h2 className="text-lg font-black">Quote could not be opened safely</h2>
-              <p className="mt-2 text-sm leading-6">
-                The saved quote record or its line-item structure is unavailable in V2. No empty
-                quote was created and no price was changed.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4 border-red-300 bg-white text-red-950 hover:bg-red-100"
-                onClick={() => {
-                  setActiveQuote(null);
-                  setActiveTab("dashboard");
-                }}
-              >
-                Back to quote dashboard
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (serverOwnedV2 && quote.quote_v2_backend !== true) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-6">
-        <div
-          className="max-w-xl rounded-2xl border border-amber-300 bg-amber-50 p-6 text-amber-950 shadow-sm"
-          role="alert"
-        >
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-6 w-6 shrink-0" aria-hidden />
-            <div>
-              <h2 className="text-lg font-black">Historical quote conversion is required</h2>
-              <p className="mt-2 text-sm leading-6">
-                This record is a legacy quote, not a server-authoritative V2 draft. It has been
-                left unchanged so its saved configuration and pricing cannot be silently replaced
-                or edited through the wrong backend.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-4 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
-                onClick={() => {
-                  setActiveQuote(null);
-                  setActiveTab("dashboard");
-                }}
-              >
-                Back to quote dashboard
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const quoteLetterColor = quote?.quote_letter ? getQuoteColor(quote.quote_letter) : null;
   const copySourceItem = copySourceItemId
     ? lineItems.find((item) => item.id === copySourceItemId) ?? null
@@ -1828,12 +1075,6 @@ export function QuoteBuilder() {
   return (
     <div className="min-h-screen bg-[#f4f4f2] p-4 text-[#1c1c1a]">
       <div className="quote-builder-sticky-shell sticky top-0 z-40 -mx-4 -mt-4 mb-3">
-        <nav
-          className="quote-alternative-bar border-b border-[#d8d8d2] bg-white/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/85"
-          aria-label="Quote alternatives"
-        >
-          <QuoteGroupTabs />
-        </nav>
         <div className={cn("quote-command-menu", isCommandMenuOpen && "quote-command-menu--open")}>
           <button
             type="button"
@@ -1893,18 +1134,9 @@ export function QuoteBuilder() {
                 {quote && (
                   <Button
                     size="sm"
-                    onClick={() =>
-                      isolated
-                        ? toast.info("Testing mode: sending is safely disabled.")
-                        : setShowSendDialog(true)
-                    }
+                    onClick={() => setShowSendDialog(true)}
                     className="rounded-xl bg-gradient-to-br from-[#67645e] to-[#343330] text-white shadow-[0_14px_26px_rgba(47,131,189,0.24)] hover:from-[#4c4b46] hover:to-[#1d1d1b]"
-                    disabled={isolated}
-                    title={
-                      isolated
-                        ? "Disabled in isolated Quote Lab"
-                        : "Email or text the quote link to the customer"
-                    }
+                    title="Email or text the quote link to the customer"
                   >
                     <Send className="h-4 w-4 mr-2" />
                     Send Quote
@@ -1914,22 +1146,9 @@ export function QuoteBuilder() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() =>
-                      isolated
-                        ? toast.info("Testing mode: payment links are safely disabled.")
-                        : authoritativeV2
-                          ? toast.info("Quote V2 payment links remain safely disabled.")
-                        : setShowPaymentLinkDialog(true)
-                    }
+                    onClick={() => setShowPaymentLinkDialog(true)}
                     className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
-                    disabled={isolated || authoritativeV2}
-                    title={
-                      isolated
-                        ? "Disabled in isolated Quote Lab"
-                        : authoritativeV2
-                          ? "Quote V2 payment links are blocked until customer delivery is cut over"
-                          : "Email the deposit payment link to the customer"
-                    }
+                    title="Email the deposit payment link to the customer"
                   >
                     <CreditCard className="h-4 w-4 mr-2" />
                     Send Payment Link
@@ -2093,6 +1312,9 @@ export function QuoteBuilder() {
                 </button>
               </div>
             </div>
+            <div className="quote-command-tabs mt-3 border-t border-[#d8d8d2] pt-3">
+              <QuoteGroupTabs />
+            </div>
             <div className="quote-command-project-discounts mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#d8d8d2] pt-3">
               <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-800">
                 <Percent className="h-4 w-4" />
@@ -2148,11 +1370,7 @@ export function QuoteBuilder() {
           />
           <RoomPresetButtons
             onSelect={handleRoomSelect}
-            disabled={
-              !selectedProductType ||
-              addLineItem.isPending ||
-              (authoritativeV2 && lineItems.length >= QUOTE_LAB_MAX_LINES)
-            }
+            disabled={!selectedProductType || addLineItem.isPending}
             lineNumbers={roomLineNumbers}
           />
         </div>
@@ -2173,7 +1391,6 @@ export function QuoteBuilder() {
                   item={item}
                   lineNumberLabel={lineNumberRanges.get(item.id)?.label ?? "#0"}
                   designs={designsByLineItemId.get(item.id) ?? []}
-                  authoritativeV2={authoritativeV2}
                   onUnstack={() => handleUnstackLineItem(item.id)}
                 />
               ))}
@@ -2247,27 +1464,6 @@ export function QuoteBuilder() {
                   lineNumber={lineRange?.start ?? 0}
                   lineNumberLabel={lineRange?.label}
                   designs={designs.filter((d) => d.line_item_id === item.id)}
-                  sideBySideLineOptions={lineItems.flatMap((candidate) => {
-                    if (
-                      candidate.id === item.id ||
-                      candidate.product_type !== item.product_type
-                    ) {
-                      return [];
-                    }
-                    const candidateDesign = designs.find(
-                      (design) =>
-                        design.line_item_id === candidate.id && design.variant === "A",
-                    );
-                    if (!candidateDesign) return [];
-                    const candidateRange = lineNumberRanges.get(candidate.id);
-                    return [
-                      {
-                        lineId: candidate.id,
-                        label: `${candidateRange?.label ?? "#?"} • ${candidate.room_name} • ID ${candidate.id}`,
-                        design: candidateDesign,
-                      },
-                    ];
-                  })}
                   onUpdateDesign={(design) => upsertDesign.mutate(design)}
                   onCopyAll={() => handleCopyAll(item.id)}
                   onCopySome={() => handleCopySome(item.id)}
@@ -2284,11 +1480,7 @@ export function QuoteBuilder() {
                   onDelete={() => deleteLineItem.mutate(item.id)}
                   onCopyItem={() => copyLineItem.mutate(item.id)}
                   onChangeProductType={(productType) =>
-                    changeLineItemProductType.mutate({
-                      id: item.id,
-                      productType,
-                      previousProductType: item.product_type,
-                    })
+                    changeLineItemProductType.mutate({ id: item.id, productType })
                   }
                   onUpdateRoomName={(roomName) =>
                     updateLineItem.mutate({ id: item.id, room_name: roomName })
@@ -2352,8 +1544,6 @@ export function QuoteBuilder() {
           lineItems={lineItems}
           designs={designs}
           storedTotal={quote.total_amount}
-          preferStoredTotal={preferStoredTotal}
-          authoritativeV2={authoritativeV2}
         />
       )}
     </div>

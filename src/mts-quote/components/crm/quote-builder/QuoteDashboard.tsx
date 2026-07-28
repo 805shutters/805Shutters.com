@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { QUOTE_ACCOUNTS } from "@mts/lib/quoteConstants";
@@ -22,18 +22,10 @@ import {
   filterCalendarAppointmentsForStatsTile,
   filterQuotesForStatsTile,
 } from "@mts/lib/quoteDashboardFilters";
-import {
-  crmQuoteSourceSalesQuoteId,
-  resolveCrmQuoteBuilderRoute,
-} from "@mts/lib/quoteImportRouting";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
 import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
-import {
-  createQuoteV2Draft,
-  listQuoteV2Records,
-} from "@mts/lib/quoteV2ServerClient";
 
 interface QuoteDashboardProps {
   quoteOperatorMode?: boolean;
@@ -42,7 +34,6 @@ interface QuoteDashboardProps {
   crmQuotes?: CrmQuote[];
   crmCalendarEvents?: CrmCalendarEvent[];
   crmCustomers?: CrmCustomer[];
-  onChanged?: () => void;
   onOpenCrmCalendarDate?: (date: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
 }
@@ -89,6 +80,12 @@ function dateOnly(value: string | null | undefined): string | null {
   return Number.isFinite(date.getTime()) ? losAngelesDateString(date) : null;
 }
 
+function crmQuoteSourceSalesQuoteId(quote: CrmQuote): string | null {
+  const meta = quote.meta || {};
+  const value = meta.mts_quote_id || meta.sales_quote_id;
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 function quoteBuilderTargetId(quote: QuoteTableRow): string | null {
   if (quote.source === "crm") return quote.sourceQuoteId || null;
   return quote.id;
@@ -133,14 +130,9 @@ export function QuoteDashboard({
   crmQuotes = [],
   crmCalendarEvents = [],
   crmCustomers = [],
-  onChanged,
   onOpenCrmCalendarDate,
   onOpenCrmQuote,
 }: QuoteDashboardProps) {
-  const {
-    database: supabase,
-    serverOwnedV2,
-  } = useQuoteBuilderDatabase();
   const { activeAccountId, setAccountId, setActiveQuote, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<StatsFilter>("all");
@@ -162,14 +154,10 @@ export function QuoteDashboard({
   const { data: quotes = [], isLoading } = useQuery({
     queryKey: queryKeys.salesQuotes.byAccount(activeAccountId),
     queryFn: async () => {
-      if (serverOwnedV2 && activeAccountId === ACCOUNT_IDS.SHUTTERS_805) {
-        return listQuoteV2Records(supabase);
-      }
       const { data, error } = await (supabase as any)
         .from("sales_quotes")
         .select("*")
         .eq("account_id", activeAccountId)
-        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as SalesQuote[];
@@ -196,18 +184,15 @@ export function QuoteDashboard({
 
   const dashboardQuotes = useMemo<QuoteTableRow[]>(() => {
     const jobsById = new Map(crmJobs.map((job) => [job.id, job]));
-    const localSalesQuoteIds = new Set(quotes.map((quote) => quote.id));
     const sourceSalesQuoteIds = new Set(
       crmQuotes
-        .map((quote) => resolveCrmQuoteBuilderRoute(quote, localSalesQuoteIds))
-        .filter((route) => route.kind === "v2")
-        .map((route) => route.salesQuoteId)
+        .map(crmQuoteSourceSalesQuoteId)
+        .filter((quoteId): quoteId is string => Boolean(quoteId))
     );
 
     const crmRows: QuoteTableRow[] = crmQuotes.map((quote) => {
       const job = jobsById.get(quote.job_id);
-      const route = resolveCrmQuoteBuilderRoute(quote, localSalesQuoteIds);
-      const sourceSystemQuoteId = crmQuoteSourceSalesQuoteId(quote);
+      const sourceQuoteId = crmQuoteSourceSalesQuoteId(quote);
 
       return {
         id: quote.id,
@@ -231,9 +216,7 @@ export function QuoteDashboard({
         created_at: quote.created_at,
         updated_at: quote.updated_at,
         source: "crm",
-        sourceQuoteId: route.kind === "v2" ? route.salesQuoteId : null,
-        sourceSystemQuoteId,
-        v2ImportStatus: route.kind === "v2" ? "ready" : "not_imported",
+        sourceQuoteId,
       };
     });
 
@@ -344,24 +327,6 @@ export function QuoteDashboard({
   const createQuote = useMutation({
     mutationFn: async (formData: NewQuoteData) => {
       const submittedAccountId = quoteOperatorMode ? ACCOUNT_IDS.SHUTTERS_805 : formData.accountId;
-      if (serverOwnedV2) {
-        if (submittedAccountId !== ACCOUNT_IDS.SHUTTERS_805) {
-          throw new Error(
-            "Authoritative Quote V2 currently creates 805 Shutters drafts only.",
-          );
-        }
-        const created = await createQuoteV2Draft(supabase, {
-          customerName: formData.customerName,
-          customerPhone: formData.customerPhone || null,
-          customerAddress: formData.customerAddress || null,
-          customerEmail: formData.customerEmail || null,
-        });
-        return {
-          quoteId: created.quoteId,
-          quoteNumber: created.quoteNumber,
-          accountId: ACCOUNT_IDS.SHUTTERS_805,
-        };
-      }
       const account = QUOTE_ACCOUNTS.find((a) => a.id === submittedAccountId) || QUOTE_ACCOUNTS[0];
       const { data: session } = await supabase.auth.getSession();
       const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
@@ -391,20 +356,15 @@ export function QuoteDashboard({
         .select()
         .single();
       if (error) throw error;
-      const quote = data as SalesQuote;
-      return {
-        quoteId: quote.id,
-        quoteNumber: quote.quote_number,
-        accountId: quote.account_id,
-      };
+      return data as SalesQuote;
     },
     onSuccess: (quote) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      setAccountId(quote.accountId);
-      setActiveQuote(quote.quoteId);
+      setAccountId(quote.account_id);
+      setActiveQuote(quote.id);
       setActiveTab("builder");
       setShowNewQuoteDialog(false);
-      toast.success(`Quote ${quote.quoteNumber} created`);
+      toast.success(`Quote ${quote.quote_number} created`);
     },
     onError: (error) => {
       toast.error("Failed to create quote: " + error.message);
@@ -417,61 +377,48 @@ export function QuoteDashboard({
         return { quoteId: appointment.quote_id, created: false };
       }
 
-      let quoteId: string;
-      if (serverOwnedV2) {
-        const created = await createQuoteV2Draft(supabase, {
-          customerName: appointment.customer_name,
-          customerPhone: appointment.customer_phone || null,
-          customerEmail: appointment.customer_email || null,
-          customerAddress: appointment.customer_address || null,
-          appointmentDate: appointment.appointment_date,
-        });
-        quoteId = created.quoteId;
-      } else {
-        const account = QUOTE_ACCOUNTS.find((a) => a.id === ACCOUNT_IDS.SHUTTERS_805);
-        const { data: session } = await supabase.auth.getSession();
-        const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
-          "next_quote_number",
-          {
-            account_prefix: account?.prefix || "805",
-          }
-        );
-        if (numError) throw numError;
-        const salesOwnerPatch = await getCurrentQuoteSalesOwnerPatch();
+      const account = QUOTE_ACCOUNTS.find((a) => a.id === ACCOUNT_IDS.SHUTTERS_805);
+      const { data: session } = await supabase.auth.getSession();
+      const { data: quoteNumber, error: numError } = await (supabase as any).rpc(
+        "next_quote_number",
+        {
+          account_prefix: account?.prefix || "805",
+        }
+      );
+      if (numError) throw numError;
+      const salesOwnerPatch = await getCurrentQuoteSalesOwnerPatch();
 
-        const { data: quote, error: quoteError } = await (supabase as any)
-          .from("sales_quotes")
-          .insert({
-            quote_number: quoteNumber,
-            account_id: ACCOUNT_IDS.SHUTTERS_805,
-            status: "draft",
-            customer_name: appointment.customer_name,
-            customer_phone: appointment.customer_phone || null,
-            customer_email: appointment.customer_email || null,
-            customer_address: appointment.customer_address || null,
-            appointment_date: appointment.appointment_date,
-            created_by: session?.session?.user?.id || null,
-            ...(salesOwnerPatch || {}),
-          })
-          .select()
-          .single();
-        if (quoteError) throw quoteError;
-        quoteId = quote.id as string;
-      }
+      const { data: quote, error: quoteError } = await (supabase as any)
+        .from("sales_quotes")
+        .insert({
+          quote_number: quoteNumber,
+          account_id: ACCOUNT_IDS.SHUTTERS_805,
+          status: "draft",
+          customer_name: appointment.customer_name,
+          customer_phone: appointment.customer_phone || null,
+          customer_email: appointment.customer_email || null,
+          customer_address: appointment.customer_address || null,
+          appointment_date: appointment.appointment_date,
+          created_by: session?.session?.user?.id || null,
+          ...(salesOwnerPatch || {}),
+        })
+        .select()
+        .single();
+      if (quoteError) throw quoteError;
 
       const updateBuilder =
         appointment.sourceType === "sales_805"
           ? (supabase as any)
               .from("sales_805_appointments")
-              .update({ quote_id: quoteId })
+              .update({ quote_id: quote.id })
               .eq("id", appointment.sourceId)
           : (supabase as any)
               .from("crm_calendar_events")
               .update({
                 meta: {
                   ...(appointment.crmEventMeta || {}),
-                  mts_quote_id: quoteId,
-                  sales_quote_id: quoteId,
+                  mts_quote_id: quote.id,
+                  sales_quote_id: quote.id,
                 },
               })
               .eq("id", appointment.sourceId);
@@ -479,7 +426,7 @@ export function QuoteDashboard({
       const { error: appointmentError } = await updateBuilder;
       if (appointmentError) throw appointmentError;
 
-      return { quoteId, created: true };
+      return { quoteId: quote.id as string, created: true };
     },
     onSuccess: ({ quoteId, created }, appointment) => {
       setAppointmentQuoteIds((current) => ({ ...current, [appointment.id]: quoteId }));
@@ -498,11 +445,6 @@ export function QuoteDashboard({
   // Copy quote
   const copyQuote = useMutation({
     mutationFn: async (quoteId: string) => {
-      if (serverOwnedV2) {
-        throw new Error(
-          "Whole-quote copy is blocked until the server can preserve selected designs and authoritative price locks.",
-        );
-      }
       const { data: original, error: fetchErr } = await (supabase as any)
         .from("sales_quotes")
         .select("*")
@@ -571,45 +513,26 @@ export function QuoteDashboard({
     },
   });
 
-  // Delete every quote type through authenticated server-owned routes.
+  // Delete quote
   const deleteQuote = useMutation({
-    mutationFn: async (quote: QuoteTableRow) => {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
-      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
-
-      const path = quote.source === "crm"
-        ? `/api/crm/quotes/${encodeURIComponent(quote.id)}`
-        : `/api/crm/sales-quotes/${encodeURIComponent(quote.sourceQuoteId || quote.id)}`;
-      const response = await fetch(path, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
-        throw new Error(body?.message || "Quote could not be deleted.");
-      }
+    mutationFn: async (quoteId: string) => {
+      const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      onChanged?.();
       toast.success("Quote deleted");
-    },
-    onError: (error) => {
-      toast.error("Failed to delete quote: " + error.message);
     },
   });
 
-  const openQuoteRow = async (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
+  const openQuoteRow = (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
     const targetId = quoteBuilderTargetId(quote);
-    if (targetId) {
-      setActiveQuote(targetId);
-      setActiveTab(tab);
+    if (!targetId) {
+      onOpenCrmQuote?.(quote.id, tab);
       return;
     }
-    if (quote.source === "crm") {
-      onOpenCrmQuote?.(quote.id, tab);
-    }
+    setActiveQuote(targetId);
+    setActiveTab(tab);
   };
 
   const handleOpenQuote = (quote: QuoteTableRow) => {
@@ -617,19 +540,15 @@ export function QuoteDashboard({
   };
 
   const handleOpenDashboardAppointment = (appointment: DashboardCalendarAppointment) => {
-    if (appointment.crm_quote_id) {
-      onOpenCrmQuote?.(appointment.crm_quote_id, "builder");
-      return;
-    }
-
     if (appointment.quote_id) {
-      if (!quotes.some((quote) => quote.id === appointment.quote_id)) {
-        toast.error("This appointment points to a quote that is unavailable in V2.");
-        return;
-      }
       setAccountId(ACCOUNT_IDS.SHUTTERS_805);
       setActiveQuote(appointment.quote_id);
       setActiveTab("builder");
+      return;
+    }
+
+    if (appointment.crm_quote_id) {
+      onOpenCrmQuote?.(appointment.crm_quote_id, "builder");
       return;
     }
 
@@ -674,7 +593,7 @@ export function QuoteDashboard({
           if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
         }}
         onCopy={(id) => copyQuote.mutate(id)}
-        onDelete={(quote) => deleteQuote.mutate(quote)}
+        onDelete={(id) => deleteQuote.mutate(id)}
         title={FILTER_LABELS[activeFilter]}
       />
 

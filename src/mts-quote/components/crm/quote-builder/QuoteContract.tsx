@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { useIsMutating, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useQuoteBuilderDatabase } from "@mts/integrations/supabase/quoteBuilderDatabase";
+import { supabase } from "@mts/integrations/supabase/client";
 import { queryKeys } from "@mts/lib/queryKeys";
 import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@mts/components/ui/card";
@@ -56,8 +56,6 @@ import {
   getQuoteBuilderNote,
   getQuoteEmailNote,
   parseQuoteAdminControls,
-  resolveQuoteTotalDesign,
-  selectedQuoteTotalDesigns,
   shouldPersistQuoteDesignSubtotal,
   type QuoteAdminControls,
   type QuoteExtraFee,
@@ -80,13 +78,9 @@ const paymentIcons: Record<string, typeof FileText> = {
 
 function hasOnyxShutterProducts(
   lineItems: SalesQuoteLineItem[],
-  designs: SalesQuoteDesign[],
-  authoritativeV2: boolean,
+  designs: SalesQuoteDesign[]
 ): boolean {
-  const relevantDesigns = authoritativeV2
-    ? selectedQuoteTotalDesigns(designs)
-    : designs;
-  return relevantDesigns.some((design) => {
+  return designs.some((design) => {
     const lineItem = lineItems.find((item) => item.id === design.line_item_id);
     const supplier = design.supplier?.trim().toLowerCase();
     const productType = (design.product_type || lineItem?.product_type || "").trim().toLowerCase();
@@ -120,8 +114,6 @@ const CONTRACT_HEADERS: Record<
 };
 
 export function QuoteContract() {
-  const { database: supabase, authoritativeV2 } = useQuoteBuilderDatabase();
-  const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
   const { activeQuoteId, setActiveTab } = useQuoteBuilderStore();
   const queryClient = useQueryClient();
   const quoteDesignMutationKey = ["sales-quote-designs", activeQuoteId || ""];
@@ -294,9 +286,7 @@ export function QuoteContract() {
     quoteDesigns: SalesQuoteDesign[],
     controls: QuoteAdminControls
   ) => {
-    const controlledSubtotal = calculateQuoteDesignSubtotal(items, quoteDesigns, {
-      mode: totalMode,
-    });
+    const controlledSubtotal = calculateQuoteDesignSubtotal(items, quoteDesigns);
     return calculateQuoteTotalBreakdown(controlledSubtotal, controls).total;
   };
 
@@ -308,7 +298,7 @@ export function QuoteContract() {
       }),
     };
 
-    if (shouldPersistQuoteDesignSubtotal(designs, { mode: totalMode })) {
+    if (shouldPersistQuoteDesignSubtotal(designs)) {
       updates.total_amount = calculateControlledTotal(lineItems, designs, controls);
     }
 
@@ -477,9 +467,7 @@ export function QuoteContract() {
   });
 
   // Calculate totals with admin controls
-  const subtotal = calculateQuoteDesignSubtotal(lineItems, designs, {
-    mode: totalMode,
-  });
+  const subtotal = calculateQuoteDesignSubtotal(lineItems, designs);
   const totals = calculateQuoteTotalBreakdown(subtotal, adminControls);
   const totalAmount = totals.total;
 
@@ -495,11 +483,7 @@ export function QuoteContract() {
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
   const contractLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
   const contractDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
-  const includesOnyxShutters = hasOnyxShutterProducts(
-    contractLineItems,
-    contractDesigns,
-    authoritativeV2,
-  );
+  const includesOnyxShutters = hasOnyxShutterProducts(contractLineItems, contractDesigns);
   const workmanshipWarrantyNumber = includesOnyxShutters ? 3 : 2;
   const serviceFeesNumber = workmanshipWarrantyNumber + 1;
   const claimsNumber = serviceFeesNumber + 1;
@@ -844,9 +828,7 @@ export function QuoteContract() {
         const gqDesigns = hasMultipleQuotes
           ? allGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
           : designs;
-        const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
-          mode: totalMode,
-        });
+        const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns);
         const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls);
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
@@ -874,13 +856,8 @@ export function QuoteContract() {
             <CardContent className="space-y-3">
               {gqLineItems.map((item) => {
                 const itemDesigns = gqDesigns.filter((d) => d.line_item_id === item.id);
-                const selectedItemDesign = resolveQuoteTotalDesign(itemDesigns);
-                const displayedItemDesigns =
-                  authoritativeV2 && selectedItemDesign ? [selectedItemDesign] : itemDesigns;
-                const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
-                  mode: totalMode,
-                });
-                const productImage = getLineItemProductImage(item, displayedItemDesigns);
+                const itemTotal = calculateLineItemDesignTotal(item, itemDesigns);
+                const productImage = getLineItemProductImage(item, itemDesigns);
                 const itemDimensions = formatDimensionsOrNull(item);
                 return (
                   <div key={item.id} className="p-4 bg-muted/30 rounded-lg border">
