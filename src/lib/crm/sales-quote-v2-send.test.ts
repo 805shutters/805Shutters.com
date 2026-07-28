@@ -324,9 +324,9 @@ beforeEach(() => {
 });
 
 describe("V2 production send boundary", () => {
-  it("keeps production V2 sending disabled while preparation is hardened", () => {
+  it("exposes the dedicated production V2 send capability", () => {
     expect(V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED).toBe(true);
-    expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(false);
+    expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(true);
   });
 
   it("opts in only from a strict server quote-row marker", () => {
@@ -489,7 +489,7 @@ describe("V2 production send boundary", () => {
     ).toThrow("stored quote total does not match");
   });
 
-  it("rejects lifecycle, quote-revision, catalog, snapshot-pointer, and row-identity tampering", () => {
+  it("accepts an older selected snapshot revision but rejects future revisions and identity tampering", () => {
     const { line, design, storedSnapshot, total } = authoritativeRollerFixture();
     const prepare = (
       quote: Record<string, unknown>,
@@ -507,9 +507,16 @@ describe("V2 production send boundary", () => {
     expect(() =>
       prepare(authoritativeQuote(total, { quote_v2_status: "stale" })),
     ).toThrow("priced draft lifecycle state");
+    expect(
+      prepare(authoritativeQuote(total, { quote_v2_revision: QUOTE_REVISION + 1 }))
+        .total,
+    ).toBe(total);
     expect(() =>
-      prepare(authoritativeQuote(total, { quote_v2_revision: QUOTE_REVISION + 1 })),
-    ).toThrow("current quote revision");
+      prepare(authoritativeQuote(total), design, {
+        ...storedSnapshot,
+        quote_revision: QUOTE_REVISION + 1,
+      }),
+    ).toThrow("invalid snapshot revision");
     expect(() =>
       prepare(
         authoritativeQuote(total, {

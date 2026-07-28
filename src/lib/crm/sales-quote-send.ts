@@ -12,7 +12,14 @@ import {
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
-import { guardV2SalesQuoteBeforeLegacySend } from "@/lib/crm/sales-quote-v2-send-guard";
+import {
+  isServerMarkedV2SalesQuote,
+  guardV2SalesQuoteBeforeLegacySend,
+} from "@/lib/crm/sales-quote-v2-send-guard";
+import {
+  prepareV2CustomerSendPayloadFromDatabase,
+  type PreparedV2CustomerQuote,
+} from "@/lib/crm/sales-quote-v2-send";
 import { sendSms } from "@/lib/notify/twilio";
 import {
   build805SoldQuoteSmsMessageForRecipient,
@@ -182,7 +189,9 @@ export async function sendSalesQuoteToCustomer(
   options: SendSalesQuoteOptions = {},
 ) {
   const quote = await loadSalesQuote(supabase, salesQuoteId);
-  await guardV2SalesQuoteBeforeLegacySend(supabase, quote);
+  const preparedV2 = isServerMarkedV2SalesQuote(quote)
+    ? await prepareV2CustomerSendPayloadFromDatabase(supabase, quote)
+    : null;
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   const contactPatch: AnyRow = {};
@@ -202,7 +211,9 @@ export async function sendSalesQuoteToCustomer(
     if (error) throw new CrmAuthError(502, "Customer contact could not be saved before sending.");
   }
 
-  const crmQuoteId = await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror);
+  const crmQuoteId = preparedV2
+    ? await mirrorSalesQuoteV2ForCustomerSend(supabase, quoteForMirror, preparedV2)
+    : await mirrorSalesQuoteGroupForCustomerSend(supabase, quoteForMirror);
   const result = await sendQuoteToCustomer(supabase, crmQuoteId, actor, {
     email: options.channels?.email,
     sms: options.channels?.sms,
@@ -214,6 +225,168 @@ export async function sendSalesQuoteToCustomer(
 
   await markSalesQuoteSent(supabase, salesQuoteId, quoteForSend, options);
   return result;
+}
+
+async function mirrorSalesQuoteV2ForCustomerSend(
+  supabase: CrmSupabaseClient,
+  quote: AnyRow,
+  prepared: PreparedV2CustomerQuote,
+): Promise<string> {
+  const accountId = quote.account_id || DEFAULT_805_ACCOUNT_ID;
+  const importedMeta = quoteMeasureMeta(quote);
+  const job = await upsertOne(supabase, "crm_jobs", {
+    external_source: IMPORT_SOURCE,
+    external_id: `quote:${quote.id}`,
+    source: "sales_quote_v2_send",
+    status: mapJobStatus(quote.status),
+    priority: "normal",
+    customer_name: quote.customer_name || "Unknown customer",
+    phone: quote.customer_phone || "unknown",
+    email: quote.customer_email || null,
+    address: quote.customer_address || null,
+    city: null,
+    product_interest: inferQuoteProduct(
+      prepared.lines.map((line) => ({ product_type: line.productType })),
+    ),
+    sales_owner: titleOwner(quote.sales_owner),
+    next_action: nextActionForStatus(quote.status),
+    next_action_due: null,
+    appointment_start: quote.appointment_date || null,
+    appointment_end: null,
+    estimated_total: prepared.total,
+    deposit_paid: money(quote.deposit_paid),
+    notes: quote.installer_notes || null,
+    meta: {
+      ...importedMeta,
+      source_sales_quote_id: quote.id,
+      account_id: accountId,
+      source: "sales_quote_v2_send",
+      quote_v2_backend: true,
+      quote_v2_revision: quote.quote_v2_revision,
+      quote_v2_catalog_version: quote.quote_v2_catalog_version,
+    },
+  });
+
+  const importedQuote = await upsertOne(supabase, "crm_quotes", {
+    external_source: IMPORT_SOURCE,
+    external_id: `quote:${quote.id}`,
+    job_id: job.id,
+    quote_number: quote.quote_number || null,
+    status: mapQuoteStatus(quote.status),
+    quote_total: prepared.total,
+    materials_cost: money(quote.manufacturer_cost),
+    labor_cost: 0,
+    discount: 0,
+    tax: 0,
+    deposit_required: money(prepared.total * 0.5),
+    balance_due: money(prepared.total - money(prepared.total * 0.5)),
+    sold_by: titleOwner(quote.sales_owner),
+    sent_at: quote.sent_at || null,
+    approved_at: quote.signed_at || null,
+    sold_at: quote.signed_at || null,
+    ordered_at: quote.ordered_at || null,
+    received_at: quote.received_at || null,
+    installed_at: quote.installed_at || null,
+    archived_at: quote.archived_at || null,
+    manufacturer_name: quote.manufacturer_name || null,
+    manufacturer_order_ref: quote.manufacturer_order_ref || null,
+    customer_email: quote.customer_email || null,
+    customer_phone: quote.customer_phone || null,
+    customer_address: quote.customer_address || null,
+    customer_signature: quote.customer_signature || null,
+    customer_printed_name: quote.customer_printed_name || null,
+    signed_at: quote.signed_at || null,
+    share_token: quote.share_token || null,
+    quote_group_id: quote.quote_group_id || null,
+    quote_label: quote.quote_letter || null,
+    notes: null,
+    meta: {
+      ...quoteMeasureMeta(quote),
+      source: "sales_quote_v2_send",
+      source_sales_quote_id: quote.id,
+      account_id: accountId,
+      quote_v2_backend: true,
+      quote_v2_revision: quote.quote_v2_revision,
+      quote_v2_catalog_version: quote.quote_v2_catalog_version,
+    },
+  });
+
+  await upsertPreparedV2QuoteStructure(
+    supabase,
+    importedQuote.id,
+    prepared,
+  );
+  return importedQuote.id;
+}
+
+async function upsertPreparedV2QuoteStructure(
+  supabase: CrmSupabaseClient,
+  quoteId: string,
+  prepared: PreparedV2CustomerQuote,
+) {
+  const lineIds = prepared.lines.map((line) => line.lineItemId);
+  await deleteStaleQuoteLineItems(supabase, quoteId, lineIds);
+
+  for (let index = 0; index < prepared.lines.length; index += 1) {
+    const line = prepared.lines[index];
+    await upsertOne(
+      supabase,
+      "crm_quote_line_items",
+      {
+        id: line.lineItemId,
+        quote_id: quoteId,
+        room: line.room,
+        width_in: line.widthInches,
+        height_in: line.heightInches,
+        quantity: line.quantity,
+        discount_percent: line.price.discountPercent,
+        sort_order: index,
+        selected_design_id: null,
+        notes: line.productType,
+      },
+      "id",
+    );
+    await deleteStaleQuoteDesigns(supabase, line.lineItemId, [
+      line.selectedDesignId,
+    ]);
+    await upsertOne(
+      supabase,
+      "crm_quote_designs",
+      {
+        id: line.selectedDesignId,
+        line_item_id: line.lineItemId,
+        label: line.selectedVariant,
+        sort_order: 0,
+        product_id: line.price.productId,
+        program_id: line.price.programId,
+        fabric: line.price.programName,
+        surcharges: line.price.surchargeLines.map((surcharge) => ({
+          id: surcharge.id,
+          amount: surcharge.amount,
+        })),
+        motorization: [],
+        unit_price: line.price.unitPrice,
+        price_breakdown: line.price,
+        price_status: "ok",
+        priced_at: new Date().toISOString(),
+        notes: null,
+        details: {
+          quote_v2_customer_configuration: line.configuration,
+        },
+      },
+      "id",
+    );
+    const { error } = await supabase
+      .from("crm_quote_line_items")
+      .update({ selected_design_id: line.selectedDesignId })
+      .eq("id", line.lineItemId);
+    if (error) {
+      throw new CrmAuthError(
+        502,
+        "The selected V2 customer design could not be saved.",
+      );
+    }
+  }
 }
 
 async function mirrorSalesQuoteGroupForCustomerSend(
@@ -487,6 +660,7 @@ async function markSalesQuoteSent(
   };
 
   if (quote.status === "draft") patch.status = "sent";
+  if (isServerMarkedV2SalesQuote(quote)) patch.quote_v2_status = "sent";
   const requestedEmails = uniqueEmails(options.emails);
   const requestedPhone = textOrNull(options.phone);
   if (requestedEmails.length) patch.customer_email = requestedEmails[0];

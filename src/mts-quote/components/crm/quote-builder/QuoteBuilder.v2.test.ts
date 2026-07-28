@@ -22,11 +22,9 @@ describe("V2 quote builder load integrity", () => {
     expect(quoteBuilderSource).toContain("quote was created and no price was changed.");
   });
 
-  it("keeps customer delivery and payment-link actions visibly blocked for V2", () => {
-    expect(quoteBuilderSource).toContain(
-      "disabled={isolated || authoritativeV2}",
-    );
-    expect(quoteBuilderSource).toContain(
+  it("enables customer delivery for V2 while payment links remain blocked", () => {
+    expect(quoteBuilderSource).toContain("disabled={isolated}");
+    expect(quoteBuilderSource).not.toContain(
       "Quote V2 delivery is blocked until the protected customer-send cutover",
     );
     expect(quoteBuilderSource).toContain(

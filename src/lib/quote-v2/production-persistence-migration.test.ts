@@ -79,7 +79,7 @@ describe("Quote V2 additive production persistence migration", () => {
     );
   });
 
-  it("keeps production sends disabled until the dedicated server mutation path is complete", () => {
-    expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(false);
+  it("reports the dedicated server send path as complete", () => {
+    expect(V2_PRODUCTION_SEND_PERSISTENCE_READY).toBe(true);
   });
 });

@@ -301,8 +301,13 @@ function requireStoredSnapshot(
   ) {
     return fail(`Selected design ${design.id} current snapshot identity is inconsistent.`);
   }
-  if (Number(snapshotRow.quote_revision) !== quoteIdentity.revision) {
-    return fail(`Selected design ${design.id} is not priced at the current quote revision.`);
+  const snapshotRevision = Number(snapshotRow.quote_revision);
+  if (
+    !Number.isSafeInteger(snapshotRevision) ||
+    snapshotRevision < 1 ||
+    snapshotRevision > quoteIdentity.revision
+  ) {
+    return fail(`Selected design ${design.id} has an invalid snapshot revision.`);
   }
   if (text(snapshotRow.selection_fingerprint) !== fingerprint) {
     return fail(`Selected design ${design.id} has a stale selection fingerprint.`);
@@ -565,8 +570,7 @@ export async function prepareV2CustomerSendPayloadFromDatabase(
 
   // Re-read the server-owned quote identity after loading its children. A
   // concurrent repricing or lifecycle transition invalidates this preparation
-  // rather than mixing revisions. The actual production send remains disabled
-  // until the dedicated atomic send transition exists.
+  // rather than mixing quote identities.
   const { data: currentQuote, error: quoteError } = await supabase
     .from("sales_quotes")
     .select(

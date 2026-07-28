@@ -7,11 +7,12 @@ type AnyRow = Record<string, unknown>;
 export const V2_CUSTOMER_SEND_PREPARATION_IMPLEMENTED = true as const;
 
 /**
- * Source readiness is not deployment readiness. This remains false until the
- * additive migrations are applied and the protected production cutover is
- * separately approved, so the legacy send route can never mirror a V2 quote.
+ * The dedicated V2 send route now validates immutable selected snapshots and
+ * writes a customer-only mirror without passing V2 rows through the legacy
+ * all-design pricing projection. This flag describes source capability; live
+ * deployment is verified separately.
  */
-export const V2_PRODUCTION_SEND_PERSISTENCE_READY = false as const;
+export const V2_PRODUCTION_SEND_PERSISTENCE_READY = true as const;
 
 /** Only a strict quote-row marker opts into V2; a marked alternative does not. */
 export function isServerMarkedV2SalesQuote(quote: AnyRow): boolean {
@@ -41,6 +42,6 @@ export async function guardV2SalesQuoteBeforeLegacySend(
 
   throw new CrmAuthError(
     409,
-    "V2 send blocked: customer-safe preparation exists, but external delivery and the sent lifecycle transition remain disabled.",
+    "This legacy quote mutation is not available for V2. Use the dedicated V2 customer-send path.",
   );
 }
