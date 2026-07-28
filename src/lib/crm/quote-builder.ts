@@ -24,6 +24,7 @@ import {
   parseAdjustments,
   priceDesignFields,
   quoteSubtotal,
+  round2,
   selectedDesign,
 } from "@/lib/crm/quote-money";
 export {
@@ -296,10 +297,6 @@ async function fetchLineItem(supabase: CrmSupabaseClient, id: string): Promise<C
   return { ...li, designs: li.designs ?? [] };
 }
 
-function copyProductId(lineItem: CrmQuoteLineItem): string | null {
-  return selectedDesign(lineItem)?.product_id ?? lineItem.designs[0]?.product_id ?? null;
-}
-
 export async function createLineItem(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -450,13 +447,115 @@ async function repriceLineItemDesigns(
     .eq("line_item_id", lineItemId);
   if (error) throw new CrmAuthError(502, "Designs could not be repriced.");
   for (const design of (designs as CrmQuoteDesign[]) ?? []) {
-    const fields = priceDesignFields(design, dims, discountPercent);
+    const fields = preserveManualPriceOverride(
+      design,
+      priceDesignFields(design, dims, discountPercent),
+    );
     await saveQuoteDesignRecord<{ id: string }>(
       { ...fields },
       (nextRecord) => supabase.from("crm_quote_designs").update(nextRecord).eq("id", design.id).select("id").single(),
       "Design pricing could not be updated.",
     );
   }
+}
+
+type DesignPriceFields = ReturnType<typeof priceDesignFields>;
+
+export function preserveManualPriceOverride(
+  design: Pick<CrmQuoteDesign, "unit_price" | "price_breakdown">,
+  engineFields: DesignPriceFields,
+): DesignPriceFields {
+  const priorBreakdown =
+    design.price_breakdown && typeof design.price_breakdown === "object"
+      ? design.price_breakdown
+      : {};
+  if (priorBreakdown.manualPriceOverride !== true) return engineFields;
+
+  const manualUnitPrice = round2(design.unit_price);
+  return {
+    ...engineFields,
+    unit_price: manualUnitPrice,
+    price_status: "ok",
+    price_breakdown: {
+      ...engineFields.price_breakdown,
+      manualPriceOverride: true,
+      engineUnitPrice: engineFields.unit_price,
+      manualUnitPrice,
+    },
+  };
+}
+
+export function manualPriceFields(
+  design: Pick<CrmQuoteDesign, "unit_price" | "price_breakdown">,
+  value: unknown,
+  pricedAt = new Date().toISOString(),
+) {
+  const unitPrice = Number(value);
+  if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 9_999_999_999.99) {
+    throw new CrmAuthError(400, "Custom amount must be a valid non-negative dollar amount.");
+  }
+  const rounded = round2(unitPrice);
+  const priorBreakdown =
+    design.price_breakdown && typeof design.price_breakdown === "object"
+      ? design.price_breakdown
+      : {};
+  const engineUnitPrice =
+    priorBreakdown.manualPriceOverride === true &&
+    typeof priorBreakdown.engineUnitPrice === "number"
+      ? priorBreakdown.engineUnitPrice
+      : round2(design.unit_price);
+
+  return {
+    unit_price: rounded,
+    price_status: "ok",
+    priced_at: pricedAt,
+    price_breakdown: {
+      ...priorBreakdown,
+      manualPriceOverride: true,
+      engineUnitPrice,
+      manualUnitPrice: rounded,
+    },
+  };
+}
+
+export async function setDesignManualPrice(
+  supabase: CrmSupabaseClient,
+  designId: string,
+  value: unknown,
+  actor: CrmActor,
+): Promise<CrmQuoteWithItems> {
+  const { data, error } = await supabase
+    .from("crm_quote_designs")
+    .select("*")
+    .eq("id", designId)
+    .maybeSingle();
+  if (error || !data) throw new CrmAuthError(404, "Design was not found.");
+
+  const design = data as CrmQuoteDesign;
+  const lineItem = await fetchLineItem(supabase, design.line_item_id);
+  const fields = manualPriceFields(design, value);
+  await saveQuoteDesignRecord<{ id: string }>(
+    fields,
+    (nextRecord) =>
+      supabase
+        .from("crm_quote_designs")
+        .update(nextRecord)
+        .eq("id", designId)
+        .eq("line_item_id", design.line_item_id)
+        .select("id")
+        .single(),
+    "Custom line price could not be saved.",
+  );
+
+  await recordCrmActivity(supabase, actor, {
+    entityType: "quote",
+    entityId: lineItem.quote_id,
+    action: "design.manual_price",
+    before: { unit_price: design.unit_price, price_breakdown: design.price_breakdown },
+    after: fields,
+    metadata: { lineItemId: design.line_item_id, designId },
+  });
+  return recalcQuoteTotals(supabase, lineItem.quote_id);
 }
 
 export async function upsertDesign(
@@ -670,10 +769,10 @@ export async function duplicateLineItem(
 
 /**
  * Copy one window's selected-design spec (product/program/fabric/details/
- * motorization) plus its per-line discount to matching product windows — the
- * MTS "Copy All / Copy Some" flow. Target sizes stay unchanged; each copied
- * target is re-priced against its own dimensions before the quote total is
- * recalculated.
+ * motorization) plus its per-line discount to target windows — the MTS
+ * "Copy All / Copy Some" flow. Target sizes stay unchanged; the source product
+ * intentionally replaces the target product, and each target is re-priced
+ * against its own dimensions before the quote total is recalculated.
  */
 export async function copySpecToLineItems(
   supabase: CrmSupabaseClient,
@@ -687,14 +786,10 @@ export async function copySpecToLineItems(
     throw new CrmAuthError(400, "Pick a product/spec on this window before copying it.");
   }
   const targets = Array.from(new Set(targetIds)).filter((id) => id && id !== sourceId);
-  let copiedCount = 0;
   for (const targetId of targets) {
     const target = await fetchLineItem(supabase, targetId);
     if (target.quote_id !== source.quote_id) {
       throw new CrmAuthError(400, "Every target window must belong to the same quote.");
-    }
-    if (copyProductId(target) !== sourceDesign.product_id) {
-      continue;
     }
     // 1. Per-line discount only. Dimensions stay with the target window.
     await updateLineItem(supabase, targetId, {
@@ -716,16 +811,12 @@ export async function copySpecToLineItems(
       details: sourceDesign.details ?? {},
       motorization: sourceDesign.motorization ?? [],
     }, actor);
-    copiedCount += 1;
-  }
-  if (copiedCount === 0) {
-    throw new CrmAuthError(400, "No matching product windows were selected to copy to.");
   }
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: source.quote_id,
     action: "line_item.copy_spec",
-    metadata: { sourceId, targetCount: copiedCount },
+    metadata: { sourceId, targetCount: targets.length },
   });
   return recalcQuoteTotals(supabase, source.quote_id);
 }

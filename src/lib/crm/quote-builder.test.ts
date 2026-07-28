@@ -10,6 +10,8 @@ import {
   computeQuoteMoney,
   parseAdjustments,
   DEFAULT_ADJUSTMENTS,
+  manualPriceFields,
+  preserveManualPriceOverride,
 } from "./quote-builder";
 import type { CrmQuoteDesign, CrmQuoteLineItem } from "./types";
 
@@ -115,6 +117,67 @@ describe("pick-one totals (the legacy triple-billing bug must never return)", ()
     const a = design({ id: "a" });
     expect(selectedDesign(lineItem({ designs: [a], selected_design_id: "a" }))?.id).toBe("a");
     expect(selectedDesign(lineItem({ designs: [a], selected_design_id: "missing" }))).toBeNull();
+  });
+});
+
+describe("manual line-item price overrides", () => {
+  it("stores the custom customer price with its engine-price provenance", () => {
+    expect(
+      manualPriceFields(
+        design({ unit_price: 212, price_breakdown: { base: 212 } }),
+        "199.995",
+        "2026-07-28T12:00:00.000Z",
+      ),
+    ).toEqual({
+      unit_price: 200,
+      price_status: "ok",
+      priced_at: "2026-07-28T12:00:00.000Z",
+      price_breakdown: {
+        base: 212,
+        manualPriceOverride: true,
+        engineUnitPrice: 212,
+        manualUnitPrice: 200,
+      },
+    });
+  });
+
+  it("rejects invalid custom amounts", () => {
+    expect(() => manualPriceFields(design({ unit_price: 212 }), -1)).toThrow(
+      "Custom amount must be a valid non-negative dollar amount.",
+    );
+    expect(() => manualPriceFields(design({ unit_price: 212 }), "not money")).toThrow(
+      "Custom amount must be a valid non-negative dollar amount.",
+    );
+  });
+
+  it("keeps the saved custom amount while refreshing the engine provenance", () => {
+    const result = preserveManualPriceOverride(
+      design({
+        unit_price: 200,
+        price_breakdown: {
+          manualPriceOverride: true,
+          engineUnitPrice: 212,
+          manualUnitPrice: 200,
+        },
+      }),
+      {
+        unit_price: 225,
+        wholesale_unit_price: 90,
+        price_breakdown: { base: 225 },
+        price_status: "ok",
+        priced_at: "2026-07-28T13:00:00.000Z",
+        surcharges: [],
+      },
+    );
+
+    expect(result.unit_price).toBe(200);
+    expect(result.wholesale_unit_price).toBe(90);
+    expect(result.price_breakdown).toEqual({
+      base: 225,
+      manualPriceOverride: true,
+      engineUnitPrice: 225,
+      manualUnitPrice: 200,
+    });
   });
 });
 

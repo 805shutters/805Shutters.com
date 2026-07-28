@@ -462,17 +462,14 @@ export function QuoteBuilderPanel({
   const duplicateWindow = (id: string) =>
     mutate(`/api/crm/quote-line-items/${id}/duplicate`, { method: "POST" });
 
-  // Copy this window's selected spec + discount to matching product windows.
-  // Sizes and room labels stay with each target.
+  // Copy this window's selected spec + discount to every other window.
+  // The source product intentionally replaces each target product, while sizes
+  // and room labels stay with their target windows.
   const copySpecToAll = async (sourceId: string) => {
     if (!quote) return;
-    const source = quote.lineItems.find((li) => li.id === sourceId);
-    if (!source) return;
-    const others = quote.lineItems.filter(
-      (li) => li.id !== sourceId && canReceiveCopiedSpec(source, li)
-    );
+    const others = quote.lineItems.filter((li) => li.id !== sourceId);
     if (others.length === 0) return;
-    const ok = window.confirm(`Copy this window's spec and discount to all ${others.length} matching window(s)? Sizes stay unchanged.`);
+    const ok = window.confirm(`Copy this window's spec and discount to all ${others.length} other window(s)? Sizes stay unchanged.`);
     if (!ok) return;
     await mutate(`/api/crm/quote-line-items/${sourceId}/copy-spec`, {
       method: "POST",
@@ -1259,6 +1256,20 @@ export function QuoteBuilderPanel({
                             <PriceExplanation breakdown={design.price_breakdown as PriceBreakdown} quantity={Math.max(1, Math.floor(Number(li.quantity) || 1))} />
                           </details>
                         ) : null}
+
+                        {isSelected ? (
+                          <ManualPriceEditor
+                            key={`${design.id}:${design.unit_price}`}
+                            value={design.unit_price}
+                            disabled={isSaving}
+                            onSave={(unitPrice) =>
+                              mutate(`/api/crm/quote-designs/${design.id}/price`, {
+                                method: "PATCH",
+                                body: JSON.stringify({ unitPrice }),
+                              })
+                            }
+                          />
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1771,6 +1782,50 @@ function BreakRow({ label, value }: { label: string; value: string }) {
     <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", fontSize: 14 }}>
       <span style={{ opacity: 0.75 }}>{label}</span>
       <span>{value}</span>
+    </div>
+  );
+}
+
+function ManualPriceEditor({
+  value,
+  disabled,
+  onSave,
+}: {
+  value: number;
+  disabled: boolean;
+  onSave: (value: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  const parsed = Number(draft);
+  const valid = draft.trim() !== "" && Number.isFinite(parsed) && parsed >= 0;
+  const unchanged = valid && round2(parsed) === round2(value);
+
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "end", flexWrap: "wrap", marginTop: 10 }}>
+      <Field label="Custom amount $" width={140}>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          inputMode="decimal"
+          value={draft}
+          disabled={disabled}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && valid && !unchanged && !disabled) {
+              onSave(round2(parsed));
+            }
+          }}
+        />
+      </Field>
+      <button
+        type="button"
+        style={ghostBtn}
+        disabled={disabled || !valid || unchanged}
+        onClick={() => onSave(round2(parsed))}
+      >
+        Update line price
+      </button>
     </div>
   );
 }
