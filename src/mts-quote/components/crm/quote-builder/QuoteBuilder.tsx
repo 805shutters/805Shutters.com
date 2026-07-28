@@ -538,6 +538,7 @@ export function QuoteBuilder() {
   const lineItemsQueryKey = [...quoteQueryKey, "line-items"] as const;
   const designsQueryKey = [...quoteQueryKey, "designs"] as const;
   const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const observedLineItemsQuoteIdRef = useRef<string | null>(null);
 
   // Dedicated full-screen builder: hide the CRM chrome while a quote is open.
   // The class is removed on unmount (e.g. when the X switches back to the
@@ -845,7 +846,15 @@ export function QuoteBuilder() {
   };
 
   useEffect(() => {
-    if (!quote || stackedLineItemIds.length === 0) return;
+    if (!quote || areLineItemsLoading) return;
+
+    // Loading an existing quote is read-only. Only normalize stacked metadata
+    // after a later, user-initiated line-item change for this same quote.
+    if (observedLineItemsQuoteIdRef.current !== activeQuoteId) {
+      observedLineItemsQuoteIdRef.current = activeQuoteId;
+      return;
+    }
+    if (stackedLineItemIds.length === 0) return;
 
     const orderedIds = sortLineItemIdsByQuoteOrder(stackedLineItemIds, lineItems);
     const changed =

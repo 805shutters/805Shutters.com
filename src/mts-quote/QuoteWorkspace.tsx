@@ -11,8 +11,8 @@
 // routed back into the scope element via PortalContainerContext.
 import "./mts-quote.css";
 
-import { Fragment, lazy, Suspense, useEffect, useState } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Fragment, lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { LayoutDashboard, Hammer, FileSignature, Plus, TableProperties } from "lucide-react";
 import { cn } from "@mts/lib/utils";
@@ -21,8 +21,12 @@ import { useQuoteBuilderStore } from "@mts/stores/quoteBuilderStore";
 import { PortalContainerContext } from "@mts/lib/portal-container";
 import {
   QuoteBuilderDatabaseProvider,
+  useQuoteBuilderDatabase,
 } from "@mts/integrations/supabase/quoteBuilderDatabase";
 import { supabase } from "@mts/integrations/supabase/client";
+import { queryKeys } from "@mts/lib/queryKeys";
+import { resolveActiveQuoteRuntime } from "@mts/lib/quoteRuntimeRouting";
+import type { SalesQuote } from "@mts/types/quote";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 // The quote tools pull in the full product catalog, pricing engine,
@@ -51,6 +55,57 @@ const PricingGrids = lazy(() =>
 
 function QuoteTabLoading() {
   return <div className="p-8 text-center text-sm text-muted-foreground">Loading quote tools...</div>;
+}
+
+function ActiveQuoteRuntimeProvider({
+  activeQuoteId,
+  children,
+}: {
+  activeQuoteId: string | null;
+  children: ReactNode;
+}) {
+  const parentRuntime = useQuoteBuilderDatabase();
+  const {
+    data: activeQuote,
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: queryKeys.salesQuotes.detail(activeQuoteId || ""),
+    queryFn: async () => {
+      const { data, error } = await (parentRuntime.database as any)
+        .from("sales_quotes")
+        .select("*")
+        .eq("id", activeQuoteId!)
+        .single();
+      if (error) throw error;
+      return data as SalesQuote;
+    },
+    enabled: !!activeQuoteId,
+  });
+
+  if (!activeQuoteId || isPending) return <QuoteTabLoading />;
+  if (isError || !activeQuote) {
+    return (
+      <div className="p-8 text-center text-sm text-red-700">
+        The saved quote record could not be loaded. No quote data was changed.
+      </div>
+    );
+  }
+
+  const activeRuntime = resolveActiveQuoteRuntime(activeQuote);
+
+  return (
+    <QuoteBuilderDatabaseProvider
+      database={parentRuntime.database}
+      isolated={parentRuntime.isolated}
+      preferStoredTotal={parentRuntime.preferStoredTotal}
+      authoritativeV2={activeRuntime.authoritativeV2}
+      serverOwnedV2={activeRuntime.serverOwnedV2}
+      showLabCatalogControls={parentRuntime.showLabCatalogControls}
+    >
+      {children}
+    </QuoteBuilderDatabaseProvider>
+  );
 }
 
 const tabs = [
@@ -185,9 +240,11 @@ export function QuoteWorkspace({
               </Suspense>
             )}
             {effectiveTab === "builder" && (
-              <Suspense fallback={<QuoteTabLoading />}>
-                <QuoteBuilder />
-              </Suspense>
+              <ActiveQuoteRuntimeProvider activeQuoteId={activeQuoteId}>
+                <Suspense fallback={<QuoteTabLoading />}>
+                  <QuoteBuilder />
+                </Suspense>
+              </ActiveQuoteRuntimeProvider>
             )}
             {effectiveTab === "pricing" && (
               <Suspense fallback={<QuoteTabLoading />}>
@@ -195,9 +252,11 @@ export function QuoteWorkspace({
               </Suspense>
             )}
             {effectiveTab === "contract" && (
-              <Suspense fallback={<QuoteTabLoading />}>
-                <QuoteContract />
-              </Suspense>
+              <ActiveQuoteRuntimeProvider activeQuoteId={activeQuoteId}>
+                <Suspense fallback={<QuoteTabLoading />}>
+                  <QuoteContract />
+                </Suspense>
+              </ActiveQuoteRuntimeProvider>
             )}
           </div>
 

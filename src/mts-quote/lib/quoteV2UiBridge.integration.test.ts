@@ -6,16 +6,24 @@ function source(relative: string) {
 }
 
 describe("production Quote V2 server-owned UI bridge", () => {
-  it("enables authoritative server ownership on the active quote workspace", () => {
+  it("keeps the dashboard authoritative while active quotes get record-specific runtimes", () => {
     const workspace = source("../QuoteWorkspace.tsx");
     expect(workspace).toContain("<QuoteBuilderDatabaseProvider");
     expect(workspace).toMatch(/\bauthoritativeV2\b/);
     expect(workspace).toMatch(/\bserverOwnedV2\b/);
     expect(workspace).toContain("<QuoteDashboard");
     expect(workspace).toMatch(/\bquoteOperatorMode\b/);
+    expect(workspace).toContain("resolveActiveQuoteRuntime(activeQuote)");
+    expect(workspace).toContain(
+      "authoritativeV2={activeRuntime.authoritativeV2}",
+    );
+    expect(workspace).toContain(
+      "serverOwnedV2={activeRuntime.serverOwnedV2}",
+    );
+    expect(workspace.match(/<ActiveQuoteRuntimeProvider/g)).toHaveLength(2);
   });
 
-  it("routes new drafts and quote alternatives through authenticated V2 APIs", () => {
+  it("keeps new drafts on authenticated V2 APIs", () => {
     const dashboard = source(
       "../components/crm/quote-builder/QuoteDashboard.tsx",
     );
@@ -25,11 +33,31 @@ describe("production Quote V2 server-owned UI bridge", () => {
 
     expect(dashboard).toContain("createQuoteV2Draft(supabase");
     expect(dashboard).toContain("if (serverOwnedV2)");
+    expect(dashboard).toContain("setActiveQuote(quote.quoteId)");
     expect(groups).toContain("createQuoteV2Draft(supabase");
     expect(groups).toContain("mutateQuoteV2Structure(");
     expect(groups).toContain("priceQuoteV2(");
     expect(groups).toContain(
       "Quote V2 alternatives cannot be hard-deleted",
+    );
+  });
+
+  it("keeps grouped alternatives under the active quote runtime and opening read-only", () => {
+    const workspace = source("../QuoteWorkspace.tsx");
+    const builder = source(
+      "../components/crm/quote-builder/QuoteBuilder.tsx",
+    );
+    const groups = source(
+      "../components/crm/quote-builder/QuoteGroupTabs.tsx",
+    );
+
+    expect(workspace).toMatch(
+      /<ActiveQuoteRuntimeProvider activeQuoteId=\{activeQuoteId\}>[\s\S]*?<QuoteBuilder \/>[\s\S]*?<\/ActiveQuoteRuntimeProvider>/,
+    );
+    expect(builder).toContain("<QuoteGroupTabs />");
+    expect(groups).toContain("if (serverOwnedV2)");
+    expect(builder).toContain(
+      "observedLineItemsQuoteIdRef.current !== activeQuoteId",
     );
   });
 
