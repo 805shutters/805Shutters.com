@@ -134,6 +134,100 @@ describe.skipIf(!enabled)("quote builder integration (real DB)", () => {
     expect(again.alreadySigned).toBe(true);
   });
 
+  it("atomically partitions a partial acceptance into current and future CRM contracts/jobs", async () => {
+    const partialJob = await createCrmJob(
+      supabase,
+      { customer_name: `${MARK} PARTIAL`, phone: "8055550001", product_interest: "shutters" },
+      actor,
+    );
+    try {
+      const partialQuote = await createCrmQuote(
+        supabase,
+        { job_id: partialJob.id, customer_name: `${MARK} PARTIAL`, status: "draft" },
+        actor,
+      );
+      let built = await createLineItem(
+        supabase,
+        { quote_id: partialQuote.id, room: "Accepted", width_in: 24, height_in: 36, quantity: 1 },
+        actor,
+      );
+      const acceptedLineId = built.lineItems[0].id;
+      built = await upsertDesign(
+        supabase,
+        { line_item_id: acceptedLineId, label: "A", product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell" },
+        actor,
+      );
+      built = await createLineItem(
+        supabase,
+        { quote_id: partialQuote.id, room: "Future", width_in: 30, height_in: 48, quantity: 1 },
+        actor,
+      );
+      const futureLineId = built.lineItems.find((line) => line.room === "Future")!.id;
+      await upsertDesign(
+        supabase,
+        { line_item_id: futureLineId, label: "A", product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell" },
+        actor,
+      );
+      const share = await ensureShareToken(supabase, partialQuote.id, actor);
+      const result = await acceptPublicQuote(supabase, share.token, {
+        printedName: "Partial Customer",
+        selectedLineIds: [acceptedLineId],
+        notify: false,
+      });
+      expect(result.alreadySigned).toBe(false);
+      expect(result.futureQuoteId).toBeTruthy();
+      expect(result.futureJobId).toBeTruthy();
+
+      const [current, future] = await Promise.all([
+        loadQuoteBuilder(supabase, partialQuote.id),
+        loadQuoteBuilder(supabase, result.futureQuoteId!),
+      ]);
+      expect(current.lineItems.map((line) => line.id)).toEqual([acceptedLineId]);
+      expect(future.lineItems.map((line) => line.id)).toEqual([futureLineId]);
+      expect(current.quote_total).toBe(212);
+      expect(future.quote_total).toBeGreaterThan(0);
+      expect(current.deposit_required).toBe(0);
+      expect(current.balance_due).toBe(212);
+      expect(future.job_id).toBe(result.futureJobId);
+      expect(future.meta).toMatchObject({
+        partial_acceptance: { role: "future", source_signed_quote_id: partialQuote.id },
+      });
+
+      const { data: jobs } = await supabase
+        .from("crm_jobs")
+        .select("id,status,estimated_total")
+        .in("id", [partialJob.id, result.futureJobId!]);
+      expect(jobs?.find((job) => job.id === partialJob.id)).toMatchObject({ status: "sold", estimated_total: 212 });
+      expect(Number(jobs?.find((job) => job.id === result.futureJobId!)?.estimated_total)).toBe(future.quote_total);
+
+      const { data: contracts } = await supabase
+        .from("crm_customer_contracts")
+        .select("quote_id,job_id,status,total_amount,meta")
+        .in("quote_id", [partialQuote.id, result.futureQuoteId!]);
+      expect(contracts?.find((contract) => contract.quote_id === partialQuote.id)).toMatchObject({
+        job_id: partialJob.id,
+        status: "sold",
+        total_amount: 212,
+      });
+      expect(contracts?.find((contract) => contract.quote_id === result.futureQuoteId)).toMatchObject({
+        job_id: result.futureJobId,
+        status: "future",
+        total_amount: future.quote_total,
+      });
+
+      const { data: ledger } = await supabase
+        .from("crm_quote_bookkeeping_entries")
+        .select("total_amount")
+        .eq("quote_id", partialQuote.id)
+        .maybeSingle();
+      expect(Number(ledger?.total_amount)).toBe(212);
+    } finally {
+      await supabase.from("crm_jobs").delete().eq("id", partialJob.id);
+      await supabase.from("crm_jobs").delete().eq("source", "partial_acceptance_future").eq("customer_name", `${MARK} PARTIAL`);
+      await supabase.from("crm_customers").delete().ilike("display_name", `${MARK} PARTIAL`);
+    }
+  });
+
   it("seeds design A from seed_product_id (room-button quick-add) and auto-selects it", async () => {
     const built = await createLineItem(
       supabase,

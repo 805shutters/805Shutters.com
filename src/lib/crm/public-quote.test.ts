@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   buildSignedContractSnapshot,
+  buildFutureContractSnapshot,
+  buildPartialAcceptancePlan,
   describeDesign,
   buildQuotePaymentLinkSms,
   buildQuoteShareSms,
@@ -417,6 +419,130 @@ describe("computeSelectionMoney (Purchase some)", () => {
     const m = computeSelectionMoney([{ id: "c", lineTotal: 0, priceReady: false }], DEFAULT_ADJUSTMENTS);
     expect(m.selectedLineIds).toEqual([]);
     expect(m.total).toBe(0);
+  });
+});
+
+describe("buildPartialAcceptancePlan", () => {
+  const quote = {
+    token: "token",
+    id: "quote-1",
+    quoteNumber: "805-0161",
+    customerName: "Maggie Moore",
+    customerAddress: "805 Test Street",
+    customerPhone: "805-555-0161",
+    customerEmail: "maggie@example.com",
+    status: "sent",
+    signed: false,
+    signedAt: null,
+    lines: [
+      { id: "selected-1", room: "Living", lineTotal: 500, priceReady: true },
+      { id: "selected-2", room: "Dining", lineTotal: 251.72, priceReady: true },
+      { id: "future-1", room: "Bedroom", lineTotal: 1200, priceReady: true },
+    ].map((line) => ({
+      ...line,
+      lineItemId: line.id,
+      productName: "Onyx Shutters",
+      styleName: "Painted Basswood",
+      options: ["Color: White"],
+      designOptions: [],
+      showDesignOptions: false,
+      unitPrice: line.lineTotal,
+      quantity: 1,
+      discountPercent: 0,
+    })),
+    subtotal: 1951.72,
+    fees: [],
+    discount: 0,
+    tax: 161.02,
+    sourceTotalAdjustment: 0,
+    depositDue: 1056.37,
+    balanceDue: 1056.37,
+    total: 2112.74,
+    allPriced: true,
+    hasOnyxShutters: true,
+    adjustments: { ...DEFAULT_ADJUSTMENTS, taxPercent: 8.25, depositPercent: 50 },
+    business: {
+      name: "805 Shutters",
+      phone: "805-555-0100",
+      website: "https://805shutters.com",
+      email: "805@805shutters.com",
+    },
+    versions: [],
+  } satisfies PublicQuote;
+
+  it("partitions selected and future lines and recalculates both contracts", () => {
+    const plan = buildPartialAcceptancePlan(quote, ["selected-1", "selected-2"], {
+      current: 320,
+      future: 510,
+    });
+    expect(plan.selectedLineIds).toEqual(["selected-1", "selected-2"]);
+    expect(plan.unselectedLineIds).toEqual(["future-1"]);
+    expect(plan.current.lines.map((line) => line.id)).toEqual(["selected-1", "selected-2"]);
+    expect(plan.future.lines.map((line) => line.id)).toEqual(["future-1"]);
+    expect(plan.currentMoney).toMatchObject({
+      subtotal: 751.72,
+      tax: 62.02,
+      total: 813.74,
+      depositDue: 406.87,
+      balanceDue: 406.87,
+      materialsCost: 320,
+    });
+    expect(plan.futureMoney).toMatchObject({
+      subtotal: 1200,
+      tax: 99,
+      total: 1299,
+      depositDue: 649.5,
+      balanceDue: 649.5,
+      materialsCost: 510,
+    });
+  });
+
+  it("fails closed for stale ids and for an all-items selection", () => {
+    expect(() => buildPartialAcceptancePlan(quote, ["missing"])).toThrow(/changed/i);
+    expect(() => buildPartialAcceptancePlan(quote, quote.lines.map((line) => line.id))).toThrow(/leave at least one/i);
+  });
+
+  it("builds a quantity split plan without dropping the stored design snapshot", () => {
+    const repeated = {
+      ...quote,
+      lines: [
+        { ...quote.lines[0], id: "selected-unit-1", lineItemId: "quantity-line" },
+        { ...quote.lines[0], id: "future-unit-2", lineItemId: "quantity-line" },
+        quote.lines[2],
+      ],
+      subtotal: 2200,
+      total: 2381.5,
+    };
+    const plan = buildPartialAcceptancePlan(repeated, ["selected-unit-1"]);
+    expect(plan.lineQuantities).toContainEqual({
+      lineItemId: "quantity-line",
+      selectedQuantity: 1,
+      remainingQuantity: 1,
+    });
+  });
+
+  it("allocates a legacy source-total adjustment without losing quote-total integrity", () => {
+    const adjusted = { ...quote, sourceTotalAdjustment: 100, total: 2212.74 };
+    const plan = buildPartialAcceptancePlan(adjusted, ["selected-1", "selected-2"]);
+    expect(plan.currentMoney.sourceTotalAdjustment + plan.futureMoney.sourceTotalAdjustment).toBe(100);
+    expect(plan.current.total).toBe(
+      Math.round((813.74 + plan.currentMoney.sourceTotalAdjustment) * 100) / 100,
+    );
+    expect(plan.future.total).toBe(
+      Math.round((1299 + plan.futureMoney.sourceTotalAdjustment) * 100) / 100,
+    );
+  });
+
+  it("produces separate selected signed and unselected future snapshots", () => {
+    const plan = buildPartialAcceptancePlan(quote, ["selected-1", "selected-2"]);
+    const signed = buildSignedContractSnapshot(plan.current, "2026-07-27T12:00:00.000Z", "Maggie Moore");
+    const future = buildFutureContractSnapshot(plan.future, "2026-07-27T12:00:00.000Z", quote.id);
+    expect(signed.lines.map((line) => line.lineItemId)).toEqual(["selected-1", "selected-2"]);
+    expect(signed.totals.total).toBe(813.74);
+    expect(future.schema).toBe("805_future_quote_contract_v1");
+    expect(future.lines.map((line) => line.lineItemId)).toEqual(["future-1"]);
+    expect(future.totals.total).toBe(1299);
+    expect(JSON.stringify(future)).not.toContain("wholesale");
   });
 });
 

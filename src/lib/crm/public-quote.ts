@@ -15,7 +15,17 @@ import {
   technicalMeasureSmsLine,
   type TechnicalMeasureDecision,
 } from "@/lib/crm/measure-needed-state";
-import { computeQuoteMoney, designOnceTotal, lineItemSubtotal, loadQuoteBuilder, parseAdjustments, round2, selectedDesign, type QuoteAdjustments } from "@/lib/crm/quote-builder";
+import {
+  computeQuoteMoney,
+  designOnceTotal,
+  lineItemSubtotal,
+  loadQuoteBuilder,
+  parseAdjustments,
+  quoteWholesaleSubtotal,
+  round2,
+  selectedDesign,
+  type QuoteAdjustments,
+} from "@/lib/crm/quote-builder";
 import { advanceJobStatus, jobStatusForQuote } from "@/lib/quote/lifecycle";
 import type { CrmJob, CrmJobStatus, CrmQuoteStatus } from "@/lib/crm/types";
 import type { CrmQuoteDesign, CrmQuoteLineItem, CrmQuote } from "@/lib/crm/types";
@@ -37,6 +47,7 @@ import {
 } from "@/lib/crm/sales-quote-v2-customer-configuration";
 import {
   ensureBookkeepingEntry,
+  buildSignedQuoteSplitPlan,
   listQuoteVersions,
   materializeSignedQuoteSelection,
 } from "@/lib/crm/quote-groups";
@@ -183,6 +194,38 @@ export type SignedContractSnapshot = {
   hasOnyxShutters: boolean;
 };
 
+export type FutureContractSnapshot = Omit<SignedContractSnapshot, "schema" | "signedAt" | "customerPrintedName"> & {
+  schema: "805_future_quote_contract_v1";
+  createdAt: string;
+  sourceSignedQuoteId: string;
+};
+
+type PartialAcceptanceMoney = {
+  subtotal: number;
+  discount: number;
+  tax: number;
+  sourceTotalAdjustment: number;
+  total: number;
+  depositDue: number;
+  balanceDue: number;
+  materialsCost: number;
+  laborCost: number;
+};
+
+export type PartialAcceptancePlan = {
+  selectedLineIds: string[];
+  unselectedLineIds: string[];
+  lineQuantities: Array<{
+    lineItemId: string;
+    selectedQuantity: number;
+    remainingQuantity: number;
+  }>;
+  current: PublicQuote;
+  future: PublicQuote;
+  currentMoney: PartialAcceptanceMoney;
+  futureMoney: PartialAcceptanceMoney;
+};
+
 export function buildSignedContractSnapshot(
   pub: PublicQuote,
   signedAt: string,
@@ -219,6 +262,149 @@ export function buildSignedContractSnapshot(
     },
     hasOnyxShutters: pub.hasOnyxShutters,
   };
+}
+
+export function buildFutureContractSnapshot(
+  pub: PublicQuote,
+  createdAt: string,
+  sourceSignedQuoteId: string,
+): FutureContractSnapshot {
+  const signedShape = buildSignedContractSnapshot(pub, createdAt, pub.customerName);
+  const { schema: _schema, signedAt: _signedAt, customerPrintedName: _printedName, ...snapshot } = signedShape;
+  return {
+    ...snapshot,
+    schema: "805_future_quote_contract_v1",
+    createdAt,
+    sourceSignedQuoteId,
+  };
+}
+
+type PublicSelectionMoney = ReturnType<typeof computeSelectionMoney> & { sourceTotalAdjustment: number };
+
+function computePublicSelectionMoney(pub: PublicQuote, lines: PublicQuoteLine[]): PublicSelectionMoney {
+  const base = computeSelectionMoney(
+    lines.map((line) => ({ id: line.id, lineTotal: line.lineTotal, priceReady: line.priceReady })),
+    pub.adjustments,
+  );
+  const ratio = pub.subtotal > 0 ? base.subtotal / pub.subtotal : 0;
+  const sourceTotalAdjustment = round2(pub.sourceTotalAdjustment * ratio);
+  const total = round2(base.total + sourceTotalAdjustment);
+  const depositDue =
+    pub.adjustments.depositPercent > 0
+      ? round2(total * (pub.adjustments.depositPercent / 100))
+      : base.depositDue;
+  return {
+    ...base,
+    sourceTotalAdjustment,
+    total,
+    depositDue,
+    balanceDue: round2(Math.max(total - depositDue, 0)),
+  };
+}
+
+function subsetPublicQuote(pub: PublicQuote, lines: PublicQuoteLine[], money: PublicSelectionMoney): PublicQuote {
+  return {
+    ...pub,
+    lines,
+    subtotal: money.subtotal,
+    fees: pub.adjustments.fees.map((fee) => ({ ...fee })),
+    discount: money.discount,
+    tax: money.tax,
+    sourceTotalAdjustment: money.sourceTotalAdjustment,
+    depositDue: money.depositDue,
+    balanceDue: money.balanceDue,
+    total: money.total,
+    allPriced: lines.length > 0 && lines.every((line) => line.priceReady),
+    versions: [],
+  };
+}
+
+/**
+ * Creates the immutable plan used by both the public acceptance write and
+ * explicit historical backfills. Unknown ids fail closed; line ids are the
+ * persistence boundary so every design/pricing snapshot moves with its line or
+ * is copied verbatim when a multi-quantity line is split.
+ */
+export function buildPartialAcceptancePlan(
+  pub: PublicQuote,
+  selectedLineIds: string[],
+  costs: { current: number; future: number; currentLabor?: number; futureLabor?: number } = { current: 0, future: 0 },
+): PartialAcceptancePlan {
+  const requested = new Set(selectedLineIds);
+  const known = new Set(pub.lines.map((line) => line.id));
+  if ([...requested].some((id) => !known.has(id))) {
+    throw new CrmAuthError(409, "This quote changed while you were choosing items. Please refresh and review it again.");
+  }
+  const selected = pub.lines.filter((line) => requested.has(line.id));
+  const unselected = pub.lines.filter((line) => !requested.has(line.id));
+  if (!selected.length) throw new CrmAuthError(400, "Please select at least one item to purchase.");
+  if (!unselected.length) throw new CrmAuthError(400, "A partial acceptance must leave at least one item for the future contract.");
+  if (![...selected, ...unselected].every((line) => line.priceReady)) {
+    throw new CrmAuthError(409, "One or more items isn't finalized yet — please contact us before signing.");
+  }
+  const calculate = (lines: PublicQuoteLine[]) => computePublicSelectionMoney(pub, lines);
+  const currentMoney = calculate(selected);
+  const futureMoney = calculate(unselected);
+  const current = subsetPublicQuote(pub, selected, currentMoney);
+  const future = subsetPublicQuote(pub, unselected, futureMoney);
+  const lineQuantities = buildSignedQuoteSplitPlan(
+    pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
+    currentMoney.selectedLineIds,
+  );
+  return {
+    selectedLineIds: currentMoney.selectedLineIds,
+    unselectedLineIds: futureMoney.selectedLineIds,
+    lineQuantities,
+    current,
+    future,
+    currentMoney: {
+      ...currentMoney,
+      materialsCost: round2(costs.current),
+      laborCost: round2(costs.currentLabor ?? 0),
+    },
+    futureMoney: {
+      ...futureMoney,
+      materialsCost: round2(costs.future),
+      laborCost: round2(costs.futureLabor ?? 0),
+    },
+  };
+}
+
+async function buildPartialAcceptancePlanWithCosts(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  pub: PublicQuote,
+  selectedLineIds: string[],
+): Promise<PartialAcceptancePlan> {
+  const built = await loadQuoteBuilder(supabase, quote.id);
+  const quantityPlan = buildSignedQuoteSplitPlan(
+    pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
+    selectedLineIds,
+  );
+  const quantitiesByLineId = new Map(quantityPlan.map((line) => [line.lineItemId, line]));
+  const currentItems = built.lineItems
+    .filter((line) => (quantitiesByLineId.get(line.id)?.selectedQuantity ?? 0) > 0)
+    .map((line) => ({ ...line, quantity: quantitiesByLineId.get(line.id)!.selectedQuantity }));
+  const futureItems = built.lineItems
+    .filter((line) => (quantitiesByLineId.get(line.id)?.remainingQuantity ?? 0) > 0)
+    .map((line) => ({ ...line, quantity: quantitiesByLineId.get(line.id)!.remainingQuantity }));
+  const knownCurrentCost = quoteWholesaleSubtotal(currentItems);
+  const knownFutureCost = quoteWholesaleSubtotal(futureItems);
+  const sourceCost = round2(Number(quote.materials_cost) || 0);
+  const fullSubtotal = round2(pub.lines.reduce((sum, line) => sum + line.lineTotal, 0));
+  const selectedSubtotal = round2(
+    pub.lines.filter((line) => selectedLineIds.includes(line.id)).reduce((sum, line) => sum + line.lineTotal, 0),
+  );
+  const proportionalCurrent = fullSubtotal > 0 ? round2(sourceCost * (selectedSubtotal / fullSubtotal)) : 0;
+  const sourceLabor = round2(Number(quote.labor_cost) || 0);
+  const proportionalCurrentLabor =
+    fullSubtotal > 0 ? round2(sourceLabor * (selectedSubtotal / fullSubtotal)) : 0;
+  return buildPartialAcceptancePlan(pub, selectedLineIds, {
+    current: knownCurrentCost ?? proportionalCurrent,
+    future: knownFutureCost ?? round2(Math.max(sourceCost - proportionalCurrent, 0)),
+    currentLabor: proportionalCurrentLabor,
+    futureLabor: round2(Math.max(sourceLabor - proportionalCurrentLabor, 0)),
+  });
 }
 
 /** Fractional, installer-readable dimensions for the customer contract
@@ -525,6 +711,23 @@ export async function loadPublicQuoteByToken(
 ): Promise<PublicQuote | null> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) return null;
+  return projectPublicQuote(supabase, quote, token);
+}
+
+async function loadPublicQuoteById(
+  supabase: CrmSupabaseClient,
+  quoteId: string,
+): Promise<PublicQuote | null> {
+  const { data, error } = await supabase.from("crm_quotes").select("*").eq("id", quoteId).maybeSingle();
+  if (error || !data) return null;
+  return projectPublicQuote(supabase, data as CrmQuote, "");
+}
+
+async function projectPublicQuote(
+  supabase: CrmSupabaseClient,
+  quote: CrmQuote,
+  token: string,
+): Promise<PublicQuote> {
   const { data: items } = await supabase
     .from("crm_quote_line_items")
     .select("*, designs:crm_quote_designs!crm_quote_designs_line_item_id_fkey(*)")
@@ -656,13 +859,17 @@ export async function computeSelectionTotal(
 }> {
   const pub = await loadPublicQuoteByToken(supabase, token);
   if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
-  const sel = selectedLineIds && selectedLineIds.length ? new Set(selectedLineIds) : null;
+  const sel = selectedLineIds !== undefined ? new Set(selectedLineIds) : null;
+  if (sel && [...sel].some((id) => !pub.lines.some((line) => line.id === id))) {
+    throw new CrmAuthError(409, "This quote changed while you were choosing items. Please refresh and review it again.");
+  }
   const lines = (sel ? pub.lines.filter((l) => sel.has(l.id)) : pub.lines).map((l) => ({
     id: l.id,
     lineTotal: l.lineTotal,
     priceReady: l.priceReady,
   }));
-  return computeSelectionMoney(lines, pub.adjustments);
+  const selectedPublicLines = pub.lines.filter((line) => lines.some((item) => item.id === line.id));
+  return computePublicSelectionMoney(pub, selectedPublicLines);
 }
 
 function money(value: number): string {
@@ -939,6 +1146,66 @@ async function syncSignedQuoteArtifacts(
   }
 }
 
+async function syncFutureQuoteArtifacts(
+  supabase: CrmSupabaseClient,
+  sourceQuote: CrmQuote,
+  futureQuoteId: string,
+  futureJobId: string,
+  futurePub: PublicQuote,
+  createdAt: string,
+) {
+  const customer = await upsertCrmCustomer(supabase, {
+    displayName: futurePub.customerName,
+    phone: sourceQuote.customer_phone || null,
+    email: sourceQuote.customer_email || null,
+    address: sourceQuote.customer_address || null,
+    city: null,
+    latestStatus: "sold",
+    latestSoldDate: createdAt.slice(0, 10),
+    source: "crm",
+    notes: sourceQuote.notes || null,
+    meta: {
+      lastQuoteId: sourceQuote.id,
+      lastSignedQuoteId: sourceQuote.id,
+      futureQuoteId,
+    },
+  });
+  const persistedFuture: PublicQuote = {
+    ...futurePub,
+    id: futureQuoteId,
+    quoteNumber: futurePub.quoteNumber ? `${futurePub.quoteNumber}-FUTURE` : null,
+    token: "",
+    status: "draft",
+    signed: false,
+    signedAt: null,
+  };
+  const { error } = await supabase.from("crm_customer_contracts").upsert(
+    {
+      external_source: "crm_quote",
+      external_id: `future-contract:${futureQuoteId}`,
+      customer_id: customer?.id || null,
+      job_id: futureJobId,
+      quote_id: futureQuoteId,
+      bookkeeping_entry_id: null,
+      title: persistedFuture.quoteNumber
+        ? `Future Contract ${persistedFuture.quoteNumber}`
+        : `${futurePub.customerName} future contract`,
+      contract_url: null,
+      share_token: null,
+      status: "future",
+      signed_at: null,
+      total_amount: persistedFuture.total,
+      meta: {
+        source: "public_quote_partial_acceptance",
+        source_signed_quote_id: sourceQuote.id,
+        contract_snapshot: buildFutureContractSnapshot(persistedFuture, createdAt, sourceQuote.id),
+      },
+    },
+    { onConflict: "external_source,external_id" },
+  );
+  if (error) throw new CrmAuthError(502, "The future contract could not be saved to the customer file.");
+}
+
 /**
  * Bring a sold quote's downstream state to the correct, billed shape: parent job
  * -> "sold", a bookkeeping ledger row exists, stamped with the sold total. Every
@@ -951,6 +1218,7 @@ async function syncSoldBookkeeping(
   supabase: CrmSupabaseClient,
   quote: CrmQuote,
   soldTotal: number,
+  materialsCost = Number(quote.materials_cost) || 0,
 ): Promise<{ customerPhone: string | null; job: CrmJob | null }> {
   let customerPhone: string | null = null;
   let soldJob: CrmJob | null = null;
@@ -965,10 +1233,14 @@ async function syncSoldBookkeeping(
     soldJob = (job as CrmJob | null) ?? null;
     customerPhone = soldJob?.phone ?? null;
   }
-  await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal });
+  await ensureBookkeepingEntry(supabase, { ...quote, quote_total: soldTotal, materials_cost: materialsCost });
   const { error: stampError } = await supabase
     .from("crm_quote_bookkeeping_entries")
-    .update({ sold_date: new Date().toISOString().slice(0, 10), total_amount: soldTotal })
+    .update({
+      sold_date: new Date().toISOString().slice(0, 10),
+      total_amount: soldTotal,
+      cogs_amount: materialsCost,
+    })
     .eq("quote_id", quote.id);
   if (stampError) throw new CrmAuthError(502, "The signed total could not be saved to bookkeeping.");
   return { customerPhone, job: soldJob };
@@ -1058,14 +1330,19 @@ export async function acceptPublicQuote(
   supabase: CrmSupabaseClient,
   token: string,
   input: { printedName: string; signature?: string; acknowledgedTotal?: number; selectedLineIds?: string[]; notify?: boolean },
-): Promise<{ ok: true; alreadySigned: boolean }> {
+): Promise<{ ok: true; alreadySigned: boolean; futureQuoteId?: string; futureJobId?: string }> {
   const quote = await fetchByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "This contract link is no longer valid.");
   if (quote.signed_at) {
     let pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
       const storedSelection = record(record(quote.meta).signed_selection).lineItemIds;
-      if (Array.isArray(storedSelection) && storedSelection.every((id) => typeof id === "string")) {
+      const storedPartialAcceptance = record(record(quote.meta).partial_acceptance);
+      if (
+        !storedPartialAcceptance.future_quote_id &&
+        Array.isArray(storedSelection) &&
+        storedSelection.every((id) => typeof id === "string")
+      ) {
         await materializeSignedQuoteSelection(
           supabase,
           quote.id,
@@ -1109,6 +1386,21 @@ export async function acceptPublicQuote(
           { email: "automation:quote_signed" }
         );
       }
+      const partial = record(record(quote.meta).partial_acceptance);
+      const futureQuoteId = typeof partial.future_quote_id === "string" ? partial.future_quote_id : "";
+      const futureJobId = typeof partial.future_job_id === "string" ? partial.future_job_id : "";
+      if (futureQuoteId && futureJobId) {
+        const futurePub = await loadPublicQuoteById(supabase, futureQuoteId);
+        if (!futurePub) throw new CrmAuthError(502, "The linked future contract could not be reloaded.");
+        await syncFutureQuoteArtifacts(
+          supabase,
+          quote,
+          futureQuoteId,
+          futureJobId,
+          futurePub,
+          quote.signed_at,
+        );
+      }
       // Retry a missing/failed installer delivery after an already-signed
       // acceptance claim. The installer helper is quote-idempotent and does
       // not resend a delivery whose recorded sent_at is already present.
@@ -1130,7 +1422,10 @@ export async function acceptPublicQuote(
   }
   // Customer may purchase a subset ("Purchase some"); the sold total reflects
   // only the chosen items, recomputed with the same engine as the full quote.
-  const selection = input.selectedLineIds && input.selectedLineIds.length ? new Set(input.selectedLineIds) : null;
+  const selection = input.selectedLineIds !== undefined ? new Set(input.selectedLineIds) : null;
+  if (selection && [...selection].some((id) => !pub.lines.some((line) => line.id === id))) {
+    throw new CrmAuthError(409, "This quote changed while you were choosing items. Please refresh and review it again.");
+  }
   const chosenLines = selection ? pub.lines.filter((l) => selection.has(l.id)) : pub.lines;
   if (chosenLines.length === 0) {
     throw new CrmAuthError(400, "Please select at least one item to purchase.");
@@ -1138,26 +1433,19 @@ export async function acceptPublicQuote(
   if (!chosenLines.every((l) => l.priceReady)) {
     throw new CrmAuthError(409, "One or more selected items isn't finalized yet — please contact us before signing.");
   }
-  const selectedMoney = computeSelectionMoney(
-    chosenLines.map((line) => ({ id: line.id, lineTotal: line.lineTotal, priceReady: line.priceReady })),
-    pub.adjustments,
-  );
+  const selectedMoney = computePublicSelectionMoney(pub, chosenLines);
   const soldTotal = selectedMoney.total;
-  const signedPub: PublicQuote = selection
-    ? {
-        ...pub,
-        lines: chosenLines,
-        subtotal: selectedMoney.subtotal,
-        discount: selectedMoney.discount,
-        tax: selectedMoney.tax,
-        sourceTotalAdjustment: 0,
-        depositDue: selectedMoney.depositDue,
-        balanceDue: selectedMoney.balanceDue,
-        total: soldTotal,
-        signed: true,
-        signedAt: now,
-      }
-    : { ...pub, total: soldTotal, signed: true, signedAt: now };
+  const isPartial = Boolean(selection && chosenLines.length < pub.lines.length);
+  let partialPlan: PartialAcceptancePlan | null = null;
+  if (isPartial) {
+    const selectedIds = new Set(chosenLines.map((line) => line.id));
+    partialPlan = await buildPartialAcceptancePlanWithCosts(supabase, quote, pub, [...selectedIds]);
+  }
+  const signedPub: PublicQuote = {
+    ...(partialPlan?.current ?? subsetPublicQuote(pub, chosenLines, selectedMoney)),
+    signed: true,
+    signedAt: now,
+  };
   const signedSelection = selection
     ? { lineItemIds: chosenLines.map((l) => l.id), subtotal: selectedMoney.subtotal, total: soldTotal }
     : null;
@@ -1174,21 +1462,51 @@ export async function acceptPublicQuote(
 
   // Atomic claim: only the first request that flips signed_at from null wins
   // (guards against double-submit / concurrent sign of the same link).
-  const { data: claimed, error } = await supabase
-    .from("crm_quotes")
-    .update({
-      status: "sold",
-      signed_at: now,
-      sold_at: now,
-      customer_signature: signature,
-      customer_printed_name: printedName,
-      quote_total: soldTotal,
-      ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
-    })
-    .eq("id", quote.id)
-    .eq("share_token", token)
-    .is("signed_at", null)
-    .select("id");
+  const partialResult = partialPlan
+    ? await supabase.rpc("partition_crm_partial_quote_acceptance", {
+        p_quote_id: quote.id,
+        p_share_token: token,
+        p_selected_line_ids: partialPlan.selectedLineIds,
+        p_line_quantities: partialPlan.lineQuantities,
+        p_signed_at: now,
+        p_signature: signature,
+        p_printed_name: printedName,
+        p_current_money: partialPlan.currentMoney,
+        p_future_money: partialPlan.futureMoney,
+      })
+    : null;
+  const claim = partialResult
+    ? {
+        data: partialResult.data
+          ? [{
+              id: quote.id,
+              futureQuoteId: partialResult.data[0]?.future_quote_id as string | undefined,
+              futureJobId: partialResult.data[0]?.future_job_id as string | undefined,
+              alreadySigned: Boolean(partialResult.data[0]?.already_signed),
+            }]
+          : null,
+        error: partialResult.error,
+      }
+    : await supabase
+        .from("crm_quotes")
+        .update({
+          status: "sold",
+          signed_at: now,
+          sold_at: now,
+          customer_signature: signature,
+          customer_printed_name: printedName,
+          quote_total: soldTotal,
+          discount: selectedMoney.discount,
+          tax: selectedMoney.tax,
+          deposit_required: selectedMoney.depositDue,
+          balance_due: selectedMoney.balanceDue,
+          ...(signedSelection ? { meta: { ...record(quote.meta), signed_selection: signedSelection } } : {}),
+        })
+        .eq("id", quote.id)
+        .eq("share_token", token)
+        .is("signed_at", null)
+        .select("id");
+  const { data: claimed, error } = claim;
   if (error) {
     // The one-signed-per-group unique index (crm_quotes_one_signed_per_group)
     // rejects a second concurrent sign in the same group — treat that as a
@@ -1197,8 +1515,11 @@ export async function acceptPublicQuote(
     throw new CrmAuthError(502, "We couldn't record your signature. Please try again.");
   }
   if (!claimed || claimed.length === 0) return { ok: true, alreadySigned: true };
+  if ("alreadySigned" in claimed[0] && claimed[0].alreadySigned) return { ok: true, alreadySigned: true };
+  const futureQuoteId = "futureQuoteId" in claimed[0] ? claimed[0].futureQuoteId : undefined;
+  const futureJobId = "futureJobId" in claimed[0] ? claimed[0].futureJobId : undefined;
 
-  const materializedSelection = selection
+  const materializedSelection = selection && !partialPlan
     ? await materializeSignedQuoteSelection(
         supabase,
         quote.id,
@@ -1272,7 +1593,12 @@ export async function acceptPublicQuote(
   };
 
   // Sync the parent job + bookkeeping entry to "sold" (hardened; throws on error).
-  const soldSync = await syncSoldBookkeeping(supabase, signedQuote, soldTotal);
+  const soldSync = await syncSoldBookkeeping(
+    supabase,
+    signedQuote,
+    soldTotal,
+    partialPlan?.currentMoney.materialsCost ?? (Number(quote.materials_cost) || 0),
+  );
   const customerPhone = soldSync.customerPhone;
   const technicalMeasure = await syncTechnicalMeasureDecisionForSoldJob(
     supabase,
@@ -1309,6 +1635,17 @@ export async function acceptPublicQuote(
     )
     : null;
   shopSmsContact.measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
+
+  if (partialPlan && futureQuoteId && futureJobId) {
+    await syncFutureQuoteArtifacts(
+      supabase,
+      quote,
+      futureQuoteId,
+      futureJobId,
+      partialPlan.future,
+      now,
+    );
+  }
 
   await recordCrmActivity(supabase, { email: "customer:" + printedName }, {
     entityType: "quote",
@@ -1355,7 +1692,87 @@ export async function acceptPublicQuote(
     await createAndSendInstallerForm(supabase, signedQuote.id);
   }
 
-  return { ok: true, alreadySigned: false };
+  return { ok: true, alreadySigned: false, ...(futureQuoteId ? { futureQuoteId, futureJobId } : {}) };
+}
+
+/**
+ * Explicit, server-only repair for historical signed partial acceptances.
+ * There is deliberately no HTTP route. The caller must first inspect the signed
+ * contract and provide its exact total and signed_at; the transactional RPC also
+ * verifies the stored signed_selection before moving a single row.
+ *
+ * The existing signed customer contract is not rewritten. It remains the
+ * historical source of truth; this function adds the separate future contract
+ * and reconciles the current quote/job/bookkeeping fields around it.
+ */
+export async function backfillPartialPublicQuoteAcceptance(
+  supabase: CrmSupabaseClient,
+  input: {
+    quoteId: string;
+    token: string;
+    selectedLineIds: string[];
+    expectedSignedAt: string;
+    expectedContractTotal: number;
+    actor: CrmActor;
+  },
+): Promise<{ futureQuoteId: string; futureJobId: string }> {
+  const quote = await fetchByToken(supabase, input.token);
+  if (!quote || quote.id !== input.quoteId) throw new CrmAuthError(404, "The historical quote/token pair was not found.");
+  if (!quote.signed_at || quote.signed_at !== input.expectedSignedAt) {
+    throw new CrmAuthError(409, "The historical signature timestamp changed; no backfill was applied.");
+  }
+  const pub = await loadPublicQuoteByToken(supabase, input.token);
+  if (!pub) throw new CrmAuthError(404, "The historical public quote could not be loaded.");
+  const plan = await buildPartialAcceptancePlanWithCosts(supabase, quote, pub, input.selectedLineIds);
+  if (Math.round(plan.current.total * 100) !== Math.round(input.expectedContractTotal * 100)) {
+    throw new CrmAuthError(409, "The selected-item total does not match the signed contract; no backfill was applied.");
+  }
+  const { data, error } = await supabase.rpc("partition_crm_partial_quote_acceptance", {
+    p_quote_id: quote.id,
+    p_share_token: input.token,
+    p_selected_line_ids: plan.selectedLineIds,
+    p_line_quantities: plan.lineQuantities,
+    p_signed_at: input.expectedSignedAt,
+    p_signature: quote.customer_signature || quote.customer_printed_name || pub.customerName,
+    p_printed_name: quote.customer_printed_name || pub.customerName,
+    p_current_money: plan.currentMoney,
+    p_future_money: plan.futureMoney,
+    p_expected_existing_signed_at: input.expectedSignedAt,
+    p_expected_contract_total: input.expectedContractTotal,
+  });
+  if (error) throw new CrmAuthError(502, `Historical partial acceptance was not changed: ${error.message}`);
+  const row = data?.[0] as
+    | { future_quote_id?: string | null; future_job_id?: string | null }
+    | undefined;
+  if (!row?.future_quote_id || !row.future_job_id) {
+    throw new CrmAuthError(502, "Historical partial acceptance did not return its future quote linkage.");
+  }
+  await syncSoldBookkeeping(
+    supabase,
+    quote,
+    plan.current.total,
+    plan.currentMoney.materialsCost,
+  );
+  await syncFutureQuoteArtifacts(
+    supabase,
+    quote,
+    row.future_quote_id,
+    row.future_job_id,
+    plan.future,
+    input.expectedSignedAt,
+  );
+  await recordCrmActivity(supabase, input.actor, {
+    entityType: "quote",
+    entityId: quote.id,
+    action: "partial_acceptance.backfill",
+    metadata: {
+      selectedLineIds: plan.selectedLineIds,
+      futureQuoteId: row.future_quote_id,
+      futureJobId: row.future_job_id,
+      expectedContractTotal: input.expectedContractTotal,
+    },
+  });
+  return { futureQuoteId: row.future_quote_id, futureJobId: row.future_job_id };
 }
 
 export async function ensureShareToken(
