@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { calculateSalesQuoteMirrorPricing, salesQuotesToMirror } from "./sales-quote-send";
+import {
+  calculateSalesQuoteMirrorPricing,
+  salesQuotesToMirror,
+  upsertSalesQuoteMirrorRow,
+} from "./sales-quote-send";
 
 describe("salesQuotesToMirror", () => {
   it("includes every A/B/C sibling and keeps the patched active quote", () => {
@@ -52,5 +56,52 @@ describe("calculateSalesQuoteMirrorPricing", () => {
 
     expect(pricing.total).toBe(2600.15);
     expect(pricing.shouldSyncSourceTotal).toBe(false);
+  });
+});
+
+describe("upsertSalesQuoteMirrorRow", () => {
+  it("retries a CRM quote design without optional columns missing from the production schema cache", async () => {
+    const attempts: Record<string, unknown>[] = [];
+    const supabase = {
+      from: () => ({
+        upsert: (row: Record<string, unknown>) => ({
+          select: () => ({
+            single: async () => {
+              attempts.push({ ...row });
+              if ("details" in row) {
+                return {
+                  data: null,
+                  error: {
+                    code: "PGRST204",
+                    message:
+                      "Could not find the 'details' column of 'crm_quote_designs' in the schema cache",
+                  },
+                };
+              }
+              return { data: { id: "design-1" }, error: null };
+            },
+          }),
+        }),
+      }),
+    };
+
+    await expect(
+      upsertSalesQuoteMirrorRow(
+        supabase as never,
+        "crm_quote_designs",
+        {
+          id: "design-1",
+          line_item_id: "line-1",
+          details: { quote_v2_customer_configuration: { mount: "inside" } },
+          unit_price: 123.45,
+        },
+        "id",
+      ),
+    ).resolves.toEqual({ id: "design-1" });
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toHaveProperty("details");
+    expect(attempts[1]).not.toHaveProperty("details");
+    expect(attempts[1]).toHaveProperty("unit_price", 123.45);
   });
 });

@@ -12,6 +12,7 @@ import {
 import { sendQuotePaymentLinkToCustomer, sendQuoteToCustomer } from "@/lib/crm/public-quote";
 import { createAndSendInstallerForm } from "@/lib/crm/installer-forms";
 import { advanceQuoteStatus } from "@/lib/crm/quote-builder";
+import { saveQuoteDesignRecord } from "@/lib/crm/quote-design-writes";
 import { recordCrmActivity } from "@/lib/crm/backend";
 import {
   isServerMarkedV2SalesQuote,
@@ -720,11 +721,29 @@ async function deleteStaleQuoteDesigns(supabase: CrmSupabaseClient, lineItemId: 
   if (error) throw new CrmAuthError(502, "Stale quote designs could not be removed.");
 }
 
-async function upsertOne(supabase: CrmSupabaseClient, table: string, row: AnyRow, onConflict = "external_source,external_id") {
-  const { data, error } = await supabase.from(table).upsert(row, { onConflict }).select("*").single();
+export async function upsertSalesQuoteMirrorRow(
+  supabase: CrmSupabaseClient,
+  table: string,
+  row: AnyRow,
+  onConflict = "external_source,external_id",
+) {
+  const write = (nextRow: Record<string, unknown>) =>
+    supabase.from(table).upsert(nextRow, { onConflict }).select("*").single();
+
+  if (table === "crm_quote_designs") {
+    return saveQuoteDesignRecord<AnyRow>(
+      row,
+      write,
+      `Failed to save ${table}`,
+    );
+  }
+
+  const { data, error } = await write(row);
   if (error) throw new CrmAuthError(502, `Failed to save ${table}: ${error.message}`);
   return data as AnyRow;
 }
+
+const upsertOne = upsertSalesQuoteMirrorRow;
 
 function uniqueEmails(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
