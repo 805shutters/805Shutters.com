@@ -20,12 +20,21 @@ const crmAppSource = readFileSync(
 );
 
 describe("active quote route historical boundary", () => {
-  it("keeps CRM source rows out of V2 and opens their original records", () => {
+  it("opens linked CRM mirror rows in V2 and keeps unlinked historical rows in their original records", () => {
     expect(dashboardSource).toContain(
       "resolveCrmQuoteBuilderRoute(quote, localSalesQuoteIds)",
     );
     expect(dashboardSource).toContain(
       'sourceQuoteId: route.kind === "v2" ? route.salesQuoteId : null',
+    );
+    expect(dashboardSource).toContain(
+      "const targetId = quoteBuilderTargetId(quote)",
+    );
+    expect(dashboardSource).toContain(
+      "setActiveQuote(targetId)",
+    );
+    expect(dashboardSource).toContain(
+      'if (quote.source === "crm")',
     );
     expect(dashboardSource).toContain(
       "onOpenCrmQuote?.(quote.id, tab)",

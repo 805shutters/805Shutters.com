@@ -601,14 +601,15 @@ export function QuoteDashboard({
   });
 
   const openQuoteRow = async (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
-    if (quote.source === "crm") {
-      onOpenCrmQuote?.(quote.id, tab);
+    const targetId = quoteBuilderTargetId(quote);
+    if (targetId) {
+      setActiveQuote(targetId);
+      setActiveTab(tab);
       return;
     }
-    const targetId = quoteBuilderTargetId(quote);
-    if (!targetId) return;
-    setActiveQuote(targetId);
-    setActiveTab(tab);
+    if (quote.source === "crm") {
+      onOpenCrmQuote?.(quote.id, tab);
+    }
   };
 
   const handleOpenQuote = (quote: QuoteTableRow) => {
