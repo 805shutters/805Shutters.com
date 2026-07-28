@@ -10205,8 +10205,10 @@ function ShadesAndBlindsOptions({
           The selected West A26.v1 source program records the FLX identity,
           dimensions, mount, and manufacturer wholesale grid. Draft retail is
           wholesale plus the selected internal line margin, with a complete
-          audit trail. Sending remains blocked because the supplied book states
-          no effective date. For a three-blind opening, enter all three measured
+          audit trail. Automatic repricing remains unavailable because the
+          supplied book states no effective date. To intentionally send the
+          saved customer prices, use “Send this quote exactly as saved” in the
+          Send Quote dialog. For a three-blind opening, enter all three measured
           blind widths; the center is never inferred.
         </div>
       ) : null}

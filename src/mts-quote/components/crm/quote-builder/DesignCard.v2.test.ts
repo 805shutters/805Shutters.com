@@ -1048,7 +1048,7 @@ describe("V2 exact-interface contract", () => {
     );
   });
 
-  it("renders Lotus draft pricing with audited Custom Mode while keeping send blocked", () => {
+  it("renders Lotus draft pricing with audited Custom Mode and send-as-is guidance", () => {
     const source = readFileSync(
       fileURLToPath(new URL("./DesignCard.tsx", import.meta.url)),
       "utf8",
@@ -1056,7 +1056,8 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('data-testid="lotus-faux-authority-status"');
     expect(source).toContain("Lotus pricing is draft-only.");
     expect(source).toContain("authoritativeV2 && design");
-    expect(source).toContain("Sending remains blocked");
+    expect(source).toContain("Automatic repricing remains unavailable");
+    expect(source).toContain("Send this quote exactly as saved");
     expect(source).toContain(
       'options: ["Inside Mount", "Outside Mount", "Side Mount"] as const',
     );
