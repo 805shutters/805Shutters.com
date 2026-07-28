@@ -4,7 +4,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 
 export const runtime = "nodejs";
 
-type Action = "start" | "review_ready" | "retry" | "confirm" | "cancel";
+type Action = "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass";
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -18,6 +18,7 @@ const transitions: Record<Action, { from: string[]; to: string }> = {
   retry: { from: ["needs_input", "processing", "review_ready", "failed"], to: "queued" },
   confirm: { from: ["review_ready"], to: "order_confirmed" },
   cancel: { from: ["needs_input", "queued", "processing", "review_ready"], to: "cancelled" },
+  bypass: { from: ["needs_input", "queued", "processing", "review_ready", "failed"], to: "cancelled" },
 };
 
 async function syncLegacyMeasureMeta(
@@ -76,6 +77,18 @@ export async function PATCH(
     if (!transition.from.includes(String(task.status))) {
       throw new CrmAuthError(409, `This task cannot move from ${task.status} to ${transition.to}.`);
     }
+    if (action === "bypass") {
+      const [jobResult, quoteResult] = await Promise.all([
+        supabase.from("crm_jobs").select("status").eq("id", task.crm_job_id).maybeSingle(),
+        supabase.from("crm_quotes").select("status").eq("id", task.crm_quote_id).maybeSingle(),
+      ]);
+      if (jobResult.error || quoteResult.error) {
+        throw new CrmAuthError(502, "The ordered state could not be verified before bypassing the packet workflow.");
+      }
+      if (jobResult.data?.status !== "ordered" && quoteResult.data?.status !== "ordered") {
+        throw new CrmAuthError(409, "Mark the job or quote ordered before bypassing the packet workflow.");
+      }
+    }
 
     const manufacturerOrderRef = typeof body.manufacturerOrderRef === "string"
       ? body.manufacturerOrderRef.trim()
@@ -92,6 +105,8 @@ export async function PATCH(
           ? `${task.manufacturer} order is ready for final review and approved submission.`
           : action === "retry"
             ? `${task.manufacturer} order has returned to the ready queue.`
+            : action === "bypass"
+              ? `${task.manufacturer} packet workflow was bypassed because the job is already marked ordered.`
             : action === "cancel"
               ? `${task.manufacturer} order task was cancelled.`
               : `${task.manufacturer} order ${manufacturerOrderRef} was confirmed.`,

@@ -1005,7 +1005,7 @@ export function CrmApp({
 
   async function updateVendorOrderTask(
     task: CrmVendorOrderTask,
-    action: "start" | "review_ready" | "retry" | "confirm" | "cancel",
+    action: "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
   ) {
     if (!session || !task.recordId) {
       if (action === "start") return;
@@ -1030,9 +1030,13 @@ export function CrmApp({
       });
       await refresh();
       setDrill(null);
-      setMessage(action === "confirm"
-        ? `${task.manufacturer} order confirmed and removed from Ready to Order.`
-        : `${task.manufacturer} order moved to ${action.replaceAll("_", " ")}.`);
+      setMessage(
+        action === "confirm"
+          ? `${task.manufacturer} order confirmed and removed from Ready to Order.`
+          : action === "bypass"
+            ? `${task.manufacturer} packet workflow bypassed. The job remains marked ordered.`
+            : `${task.manufacturer} order moved to ${action.replaceAll("_", " ")}.`,
+      );
     } finally {
       setBusy(false);
     }
@@ -6187,7 +6191,7 @@ type DrillPanelProps = {
   onVendorOrderEmail?: (task: CrmVendorOrderTask) => void;
   onVendorOrderAction?: (
     task: CrmVendorOrderTask,
-    action: "start" | "review_ready" | "retry" | "confirm" | "cancel",
+    action: "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
   ) => void;
 };
 
@@ -7230,9 +7234,10 @@ function DrillDetailCard({
     (liveRowStatus === "sold" || liveRowStatus === "approved" || (!row && job?.status === "sold")) &&
     (canEditQuoteRow || canEditJob) &&
     (!measureNeededActive || measureFormComplete);
+  const isAlreadyOrdered = liveRowStatus === "ordered" || job?.status === "ordered";
   const canFindOrderEmail =
     !canMarkOrdered &&
-    (liveRowStatus === "ordered" || job?.status === "ordered") &&
+    isAlreadyOrdered &&
     (canEditQuoteRow || canEditJob) &&
     (!row || row.cogs <= 0 || !row.manufacturerOrderRef);
   const canMarkComplete =
@@ -7538,6 +7543,15 @@ function DrillDetailCard({
           detail: "Use after correcting the missing product details",
           disabled: busy,
           onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "retry")
+        }
+      : null,
+    entry.vendorOrderTask && isAlreadyOrdered && onVendorOrderAction
+      ? {
+          key: "vendor-order-bypass",
+          label: "Mark Ordered",
+          detail: "Bypass Codex packet",
+          disabled: busy,
+          onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "bypass")
         }
       : null,
     measureFormId

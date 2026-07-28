@@ -23,6 +23,11 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain("same customer and job identity");
     expect(source).toContain('label: "Mark Review Ready"');
     expect(source).toContain('label: "Confirm Manufacturer Order"');
+    expect(source).toContain('key: "vendor-order-bypass"');
+    expect(source).toContain('label: "Mark Ordered"');
+    expect(source).toContain('detail: "Bypass Codex packet"');
+    expect(source).toContain("entry.vendorOrderTask && isAlreadyOrdered && onVendorOrderAction");
+    expect(source).toContain('onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "bypass")');
   });
 
   it("opens protected order packets through the active CRM session", () => {
