@@ -9,7 +9,14 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   try {
     const { supabase, email, user } = await requireCrmUser(request);
     const { id } = await context.params;
-    const result = await createQuoteVersion(supabase, id, { email, userId: user.id });
+    const body = (await request.json().catch(() => ({}))) as { copyCurrent?: unknown };
+    const copyCurrent = body.copyCurrent !== false;
+    const result = await createQuoteVersion(
+      supabase,
+      id,
+      { email, userId: user.id },
+      { copyCurrent },
+    );
     return NextResponse.json(result);
   } catch (error) {
     return crmAuthErrorResponse(error);

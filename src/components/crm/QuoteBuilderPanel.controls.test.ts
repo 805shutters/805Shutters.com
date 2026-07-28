@@ -31,4 +31,13 @@ describe("QuoteBuilderPanel restored V1 controls", () => {
     expect(source).toContain('method: "PATCH"');
     expect(source).toContain("Number.isFinite(parsed) && parsed >= 0");
   });
+
+  it("keeps blank Add Quote separate from snapshot-preserving Copy Current", () => {
+    expect(source).toMatch(/onClick=\{\(\) => createVersion\(false\)\}[^>]*>\s*Add Quote/s);
+    expect(source).toMatch(/onClick=\{\(\) => createVersion\(true\)\}[^>]*>\s*Copy Current/s);
+    expect(source).toContain("onClick={() => createVersion(false)}");
+    expect(source).toContain("onClick={() => createVersion(true)}");
+    expect(source).toContain("JSON.stringify({ copyCurrent })");
+    expect(source).toContain("Saved line items, customer prices, and pricing provenance will be preserved.");
+  });
 });

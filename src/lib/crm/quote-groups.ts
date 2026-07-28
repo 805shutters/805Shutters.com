@@ -84,6 +84,7 @@ async function cloneQuoteBuilderRows(
   targetQuoteId: string,
   quantityByLineItemId?: Map<string, number>,
   preservePricingSnapshot = false,
+  preserveQuoteTotals = false,
 ): Promise<void> {
   const { data, error } = await supabase
     .from("crm_quote_line_items")
@@ -172,6 +173,8 @@ async function cloneQuoteBuilderRows(
     }
     clonedLineItems.push({ ...clonedLine, selected_design_id: selectedNewId, designs: clonedDesigns });
   }
+
+  if (preserveQuoteTotals) return;
 
   const money = computeQuoteMoney(quoteSubtotal(clonedLineItems), parseAdjustments(source.meta));
   const { error: quoteError } = await supabase
@@ -371,8 +374,10 @@ export async function createQuoteVersion(
   supabase: CrmSupabaseClient,
   sourceQuoteId: string,
   actor: CrmActor,
+  options: { copyCurrent?: boolean } = {},
 ): Promise<{ quoteId: string; groupId: string; label: string }> {
   const source = await fetchQuoteRow(supabase, sourceQuoteId);
+  const copyCurrent = options.copyCurrent ?? true;
 
   // Ensure the source belongs to a group (and is labeled "A").
   let groupId = source.quote_group_id;
@@ -398,13 +403,13 @@ export async function createQuoteVersion(
         job_id: source.job_id,
         quote_number: source.quote_number ? `${source.quote_number}-${label}` : null,
         status: "draft",
-        quote_total: Number(source.quote_total) || 0,
-        materials_cost: Number(source.materials_cost) || 0,
-        labor_cost: Number(source.labor_cost) || 0,
-        discount: Number(source.discount) || 0,
-        tax: Number(source.tax) || 0,
-        deposit_required: Number(source.deposit_required) || 0,
-        balance_due: Number(source.balance_due) || 0,
+        quote_total: copyCurrent ? Number(source.quote_total) || 0 : 0,
+        materials_cost: copyCurrent ? Number(source.materials_cost) || 0 : 0,
+        labor_cost: copyCurrent ? Number(source.labor_cost) || 0 : 0,
+        discount: copyCurrent ? Number(source.discount) || 0 : 0,
+        tax: copyCurrent ? Number(source.tax) || 0 : 0,
+        deposit_required: copyCurrent ? Number(source.deposit_required) || 0 : 0,
+        balance_due: copyCurrent ? Number(source.balance_due) || 0 : 0,
         customer_email: source.customer_email || null,
         customer_phone: source.customer_phone || null,
         customer_address: source.customer_address || null,
@@ -430,13 +435,18 @@ export async function createQuoteVersion(
   }
   if (!createdId) throw new CrmAuthError(409, "Could not assign a unique version label. Please retry.");
 
-  await cloneQuoteBuilderRows(supabase, source, createdId);
+  if (copyCurrent) {
+    // Copy the saved customer price and its provenance exactly. A copied
+    // alternative must not silently reprice a historical quote against the
+    // current catalog or rewrite the source quote.
+    await cloneQuoteBuilderRows(supabase, source, createdId, undefined, true, true);
+  }
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
     entityId: createdId,
     action: "version.create",
-    metadata: { groupId, label, sourceId: source.id },
+    metadata: { groupId, label, sourceId: source.id, copyCurrent },
   });
   return { quoteId: createdId, groupId, label };
 }

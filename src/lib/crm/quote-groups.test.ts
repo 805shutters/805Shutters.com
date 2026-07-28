@@ -308,7 +308,7 @@ describe("signed customer selection splitting", () => {
 });
 
 describe("createQuoteVersion", () => {
-  it("copies source windows/designs into a priced draft alternative", async () => {
+  it("copies source windows/designs into a draft without repricing the saved snapshot", async () => {
     const tables: Tables = {
       crm_quotes: [
         {
@@ -364,9 +364,13 @@ describe("createQuoteVersion", () => {
           motorization: [],
           unit_price: 212,
           wholesale_unit_price: null,
-          price_breakdown: {},
+          price_breakdown: {
+            sourceGuide: "Norman 2026",
+            sourcePage: 42,
+            engineUnitPrice: 212,
+          },
           price_status: "ok",
-          priced_at: null,
+          priced_at: "2026-07-28T18:00:00.000Z",
           notes: "Use cordless",
         },
       ],
@@ -420,8 +424,14 @@ describe("createQuoteVersion", () => {
       label: "A",
       product_id: "honeycomb",
       program_id: "honeycomb_9_16in_cordless_single_cell",
-      unit_price: 190.8,
+      unit_price: 212,
       price_status: "ok",
+      price_breakdown: {
+        sourceGuide: "Norman 2026",
+        sourcePage: 42,
+        engineUnitPrice: 212,
+      },
+      priced_at: "2026-07-28T18:00:00.000Z",
       notes: "Use cordless",
     });
     expect(copiedLine?.selected_design_id).toBe(copiedDesign?.id);
@@ -429,6 +439,91 @@ describe("createQuoteVersion", () => {
       entity_type: "quote",
       entity_id: result.quoteId,
       action: "version.create",
+      metadata: expect.objectContaining({ copyCurrent: true }),
+    });
+  });
+
+  it("adds a blank sibling without copying line items or historical prices", async () => {
+    const tables: Tables = {
+      crm_quotes: [
+        {
+          id: "quote-1",
+          job_id: "job-1",
+          quote_number: "805-100",
+          status: "sent",
+          quote_total: 381.6,
+          materials_cost: 125,
+          labor_cost: 25,
+          discount: 20,
+          tax: 30,
+          deposit_required: 190.8,
+          balance_due: 190.8,
+          customer_email: "customer@example.com",
+          customer_phone: "8055551212",
+          customer_address: "10 Main St",
+          quote_group_id: null,
+          quote_label: null,
+          meta: { adjustments: { depositPercent: 50 } },
+          notes: "Customer-facing note",
+        },
+      ],
+      crm_quote_line_items: [
+        {
+          id: "line-1",
+          quote_id: "quote-1",
+          room: "Living Room",
+          width_in: 24,
+          height_in: 36,
+          quantity: 2,
+          discount_percent: 10,
+          sort_order: 0,
+          selected_design_id: null,
+          notes: null,
+        },
+      ],
+      crm_quote_designs: [],
+      crm_activity_events: [],
+    };
+
+    const result = await createQuoteVersion(
+      fakeSupabase(tables),
+      "quote-1",
+      { email: "rep@805shutters.com" },
+      { copyCurrent: false },
+    );
+
+    const source = tables.crm_quotes.find((row) => row.id === "quote-1");
+    const blankQuote = tables.crm_quotes.find((row) => row.id === result.quoteId);
+
+    expect(result.label).toBe("B");
+    expect(source).toMatchObject({
+      quote_group_id: result.groupId,
+      quote_label: "A",
+      quote_total: 381.6,
+    });
+    expect(blankQuote).toMatchObject({
+      job_id: "job-1",
+      quote_number: "805-100-B",
+      status: "draft",
+      quote_group_id: result.groupId,
+      quote_label: "B",
+      customer_email: "customer@example.com",
+      customer_phone: "8055551212",
+      customer_address: "10 Main St",
+      quote_total: 0,
+      materials_cost: 0,
+      labor_cost: 0,
+      discount: 0,
+      tax: 0,
+      deposit_required: 0,
+      balance_due: 0,
+    });
+    expect(tables.crm_quote_line_items.filter((row) => row.quote_id === result.quoteId)).toEqual([]);
+    expect(tables.crm_activity_events.at(-1)).toMatchObject({
+      entity_type: "quote",
+      entity_id: result.quoteId,
+      action: "version.create",
+      metadata: expect.objectContaining({ copyCurrent: false }),
     });
   });
 });

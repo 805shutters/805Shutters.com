@@ -575,15 +575,36 @@ export function QuoteBuilderPanel({
     }
   }, [session, quoteId, sendChannel]);
 
-  const addVersion = useCallback(async () => {
+  const createVersion = useCallback(async (copyCurrent: boolean) => {
+    if (
+      copyCurrent &&
+      !window.confirm(
+        "Copy the current quote into a new draft alternative? Saved line items, customer prices, and pricing provenance will be preserved.",
+      )
+    ) {
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ quoteId: string }>(session, `/api/crm/quotes/${quoteId}/version`, { method: "POST" });
+      const res = await api<{ quoteId: string }>(
+        session,
+        `/api/crm/quotes/${quoteId}/version`,
+        {
+          method: "POST",
+          body: JSON.stringify({ copyCurrent }),
+        },
+      );
       onChanged?.();
       onSwitch?.(res.quoteId);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create a version.");
+      setError(
+        e instanceof Error
+          ? e.message
+          : copyCurrent
+            ? "Could not copy the current quote."
+            : "Could not add a quote.",
+      );
     } finally {
       setBusy(false);
     }
@@ -868,8 +889,11 @@ export function QuoteBuilderPanel({
                   {v.signed ? " ✓" : ""}
                 </button>
               ))}
-              <button type="button" style={ghostBtn} disabled={isSaving} onClick={addVersion}>
-                + Version
+              <button type="button" style={ghostBtn} disabled={isSaving} onClick={() => createVersion(false)}>
+                Add Quote
+              </button>
+              <button type="button" style={ghostBtn} disabled={isSaving} onClick={() => createVersion(true)}>
+                Copy Current
               </button>
               <span
                 title={`Pricing source: ${catalog.source}${catalog.effectiveDate ? ` (${catalog.effectiveDate})` : ""}. Shutter products marked provisional use the legacy MTS shutter rate table until a current guide replaces it.`}
