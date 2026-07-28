@@ -5,7 +5,7 @@ label="com.805shutters.hermes-crm-feedback"
 repo_dir="${HERMES_805_CRM_WORKSPACE:-$(cd "$(dirname "$0")/.." && pwd)}"
 worker_path="$repo_dir/scripts/hermes-805-crm-feedback-worker.mjs"
 launch_agents_dir="$HOME/Library/LaunchAgents"
-logs_dir="$HOME/.hermes/profiles/shutters805/logs"
+logs_dir="$HOME/.hermes/profiles/shutters805seo/logs"
 plist_path="$launch_agents_dir/$label.plist"
 
 mkdir -p "$launch_agents_dir" "$logs_dir"

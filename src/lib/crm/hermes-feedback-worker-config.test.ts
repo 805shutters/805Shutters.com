@@ -28,10 +28,13 @@ describe("Hermes 805 feedback worker configuration", () => {
   });
 
   it("uses only the isolated 805 Hermes profile", () => {
-    expect(worker).toContain('"--profile", "shutters805"');
-    expect(worker).toContain('`${process.env.HOME}/.hermes/profiles/shutters805/.env`');
+    expect(worker).toContain('HERMES_HOME: profileHome');
+    expect(worker).toContain('`${process.env.HOME}/.hermes/profiles/shutters805seo`');
+    expect(worker).not.toContain('"--profile"');
+    expect(worker).not.toContain('"--source"');
+    expect(worker).toContain('`${process.env.HOME}/.hermes/profiles/shutters805seo/.env`');
     expect(worker).not.toContain("HERMES_MTS_WORKSPACE");
     expect(worker).not.toContain("HERMES_MTS_ENV_FILE");
-    expect(installer).toContain("$HOME/.hermes/profiles/shutters805/logs");
+    expect(installer).toContain("$HOME/.hermes/profiles/shutters805seo/logs");
   });
 });
