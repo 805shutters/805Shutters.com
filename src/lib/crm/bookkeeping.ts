@@ -23,6 +23,18 @@ export const ADVERTISING_RESERVE_EFFECTIVE_FROM = "2026-07-20";
 // Ken (opening balance + recorded checks) counts toward this payoff.
 export const BUSINESS_PAYOFF_TARGET = 500000;
 
+export function kenCutOverrideInputValue(value: number | null | undefined) {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+export function normalizeKenCutOverrideInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const amount = Number(trimmed);
+  if (!Number.isFinite(amount)) return null;
+  return Math.round(Math.max(amount, 0) * 100) / 100;
+}
+
 export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" | "balance" | "isPaidInFull">) {
   return Boolean(row.isPaidInFull);
 }

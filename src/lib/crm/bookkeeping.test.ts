@@ -8,6 +8,8 @@ import {
   buildBookkeepingRows,
   buildKenPayoffSummary,
   effectiveBookkeepingStatus,
+  kenCutOverrideInputValue,
+  normalizeKenCutOverrideInput,
   sumBookkeepingRows
 } from "@/lib/crm/bookkeeping";
 import { buildCommissionSummary } from "@/lib/crm/commissions";
@@ -476,6 +478,31 @@ describe("Ken cut", () => {
 });
 
 describe("ken_cut_override", () => {
+  it("keeps automatic Ken input blank and preserves explicit zero", () => {
+    expect(kenCutOverrideInputValue(null)).toBe("");
+    expect(kenCutOverrideInputValue(undefined)).toBe("");
+    expect(kenCutOverrideInputValue(0)).toBe("0");
+    expect(kenCutOverrideInputValue(320.51)).toBe("320.51");
+    expect(normalizeKenCutOverrideInput("")).toBeNull();
+    expect(normalizeKenCutOverrideInput("   ")).toBeNull();
+    expect(normalizeKenCutOverrideInput("320.515")).toBe(320.52);
+    expect(normalizeKenCutOverrideInput("-10")).toBe(0);
+  });
+
+  it("recalculates automatic Ken when gross changes without materializing an override", () => {
+    const [before] = rowsFrom({
+      entries: [entry({ total_amount: 3205.12, sales_owner: "jessica", ken_cut_override: null })]
+    });
+    const [after] = rowsFrom({
+      entries: [entry({ total_amount: 3955.12, sales_owner: "jessica", ken_cut_override: null })]
+    });
+
+    expect(before.kenCut).toBe(320.51);
+    expect(before.kenCutOverride).toBeNull();
+    expect(after.kenCut).toBe(395.51);
+    expect(after.kenCutOverride).toBeNull();
+  });
+
   it("pins an explicit dollar amount over the default rule", () => {
     const [row] = rowsFrom({
       entries: [entry({ total_amount: 10000, cogs_amount: 3000, sales_owner: "mike", ken_cut_override: 500 })]
@@ -490,6 +517,13 @@ describe("ken_cut_override", () => {
     });
     expect(row.kenCut).toBe(0);
     expect(row.remainingProfitBeforeJessica).toBe(6300);
+  });
+
+  it("returns to automatic 10% when an override is cleared", () => {
+    const [row] = rowsFrom({
+      entries: [entry({ total_amount: 3955.12, sales_owner: "jessica", ken_cut_override: null })]
+    });
+    expect(row.kenCut).toBe(395.51);
   });
 });
 

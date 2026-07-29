@@ -547,6 +547,170 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.people.mike.activeItems[0]).toMatchObject({ paymentState: "partial", remainingAmount: 350 });
   });
 
+  it("reconciles a stale key by one exact same-recipient quote ID and carries excess as unapplied", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "quote-1",
+          source: "crm_quote",
+          quoteId: "quote-1",
+          customerName: "Elizabeth Mathieu",
+          quoteNumber: "805-0033",
+          salesOwner: "jessica",
+          total: 633,
+          cogs: 305.15,
+          kenCut: 63.3,
+          installationInvoiceAmount: 90,
+          remainingProfitBeforeJessica: 174.55,
+          mikeProfit: 87.27,
+          jessicaCommission: 87.28,
+          jessicaCommissionOwed: 87.28
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ recipient: "jessica", amount: 132.28 })],
+      commissionAllocations: [
+        commissionAllocation({
+          recipient: "jessica",
+          source: "manual",
+          quote_id: "quote-1",
+          bookkeeping_entry_id: "old-entry",
+          item_key: "jessica:manual:old-entry",
+          customer_name: "Elizabeth Mathieu",
+          amount: 132.28
+        })
+      ]
+    });
+
+    expect(ledger.people.jessica).toMatchObject({
+      earned: 87.28,
+      paid: 87.28,
+      owed: 0,
+      activeJobCount: 0
+    });
+    expect(ledger.people.jessica.jobItems[0]).toMatchObject({
+      itemKey: "jessica:crm_quote:quote-1",
+      paidAmount: 87.28,
+      remainingAmount: 0,
+      paymentState: "paid"
+    });
+    expect(ledger.history[0]).toMatchObject({ unappliedAmount: 45 });
+    expect(ledger.history[0].allocations[0]).toMatchObject({
+      resolution: "quote_id",
+      resolvedItemKey: "jessica:crm_quote:quote-1",
+      unappliedAmount: 45
+    });
+  });
+
+  it("falls back from quote ID to bookkeeping entry ID and then job ID", () => {
+    const byEntry = buildPartnerPaymentLedger({
+      rows: [row({ id: "entry-1" })],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ amount: 600 })],
+      commissionAllocations: [
+        commissionAllocation({
+          item_key: "mike:manual:stale",
+          quote_id: null,
+          bookkeeping_entry_id: "entry-1",
+          amount: 600
+        })
+      ]
+    });
+    expect(byEntry.history[0].allocations[0]).toMatchObject({
+      resolution: "bookkeeping_entry_id",
+      resolvedItemKey: "mike:manual:entry-1"
+    });
+
+    const byJob = buildPartnerPaymentLedger({
+      rows: [row({ id: "entry-1", jobId: "job-1" })],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ amount: 600 })],
+      commissionAllocations: [
+        commissionAllocation({
+          item_key: "mike:manual:stale",
+          quote_id: null,
+          bookkeeping_entry_id: null,
+          job_id: "job-1",
+          amount: 600
+        })
+      ]
+    });
+    expect(byJob.history[0].allocations[0]).toMatchObject({
+      resolution: "job_id",
+      resolvedItemKey: "mike:manual:entry-1"
+    });
+  });
+
+  it("does not resolve ambiguous or missing stable identities", () => {
+    const ambiguous = buildPartnerPaymentLedger({
+      rows: [
+        row({ id: "entry-1", jobId: "shared-job", mikeProfit: 300 }),
+        row({ id: "entry-2", jobId: "shared-job", mikeProfit: 300 })
+      ],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ amount: 300 })],
+      commissionAllocations: [
+        commissionAllocation({
+          item_key: "mike:manual:stale",
+          quote_id: null,
+          bookkeeping_entry_id: null,
+          job_id: "shared-job",
+          amount: 300
+        })
+      ]
+    });
+    expect(ambiguous.people.mike.paid).toBe(0);
+    expect(ambiguous.history[0]).toMatchObject({ unappliedAmount: 300 });
+    expect(ambiguous.history[0].allocations[0]).toMatchObject({
+      resolution: "unresolved_ambiguous",
+      resolvedItemKey: null,
+      unappliedAmount: 300
+    });
+
+    const missing = buildPartnerPaymentLedger({
+      rows: [row()],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ amount: 300 })],
+      commissionAllocations: [
+        commissionAllocation({
+          item_key: "mike:manual:stale",
+          quote_id: null,
+          bookkeeping_entry_id: null,
+          job_id: null,
+          amount: 300
+        })
+      ]
+    });
+    expect(missing.people.mike.paid).toBe(0);
+    expect(missing.history[0].allocations[0]).toMatchObject({
+      resolution: "unresolved_no_match",
+      unappliedAmount: 300
+    });
+  });
+
+  it("never applies an allocation across recipients", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row()],
+      kenPayments: [],
+      commissionPayments: [commissionPayment({ recipient: "jessica", amount: 300 })],
+      commissionAllocations: [
+        commissionAllocation({
+          recipient: "mike",
+          item_key: "mike:manual:row-1",
+          amount: 300
+        })
+      ]
+    });
+
+    expect(ledger.people.mike.paid).toBe(0);
+    expect(ledger.people.jessica.paid).toBe(0);
+    expect(ledger.history[0]).toMatchObject({ unappliedAmount: 300 });
+    expect(ledger.history[0].allocations[0]).toMatchObject({
+      resolution: "unresolved_recipient",
+      unappliedAmount: 300
+    });
+  });
+
   it("reopens allocated jobs when the payment and allocation are removed", () => {
     const paidLedger = buildPartnerPaymentLedger({
       rows: [row()],

@@ -688,6 +688,16 @@ export type CrmPartnerPaymentHistoryAllocation = {
   bookkeepingEntryId: string | null;
   jobId: string | null;
   virtual: boolean;
+  resolution:
+    | "exact_key"
+    | "quote_id"
+    | "bookkeeping_entry_id"
+    | "job_id"
+    | "unresolved_no_match"
+    | "unresolved_ambiguous"
+    | "unresolved_recipient";
+  resolvedItemKey: string | null;
+  unappliedAmount: number;
 };
 
 export type CrmPartnerPaymentHistoryBatch = {

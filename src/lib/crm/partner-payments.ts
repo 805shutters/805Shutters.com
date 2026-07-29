@@ -30,6 +30,11 @@ type WorkingItem = EarnedItem & {
   legacyPaidAmount: number;
 };
 
+type AllocationIdentity = Pick<
+  CrmPartnerPaymentHistoryAllocation,
+  "itemKey" | "quoteId" | "bookkeepingEntryId" | "jobId"
+>;
+
 const partnerLabels: Record<CrmPaymentPerson, string> = {
   ken: "Ken",
   mike: "Mike",
@@ -351,7 +356,10 @@ function paymentMetadataAllocations(
         quoteId: optionalString(record.quote_id) || optionalString(record.quoteId),
         bookkeepingEntryId: optionalString(record.bookkeeping_entry_id) || optionalString(record.bookkeepingEntryId),
         jobId: optionalString(record.job_id) || optionalString(record.jobId),
-        virtual: false
+        virtual: false,
+        resolution: "unresolved_no_match",
+        resolvedItemKey: null,
+        unappliedAmount: 0
       } satisfies CrmPartnerPaymentHistoryAllocation;
     })
     .filter((allocation): allocation is CrmPartnerPaymentHistoryAllocation => Boolean(allocation));
@@ -373,7 +381,10 @@ function explicitAllocationHistory(
     quoteId: allocation.quote_id,
     bookkeepingEntryId: allocation.bookkeeping_entry_id,
     jobId: allocation.job_id,
-    virtual: false
+    virtual: false,
+    resolution: "unresolved_no_match",
+    resolvedItemKey: null,
+    unappliedAmount: 0
   };
 }
 
@@ -390,8 +401,54 @@ function itemVirtualHistory(paymentId: string, item: WorkingItem, amount: number
     quoteId: item.quoteId,
     bookkeepingEntryId: item.bookkeepingEntryId,
     jobId: item.jobId,
-    virtual: true
+    virtual: true,
+    resolution: "exact_key",
+    resolvedItemKey: item.itemKey,
+    unappliedAmount: 0
   };
+}
+
+function uniqueStableIdentityMatch(
+  items: WorkingItem[],
+  field: "quoteId" | "bookkeepingEntryId" | "jobId",
+  value: string | null
+) {
+  if (!value) return { item: null, ambiguous: false };
+  const matches = items.filter((item) => item[field] === value);
+  return {
+    item: matches.length === 1 ? matches[0] : null,
+    ambiguous: matches.length > 1
+  };
+}
+
+function resolveAllocationItem(
+  identity: AllocationIdentity,
+  person: CrmPaymentPerson,
+  workingByKey: Map<string, WorkingItem>,
+  workingByPerson: Record<CrmPaymentPerson, WorkingItem[]>
+): {
+  item: WorkingItem | null;
+  resolution: CrmPartnerPaymentHistoryAllocation["resolution"];
+} {
+  const exact = workingByKey.get(identity.itemKey);
+  if (exact) {
+    return exact.person === person
+      ? { item: exact, resolution: "exact_key" }
+      : { item: null, resolution: "unresolved_recipient" };
+  }
+
+  const candidates = workingByPerson[person];
+  for (const [field, resolution] of [
+    ["quoteId", "quote_id"],
+    ["bookkeepingEntryId", "bookkeeping_entry_id"],
+    ["jobId", "job_id"]
+  ] as const) {
+    const match = uniqueStableIdentityMatch(candidates, field, identity[field]);
+    if (match.ambiguous) return { item: null, resolution: "unresolved_ambiguous" };
+    if (match.item) return { item: match.item, resolution };
+  }
+
+  return { item: null, resolution: "unresolved_no_match" };
 }
 
 function buildKenBuyoutLedger(history: CrmPartnerPaymentHistoryBatch[]): CrmKenBuyoutLedger {
@@ -483,17 +540,48 @@ export function buildPartnerPaymentLedger({
 
   const explicitTotalsByPayment = new Map<string, number>();
 
+  const applyAllocation = (
+    batch: CrmPartnerPaymentHistoryBatch | undefined,
+    person: CrmPaymentPerson,
+    allocation: CrmPartnerPaymentHistoryAllocation
+  ) => {
+    if (!batch || batch.isAdvance) return;
+    if (batch.person !== person) {
+      allocation.resolution = "unresolved_recipient";
+      allocation.unappliedAmount = allocation.amount;
+      batch.unappliedAmount = roundCents(batch.unappliedAmount + allocation.amount);
+      batch.allocations.push(allocation);
+      return;
+    }
+
+    const match = resolveAllocationItem(allocation, person, workingByKey, workingByPerson);
+    allocation.resolution = match.resolution;
+    allocation.resolvedItemKey = match.item?.itemKey || null;
+    if (!match.item) {
+      allocation.unappliedAmount = allocation.amount;
+      batch.unappliedAmount = roundCents(batch.unappliedAmount + allocation.amount);
+      batch.allocations.push(allocation);
+      return;
+    }
+
+    const available = roundCents(
+      Math.max(match.item.owedAmount - match.item.explicitPaidAmount - match.item.legacyPaidAmount, 0)
+    );
+    const applied = roundCents(Math.min(allocation.amount, available));
+    const excess = roundCents(allocation.amount - applied);
+    match.item.explicitPaidAmount = roundCents(match.item.explicitPaidAmount + applied);
+    match.item.explicitAllocationIds.push(allocation.id);
+    allocation.unappliedAmount = excess;
+    batch.unappliedAmount = roundCents(batch.unappliedAmount + excess);
+    batch.allocations.push(allocation);
+  };
+
   for (const allocation of kenAllocations) {
     const batch = history.get(allocation.payment_id);
     if (batch?.isAdvance) continue;
     const amount = roundCents(allocation.amount);
     explicitTotalsByPayment.set(allocation.payment_id, roundCents((explicitTotalsByPayment.get(allocation.payment_id) || 0) + amount));
-    const item = workingByKey.get(allocation.item_key);
-    if (item && item.person === "ken") {
-      item.explicitPaidAmount = roundCents(item.explicitPaidAmount + amount);
-      item.explicitAllocationIds.push(allocation.id);
-    }
-    history.get(allocation.payment_id)?.allocations.push(explicitAllocationHistory(allocation));
+    applyAllocation(batch, "ken", explicitAllocationHistory(allocation));
   }
 
   for (const allocation of commissionAllocations) {
@@ -501,12 +589,7 @@ export function buildPartnerPaymentLedger({
     if (batch?.isAdvance) continue;
     const amount = roundCents(allocation.amount);
     explicitTotalsByPayment.set(allocation.payment_id, roundCents((explicitTotalsByPayment.get(allocation.payment_id) || 0) + amount));
-    const item = workingByKey.get(allocation.item_key);
-    if (item && item.person === allocation.recipient) {
-      item.explicitPaidAmount = roundCents(item.explicitPaidAmount + amount);
-      item.explicitAllocationIds.push(allocation.id);
-    }
-    history.get(allocation.payment_id)?.allocations.push(explicitAllocationHistory(allocation));
+    applyAllocation(batch, allocation.recipient, explicitAllocationHistory(allocation));
   }
 
   for (const batch of history.values()) {
@@ -517,12 +600,7 @@ export function buildPartnerPaymentLedger({
         batch.id,
         roundCents((explicitTotalsByPayment.get(batch.id) || 0) + allocation.amount)
       );
-      const item = workingByKey.get(allocation.itemKey);
-      if (item && item.person === batch.person) {
-        item.explicitPaidAmount = roundCents(item.explicitPaidAmount + allocation.amount);
-        item.explicitAllocationIds.push(allocation.id);
-      }
-      batch.allocations.push(allocation);
+      applyAllocation(batch, batch.person, allocation);
     }
   }
 

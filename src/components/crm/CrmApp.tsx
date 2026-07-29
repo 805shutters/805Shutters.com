@@ -7,7 +7,9 @@ import {
   ADVERTISING_RESERVE_EFFECTIVE_FROM,
   effectiveBookkeepingStatus,
   formatPaymentType,
-  isPaidInFullBookkeepingRow
+  isPaidInFullBookkeepingRow,
+  kenCutOverrideInputValue,
+  normalizeKenCutOverrideInput
 } from "@/lib/crm/bookkeeping";
 import {
   calendarAppointmentDurationChoices,
@@ -9938,8 +9940,19 @@ function CustomerFilesView({
                   <InlineEditableValue
                     value={toCurrency(totals.ken)}
                     editor={
-                      primaryRow
-                        ? rowMoneyEditor(primaryRow, "Edit Ken cut override", primaryRow.kenCut, (amount) => ({ ken_cut_override: amount }), "Ken cut updated.")
+                      primaryRow && onSaveRow
+                        ? {
+                            type: "number",
+                            value: kenCutOverrideInputValue(primaryRow.kenCutOverride),
+                            disabled: busy,
+                            ariaLabel: "Edit Ken cut override (blank uses automatic 10%)",
+                            onSave: (next) =>
+                              onSaveRow(
+                                primaryRow,
+                                { ken_cut_override: normalizeKenCutOverrideInput(next) },
+                                "Ken cut updated."
+                              )
+                          }
                         : undefined
                     }
                     className="crm-cf-money"
@@ -11431,8 +11444,21 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
               {batch.allocations.map((allocation) => (
                 <p key={allocation.id}>
                   <strong>{allocation.customerName}</strong>
-                  <span>{[allocation.quoteNumber, formatShortDate(allocation.closedAt)].filter(Boolean).join(" / ")}</span>
-                  <em>{toLedgerCurrency(allocation.amount)}{allocation.virtual ? " legacy" : ""}</em>
+                  <span>
+                    {[allocation.quoteNumber, formatShortDate(allocation.closedAt)].filter(Boolean).join(" / ")}
+                    {allocation.resolution.startsWith("unresolved_")
+                      ? ` / ${allocation.resolution.replaceAll("_", " ")}`
+                      : allocation.resolution !== "exact_key"
+                        ? ` / matched by ${allocation.resolution.replaceAll("_", " ")}`
+                        : ""}
+                  </span>
+                  <em>
+                    {toLedgerCurrency(allocation.amount)}
+                    {allocation.virtual ? " legacy" : ""}
+                    {allocation.unappliedAmount > 0
+                      ? ` / ${toLedgerCurrency(allocation.unappliedAmount)} unapplied`
+                      : ""}
+                  </em>
                 </p>
               ))}
             </div>
