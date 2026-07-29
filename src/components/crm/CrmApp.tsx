@@ -11268,7 +11268,15 @@ function PartnerPaymentsView({
                         ) : null}
                       </td>
                       <td>
-                        <strong>{item.customerName}</strong>
+                        <strong title={[
+                          `item=${item.itemKey}`,
+                          item.quoteId ? `quote=${item.quoteId}` : null,
+                          item.quoteIdAliases.length ? `quote aliases=${item.quoteIdAliases.join(",")}` : null,
+                          item.bookkeepingEntryId ? `entry=${item.bookkeepingEntryId}` : null,
+                          item.jobId ? `job=${item.jobId}` : null
+                        ].filter(Boolean).join(" · ")}>
+                          {item.customerName}
+                        </strong>
                         <span>{item.quoteNumber || "No quote number"}</span>
                       </td>
                       <td>{formatShortDate(item.soldDate)}</td>
@@ -11443,7 +11451,15 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
             <div>
               {batch.allocations.map((allocation) => (
                 <p key={allocation.id}>
-                  <strong>{allocation.customerName}</strong>
+                  <strong title={[
+                    `allocation=${allocation.id}`,
+                    `item=${allocation.itemKey}`,
+                    allocation.quoteId ? `quote=${allocation.quoteId}` : null,
+                    allocation.bookkeepingEntryId ? `entry=${allocation.bookkeepingEntryId}` : null,
+                    allocation.jobId ? `job=${allocation.jobId}` : null
+                  ].filter(Boolean).join(" · ")}>
+                    {allocation.customerName}
+                  </strong>
                   <span>
                     {[allocation.quoteNumber, formatShortDate(allocation.closedAt)].filter(Boolean).join(" / ")}
                     {allocation.resolution.startsWith("unresolved_")

@@ -632,6 +632,11 @@ export type CrmPartnerJobLedgerItem = {
   id: string;
   itemKey: string;
   person: Exclude<CrmPaymentPerson, "ken">;
+  source: CrmBookkeepingRow["source"];
+  quoteId: string | null;
+  quoteIdAliases: string[];
+  bookkeepingEntryId: string | null;
+  jobId: string | null;
   customerName: string;
   quoteNumber: string | null;
   soldDate: string | null;

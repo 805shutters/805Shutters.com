@@ -699,6 +699,7 @@ export function buildPartnerPaymentLedger({
           id: itemKey,
           itemKey,
           person,
+          ...rowIdentity(row),
           customerName: row.customerName,
           quoteNumber: row.quoteNumber,
           soldDate: row.soldDate,
