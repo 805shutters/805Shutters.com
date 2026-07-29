@@ -551,9 +551,10 @@ describe("buildPartnerPaymentLedger", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [
         row({
-          id: "quote-1",
+          id: "crm-quote-1",
           source: "crm_quote",
-          quoteId: "quote-1",
+          quoteId: "crm-quote-1",
+          quoteIdAliases: ["sales-quote-1"],
           customerName: "Elizabeth Mathieu",
           quoteNumber: "805-0033",
           salesOwner: "jessica",
@@ -573,7 +574,7 @@ describe("buildPartnerPaymentLedger", () => {
         commissionAllocation({
           recipient: "jessica",
           source: "manual",
-          quote_id: "quote-1",
+          quote_id: "sales-quote-1",
           bookkeeping_entry_id: "old-entry",
           item_key: "jessica:manual:old-entry",
           customer_name: "Elizabeth Mathieu",
@@ -589,7 +590,7 @@ describe("buildPartnerPaymentLedger", () => {
       activeJobCount: 0
     });
     expect(ledger.people.jessica.jobItems[0]).toMatchObject({
-      itemKey: "jessica:crm_quote:quote-1",
+      itemKey: "jessica:crm_quote:crm-quote-1",
       paidAmount: 87.28,
       remainingAmount: 0,
       paymentState: "paid"
@@ -597,7 +598,7 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.history[0]).toMatchObject({ unappliedAmount: 45 });
     expect(ledger.history[0].allocations[0]).toMatchObject({
       resolution: "quote_id",
-      resolvedItemKey: "jessica:crm_quote:quote-1",
+      resolvedItemKey: "jessica:crm_quote:crm-quote-1",
       unappliedAmount: 45
     });
   });

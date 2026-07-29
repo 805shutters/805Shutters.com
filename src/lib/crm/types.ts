@@ -388,6 +388,8 @@ export type CrmBookkeepingRow = {
   id: string;
   source: CrmBookkeepingEntrySource | "crm_quote";
   quoteId: string | null;
+  /** Stable upstream quote ids recorded on the authoritative CRM quote. */
+  quoteIdAliases?: string[];
   jobId: string | null;
   customerName: string;
   customerPhone: string | null;
@@ -657,6 +659,7 @@ export type CrmPartnerPaymentLedgerItem = {
   person: CrmPaymentPerson;
   source: CrmBookkeepingRow["source"];
   quoteId: string | null;
+  quoteIdAliases: string[];
   bookkeepingEntryId: string | null;
   jobId: string | null;
   customerName: string;

@@ -120,6 +120,7 @@ function rowIdentity(row: CrmBookkeepingRow) {
   return {
     source: row.source,
     quoteId: row.quoteId,
+    quoteIdAliases: row.quoteIdAliases || [],
     bookkeepingEntryId: row.source === "crm_quote" ? null : row.id,
     jobId: row.jobId
   };
@@ -414,7 +415,11 @@ function uniqueStableIdentityMatch(
   value: string | null
 ) {
   if (!value) return { item: null, ambiguous: false };
-  const matches = items.filter((item) => item[field] === value);
+  const matches = items.filter((item) =>
+    field === "quoteId"
+      ? item.quoteId === value || item.quoteIdAliases.includes(value)
+      : item[field] === value
+  );
   return {
     item: matches.length === 1 ? matches[0] : null,
     ambiguous: matches.length > 1

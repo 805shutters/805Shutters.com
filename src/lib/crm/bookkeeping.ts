@@ -522,6 +522,7 @@ function buildEntryRow(
     id: entry.id,
     source: entry.source,
     quoteId: entry.quote_id,
+    quoteIdAliases: quoteIdentityAliases(linkedQuote),
     jobId: entry.job_id,
     customerName: entry.customer_name,
     customerPhone: entryCustomerPhone(entry) || cleanOptionalText(linkedQuote?.customer_phone),
@@ -645,6 +646,7 @@ function buildQuoteRow(
     id: quote.id,
     source: "crm_quote",
     quoteId: quote.id,
+    quoteIdAliases: quoteIdentityAliases(quote),
     jobId: quote.job_id,
     customerName: quote.customer_name || entry?.customer_name || "Linked job",
     customerPhone: cleanOptionalText(quote.customer_phone) || (entry ? entryCustomerPhone(entry) : null),
@@ -708,6 +710,18 @@ function cleanOptionalText(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+function quoteIdentityAliases(quote: CrmQuote | null | undefined) {
+  const meta = quote?.meta && typeof quote.meta === "object" && !Array.isArray(quote.meta)
+    ? quote.meta as Record<string, unknown>
+    : {};
+  return [...new Set([
+    meta.source_sales_quote_id,
+    meta.mts_quote_id,
+    meta.sales_quote_id,
+    meta.target_sales_quote_id
+  ].map(cleanOptionalText).filter((value): value is string => Boolean(value) && value !== quote?.id))];
 }
 
 function metadataPhone(meta: Record<string, unknown> | null | undefined) {
