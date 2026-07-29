@@ -440,6 +440,8 @@ export type CrmBookkeepingRow = {
   notes: string | null;
   status: CrmBookkeepingStatus;
   liveStatus?: CrmBookkeepingStatus;
+  /** Authoritative CRM job status before payment-derived live-status projection. */
+  jobStatus?: CrmJobStatus | null;
   payments: CrmBookkeepingPayment[];
   creditsIn: CrmBookkeepingCredit[];
   creditsOut: CrmBookkeepingCredit[];
@@ -642,6 +644,8 @@ export type CrmPartnerJobLedgerItem = {
   soldDate: string | null;
   closedAt: string | null;
   sourceStatus: CrmBookkeepingStatus;
+  jobStatus: CrmJobStatus | null;
+  displaySection: "completed" | "pipeline";
   total: number;
   advertisingReserve: number;
   cogs: number;
@@ -655,7 +659,7 @@ export type CrmPartnerJobLedgerItem = {
   remainingAmount: number;
   paymentState: CrmPartnerPaymentState;
   payableReady: boolean;
-  holdReason: "customer_payment" | "installer_invoice" | "no_profit" | null;
+  holdReason: "job_not_completed" | "installer_invoice" | "no_profit" | null;
 };
 
 export type CrmPartnerPaymentLedgerItem = {

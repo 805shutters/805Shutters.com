@@ -37,6 +37,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     source: "manual",
     quoteId: null,
     jobId: "job-1",
+    jobStatus: "closed",
     customerName: "Test Customer",
     customerPhone: null,
     quoteNumber: null,
@@ -57,7 +58,7 @@ function row(overrides: Partial<CrmBookkeepingRow> = {}): CrmBookkeepingRow {
     mikeProfit: 600,
     salesOwner: "mike",
     installationInvoiceDocumentId: null,
-    installationInvoiceAmount: 0,
+    installationInvoiceAmount: 100,
     installationInvoiceNumber: null,
     installationInvoiceUrl: null,
     installationInvoicePaidAt: null,
@@ -184,7 +185,7 @@ describe("partner payment row helpers", () => {
     });
   });
 
-  it("does not create a clickable payment item for open rows or zero amounts", () => {
+  it("keeps Mike gated by customer payment and rejects zero Jessica amounts", () => {
     expect(buildUnpaidPartnerPaymentItemForRow("mike", row({ isPaidInFull: false, balance: 100 }))).toBeNull();
     expect(buildUnpaidPartnerPaymentItemForRow("jessica", row({ jessicaCommission: 0 }))).toBeNull();
   });
@@ -197,7 +198,8 @@ describe("partner payment row helpers", () => {
       mikeProfit: 300,
       jessicaCommission: 300,
       jessicaCommissionOwed: 0,
-      isMissingInstallerInvoice: true
+      isMissingInstallerInvoice: true,
+      installationInvoiceAmount: 0
     });
     expect(buildUnpaidPartnerPaymentItemForRow("mike", heldRow)).toBeNull();
     expect(buildUnpaidPartnerPaymentItemForRow("jessica", heldRow)).toBeNull();
@@ -254,7 +256,7 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.history[0]).toMatchObject({ isAdvance: true, allocations: [], unappliedAmount: 8000 });
   });
 
-  it("lists every Jessica-sold job and excludes jobs sold by Mike", () => {
+  it("separates Jessica pipeline jobs and excludes paid and Mike-sold jobs", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [
         row({
@@ -262,6 +264,7 @@ describe("buildPartnerPaymentLedger", () => {
           customerName: "Jessica Open",
           salesOwner: "jessica",
           status: "ordered",
+          jobStatus: "ordered",
           isPaidInFull: false,
           balance: 500,
           paidTotal: 500,
@@ -291,23 +294,58 @@ describe("buildPartnerPaymentLedger", () => {
       ]
     });
 
-    expect(ledger.people.jessica.jobItems).toHaveLength(2);
-    expect(ledger.people.jessica.jobItems.map((item) => item.customerName)).toEqual([
-      "Jessica Open",
-      "Jessica Paid"
-    ]);
+    expect(ledger.people.jessica.jobItems).toHaveLength(1);
+    expect(ledger.people.jessica.jobItems.map((item) => item.customerName)).toEqual(["Jessica Open"]);
     expect(ledger.people.jessica.jobItems[0]).toMatchObject({
       paymentState: "unpaid",
       payableReady: false,
-      holdReason: "customer_payment",
+      holdReason: "job_not_completed",
+      displaySection: "pipeline",
+      jobStatus: "ordered",
       profitAmount: 150
     });
-    expect(ledger.people.jessica.jobItems[1]).toMatchObject({
-      paymentState: "paid",
-      payableReady: true,
-      paidAmount: 300,
-      remainingAmount: 0
+  });
+
+  it("holds completed Jessica jobs without installation cost and readies them once cost is recorded", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        row({
+          id: "completed-held",
+          salesOwner: "jessica",
+          jobStatus: "installed",
+          installationInvoiceAmount: 0,
+          isMissingInstallerInvoice: true,
+          jessicaCommission: 300
+        }),
+        row({
+          id: "completed-ready",
+          salesOwner: "jessica",
+          jobStatus: "closed",
+          installationInvoiceAmount: 125,
+          isMissingInstallerInvoice: false,
+          jessicaCommission: 275
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: []
     });
+
+    expect(ledger.people.jessica.jobItems).toEqual([
+      expect.objectContaining({
+        itemKey: "jessica:manual:completed-held",
+        displaySection: "completed",
+        payableReady: false,
+        holdReason: "installer_invoice"
+      }),
+      expect.objectContaining({
+        itemKey: "jessica:manual:completed-ready",
+        displaySection: "completed",
+        payableReady: true,
+        holdReason: null
+      })
+    ]);
+    expect(ledger.people.jessica.activeItems).toHaveLength(1);
+    expect(ledger.people.jessica.activeItems[0].itemKey).toBe("jessica:manual:completed-ready");
   });
 
   it("creates active payable rows only for paid-in-full jobs", () => {
@@ -355,7 +393,8 @@ describe("buildPartnerPaymentLedger", () => {
           mikeProfit: 400,
           jessicaCommission: 400,
           jessicaCommissionOwed: 0,
-          isMissingInstallerInvoice: true
+          isMissingInstallerInvoice: true,
+          installationInvoiceAmount: 0
         })
       ],
       kenPayments: [],
@@ -386,6 +425,7 @@ describe("buildPartnerPaymentLedger", () => {
           id: "jessica-sold",
           jobId: "job-jessica-sold",
           status: "approved",
+          jobStatus: "sold",
           salesOwner: "jessica",
           balance: 1000,
           paidTotal: 0,
@@ -589,12 +629,7 @@ describe("buildPartnerPaymentLedger", () => {
       owed: 0,
       activeJobCount: 0
     });
-    expect(ledger.people.jessica.jobItems[0]).toMatchObject({
-      itemKey: "jessica:crm_quote:crm-quote-1",
-      paidAmount: 87.28,
-      remainingAmount: 0,
-      paymentState: "paid"
-    });
+    expect(ledger.people.jessica.jobItems).toHaveLength(0);
     expect(ledger.history[0]).toMatchObject({ unappliedAmount: 45 });
     expect(ledger.history[0].allocations[0]).toMatchObject({
       resolution: "quote_id",

@@ -13737,6 +13737,31 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   font-weight: 900;
 }
 
+.crm-bookkeeping-table .crm-payables-profit--held {
+  color: #b3261e !important;
+}
+
+.crm-bookkeeping-table .crm-payables-profit--pipeline {
+  color: var(--muted) !important;
+}
+
+.crm-payables-row--held {
+  background: #fff5f3;
+}
+
+.crm-payables-row--ready {
+  background: #f3fbf5;
+}
+
+.crm-jessica-payables-sections {
+  display: grid;
+  gap: 24px;
+}
+
+.crm-jessica-payables-sections h4 {
+  margin: 0 0 10px;
+}
+
 .crm-payment-review-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -11,6 +11,7 @@ import {
   CrmKenPayment,
   CrmKenPaymentAllocation,
   CrmKenBuyoutLedger,
+  CrmJobStatus,
   CrmPartnerJobLedgerItem,
   CrmPartnerPaymentHistoryAllocation,
   CrmPartnerPaymentHistoryBatch,
@@ -53,6 +54,16 @@ const SOLD_EARNING_STATUSES = new Set<CrmBookkeepingStatus>([
   "legacy",
   "manual"
 ]);
+
+const COMPLETED_JOB_STATUSES = new Set<CrmJobStatus>(["installed", "invoiced", "closed"]);
+
+export function isCompletedPartnerJobStatus(status: CrmJobStatus | null | undefined) {
+  return Boolean(status && COMPLETED_JOB_STATUSES.has(status));
+}
+
+function hasRecordedInstallationCost(row: CrmBookkeepingRow) {
+  return roundCents(row.installationInvoiceAmount) > 0;
+}
 
 const INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT = 3714.7;
 const INITIAL_KEN_BUYOUT_ADJUSTMENTS = [
@@ -164,26 +175,35 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
 
   for (const row of rows) {
     const closedAt = paidInFullDate(row);
-    if (!closedAt) continue;
+    if (closedAt) {
+      const kenItem = createEarnedItem({
+        row,
+        person: "ken",
+        amount: row.kenCut,
+        closedAt
+      });
+      if (kenItem) items.push(kenItem);
 
-    const kenItem = createEarnedItem({
-      row,
-      person: "ken",
-      amount: row.kenCut,
-      closedAt
-    });
-    if (kenItem) items.push(kenItem);
+      // Ken's 10% comes off the sale total, so it's final immediately. Mike's
+      // established payable rule continues to wait for both customer payment
+      // and the MTS installer invoice.
+      if (!row.isMissingInstallerInvoice) {
+        const mikeItem = createEarnedItem({ row, person: "mike", amount: row.mikeProfit, closedAt });
+        if (mikeItem) items.push(mikeItem);
+      }
+    }
 
-    // Ken's 10% comes off the sale total, so it's final immediately; Mike and
-    // Jessica split what's left AFTER installation, so their payouts wait for
-    // the MTS installer invoice.
-    if (row.isMissingInstallerInvoice) continue;
-
-    const mikeItem = createEarnedItem({ row, person: "mike", amount: row.mikeProfit, closedAt });
-    if (mikeItem) items.push(mikeItem);
-
-    const jessicaItem = createEarnedItem({ row, person: "jessica", amount: row.jessicaCommission, closedAt });
-    if (jessicaItem) items.push(jessicaItem);
+    // Jessica's current payables are driven by the authoritative CRM job
+    // lifecycle: Completed plus an actual recorded installation cost.
+    if (isCompletedPartnerJobStatus(row.jobStatus) && hasRecordedInstallationCost(row)) {
+      const jessicaItem = createEarnedItem({
+        row,
+        person: "jessica",
+        amount: row.jessicaCommission,
+        closedAt: closedAt || row.soldDate
+      });
+      if (jessicaItem) items.push(jessicaItem);
+    }
   }
 
   return items.sort(compareEarnedItems);
@@ -218,14 +238,18 @@ export function buildUnpaidPartnerPaymentItemForRow(
   person: CrmPaymentPerson,
   row: CrmBookkeepingRow
 ): CrmPartnerPaymentLedgerItem | null {
-  if (person !== "ken" && row.isMissingInstallerInvoice) return null;
   const closedAt = paidInFullDate(row);
-  const earnedItem = closedAt
+  if (person === "jessica" && (!isCompletedPartnerJobStatus(row.jobStatus) || !hasRecordedInstallationCost(row))) {
+    return null;
+  }
+  if (person === "mike" && row.isMissingInstallerInvoice) return null;
+  const payableAt = person === "jessica" ? closedAt || row.soldDate : closedAt;
+  const earnedItem = payableAt
     ? createEarnedItem({
         row,
         person,
         amount: partnerPaymentAmountForRow(person, row),
-        closedAt
+        closedAt: payableAt
       })
     : null;
   if (!earnedItem) return null;
@@ -686,12 +710,13 @@ export function buildPartnerPaymentLedger({
               ? "partial"
               : "unpaid";
         const closedAt = paidInFullDate(row);
+        const completed = isCompletedPartnerJobStatus(row.jobStatus);
         const holdReason =
           profitAmount <= 0
             ? "no_profit"
-            : !closedAt
-              ? "customer_payment"
-              : row.isMissingInstallerInvoice
+            : !completed
+              ? "job_not_completed"
+              : !hasRecordedInstallationCost(row)
                 ? "installer_invoice"
                 : null;
 
@@ -705,6 +730,8 @@ export function buildPartnerPaymentLedger({
           soldDate: row.soldDate,
           closedAt,
           sourceStatus: effectiveBookkeepingStatus(row),
+          jobStatus: row.jobStatus || null,
+          displaySection: completed ? "completed" : "pipeline",
           total: roundCents(row.total),
           advertisingReserve: roundCents(row.advertisingReserve),
           cogs: roundCents(row.cogs),
@@ -721,6 +748,7 @@ export function buildPartnerPaymentLedger({
           holdReason
         } satisfies CrmPartnerJobLedgerItem;
       })
+      .filter((item) => item.paymentState !== "paid")
       .sort((left, right) => {
         const sold = paymentSortValue(right.soldDate) - paymentSortValue(left.soldDate);
         if (sold) return sold;

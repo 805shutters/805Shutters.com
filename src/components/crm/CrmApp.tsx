@@ -10893,10 +10893,120 @@ function paymentStateDisplay(state: CrmPartnerPaymentLedgerItem["paymentState"])
 function jobPaymentStateDisplay(item: CrmDashboardData["partnerPaymentLedger"]["people"]["jessica"]["jobItems"][number]) {
   if (item.paymentState === "partial") return "Partially paid";
   if (item.paymentState === "paid") return "Paid";
-  if (item.holdReason === "customer_payment") return "Not paid - job open";
-  if (item.holdReason === "installer_invoice") return "Not paid - installer invoice needed";
+  if (item.holdReason === "job_not_completed") return "Future - job not completed";
+  if (item.holdReason === "installer_invoice") return "Held - installation cost required";
   if (item.holdReason === "no_profit") return "No profit payable";
-  return "Not paid";
+  return "Payable";
+}
+
+type JessicaJobLedgerItem = CrmDashboardData["partnerPaymentLedger"]["people"]["jessica"]["jobItems"][number];
+
+function JessicaJobLedgerTable({
+  items,
+  activeItemKeys,
+  amountDue,
+  selectedItemKeys,
+  onToggle
+}: {
+  items: JessicaJobLedgerItem[];
+  activeItemKeys: Set<string>;
+  amountDue: number;
+  selectedItemKeys: Set<string>;
+  onToggle: (itemKey: string) => void;
+}) {
+  return (
+    <table className="crm-bookkeeping-table crm-jessica-job-ledger">
+      <thead>
+        <tr>
+          <th aria-label="Select job" />
+          <th>Customer</th>
+          <th>Sold</th>
+          <th>Job Status</th>
+          <th>Gross Sale</th>
+          <th>Marketing</th>
+          <th>COGS</th>
+          <th>Ken</th>
+          <th>Installation</th>
+          <th>Expenses</th>
+          <th>Remakes</th>
+          <th>Profit to Split</th>
+          <th className="crm-payables-profit">Jessica Share</th>
+          <th>Paid To Jessica</th>
+          <th>Remaining</th>
+          <th>Payment Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => {
+          const selectable = activeItemKeys.has(item.itemKey) && amountDue > 0;
+          const held = item.displaySection === "completed" && !item.payableReady;
+          return (
+            <tr
+              key={item.itemKey}
+              className={held ? "crm-payables-row--held" : item.payableReady ? "crm-payables-row--ready" : undefined}
+            >
+              <td>
+                {selectable ? (
+                  <input
+                    type="checkbox"
+                    checked={selectedItemKeys.has(item.itemKey)}
+                    onChange={() => onToggle(item.itemKey)}
+                    aria-label={`Select ${item.customerName}`}
+                  />
+                ) : null}
+              </td>
+              <td>
+                <strong title={[
+                  `item=${item.itemKey}`,
+                  item.quoteId ? `quote=${item.quoteId}` : null,
+                  item.quoteIdAliases.length ? `quote aliases=${item.quoteIdAliases.join(",")}` : null,
+                  item.bookkeepingEntryId ? `entry=${item.bookkeepingEntryId}` : null,
+                  item.jobId ? `job=${item.jobId}` : null
+                ].filter(Boolean).join(" · ")}>
+                  {item.customerName}
+                </strong>
+                <span>{item.quoteNumber || "No quote number"}</span>
+              </td>
+              <td>{formatShortDate(item.soldDate)}</td>
+              <td>{item.jobStatus ? titleCase(item.jobStatus) : "Unknown"}</td>
+              <td>{toLedgerCurrency(item.total)}</td>
+              <td className="crm-ledger-money-warn">
+                {toLedgerCurrency(item.advertisingReserve)}
+                <span>
+                  {item.advertisingReserve > 0
+                    ? "7% of gross"
+                    : `0% · sold before ${formatShortDate(ADVERTISING_RESERVE_EFFECTIVE_FROM)}`}
+                </span>
+              </td>
+              <td>{toLedgerCurrency(item.cogs)}</td>
+              <td>{toLedgerCurrency(item.kenCut)}</td>
+              <td>{toLedgerCurrency(item.installationCost)}</td>
+              <td>{toLedgerCurrency(item.expensesTotal)}</td>
+              <td>{toLedgerCurrency(item.remakeTotal)}</td>
+              <td>
+                <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
+                <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
+              </td>
+              <td
+                className={`crm-payables-profit${
+                  held
+                    ? " crm-payables-profit--held"
+                    : item.displaySection === "pipeline"
+                      ? " crm-payables-profit--pipeline"
+                      : ""
+                }`}
+              >
+                {toLedgerCurrency(item.profitAmount)}
+              </td>
+              <td>{toLedgerCurrency(item.paidAmount)}</td>
+              <td>{toLedgerCurrency(item.remainingAmount)}</td>
+              <td>{jobPaymentStateDisplay(item)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
 }
 
 function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
@@ -11040,6 +11150,8 @@ function PartnerPaymentsView({
   const allSelected = activeItems.length > 0 && selectedItems.length === activeItems.length;
   const activeItemKeys = new Set(activeItems.map((item) => item.itemKey));
   const jobItems = activePersonLedger?.jobItems || [];
+  const completedJobItems = jobItems.filter((item) => item.displaySection === "completed");
+  const pipelineJobItems = jobItems.filter((item) => item.displaySection === "pipeline");
 
   useEffect(() => {
     setSelectedItemKeys(new Set());
@@ -11231,83 +11343,36 @@ function PartnerPaymentsView({
           </div>
           <div className="crm-bookkeeping-table-wrap">
             {activePerson === "jessica" ? (
-            <table className="crm-bookkeeping-table crm-jessica-job-ledger">
-              <thead>
-                <tr>
-                  <th aria-label="Select job" />
-                  <th>Customer</th>
-                  <th>Sold</th>
-                  <th>Job Status</th>
-                  <th>Gross Sale</th>
-                  <th>Marketing</th>
-                  <th>COGS</th>
-                  <th>Ken</th>
-                  <th>Installation</th>
-                  <th>Expenses</th>
-                  <th>Remakes</th>
-                  <th>Profit to Split</th>
-                  <th className="crm-payables-profit">Jessica Share</th>
-                  <th>Paid To Jessica</th>
-                  <th>Remaining</th>
-                  <th>Payment Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobItems.map((item) => {
-                  const selectable = activeItemKeys.has(item.itemKey) && amountDue > 0;
-                  return (
-                    <tr key={item.itemKey}>
-                      <td>
-                        {selectable ? (
-                          <input
-                            type="checkbox"
-                            checked={selectedItemKeys.has(item.itemKey)}
-                            onChange={() => toggleItem(item.itemKey)}
-                            aria-label={`Select ${item.customerName}`}
-                          />
-                        ) : null}
-                      </td>
-                      <td>
-                        <strong title={[
-                          `item=${item.itemKey}`,
-                          item.quoteId ? `quote=${item.quoteId}` : null,
-                          item.quoteIdAliases.length ? `quote aliases=${item.quoteIdAliases.join(",")}` : null,
-                          item.bookkeepingEntryId ? `entry=${item.bookkeepingEntryId}` : null,
-                          item.jobId ? `job=${item.jobId}` : null
-                        ].filter(Boolean).join(" · ")}>
-                          {item.customerName}
-                        </strong>
-                        <span>{item.quoteNumber || "No quote number"}</span>
-                      </td>
-                      <td>{formatShortDate(item.soldDate)}</td>
-                      <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
-                      <td>{toLedgerCurrency(item.total)}</td>
-                      <td className="crm-ledger-money-warn">
-                        {toLedgerCurrency(item.advertisingReserve)}
-                        <span>
-                          {item.advertisingReserve > 0
-                            ? "7% of gross"
-                            : `0% · sold before ${formatShortDate(ADVERTISING_RESERVE_EFFECTIVE_FROM)}`}
-                        </span>
-                      </td>
-                      <td>{toLedgerCurrency(item.cogs)}</td>
-                      <td>{toLedgerCurrency(item.kenCut)}</td>
-                      <td>{toLedgerCurrency(item.installationCost)}</td>
-                      <td>{toLedgerCurrency(item.expensesTotal)}</td>
-                      <td>{toLedgerCurrency(item.remakeTotal)}</td>
-                      <td>
-                        <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
-                        <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
-                      </td>
-                      <td className="crm-payables-profit">{toLedgerCurrency(item.profitAmount)}</td>
-                      <td>{toLedgerCurrency(item.paidAmount)}</td>
-                      <td>{toLedgerCurrency(item.remainingAmount)}</td>
-                      <td>{jobPaymentStateDisplay(item)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              <div className="crm-jessica-payables-sections">
+                <section>
+                  <h4>Completed Payables</h4>
+                  {completedJobItems.length ? (
+                    <JessicaJobLedgerTable
+                      items={completedJobItems}
+                      activeItemKeys={activeItemKeys}
+                      amountDue={amountDue}
+                      selectedItemKeys={selectedItemKeys}
+                      onToggle={toggleItem}
+                    />
+                  ) : (
+                    <p className="crm-empty">No unpaid completed Jessica jobs.</p>
+                  )}
+                </section>
+                <section>
+                  <h4>Future / Pipeline Earnings</h4>
+                  {pipelineJobItems.length ? (
+                    <JessicaJobLedgerTable
+                      items={pipelineJobItems}
+                      activeItemKeys={activeItemKeys}
+                      amountDue={amountDue}
+                      selectedItemKeys={selectedItemKeys}
+                      onToggle={toggleItem}
+                    />
+                  ) : (
+                    <p className="crm-empty">No Jessica pipeline jobs.</p>
+                  )}
+                </section>
+              </div>
             ) : (
             <table className="crm-bookkeeping-table">
               <thead>
@@ -11356,7 +11421,6 @@ function PartnerPaymentsView({
               </tbody>
             </table>
             )}
-            {activePerson === "jessica" && !jobItems.length ? <p className="crm-empty">No Jessica-sold jobs found.</p> : null}
             {activePerson !== "jessica" && !activeItems.length ? <p className="crm-empty">No active unpaid jobs for {paymentPersonDisplayName(activePerson)}.</p> : null}
           </div>
         </div>

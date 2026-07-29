@@ -616,6 +616,7 @@ describe("buildDashboardData", () => {
 
     expect(data.summary.openJobs).toBe(3);
     expect(data.jobs.find((item) => item.id === "paid-balance")?.status).toBe("closed");
+    expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-balance")?.jobStatus).toBe("sold");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.status).toBe("paid");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.liveStatus).toBe("closed");
     expect(data.bookkeepingRows.find((item) => item.id === "quote-paid-status")?.isPaidInFull).toBe(false);

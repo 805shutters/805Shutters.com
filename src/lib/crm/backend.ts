@@ -1158,7 +1158,11 @@ export function buildDashboardData({
 
   const baseBookkeepingRows = buildBookkeepingRows({ quotes: contractProjectedQuotes, entries, payments, credits, expenses });
   const liveJobs = projectLiveJobStatuses(contractProjectedJobs, baseBookkeepingRows);
-  const statusBookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs);
+  const sourceJobStatusById = new Map(jobs.map((job) => [job.id, job.status]));
+  const statusBookkeepingRows = projectLiveBookkeepingStatuses(baseBookkeepingRows, liveJobs).map((row) => ({
+    ...row,
+    jobStatus: row.jobId ? sourceJobStatusById.get(row.jobId) || null : null
+  }));
   const liveQuotes = projectLiveQuoteStatuses(contractProjectedQuotes, statusBookkeepingRows);
   const bookkeepingRows = projectBookkeepingRowContacts(statusBookkeepingRows, liveJobs, liveQuotes, customers);
   const bookkeepingTotals = sumBookkeepingRows(bookkeepingRows);
