@@ -10918,22 +10918,18 @@ function JessicaJobLedgerTable({
     <table className="crm-bookkeeping-table crm-jessica-job-ledger">
       <thead>
         <tr>
-          <th aria-label="Select job" />
+          <th className="crm-jessica-owed-column">Jessica Owed</th>
           <th>Customer</th>
-          <th>Sold</th>
           <th>Job Status</th>
+          <th>Ken Payoff</th>
+          <th>COGS</th>
+          <th>Installation</th>
+          <th>Other Costs</th>
+          <th>Mike Profit</th>
           <th>Gross Sale</th>
           <th>Marketing</th>
-          <th>COGS</th>
-          <th>Ken</th>
-          <th>Installation</th>
-          <th>Expenses</th>
-          <th>Remakes</th>
           <th>Profit to Split</th>
-          <th className="crm-payables-profit">Jessica Share</th>
-          <th>Paid To Jessica</th>
-          <th>Remaining</th>
-          <th>Payment Status</th>
+          <th>Sold</th>
         </tr>
       </thead>
       <tbody>
@@ -10945,7 +10941,18 @@ function JessicaJobLedgerTable({
               key={item.itemKey}
               className={held ? "crm-payables-row--held" : item.payableReady ? "crm-payables-row--ready" : undefined}
             >
-              <td>
+              <td
+                className={`crm-jessica-owed-column${
+                  held
+                    ? " crm-jessica-owed-column--held"
+                    : item.displaySection === "pipeline"
+                      ? " crm-jessica-owed-column--pipeline"
+                      : " crm-jessica-owed-column--payable"
+                }`}
+              >
+                <strong>{toLedgerCurrency(item.remainingAmount)}</strong>
+                <span>{jobPaymentStateDisplay(item)}</span>
+                {item.paidAmount > 0 ? <small>{toLedgerCurrency(item.paidAmount)} already paid</small> : null}
                 {selectable ? (
                   <input
                     type="checkbox"
@@ -10967,8 +10974,17 @@ function JessicaJobLedgerTable({
                 </strong>
                 <span>{item.quoteNumber || "No quote number"}</span>
               </td>
-              <td>{formatShortDate(item.soldDate)}</td>
               <td>{item.jobStatus ? titleCase(item.jobStatus) : "Unknown"}</td>
+              <td>{toLedgerCurrency(item.kenCut)}</td>
+              <td>{toLedgerCurrency(item.cogs)}</td>
+              <td>{toLedgerCurrency(item.installationCost)}</td>
+              <td>
+                <strong>{toLedgerCurrency(item.expensesTotal + item.remakeTotal)}</strong>
+                <span>
+                  Expenses {toLedgerCurrency(item.expensesTotal)} · Remakes {toLedgerCurrency(item.remakeTotal)}
+                </span>
+              </td>
+              <td>{toLedgerCurrency(item.mikeProfit)}</td>
               <td>{toLedgerCurrency(item.total)}</td>
               <td className="crm-ledger-money-warn">
                 {toLedgerCurrency(item.advertisingReserve)}
@@ -10978,29 +10994,11 @@ function JessicaJobLedgerTable({
                     : `0% · sold before ${formatShortDate(ADVERTISING_RESERVE_EFFECTIVE_FROM)}`}
                 </span>
               </td>
-              <td>{toLedgerCurrency(item.cogs)}</td>
-              <td>{toLedgerCurrency(item.kenCut)}</td>
-              <td>{toLedgerCurrency(item.installationCost)}</td>
-              <td>{toLedgerCurrency(item.expensesTotal)}</td>
-              <td>{toLedgerCurrency(item.remakeTotal)}</td>
               <td>
                 <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
                 <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
               </td>
-              <td
-                className={`crm-payables-profit${
-                  held
-                    ? " crm-payables-profit--held"
-                    : item.displaySection === "pipeline"
-                      ? " crm-payables-profit--pipeline"
-                      : ""
-                }`}
-              >
-                {toLedgerCurrency(item.profitAmount)}
-              </td>
-              <td>{toLedgerCurrency(item.paidAmount)}</td>
-              <td>{toLedgerCurrency(item.remainingAmount)}</td>
-              <td>{jobPaymentStateDisplay(item)}</td>
+              <td>{formatShortDate(item.soldDate)}</td>
             </tr>
           );
         })}

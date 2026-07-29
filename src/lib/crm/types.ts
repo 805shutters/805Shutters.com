@@ -654,6 +654,7 @@ export type CrmPartnerJobLedgerItem = {
   expensesTotal: number;
   remakeTotal: number;
   remainingProfitBeforeJessica: number;
+  mikeProfit: number;
   profitAmount: number;
   paidAmount: number;
   remainingAmount: number;

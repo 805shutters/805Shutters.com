@@ -341,6 +341,7 @@ describe("buildPartnerPaymentLedger", () => {
         itemKey: "jessica:manual:completed-ready",
         displaySection: "completed",
         payableReady: true,
+        mikeProfit: 600,
         holdReason: null
       })
     ]);

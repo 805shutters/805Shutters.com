@@ -740,6 +740,7 @@ export function buildPartnerPaymentLedger({
           expensesTotal: roundCents(row.expensesTotal),
           remakeTotal: roundCents(row.remakeTotal),
           remainingProfitBeforeJessica: roundCents(row.remainingProfitBeforeJessica),
+          mikeProfit: roundCents(row.mikeProfit),
           profitAmount,
           paidAmount,
           remainingAmount,

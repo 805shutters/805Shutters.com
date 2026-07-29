@@ -13762,6 +13762,63 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   margin: 0 0 10px;
 }
 
+.crm-jessica-job-ledger .crm-jessica-owed-column {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 180px;
+  background: var(--white);
+}
+
+.crm-jessica-job-ledger thead .crm-jessica-owed-column {
+  z-index: 2;
+}
+
+.crm-jessica-job-ledger td.crm-jessica-owed-column {
+  display: grid;
+  gap: 4px;
+}
+
+.crm-jessica-owed-column > strong {
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.crm-jessica-owed-column > span {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.crm-jessica-owed-column > small {
+  color: var(--muted);
+}
+
+.crm-jessica-owed-column--payable > strong,
+.crm-jessica-owed-column--payable > span {
+  color: #167a3f;
+}
+
+.crm-jessica-job-ledger .crm-jessica-owed-column--payable {
+  background: #f3fbf5;
+}
+
+.crm-jessica-owed-column--held > strong,
+.crm-jessica-owed-column--held > span {
+  color: #b3261e;
+}
+
+.crm-jessica-job-ledger .crm-jessica-owed-column--held {
+  background: #fff5f3;
+}
+
+.crm-jessica-owed-column--pipeline > strong,
+.crm-jessica-owed-column--pipeline > span {
+  color: var(--muted);
+}
+
 .crm-payment-review-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
