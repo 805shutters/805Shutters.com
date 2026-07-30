@@ -1,17 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export function FrancisParnellBackfillClient() {
   const [state, setState] = useState<"idle" | "posting" | "done" | "error">("idle");
   const [result, setResult] = useState("");
+  const [session, setSession] = useState<Session | null>(null);
+  const supabase = getSupabaseBrowserClient();
+
+  useEffect(() => {
+    supabase?.auth.getSession().then(({ data }) => setSession(data.session));
+  }, [supabase]);
 
   async function postHistoricalRecordkeeping() {
+    if (!session) {
+      setState("error");
+      setResult('{"message":"Authenticated CRM session is required."}');
+      return;
+    }
     setState("posting");
     setResult("");
     const response = await fetch("/api/crm/historical-recordkeeping/francis-parnell", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
       body: JSON.stringify({ mode: "historical_recordkeeping_only" }),
     });
     const text = await response.text();
@@ -33,7 +49,7 @@ export function FrancisParnellBackfillClient() {
       <button
         type="button"
         onClick={postHistoricalRecordkeeping}
-        disabled={state === "posting" || state === "done"}
+        disabled={!session || state === "posting" || state === "done"}
         style={{ padding: "12px 18px", fontWeight: 700 }}
       >
         {state === "posting"
