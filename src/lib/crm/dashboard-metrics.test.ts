@@ -334,7 +334,7 @@ describe("depositNeededRows", () => {
       row({ id: "c", jobId: "jc", status: "sold", depositDue: 0, depositPaid: 0, balance: 1000 }),
       row({ id: "d", jobId: "jd", status: "ordered", depositDue: 200, depositPaid: 0, balance: 800 }),
     ];
-    expect(depositNeededRows(rows).map((r) => r.id)).toEqual(["a"]);
+    expect(depositNeededRows(rows).map((r) => r.id)).toEqual(["a", "c"]);
   });
 
   it("summary counts distinct jobs + sums the deposit shortfall", () => {
@@ -348,6 +348,19 @@ describe("depositNeededRows", () => {
     });
     expect(summary.depositNeeded).toBe(2);
     expect(summary.depositNeededAmount).toBe(450); // (200-50) + (300-0)
+  });
+
+  it("summary counts sold jobs with no payment even when the deposit amount is not configured", () => {
+    const summary = buildDashboardSummaryMetrics({
+      jobs: [],
+      quotes: [],
+      rows: [
+        row({ id: "missing-deposit-amount", jobId: "j-missing", status: "sold", depositDue: 0, depositPaid: 0, balance: 2811.05 }),
+      ],
+    });
+
+    expect(summary.depositNeeded).toBe(1);
+    expect(summary.depositNeededAmount).toBe(0);
   });
 });
 

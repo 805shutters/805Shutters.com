@@ -105,13 +105,7 @@ const COMPLETED_BOOKKEEPING_STATUSES = new Set<CrmBookkeepingStatus>(["installed
 
 /** Sold jobs (sold/approved) where the required deposit hasn't been collected. */
 export function depositNeededRows(rows: CrmBookkeepingRow[]) {
-  return rows.filter((row) => {
-    const status = effectiveBookkeepingStatus(row);
-    const isSold = status === "sold" || status === "approved";
-    const due = Number(row.depositDue) || 0;
-    const paid = Number(row.depositPaid) || 0;
-    return isSold && due > 0 && paid < due;
-  });
+  return rows.filter(trackingRowNeedsDeposit);
 }
 
 /**

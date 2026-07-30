@@ -4948,7 +4948,14 @@ function buildSummaryDrill(
         subtitle: "Sold jobs where the deposit hasn't been collected",
         metric,
         placement: "summary",
-        entries: rowsToEntries(depositNeededRows(rows), (row) => Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0), { jobs, files })
+        entries: rowsToEntries(
+          depositNeededRows(rows),
+          (row) => {
+            const configuredShortfall = Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0);
+            return configuredShortfall > 0 ? configuredShortfall : Math.max(Number(row.balance) || 0, 0);
+          },
+          { jobs, files }
+        )
       };
     case "readyToOrder":
       if (!vendorOrderTasks) return null;
