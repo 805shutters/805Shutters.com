@@ -45,10 +45,11 @@ function money(value: unknown) {
 }
 
 function sameIdentity(row: AnyRow) {
+  const fullAddress = [row.address || row.customer_address, row.city].filter(Boolean).join(", ");
   return (
     normalizedText(row.customer_name) === normalizedText(FRANCIS_PARNELL_BACKFILL.customerName) &&
     digits(row.phone || row.customer_phone) === FRANCIS_PARNELL_BACKFILL.customerPhone &&
-    normalizedText(row.address || row.customer_address).includes(normalizedText(FRANCIS_PARNELL_BACKFILL.customerAddress))
+    normalizedText(fullAddress).includes(normalizedText(FRANCIS_PARNELL_BACKFILL.customerAddress))
   );
 }
 
