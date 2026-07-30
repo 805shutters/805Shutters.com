@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { crmAuthErrorResponse, CrmAuthError, requireCrmUser } from "@/lib/crm/auth";
-import { projectMobileCustomers, type MobileCustomerScope } from "@/lib/crm/mobile-customers";
+import { mobileCustomerMatchesLetter, projectMobileCustomers, type MobileCustomerScope } from "@/lib/crm/mobile-customers";
 import { sendSquareOrderPaymentLink } from "@/lib/crm/square-payment-links";
 
 export const runtime = "nodejs";
@@ -9,11 +9,12 @@ export async function GET(request:NextRequest) {
   try {
     const {supabase}=await requireCrmUser(request);
     const q=(request.nextUrl.searchParams.get("q")||"").trim().toLowerCase();
+    const letter=(request.nextUrl.searchParams.get("letter")||"").trim().toUpperCase();
     const scope:MobileCustomerScope=request.nextUrl.searchParams.get("scope")==="archived"?"archived":"active";
-    if(q.length<2) return NextResponse.json({results:[]});
+    if(q.length<2&&!/^[A-Z]$/.test(letter)) return NextResponse.json({results:[]});
     const jobsResult=await supabase.from("crm_jobs").select("id,customer_name,phone,email,address,city,state,zip,estimated_total,deposit_paid,meta").limit(1000);
     if(jobsResult.error) throw new CrmAuthError(502,"Customer records could not be loaded.");
-    const jobs=(jobsResult.data||[]).filter((j:any)=>[j.customer_name,j.phone,j.email,j.address,j.city].some(v=>String(v||"").toLowerCase().includes(q))).slice(0,40);
+    const jobs=(jobsResult.data||[]).filter((j:any)=>(q.length<2||[j.customer_name,j.phone,j.email,j.address,j.city].some(v=>String(v||"").toLowerCase().includes(q)))&&(!letter||mobileCustomerMatchesLetter(j.customer_name,letter))).slice(0,40);
     if(!jobs.length) return NextResponse.json({results:[]});
     const quoteResult=await supabase.from("crm_quotes").select("id,job_id,status,quote_total,deposit_required,customer_phone,customer_email").in("job_id",jobs.map((j:any)=>j.id));
     if(quoteResult.error) throw new CrmAuthError(502,"Contract records could not be loaded.");

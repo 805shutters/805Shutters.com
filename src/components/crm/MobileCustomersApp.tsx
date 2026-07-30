@@ -14,17 +14,18 @@ async function api(path:string,init?:RequestInit){
 const money=(n:number)=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
 
 export function MobileCustomersApp(){
-  const [scope,setScope]=useState<MobileCustomerScope>("active"),[query,setQuery]=useState(""),[rows,setRows]=useState<MobileCustomerResult[]>([]);
+  const [scope,setScope]=useState<MobileCustomerScope>("active"),[query,setQuery]=useState(""),[letter,setLetter]=useState(""),[rows,setRows]=useState<MobileCustomerResult[]>([]);
   const [loading,setLoading]=useState(false),[error,setError]=useState(""),[action,setAction]=useState<{row:MobileCustomerResult;type:"deposit"|"balance";key:string}|null>(null);
   const [channel,setChannel]=useState<"text"|"email">("text"),[sending,setSending]=useState(false),[notice,setNotice]=useState("");
-  useEffect(()=>{if(query.trim().length<2){setRows([]);return;} const timer=setTimeout(async()=>{setLoading(true);setError("");try{setRows((await api(`/api/crm/mobile/customers?q=${encodeURIComponent(query)}&scope=${scope}`)).results)}catch(e){setError(e instanceof Error?e.message:"Search failed.")}finally{setLoading(false)}},250);return()=>clearTimeout(timer)},[query,scope]);
+  useEffect(()=>{if(query.trim().length<2&&!letter){setRows([]);return;} const timer=setTimeout(async()=>{setLoading(true);setError("");try{setRows((await api(`/api/crm/mobile/customers?q=${encodeURIComponent(query)}&letter=${letter}&scope=${scope}`)).results)}catch(e){setError(e instanceof Error?e.message:"Search failed.")}finally{setLoading(false)}},250);return()=>clearTimeout(timer)},[query,letter,scope]);
   async function send(e:FormEvent){e.preventDefault();if(!action)return;setSending(true);setError("");try{await api("/api/crm/mobile/customers",{method:"POST",body:JSON.stringify({quoteId:action.row.quoteId,jobId:action.row.jobId,paymentType:action.type,channel,idempotencyKey:action.key})});setNotice(`${action.type==="deposit"?"Deposit":"Balance"} link sent by ${channel==="text"?"text":"email"}.`);setAction(null)}catch(e){setError(e instanceof Error?e.message:"Link could not be sent.")}finally{setSending(false)}}
   return <main className="mobile-customer-payments">
     <header><a href="/crm/mobile" aria-label="Back to mobile app"><ArrowLeft/></a><div><small>805 SHUTTERS CRM</small><h1>Customer Info / Payments</h1></div><a href="/crm/mobile" aria-label="Close customer info and payments"><X/></a></header>
     <div className="mobile-customer-scopes" role="group" aria-label="Job search scope"><button className={scope==="active"?"active":""} onClick={()=>setScope("active")}>Active Jobs</button><button className={scope==="archived"?"active":""} onClick={()=>setScope("archived")}>Archived Jobs</button></div>
     <label className="mobile-customer-search">Search customers<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Name, phone, email, or address" autoFocus/></label>
+    <div className="mobile-customer-letter-index" role="group" aria-label="Browse customers by first or last name">{Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(value=><button key={value} type="button" aria-pressed={letter===value} className={letter===value?"active":""} onClick={()=>setLetter(current=>current===value?"":value)}>{value}</button>)}</div>
     {loading&&<p role="status"><Loader2 className="spin"/> Searching…</p>}{error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="success">{notice}</p>}
-    {!loading&&query.length>=2&&!error&&!rows.length&&<p>No {scope} customer jobs matched this search.</p>}
+    {!loading&&(query.length>=2||letter)&&!error&&!rows.length&&<p>No {scope} customer jobs matched {letter?`the letter ${letter}`:"this search"}.</p>}
     <section>{rows.map(row=>{const tel=mobilePhoneTarget(row.phone),map=mobileMapTarget(row.address);return <article key={row.id}>
       <h2>{row.name}</h2>
       {tel?<a href={tel} aria-label={`Call ${row.name} at ${row.phone}`}><Phone/> {row.phone}</a>:<span>Phone unavailable</span>}
