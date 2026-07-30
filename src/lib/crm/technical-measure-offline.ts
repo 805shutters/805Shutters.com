@@ -6,12 +6,16 @@ export type OfflineMeasureDraftPayload = {
   lines: Array<{ id: string; currentValues: TechnicalMeasureLineValues }>;
 };
 
+export type OfflineMeasureSubmitPayload = {
+  installationDurationMinutes: number;
+};
+
 export type OfflineMeasureQueueEntry = {
   key: string;
   owner: string;
   formId: string;
   operation: "draft" | "submit";
-  payload: OfflineMeasureDraftPayload | Record<string, never>;
+  payload: OfflineMeasureDraftPayload | OfflineMeasureSubmitPayload;
   updatedAt: string;
 };
 

@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildNoMeasureInstallerFormHandoff,
   buildInstallerFormPdf,
   calculateInstallerCod,
+  installerFormDeliveryComplete,
   installerWorkflowFromMeta,
   type InstallerFormRow,
 } from "./installer-forms";
+import { pendingInstallationHandoffDeliveryState } from "./installation-handoff";
 
 describe("installer COD adjustment", () => {
   it("withholds half of each unique not-installed line item", () => {
@@ -101,5 +104,91 @@ describe("editable installer workflow state", () => {
       issues: [{ lineId: "line-1", notInstalled: true, details: "" }],
       meta: {},
     }).outcome).toBe("partially_completed");
+  });
+});
+
+describe("installer-form installation handoff", () => {
+  const form = {
+    id: "10000000-0000-4000-8000-000000000003",
+    created_at: "2026-07-30T14:15:00.000-07:00",
+    quote_id: "10000000-0000-4000-8000-000000000004",
+    job_id: "10000000-0000-4000-8000-000000000002",
+    public_token: "secret",
+    status: "sent",
+    customer_snapshot: {
+      name: "Jane Customer",
+      address: "123 Main Street",
+      phone: null,
+      email: null,
+      quoteNumber: "805-0200",
+    },
+    line_snapshot: [
+      {
+        id: "line-1",
+        room: "Living Room",
+        productName: "Roller Shade",
+        styleName: "Solar",
+        options: [],
+        quantity: 2,
+        lineTotal: 1000,
+      },
+      {
+        id: "line-2",
+        room: "Patio",
+        productName: "Motorized Drapery Track",
+        styleName: "Track",
+        options: [],
+        quantity: 1,
+        lineTotal: 500,
+      },
+    ],
+    cod_original: 1500,
+    cod_adjusted: 1500,
+    cod_withheld: 0,
+    issues: [],
+    accepted: false,
+    signer_name: null,
+    signed_at: null,
+    sent_at: "2026-07-30T14:16:00.000-07:00",
+    meta: {},
+  } satisfies InstallerFormRow;
+
+  it("derives physical openings and drapery while retaining UUID-only lineage", () => {
+    const handoff = buildNoMeasureInstallerFormHandoff(
+      form,
+      "10000000-0000-4000-8000-000000000001",
+    );
+    expect(handoff.payload).toMatchObject({
+      handoffKind: "no_measure",
+      sourceCustomerId: "10000000-0000-4000-8000-000000000001",
+      sourceJobId: form.job_id,
+      sourceDocumentId: form.id,
+      distinctPhysicalWindowOpenings: 3,
+      hasDrapery: true,
+    });
+    expect(handoff.canonicalJson).not.toContain("Jane Customer");
+    expect(handoff.canonicalJson).not.toContain("123 Main Street");
+  });
+
+  it("requires both installer and handoff sent timestamps before suppressing a retry", () => {
+    const handoff = buildNoMeasureInstallerFormHandoff(
+      form,
+      "10000000-0000-4000-8000-000000000001",
+    );
+    const pending = pendingInstallationHandoffDeliveryState(handoff);
+    expect(installerFormDeliveryComplete({
+      ...form,
+      meta: { installation_handoff: pending },
+    })).toBe(false);
+    expect(installerFormDeliveryComplete({
+      ...form,
+      meta: {
+        installation_handoff: {
+          ...pending,
+          status: "sent",
+          sent_at: "2026-07-30T14:17:00.000-07:00",
+        },
+      },
+    })).toBe(true);
   });
 });

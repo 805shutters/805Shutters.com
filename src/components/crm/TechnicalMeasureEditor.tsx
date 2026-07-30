@@ -5,7 +5,11 @@ import type { Session } from "@supabase/supabase-js";
 import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
-import type { SignatureStroke, TechnicalMeasureForm, TechnicalMeasureLineValues } from "@/lib/crm/technical-measures";
+import type {
+  SignatureStroke,
+  TechnicalMeasureForm,
+  TechnicalMeasureLineValues,
+} from "@/lib/crm/technical-measures";
 import { MeasurementGridModal } from "@mts/components/crm/quote-builder/MeasurementGridModal";
 import {
   FRACTIONS,
@@ -114,6 +118,25 @@ const SHUTTER_MEASURE_PRIORITY_KEYS = [
 const SHADE_MEASURE_PRIORITY_KEYS = ["mount_type", "control_side"] as const;
 const HEADER_DETAIL_KEYS = new Set(["supplier", "manufacturer"]);
 const OPENING_LABELS = ["A", "B", "C", "D"] as const;
+const INSTALLATION_DURATION_CHOICES = Array.from({ length: 32 }, (_, index) => (index + 1) * 15);
+
+function installationDurationLabel(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (!hours) return `${minutes} minutes`;
+  if (!remainder) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  return `${hours}h ${remainder}m`;
+}
+
+function persistedInstallationDuration(form: TechnicalMeasureForm) {
+  const duration = Number(form.meta.installation_duration_minutes);
+  return Number.isInteger(duration)
+    && duration >= 15
+    && duration <= 480
+    && duration % 15 === 0
+    ? duration
+    : null;
+}
 
 function isShutterProduct(productId: string) {
   return productId.toLowerCase().includes("shutter");
@@ -375,11 +398,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   const [offlineMode, setOfflineMode] = useState(false);
   const [pendingSync, setPendingSync] = useState(false);
   const [completionIssues, setCompletionIssues] = useState<TechnicalMeasureCompletionIssue[]>([]);
+  const [installationDurationMinutes, setInstallationDurationMinutes] = useState<number | null>(null);
   const hydratedRef = useRef(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncedPayloadRef = useRef("");
   const draftSyncPromiseRef = useRef<Promise<{ form: TechnicalMeasureForm; queued: boolean }> | null>(null);
   const linesRef = useRef<EditableLine[]>([]);
+  const hydratedFormIdRef = useRef("");
 
   useEffect(() => {
     if (!supabase) { setAuthLoading(false); return; }
@@ -399,6 +424,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     linesRef.current = nextForm.lines;
     setActiveLineIndex((current) => Math.min(current, Math.max(nextForm.lines.length - 1, 0)));
     setSignerName(nextForm.customer_snapshot.name || "");
+    const persistedDuration = persistedInstallationDuration(nextForm);
+    setInstallationDurationMinutes((current) =>
+      hydratedFormIdRef.current === nextForm.id && persistedDuration === null
+        ? current
+        : persistedDuration
+    );
+    hydratedFormIdRef.current = nextForm.id;
     setOfflineMode(fromOffline);
     lastSyncedPayloadRef.current = fromOffline ? "" : JSON.stringify(technicalMeasureDraftPayload(nextForm.lines));
     hydratedRef.current = true;
@@ -650,7 +682,13 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         return;
       }
       if (saved.queued || !navigator.onLine || !session) {
-        await queueTechnicalMeasureOperation(owner(), formId, "submit", {});
+        if (!installationDurationMinutes) {
+          setMessage("Choose the installation duration before completing the measure.");
+          return;
+        }
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", {
+          installationDurationMinutes,
+        });
         setPendingSync(true);
         setOfflineMode(true);
         setMessage("Measure saved on this phone · it will submit automatically when service returns.");
@@ -658,10 +696,23 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       }
       let result: { form: TechnicalMeasureForm };
       try {
-        result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, { method: "POST", body: "{}" });
+        if (!installationDurationMinutes) {
+          setMessage("Choose the installation duration before completing the measure.");
+          return;
+        }
+        result = await crmFetch<{ form: TechnicalMeasureForm }>(session, `/api/crm/technical-measures/${formId}/submit`, {
+          method: "POST",
+          body: JSON.stringify({ installationDurationMinutes }),
+        });
       } catch (error) {
         if (!shouldQueueCrmError(error)) throw error;
-        await queueTechnicalMeasureOperation(owner(), formId, "submit", {});
+        if (!installationDurationMinutes) {
+          setMessage("Choose the installation duration before completing the measure.");
+          return;
+        }
+        await queueTechnicalMeasureOperation(owner(), formId, "submit", {
+          installationDurationMinutes,
+        });
         setPendingSync(true);
         setOfflineMode(true);
         setMessage("Measure saved on this phone · it will submit automatically when service returns.");
@@ -678,12 +729,21 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
 
   async function handleSign() {
     if (!session) return;
+    if (!installationDurationMinutes) {
+      setMessage("Choose the installation duration before signing the measure.");
+      return;
+    }
     setBusy(true); setMessage(null);
     try {
       await flushLatestDraft();
       const result = await crmFetch<{ form: TechnicalMeasureForm; email: { sent: boolean; error?: string; skipped?: string } }>(session, `/api/crm/technical-measures/${formId}/sign`, {
         method: "POST",
-        body: JSON.stringify({ acknowledged, signerName, signatureStrokes: signature }),
+        body: JSON.stringify({
+          acknowledged,
+          signerName,
+          signatureStrokes: signature,
+          installationDurationMinutes,
+        }),
       });
       setForm(result.form); setLines(result.form.lines);
       setMessage(result.email.sent ? "Change order signed, emailed to the customer, and saved to Customer Files." : `Change order signed and saved. Email needs retry: ${result.email.error || result.email.skipped || "delivery unavailable"}`);
@@ -1085,7 +1145,25 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         ) : <button className="technical-measure-add-future" type="button" onClick={() => setFutureMeasureOpen(true)}><Plus /> Add Future Measure</button>}
       </section> : null}
 
-      {!readOnly && measureStarted ? <footer className="technical-measure-actions"><button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button><button className="technical-measure-primary" type="button" disabled={busy} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button></footer> : null}
+      {!readOnly && measureStarted ? <footer className="technical-measure-actions">
+        <label className="technical-measure-install-duration">
+          <span>Installation duration</span>
+          <select
+            aria-label="Installation duration"
+            value={installationDurationMinutes || ""}
+            onChange={(event) => setInstallationDurationMinutes(
+              event.target.value ? Number(event.target.value) : null,
+            )}
+          >
+            <option value="">Choose…</option>
+            {INSTALLATION_DURATION_CHOICES.map((minutes) => (
+              <option value={minutes} key={minutes}>{installationDurationLabel(minutes)}</option>
+            ))}
+          </select>
+        </label>
+        <button type="button" disabled={busy} onClick={handleSave}><Save /> Save Draft</button>
+        <button className="technical-measure-primary" type="button" disabled={busy || !installationDurationMinutes} onClick={handleSubmit}>{busy ? <Loader2 className="spin" /> : <Check />} Complete Measure</button>
+      </footer> : null}
 
       {measurePicker && activePickerLine ? (
         <MeasurementGridModal

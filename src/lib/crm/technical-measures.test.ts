@@ -8,6 +8,7 @@ import {
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
   soldJobNeedsTechnicalMeasureForm,
+  technicalMeasureInstallationDuration,
   technicalMeasureDraftDisposition,
   technicalMeasureScheduling,
   technicalMeasureLineChanges,
@@ -158,6 +159,20 @@ describe("technical measure sold-job recovery", () => {
       { id: "job-2", status: "quoted", meta: neededMeta },
       new Set(),
     )).toBe(false);
+  });
+});
+
+describe("technical measure installation duration", () => {
+  it("reads only valid 15-minute installation durations from persisted measure metadata", () => {
+    expect(technicalMeasureInstallationDuration({
+      meta: { installation_duration_minutes: 105 },
+    })).toBe(105);
+    expect(technicalMeasureInstallationDuration({
+      meta: { installation_duration_minutes: 95 },
+    })).toBeNull();
+    expect(technicalMeasureInstallationDuration({
+      meta: { installation_duration_minutes: 495 },
+    })).toBeNull();
   });
 });
 

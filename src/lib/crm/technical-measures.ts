@@ -31,6 +31,7 @@ import {
   technicalMeasureCompletionIssues,
   type TechnicalMeasureCompletionIssue,
 } from "@/lib/crm/technical-measure-completion";
+import { normalizeInstallationDurationMinutes } from "@/lib/crm/installation-handoff";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
 
@@ -158,6 +159,16 @@ export type TechnicalMeasureForm = {
   futureMeasures?: FutureMeasureEntry[];
   scheduling?: TechnicalMeasureScheduling;
 };
+
+export function technicalMeasureInstallationDuration(
+  form: Pick<TechnicalMeasureForm, "meta">,
+): number | null {
+  try {
+    return normalizeInstallationDurationMinutes(form.meta.installation_duration_minutes);
+  } catch {
+    return null;
+  }
+}
 
 export function technicalMeasureFormUrl(formId: string): string {
   const origin = (process.env.NEXT_PUBLIC_SITE_URL || "https://805shutters.com").replace(/\/+$/, "");
@@ -886,10 +897,25 @@ async function syncRequiredAddendum(supabase: SupabaseClient, form: TechnicalMea
   else await supabase.from("crm_technical_measure_addendums").insert(row);
 }
 
-export async function submitTechnicalMeasureWithoutAddendum(supabase: SupabaseClient, formId: string, actor: CrmActor) {
+export async function submitTechnicalMeasureWithoutAddendum(
+  supabase: SupabaseClient,
+  formId: string,
+  actor: CrmActor,
+  input: { installationDurationMinutes?: unknown } = {},
+) {
   const form = await loadTechnicalMeasureForm(supabase, formId);
+  if (form.status === "submitted") {
+    const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
+    await createAndSendInstallerForm(supabase, form.quote_id);
+    return loadTechnicalMeasureForm(supabase, formId);
+  }
   if (form.requiresAddendum) throw new CrmAuthError(409, "The customer must acknowledge and sign the listed contract changes.");
-  return finalizeTechnicalMeasure(supabase, form, actor);
+  return finalizeTechnicalMeasure(
+    supabase,
+    form,
+    actor,
+    input.installationDurationMinutes,
+  );
 }
 
 function validSignatureStrokes(value: unknown): SignatureStroke[] {
@@ -910,9 +936,17 @@ function validSignatureStrokes(value: unknown): SignatureStroke[] {
 export async function signTechnicalMeasureAddendum(
   supabase: SupabaseClient,
   formId: string,
-  input: { acknowledged?: unknown; signerName?: unknown; signatureStrokes?: unknown },
+  input: {
+    acknowledged?: unknown;
+    signerName?: unknown;
+    signatureStrokes?: unknown;
+    installationDurationMinutes?: unknown;
+  },
   actor: CrmActor,
 ) {
+  const installationDurationMinutes = normalizeInstallationDurationMinutes(
+    input.installationDurationMinutes,
+  );
   const form = await loadTechnicalMeasureForm(supabase, formId);
   if (!form.requiresAddendum || !form.addendum) throw new CrmAuthError(409, "There are no contract changes requiring an addendum.");
   if (input.acknowledged !== true) throw new CrmAuthError(400, "The customer must acknowledge all listed changes.");
@@ -934,13 +968,26 @@ export async function signTechnicalMeasureAddendum(
   }).eq("id", form.addendum.id);
   if (error) throw new CrmAuthError(502, "The signed change order could not be saved.");
   await upsertAddendumCustomerContract(supabase, form, form.addendum.id, signedAt);
-  await finalizeTechnicalMeasure(supabase, form, actor);
+  await finalizeTechnicalMeasure(
+    supabase,
+    form,
+    actor,
+    installationDurationMinutes,
+  );
   const email = await deliverTechnicalMeasureAddendum(supabase, formId);
   await recordCrmActivity(supabase, actor, { entityType: "job", entityId: form.job_id, action: "technical_measure.addendum_signed", metadata: { formId, addendumId: form.addendum.id, signerName, email } });
   return { form: await loadTechnicalMeasureForm(supabase, formId), email };
 }
 
-async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: TechnicalMeasureForm, actor: CrmActor) {
+async function finalizeTechnicalMeasure(
+  supabase: SupabaseClient,
+  form: TechnicalMeasureForm,
+  actor: CrmActor,
+  installationDurationMinutesInput: unknown,
+) {
+  const installationDurationMinutes = normalizeInstallationDurationMinutes(
+    installationDurationMinutesInput,
+  );
   const completionIssues = technicalMeasureCompletionIssues(form);
   const normanIssues = validateNormanRollerMeasureForSubmission(form);
   const knownIssueKeys = new Set(completionIssues.map((issue) => `${issue.lineId}:${issue.field}`));
@@ -968,7 +1015,17 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
   }
   const submittedAt = new Date().toISOString();
   await syncTechnicalMeasureOperationalOverride(supabase, form, submittedAt);
-  const { error } = await supabase.from("crm_technical_measure_forms").update({ status: "submitted", submitted_at: submittedAt, technician_email: actor.email, technician_name: actor.displayName || form.technician_name }).eq("id", form.id);
+  const { error } = await supabase.from("crm_technical_measure_forms").update({
+    status: "submitted",
+    submitted_at: submittedAt,
+    technician_email: actor.email,
+    technician_name: actor.displayName || form.technician_name,
+    meta: {
+      ...form.meta,
+      installation_duration_minutes: installationDurationMinutes,
+      ...(actor.userId ? { submitted_by_source_profile_id: actor.userId } : {}),
+    },
+  }).eq("id", form.id);
   if (error) throw new CrmAuthError(502, "The technical measure could not be submitted.");
   const { data: job } = await supabase.from("crm_jobs").select("*").eq("id", form.job_id).maybeSingle();
   if (job) {
@@ -1039,11 +1096,23 @@ async function finalizeTechnicalMeasure(supabase: SupabaseClient, form: Technica
       item.payload as unknown as OnyxAgentOrderPacket,
     )));
   }
+  const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
+  const installerHandoff = await createAndSendInstallerForm(supabase, form.quote_id);
   await recordCrmActivity(supabase, actor, {
     entityType: "job",
     entityId: form.job_id,
     action: "technical_measure.submit",
-    metadata: { formId: form.id, submittedAt, orderPreparations },
+    metadata: {
+      formId: form.id,
+      submittedAt,
+      installationDurationMinutes,
+      installationHandoff: {
+        sent: installerHandoff.email.sent,
+        messageId: installerHandoff.email.id || null,
+        skipped: installerHandoff.email.skipped || null,
+      },
+      orderPreparations,
+    },
   });
   return loadTechnicalMeasureForm(supabase, form.id);
 }

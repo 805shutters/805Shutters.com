@@ -2,8 +2,18 @@ import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { ensureShareToken, loadPublicQuoteByToken, type PublicQuote } from "@/lib/crm/public-quote";
+import { getMeasureNeededMeta } from "@/lib/crm/measure-needed-state";
 import { sendEmail, type EmailResult } from "@/lib/notify/email";
 import { brandIdentity } from "@/lib/brand-identity";
+import {
+  buildNoMeasureInstallationHandoff,
+  buildTechnicalMeasureInstallationHandoff,
+  installationHandoffDeliveryState,
+  installationHandoffPackageFromDeliveryState,
+  pendingInstallationHandoffDeliveryState,
+  type InstallationHandoffDeliveryState,
+  type InstallationHandoffPackage,
+} from "@/lib/crm/installation-handoff";
 
 export const INSTALLER_FORM_RECIPIENT = "mtsinstallations@gmail.com";
 export const INSTALLER_REPORT_RECIPIENT = "805@805shutters.com";
@@ -30,6 +40,8 @@ type InstallerLineSnapshot = {
 
 export type InstallerFormRow = {
   id: string;
+  created_at?: string;
+  updated_at?: string;
   quote_id: string;
   job_id: string | null;
   public_token: string;
@@ -49,6 +61,10 @@ export type InstallerFormRow = {
   accepted: boolean;
   signer_name: string | null;
   signed_at: string | null;
+  sent_at?: string | null;
+  email_recipient?: string | null;
+  email_message_id?: string | null;
+  email_error?: string | null;
   meta?: Record<string, unknown>;
 };
 
@@ -75,6 +91,7 @@ const INSTALLER_REASON_CODES = new Set([
   "customer_request",
   "other",
 ]);
+const INSTALLATION_HANDOFF_META_KEY = "installation_handoff";
 
 function money(value: unknown) {
   return Number(Number(value || 0).toFixed(2));
@@ -119,19 +136,28 @@ export async function createAndSendInstallerForm(
   }
 
   const existing = existingData as InstallerFormRow | null;
-  if (existing && installerFormDeliveryComplete(existing)) {
-    return {
-      form: existing,
-      email: { sent: true, id: installerFormEmailMessageId(existing), skipped: "installer form already delivered" },
-    };
+  if (existing) {
+    const prepared = await prepareInstallerFormInstallationHandoff(supabase, existing);
+    if (installerFormDeliveryComplete(prepared)) {
+      return {
+        form: prepared,
+        email: { sent: true, id: installerFormEmailMessageId(prepared), skipped: "installer form already delivered" },
+      };
+    }
+    return deliverInstallerForm(supabase, prepared);
   }
-
-  if (existing) return deliverInstallerForm(supabase, existing);
 
   const { token } = await ensureShareToken(supabase, quoteId, { email: "automation:installer_form" });
   const quote = await loadPublicQuoteByToken(supabase, token);
   if (!quote) throw new CrmAuthError(404, "The sold quote could not be prepared for installation.");
-  const { data: quoteRow } = await supabase.from("crm_quotes").select("job_id").eq("id", quoteId).maybeSingle();
+  const { data: quoteRow, error: quoteError } = await supabase
+    .from("crm_quotes")
+    .select("job_id")
+    .eq("id", quoteId)
+    .maybeSingle();
+  if (quoteError) {
+    throw new CrmAuthError(502, `The installer form source job could not be loaded: ${quoteError.message}`);
+  }
   const publicToken = randomBytes(24).toString("base64url");
   const row = {
     quote_id: quoteId,
@@ -160,44 +186,230 @@ export async function createAndSendInstallerForm(
     .single();
   if (error || !data) throw new CrmAuthError(502, `The installer form could not be saved${error?.message ? `: ${error.message}` : "."}`);
 
-  return deliverInstallerForm(supabase, data as InstallerFormRow);
+  const prepared = await prepareInstallerFormInstallationHandoff(
+    supabase,
+    data as InstallerFormRow,
+  );
+  return deliverInstallerForm(supabase, prepared);
 }
 
-function installerFormDeliveryComplete(form: InstallerFormRow): boolean {
-  const row = form as InstallerFormRow & { sent_at?: string | null };
-  return Boolean(row.sent_at) && !["email_failed", "pending_delivery"].includes(form.status);
+function installerFormInstallationHandoffState(
+  form: Pick<InstallerFormRow, "meta">,
+): InstallationHandoffDeliveryState | null {
+  return installationHandoffDeliveryState(form.meta?.[INSTALLATION_HANDOFF_META_KEY]);
+}
+
+export function installerFormDeliveryComplete(form: InstallerFormRow): boolean {
+  const handoff = installerFormInstallationHandoffState(form);
+  return Boolean(form.sent_at)
+    && !["email_failed", "pending_delivery"].includes(form.status)
+    && (!handoff || Boolean(handoff.sent_at));
 }
 
 function installerFormEmailMessageId(form: InstallerFormRow): string | undefined {
-  const value = (form as InstallerFormRow & { email_message_id?: string | null }).email_message_id;
-  return value || undefined;
+  const handoff = installerFormInstallationHandoffState(form);
+  return handoff?.email_message_id || form.email_message_id || undefined;
+}
+
+function physicalOpeningCount(form: Pick<InstallerFormRow, "line_snapshot">): number {
+  return form.line_snapshot.reduce((total, line) => {
+    const quantity = Number(line.quantity);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new CrmAuthError(409, "The installer form contains an invalid physical opening quantity.");
+    }
+    return total + quantity;
+  }, 0);
+}
+
+function installerFormHasDrapery(form: Pick<InstallerFormRow, "line_snapshot">): boolean {
+  return form.line_snapshot.some((line) =>
+    /\b(draper(?:y|ies)|drapes?|curtains?)\b/i.test(
+      [line.productName, line.styleName, ...line.options].join(" "),
+    )
+  );
+}
+
+export function buildNoMeasureInstallerFormHandoff(
+  form: InstallerFormRow,
+  sourceCustomerId: string,
+): InstallationHandoffPackage {
+  if (!form.job_id) {
+    throw new CrmAuthError(409, "The installer form is missing its exact source job UUID.");
+  }
+  if (!form.created_at) {
+    throw new CrmAuthError(409, "The installer form is missing its persisted creation timestamp.");
+  }
+  return buildNoMeasureInstallationHandoff({
+    sourceCustomerId,
+    sourceJobId: form.job_id,
+    sourceDocumentId: form.id,
+    submittedAt: form.created_at,
+    distinctPhysicalWindowOpenings: physicalOpeningCount(form),
+    hasDrapery: installerFormHasDrapery(form),
+  });
+}
+
+async function prepareInstallerFormInstallationHandoff(
+  supabase: SupabaseClient,
+  form: InstallerFormRow,
+): Promise<InstallerFormRow> {
+  if (installerFormInstallationHandoffState(form)) return form;
+  if (!form.job_id) {
+    throw new CrmAuthError(409, "The installer form is missing its exact source job UUID.");
+  }
+
+  const [measureResult, jobResult, contractResult] = await Promise.all([
+    supabase
+      .from("crm_technical_measure_forms")
+      .select("id,customer_id,job_id,submitted_at,meta")
+      .eq("job_id", form.job_id)
+      .eq("status", "submitted")
+      .maybeSingle(),
+    supabase.from("crm_jobs").select("id,meta").eq("id", form.job_id).maybeSingle(),
+    supabase
+      .from("crm_customer_contracts")
+      .select("customer_id")
+      .eq("quote_id", form.quote_id)
+      .order("signed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  const lookupError = measureResult.error || jobResult.error || contractResult.error;
+  if (lookupError) {
+    throw new CrmAuthError(502, `The exact installer handoff lineage could not be loaded: ${lookupError.message}`);
+  }
+
+  let handoff: InstallationHandoffPackage | null = null;
+  const measure = measureResult.data as {
+    id?: string;
+    customer_id?: string | null;
+    job_id?: string;
+    submitted_at?: string | null;
+    meta?: Record<string, unknown> | null;
+  } | null;
+  if (measure?.id) {
+    if (!measure.customer_id || !measure.job_id || !measure.submitted_at) {
+      throw new CrmAuthError(
+        409,
+        "The submitted Technical Measure is missing exact customer, job, or document lineage.",
+      );
+    }
+    handoff = buildTechnicalMeasureInstallationHandoff({
+      sourceCustomerId: measure.customer_id,
+      sourceJobId: measure.job_id,
+      sourceDocumentId: measure.id,
+      submittedAt: measure.submitted_at,
+      submittedBySourceProfileId:
+        typeof measure.meta?.submitted_by_source_profile_id === "string"
+          ? measure.meta.submitted_by_source_profile_id
+          : null,
+      durationMinutes: measure.meta?.installation_duration_minutes,
+    });
+  } else if (getMeasureNeededMeta(jobResult.data?.meta).status === "not_needed") {
+    const sourceCustomerId = (contractResult.data as { customer_id?: string | null } | null)
+      ?.customer_id;
+    if (!sourceCustomerId) {
+      throw new CrmAuthError(
+        409,
+        "The no-measure installer handoff is missing an exact source customer UUID.",
+      );
+    }
+    handoff = buildNoMeasureInstallerFormHandoff(form, sourceCustomerId);
+  }
+
+  if (!handoff) return form;
+  const meta = {
+    ...(form.meta || {}),
+    [INSTALLATION_HANDOFF_META_KEY]: pendingInstallationHandoffDeliveryState(handoff),
+  };
+  const { error } = await supabase.from("crm_installer_forms").update({ meta }).eq("id", form.id);
+  if (error) {
+    throw new CrmAuthError(502, `The installer handoff delivery state could not be saved: ${error.message}`);
+  }
+  return { ...form, meta };
+}
+
+function installerFormHandoffPackage(form: InstallerFormRow) {
+  const state = installerFormInstallationHandoffState(form);
+  return state ? installationHandoffPackageFromDeliveryState(state) : null;
 }
 
 async function deliverInstallerForm(
   supabase: SupabaseClient,
   form: InstallerFormRow,
 ): Promise<{ form: InstallerFormRow; email: EmailResult }> {
+  const handoffState = installerFormInstallationHandoffState(form);
+  if (handoffState?.sent_at) {
+    return {
+      form,
+      email: {
+        sent: true,
+        id: handoffState.email_message_id || undefined,
+        skipped: "installation handoff already delivered",
+      },
+    };
+  }
+
   const url = installerUrl(form.public_token);
   const pdf = buildInstallerFormPdf(form, url);
   const message = buildInstallerFormEmail(form, url);
+  const handoff = installerFormHandoffPackage(form);
+  const attachments = [{
+    filename: `805-Shutters-Installation-Form-${form.customer_snapshot.quoteNumber || form.id.slice(0, 8)}.pdf`,
+    content: pdf.toString("base64"),
+    contentType: "application/pdf",
+  }, ...(handoff
+    ? [
+        {
+          filename: handoff.jsonFilename,
+          content: Buffer.from(handoff.canonicalJson, "utf8").toString("base64"),
+          contentType: "application/json",
+        },
+        {
+          filename: handoff.sha256Filename,
+          content: Buffer.from(
+            `${handoff.sha256}  ${handoff.jsonFilename}\n`,
+            "utf8",
+          ).toString("base64"),
+          contentType: "text/plain",
+        },
+      ]
+    : [])];
   const email = await sendEmail({
     to: INSTALLER_FORM_RECIPIENT,
     subject: message.subject,
     html: message.html,
     text: message.text,
-    attachments: [{
-      filename: `805-Shutters-Installation-Form-${form.customer_snapshot.quoteNumber || form.id.slice(0, 8)}.pdf`,
-      content: pdf.toString("base64"),
-      contentType: "application/pdf",
-    }],
-    idempotencyKey: `805-installer-form-${form.id}`,
+    attachments,
+    idempotencyKey: handoff
+      ? `805-installer-form-${form.id}-${handoff.sha256.slice(0, 24)}`
+      : `805-installer-form-${form.id}`,
   });
+  const deliveryTime = email.sent ? new Date().toISOString() : null;
+  const meta = handoffState
+    ? {
+        ...(form.meta || {}),
+        [INSTALLATION_HANDOFF_META_KEY]: {
+          ...handoffState,
+          status: email.sent ? "sent" : "email_failed",
+          email_message_id: email.id || null,
+          email_error: email.error || email.skipped || null,
+          sent_at: deliveryTime,
+        } satisfies InstallationHandoffDeliveryState,
+      }
+    : form.meta;
+  const workflowStatus = ["partially_installed", "completed"].includes(form.status)
+    ? form.status
+    : email.sent
+      ? "sent"
+      : "email_failed";
   const deliveryPatch = {
-    status: email.sent ? "sent" : "email_failed",
-    sent_at: email.sent ? new Date().toISOString() : null,
+    status: workflowStatus,
+    sent_at: deliveryTime || form.sent_at || null,
     email_recipient: INSTALLER_FORM_RECIPIENT,
     email_message_id: email.id || null,
     email_error: email.error || email.skipped || null,
+    meta,
   };
   const { error: deliveryError } = await supabase
     .from("crm_installer_forms")
@@ -402,8 +614,12 @@ export function calculateInstallerCod(
 export function buildInstallerFormEmail(form: InstallerFormRow, url: string) {
   const contract = form.customer_snapshot.quoteNumber ? `Contract ${form.customer_snapshot.quoteNumber}` : "Sold job";
   const subject = `805 Shutters Installation Form — ${form.customer_snapshot.name}`;
-  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached.`;
-  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without pricing.</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
+  const hasHandoff = Boolean(installerFormInstallationHandoffState(form));
+  const handoffNote = hasHandoff
+    ? " The canonical JSON handoff and SHA-256 sidecar are also attached for MTS intake."
+    : "";
+  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached.${handoffNote}`;
+  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without pricing.${html(handoffNote)}</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
   return { subject, text, html: body };
 }
 

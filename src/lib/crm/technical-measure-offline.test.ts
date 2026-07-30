@@ -18,7 +18,9 @@ function queueEntry(
     owner: "tech@example.com",
     formId,
     operation,
-    payload: operation === "draft" ? { lines: [] } : {},
+    payload: operation === "draft"
+      ? { lines: [] }
+      : { installationDurationMinutes: 120 },
     updatedAt,
   };
 }

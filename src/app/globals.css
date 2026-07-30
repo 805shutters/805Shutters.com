@@ -17450,6 +17450,8 @@ body:has(.financing-banner) .site-header-shell {
 .technical-measure-signature button { position: absolute; top: 8px; right: 8px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #bbb; background: #fff; padding: 6px 8px; }
 
 .technical-measure-actions { position: fixed; z-index: 25; left: 50%; bottom: 0; display: flex; width: min(1120px, 100%); transform: translateX(-50%); justify-content: flex-end; gap: 10px; padding: 12px clamp(14px, 3vw, 34px); border-top: 1px solid #c7c9c4; background: rgba(255,255,255,.97); }
+.technical-measure-install-duration { display: grid; min-width: 190px; margin-right: auto; gap: 4px; color: #383b37; font-size: 12px; font-weight: 800; }
+.technical-measure-install-duration select { min-height: 42px; border: 1px solid #a9ada7; border-radius: 8px; background: #fff; padding: 8px 34px 8px 10px; color: #151815; font: inherit; font-size: 14px; }
 .technical-measure-actions button,
 .technical-measure-primary,
 .technical-measure-complete button,
@@ -17598,7 +17600,8 @@ body:has(.financing-banner) .site-header-shell {
   .technical-measure-change-list > div { grid-template-columns: 1fr; gap: 4px; }
   .technical-measure-change-list b { display: none; }
   .technical-measure-price-change { grid-template-columns: 1fr; }
-  .technical-measure-actions { justify-content: stretch; }
+  .technical-measure-actions { flex-wrap: wrap; justify-content: stretch; }
+  .technical-measure-install-duration { flex: 1 0 100%; width: 100%; }
   .technical-measure-actions button { flex: 1; }
   .technical-measure-complete { align-items: flex-start; flex-wrap: wrap; }
   .technical-measure-complete > div { min-width: calc(100% - 40px); }
