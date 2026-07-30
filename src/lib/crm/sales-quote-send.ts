@@ -23,11 +23,10 @@ import {
   type PreparedV2CustomerQuote,
   V2SendPreparationError,
 } from "@/lib/crm/sales-quote-v2-send";
-import { sendSms } from "@/lib/notify/twilio";
 import {
   build805SoldQuoteSmsMessageForRecipient,
-  SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
 } from "@mts/lib/quoteSoldNotification";
+import { sendSoldQuoteSmsNotifications } from "@/lib/crm/sold-quote-notifications";
 import { isInvisibleTiltPanelSelectionMissing } from "@mts/lib/shutterOptionSurcharges";
 import type { SalesQuoteDesign } from "@mts/types/quote";
 
@@ -96,28 +95,21 @@ export async function markSalesQuoteSold(
   const contractUrl = soldSource.share_token
     ? `https://805shutters.com/quote/${encodeURIComponent(String(soldSource.share_token))}`
     : null;
-  const notifications = await Promise.all(
-    SOLD_QUOTE_NOTIFICATION_RECIPIENTS.map(async (recipient) => ({
-      recipient,
-      result: await sendSms({
-        to: recipient,
-        body: build805SoldQuoteSmsMessageForRecipient(recipient, {
-          account_id: soldSource.account_id,
-          customer_name: soldSource.customer_name,
-          customer_phone: soldSource.customer_phone,
-          customer_address: soldSource.customer_address,
-          total_amount: soldSource.total_amount,
-          deposit_paid: soldSource.deposit_paid,
-          share_token: soldSource.share_token,
-          technical_measure: measureDecision,
-        }, contractUrl, measureFormUrl),
-      }),
-    })),
-  );
-  const failed = notifications.filter(({ result }) => !result.sent);
-  if (failed.length) {
-    throw new CrmAuthError(502, `The sale was saved, but ${failed.length} sold notification text(s) failed.`);
-  }
+  const notifications = await sendSoldQuoteSmsNotifications(supabase, {
+    quoteId: crmQuote.id,
+    source: "in_home_sold",
+    buildMessage: (recipient) =>
+      build805SoldQuoteSmsMessageForRecipient(recipient, {
+        account_id: soldSource.account_id,
+        customer_name: soldSource.customer_name,
+        customer_phone: soldSource.customer_phone,
+        customer_address: soldSource.customer_address,
+        total_amount: soldSource.total_amount,
+        deposit_paid: soldSource.deposit_paid,
+        share_token: soldSource.share_token,
+        technical_measure: measureDecision,
+      }, contractUrl, measureFormUrl),
+  });
 
   return { salesQuote: soldSource, crmQuote, notifications, installerForm };
 }

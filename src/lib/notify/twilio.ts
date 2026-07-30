@@ -4,7 +4,17 @@
 // Env: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and either TWILIO_MESSAGING_SERVICE_SID
 // or TWILIO_FROM_PHONE. When unset, sends are skipped (testable without going live).
 
-export type SmsResult = { sent: boolean; skipped?: string; error?: string; sid?: string };
+export type SmsResult = {
+  sent: boolean;
+  skipped?: string;
+  error?: string;
+  sid?: string;
+  /**
+   * The request failed without a provider response. Delivery may have been
+   * accepted, so callers must not automatically retry it.
+   */
+  uncertain?: boolean;
+};
 
 export function isTwilioConfigured(): boolean {
   return Boolean(
@@ -58,6 +68,10 @@ export async function sendSms(input: { to: string | null | undefined; body: stri
     return { sent: true, sid: data.sid };
   } catch (e) {
     console.warn("Twilio send threw:", e);
-    return { sent: false, error: e instanceof Error ? e.message : "send failed" };
+    return {
+      sent: false,
+      error: e instanceof Error ? e.message : "send failed",
+      uncertain: true,
+    };
   }
 }

@@ -52,6 +52,7 @@ import {
   materializeSignedQuoteSelection,
 } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
+import { sendSoldQuoteSmsNotifications } from "@/lib/crm/sold-quote-notifications";
 import { sendEmail, buildQuoteEmail, buildPaymentLinkEmail, buildSignedQuoteShopEmail, type EmailResult } from "@/lib/notify/email";
 import { MIKE_PAYMENT_ADMIN_EMAIL } from "@/lib/crm/allowed-users";
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
@@ -69,13 +70,17 @@ import {
   buildSignedContractVendorOrderPreparations,
   persistVendorOrderPreparations,
 } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
+import {
+  SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
+  SOLD_QUOTE_NOTIFICATION_RECIPIENTS,
+} from "@mts/lib/quoteSoldNotification";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 
 const BUSINESS_NAME = brandIdentity.name;
-export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
-export const SOLD_QUOTE_CONTACT_SMS_RECIPIENT = "805-298-5555" as const;
+export const REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS = SOLD_QUOTE_NOTIFICATION_RECIPIENTS;
+export const SOLD_QUOTE_CONTACT_SMS_RECIPIENT = SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT;
 
 type SignedShopSmsContact = {
   customerPhone?: string | null;
@@ -1352,6 +1357,7 @@ export async function acceptPublicQuote(
         pub = await loadPublicQuoteByToken(supabase, token);
         if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
       }
+      const retryPublicQuote = pub;
       const printedName = quote.customer_printed_name || input.printedName || pub.customerName || "Customer";
       const signature = quote.customer_signature || printedName;
       // Convergence: a retry after a transient downstream failure must still bring
@@ -1379,12 +1385,32 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      if (technicalMeasure === "needed" && soldSync.job) {
-        await ensureTechnicalMeasureForm(
-          supabase,
-          { jobId: soldSync.job.id, quoteId: quote.id },
-          { email: "automation:quote_signed" }
-        );
+      const measureForm = technicalMeasure === "needed" && soldSync.job
+        ? await ensureTechnicalMeasureForm(
+            supabase,
+            { jobId: soldSync.job.id, quoteId: quote.id },
+            { email: "automation:quote_signed" }
+          )
+        : null;
+      const retryShopSmsContact: SignedShopSmsContact = {
+        customerPhone: quote.customer_phone || soldSync.customerPhone,
+        customerAddress: quote.customer_address || soldSync.job?.address || null,
+        technicalMeasure,
+        measureFormUrl: measureForm ? technicalMeasureFormUrl(measureForm.id) : null,
+      };
+      if (input.notify !== false) {
+        await sendSoldQuoteSmsNotifications(supabase, {
+          quoteId: quote.id,
+          source: "public_contract_retry",
+          buildMessage: (recipient) =>
+            buildSignedShopSmsForRecipient(
+              recipient,
+              printedName,
+              retryPublicQuote.total,
+              retryPublicQuote.depositDue,
+              retryShopSmsContact,
+            ),
+        });
       }
       const partial = record(record(quote.meta).partial_acceptance);
       const futureQuoteId = typeof partial.future_quote_id === "string" ? partial.future_quote_id : "";
@@ -1655,14 +1681,20 @@ export async function acceptPublicQuote(
   });
 
   if (input.notify !== false) {
-    // Notify the required sold-quote recipients, then customer.
-    // Best-effort; never blocks signing.
-    for (const num of soldQuoteShopSmsRecipients()) {
-      await sendSms({
-        to: num,
-        body: buildSignedShopSmsForRecipient(num, printedName, soldTotal, signedPub.depositDue, shopSmsContact),
-      });
-    }
+    // Business notifications are claimed and persisted before provider send.
+    // A delivery failure is visible and retryable without undoing the signature.
+    await sendSoldQuoteSmsNotifications(supabase, {
+      quoteId: signedQuote.id,
+      source: "public_contract_accept",
+      buildMessage: (recipient) =>
+        buildSignedShopSmsForRecipient(
+          recipient,
+          printedName,
+          soldTotal,
+          signedPub.depositDue,
+          shopSmsContact,
+        ),
+    });
     if (customerPhone) {
       await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
     }
