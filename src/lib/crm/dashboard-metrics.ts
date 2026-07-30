@@ -114,6 +114,20 @@ export function depositNeededRows(rows: CrmBookkeepingRow[]) {
   });
 }
 
+/**
+ * Tracking must keep newly sold work in the deposit queue even when an older
+ * or incomplete quote has no configured deposit amount yet. A positive
+ * configured deposit remains in the queue until that full amount is collected.
+ */
+export function trackingRowNeedsDeposit(row: CrmBookkeepingRow) {
+  const status = effectiveBookkeepingStatus(row);
+  if (status !== "sold" && status !== "approved") return false;
+
+  const due = Math.max(Number(row.depositDue) || 0, 0);
+  const paid = Math.max(Number(row.depositPaid) || 0, 0);
+  return paid <= 0 || (due > 0 && paid < due);
+}
+
 /** Completed (installed/invoiced/closed) jobs that still owe a balance. */
 export function balanceDueCompletedRows(rows: CrmBookkeepingRow[]) {
   return rows.filter(

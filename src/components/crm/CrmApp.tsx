@@ -49,7 +49,8 @@ import {
   openBalanceRows,
   openSoldRows,
   quotedPipelineQuotes,
-  soldLifecycleJobs
+  soldLifecycleJobs,
+  trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
@@ -5217,10 +5218,6 @@ function matchedInstallEmailsForTarget(
   });
 }
 
-function trackingDepositShortfall(row: CrmBookkeepingRow) {
-  return Math.max((Number(row.depositDue) || 0) - (Number(row.depositPaid) || 0), 0);
-}
-
 function quoteStatusForTracking(quote?: CrmQuote) {
   return quote?.live_status || quote?.status || null;
 }
@@ -5254,8 +5251,8 @@ function classifyTrackingRow(
   if (status === "received" || quoteStatus === "received" || hasShippingSignal) return "shipped";
   if (status === "ordered" || quoteStatus === "ordered" || hasOrderEmail) return "ordered";
 
-  const depositNeeded = trackingDepositShortfall(row) > 0;
-  if ((status === "sold" || status === "approved") && depositNeeded) return "sold_need_deposit";
+  const depositNeeded = trackingRowNeedsDeposit(row);
+  if (depositNeeded) return "sold_need_deposit";
   if (job && isMeasureNeededJob(job) && !depositNeeded) return "need_measure";
   if (status === "sold" || status === "approved" || status === "legacy" || status === "manual") return "need_to_order";
   if (status === "draft" || status === "sent") return "need_follow_up";

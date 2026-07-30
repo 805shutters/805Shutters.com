@@ -5,7 +5,8 @@ import {
   quotedPipelineQuotes,
   depositNeededRows,
   balanceDueCompletedRows,
-  soldLifecycleJobs
+  soldLifecycleJobs,
+  trackingRowNeedsDeposit
 } from "@/lib/crm/dashboard-metrics";
 import { CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 
@@ -347,6 +348,19 @@ describe("depositNeededRows", () => {
     });
     expect(summary.depositNeeded).toBe(2);
     expect(summary.depositNeededAmount).toBe(450); // (200-50) + (300-0)
+  });
+});
+
+describe("trackingRowNeedsDeposit", () => {
+  it("keeps sold work with no configured deposit in the tracking deposit queue until a payment is recorded", () => {
+    expect(trackingRowNeedsDeposit(row({ status: "sold", depositDue: 0, depositPaid: 0 }))).toBe(true);
+    expect(trackingRowNeedsDeposit(row({ status: "sold", depositDue: 0, depositPaid: 100 }))).toBe(false);
+  });
+
+  it("keeps a configured deposit in the queue until it is fully collected", () => {
+    expect(trackingRowNeedsDeposit(row({ status: "approved", depositDue: 500, depositPaid: 200 }))).toBe(true);
+    expect(trackingRowNeedsDeposit(row({ status: "approved", depositDue: 500, depositPaid: 500 }))).toBe(false);
+    expect(trackingRowNeedsDeposit(row({ status: "ordered", depositDue: 500, depositPaid: 0 }))).toBe(false);
   });
 });
 
