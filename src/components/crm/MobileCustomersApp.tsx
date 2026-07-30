@@ -1,6 +1,6 @@
 "use client";
 import {FormEvent,useEffect,useState} from "react";
-import {ArrowLeft,Loader2,MapPin,Phone,X} from "lucide-react";
+import {ArrowLeft,Loader2,MapPin,Phone} from "lucide-react";
 import {getSupabaseBrowserClient} from "@/lib/supabase-browser";
 import {mobileMapTarget,mobilePhoneTarget,type MobileCustomerResult,type MobileCustomerScope} from "@/lib/crm/mobile-customers";
 
@@ -20,7 +20,7 @@ export function MobileCustomersApp(){
   useEffect(()=>{if(query.trim().length<2&&!letter){setRows([]);return;} const timer=setTimeout(async()=>{setLoading(true);setError("");try{setRows((await api(`/api/crm/mobile/customers?q=${encodeURIComponent(query)}&letter=${letter}&scope=${scope}`)).results)}catch(e){setError(e instanceof Error?e.message:"Search failed.")}finally{setLoading(false)}},250);return()=>clearTimeout(timer)},[query,letter,scope]);
   async function send(e:FormEvent){e.preventDefault();if(!action)return;setSending(true);setError("");try{await api("/api/crm/mobile/customers",{method:"POST",body:JSON.stringify({quoteId:action.row.quoteId,jobId:action.row.jobId,paymentType:action.type,channel,idempotencyKey:action.key})});setNotice(`${action.type==="deposit"?"Deposit":"Balance"} link sent by ${channel==="text"?"text":"email"}.`);setAction(null)}catch(e){setError(e instanceof Error?e.message:"Link could not be sent.")}finally{setSending(false)}}
   return <main className="mobile-customer-payments">
-    <header><a href="/crm/mobile" aria-label="Back to mobile app"><ArrowLeft/></a><div><small>805 SHUTTERS CRM</small><h1>Customer Info / Payments</h1></div><a href="/crm/mobile" aria-label="Close customer info and payments"><X/></a></header>
+    <header><a href="/crm/mobile" aria-label="Back to mobile app"><ArrowLeft/></a><div><small>805 SHUTTERS CRM</small><h1>Customer Info / Payments</h1></div></header>
     <div className="mobile-customer-scopes" role="group" aria-label="Job search scope"><button className={scope==="active"?"active":""} onClick={()=>setScope("active")}>Active Jobs</button><button className={scope==="archived"?"active":""} onClick={()=>setScope("archived")}>Archived Jobs</button></div>
     <label className="mobile-customer-search">Search customers<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Name, phone, email, or address" autoFocus/></label>
     <div className="mobile-customer-letter-index" role="group" aria-label="Browse customers by first or last name">{Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(value=><button key={value} type="button" aria-pressed={letter===value} className={letter===value?"active":""} onClick={()=>setLetter(current=>current===value?"":value)}>{value}</button>)}</div>

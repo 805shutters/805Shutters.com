@@ -4,6 +4,8 @@ import { mobileCustomerMatchesLetter, projectMobileCustomers, type MobileCustome
 import { sendSquareOrderPaymentLink } from "@/lib/crm/square-payment-links";
 
 export const runtime = "nodejs";
+export const MOBILE_CUSTOMER_JOB_COLUMNS =
+  "id,customer_name,phone,email,address,city,estimated_total,deposit_paid,meta";
 
 export async function GET(request:NextRequest) {
   try {
@@ -12,7 +14,7 @@ export async function GET(request:NextRequest) {
     const letter=(request.nextUrl.searchParams.get("letter")||"").trim().toUpperCase();
     const scope:MobileCustomerScope=request.nextUrl.searchParams.get("scope")==="archived"?"archived":"active";
     if(q.length<2&&!/^[A-Z]$/.test(letter)) return NextResponse.json({results:[]});
-    const jobsResult=await supabase.from("crm_jobs").select("id,customer_name,phone,email,address,city,state,zip,estimated_total,deposit_paid,meta").limit(1000);
+    const jobsResult=await supabase.from("crm_jobs").select(MOBILE_CUSTOMER_JOB_COLUMNS).limit(1000);
     if(jobsResult.error) throw new CrmAuthError(502,"Customer records could not be loaded.");
     const jobs=(jobsResult.data||[]).filter((j:any)=>(q.length<2||[j.customer_name,j.phone,j.email,j.address,j.city].some(v=>String(v||"").toLowerCase().includes(q)))&&(!letter||mobileCustomerMatchesLetter(j.customer_name,letter))).slice(0,40);
     if(!jobs.length) return NextResponse.json({results:[]});
