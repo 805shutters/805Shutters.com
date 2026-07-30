@@ -145,7 +145,11 @@ export function buildBookkeepingRows({
   );
 
   const quoteRows = quotes
-    .filter((quote) => ACTIVE_QUOTE_STATUSES.has(quoteStatusForBookkeeping(quote)))
+    .filter(
+      (quote) =>
+        ACTIVE_QUOTE_STATUSES.has(quoteStatusForBookkeeping(quote)) ||
+        (paymentsByQuoteId.get(quote.id)?.length || 0) > 0
+    )
     .filter((quote) => !hasLedgerDeleteTombstone(quote.meta))
     .filter((quote) => !linkedQuoteIds.has(quote.id))
     .map((quote) => {

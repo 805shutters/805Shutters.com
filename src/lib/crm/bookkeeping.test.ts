@@ -348,6 +348,37 @@ describe("signed quote sale projection", () => {
     });
     expect(effectiveBookkeepingStatus(rows[0])).toBe("sold");
   });
+
+  it("projects a sent quote into bookkeeping when it has a recorded payment", () => {
+    const rows = rowsFrom({
+      quotes: [
+        quote({
+          id: "paid-stale-sent",
+          status: "sent",
+          quote_total: 1222.14,
+          deposit_required: 611.07
+        })
+      ],
+      payments: [
+        payment({
+          id: "square-deposit",
+          quote_id: "paid-stale-sent",
+          payment_label: "Deposit",
+          payment_type: "credit_card",
+          amount: 611.07,
+          source: "crm_quote"
+        })
+      ]
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      id: "paid-stale-sent",
+      depositPaid: 611.07,
+      balance: 611.07,
+      paidTotal: 611.07
+    });
+  });
 });
 
 describe("paid-in-full status", () => {
