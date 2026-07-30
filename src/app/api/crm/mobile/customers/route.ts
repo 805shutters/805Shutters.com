@@ -6,6 +6,8 @@ import { sendSquareOrderPaymentLink } from "@/lib/crm/square-payment-links";
 export const runtime = "nodejs";
 export const MOBILE_CUSTOMER_JOB_COLUMNS =
   "id,customer_name,phone,email,address,city,estimated_total,deposit_paid,meta";
+export const MOBILE_CUSTOMER_QUOTE_COLUMNS =
+  "id,job_id,status,archived_at,quote_total,deposit_required,customer_phone,customer_email";
 
 export async function GET(request:NextRequest) {
   try {
@@ -18,7 +20,7 @@ export async function GET(request:NextRequest) {
     if(jobsResult.error) throw new CrmAuthError(502,"Customer records could not be loaded.");
     const jobs=(jobsResult.data||[]).filter((j:any)=>(q.length<2||[j.customer_name,j.phone,j.email,j.address,j.city].some(v=>String(v||"").toLowerCase().includes(q)))&&(!letter||mobileCustomerMatchesLetter(j.customer_name,letter))).slice(0,40);
     if(!jobs.length) return NextResponse.json({results:[]});
-    const quoteResult=await supabase.from("crm_quotes").select("id,job_id,status,quote_total,deposit_required,customer_phone,customer_email").in("job_id",jobs.map((j:any)=>j.id));
+    const quoteResult=await supabase.from("crm_quotes").select(MOBILE_CUSTOMER_QUOTE_COLUMNS).in("job_id",jobs.map((j:any)=>j.id));
     if(quoteResult.error) throw new CrmAuthError(502,"Contract records could not be loaded.");
     const quoteIds=(quoteResult.data||[]).map((q:any)=>q.id);
     const [payments,credits]=quoteIds.length?await Promise.all([

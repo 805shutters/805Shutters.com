@@ -1,8 +1,8 @@
 "use client";
 import {FormEvent,useEffect,useState} from "react";
-import {ArrowLeft,Loader2,MapPin,Phone} from "lucide-react";
+import {ArrowLeft,Loader2,MapPin,MessageSquare,Phone} from "lucide-react";
 import {getSupabaseBrowserClient} from "@/lib/supabase-browser";
-import {mobileMapTarget,mobilePhoneTarget,type MobileCustomerResult,type MobileCustomerScope} from "@/lib/crm/mobile-customers";
+import {mobileMapTarget,mobilePhoneTarget,mobileSmsTarget,type MobileCustomerResult,type MobileCustomerScope} from "@/lib/crm/mobile-customers";
 
 async function api(path:string,init?:RequestInit){
   const client=getSupabaseBrowserClient(); const {data}=await client!.auth.getSession();
@@ -17,7 +17,7 @@ export function MobileCustomersApp(){
   const [scope,setScope]=useState<MobileCustomerScope>("active"),[query,setQuery]=useState(""),[letter,setLetter]=useState(""),[rows,setRows]=useState<MobileCustomerResult[]>([]);
   const [loading,setLoading]=useState(false),[error,setError]=useState(""),[action,setAction]=useState<{row:MobileCustomerResult;type:"deposit"|"balance";key:string}|null>(null);
   const [channel,setChannel]=useState<"text"|"email">("text"),[sending,setSending]=useState(false),[notice,setNotice]=useState("");
-  useEffect(()=>{if(query.trim().length<2&&!letter){setRows([]);return;} const timer=setTimeout(async()=>{setLoading(true);setError("");try{setRows((await api(`/api/crm/mobile/customers?q=${encodeURIComponent(query)}&letter=${letter}&scope=${scope}`)).results)}catch(e){setError(e instanceof Error?e.message:"Search failed.")}finally{setLoading(false)}},250);return()=>clearTimeout(timer)},[query,letter,scope]);
+  useEffect(()=>{setRows([]);if(query.trim().length<2&&!letter){setLoading(false);return;} const controller=new AbortController();const timer=setTimeout(async()=>{setLoading(true);setError("");try{setRows((await api(`/api/crm/mobile/customers?q=${encodeURIComponent(query)}&letter=${letter}&scope=${scope}`,{signal:controller.signal})).results)}catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:"Search failed.")}finally{if(!controller.signal.aborted)setLoading(false)}},250);return()=>{clearTimeout(timer);controller.abort()}},[query,letter,scope]);
   async function send(e:FormEvent){e.preventDefault();if(!action)return;setSending(true);setError("");try{await api("/api/crm/mobile/customers",{method:"POST",body:JSON.stringify({quoteId:action.row.quoteId,jobId:action.row.jobId,paymentType:action.type,channel,idempotencyKey:action.key})});setNotice(`${action.type==="deposit"?"Deposit":"Balance"} link sent by ${channel==="text"?"text":"email"}.`);setAction(null)}catch(e){setError(e instanceof Error?e.message:"Link could not be sent.")}finally{setSending(false)}}
   return <main className="mobile-customer-payments">
     <header><a href="/crm/mobile" aria-label="Back to mobile app"><ArrowLeft/></a><div><small>805 SHUTTERS CRM</small><h1>Customer Info / Payments</h1></div></header>
@@ -26,9 +26,12 @@ export function MobileCustomersApp(){
     <div className="mobile-customer-letter-index" role="group" aria-label="Browse customers by first or last name">{Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map(value=><button key={value} type="button" aria-pressed={letter===value} className={letter===value?"active":""} onClick={()=>setLetter(current=>current===value?"":value)}>{value}</button>)}</div>
     {loading&&<p role="status"><Loader2 className="spin"/> Searching…</p>}{error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="success">{notice}</p>}
     {!loading&&(query.length>=2||letter)&&!error&&!rows.length&&<p>No {scope} customer jobs matched {letter?`the letter ${letter}`:"this search"}.</p>}
-    <section>{rows.map(row=>{const tel=mobilePhoneTarget(row.phone),map=mobileMapTarget(row.address);return <article key={row.id}>
+    <section>{rows.map(row=>{const tel=mobilePhoneTarget(row.phone),sms=mobileSmsTarget(row.phone),map=mobileMapTarget(row.address);return <article key={row.id}>
       <h2>{row.name}</h2>
-      {tel?<a href={tel} aria-label={`Call ${row.name} at ${row.phone}`}><Phone/> {row.phone}</a>:<span>Phone unavailable</span>}
+      <div className="mobile-customer-contact-actions">
+        {tel?<a href={tel} aria-label={`Call ${row.name} at ${row.phone}`}><Phone/> <span>{row.phone}</span></a>:<span aria-disabled="true">Phone unavailable</span>}
+        {sms?<a href={sms} aria-label={`Text ${row.name} at ${row.phone}`}><MessageSquare/> <span>Text</span></a>:<span aria-disabled="true">Text unavailable</span>}
+      </div>
       {map?<a href={map} target="_blank" rel="noreferrer" aria-label={`Open directions to ${row.address}`}><MapPin/> {row.address}</a>:<span>Address unavailable</span>}
       <dl><div><dt>Deposit</dt><dd>{money(row.deposit)}</dd><button disabled={!row.quoteId||row.deposit<=0} onClick={()=>setAction({row,type:"deposit",key:crypto.randomUUID()})}>Send deposit link</button></div><div><dt>Balance</dt><dd>{money(row.balance)}</dd><button disabled={!row.quoteId||row.balance<=0} onClick={()=>setAction({row,type:"balance",key:crypto.randomUUID()})}>Send balance link</button></div><div><dt>Contract total</dt><dd>{money(row.contractTotal)}</dd></div></dl>
     </article>})}</section>

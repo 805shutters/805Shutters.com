@@ -8,7 +8,7 @@ export type MobileCustomerResult = {
 };
 
 type JobRow = { id:string; customer_name?:string|null; phone?:string|null; email?:string|null; address?:string|null; city?:string|null; state?:string|null; zip?:string|null; estimated_total?:number|null; deposit_paid?:number|null; meta?:Record<string,unknown>|null };
-type QuoteRow = { id:string; job_id:string; status?:string|null; quote_total?:number|null; deposit_required?:number|null; customer_phone?:string|null; customer_email?:string|null };
+type QuoteRow = { id:string; job_id:string; status?:string|null; archived_at?:string|null; quote_total?:number|null; deposit_required?:number|null; customer_phone?:string|null; customer_email?:string|null };
 type PaymentRow = { quote_id:string; amount?:number|null; payment_label?:string|null };
 type CreditRow = { to_quote_id?:string|null; from_quote_id?:string|null; amount?:number|null };
 
@@ -32,14 +32,23 @@ export function mobilePhoneTarget(phone: string | null | undefined) {
   return value ? `tel:${value}` : null;
 }
 
+export function mobileSmsTarget(phone: string | null | undefined) {
+  const value = toE164(phone);
+  return value ? `sms:${value}` : null;
+}
+
 export function mobileMapTarget(address: string | null | undefined) {
   const value = String(address || "").trim();
   return value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value)}` : null;
 }
 
+export function mobileCustomerIsArchived(quote: Pick<QuoteRow, "status" | "archived_at">) {
+  return quote.status === "archived" || Boolean(quote.archived_at);
+}
+
 export function projectMobileCustomers(input:{jobs:JobRow[];quotes:QuoteRow[];payments?:PaymentRow[];credits?:CreditRow[];scope:MobileCustomerScope}) {
   const payments = input.payments || [], credits = input.credits || [];
-  const quoteResults = input.quotes.filter(q => (q.status === "archived") === (input.scope === "archived")).flatMap(q => {
+  const quoteResults = input.quotes.filter(q => mobileCustomerIsArchived(q) === (input.scope === "archived")).flatMap(q => {
     const job = input.jobs.find(j => j.id === q.job_id);
     if (!job || job.meta?.deleted_at) return [];
     const amounts = paymentAmounts(Number(q.quote_total)||0,Number(q.deposit_required)||0,payments.filter(p=>p.quote_id===q.id),credits.filter(c=>c.to_quote_id===q.id),credits.filter(c=>c.from_quote_id===q.id));
