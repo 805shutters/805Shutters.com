@@ -260,10 +260,10 @@ export async function backfillFrancisParnellHistoricalRecordkeeping(
   assertSourceQuote(source as AnyRow);
   const sourceOwnerUpdate = await supabase
     .from("sales_quotes")
-    .update({ sales_owner: "Mike" })
+    .update({ sales_owner: "mike" })
     .eq("id", source.id);
   if (sourceOwnerUpdate.error) throw new CrmAuthError(502, "Mike ownership could not be saved on the historical source quote.");
-  source.sales_owner = "Mike";
+  source.sales_owner = "mike";
 
   const job = await exactExistingJob(supabase);
   const jobMeta = job.meta && typeof job.meta === "object" && !Array.isArray(job.meta) ? job.meta : {};
