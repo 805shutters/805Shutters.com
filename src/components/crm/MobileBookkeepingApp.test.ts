@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CrmBookkeepingRow, CrmCustomerFile } from "@/lib/crm/types";
 import {
   buildMobileBookkeepingPatch,
+  draftForRecord,
   matchesMobileBookkeepingFile,
   mobileBookkeepingRemaining,
   type MobileBookkeepingDraft
@@ -38,6 +39,36 @@ describe("mobile bookkeeping customer search", () => {
 });
 
 describe("mobile bookkeeping financial edits", () => {
+  it("hydrates populated ledger amounts without inventing a deposit requirement", () => {
+    const populated = draftForRecord({
+      key: "row:ledger-1",
+      row: {
+        total: 8000,
+        cogs: 2700,
+        depositDue: 0,
+        depositPaid: 3000,
+        balancePaid: 1250,
+        paymentType: "credit_card",
+        manufacturerName: "Onyx",
+        manufacturerOrderRef: "ONYX-77",
+        notes: "Authoritative ledger values"
+      } as CrmBookkeepingRow,
+      job: null
+    });
+
+    expect(populated).toMatchObject({
+      total: "8000",
+      cogs: "2700",
+      depositDue: "",
+      depositPaid: "3000",
+      balancePaid: "1250",
+      paymentType: "credit_card",
+      manufacturerName: "Onyx",
+      manufacturerOrderRef: "ONYX-77",
+      notes: "Authoritative ledger values"
+    });
+  });
+
   it("calculates the remaining customer balance from payment targets", () => {
     expect(mobileBookkeepingRemaining(draft)).toBe(4500);
   });

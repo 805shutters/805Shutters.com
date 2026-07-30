@@ -127,7 +127,7 @@ export function buildMobileBookkeepingPatch(row: CrmBookkeepingRow, draft: Mobil
       };
 }
 
-function recordsForFile(file: CrmCustomerFile): MobileBookkeepingRecord[] {
+export function recordsForFile(file: CrmCustomerFile): MobileBookkeepingRecord[] {
   const jobsById = new Map(file.jobs.map((job) => [job.id, job]));
   const rowJobIds = new Set(file.bookkeepingRows.map((row) => row.jobId).filter(Boolean));
   const records = [
@@ -144,13 +144,13 @@ function recordsForFile(file: CrmCustomerFile): MobileBookkeepingRecord[] {
   return records.sort((left, right) => recordDate(right).localeCompare(recordDate(left)));
 }
 
-function draftForRecord(record: MobileBookkeepingRecord): MobileBookkeepingDraft {
+export function draftForRecord(record: MobileBookkeepingRecord): MobileBookkeepingDraft {
   const row = record.row;
   const jobTotal = Number(record.job?.quote_total || record.job?.estimated_total || 0);
   return {
     total: String(row?.total || jobTotal || ""),
     cogs: String(row?.cogs || ""),
-    depositDue: String(row?.depositDue || (row?.total || jobTotal) / 2 || ""),
+    depositDue: String(row?.depositDue || ""),
     depositPaid: String(row?.depositPaid || record.job?.deposit_paid || ""),
     balancePaid: String(row?.balancePaid || ""),
     paymentType: row?.paymentType || "check",
@@ -183,7 +183,10 @@ export function MobileBookkeepingApp() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<CrmCustomerFile | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [selectedRecordKey, setSelectedRecordKey] = useState<string | null>(null);
   const [draft, setDraft] = useState<MobileBookkeepingDraft | null>(null);
 
@@ -238,19 +241,42 @@ export function MobileBookkeepingApp() {
     () => files.filter((file) => matchesMobileBookkeepingFile(file, query)).slice(0, query.trim() ? 30 : 12),
     [files, query]
   );
-  const selectedFile = selectedFileName
-    ? files.find((file) => file.customerName.toLowerCase() === selectedFileName.toLowerCase()) || null
-    : null;
   const selectedRecords = selectedFile ? recordsForFile(selectedFile) : [];
   const selectedRecord =
     selectedRecords.find((record) => record.key === selectedRecordKey) || selectedRecords[0] || null;
 
+  async function hydrateFile(fileId: string, activeSession = session) {
+    if (!activeSession) return null;
+    setDetailLoading(true);
+    setDetailError(null);
+    try {
+      const result = await crmFetch<{ file: CrmCustomerFile }>(
+        activeSession,
+        `/api/crm/mobile/bookkeeping/${encodeURIComponent(fileId)}`
+      );
+      const records = recordsForFile(result.file);
+      setSelectedFile(result.file);
+      setSelectedRecordKey(records[0]?.key || null);
+      setDraft(records[0] ? draftForRecord(records[0]) : null);
+      return result.file;
+    } catch (error) {
+      setSelectedFile(null);
+      setSelectedRecordKey(null);
+      setDraft(null);
+      setDetailError(error instanceof Error ? error.message : "Customer financial details could not be loaded.");
+      return null;
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
   function selectFile(file: CrmCustomerFile) {
-    const records = recordsForFile(file);
-    setSelectedFileName(file.customerName);
-    setSelectedRecordKey(records[0]?.key || null);
-    setDraft(records[0] ? draftForRecord(records[0]) : null);
+    setSelectedFileId(file.id);
+    setSelectedFile(null);
+    setSelectedRecordKey(null);
+    setDraft(null);
     setMessage(null);
+    void hydrateFile(file.id);
   }
 
   function selectRecord(key: string) {
@@ -302,6 +328,7 @@ export function MobileBookkeepingApp() {
       }
 
       await load(session);
+      await hydrateFile(selectedFile.id, session);
       setMessage(`${selectedFile.customerName}'s financial file was saved.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Financial file could not be saved.");
@@ -344,7 +371,7 @@ export function MobileBookkeepingApp() {
         </div>
       </header>
 
-      {!selectedFile ? (
+      {!selectedFileId ? (
         <>
           <section className="mobile-bookkeeping-search">
             <label htmlFor="mobile-bookkeeping-customer-search">Find customer or job</label>
@@ -385,10 +412,34 @@ export function MobileBookkeepingApp() {
             {!loading && !visibleFiles.length ? <p>No matching customer financial files.</p> : null}
           </section>
         </>
-      ) : selectedRecord && draft ? (
+      ) : detailLoading ? (
+        <div className="mobile-bookkeeping-loading" role="status">
+          <Loader2 className="spin" /> Loading customer financial details...
+        </div>
+      ) : detailError ? (
+        <section className="mobile-bookkeeping-message" role="alert">
+          <p>{detailError}</p>
+          <button type="button" onClick={() => void hydrateFile(selectedFileId)}>Try again</button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedFileId(null);
+              setDetailError(null);
+            }}
+          >
+            Back to search
+          </button>
+        </section>
+      ) : selectedFile && selectedRecord && draft ? (
         <>
           <section className="mobile-bookkeeping-customer-bar">
-            <button type="button" onClick={() => { setSelectedFileName(null); setSelectedRecordKey(null); setDraft(null); }}>
+            <button type="button" onClick={() => {
+              setSelectedFileId(null);
+              setSelectedFile(null);
+              setSelectedRecordKey(null);
+              setDraft(null);
+              setDetailError(null);
+            }}>
               <ArrowLeft /> Search
             </button>
             <div><span>Financial file</span><h2>{selectedFile.customerName}</h2><p>{selectedFile.phone || selectedFile.email || "Customer contact not set"}</p></div>
@@ -453,7 +504,13 @@ export function MobileBookkeepingApp() {
           </form>
         </>
       ) : (
-        <p className="mobile-bookkeeping-message">This customer does not have a job to update yet.</p>
+        <section className="mobile-bookkeeping-message" role="status">
+          <p>This customer does not have a bookkeeping record or job to update yet.</p>
+          <button type="button" onClick={() => {
+            setSelectedFileId(null);
+            setSelectedFile(null);
+          }}>Back to search</button>
+        </section>
       )}
     </main>
   );

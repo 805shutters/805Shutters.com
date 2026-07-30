@@ -126,7 +126,7 @@ export function MobileWorkspaceMenu({
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/search">
             <span className="mobile-crm-action-icon"><Search /></span>
-            <div><strong>Customer Search</strong><span>Find appointments and files</span></div>
+            <div><strong>Customer Info / Payments</strong><span>Fast lookup and payment links</span></div>
             <ArrowRight />
           </a>
           <a className="mobile-crm-home-control" href="/crm/mobile/bookkeeping">

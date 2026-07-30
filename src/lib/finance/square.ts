@@ -89,11 +89,12 @@ export type SquarePaymentLinkInput = {
   quoteId: string;
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
+  idempotencyKey?: string;
 };
 
 export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, locationId: string) {
   return {
-    idempotency_key: `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
+    idempotency_key: input.idempotencyKey || `805-quote-${input.quoteId}-${input.paymentType}-${Date.now()}`,
     description: input.title,
     checkout_options: { allow_tipping: false, ask_for_shipping_address: false },
     pre_populated_data: input.buyerEmail ? { buyer_email: input.buyerEmail } : undefined,

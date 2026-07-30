@@ -5,6 +5,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 import { ensureShareToken, loadPublicQuoteByToken } from "@/lib/crm/public-quote";
 import { createSquarePaymentLink, dollarsToCents, isSquareConfigured } from "@/lib/finance/square";
 import { buildSquareOrderPaymentEmail, sendEmail } from "@/lib/notify/email";
+import { sendSms, toE164 } from "@/lib/notify/twilio";
 
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
@@ -58,6 +59,7 @@ export async function sendSquareOrderPaymentLink(
   paymentType: SquareOrderPaymentType,
   actor: CrmActor,
   alternateEmail?: string | null,
+  delivery?: { channel: "email" | "text"; idempotencyKey?: string; phone?: string | null },
 ) {
   if (!isSquareConfigured()) throw new CrmAuthError(503, "Square card payments are not configured.");
 
@@ -87,7 +89,9 @@ export async function sendSquareOrderPaymentLink(
   }
 
   const savedCustomerEmail = publicQuote.customerEmail?.trim() || null;
-  const customerEmail = squarePaymentRecipient(savedCustomerEmail, alternateEmail);
+  const customerEmail = delivery?.channel === "text" ? (savedCustomerEmail || null) : squarePaymentRecipient(savedCustomerEmail, alternateEmail);
+  const phone = delivery?.channel === "text" ? toE164(delivery.phone) : null;
+  if (delivery?.channel === "text" && !phone) throw new CrmAuthError(400, "A valid customer phone number is required to text a payment link.");
 
   const label = paymentType === "deposit" ? "Deposit" : "Order balance";
   const link = await createSquarePaymentLink({
@@ -96,6 +100,7 @@ export async function sendSquareOrderPaymentLink(
     quoteId,
     paymentType,
     buyerEmail: customerEmail,
+    idempotencyKey: delivery?.idempotencyKey,
   });
   const mail = buildSquareOrderPaymentEmail(publicQuote.customerName, link.url, {
     paymentType,
@@ -103,7 +108,8 @@ export async function sendSquareOrderPaymentLink(
     quoteNumber: publicQuote.quoteNumber,
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
-  const email = await sendEmail({ to: customerEmail, ...mail });
+  const email = delivery?.channel === "text" ? null : await sendEmail({ to: customerEmail as string, ...mail });
+  const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:`805 Shutters ${label.toLowerCase()} payment link (${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(amount)}): ${link.url}`}) : null;
 
   await recordCrmActivity(supabase, actor, {
     entityType: "quote",
@@ -111,15 +117,26 @@ export async function sendSquareOrderPaymentLink(
     action: `square_${paymentType}_link.send`,
     metadata: {
       amount,
-      recipient: customerEmail,
+      recipient: delivery?.channel === "text" ? phone : customerEmail,
+      channel: delivery?.channel || "email",
+      idempotencyKey: delivery?.idempotencyKey || null,
       savedCustomerEmail,
       recipientOverridden: Boolean(alternateEmail?.trim() && customerEmail !== savedCustomerEmail),
       squarePaymentLinkId: link.id,
       squarePaymentLinkUrl: link.url,
-      emailSent: email.sent,
-      emailError: email.error || email.skipped || null,
+      emailSent: email?.sent || false,
+      emailError: email?.error || email?.skipped || null,
+      smsSent: sms?.sent || false,
+      smsError: sms?.error || sms?.skipped || null,
     },
   });
 
-  return { paymentType, amount, recipient: customerEmail, url: link.url, email };
+  if (delivery?.channel === "text" && !sms?.sent) {
+    throw new CrmAuthError(502, sms?.uncertain ? "Text delivery could not be confirmed. Verify before retrying." : "The payment link text could not be sent.");
+  }
+  if (delivery?.channel === "email" && !email?.sent) {
+    throw new CrmAuthError(502, "The payment link email could not be sent.");
+  }
+
+  return { paymentType, amount, recipient: delivery?.channel === "text" ? phone : customerEmail, url: link.url, email, sms };
 }
