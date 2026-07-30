@@ -39,6 +39,7 @@ describe("DashboardRecordCard", () => {
 
   it("omits unavailable contact lines instead of showing placeholders", () => {
     expect(dashboardRecordContact("  ", null)).toEqual({ address: null, phone: null });
+    expect(dashboardRecordContact("unknown", "N/A")).toEqual({ address: null, phone: null });
 
     const html = renderToStaticMarkup(
       createElement(DashboardRecordCard, {

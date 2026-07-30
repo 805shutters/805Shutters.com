@@ -14,7 +14,9 @@ type DashboardRecordCardProps = {
 
 function cleanContactValue(value: string | null | undefined) {
   const cleaned = value?.trim();
-  return cleaned || null;
+  if (!cleaned) return null;
+  if (["unknown", "n/a", "na", "none", "null", "-"].includes(cleaned.toLowerCase())) return null;
+  return cleaned;
 }
 
 export function dashboardRecordContact(address?: string | null, phone?: string | null) {
