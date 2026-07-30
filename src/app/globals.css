@@ -5430,6 +5430,20 @@ body.qb-fullscreen .crm-app-shell {
   overflow-wrap: anywhere;
 }
 
+.crm-global-search-results .crm-dashboard-record-contact {
+  display: grid;
+  gap: 2px;
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  opacity: 0.9;
+}
+
+.crm-global-search-results .crm-dashboard-record-contact span {
+  grid-column: auto;
+  font-size: 11px;
+  opacity: 1;
+}
+
 .crm-global-search-results em {
   color: inherit;
   font-size: 12px;

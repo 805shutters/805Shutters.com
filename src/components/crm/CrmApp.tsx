@@ -38,6 +38,7 @@ import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
+import { DashboardRecordCard, dashboardRecordContactFromJob } from "@/components/crm/DashboardRecordCard";
 import {
   awaitingProductRows,
   balanceDueCompletedRows,
@@ -3635,6 +3636,8 @@ type DrillEntry = {
   customerName: string;
   meta: string;
   value?: string;
+  address?: string | null;
+  phone?: string | null;
   tone?: "warn";
   jobId?: string | null;
   salesOwner?: string | null;
@@ -4064,12 +4067,15 @@ function detailNotes(row?: CrmBookkeepingRow, job?: CrmJob, file?: CrmCustomerFi
 function jobToEntry(job: CrmJob, row?: CrmBookkeepingRow, files: CrmCustomerFile[] = []): DrillEntry {
   const value = jobValue(job);
   const file = customerFileForName(files, job.customer_name);
+  const contact = dashboardRecordContactFromJob(job);
   return {
     id: job.id,
     name: job.customer_name,
     customerName: job.customer_name,
     meta: [job.product_interest, job.city, titleCase(job.status)].filter(Boolean).join(" · "),
     value: value ? toCurrency(value) : undefined,
+    address: contact.address,
+    phone: contact.phone,
     jobId: job.id,
     salesOwner: saleOwnerDisplayName(row?.salesOwner || job.sales_owner),
     canReassignSale: WON_JOB_STATUSES.includes(job.status),
@@ -4108,12 +4114,15 @@ function rowsToEntries(
       const job = relatedJobForRow(row, context.jobs);
       const file = customerFileForName(context.files, row.customerName);
       const status = effectiveBookkeepingStatus(row);
+      const contact = dashboardRecordContactFromJob(job);
       return {
         id: row.id,
         name: row.customerName,
         customerName: row.customerName,
         meta: [titleCase(status), formatShortDate(row.soldDate)].filter(Boolean).join(" · "),
         value: toCurrency(valueOf(row)),
+        address: contact.address,
+        phone: contact.phone,
         tone: row.balance > 0 ? ("warn" as const) : undefined,
         jobId: row.jobId,
         salesOwner: saleOwnerDisplayName(row.salesOwner || job?.sales_owner),
@@ -6273,18 +6282,16 @@ function DrillSearchResultsPanel({
         <div className="crm-global-search-body">
           <div className="crm-global-search-results" role="listbox" aria-label={`${payload.title} records`}>
             {results.map((result) => (
-              <button
-                type="button"
-                role="option"
-                aria-selected={result.id === selectedResult?.id}
-                className={result.id === selectedResult?.id ? "active" : ""}
+              <DashboardRecordCard
                 key={result.id}
-                onClick={() => setSelectedResultId(result.id)}
-              >
-                <strong>{result.entry.customerName || result.entry.name}</strong>
-                <span>{result.entry.meta || "Customer record"}</span>
-                <em>{result.entry.value || "Open"}</em>
-              </button>
+                customerName={result.entry.customerName || result.entry.name}
+                meta={result.entry.meta}
+                value={result.entry.value}
+                address={result.entry.address}
+                phone={result.entry.phone}
+                active={result.id === selectedResult?.id}
+                onSelect={() => setSelectedResultId(result.id)}
+              />
             ))}
           </div>
 
