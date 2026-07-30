@@ -76,7 +76,26 @@ export async function reconcileVerifiedSquareOrderPayment(
   supabase: CrmSupabaseClient,
   input: VerifiedSquareReconcileInput,
 ): Promise<SquareReconcileResult> {
-  const verified = validateVerifiedSquarePayment(input);
+  let verifiedInput = input;
+  let jobIdentitySource = "square_order";
+  if (input.order.quoteId && !input.order.jobId) {
+    const { data, error } = await supabase
+      .from("crm_quotes")
+      .select("id,job_id")
+      .eq("id", input.order.quoteId)
+      .maybeSingle();
+    if (error) throw new Error(`Square payment quote identity lookup failed: ${error.message}`);
+    const quote = data as Pick<QuoteRow, "id" | "job_id"> | null;
+    if (!quote?.job_id) {
+      throw new Error("Square order metadata is missing a job id and the exact CRM quote has no linked job.");
+    }
+    verifiedInput = {
+      ...input,
+      order: { ...input.order, jobId: quote.job_id },
+    };
+    jobIdentitySource = "crm_quote";
+  }
+  const verified = validateVerifiedSquarePayment(verifiedInput);
   const paidAt = paymentDate(input.payment);
   const { data, error } = await supabase.rpc("reconcile_square_quote_payment", {
     p_quote_id: verified.quoteId,
@@ -93,6 +112,7 @@ export async function reconcileVerifiedSquareOrderPayment(
       payment_currency: input.payment.currency,
       order_currency: input.order.currency,
       expected_amount_cents: input.order.expectedAmountCents,
+      job_identity_source: jobIdentitySource,
     },
   });
   if (error) throw new Error(`Square payment could not be reconciled atomically: ${error.message}`);

@@ -118,6 +118,35 @@ describe("verified Square order reconciliation", () => {
     expect(result).toMatchObject({ status: "recorded", paymentLabel: "Deposit", amount: 500 });
   });
 
+  it("resolves a legacy Square order's missing job id from its exact CRM quote", async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({
+      data: { id: order.quoteId, job_id: order.jobId },
+      error: null,
+    });
+    const eq = vi.fn().mockReturnValue({ maybeSingle });
+    const select = vi.fn().mockReturnValue({ eq });
+    const rpc = vi.fn().mockResolvedValue({
+      data: { status: "recorded", markedPaid: false },
+      error: null,
+    });
+    const supabase = {
+      from: vi.fn().mockReturnValue({ select }),
+      rpc,
+    };
+
+    await expect(reconcileVerifiedSquareOrderPayment(
+      supabase as never,
+      { payment, order: { ...order, jobId: null } },
+    )).resolves.toMatchObject({ status: "recorded", squarePaymentId: "payment-1" });
+
+    expect(eq).toHaveBeenCalledWith("id", order.quoteId);
+    expect(rpc).toHaveBeenCalledWith("reconcile_square_quote_payment", expect.objectContaining({
+      p_quote_id: order.quoteId,
+      p_job_id: order.jobId,
+      p_audit: expect.objectContaining({ job_identity_source: "crm_quote" }),
+    }));
+  });
+
   it("reports duplicate webhook replay without creating a second payment", async () => {
     const rpc = vi.fn().mockResolvedValue({
       data: { status: "duplicate", markedPaid: false },
