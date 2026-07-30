@@ -25,5 +25,8 @@ describe("sold contract business SMS delivery wiring", () => {
     const helper = source("./sold-quote-notifications.ts");
     expect(helper.indexOf("claimDelivery(")).toBeLessThan(helper.indexOf("await smsSender("));
     expect(helper).toContain("delivery outcome requires provider reconciliation");
+    expect(helper).toContain("MIKE_805_SALES_SMS_NUMBER");
+    expect(helper).toContain("JESSICA_805_SALES_SMS_NUMBER");
+    expect(helper).toContain("statusCallback");
   });
 });

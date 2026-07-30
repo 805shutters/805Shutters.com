@@ -205,6 +205,15 @@ describe("signed SMS copy", () => {
     });
     expect(msg).toBe(buildSignedShopSms("Jane Smith", 4250, 2125, { technicalMeasure: "needed" }));
   });
+  it("uses the resolver's primary role when Michael's configured number changes", () => {
+    const msg = buildSignedShopSmsForRecipient("805-555-0200", "Jane Smith", 4250, 2125, {
+      customerPhone: "805-555-1212",
+      customerAddress: "123 Main St, Ventura, CA",
+      technicalMeasure: "needed",
+    }, true);
+    expect(msg).toContain("Customer Phone: 805-555-1212");
+    expect(msg).toContain("Customer Address: 123 Main St, Ventura, CA");
+  });
   it("shop sale SMS always includes the required recipients", () => {
     expect(soldQuoteShopSmsRecipients()).toEqual([...REQUIRED_SOLD_QUOTE_SMS_RECIPIENTS]);
   });

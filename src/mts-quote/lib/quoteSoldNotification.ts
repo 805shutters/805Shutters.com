@@ -75,13 +75,13 @@ export function build805SoldQuoteSmsMessageForRecipient(
   quote: SoldQuoteSmsInput,
   contractUrl = buildContractUrl(quote.share_token),
   measureFormUrl: string | null = null,
+  isPrimary = recipient === SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT,
 ): string {
-  const isPrimaryRecipient = recipient === SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT;
   return build805SoldQuoteSmsMessage(
     quote,
-    isPrimaryRecipient ? null : contractUrl,
-    isPrimaryRecipient,
-    isPrimaryRecipient ? measureFormUrl : null,
+    isPrimary ? null : contractUrl,
+    isPrimary,
+    isPrimary ? measureFormUrl : null,
   );
 }
 

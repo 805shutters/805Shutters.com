@@ -98,7 +98,7 @@ export async function markSalesQuoteSold(
   const notifications = await sendSoldQuoteSmsNotifications(supabase, {
     quoteId: crmQuote.id,
     source: "in_home_sold",
-    buildMessage: (recipient) =>
+    buildMessage: (recipient, isPrimary) =>
       build805SoldQuoteSmsMessageForRecipient(recipient, {
         account_id: soldSource.account_id,
         customer_name: soldSource.customer_name,
@@ -108,7 +108,7 @@ export async function markSalesQuoteSold(
         deposit_paid: soldSource.deposit_paid,
         share_token: soldSource.share_token,
         technical_measure: measureDecision,
-      }, contractUrl, measureFormUrl),
+      }, contractUrl, measureFormUrl, isPrimary),
   });
 
   return { salesQuote: soldSource, crmQuote, notifications, installerForm };

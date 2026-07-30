@@ -50,4 +50,16 @@ describe("805 sold quote SMS notification", () => {
       build805SoldQuoteSmsMessage(quote, null)
     );
   });
+
+  it("uses the resolver's primary role when Michael's configured number changes", () => {
+    expect(
+      build805SoldQuoteSmsMessageForRecipient(
+        "805-555-0200",
+        quote,
+        null,
+        null,
+        true,
+      ),
+    ).toContain("Customer Phone: 805-555-1212");
+  });
 });

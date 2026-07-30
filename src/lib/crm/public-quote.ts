@@ -913,12 +913,13 @@ export function buildSignedShopSmsForRecipient(
   total: number,
   depositAmount: number,
   contact: SignedShopSmsContact = {},
+  isPrimary = recipient === SOLD_QUOTE_CONTACT_SMS_RECIPIENT,
 ): string {
   return buildSignedShopSms(
     customerName,
     total,
     depositAmount,
-    recipient === SOLD_QUOTE_CONTACT_SMS_RECIPIENT ? contact : { technicalMeasure: contact.technicalMeasure },
+    isPrimary ? contact : { technicalMeasure: contact.technicalMeasure },
   );
 }
 export function buildSignedCustomerSms(customerName: string): string {
@@ -1402,13 +1403,14 @@ export async function acceptPublicQuote(
         await sendSoldQuoteSmsNotifications(supabase, {
           quoteId: quote.id,
           source: "public_contract_retry",
-          buildMessage: (recipient) =>
+          buildMessage: (recipient, isPrimary) =>
             buildSignedShopSmsForRecipient(
               recipient,
               printedName,
               retryPublicQuote.total,
               retryPublicQuote.depositDue,
               retryShopSmsContact,
+              isPrimary,
             ),
         });
       }
@@ -1686,13 +1688,14 @@ export async function acceptPublicQuote(
     await sendSoldQuoteSmsNotifications(supabase, {
       quoteId: signedQuote.id,
       source: "public_contract_accept",
-      buildMessage: (recipient) =>
+      buildMessage: (recipient, isPrimary) =>
         buildSignedShopSmsForRecipient(
           recipient,
           printedName,
           soldTotal,
           signedPub.depositDue,
           shopSmsContact,
+          isPrimary,
         ),
     });
     if (customerPhone) {
