@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildNoMeasureInstallerFormHandoff,
+  buildInstallerFormEmail,
   buildInstallerFormPdf,
   calculateInstallerCod,
   installerFormDeliveryComplete,
@@ -32,7 +33,7 @@ describe("installer COD adjustment", () => {
 });
 
 describe("805 Shutters Installation Form PDF", () => {
-  it("contains customer and line-item details without line-item prices", () => {
+  it("contains customer, remaining balance, and line-item details without line-item prices", () => {
     const form: InstallerFormRow = {
       id: "form-1",
       quote_id: "quote-1",
@@ -62,7 +63,20 @@ describe("805 Shutters Installation Form PDF", () => {
       accepted: false,
       signer_name: null,
       signed_at: null,
-      meta: {},
+      meta: {
+        customer_balance: {
+          schema: "805_installer_customer_balance_v1",
+          contract_id: "contract-1",
+          contract_total: 4_000,
+          recorded_payments_total: 2_500,
+          payment_record_count: 1,
+          credits_in_total: 0,
+          credits_out_total: 0,
+          remaining_customer_balance: 1_500,
+          contract_signed_at: "2026-07-30T12:00:00.000Z",
+          calculated_at: "2026-07-30T13:00:00.000Z",
+        },
+      },
     };
     const raw = buildInstallerFormPdf(form, "https://805shutters.com/installer-form/secret").toString("latin1");
     expect(raw).toContain("805 SHUTTERS INSTALLATION FORM");
@@ -70,8 +84,39 @@ describe("805 Shutters Installation Form PDF", () => {
     expect(raw).toContain("Width x Height: 36 x 48");
     expect(raw).toContain("JOB OUTCOME");
     expect(raw).toContain("Open the editable technician workflow");
+    expect(raw).toContain("REMAINING CUSTOMER BALANCE: $1,500.00");
     expect(raw).not.toContain("1234.56");
     expect(raw).not.toContain("1500.00");
+  });
+
+  it("refuses to build or email an installer form without a verified balance", () => {
+    const form = {
+      id: "form-1",
+      quote_id: "quote-1",
+      job_id: "job-1",
+      public_token: "secret",
+      status: "sent",
+      customer_snapshot: {
+        name: "Jane Customer",
+        address: null,
+        phone: null,
+        email: null,
+        quoteNumber: "805-0200",
+      },
+      line_snapshot: [],
+      cod_original: 0,
+      cod_adjusted: 0,
+      cod_withheld: 0,
+      issues: [],
+      accepted: false,
+      signer_name: null,
+      signed_at: null,
+      meta: {},
+    } satisfies InstallerFormRow;
+    expect(() => buildInstallerFormPdf(form, "https://805shutters.com/installer-form/secret"))
+      .toThrow("missing a verified current customer balance");
+    expect(() => buildInstallerFormEmail(form, "https://805shutters.com/installer-form/secret"))
+      .toThrow("missing a verified current customer balance");
   });
 });
 

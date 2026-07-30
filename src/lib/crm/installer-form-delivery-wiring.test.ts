@@ -16,11 +16,16 @@ describe("installer form sold-path delivery", () => {
     expect(installerForms).toContain('.eq("quote_id", quoteId)');
     expect(installerForms).toContain("return deliverInstallerForm(supabase, prepared)");
     expect(installerForms).toContain("installer form already delivered");
-    expect(installerForms).toContain("`805-installer-form-${form.id}-${handoff.sha256.slice(0, 24)}`");
+    expect(installerForms).toContain("`805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}`");
     expect(installerForms).toContain("installation handoff already delivered");
   });
 
   it("persists an observable success or failure before returning", () => {
+    expect(installerForms).toContain("refreshInstallerCustomerBalance");
+    expect(installerForms.indexOf("refreshInstallerCustomerBalance")).toBeLessThan(
+      installerForms.indexOf("buildInstallerFormPdf(balancePreparedForm"),
+    );
+    expect(installerForms).toContain("REMAINING CUSTOMER BALANCE:");
     expect(installerForms).toContain('status: workflowStatus');
     expect(installerForms).toContain('? "sent"');
     expect(installerForms).toContain(': "email_failed"');

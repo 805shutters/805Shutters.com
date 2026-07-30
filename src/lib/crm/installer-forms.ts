@@ -14,6 +14,10 @@ import {
   type InstallationHandoffDeliveryState,
   type InstallationHandoffPackage,
 } from "@/lib/crm/installation-handoff";
+import {
+  refreshInstallerCustomerBalance,
+  requireInstallerCustomerBalance,
+} from "@/lib/crm/installer-balance";
 
 export const INSTALLER_FORM_RECIPIENT = "mtsinstallations@gmail.com";
 export const INSTALLER_REPORT_RECIPIENT = "805@805shutters.com";
@@ -350,12 +354,16 @@ async function deliverInstallerForm(
     };
   }
 
-  const url = installerUrl(form.public_token);
-  const pdf = buildInstallerFormPdf(form, url);
-  const message = buildInstallerFormEmail(form, url);
-  const handoff = installerFormHandoffPackage(form);
+  const balancePreparedForm = await refreshInstallerCustomerBalance(
+    supabase,
+    form,
+  ) as InstallerFormRow;
+  const url = installerUrl(balancePreparedForm.public_token);
+  const pdf = buildInstallerFormPdf(balancePreparedForm, url);
+  const message = buildInstallerFormEmail(balancePreparedForm, url);
+  const handoff = installerFormHandoffPackage(balancePreparedForm);
   const attachments = [{
-    filename: `805-Shutters-Installation-Form-${form.customer_snapshot.quoteNumber || form.id.slice(0, 8)}.pdf`,
+    filename: `805-Shutters-Installation-Form-${balancePreparedForm.customer_snapshot.quoteNumber || balancePreparedForm.id.slice(0, 8)}.pdf`,
     content: pdf.toString("base64"),
     contentType: "application/pdf",
   }, ...(handoff
@@ -382,13 +390,13 @@ async function deliverInstallerForm(
     text: message.text,
     attachments,
     idempotencyKey: handoff
-      ? `805-installer-form-${form.id}-${handoff.sha256.slice(0, 24)}`
-      : `805-installer-form-${form.id}`,
+      ? `805-installer-form-${balancePreparedForm.id}-${handoff.sha256.slice(0, 24)}`
+      : `805-installer-form-${balancePreparedForm.id}`,
   });
   const deliveryTime = email.sent ? new Date().toISOString() : null;
   const meta = handoffState
     ? {
-        ...(form.meta || {}),
+        ...(balancePreparedForm.meta || {}),
         [INSTALLATION_HANDOFF_META_KEY]: {
           ...handoffState,
           status: email.sent ? "sent" : "email_failed",
@@ -397,15 +405,15 @@ async function deliverInstallerForm(
           sent_at: deliveryTime,
         } satisfies InstallationHandoffDeliveryState,
       }
-    : form.meta;
-  const workflowStatus = ["partially_installed", "completed"].includes(form.status)
-    ? form.status
+    : balancePreparedForm.meta;
+  const workflowStatus = ["partially_installed", "completed"].includes(balancePreparedForm.status)
+    ? balancePreparedForm.status
     : email.sent
       ? "sent"
       : "email_failed";
   const deliveryPatch = {
     status: workflowStatus,
-    sent_at: deliveryTime || form.sent_at || null,
+    sent_at: deliveryTime || balancePreparedForm.sent_at || null,
     email_recipient: INSTALLER_FORM_RECIPIENT,
     email_message_id: email.id || null,
     email_error: email.error || email.skipped || null,
@@ -414,11 +422,11 @@ async function deliverInstallerForm(
   const { error: deliveryError } = await supabase
     .from("crm_installer_forms")
     .update(deliveryPatch)
-    .eq("id", form.id);
+    .eq("id", balancePreparedForm.id);
   if (deliveryError) {
     throw new CrmAuthError(502, `The installer form email result could not be recorded: ${deliveryError.message}`);
   }
-  return { form: { ...form, ...deliveryPatch }, email };
+  return { form: { ...balancePreparedForm, ...deliveryPatch }, email };
 }
 
 export async function loadInstallerFormByToken(supabase: SupabaseClient, token: string): Promise<InstallerFormPublic | null> {
@@ -612,18 +620,30 @@ export function calculateInstallerCod(
 }
 
 export function buildInstallerFormEmail(form: InstallerFormRow, url: string) {
+  const balance = requireInstallerCustomerBalance(form);
+  const remainingBalance = formatInstallerMoney(balance.remaining_customer_balance);
   const contract = form.customer_snapshot.quoteNumber ? `Contract ${form.customer_snapshot.quoteNumber}` : "Sold job";
   const subject = `805 Shutters Installation Form — ${form.customer_snapshot.name}`;
   const hasHandoff = Boolean(installerFormInstallationHandoffState(form));
   const handoffNote = hasHandoff
     ? " The canonical JSON handoff and SHA-256 sidecar are also attached for MTS intake."
     : "";
-  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached.${handoffNote}`;
-  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without pricing.${html(handoffNote)}</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
+  const text = `${subject}\n\n${contract}\n${form.customer_snapshot.address || ""}\nRemaining customer balance: ${remainingBalance}\n${form.line_snapshot.length} installation line item(s)\n\nOpen the editable technician form to record the overall outcome, report incomplete work or line-item issues, add notes, and sign off. Reopen the same link to update the report:\n${url}\n\nA price-redacted reference PDF is attached with the remaining customer balance clearly labeled.${handoffNote}`;
+  const body = `<div style="font-family:Arial,sans-serif;max-width:680px"><h1>805 Shutters Installation Form</h1><p><strong>${html(form.customer_snapshot.name)}</strong><br>${html(form.customer_snapshot.address || "")}<br>${html(contract)}</p><p><strong>Remaining customer balance: ${html(remainingBalance)}</strong></p><p>${form.line_snapshot.length} installation line item(s). The attached PDF contains the customer and product details without line-item pricing and clearly labels the remaining customer balance.${html(handoffNote)}</p><p><a href="${html(url)}" style="display:inline-block;background:#111;color:#fff;padding:13px 18px;text-decoration:none;font-weight:bold">Open editable technician form</a></p><p>Use the live form to record the job outcome, report incomplete work, add notes, and sign off. Reopen this same link whenever the report needs an update.</p></div>`;
   return { subject, text, html: body };
 }
 
+function formatInstallerMoney(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
+  const balance = requireInstallerCustomerBalance(form);
   const pages: string[][] = [[]];
   let page = pages[0];
   let y = 750;
@@ -640,6 +660,11 @@ export function buildInstallerFormPdf(form: InstallerFormRow, url: string) {
   write(`Phone: ${form.customer_snapshot.phone || "Not provided"}`);
   write(`Email: ${form.customer_snapshot.email || "Not provided"}`);
   write(`Contract: ${form.customer_snapshot.quoteNumber || form.quote_id}`);
+  write(
+    `REMAINING CUSTOMER BALANCE: ${formatInstallerMoney(balance.remaining_customer_balance)}`,
+    12,
+    true,
+  );
   y -= 8;
   form.line_snapshot.forEach((line, index) => {
     write(`${index + 1}. ${line.room} — ${line.productName}${line.styleName ? ` — ${line.styleName}` : ""}`, 10, true);
