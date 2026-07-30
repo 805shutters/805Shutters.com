@@ -13,6 +13,11 @@ describe("CRM customer contract route", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
   });
 
+  it("provides an explicit X control to close the customer contract preview", () => {
+    expect(source).toContain('aria-label="Close customer contract"');
+    expect(source).toContain("onClose={() => setSelectedResultId(null)}");
+  });
+
   it("opens historical CRM quotes in the unchanged original builder", () => {
     expect(source).toContain('if (tab === "contract") void openQuoteContract(quoteId)');
     expect(source).toContain("else setBuilderQuoteId(quoteId)");

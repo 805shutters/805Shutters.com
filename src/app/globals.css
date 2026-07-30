@@ -5345,14 +5345,37 @@ body.qb-fullscreen .crm-app-shell {
   text-transform: uppercase;
 }
 
+.crm-global-contract-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .crm-global-contract-pane-head a {
   color: var(--ink);
   text-decoration: none;
 }
 
+.crm-global-contract-pane-head button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--ink);
+  font: 700 22px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
 .crm-global-contract-pane-head a:hover,
-.crm-global-contract-pane-head a:focus-visible {
+.crm-global-contract-pane-head a:focus-visible,
+.crm-global-contract-pane-head button:hover,
+.crm-global-contract-pane-head button:focus-visible {
   color: var(--accent);
+  border-color: var(--accent);
 }
 
 .crm-global-contract-pane iframe {

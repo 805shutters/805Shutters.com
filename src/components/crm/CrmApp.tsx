@@ -6908,6 +6908,7 @@ function GlobalCustomerSearchPanel({
             <ContractPreviewPane
               document={selectedPreviewDocument}
               customerName={selectedResult?.entry.customerName || selectedResult?.entry.name || "Customer"}
+              onClose={() => setSelectedResultId(null)}
             />
           ) : null}
 
@@ -6981,10 +6982,12 @@ function GlobalCustomerSearchPanel({
 
 function ContractPreviewPane({
   document,
-  customerName
+  customerName,
+  onClose
 }: {
   document: DrillDocument;
   customerName: string;
+  onClose: () => void;
 }) {
   const previewUrl = documentPreviewUrl(document);
 
@@ -6992,9 +6995,14 @@ function ContractPreviewPane({
     <aside className="crm-global-contract-pane" aria-label={`Contract for ${customerName}`}>
       <div className="crm-global-contract-pane-head">
         <span>Contract</span>
-        <a href={previewUrl} target="_blank" rel="noreferrer">
-          Open
-        </a>
+        <div className="crm-global-contract-pane-actions">
+          <a href={previewUrl} target="_blank" rel="noreferrer">
+            Open
+          </a>
+          <button type="button" aria-label="Close customer contract" title="Close contract" onClick={onClose}>
+            ×
+          </button>
+        </div>
       </div>
       <iframe title={`${customerName} contract`} src={previewUrl} />
     </aside>
