@@ -64,8 +64,8 @@ function assertSourceQuote(quote: AnyRow) {
     throw new CrmAuthError(409, "Historical backfill identity or sold-source invariants do not match.");
   }
   const owner = normalizedText(quote.sales_owner);
-  if (owner !== "mike") {
-    throw new CrmAuthError(409, "Historical backfill requires Mike as the sole source sale owner.");
+  if (owner === "jessica") {
+    throw new CrmAuthError(409, "Historical backfill refuses a source quote attributed to Jessica.");
   }
 }
 
@@ -258,6 +258,12 @@ export async function backfillFrancisParnellHistoricalRecordkeeping(
   if (error) throw new CrmAuthError(502, "Historical source quote could not be loaded.");
   if (!source) throw new CrmAuthError(404, "Historical source quote was not found.");
   assertSourceQuote(source as AnyRow);
+  const sourceOwnerUpdate = await supabase
+    .from("sales_quotes")
+    .update({ sales_owner: "Mike" })
+    .eq("id", source.id);
+  if (sourceOwnerUpdate.error) throw new CrmAuthError(502, "Mike ownership could not be saved on the historical source quote.");
+  source.sales_owner = "Mike";
 
   const job = await exactExistingJob(supabase);
   const jobMeta = job.meta && typeof job.meta === "object" && !Array.isArray(job.meta) ? job.meta : {};
