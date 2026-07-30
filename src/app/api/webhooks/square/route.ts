@@ -7,7 +7,10 @@ import {
   getSquareWebhookConfig,
   isSquarePaidPaymentEvent,
 } from "@/lib/finance/square";
-import { reconcileSquareQuotePayment } from "@/lib/crm/square-payments";
+import {
+  reconcileVerifiedSquareOrderPayment,
+  SquareReconcileResult,
+} from "@/lib/crm/square-payments";
 
 export const runtime = "nodejs";
 
@@ -36,25 +39,29 @@ export async function POST(request: NextRequest) {
 
   const root = payload as { events?: unknown[] } | null;
   const events = Array.isArray(root?.events) ? (root!.events as unknown[]) : Array.isArray(payload) ? (payload as unknown[]) : [payload];
-  const results: Array<Awaited<ReturnType<typeof reconcileSquareQuotePayment>>> = [];
+  const results: SquareReconcileResult[] = [];
   const errors: string[] = [];
 
   for (const event of events) {
     if (!isSquarePaidPaymentEvent(event)) continue;
-    let facts = extractSquarePaymentFacts(event);
+    const facts = extractSquarePaymentFacts(event);
     if (!facts || facts.amountCents <= 0) continue;
 
     try {
-      if (!facts.quoteId && facts.orderId) {
-        const orderFacts = await fetchSquareOrderFacts(facts.orderId);
-        facts = {
-          ...facts,
-          quoteId: orderFacts.quoteId,
-          paymentType: facts.paymentType || orderFacts.paymentType,
-        };
+      if (!facts.orderId) {
+        results.push({
+          status: "skipped",
+          reason: "Square payment did not identify its originating order.",
+          quoteId: null,
+          squarePaymentId: facts.squarePaymentId,
+          amount: facts.amountCents / 100,
+        });
+        continue;
       }
-
-      const result = await reconcileSquareQuotePayment(supabase, facts);
+      // Never trust quote/job/intent identifiers copied into the payment event.
+      // Re-read the signed Square order and reconcile only its durable metadata.
+      const order = await fetchSquareOrderFacts(facts.orderId);
+      const result = await reconcileVerifiedSquareOrderPayment(supabase, { payment: facts, order });
       results.push(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown Square webhook processing error.";

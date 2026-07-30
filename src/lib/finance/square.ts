@@ -87,6 +87,7 @@ export type SquarePaymentLinkInput = {
   amountCents: number;
   title: string;
   quoteId: string;
+  jobId: string;
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
   idempotencyKey?: string;
@@ -102,7 +103,12 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
     order: {
       location_id: locationId,
       reference_id: input.quoteId,
-      metadata: { quote_id: input.quoteId, payment_type: input.paymentType },
+      metadata: {
+        quote_id: input.quoteId,
+        job_id: input.jobId,
+        payment_type: input.paymentType,
+        expected_amount_cents: String(input.amountCents),
+      },
       line_items: [{ name: input.title, quantity: "1", base_price_money: { amount: input.amountCents, currency: "USD" } }],
     },
   };
@@ -140,15 +146,22 @@ export async function createSquarePaymentLink(input: SquarePaymentLinkInput): Pr
 export type SquarePaymentFacts = {
   squarePaymentId: string;
   amountCents: number;
+  currency: string | null;
   quoteId: string | null;
+  jobId: string | null;
   paymentType: string | null;
   orderId: string | null;
   paidAt: string | null;
+  eventId: string | null;
+  receiptUrl: string | null;
+  refundedAmountCents: number;
 };
 
 export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | null {
   const e = event as {
     type?: string;
+    event_id?: string;
+    eventId?: string;
     created_at?: string;
     createdAt?: string;
     data?: { object?: Record<string, unknown> | null };
@@ -169,7 +182,8 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     status?: string;
     total_money?: { amount?: number };
     total_money___amount?: number;
-    amount_money?: { amount?: number };
+    amount_money?: { amount?: number; currency?: string };
+    refunded_money?: { amount?: number };
     order_id?: string;
     orderId?: string;
     reference_id?: string;
@@ -177,11 +191,13 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     created_at?: string;
     createdAt?: string;
     metadata?: Record<string, string> | null;
+    receipt_url?: string;
+    receiptUrl?: string;
   };
   const id = payment.id || payment.uid;
   if (!id) return null;
-  const amountCents =
-    Number(payment.total_money?.amount ?? payment.amount_money?.amount ?? 0) || 0;
+  const amountCents = Number(payment.amount_money?.amount ?? payment.total_money?.amount ?? 0) || 0;
+  const currency = payment.amount_money?.currency || null;
   const meta = payment.metadata ?? order?.metadata ?? {};
   const quoteId =
     meta.quote_id ||
@@ -191,14 +207,35 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     order?.referenceId ||
     null;
   const paymentType = meta.payment_type ?? null;
+  const jobId = meta.job_id || null;
   const orderId = payment.order_id || payment.orderId || order?.id || null;
   const paidAt = payment.created_at || payment.createdAt || e.created_at || e.createdAt || null;
-  return { squarePaymentId: id, amountCents, quoteId, paymentType, orderId, paidAt };
+  return {
+    squarePaymentId: id,
+    amountCents,
+    currency,
+    quoteId,
+    jobId,
+    paymentType,
+    orderId,
+    paidAt,
+    eventId: e.event_id || e.eventId || null,
+    receiptUrl: payment.receipt_url || payment.receiptUrl || null,
+    refundedAmountCents: Number(payment.refunded_money?.amount || 0) || 0,
+  };
 }
+
+export type SquareOrderFacts = {
+  quoteId: string | null;
+  jobId: string | null;
+  paymentType: "deposit" | "balance" | null;
+  expectedAmountCents: number | null;
+  currency: string | null;
+};
 
 export async function fetchSquareOrderFacts(
   orderId: string,
-): Promise<Pick<SquarePaymentFacts, "quoteId" | "paymentType">> {
+): Promise<SquareOrderFacts> {
   const accessToken = squareAccessToken();
   if (!accessToken) throw new Error("Square is not configured (SQUARE_ACCESS_TOKEN).");
 
@@ -219,13 +256,25 @@ export async function fetchSquareOrderFacts(
       reference_id?: string | null;
       referenceId?: string | null;
       metadata?: Record<string, string> | null;
+      total_money?: { amount?: number | null; currency?: string | null } | null;
     } | null;
   };
   const order = data.order;
   const meta = order?.metadata ?? {};
+  const metadataAmount = Number(meta.expected_amount_cents);
+  const orderAmount = Number(order?.total_money?.amount);
+  const paymentType = meta.payment_type;
   return {
     quoteId: meta.quote_id || order?.reference_id || order?.referenceId || null,
-    paymentType: meta.payment_type || null,
+    jobId: meta.job_id || null,
+    paymentType: paymentType === "deposit" || paymentType === "balance" ? paymentType : null,
+    expectedAmountCents:
+      Number.isSafeInteger(metadataAmount) && metadataAmount > 0
+        ? metadataAmount
+        : Number.isSafeInteger(orderAmount) && orderAmount > 0
+          ? orderAmount
+          : null,
+    currency: order?.total_money?.currency || null,
   };
 }
 
@@ -380,8 +429,12 @@ export function isSquarePaidPaymentEvent(event: unknown): boolean {
   const e = event as { type?: string; data?: { object?: Record<string, unknown> | null } };
   if (!e?.type) return false;
   // Record only completed payment events (ignore authorizations, declines, refunds, pending states).
-  if (!/payment\.(updated|created|completed)/i.test(e.type)) return false;
-  const payment = (e.data?.object?.payment ?? e.data?.object) as { status?: string; card_details?: { status?: string } } | undefined;
+  if (!/^payment\.updated$/i.test(e.type)) return false;
+  const payment = (e.data?.object?.payment ?? e.data?.object) as {
+    status?: string;
+    card_details?: { status?: string };
+    refunded_money?: { amount?: number };
+  } | undefined;
   const status = String(payment?.status || payment?.card_details?.status || "").toUpperCase();
-  return ["COMPLETED", "CAPTURED", "PAID"].includes(status);
+  return status === "COMPLETED" && Number(payment?.refunded_money?.amount || 0) === 0;
 }

@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmBookkeepingPaymentType, CrmQuoteStatus } from "@/lib/crm/types";
-import { SquarePaymentFacts } from "@/lib/finance/square";
+import { SquareOrderFacts, SquarePaymentFacts } from "@/lib/finance/square";
 import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
 
 type CrmSupabaseClient = SupabaseClient;
@@ -40,6 +40,78 @@ export type SquareReconcileOptions = {
   createdBy?: string;
   metadata?: Record<string, unknown>;
 };
+
+export type VerifiedSquareReconcileInput = {
+  payment: SquarePaymentFacts;
+  order: SquareOrderFacts;
+};
+
+export function validateVerifiedSquarePayment(input: VerifiedSquareReconcileInput) {
+  const { payment, order } = input;
+  if (!payment.orderId || !order.quoteId || !order.jobId || !order.paymentType) {
+    throw new Error("Square order metadata is missing an exact CRM quote, job, or payment intent.");
+  }
+  if (!order.expectedAmountCents || payment.amountCents !== order.expectedAmountCents) {
+    throw new Error("Square payment amount does not exactly match the linked order.");
+  }
+  if (payment.amountCents <= 0 || payment.refundedAmountCents > 0) {
+    throw new Error("Square payment is zero or includes a refund.");
+  }
+  if (payment.currency && payment.currency !== "USD") {
+    throw new Error("Square payment currency is not USD.");
+  }
+  if (order.currency && order.currency !== "USD") {
+    throw new Error("Square order currency is not USD.");
+  }
+  return {
+    quoteId: order.quoteId,
+    jobId: order.jobId,
+    paymentType: order.paymentType,
+    amount: roundMoney(payment.amountCents / 100),
+    expectedAmount: roundMoney(order.expectedAmountCents / 100),
+  };
+}
+
+export async function reconcileVerifiedSquareOrderPayment(
+  supabase: CrmSupabaseClient,
+  input: VerifiedSquareReconcileInput,
+): Promise<SquareReconcileResult> {
+  const verified = validateVerifiedSquarePayment(input);
+  const paidAt = paymentDate(input.payment);
+  const { data, error } = await supabase.rpc("reconcile_square_quote_payment", {
+    p_quote_id: verified.quoteId,
+    p_job_id: verified.jobId,
+    p_square_payment_id: input.payment.squarePaymentId,
+    p_square_order_id: input.payment.orderId,
+    p_payment_intent: verified.paymentType,
+    p_amount: verified.amount,
+    p_expected_amount: verified.expectedAmount,
+    p_paid_at: paidAt,
+    p_square_event_id: input.payment.eventId,
+    p_receipt_url: input.payment.receiptUrl,
+    p_audit: {
+      payment_currency: input.payment.currency,
+      order_currency: input.order.currency,
+      expected_amount_cents: input.order.expectedAmountCents,
+    },
+  });
+  if (error) throw new Error(`Square payment could not be reconciled atomically: ${error.message}`);
+  const result = data as {
+    status?: "recorded" | "duplicate";
+    markedPaid?: boolean;
+  } | null;
+  if (result?.status !== "recorded" && result?.status !== "duplicate") {
+    throw new Error("Square reconciliation returned an invalid result.");
+  }
+  return {
+    status: result.status,
+    quoteId: verified.quoteId,
+    squarePaymentId: input.payment.squarePaymentId,
+    amount: verified.amount,
+    paymentLabel: verified.paymentType === "deposit" ? "Deposit" : "Balance payment",
+    markedPaid: Boolean(result.markedPaid),
+  };
+}
 
 function roundMoney(value: unknown) {
   const amount = Number(value || 0);

@@ -529,10 +529,15 @@ export async function processSquarePaymentEmails(
       const reconciled = await reconcileSquareQuotePayment(supabase, {
         squarePaymentId: `gmail:${receipt.gmailMessageId}`,
         amountCents: Math.round(receipt.amount * 100),
+        currency: "USD",
         quoteId: match.candidate.quoteId,
+        jobId: match.candidate.jobId,
         paymentType: match.candidate.paymentType,
         orderId: null,
         paidAt: `${receipt.paidDate}T12:00:00.000Z`,
+        eventId: null,
+        receiptUrl: null,
+        refundedAmountCents: 0,
       }, {
         externalSource: "square_email",
         externalId: receipt.gmailMessageId,

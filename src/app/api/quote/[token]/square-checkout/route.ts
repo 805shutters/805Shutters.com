@@ -32,11 +32,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     const money = selectedLineIds?.length ? await computeSelectionTotal(supabase, token, selectedLineIds) : pub;
     const amount = money.depositDue;
     if (!(amount > 0)) throw new CrmAuthError(400, "No deposit is due on this quote.");
+    const { data: quoteIdentity, error: quoteIdentityError } = await supabase
+      .from("crm_quotes")
+      .select("id,job_id")
+      .eq("id", pub.id)
+      .maybeSingle();
+    if (quoteIdentityError || !quoteIdentity?.job_id) {
+      throw new CrmAuthError(502, "The exact CRM job for this payment could not be verified.");
+    }
 
     const link = await createSquarePaymentLink({
       amountCents: dollarsToCents(amount),
       title: `Deposit — 805 Shutters${pub.quoteNumber ? ` (${pub.quoteNumber})` : ""}`,
       quoteId: pub.id,
+      jobId: quoteIdentity.job_id,
       paymentType: "deposit",
     });
     return NextResponse.json({ url: link.url });

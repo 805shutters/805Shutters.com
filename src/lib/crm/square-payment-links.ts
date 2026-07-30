@@ -94,10 +94,19 @@ export async function sendSquareOrderPaymentLink(
   if (delivery?.channel === "text" && !phone) throw new CrmAuthError(400, "A valid customer phone number is required to text a payment link.");
 
   const label = paymentType === "deposit" ? "Deposit" : "Order balance";
+  const { data: quoteIdentity, error: quoteIdentityError } = await supabase
+    .from("crm_quotes")
+    .select("id,job_id")
+    .eq("id", quoteId)
+    .maybeSingle();
+  if (quoteIdentityError || !quoteIdentity?.job_id) {
+    throw new CrmAuthError(502, "The exact CRM job for this payment link could not be verified.");
+  }
   const link = await createSquarePaymentLink({
     amountCents: dollarsToCents(amount),
     title: `${label} — 805 Shutters${publicQuote.quoteNumber ? ` (${publicQuote.quoteNumber})` : ""}`,
     quoteId,
+    jobId: quoteIdentity.job_id,
     paymentType,
     buyerEmail: customerEmail,
     idempotencyKey: delivery?.idempotencyKey,

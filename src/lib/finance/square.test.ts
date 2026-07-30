@@ -94,6 +94,7 @@ describe("squarePaymentLinkRequestBody", () => {
         amountCents: 54125,
         title: "Deposit - 805 Shutters",
         quoteId: "quote-1",
+        jobId: "job-1",
         paymentType: "deposit",
         buyerEmail: "customer@example.com",
       },
@@ -123,6 +124,7 @@ describe("createSquarePaymentLink", () => {
       amountCents: 52547,
       title: "Deposit - 805 Shutters",
       quoteId: "quote-1",
+      jobId: "job-1",
       paymentType: "deposit",
       buyerEmail: "customer@example.com",
     });
@@ -135,7 +137,12 @@ describe("createSquarePaymentLink", () => {
       order: {
         location_id: "loc",
         reference_id: "quote-1",
-        metadata: { quote_id: "quote-1", payment_type: "deposit" },
+        metadata: {
+          quote_id: "quote-1",
+          job_id: "job-1",
+          payment_type: "deposit",
+          expected_amount_cents: "52547",
+        },
       },
     });
     expect(body.order.line_items[0]).toMatchObject({
@@ -162,8 +169,9 @@ describe("extractSquarePaymentFacts", () => {
         object: {
           payment: {
             id: "pay1",
-            total_money: { amount: 50000 },
+            amount_money: { amount: 50000, currency: "USD" },
             order_id: "order1",
+            receipt_url: "https://squareup.com/receipt/pay1",
             metadata: { quote_id: "Q123", payment_type: "deposit" }
           }
         }
@@ -172,10 +180,15 @@ describe("extractSquarePaymentFacts", () => {
     expect(facts).toEqual({
       squarePaymentId: "pay1",
       amountCents: 50000,
+      currency: "USD",
       quoteId: "Q123",
+      jobId: null,
       paymentType: "deposit",
       orderId: "order1",
-      paidAt: "2026-07-01T17:38:00Z"
+      paidAt: "2026-07-01T17:38:00Z",
+      eventId: null,
+      receiptUrl: "https://squareup.com/receipt/pay1",
+      refundedAmountCents: 0,
     });
   });
   it("pulls quote metadata from an embedded order object", () => {
@@ -199,12 +212,25 @@ describe("fetchSquareOrderFacts", () => {
     vi.stubEnv("SQUARE_ACCESS_TOKEN", "token");
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
-      json: async () => ({ order: { reference_id: "quote-1", metadata: { payment_type: "deposit" } } }),
+      json: async () => ({
+        order: {
+          reference_id: "quote-1",
+          metadata: {
+            job_id: "job-1",
+            payment_type: "deposit",
+            expected_amount_cents: "50000",
+          },
+          total_money: { amount: 50000, currency: "USD" },
+        },
+      }),
     } as Response);
 
     await expect(fetchSquareOrderFacts("order-1")).resolves.toEqual({
       quoteId: "quote-1",
+      jobId: "job-1",
       paymentType: "deposit",
+      expectedAmountCents: 50000,
+      currency: "USD",
     });
   });
 });
@@ -218,5 +244,13 @@ describe("isSquarePaidPaymentEvent", () => {
   });
   it("ignores non-payment events", () => {
     expect(isSquarePaidPaymentEvent({ type: "refund.created", data: {} })).toBe(false);
+  });
+  it("ignores created, failed, and refunded payments", () => {
+    expect(isSquarePaidPaymentEvent({ type: "payment.created", data: { object: { payment: { status: "COMPLETED" } } } })).toBe(false);
+    expect(isSquarePaidPaymentEvent({ type: "payment.updated", data: { object: { payment: { status: "FAILED" } } } })).toBe(false);
+    expect(isSquarePaidPaymentEvent({
+      type: "payment.updated",
+      data: { object: { payment: { status: "COMPLETED", refunded_money: { amount: 100 } } } },
+    })).toBe(false);
   });
 });
