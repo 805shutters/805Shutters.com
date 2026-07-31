@@ -374,7 +374,7 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.people.jessica.activeItems[0].itemKey).toBe("jessica:manual:completed-ready");
   });
 
-  it("creates active payable rows only for paid-in-full jobs", () => {
+  it("creates Ken payables for closed jobs regardless of customer payment status", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [
         row({ id: "mike-sale", salesOwner: "mike", remainingProfitBeforeJessica: 600, kenCut: 100 }),
@@ -404,7 +404,7 @@ describe("buildPartnerPaymentLedger", () => {
       commissionPayments: []
     });
 
-    expect(ledger.people.ken).toMatchObject({ earned: 200, paid: 0, owed: 200, activeJobCount: 2 });
+    expect(ledger.people.ken).toMatchObject({ earned: 300, paid: 0, owed: 300, activeJobCount: 3 });
     expect(ledger.people.mike).toMatchObject({ earned: 1000, paid: 0, owed: 1000, activeJobCount: 2 });
     expect(ledger.people.jessica).toMatchObject({ earned: 400, paid: 0, owed: 400, activeJobCount: 1 });
   });

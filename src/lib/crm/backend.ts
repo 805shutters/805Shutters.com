@@ -21,6 +21,7 @@ import {
   partnerPaymentReceiptAllocationFromRow,
   sendPartnerPaymentReceiptEmail
 } from "@/lib/crm/partner-payment-receipts";
+import { reconcileKenBuyoutApplication } from "@/lib/crm/ken-payment-workflow";
 import { CrmAuthError } from "@/lib/crm/auth";
 import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
 import { hydrateLeadSource, isMissingLeadSourceColumnError, withLeadSourceMeta } from "@/lib/lead-source";
@@ -4237,7 +4238,9 @@ function paymentAllocationRows({
         sourceStatus: item.sourceStatus,
         salesOwner: item.salesOwner,
         quoteNumber: item.quoteNumber,
-        total: item.total
+        total: item.total,
+        owedAmount: item.owedAmount,
+        expectedExplicitPaidAmount: Math.round(Math.max(item.paidAmount - item.legacyPaidAmount, 0) * 100) / 100
       }
     });
   }
@@ -4346,6 +4349,22 @@ export async function createPartnerPaymentBatch(
     return { payment, allocations: [], dashboard: await loadCrmDashboardData(supabase) };
   }
   const dashboard = await loadCrmDashboardData(supabase);
+  const paymentRequestId = optionalText(payload.payment_request_id ?? payload.paymentRequestId);
+  if (person === "ken" && !paymentRequestId) {
+    throw new CrmAuthError(400, "Ken payment confirmation requires a unique request ID.");
+  }
+  if (person === "ken" && paymentRequestId) {
+    const existing = dashboard.kenPayments.find((candidate) => candidate.meta?.paymentRequestId === paymentRequestId);
+    if (existing) {
+      return {
+        payment: existing,
+        allocations: dashboard.kenPaymentAllocations.filter((allocation) => allocation.payment_id === existing.id),
+        dashboard,
+        idempotentReplay: true,
+        receiptEmail: { sent: false, skipped: "Idempotent replay; receipt was not sent again." }
+      };
+    }
+  }
   const selectedKeys = selectedPaymentItemKeys(payload);
   const personLedger = dashboard.partnerPaymentLedger.people[person];
   const activeItems = personLedger.activeItems;
@@ -4406,7 +4425,20 @@ export async function createPartnerPaymentBatch(
     selectedItemKeys: selectedItems.map((item) => item.itemKey),
     grossPayableAmount,
     advanceApplied,
-    selectedItemAllocations: paymentAllocationMetadata(allocations)
+    selectedItemAllocations: paymentAllocationMetadata(allocations),
+    ...(person === "ken"
+      ? {
+          paymentRequestId,
+          buyoutLedgerApplication: {
+            amount,
+            target: dashboard.kenPayoff.payoffTarget,
+            remainingBefore: dashboard.kenPayoff.payoffRemaining,
+            remainingAfter: Math.round(Math.max(dashboard.kenPayoff.payoffRemaining - amount, 0) * 100) / 100,
+            paymentPolicy: "Exactly 10% of every closed job whose Ken allocation remains unpaid.",
+            semantics: "The crm_ken_payments batch is the shared source for payable allocations and buyout payoff reduction."
+          }
+        }
+      : {})
   };
   const paymentRecord = {
     paid_on: paidOn,
@@ -4416,7 +4448,7 @@ export async function createPartnerPaymentBatch(
     created_by_email: actor.email,
     meta
   };
-  const rpcName = person === "ken" ? "crm_create_ken_payment_batch" : "crm_create_commission_payment_batch";
+  const rpcName = person === "ken" ? "crm_create_ken_payment_batch_v2" : "crm_create_commission_payment_batch";
   const rpcPayload =
     person === "ken"
       ? {
@@ -4439,9 +4471,18 @@ export async function createPartnerPaymentBatch(
           p_allocations: allocations
         };
 
-  const { data: paymentId, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
+  const { data: rpcResult, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
+  const kenRpcResult =
+    person === "ken" && rpcResult && typeof rpcResult === "object"
+      ? rpcResult as { payment_id?: string; created?: boolean }
+      : null;
+  const paymentId = person === "ken" ? kenRpcResult?.payment_id : rpcResult;
+  const idempotentReplay = person === "ken" ? kenRpcResult?.created === false : false;
   let payment: Record<string, unknown>;
   if (rpcError || !paymentId) {
+    if (person === "ken") {
+      throw new CrmAuthError(503, "Ken payment was not recorded because the atomic idempotent payment function is unavailable.");
+    }
     if (rpcError) {
       console.warn(
         `${paymentPersonLabel(person)} payment batch RPC could not be used; using direct insert fallback.`,
@@ -4460,18 +4501,31 @@ export async function createPartnerPaymentBatch(
     payment = rpcPayment;
   }
 
-  const receiptEmail = await sendPartnerPaymentReceiptEmail({
-    paymentId: String(payment.id),
-    person,
-    paidOn,
-    amount,
-    note,
-    createdByEmail: actor.email,
-    advanceApplied,
-    allocations: allocations.map(partnerPaymentReceiptAllocationFromRow)
-  });
+  const refreshedDashboard = await loadCrmDashboardData(supabase);
+  const reconciliation = person === "ken"
+    ? reconcileKenBuyoutApplication({
+        remainingBefore: dashboard.kenPayoff.payoffRemaining,
+        paymentAmount: amount,
+        remainingAfter: refreshedDashboard.kenPayoff.payoffRemaining
+      })
+    : null;
+  const receiptEmail =
+    !idempotentReplay && (person !== "ken" || reconciliation?.ok)
+      ? await sendPartnerPaymentReceiptEmail({
+          paymentId: String(payment.id),
+          person,
+          paidOn,
+          amount,
+          note,
+          createdByEmail: actor.email,
+          advanceApplied,
+          payoffBefore: reconciliation?.remainingBefore,
+          payoffAfter: reconciliation?.actualRemainingAfter,
+          allocations: allocations.map(partnerPaymentReceiptAllocationFromRow)
+        })
+      : { sent: false, skipped: idempotentReplay ? "Idempotent replay; receipt was not sent again." : "Buyout reconciliation mismatch; receipt was not sent." };
 
-  await recordCrmActivity(supabase, actor, {
+  if (!idempotentReplay) await recordCrmActivity(supabase, actor, {
     entityType: person === "ken" ? "ken_payment" : "commission_payment",
     entityId: String(payment.id),
     action: "create_batch",
@@ -4490,7 +4544,9 @@ export async function createPartnerPaymentBatch(
     payment,
     allocations,
     receiptEmail,
-    dashboard: await loadCrmDashboardData(supabase)
+    dashboard: refreshedDashboard,
+    idempotentReplay,
+    reconciliation
   };
 }
 

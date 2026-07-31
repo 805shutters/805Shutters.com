@@ -26,6 +26,8 @@ type PartnerPaymentReceiptInput = {
   note?: string | null;
   createdByEmail?: string | null;
   advanceApplied?: number;
+  payoffBefore?: number;
+  payoffAfter?: number;
   allocations: PartnerPaymentReceiptAllocation[];
 };
 
@@ -238,6 +240,9 @@ export function buildPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInpu
     `Total paid: ${money(input.amount)}`,
     `Payment date: ${shortDate(input.paidOn)}`,
     input.advanceApplied ? `Advance applied: -${money(input.advanceApplied)}` : null,
+    input.payoffBefore != null && input.payoffAfter != null
+      ? `Business-buyout ledger: ${money(input.payoffBefore)} remaining → ${money(input.payoffAfter)} remaining`
+      : null,
     input.note ? `Note: ${input.note}` : null,
     "",
     "Job breakdown:",
@@ -258,6 +263,7 @@ export function buildPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInpu
       <div style="font-size:28px;font-weight:700">${money(input.amount)}</div>
       <div style="font-size:13px;color:#333333;margin-top:4px">Payment date: ${escapeHtml(shortDate(input.paidOn))}</div>
       ${input.advanceApplied ? `<div style="font-size:13px;color:#333333;margin-top:4px">Advance applied: -${money(input.advanceApplied)}</div>` : ""}
+      ${input.payoffBefore != null && input.payoffAfter != null ? `<div style="font-size:13px;color:#333333;margin-top:4px">Business-buyout ledger: ${money(input.payoffBefore)} remaining → ${money(input.payoffAfter)} remaining</div>` : ""}
       ${input.note ? `<div style="font-size:13px;color:#333333;margin-top:4px">Note: ${escapeHtml(input.note)}</div>` : ""}
     </div>
     <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:13px">
@@ -308,6 +314,17 @@ export async function sendPartnerPaymentReceiptEmail(input: PartnerPaymentReceip
   const email = buildPartnerPaymentReceiptEmail(input);
   const filename = `805-shutters-${input.person}-payment-${fileDate(input.paidOn)}-${input.paymentId.slice(0, 8)}.pdf`;
   const configuredSender = (process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || "").trim();
+  if (input.person === "ken") {
+    const configuredRecipient = String(process.env.KEN_PAYMENT_EMAIL || "").trim().toLowerCase();
+    if (
+      process.env.KEN_PAYMENT_EMAIL_ENABLED !== "true" ||
+      process.env.KEN_PAYMENT_EMAIL_VERIFIED !== "true" ||
+      configuredRecipient !== partnerPaymentReceiptRecipients.ken ||
+      process.env.KEN_PAYMENT_EMAIL_SENDER_VERIFIED !== "true"
+    ) {
+      return { sent: false, skipped: "Ken payment receipt email is not explicitly enabled and verified", to, filename };
+    }
+  }
   if (!/@805shutters\.com\b/i.test(configuredSender)) {
     return { sent: false, skipped: "verified 805 sender not configured", to, filename };
   }

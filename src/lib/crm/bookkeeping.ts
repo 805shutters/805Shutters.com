@@ -39,6 +39,12 @@ export function isPaidInFullBookkeepingRow(row: Pick<CrmBookkeepingRow, "total" 
   return Boolean(row.isPaidInFull);
 }
 
+export function isKenClosedJobEligible(
+  row: Pick<CrmBookkeepingRow, "total" | "status" | "liveStatus">
+) {
+  return row.total > 0 && (row.liveStatus === "closed" || row.status === "closed");
+}
+
 export function effectiveBookkeepingStatus(
   row: Pick<CrmBookkeepingRow, "source" | "status" | "isPaidInFull" | "liveStatus">
 ): CrmBookkeepingStatus {
@@ -204,9 +210,12 @@ export function sumBookkeepingRows(
       if (row.isPaidInFull) {
         totals.closedRows += 1;
         totals.closedTotal = roundCents(totals.closedTotal + row.total);
-        totals.kenTotalClosed = roundCents(totals.kenTotalClosed + row.kenCut);
+      }
+      if (isKenClosedJobEligible(row)) {
+        const fixedKenAmount = roundCents(row.total * OWNER_COMMISSION_RATE);
+        totals.kenTotalClosed = roundCents(totals.kenTotalClosed + fixedKenAmount);
         if (currentMonth && monthKey(closedDateForBookkeepingRow(row)) === currentMonth) {
-          totals.kenMonthlyDue = roundCents(totals.kenMonthlyDue + row.kenCut);
+          totals.kenMonthlyDue = roundCents(totals.kenMonthlyDue + fixedKenAmount);
         }
       }
       if (row.cogs <= 0) totals.missingCogs += 1;
@@ -299,14 +308,13 @@ export function buildKenPayoffSummary({
   openingBalance?: number;
   payoffTarget?: number;
 }): CrmKenPayoffSummary {
-  // "Completed" for Ken = the customer has paid in full (zero/negative balance).
-  // Each row's kenCut already reflects Jessica's exemption and any override, so
-  // exempt jobs correctly contribute $0 to Ken's check.
-  const completedRows = rows.filter(isPaidInFullBookkeepingRow);
+  const completedRows = rows.filter(isKenClosedJobEligible);
   const kenAccruedCompleted = roundCents(
-    completedRows.reduce((sum, row) => sum + (Number(row.kenCut) || 0), 0)
+    completedRows.reduce((sum, row) => sum + roundCents(row.total * OWNER_COMMISSION_RATE), 0)
   );
-  const kenAccruedAll = roundCents(rows.reduce((sum, row) => sum + (Number(row.kenCut) || 0), 0));
+  const kenAccruedAll = roundCents(
+    rows.reduce((sum, row) => sum + roundCents(row.total * OWNER_COMMISSION_RATE), 0)
+  );
   const recordedPayments = roundCents(
     payments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0)
   );
@@ -328,7 +336,7 @@ export function buildKenPayoffSummary({
     kenAccruedCompleted,
     kenAccruedAll,
     kenOwed,
-    completedJobs: completedRows.filter((row) => (Number(row.kenCut) || 0) > 0).length
+    completedJobs: completedRows.length
   };
 }
 

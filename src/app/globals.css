@@ -13577,6 +13577,35 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   border-bottom: 1px solid var(--line);
 }
 
+.crm-ken-owed-hero {
+  display: grid;
+  gap: 6px;
+  padding: 22px 24px;
+  background: #e8f7ed;
+  border-bottom: 1px solid #8fcfa6;
+  color: #1c6b3a;
+}
+
+.crm-ken-owed-hero span {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.crm-ken-owed-hero strong {
+  font-family: var(--font-display);
+  font-size: clamp(42px, 7vw, 64px);
+  font-weight: 400;
+  line-height: 1;
+}
+
+.crm-ken-owed-hero em {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .crm-payment-person-grid .crm-bookkeeping-summary-card {
   min-height: 76px;
 }

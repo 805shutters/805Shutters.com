@@ -1092,19 +1092,27 @@ describe("constants", () => {
 });
 
 describe("buildKenPayoffSummary", () => {
-  it("accrues Ken's 10% only on jobs the customer has paid in full", () => {
-    const rows = rowsFrom({
+  it("accrues Ken's 10% on closed jobs regardless of customer payment status", () => {
+    const builtRows = rowsFrom({
       entries: [
         entry({ id: "e1", total_amount: 10000, sales_owner: "mike", sold_date: "2026-05-01" }),
         entry({ id: "e2", total_amount: 10000, sales_owner: "mike", sold_date: "2026-05-01" })
       ],
       payments: [payment({ id: "p1", bookkeeping_entry_id: "e1", amount: 10000 })]
     });
+    const rows = builtRows.map((row) => row.id === "e2" ? { ...row, liveStatus: "closed" as const } : row);
     const summary = buildKenPayoffSummary({ rows, payments: [] });
-    expect(summary.kenAccruedCompleted).toBe(1000); // only e1 is paid in full
+    expect(summary.kenAccruedCompleted).toBe(2000);
     expect(summary.kenAccruedAll).toBe(2000);
-    expect(summary.completedJobs).toBe(1);
-    expect(summary.kenOwed).toBe(1000);
+    expect(summary.completedJobs).toBe(2);
+    expect(summary.kenOwed).toBe(2000);
+  });
+
+  it("rounds Ken's fixed 10% per closed job before summing", () => {
+    const rows = rowsFrom({
+      entries: [entry({ id: "round-a", total_amount: 10.05 }), entry({ id: "round-b", total_amount: 10.05 })]
+    }).map((row) => ({ ...row, liveStatus: "closed" as const }));
+    expect(buildKenPayoffSummary({ rows, payments: [] }).kenAccruedCompleted).toBe(2.02);
   });
 
   it("accrues Ken's 10% on Jessica's paid-in-full jobs too", () => {

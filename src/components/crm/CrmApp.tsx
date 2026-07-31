@@ -21,6 +21,7 @@ import {
   buildUnpaidPartnerPaymentItemForRow,
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
+import { buildKenPaymentReview, kenPaymentDisabledReason, type KenPaymentReview } from "@/lib/crm/ken-payment-workflow";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getLeadSourceFromRecord, leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -113,6 +114,7 @@ type PartnerPaymentRequest = {
   amount?: number;
   item_ids?: string[];
   advance?: boolean;
+  payment_request_id?: string;
 };
 type PartnerPaymentReceiptResponse = {
   sent: boolean;
@@ -10884,7 +10886,10 @@ type PayablesZelleConfig = {
 const payablesZelleConfig: Record<CrmPaymentPerson, PayablesZelleConfig> = {
   ken: {
     recipientName: "Ken",
-    zelleIdentifier: null,
+    zelleIdentifier:
+      process.env.NEXT_PUBLIC_KEN_ZELLE_RECIPIENT_VERIFIED === "true"
+        ? process.env.NEXT_PUBLIC_KEN_ZELLE_RECIPIENT || null
+        : null,
     zelleQrUrl: null
   },
   mike: {
@@ -11036,12 +11041,14 @@ function ZellePaymentPanel({
   person,
   amountDue,
   eligibleItemCount,
+  kenReview,
   busy,
   onOpenReview
 }: {
   person: CrmPaymentPerson;
   amountDue: number;
   eligibleItemCount: number;
+  kenReview: KenPaymentReview | null;
   busy: boolean;
   onOpenReview: () => void;
 }) {
@@ -11056,6 +11063,10 @@ function ZellePaymentPanel({
     busy ? "Another payment update is currently in progress." : null
   ].filter((reason): reason is string => Boolean(reason));
   const canReviewJessicaPayment = person === "jessica" && jessicaDisabledReasons.length === 0;
+  const kenDisabledReason =
+    person === "ken" && kenReview
+      ? kenPaymentDisabledReason({ recipientConfigured: Boolean(zelleIdentifier), review: kenReview, busy })
+      : null;
 
   useEffect(() => {
     setCopied(false);
@@ -11084,6 +11095,16 @@ function ZellePaymentPanel({
         </p>
       </div>
       <div className="crm-zelle-actions">
+        {person === "ken" ? (
+          <div className="crm-zelle-primary-action">
+            <button type="button" disabled={Boolean(kenDisabledReason)} onClick={onOpenReview}>
+              Make Payment
+            </button>
+            <small className={kenDisabledReason ? "crm-zelle-action-help crm-zelle-action-help--disabled" : "crm-zelle-action-help"}>
+              {kenDisabledReason || "Opens a review step; it does not transfer funds."}
+            </small>
+          </div>
+        ) : null}
         {person === "jessica" ? (
           <div className="crm-zelle-primary-action">
             <button type="button" disabled={!canReviewJessicaPayment} onClick={onOpenReview}>
@@ -11186,7 +11207,9 @@ function PartnerPaymentsView({
   onPay: (payload: PartnerPaymentRequest) => Promise<void>;
 }) {
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(() => new Set());
-  const [review, setReview] = useState<{ itemKeys: string[]; amount: number; count: number } | null>(null);
+  const [review, setReview] = useState<
+    { itemKeys: string[]; amount: number; count: number; requestId: string; kenReview: KenPaymentReview | null } | null
+  >(null);
   const [reviewDate, setReviewDate] = useState(todayInputValue());
   const [reviewNote, setReviewNote] = useState("");
   const [weeklyReviewEnabled, setWeeklyReviewEnabled] = useState(false);
@@ -11211,6 +11234,7 @@ function PartnerPaymentsView({
   const reviewGrossPayable = sumPartnerRemaining(reviewItems);
   const reviewAdvanceApplied = Math.min(reviewGrossPayable, Math.max(activePersonLedger?.advanceBalance || 0, 0));
   const excludedJessicaItems = completedJobItems.filter((item) => !item.payableReady);
+  const kenReview = activePerson === "ken" ? buildKenPaymentReview(activePersonLedger?.items || []) : null;
 
   useEffect(() => {
     setSelectedItemKeys(new Set());
@@ -11270,11 +11294,15 @@ function PartnerPaymentsView({
 
   const openReview = () => {
     if (!activeItems.length || amountDue <= 0) return;
-    const reviewItems = selectedItems.length ? selectedItems : activeItems;
+    const reviewItems = activePerson === "ken"
+      ? (kenReview?.included || [])
+      : selectedItems.length ? selectedItems : activeItems;
     setReview({
       itemKeys: reviewItems.map((item) => item.itemKey),
       amount: paymentAmountForItems(reviewItems),
-      count: reviewItems.length
+      count: reviewItems.length,
+      requestId: crypto.randomUUID(),
+      kenReview
     });
     setReviewDate(todayInputValue());
     setReviewNote("");
@@ -11304,7 +11332,8 @@ function PartnerPaymentsView({
         amount: review.amount,
         paid_on: reviewDate,
         note: reviewNote,
-        item_ids: review.itemKeys
+        item_ids: review.itemKeys,
+        payment_request_id: activePerson === "ken" ? review.requestId : undefined
       });
       setReview(null);
       setSelectedItemKeys(new Set());
@@ -11327,7 +11356,8 @@ function PartnerPaymentsView({
         amount: manualAmount,
         paid_on: formString(formData, "paid_on") || null,
         note: formString(formData, "note"),
-        item_ids: manualSelectedItems.map((item) => item.itemKey)
+        item_ids: manualSelectedItems.map((item) => item.itemKey),
+        payment_request_id: activePerson === "ken" ? crypto.randomUUID() : undefined
       });
       form.reset();
       setSelectedItemKeys(new Set());
@@ -11358,12 +11388,20 @@ function PartnerPaymentsView({
             <p className="eyebrow">Internal Payables</p>
             <h2>Payables</h2>
           </div>
-          {activePerson !== "jessica" ? (
+          {activePerson !== "jessica" && activePerson !== "ken" ? (
             <button type="button" disabled={busy || !activeItems.length || amountDue <= 0} onClick={openReview}>
               Process {paymentPersonDisplayName(activePerson)} Payment
             </button>
           ) : null}
         </div>
+
+        {activePerson === "ken" ? (
+          <div className="crm-ken-owed-hero">
+            <span>Ken currently owed</span>
+            <strong>{toLedgerCurrency(activePersonLedger?.owed)}</strong>
+            <em>Exactly 10% of closed jobs, less prior Ken allocations</em>
+          </div>
+        ) : null}
 
         <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
           {paymentPeople.map((person) => {
@@ -11411,6 +11449,7 @@ function PartnerPaymentsView({
           person={activePerson}
           amountDue={activePersonLedger?.owed || 0}
           eligibleItemCount={activeItems.length}
+          kenReview={kenReview}
           busy={busy}
           onOpenReview={openReview}
         />
@@ -11644,8 +11683,14 @@ function PartnerPaymentsView({
                   </div>
                 </>
               ) : null}
+              {activePerson === "ken" ? (
+                <>
+                  <div><span>Gross total</span><strong>{toLedgerCurrency(review.kenReview?.grossTotal || 0)}</strong></div>
+                  <div><span>Prior Ken allocations</span><strong>−{toLedgerCurrency(review.kenReview?.offsets || 0)}</strong></div>
+                </>
+              ) : null}
               <div>
-                <span>{activePerson === "jessica" ? "Net payment to record" : "Amount"}</span>
+                <span>{activePerson === "jessica" || activePerson === "ken" ? "Net payment to record" : "Amount"}</span>
                 <strong>{toLedgerCurrency(review.amount)}</strong>
               </div>
               <div>
@@ -11703,6 +11748,36 @@ function PartnerPaymentsView({
                 <p className="crm-inline-note">
                   Saving records only the approved eligible line items. The matching email is sent after a successful record,
                   with PDF and CSV spreadsheet attachments; canceling or a failed save sends no email.
+                </p>
+              </div>
+            ) : activePerson === "ken" && review.kenReview ? (
+              <div className="crm-payment-review-details">
+                <h3>Closed jobs included</h3>
+                <div className="crm-bookkeeping-table-wrap">
+                  <table className="crm-bookkeeping-table">
+                    <thead><tr><th>Customer</th><th>Quote</th><th>10% gross</th><th>Prior allocation</th><th>Net</th></tr></thead>
+                    <tbody>
+                      {review.kenReview.included.map((item) => (
+                        <tr key={item.itemKey}>
+                          <td>{item.customerName}</td>
+                          <td>{item.quoteNumber || "-"}</td>
+                          <td>{toLedgerCurrency(item.owedAmount)}</td>
+                          <td>{toLedgerCurrency(item.paidAmount)}</td>
+                          <td>{toLedgerCurrency(item.remainingAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <h3>Excluded / held rows</h3>
+                {review.kenReview.held.length ? (
+                  <ul>
+                    {review.kenReview.held.map(({ item, reason }) => <li key={item.itemKey}>{item.customerName}: {reason}</li>)}
+                  </ul>
+                ) : <p className="crm-empty">No excluded or held rows.</p>}
+                <p className="crm-inline-note">
+                  Ken receives exactly 10% of every closed job whose Ken allocation remains unpaid, whether or not the customer paid in full.
+                  Recording applies this batch once to the business-buyout ledger. This review does not transfer funds.
                 </p>
               </div>
             ) : null}

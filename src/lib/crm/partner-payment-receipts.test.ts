@@ -74,7 +74,7 @@ describe("partner payment receipts", () => {
     const result = await sendPartnerPaymentReceiptEmail(receipt);
 
     expect(result.sent).toBe(false);
-    expect(result.skipped).toBe("verified 805 sender not configured");
+    expect(result.skipped).toBe("Ken payment receipt email is not explicitly enabled and verified");
     expect(result.to).toBe("khill31@msn.com");
     expect(result.filename).toMatch(/805-shutters-ken-payment-2026-07-05/);
   });

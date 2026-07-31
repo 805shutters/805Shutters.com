@@ -1,6 +1,7 @@
 import {
   BUSINESS_PAYOFF_TARGET,
   effectiveBookkeepingStatus,
+  isKenClosedJobEligible,
   isPaidInFullBookkeepingRow
 } from "@/lib/crm/bookkeeping";
 import {
@@ -66,6 +67,7 @@ function hasRecordedInstallationCost(row: CrmBookkeepingRow) {
 }
 
 const INITIAL_KEN_BUYOUT_PAYMENT_AMOUNT = 3714.7;
+export const KEN_CLOSED_JOB_PAYMENT_RATE = 0.1;
 const INITIAL_KEN_BUYOUT_ADJUSTMENTS = [
   {
     id: "initial-ken-buyout-elizabeth-mathieu",
@@ -117,12 +119,17 @@ function paidInFullDate(row: CrmBookkeepingRow) {
   return payments.at(-1)?.paid_at || payments.at(-1)?.created_at || row.soldDate;
 }
 
+function closedKenJobDate(row: CrmBookkeepingRow) {
+  if (!isKenClosedJobEligible(row)) return null;
+  return paidInFullDate(row) || row.soldDate;
+}
+
 export function partnerPaymentItemKeyForRow(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
   return `${person}:${row.source}:${row.id}`;
 }
 
 export function partnerPaymentAmountForRow(person: CrmPaymentPerson, row: CrmBookkeepingRow) {
-  if (person === "ken") return roundCents(row.kenCut);
+  if (person === "ken") return roundCents(row.total * KEN_CLOSED_JOB_PAYMENT_RATE);
   if (person === "jessica") return roundCents(row.jessicaCommission);
   return roundCents(row.mikeProfit);
 }
@@ -174,19 +181,21 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
   const items: EarnedItem[] = [];
 
   for (const row of rows) {
-    const closedAt = paidInFullDate(row);
-    if (closedAt) {
+    const kenClosedAt = closedKenJobDate(row);
+    if (kenClosedAt) {
       const kenItem = createEarnedItem({
         row,
         person: "ken",
-        amount: row.kenCut,
-        closedAt
+        amount: partnerPaymentAmountForRow("ken", row),
+        closedAt: kenClosedAt
       });
       if (kenItem) items.push(kenItem);
+    }
 
-      // Ken's 10% comes off the sale total, so it's final immediately. Mike's
-      // established payable rule continues to wait for both customer payment
-      // and the MTS installer invoice.
+    const closedAt = paidInFullDate(row);
+    if (closedAt) {
+      // Mike's established payable rule continues to wait for both customer
+      // payment and the MTS installer invoice.
       if (!row.isMissingInstallerInvoice) {
         const mikeItem = createEarnedItem({ row, person: "mike", amount: row.mikeProfit, closedAt });
         if (mikeItem) items.push(mikeItem);
@@ -238,7 +247,7 @@ export function buildUnpaidPartnerPaymentItemForRow(
   person: CrmPaymentPerson,
   row: CrmBookkeepingRow
 ): CrmPartnerPaymentLedgerItem | null {
-  const closedAt = paidInFullDate(row);
+  const closedAt = person === "ken" ? closedKenJobDate(row) : paidInFullDate(row);
   if (person === "jessica" && (!isCompletedPartnerJobStatus(row.jobStatus) || !hasRecordedInstallationCost(row))) {
     return null;
   }
