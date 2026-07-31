@@ -5696,6 +5696,7 @@ function CommandDashboard({
   onLedgerLineAction?: (action: LedgerLineAction) => Promise<boolean>;
   onPaymentPlanAction?: (jobId: string, action: PaymentPlanUiAction) => Promise<boolean>;
 }) {
+  const canViewMikeFinancials = rows.some((row) => Object.hasOwn(row, "mikeProfit"));
   const numbers = useMemo(() => {
     const bookedRevenue = rows.reduce((sum, row) => sum + (row.total || 0), 0);
     const collected = rows.reduce((sum, row) => sum + (row.paidTotal || 0), 0);
@@ -5909,19 +5910,21 @@ function CommandDashboard({
             })
           }
         />
-        <StatTile
-          label="Profit"
-          value={toCurrency(numbers.mikeNet)}
-          sub="Mike net"
-          onClick={() =>
-            onDrill({
-              title: "Profit By Job",
-              subtitle: "Mike net per job",
-              placement: "numbers",
-              entries: rowsToEntries(rows, (row) => row.mikeProfit, { jobs, files })
-            })
-          }
-        />
+        {canViewMikeFinancials ? (
+          <StatTile
+            label="Profit"
+            value={toCurrency(numbers.mikeNet)}
+            sub="Mike net"
+            onClick={() =>
+              onDrill({
+                title: "Profit By Job",
+                subtitle: "Mike net per job",
+                placement: "numbers",
+                entries: rowsToEntries(rows, (row) => row.mikeProfit, { jobs, files })
+              })
+            }
+          />
+        ) : null}
         <StatTile
           label="Jessica Due"
           value={toCurrency(numbers.jessicaDue)}
@@ -8027,7 +8030,9 @@ function DrillDetailCard({
               />
               <DrillFact label="Ken" value={row ? toLedgerCurrency(row.kenCut) : "No ledger row"} />
               <DrillFact label="Advertising 7%" value={row ? toLedgerCurrency(row.advertisingReserve) : "No ledger row"} />
-              <DrillFact label="Mike Profit" value={row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"} tone={row && row.mikeProfit >= 0 ? "good" : undefined} />
+              {row && Object.hasOwn(row, "mikeProfit") ? (
+                <DrillFact label="Mike Profit" value={toLedgerCurrency(row.mikeProfit)} tone={row.mikeProfit >= 0 ? "good" : undefined} />
+              ) : null}
               {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
                 <DrillFact label="Jessica Profit" value={toLedgerCurrency(row.jessicaCommission)} tone="good" />
               ) : null}
@@ -8931,9 +8936,11 @@ function DrillDetailEditForm({
           <span>
             Advertising 7% <strong>{row ? toLedgerCurrency(row.advertisingReserve) : "No ledger row"}</strong>
           </span>
-          <span>
-            Mike Profit <strong>{row ? toLedgerCurrency(row.mikeProfit) : "No ledger row"}</strong>
-          </span>
+          {row && Object.hasOwn(row, "mikeProfit") ? (
+            <span>
+              Mike Profit <strong>{toLedgerCurrency(row.mikeProfit)}</strong>
+            </span>
+          ) : null}
           {row && (row.salesOwner === "jessica" || row.jessicaCommission > 0) ? (
             <span>
               Jessica Profit <strong>{toLedgerCurrency(row.jessicaCommission)}</strong>
@@ -9586,6 +9593,7 @@ function CustomerFilesView({
   onSaveJob?: (job: CrmJob, patch: Record<string, unknown>, message?: string) => Promise<boolean>;
   busy?: boolean;
 }) {
+  const canViewMikeFinancials = files.some((file) => file.bookkeepingRows.some((row) => Object.hasOwn(row, "mikeProfit")));
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<CustomerFileFilter | null>(null);
   const [search, setSearch] = useState("");
@@ -9755,7 +9763,7 @@ function CustomerFilesView({
               <th>Install</th>
               <th>Ken</th>
               <th>Jessica</th>
-              <th>Mike</th>
+              {canViewMikeFinancials ? <th>Mike</th> : null}
               <th>Email</th>
               <th>City</th>
               <th>Product</th>
@@ -9795,7 +9803,7 @@ function CustomerFilesView({
               ken: sum.ken + row.kenCut,
               jessica: sum.jessica + row.jessicaCommission,
               jessicaOwed: sum.jessicaOwed + row.jessicaCommissionOwed,
-              mike: sum.mike + row.mikeProfit
+              mike: canViewMikeFinancials ? sum.mike + row.mikeProfit : 0
             }),
             {
               total: 0,
@@ -9990,9 +9998,11 @@ function CustomerFilesView({
                     {totals.jessicaOwed > 0 ? " owed" : ""}
                   </span>
                 </td>
-                <td className="crm-cf-td money">
-                  <span className="crm-cf-money">{toCurrency(totals.mike)}</span>
-                </td>
+                {canViewMikeFinancials ? (
+                  <td className="crm-cf-td money">
+                    <span className="crm-cf-money">{toCurrency(totals.mike)}</span>
+                  </td>
+                ) : null}
                 <td className={`crm-cf-td${fileMissingEmail ? " crm-missing-data" : ""}`}>
                   <InlineEditableValue
                     value={file.email || "Pending"}
@@ -10068,7 +10078,7 @@ function CustomerFilesView({
                 <td className="crm-customer-name-cell crm-cf-action-lead">
                   <span>Actions</span>
                 </td>
-                <td className="crm-customer-action-cell" colSpan={18}>
+                <td className="crm-customer-action-cell" colSpan={canViewMikeFinancials ? 18 : 17}>
                   <div className="crm-customer-action-strip">
                     {sortedJobs.map((job) => {
                       const measure = getMeasureNeededMeta(job.meta) as Record<string, unknown>;
@@ -10922,6 +10932,7 @@ function JessicaJobLedgerTable({
   selectedItemKeys: Set<string>;
   onToggle: (itemKey: string) => void;
 }) {
+  const canViewMikeFinancials = items.some((item) => Object.hasOwn(item, "mikeProfit"));
   return (
     <table className="crm-bookkeeping-table crm-jessica-job-ledger">
       <thead>
@@ -10933,10 +10944,10 @@ function JessicaJobLedgerTable({
           <th>COGS</th>
           <th>Installation</th>
           <th>Other Costs</th>
-          <th>Mike Profit</th>
+          {canViewMikeFinancials ? <th>Mike Profit</th> : null}
           <th>Gross Sale</th>
           <th>Marketing</th>
-          <th>Profit to Split</th>
+          {canViewMikeFinancials ? <th>Profit to Split</th> : null}
           <th>Sold</th>
         </tr>
       </thead>
@@ -10992,7 +11003,7 @@ function JessicaJobLedgerTable({
                   Expenses {toLedgerCurrency(item.expensesTotal)} · Remakes {toLedgerCurrency(item.remakeTotal)}
                 </span>
               </td>
-              <td>{toLedgerCurrency(item.mikeProfit)}</td>
+              {canViewMikeFinancials ? <td>{toLedgerCurrency(item.mikeProfit)}</td> : null}
               <td>{toLedgerCurrency(item.total)}</td>
               <td className="crm-ledger-money-warn">
                 {toLedgerCurrency(item.advertisingReserve)}
@@ -11002,10 +11013,12 @@ function JessicaJobLedgerTable({
                     : `0% · sold before ${formatShortDate(ADVERTISING_RESERVE_EFFECTIVE_FROM)}`}
                 </span>
               </td>
-              <td>
-                <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
-                <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
-              </td>
+              {canViewMikeFinancials ? (
+                <td>
+                  <strong>{toLedgerCurrency(item.remainingProfitBeforeJessica)}</strong>
+                  <span>Gross − marketing − COGS − Ken − installation − expenses − remakes</span>
+                </td>
+              ) : null}
               <td>{formatShortDate(item.soldDate)}</td>
             </tr>
           );
@@ -11966,6 +11979,7 @@ function CommissionsView({
   onEdit: (event: FormEvent<HTMLFormElement>, payment: CrmCommissionPayment) => void;
   onDelete: (id: string) => void;
 }) {
+  const canViewMikeFinancials = Boolean(summary?.totals && Object.hasOwn(summary.totals, "mikeEarned"));
   const totals = summary?.totals || {
     mikeEarned: 0,
     mikePaid: 0,
@@ -12022,9 +12036,13 @@ function CommissionsView({
 
         <div className="crm-bookkeeping-summary-grid crm-commission-summary-grid">
           {[
-            ["Mike Earned", totals.mikeEarned],
-            ["Mike Paid", totals.mikePaid],
-            ["Mike Balance", totals.mikeOwed],
+            ...(canViewMikeFinancials
+              ? [
+                  ["Mike Earned", totals.mikeEarned],
+                  ["Mike Paid", totals.mikePaid],
+                  ["Mike Balance", totals.mikeOwed]
+                ]
+              : []),
             ["Jessica Earned", totals.jessicaEarned],
             ["Jessica Paid", totals.jessicaPaid],
             ["Jessica Balance", totals.jessicaOwed]
@@ -12041,9 +12059,9 @@ function CommissionsView({
             <thead>
               <tr>
                 <th>Month</th>
-                <th>Mike Earned</th>
-                <th>Mike Paid</th>
-                <th>Mike Balance</th>
+                {canViewMikeFinancials ? <th>Mike Earned</th> : null}
+                {canViewMikeFinancials ? <th>Mike Paid</th> : null}
+                {canViewMikeFinancials ? <th>Mike Balance</th> : null}
                 <th>Jessica Earned</th>
                 <th>Jessica Paid</th>
                 <th>Jessica Balance</th>
@@ -12053,9 +12071,11 @@ function CommissionsView({
               {monthly.map((month) => (
                 <tr key={month.periodMonth}>
                   <td>{formatShortDate(month.periodMonth)}</td>
-                  <td>{toLedgerCurrency(month.mikeEarned)}</td>
-                  <td>{toLedgerCurrency(month.mikePaid)}</td>
-                  <td className={month.mikeBalance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(month.mikeBalance)}</td>
+                  {canViewMikeFinancials ? <td>{toLedgerCurrency(month.mikeEarned)}</td> : null}
+                  {canViewMikeFinancials ? <td>{toLedgerCurrency(month.mikePaid)}</td> : null}
+                  {canViewMikeFinancials ? (
+                    <td className={month.mikeBalance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(month.mikeBalance)}</td>
+                  ) : null}
                   <td>{toLedgerCurrency(month.jessicaEarned)}</td>
                   <td>{toLedgerCurrency(month.jessicaPaid)}</td>
                   <td className={month.jessicaBalance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(month.jessicaBalance)}</td>
@@ -12456,6 +12476,7 @@ function ReadOnlyBookkeepingSpreadsheet({
   busy: boolean;
   onOpenPayoff: () => void;
 }) {
+  const canViewMikeFinancials = Boolean(totals && Object.hasOwn(totals, "mikeProfit"));
   const totalProfit = roundCurrency(
     (totals?.total || 0) -
       (totals?.advertisingReserve || 0) -
@@ -12490,10 +12511,14 @@ function ReadOnlyBookkeepingSpreadsheet({
     },
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), action: onOpenPayoff },
     { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), action: onOpenPayoff },
-    { label: "Net Profit", value: toLedgerCurrency(netProfit) },
+    ...(canViewMikeFinancials ? [{ label: "Net Profit", value: toLedgerCurrency(netProfit) }] : []),
     { label: "Paid In Full", value: `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}` },
-    { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
-    { label: "Profit Margin", value: profitMargin }
+    ...(canViewMikeFinancials
+      ? [
+          { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
+          { label: "Profit Margin", value: profitMargin }
+        ]
+      : [])
   ];
 
   return (
@@ -12537,9 +12562,9 @@ function ReadOnlyBookkeepingSpreadsheet({
               <th>Installation</th>
               <th>Balance / Paid</th>
               <th>Ken</th>
-              <th>Mike</th>
+              {canViewMikeFinancials ? <th>Mike</th> : null}
               <th>Jessica</th>
-              <th>Profit</th>
+              {canViewMikeFinancials ? <th>Profit</th> : null}
               <th>Notes</th>
             </tr>
           </thead>
@@ -12549,7 +12574,7 @@ function ReadOnlyBookkeepingSpreadsheet({
               return (
                 <Fragment key={`readonly-status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={16}>
+                    <td className="crm-bookkeeping-group-head" colSpan={canViewMikeFinancials ? 16 : 14}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
@@ -12605,17 +12630,19 @@ function ReadOnlyBookkeepingSpreadsheet({
                           onMarkPartnerPaid={() => undefined}
                         />
                       </td>
-                      <td className="crm-ledger-money-good">
-                        <PartnerPaymentAmountCell
-                          person="mike"
-                          row={row}
-                          amount={row.mikeProfit}
-                          item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
-                          canMarkPartnerPaid={false}
-                          busy={busy}
-                          onMarkPartnerPaid={() => undefined}
-                        />
-                      </td>
+                      {canViewMikeFinancials ? (
+                        <td className="crm-ledger-money-good">
+                          <PartnerPaymentAmountCell
+                            person="mike"
+                            row={row}
+                            amount={row.mikeProfit}
+                            item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
+                            canMarkPartnerPaid={false}
+                            busy={busy}
+                            onMarkPartnerPaid={() => undefined}
+                          />
+                        </td>
+                      ) : null}
                       <td>
                         <PartnerPaymentAmountCell
                           person="jessica"
@@ -12627,7 +12654,7 @@ function ReadOnlyBookkeepingSpreadsheet({
                           onMarkPartnerPaid={() => undefined}
                         />
                       </td>
-                      <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td>
+                      {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td> : null}
                       <td>{row.notes || ""}</td>
                     </tr>
                   ))}
@@ -12649,9 +12676,9 @@ function ReadOnlyBookkeepingSpreadsheet({
                       {toLedgerCurrency(groupTotals.balance)}
                     </td>
                     <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.kenCut)}</td>
-                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td>
+                    {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td> : null}
                     <td>{toLedgerCurrency(groupTotals.jessica)}</td>
-                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td>
+                    {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td> : null}
                     <td />
                   </tr>
                 </Fragment>
@@ -12751,6 +12778,7 @@ function BookkeepingSpreadsheet({
   onDelete: (row: CrmBookkeepingRow) => void;
   onOpenPayoff: () => void;
 }) {
+  const canViewMikeFinancials = Boolean(totals && Object.hasOwn(totals, "mikeProfit"));
   const [editingCell, setEditingCell] = useState<BookkeepingCellEdit>(null);
   const totalProfit = roundCurrency(
     (totals?.total || 0) -
@@ -12793,11 +12821,19 @@ function BookkeepingSpreadsheet({
     { label: "Ken's % Monthly Due", value: toLedgerCurrency(paymentPeople?.ken.owed ?? totals?.kenMonthlyDue), person: "ken" as const },
     { label: "Ken's % of Total Closed", value: toLedgerCurrency(totals?.kenTotalClosed), person: "ken" as const },
     { label: "Jessica Commission Due", value: toLedgerCurrency(paymentPeople?.jessica.owed ?? commissionTotals?.jessicaOwed), person: "jessica" as const },
-    { label: "Mike Commission Due", value: toLedgerCurrency(paymentPeople?.mike.owed ?? commissionTotals?.mikeOwed), person: "mike" as const },
-    { label: "Net Profit", value: toLedgerCurrency(netProfit) },
+    ...(canViewMikeFinancials
+      ? [
+          { label: "Mike Commission Due", value: toLedgerCurrency(paymentPeople?.mike.owed ?? commissionTotals?.mikeOwed), person: "mike" as const },
+          { label: "Net Profit", value: toLedgerCurrency(netProfit) }
+        ]
+      : []),
     { label: "Paid In Full", value: `${totals?.closedRows || 0} / ${toLedgerCurrency(totals?.closedTotal)}` },
-    { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
-    { label: "Profit Margin", value: profitMargin }
+    ...(canViewMikeFinancials
+      ? [
+          { label: "Total Profit", value: toLedgerCurrency(totalProfit) },
+          { label: "Profit Margin", value: profitMargin }
+        ]
+      : [])
   ];
   const isEditing = (row: CrmBookkeepingRow, field: BookkeepingEditableField) =>
     editingCell?.rowKey === bookkeepingRowKey(row) && editingCell.field === field;
@@ -12862,9 +12898,9 @@ function BookkeepingSpreadsheet({
               <th>Installation</th>
               <th>Balance / Paid</th>
               <th>Ken</th>
-              <th>Mike</th>
+              {canViewMikeFinancials ? <th>Mike</th> : null}
               <th>Jessica</th>
-              <th>Profit</th>
+              {canViewMikeFinancials ? <th>Profit</th> : null}
               <th>Notes</th>
               <th className="crm-bookkeeping-delete-col" aria-label="Delete" />
             </tr>
@@ -12875,7 +12911,7 @@ function BookkeepingSpreadsheet({
               return (
                 <Fragment key={`status-group-${status}`}>
                   <tr className="crm-bookkeeping-group-row">
-                    <td className="crm-bookkeeping-group-head" colSpan={17}>
+                    <td className="crm-bookkeeping-group-head" colSpan={canViewMikeFinancials ? 17 : 15}>
                       <div className="crm-bookkeeping-group-inner">
                         <em className="crm-bookkeeping-status" data-status={status}>
                           {bookkeepingStatusLabelForKey(status)}
@@ -13073,17 +13109,19 @@ function BookkeepingSpreadsheet({
                     </div>
                   )}
                 </td>
-                <td className="crm-ledger-money-good">
-                  <PartnerPaymentAmountCell
-                    person="mike"
-                    row={row}
-                    amount={row.mikeProfit}
-                    item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
-                    canMarkPartnerPaid={canMarkPartnerPaid}
-                    busy={busy}
-                    onMarkPartnerPaid={onMarkPartnerPaid}
-                  />
-                </td>
+                {canViewMikeFinancials ? (
+                  <td className="crm-ledger-money-good">
+                    <PartnerPaymentAmountCell
+                      person="mike"
+                      row={row}
+                      amount={row.mikeProfit}
+                      item={paymentItemsByKey.get(partnerPaymentItemKeyForRow("mike", row))}
+                      canMarkPartnerPaid={canMarkPartnerPaid}
+                      busy={busy}
+                      onMarkPartnerPaid={onMarkPartnerPaid}
+                    />
+                  </td>
+                ) : null}
                 <td>
                   <PartnerPaymentAmountCell
                     person="jessica"
@@ -13095,7 +13133,7 @@ function BookkeepingSpreadsheet({
                     onMarkPartnerPaid={onMarkPartnerPaid}
                   />
                 </td>
-                <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td>
+                {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(row.remainingProfitBeforeJessica)}</td> : null}
                 <td>
                   {isEditing(row, "notes") ? (
                     <BookkeepingInlineTextEditor
@@ -13153,9 +13191,9 @@ function BookkeepingSpreadsheet({
                     <td>{toLedgerCurrency(groupTotals.installation)}</td>
                     <td className={groupTotals.balance > 0 ? "crm-ledger-money-warn" : "crm-ledger-money-good"}>{toLedgerCurrency(groupTotals.balance)}</td>
                     <td className="crm-ledger-money-warn">{toLedgerCurrency(groupTotals.kenCut)}</td>
-                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td>
+                    {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.mike)}</td> : null}
                     <td>{toLedgerCurrency(groupTotals.jessica)}</td>
-                    <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td>
+                    {canViewMikeFinancials ? <td className="crm-ledger-money-good">{toLedgerCurrency(groupTotals.profit)}</td> : null}
                     <td />
                     <td />
                   </tr>

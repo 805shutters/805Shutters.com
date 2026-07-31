@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCrmUser, crmAuthErrorResponse } from "@/lib/crm/auth";
 import { loadCrmDashboardData } from "@/lib/crm/backend";
 import { findMobileBookkeepingFileById } from "@/lib/crm/mobile-bookkeeping";
+import { restrictBookkeepingRowForViewer } from "@/lib/crm/payables-visibility";
 
 export const runtime = "nodejs";
 
@@ -10,7 +11,7 @@ export async function GET(
   context: { params: Promise<{ customerFileId: string }> }
 ) {
   try {
-    const { supabase } = await requireCrmUser(request);
+    const { supabase, email } = await requireCrmUser(request);
     const { customerFileId } = await context.params;
     const dashboard = await loadCrmDashboardData(supabase);
     const file = findMobileBookkeepingFileById(
@@ -25,7 +26,12 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ file });
+    return NextResponse.json({
+      file: {
+        ...file,
+        bookkeepingRows: file.bookkeepingRows.map((row) => restrictBookkeepingRowForViewer(row, email))
+      }
+    });
   } catch (error) {
     return crmAuthErrorResponse(error);
   }

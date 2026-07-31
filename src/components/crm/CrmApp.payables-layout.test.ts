@@ -30,6 +30,8 @@ describe("Jessica payables row layout", () => {
     }
     expect(tableSource).toContain("item.expensesTotal + item.remakeTotal");
     expect(tableSource).toContain("toLedgerCurrency(item.mikeProfit)");
+    expect(tableSource).toContain('Object.hasOwn(item, "mikeProfit")');
+    expect(tableSource).toContain("{canViewMikeFinancials ? <th>Mike Profit</th> : null}");
   });
 
   it("puts Jessica's dedicated payment action in the manual panel and opens review only", () => {
