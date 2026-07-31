@@ -5868,13 +5868,39 @@ body.qb-fullscreen .crm-app-shell {
 .crm-agent-timeline li { display: grid; gap: 3px; margin-left: 5px; padding: 0 0 14px 16px; border-left: 1px solid var(--ink); }
 .crm-agent-timeline span { color: var(--muted); }
 .crm-agent-discovery { background: #f7f7f5; }
+.crm-agent-connectors,
+.crm-agent-campaign-plan { margin-top: 0; }
+.crm-agent-connector-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.crm-agent-connector-grid section { border: 1px solid var(--line); padding: 14px; background: #f7f7f5; }
+.crm-agent-connector-grid header,
+.crm-agent-campaign-plan > div:first-child,
+.crm-agent-plan-badges { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.crm-agent-connector-grid header span,
+.crm-agent-plan-badges span { border-radius: 999px; padding: 4px 8px; background: #fff2cc; color: #7a4d00; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.crm-agent-connector-grid small { display: block; margin-top: 8px; color: var(--muted); }
+.crm-agent-connector-grid details { margin-top: 10px; }
+.crm-agent-connector-grid code { display: block; margin-top: 6px; white-space: normal; overflow-wrap: anywhere; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.crm-agent-plan-badges { margin: 10px 0 12px; }
+.crm-agent-plan-badges strong { color: #9b1c1c; }
+.crm-agent-plan-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.crm-agent-plan-facts div { border: 1px solid var(--line); padding: 12px; }
+.crm-agent-plan-facts dt { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.crm-agent-plan-facts dd { margin: 6px 0 0; line-height: 1.45; }
+.crm-agent-plan-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+.crm-agent-plan-columns section { border-top: 1px solid var(--line); padding-top: 12px; }
+.crm-agent-plan-columns h4 { margin: 0 0 8px; }
+.crm-agent-plan-columns ul,
+.crm-agent-plan-columns ol { margin: 0; padding-left: 20px; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
 @media (max-width: 920px) {
   .crm-marketing-agent-head,
   .crm-agent-boundary { display: grid; }
   .crm-agent-state { text-align: left; }
   .crm-agent-channel-grid,
-  .crm-agent-control-grid { grid-template-columns: 1fr; }
+  .crm-agent-control-grid,
+  .crm-agent-connector-grid,
+  .crm-agent-plan-facts,
+  .crm-agent-plan-columns { grid-template-columns: 1fr; }
 }
 
 .crm-customer-files {

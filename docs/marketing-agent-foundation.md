@@ -29,7 +29,21 @@ The panel also contains a non-automated discovery area for potentially useful Ve
 | Success | Historical diagnostic precision; approval rate; measured lift in qualified appointments/sold customers/installed revenue; zero unapproved actions. |
 | Limits | Three iterations, one proposal, 30 seconds per run. |
 
-The code contract lives in `src/lib/marketing-agent/governance.ts`. The deterministic first evaluator lives in `src/lib/marketing-agent/funnel-diagnostic.ts`. It does not call an LLM, ad network, messaging provider, or mutable CRM endpoint.
+The code contract lives in `src/lib/marketing-agent/governance.ts`. The deterministic first evaluator lives in `src/lib/marketing-agent/funnel-diagnostic.ts`. Read-only connector contracts and normalized import adapters live in `src/lib/marketing-agent/channel-connectors.ts`; the preview campaign planner lives in `src/lib/marketing-agent/campaign-recommendation.ts`. None of these modules calls an LLM, ad network, messaging provider, or mutable CRM endpoint.
+
+## Read-only channel integration layer
+
+Google Ads, Yelp, and Meta each have a connector contract with an explicit configuration allowlist and the minimum read capabilities needed for campaign/reporting/lead data. Validation returns only missing environment-variable names and permission names; it never returns credential values. A connector fails closed when required read permissions are absent or when any mutation permission is present. Forbidden scopes cover campaign, billing, form, publishing, audience, messaging, and pricing changes.
+
+The adapters accept caller-supplied exports or future read-only API results and normalize them to schema version 1. Every accepted event retains channel, provider record ID, account ID, source object, event and fetch timestamps, campaign/creative metadata, service area, product, offer, external lead ID, optional exact CRM lead ID, spend micros, and the read permissions used. Invalid timestamps, identifiers, event types, account provenance, or spend values are quarantined with machine-readable reasons. An external lead ID is never treated as a CRM identity; only an explicit `crmLeadId` marks an exact link.
+
+No connector performs network I/O yet. This keeps credential provisioning separate from code validation and prevents a partially configured account from becoming an implicit production integration.
+
+## Preview-only Ventura campaign planning
+
+Sales Intelligence now builds one deterministic measurement candidate from exact CRM lead IDs and explicit primary-channel source fields. It selects the channel with the largest exact local evidence set, then derives area and product only from that channel's linked CRM rows. This rank is a data-availability choice, not a claim that the channel performs best. If evidence is absent, the UI says that area/product selection is pending rather than inventing values.
+
+Every preview includes proposed channel, Ventura area, product and existing-consultation offer hypotheses, evidence counts, explicit data gaps, a lead-to-paid measurement plan, required approvals, and verifiable stop conditions. Fewer than 20 exact attributable leads, inconsistent funnel identity, stale/contradictory provenance, or any impending external action stops the plan. There is no launch control.
 
 ## Control room and durable memory
 
@@ -40,7 +54,7 @@ Migration `20260731110000_create_governed_marketing_agent.sql` provides four ser
 - `crm_marketing_approvals`: append-only human decisions by approval kind and identity.
 - `crm_marketing_agent_events`: ordered handoffs and audit events, optionally chained to a prior event.
 
-These tables are the persistence model for the embedded Sales Intelligence control room: run history, proposed actions, approvals, outcomes, and handoffs. The current UI slice is read-only and computes safe empty/partial states from its existing in-memory dashboard data. No migration has been applied by this implementation and no production route or cron has been activated.
+These tables are the persistence model for the embedded Sales Intelligence control room: run history, proposed actions, approvals, outcomes, and handoffs. The foundation migration is deployed in production with row-level security and service-role-only policies. This next local phase does not add or apply a migration: the UI remains read-only and computes safe empty/partial states from existing in-memory dashboard data. No production route, connector fetch, or cron is activated by this phase.
 
 ## Data prerequisites and current gaps
 
@@ -61,11 +75,12 @@ Run the diagnostic offline against dated historical snapshots. A reviewer labels
 
 ## Phased expansion
 
-1. **Foundation (implemented locally):** policy, bounded deterministic evaluator, durable schema, tests, and documentation.
-2. **Read-only ingestion:** exact attribution spine plus Meta, Google, web analytics, and CRM snapshots; preview control-room API/UI; no external actions.
-3. **Creative specialist:** turn approved install assets and observed customer problems into internal briefs, scripts, hooks, and a filming list. Use only assets with documented consent. No publishing.
-4. **Experiment specialist:** propose creative matrices and forecast sample/budget needs. Human approves content, spend, targeting, and launch separately.
-5. **Outcome specialist:** reconcile appointment, sold-customer, install, and collected-revenue outcomes; compare approved tests and record results.
-6. **Earned limited execution:** only after historical and shadow evaluations, add narrowly scoped adapters with idempotency, allowlists, spend caps, expiry, kill switch, two-person approval for money, provider receipts, and post-action verification. Each specialist retains its own trigger, tools, permissions, limits, and success metric.
+1. **Foundation (deployed):** policy, bounded deterministic evaluator, durable schema, tests, documentation, and the embedded Sales Intelligence control room.
+2. **Read-only ingestion contracts and campaign preview (implemented locally):** fail-closed Google, Yelp, and Meta configuration/permission validation; normalized provenance and quarantine handling; exact-ID CRM planning preview; no connector network calls or external actions.
+3. **Credentialed read-only ingestion:** after account-owner authorization, add server-only fetchers for approved account IDs, immutable snapshots, freshness checks, and control-room run history. External write scopes remain rejected.
+4. **Creative specialist:** turn approved install assets and observed customer problems into internal briefs, scripts, hooks, and a filming list. Use only assets with documented consent. No publishing.
+5. **Experiment specialist:** propose creative matrices and forecast sample/budget needs. Human approves content, spend, targeting, and launch separately.
+6. **Outcome specialist:** reconcile appointment, sold-customer, install, and collected-revenue outcomes; compare approved tests and record results.
+7. **Earned limited execution:** only after historical and shadow evaluations, add narrowly scoped adapters with idempotency, allowlists, spend caps, expiry, kill switch, two-person approval for money, provider receipts, and post-action verification. Each specialist retains its own trigger, tools, permissions, limits, and success metric.
 
 Open-ended loops, self-modifying policies, direct pricing changes, autonomous outreach, and unconstrained account access remain prohibited.

@@ -18,6 +18,11 @@ describe("Sales Intelligence marketing-agent surface", () => {
     expect(panelSource).toContain("Google, Yelp, and Facebook gaps remain visible.");
     expect(panelSource).toContain("No ad access, scheduling, spend, publishing, messages, pricing changes, or production CRM writes.");
     expect(panelSource).toContain("Not connected. No performance values shown.");
+    expect(panelSource).toContain("Channel integration readiness");
+    expect(panelSource).toContain("mutation permissions fail closed");
+    expect(panelSource).toContain("Ventura campaign plan · preview only");
+    expect(panelSource).toContain("No launch available");
+    expect(panelSource).toContain("Verifiable stop conditions");
   });
 
   it("does not expose an execution control", () => {
