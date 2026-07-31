@@ -891,6 +891,31 @@ describe("quote bookkeeping notes", () => {
     });
   });
 
+  it("preserves legacy bookkeeping order and COGS facts during a payment update", async () => {
+    const { calls, supabase } = createSupabaseRecorder({
+      job: job({ id: "job-1", customer_name: "Linked Job Customer" }),
+      existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "ordered", materials_cost: 0 }),
+      existingEntry: bookkeepingEntry({
+        quote_id: "quote-1",
+        cogs_amount: 251.82,
+        manufacturer_name: "Norman",
+        manufacturer_order_ref: "8880977868"
+      })
+    });
+
+    await updateCrmQuote(supabase, "quote-1", { quote_total: 1000, payment_type: "credit_card" }, actor);
+
+    const entryUpsert = calls.find(
+      (call) => call.table === "crm_quote_bookkeeping_entries" && call.action === "upsert"
+    );
+    expect(entryUpsert?.payload).toMatchObject({
+      quote_id: "quote-1",
+      cogs_amount: 251.82,
+      manufacturer_name: "Norman",
+      manufacturer_order_ref: "8880977868"
+    });
+  });
+
   it("records installation invoice payment fields on a quote-backed bookkeeping row", async () => {
     const { calls, supabase } = createSupabaseRecorder({
       existingQuote: quote({ id: "quote-1", job_id: "job-1", status: "ordered" }),

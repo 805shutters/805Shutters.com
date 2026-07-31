@@ -3237,12 +3237,23 @@ export async function updateCrmQuote(
   // create path and the builder, which only create the entry once sold).
   const maintainEntry = quote.status !== "draft" && quote.status !== "sent";
   let entryCustomerName = "Linked job";
+  let existingEntry:
+    | {
+        customer_name?: unknown;
+        cogs_amount?: unknown;
+        manufacturer_name?: string | null;
+        manufacturer_order_ref?: string | null;
+        manufacturer_order_url?: string | null;
+        manufacturer_document_url?: string | null;
+      }
+    | null = null;
   if (maintainEntry) {
-    const { data: existingEntry } = await supabase
+    const { data } = await supabase
       .from("crm_quote_bookkeeping_entries")
-      .select("customer_name")
+      .select("customer_name,cogs_amount,manufacturer_name,manufacturer_order_ref,manufacturer_order_url,manufacturer_document_url")
       .eq("quote_id", id)
       .maybeSingle();
+    existingEntry = data as typeof existingEntry;
     const { data: linkedJob } = quote.job_id
       ? await supabase
           .from("crm_jobs")
@@ -3253,7 +3264,7 @@ export async function updateCrmQuote(
     entryCustomerName = resolveQuoteBookkeepingCustomerName({
       payloadCustomerName: payload.customer_name,
       quoteCustomerName: quote.customer_name,
-      existingEntryCustomerName: (existingEntry as { customer_name?: unknown } | null)?.customer_name,
+      existingEntryCustomerName: existingEntry?.customer_name,
       jobCustomerName: (linkedJob as { customer_name?: unknown } | null)?.customer_name,
     });
   }
@@ -3265,13 +3276,19 @@ export async function updateCrmQuote(
       sold_date: quote.sold_at ? String(quote.sold_at).slice(0, 10) : null,
       total_amount: toMoney(quote.quote_total),
       payment_type: paymentType,
-      cogs_amount: toMoney(quote.materials_cost),
+      // Imported records may hold order/COGS facts only in the bookkeeping
+      // entry. A payment or status patch must preserve those facts until the
+      // canonical quote has been backfilled.
+      cogs_amount:
+        toMoney(quote.materials_cost) > 0
+          ? toMoney(quote.materials_cost)
+          : toMoney(existingEntry?.cogs_amount),
       sales_owner: normalizeOwner(quote.sold_by),
       sales_owner_set_at: quote.sold_by ? now : null,
-      manufacturer_name: quote.manufacturer_name || null,
-      manufacturer_order_ref: quote.manufacturer_order_ref || null,
-      manufacturer_order_url: quote.manufacturer_order_url || null,
-      manufacturer_document_url: quote.manufacturer_document_url || null,
+      manufacturer_name: quote.manufacturer_name || existingEntry?.manufacturer_name || null,
+      manufacturer_order_ref: quote.manufacturer_order_ref || existingEntry?.manufacturer_order_ref || null,
+      manufacturer_order_url: quote.manufacturer_order_url || existingEntry?.manufacturer_order_url || null,
+      manufacturer_document_url: quote.manufacturer_document_url || existingEntry?.manufacturer_document_url || null,
       // Entry-only fields (no column on crm_quotes) editable from the ledger.
       // Only written when the caller sends them, so a plain quote update leaves
       // them untouched (upsert updates only the columns present in this object).
