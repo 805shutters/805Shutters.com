@@ -28,8 +28,14 @@ describe("Ken Make Payment source contract", () => {
     expect(backend).toContain("atomic idempotent payment function is unavailable");
   });
 
-  it("shows Ken's current owed amount before the person summary cards", () => {
-    expect(source.indexOf("Ken currently owed")).toBeLessThan(source.indexOf("crm-payment-person-grid"));
-    expect(source).toContain("crm-ken-owed-hero");
+  it("shows Ken owed first in each active-payable row without a page-level hero", () => {
+    expect(source).not.toContain("Ken currently owed");
+    expect(source).not.toContain("crm-ken-owed-hero");
+    expect(source).toContain('<th className="crm-jessica-owed-column">Ken Owed</th>');
+    expect(source.indexOf('<th className="crm-jessica-owed-column">Ken Owed</th>')).toBeLessThan(
+      source.indexOf("<th>Customer</th>", source.indexOf("crm-ken-job-ledger"))
+    );
+    expect(source).toContain("<strong>{toLedgerCurrency(item.remainingAmount)}</strong>");
+    expect(source).toContain("<span>{kenPaymentStateDisplay(item)}</span>");
   });
 });

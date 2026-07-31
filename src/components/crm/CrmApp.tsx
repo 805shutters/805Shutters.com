@@ -10916,6 +10916,12 @@ function paymentStateDisplay(state: CrmPartnerPaymentLedgerItem["paymentState"])
   return "Unpaid";
 }
 
+function kenPaymentStateDisplay(item: CrmPartnerPaymentLedgerItem) {
+  if (item.paymentState === "partial") return "Partially paid";
+  if (item.paymentState === "paid") return "Paid";
+  return "Payable";
+}
+
 function jobPaymentStateDisplay(item: CrmDashboardData["partnerPaymentLedger"]["people"]["jessica"]["jobItems"][number]) {
   if (item.paymentState === "partial") return "Partially paid";
   if (item.paymentState === "paid") return "Paid";
@@ -11395,14 +11401,6 @@ function PartnerPaymentsView({
           ) : null}
         </div>
 
-        {activePerson === "ken" ? (
-          <div className="crm-ken-owed-hero">
-            <span>Ken currently owed</span>
-            <strong>{toLedgerCurrency(activePersonLedger?.owed)}</strong>
-            <em>Exactly 10% of closed jobs, less prior Ken allocations</em>
-          </div>
-        ) : null}
-
         <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
           {paymentPeople.map((person) => {
             const personLedger = ledger?.people[person];
@@ -11580,33 +11578,47 @@ function PartnerPaymentsView({
                 </section>
               </div>
             ) : (
-            <table className="crm-bookkeeping-table">
+            <table className={`crm-bookkeeping-table${activePerson === "ken" ? " crm-ken-job-ledger" : ""}`}>
               <thead>
                 <tr>
-                  <th aria-label="Select job" />
+                  {activePerson === "ken" ? <th className="crm-jessica-owed-column">Ken Owed</th> : <th aria-label="Select job" />}
                   <th>Customer</th>
                   <th>Closed</th>
                   <th>Status</th>
                   <th>Sold By</th>
                   <th>Total</th>
                   {activePerson === "mike" ? <th>Advertising 7%</th> : null}
-                  <th>Owed</th>
+                  {activePerson !== "ken" ? <th>Owed</th> : null}
                   <th>Paid</th>
-                  <th>Remaining</th>
-                  <th>State</th>
+                  {activePerson !== "ken" ? <th>Remaining</th> : null}
+                  {activePerson !== "ken" ? <th>State</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {activeItems.map((item) => (
                   <tr key={item.itemKey}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedItemKeys.has(item.itemKey)}
-                        onChange={() => toggleItem(item.itemKey)}
-                        aria-label={`Select ${item.customerName}`}
-                      />
-                    </td>
+                    {activePerson === "ken" ? (
+                      <td className="crm-jessica-owed-column crm-jessica-owed-column--payable">
+                        <strong>{toLedgerCurrency(item.remainingAmount)}</strong>
+                        <span>{kenPaymentStateDisplay(item)}</span>
+                        {item.paidAmount > 0 ? <small>{toLedgerCurrency(item.paidAmount)} already paid</small> : null}
+                        <input
+                          type="checkbox"
+                          checked={selectedItemKeys.has(item.itemKey)}
+                          onChange={() => toggleItem(item.itemKey)}
+                          aria-label={`Select ${item.customerName}`}
+                        />
+                      </td>
+                    ) : (
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedItemKeys.has(item.itemKey)}
+                          onChange={() => toggleItem(item.itemKey)}
+                          aria-label={`Select ${item.customerName}`}
+                        />
+                      </td>
+                    )}
                     <td>
                       <strong>{item.customerName}</strong>
                       <span>{item.quoteNumber || item.source.replace("_", " ")}</span>
@@ -11618,10 +11630,10 @@ function PartnerPaymentsView({
                     {activePerson === "mike" ? (
                       <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
                     ) : null}
-                    <td>{toLedgerCurrency(item.owedAmount)}</td>
+                    {activePerson !== "ken" ? <td>{toLedgerCurrency(item.owedAmount)}</td> : null}
                     <td>{toLedgerCurrency(item.paidAmount)}</td>
-                    <td className="crm-ledger-money-warn">{toLedgerCurrency(item.remainingAmount)}</td>
-                    <td>{paymentStateDisplay(item.paymentState)}</td>
+                    {activePerson !== "ken" ? <td className="crm-ledger-money-warn">{toLedgerCurrency(item.remainingAmount)}</td> : null}
+                    {activePerson !== "ken" ? <td>{paymentStateDisplay(item.paymentState)}</td> : null}
                   </tr>
                 ))}
               </tbody>
