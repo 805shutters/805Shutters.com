@@ -15,6 +15,7 @@ import {
   enrichCalendarEventsWithJobDetails,
   normalizeRemakeAmount,
   resolveFullPartnerPaymentAmount,
+  resolvePartnerPaymentAdvanceOffset,
   resolveQuoteBookkeepingCustomerName,
   syncRemakeExpense,
   updateCrmBookkeepingCredit,
@@ -1080,6 +1081,13 @@ describe("partner payment write rules", () => {
     expect(resolveFullPartnerPaymentAmount(undefined, 600)).toBe(600);
     expect(resolveFullPartnerPaymentAmount("", 600)).toBe(600);
     expect(() => resolveFullPartnerPaymentAmount(250, 600)).toThrow(CrmAuthError);
+  });
+
+  it("applies an available Jessica advance once against the gross selected payables", () => {
+    expect(resolvePartnerPaymentAdvanceOffset("jessica", 500, 200)).toBe(200);
+    expect(resolvePartnerPaymentAdvanceOffset("jessica", 500, 800)).toBe(500);
+    expect(resolvePartnerPaymentAdvanceOffset("jessica", 500, -20)).toBe(0);
+    expect(resolvePartnerPaymentAdvanceOffset("ken", 500, 200)).toBe(0);
   });
 
   it("does not let Ken change payoff settings", async () => {

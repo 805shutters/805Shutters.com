@@ -311,6 +311,7 @@ function historyFromKenPayment(payment: CrmKenPayment): CrmPartnerPaymentHistory
     isLegacy: false,
     appliesToKenBuyout: kenPaymentAppliesToBuyout(payment, person),
     isAdvance: payment.meta?.advancePayment === true,
+    advanceApplied: roundCents(Number(payment.meta?.advanceApplied) || 0),
     unappliedAmount: 0,
     allocations: []
   };
@@ -331,6 +332,7 @@ function historyFromCommissionPayment(payment: CrmCommissionPayment): CrmPartner
     isLegacy: false,
     appliesToKenBuyout: false,
     isAdvance: payment.meta?.advancePayment === true,
+    advanceApplied: roundCents(Number(payment.meta?.advanceApplied) || 0),
     unappliedAmount: 0,
     allocations: []
   };
@@ -769,11 +771,14 @@ export function buildPartnerPaymentLedger({
       const earned = roundCents(personItems.reduce((sum, item) => sum + item.owedAmount, 0));
       const paid = roundCents(personItems.reduce((sum, item) => sum + item.paidAmount, 0));
       const owed = roundCents(personActive.reduce((sum, item) => sum + item.remainingAmount, 0));
-      const advanceBalance = roundCents(
+      const advanceBalance = Math.max(roundCents(
         sortedHistory
           .filter((batch) => batch.person === person && batch.isAdvance)
           .reduce((sum, batch) => sum + batch.unappliedAmount, 0)
-      );
+          - sortedHistory
+            .filter((batch) => batch.person === person && !batch.isAdvance)
+            .reduce((sum, batch) => sum + batch.advanceApplied, 0)
+      ), 0);
       record[person] = {
         person,
         label: partnerLabels[person],

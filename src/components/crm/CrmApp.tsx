@@ -122,6 +122,8 @@ type PartnerPaymentReceiptResponse = {
   to: string;
   filename: string;
 };
+const JESSICA_PAYMENT_NOTIFICATION_EMAIL = "Jessica@805shutters.com";
+const JESSICA_WEEKLY_REVIEW_STORAGE_KEY = "crm:jessica-weekly-payment-review:v1";
 type BookkeepingEditableField =
   | "customer"
   | "soldDate"
@@ -11030,11 +11032,30 @@ function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
   return Math.round(items.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
 }
 
-function ZellePaymentPanel({ person, amountDue }: { person: CrmPaymentPerson; amountDue: number }) {
+function ZellePaymentPanel({
+  person,
+  amountDue,
+  eligibleItemCount,
+  busy,
+  onOpenReview
+}: {
+  person: CrmPaymentPerson;
+  amountDue: number;
+  eligibleItemCount: number;
+  busy: boolean;
+  onOpenReview: () => void;
+}) {
   const config = payablesZelleConfig[person];
   const [copied, setCopied] = useState(false);
   const zelleIdentifier = config.zelleIdentifier;
   const zelleQrUrl = config.zelleQrUrl;
+  const jessicaDisabledReasons = [
+    !zelleIdentifier ? "Jessica’s Zelle recipient is not configured." : null,
+    amountDue <= 0 ? "Jessica’s current payable balance must be greater than zero." : null,
+    eligibleItemCount === 0 ? "There are no eligible payable entries to review." : null,
+    busy ? "Another payment update is currently in progress." : null
+  ].filter((reason): reason is string => Boolean(reason));
+  const canReviewJessicaPayment = person === "jessica" && jessicaDisabledReasons.length === 0;
 
   useEffect(() => {
     setCopied(false);
@@ -11063,6 +11084,18 @@ function ZellePaymentPanel({ person, amountDue }: { person: CrmPaymentPerson; am
         </p>
       </div>
       <div className="crm-zelle-actions">
+        {person === "jessica" ? (
+          <div className="crm-zelle-primary-action">
+            <button type="button" disabled={!canReviewJessicaPayment} onClick={onOpenReview}>
+              Process Jessica’s Payments
+            </button>
+            <small className={jessicaDisabledReasons.length ? "crm-zelle-action-help crm-zelle-action-help--disabled" : "crm-zelle-action-help"}>
+              {jessicaDisabledReasons.length
+                ? jessicaDisabledReasons.join(" ")
+                : "Opens a review step before any payment is recorded."}
+            </small>
+          </div>
+        ) : null}
         <button type="button" className="crm-ghost-button" disabled={!zelleIdentifier} onClick={copyZelleIdentifier}>
           {zelleIdentifier ? (copied ? "Copied" : "Copy Zelle Info") : "Zelle Not Configured"}
         </button>
@@ -11156,6 +11189,11 @@ function PartnerPaymentsView({
   const [review, setReview] = useState<{ itemKeys: string[]; amount: number; count: number } | null>(null);
   const [reviewDate, setReviewDate] = useState(todayInputValue());
   const [reviewNote, setReviewNote] = useState("");
+  const [weeklyReviewEnabled, setWeeklyReviewEnabled] = useState(false);
+  const [weeklyReviewDay, setWeeklyReviewDay] = useState("5");
+  const [weeklyReviewTime, setWeeklyReviewTime] = useState("09:00");
+  const [weeklyReviewReady, setWeeklyReviewReady] = useState(false);
+  const [weeklyReviewSaved, setWeeklyReviewSaved] = useState(false);
   const activeItems = ledger?.people[activePerson]?.activeItems || [];
   const activePersonLedger = ledger?.people[activePerson];
   const activeHistory = (ledger?.history || []).filter((batch) => batch.person === activePerson);
@@ -11169,6 +11207,10 @@ function PartnerPaymentsView({
   const jobItems = activePersonLedger?.jobItems || [];
   const completedJobItems = jobItems.filter((item) => item.displaySection === "completed");
   const pipelineJobItems = jobItems.filter((item) => item.displaySection === "pipeline");
+  const reviewItems = review ? activeItems.filter((item) => review.itemKeys.includes(item.itemKey)) : [];
+  const reviewGrossPayable = sumPartnerRemaining(reviewItems);
+  const reviewAdvanceApplied = Math.min(reviewGrossPayable, Math.max(activePersonLedger?.advanceBalance || 0, 0));
+  const excludedJessicaItems = completedJobItems.filter((item) => !item.payableReady);
 
   useEffect(() => {
     setSelectedItemKeys(new Set());
@@ -11176,6 +11218,39 @@ function PartnerPaymentsView({
     setReviewDate(todayInputValue());
     setReviewNote("");
   }, [activePerson]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(JESSICA_WEEKLY_REVIEW_STORAGE_KEY) || "{}") as {
+        enabled?: boolean;
+        weekday?: string;
+        time?: string;
+      };
+      setWeeklyReviewEnabled(Boolean(stored.enabled));
+      if (/^[0-6]$/.test(stored.weekday || "")) setWeeklyReviewDay(stored.weekday as string);
+      if (/^\d{2}:\d{2}$/.test(stored.time || "")) setWeeklyReviewTime(stored.time as string);
+    } catch {
+      // Invalid browser-local settings fall back to the safe disabled default.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!weeklyReviewEnabled || activePerson !== "jessica" || typeof window === "undefined") {
+      setWeeklyReviewReady(false);
+      return;
+    }
+    const checkSchedule = () => {
+      const now = new Date();
+      const [hours, minutes] = weeklyReviewTime.split(":").map(Number);
+      const scheduledMinutes = hours * 60 + minutes;
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      setWeeklyReviewReady(now.getDay() === Number(weeklyReviewDay) && currentMinutes >= scheduledMinutes);
+    };
+    checkSchedule();
+    const timer = window.setInterval(checkSchedule, 60_000);
+    return () => window.clearInterval(timer);
+  }, [activePerson, weeklyReviewDay, weeklyReviewEnabled, weeklyReviewTime]);
 
   const toggleItem = (itemKey: string) => {
     setSelectedItemKeys((current) => {
@@ -11203,6 +11278,21 @@ function PartnerPaymentsView({
     });
     setReviewDate(todayInputValue());
     setReviewNote("");
+  };
+
+  const saveWeeklyReviewSchedule = () => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      JESSICA_WEEKLY_REVIEW_STORAGE_KEY,
+      JSON.stringify({
+        enabled: weeklyReviewEnabled,
+        weekday: weeklyReviewDay,
+        time: weeklyReviewTime,
+        updatedAt: new Date().toISOString(),
+        behavior: "review_only"
+      })
+    );
+    setWeeklyReviewSaved(true);
   };
 
   const confirmReviewPayment = async (event: FormEvent<HTMLFormElement>) => {
@@ -11268,9 +11358,11 @@ function PartnerPaymentsView({
             <p className="eyebrow">Internal Payables</p>
             <h2>Payables</h2>
           </div>
-          <button type="button" disabled={busy || !activeItems.length || amountDue <= 0} onClick={openReview}>
-            Process {paymentPersonDisplayName(activePerson)} Payment
-          </button>
+          {activePerson !== "jessica" ? (
+            <button type="button" disabled={busy || !activeItems.length || amountDue <= 0} onClick={openReview}>
+              Process {paymentPersonDisplayName(activePerson)} Payment
+            </button>
+          ) : null}
         </div>
 
         <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
@@ -11315,7 +11407,65 @@ function PartnerPaymentsView({
           </CollapsiblePanel>
         ) : null}
 
-        <ZellePaymentPanel person={activePerson} amountDue={activePersonLedger?.owed || 0} />
+        <ZellePaymentPanel
+          person={activePerson}
+          amountDue={activePersonLedger?.owed || 0}
+          eligibleItemCount={activeItems.length}
+          busy={busy}
+          onOpenReview={openReview}
+        />
+
+        {activePerson === "jessica" ? (
+          <CollapsiblePanel title="Weekly Jessica Payment Review">
+            <div className="crm-form">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={weeklyReviewEnabled}
+                  onChange={(event) => {
+                    setWeeklyReviewEnabled(event.target.checked);
+                    setWeeklyReviewSaved(false);
+                  }}
+                />
+                Enable browser-local weekly review reminder
+              </label>
+              <div className="crm-field-row">
+                <label>
+                  Weekday
+                  <select value={weeklyReviewDay} onChange={(event) => setWeeklyReviewDay(event.target.value)}>
+                    <option value="1">Monday</option>
+                    <option value="2">Tuesday</option>
+                    <option value="3">Wednesday</option>
+                    <option value="4">Thursday</option>
+                    <option value="5">Friday</option>
+                    <option value="6">Saturday</option>
+                    <option value="0">Sunday</option>
+                  </select>
+                </label>
+                <label>
+                  Local time
+                  <input type="time" value={weeklyReviewTime} onChange={(event) => setWeeklyReviewTime(event.target.value)} />
+                </label>
+              </div>
+              <p className="crm-inline-note">
+                Disabled by default. This browser-local setting only presents the same review; it cannot send money or email.
+                Production scheduling still requires durable server scheduling, audit storage, verified sender configuration, and explicit approval.
+              </p>
+              {weeklyReviewReady ? (
+                <div className="crm-inline-alert">
+                  Weekly Jessica payment review is ready.
+                  <button type="button" onClick={openReview} disabled={busy || !activeItems.length || amountDue <= 0}>
+                    Review Eligible Payables
+                  </button>
+                </div>
+              ) : null}
+              <button type="button" className="crm-ghost-button" onClick={saveWeeklyReviewSchedule}>
+                Save Weekly Review Setting
+              </button>
+              {weeklyReviewSaved ? <small>Saved in this browser with an update timestamp.</small> : null}
+            </div>
+          </CollapsiblePanel>
+        ) : null}
 
         {activePerson === "ken" && ledger?.kenBuyout ? <KenBuyoutLedgerBox ledger={ledger.kenBuyout} /> : null}
 
@@ -11362,7 +11512,7 @@ function PartnerPaymentsView({
             {activePerson === "jessica" ? (
               <div className="crm-jessica-payables-sections">
                 <section>
-                  <h4>Completed Payables</h4>
+                  <h4>Completed Jobs with Calculated Payables</h4>
                   {completedJobItems.length ? (
                     <JessicaJobLedgerTable
                       items={completedJobItems}
@@ -11482,8 +11632,20 @@ function PartnerPaymentsView({
               </button>
             </div>
             <div className="crm-payment-review-summary">
+              {activePerson === "jessica" ? (
+                <>
+                  <div>
+                    <span>Eligible jobs</span>
+                    <strong>{toLedgerCurrency(reviewGrossPayable)}</strong>
+                  </div>
+                  <div>
+                    <span>Jessica advance offset</span>
+                    <strong>−{toLedgerCurrency(reviewAdvanceApplied)}</strong>
+                  </div>
+                </>
+              ) : null}
               <div>
-                <span>Amount</span>
+                <span>{activePerson === "jessica" ? "Net payment to record" : "Amount"}</span>
                 <strong>{toLedgerCurrency(review.amount)}</strong>
               </div>
               <div>
@@ -11491,6 +11653,59 @@ function PartnerPaymentsView({
                 <strong>{review.count}</strong>
               </div>
             </div>
+            {activePerson === "jessica" ? (
+              <div className="crm-payment-review-details">
+                <div className="crm-zelle-facts">
+                  <p>
+                    <span>Payment recipient</span>
+                    <strong>{payablesZelleConfig.jessica.zelleIdentifier || "Not configured"}</strong>
+                  </p>
+                  <p>
+                    <span>Notification recipient</span>
+                    <strong>{JESSICA_PAYMENT_NOTIFICATION_EMAIL}</strong>
+                  </p>
+                </div>
+                <h3>Eligible jobs included</h3>
+                <div className="crm-bookkeeping-table-wrap">
+                  <table className="crm-bookkeeping-table">
+                    <thead><tr><th>Customer</th><th>Quote</th><th>Status</th><th>Installation</th><th>Payable</th></tr></thead>
+                    <tbody>
+                      {reviewItems.map((item) => (
+                        <tr key={item.itemKey}>
+                          <td>{item.customerName}</td>
+                          <td>{item.quoteNumber || "-"}</td>
+                          <td>{paymentStateDisplay(item.paymentState)}</td>
+                          <td>Recorded</td>
+                          <td>{toLedgerCurrency(item.remainingAmount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <h3>Excluded / held jobs</h3>
+                {excludedJessicaItems.length ? (
+                  <div className="crm-bookkeeping-table-wrap">
+                    <table className="crm-bookkeeping-table">
+                      <thead><tr><th>Customer</th><th>Quote</th><th>Amount</th><th>Reason excluded</th></tr></thead>
+                      <tbody>
+                        {excludedJessicaItems.map((item) => (
+                          <tr className="crm-payables-row--held" key={item.itemKey}>
+                            <td>{item.customerName}</td>
+                            <td>{item.quoteNumber || "-"}</td>
+                            <td>{toLedgerCurrency(item.remainingAmount)}</td>
+                            <td>{jobPaymentStateDisplay(item)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <p className="crm-empty">No completed Jessica jobs are excluded from this review.</p>}
+                <p className="crm-inline-note">
+                  Saving records only the approved eligible line items. The matching email is sent after a successful record,
+                  with PDF and CSV spreadsheet attachments; canceling or a failed save sends no email.
+                </p>
+              </div>
+            ) : null}
             <form className="crm-form" onSubmit={confirmReviewPayment}>
               <label>
                 Payment Date
@@ -11505,7 +11720,7 @@ function PartnerPaymentsView({
                   Cancel
                 </button>
                 <button type="submit" disabled={busy}>
-                  Save Payment & Send PDF
+                  Save Payment & Send Breakdown
                 </button>
               </div>
             </form>
@@ -11563,6 +11778,7 @@ function PartnerPaymentHistoryRow({ batch }: { batch: CrmPartnerPaymentHistoryBa
         ) : (
           batch.isAdvance ? `${toLedgerCurrency(batch.unappliedAmount)} credit remaining` : "-"
         )}
+        {batch.advanceApplied > 0 ? <small>{toLedgerCurrency(batch.advanceApplied)} advance applied to this batch</small> : null}
       </td>
     </tr>
   );

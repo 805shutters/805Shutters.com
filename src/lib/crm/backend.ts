@@ -455,6 +455,15 @@ export function resolveFullPartnerPaymentAmount(payloadAmount: unknown, payableA
   return Math.round(amount * 100) / 100;
 }
 
+export function resolvePartnerPaymentAdvanceOffset(
+  person: CrmPaymentPerson,
+  grossPayableAmount: number,
+  advanceBalance: number
+) {
+  if (person !== "jessica" && person !== "mike") return 0;
+  return Math.round(Math.min(Math.max(grossPayableAmount, 0), Math.max(advanceBalance, 0)) * 100) / 100;
+}
+
 function optionalText(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -4370,7 +4379,9 @@ export async function createPartnerPaymentBatch(
     throw new CrmAuthError(400, `${paymentPersonLabel(person)} has no active unpaid jobs to pay.`);
   }
 
-  const payableAmount = Math.round(selectedItems.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
+  const grossPayableAmount = Math.round(selectedItems.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
+  const advanceApplied = resolvePartnerPaymentAdvanceOffset(person, grossPayableAmount, personLedger.advanceBalance);
+  const payableAmount = Math.round((grossPayableAmount - advanceApplied) * 100) / 100;
   const amount = resolveFullPartnerPaymentAmount(payload.amount, payableAmount);
   const paidOn = optionalText(payload.paid_on) || selectedItems[0]?.closedAt?.slice(0, 10) || new Date().toISOString().slice(0, 10);
   const periodMonth = optionalText(payload.period_month) || monthStartDate(paidOn);
@@ -4379,7 +4390,7 @@ export async function createPartnerPaymentBatch(
     person,
     paymentId: "00000000-0000-0000-0000-000000000000",
     items: selectedItems,
-    amount,
+    amount: grossPayableAmount,
     actor
   });
 
@@ -4393,6 +4404,8 @@ export async function createPartnerPaymentBatch(
     kenBuyoutApplied: person === "ken",
     selectedItemCount: selectedItems.length,
     selectedItemKeys: selectedItems.map((item) => item.itemKey),
+    grossPayableAmount,
+    advanceApplied,
     selectedItemAllocations: paymentAllocationMetadata(allocations)
   };
   const paymentRecord = {
@@ -4454,6 +4467,7 @@ export async function createPartnerPaymentBatch(
     amount,
     note,
     createdByEmail: actor.email,
+    advanceApplied,
     allocations: allocations.map(partnerPaymentReceiptAllocationFromRow)
   });
 
@@ -4466,6 +4480,8 @@ export async function createPartnerPaymentBatch(
       person,
       allocationCount: allocations.length,
       allocatedAmount: amount,
+      grossPayableAmount,
+      advanceApplied,
       receiptEmail
     }
   });

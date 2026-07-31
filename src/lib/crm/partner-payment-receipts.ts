@@ -25,6 +25,7 @@ type PartnerPaymentReceiptInput = {
   amount: number;
   note?: string | null;
   createdByEmail?: string | null;
+  advanceApplied?: number;
   allocations: PartnerPaymentReceiptAllocation[];
 };
 
@@ -236,6 +237,7 @@ export function buildPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInpu
     `${personName} payment recorded`,
     `Total paid: ${money(input.amount)}`,
     `Payment date: ${shortDate(input.paidOn)}`,
+    input.advanceApplied ? `Advance applied: -${money(input.advanceApplied)}` : null,
     input.note ? `Note: ${input.note}` : null,
     "",
     "Job breakdown:",
@@ -244,17 +246,18 @@ export function buildPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInpu
         `- ${allocation.customerName}${allocation.quoteNumber ? ` (${allocation.quoteNumber})` : ""}: ${money(allocation.amount)}`
     ),
     "",
-    "A PDF copy of this payment record is attached."
+    "PDF and spreadsheet copies of this payment record are attached."
   ]
     .filter((line): line is string => line !== null)
     .join("\n");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111111;max-width:760px;margin:0 auto;padding:24px">
     <h1 style="font-size:22px;margin:0 0 8px 0">805 Shutters payment record</h1>
-    <p style="font-size:14px;margin:0 0 18px 0;color:#333333">A partner payment was recorded for <strong>${escapeHtml(personName)}</strong>. The PDF receipt is attached for your records.</p>
+    <p style="font-size:14px;margin:0 0 18px 0;color:#333333">A partner payment was recorded for <strong>${escapeHtml(personName)}</strong>. PDF and spreadsheet breakdowns are attached for your records.</p>
     <div style="border:1px solid #111111;padding:14px 16px;margin:0 0 18px 0">
       <div style="font-size:12px;text-transform:uppercase;color:#555555">Total paid</div>
       <div style="font-size:28px;font-weight:700">${money(input.amount)}</div>
       <div style="font-size:13px;color:#333333;margin-top:4px">Payment date: ${escapeHtml(shortDate(input.paidOn))}</div>
+      ${input.advanceApplied ? `<div style="font-size:13px;color:#333333;margin-top:4px">Advance applied: -${money(input.advanceApplied)}</div>` : ""}
       ${input.note ? `<div style="font-size:13px;color:#333333;margin-top:4px">Note: ${escapeHtml(input.note)}</div>` : ""}
     </div>
     <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:13px">
@@ -272,6 +275,31 @@ export function buildPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInpu
   return { subject, text, html };
 }
 
+function csvCell(value: unknown) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, "\"\"")}"`;
+}
+
+export function buildPartnerPaymentReceiptCsv(input: PartnerPaymentReceiptInput) {
+  const rows = [
+    ["Customer", "Quote", "Closed", "Job Total", "Amount Paid", "Job ID", "Item Key"],
+    ...input.allocations.map((allocation) => [
+      allocation.customerName,
+      allocation.quoteNumber || "",
+      allocation.closedAt?.slice(0, 10) || "",
+      allocation.total == null ? "" : allocation.total.toFixed(2),
+      allocation.amount.toFixed(2),
+      allocation.jobId || "",
+      allocation.itemKey || ""
+    ]),
+    ...(input.advanceApplied
+      ? [["ADVANCE OFFSET", "", "", "", (-input.advanceApplied).toFixed(2), "", "Previously recorded advance applied once"]]
+      : []),
+    ["TOTAL", "", "", "", input.amount.toFixed(2), "", ""]
+  ];
+  return Buffer.from(rows.map((row) => row.map(csvCell).join(",")).join("\r\n"), "utf8");
+}
+
 export async function sendPartnerPaymentReceiptEmail(input: PartnerPaymentReceiptInput): Promise<
   EmailResult & { to: string; filename: string }
 > {
@@ -279,16 +307,28 @@ export async function sendPartnerPaymentReceiptEmail(input: PartnerPaymentReceip
   const pdf = buildPartnerPaymentReceiptPdf(input);
   const email = buildPartnerPaymentReceiptEmail(input);
   const filename = `805-shutters-${input.person}-payment-${fileDate(input.paidOn)}-${input.paymentId.slice(0, 8)}.pdf`;
+  const configuredSender = (process.env.RESEND_FROM || process.env.BOOKING_EMAIL_FROM || "").trim();
+  if (!/@805shutters\.com\b/i.test(configuredSender)) {
+    return { sent: false, skipped: "verified 805 sender not configured", to, filename };
+  }
+  const spreadsheetFilename = filename.replace(/\.pdf$/, ".csv");
+  const spreadsheet = buildPartnerPaymentReceiptCsv(input);
   const result = await sendEmail({
     to,
     subject: email.subject,
     html: email.html,
     text: email.text,
+    idempotencyKey: `partner-payment-${input.paymentId}`,
     attachments: [
       {
         filename,
         content: pdf.toString("base64"),
         contentType: "application/pdf"
+      },
+      {
+        filename: spreadsheetFilename,
+        content: spreadsheet.toString("base64"),
+        contentType: "text/csv"
       }
     ]
   });

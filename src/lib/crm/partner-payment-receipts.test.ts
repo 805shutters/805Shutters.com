@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  buildPartnerPaymentReceiptCsv,
   buildPartnerPaymentReceiptEmail,
   buildPartnerPaymentReceiptPdf,
   sendPartnerPaymentReceiptEmail
@@ -59,11 +60,21 @@ describe("partner payment receipts", () => {
     expect(raw).toContain("Kahn, Andrew");
   });
 
-  it("uses Ken's recipient and skips sending when email is not configured", async () => {
+  it("builds a spreadsheet breakdown with every paid job and the total", () => {
+    const csv = buildPartnerPaymentReceiptCsv({ ...receipt, advanceApplied: 100 }).toString("utf8");
+
+    expect(csv).toContain('"Customer","Quote","Closed","Job Total","Amount Paid","Job ID","Item Key"');
+    expect(csv).toContain('"Melisa Asimus","805-0013"');
+    expect(csv).toContain('"Kahn, Andrew","805-0023"');
+    expect(csv).toContain('"ADVANCE OFFSET","","","","-100.00"');
+    expect(csv).toContain('"TOTAL","","","","441.62"');
+  });
+
+  it("uses Ken's recipient and skips sending without an explicitly configured 805 sender", async () => {
     const result = await sendPartnerPaymentReceiptEmail(receipt);
 
     expect(result.sent).toBe(false);
-    expect(result.skipped).toBe("resend not configured");
+    expect(result.skipped).toBe("verified 805 sender not configured");
     expect(result.to).toBe("khill31@msn.com");
     expect(result.filename).toMatch(/805-shutters-ken-payment-2026-07-05/);
   });

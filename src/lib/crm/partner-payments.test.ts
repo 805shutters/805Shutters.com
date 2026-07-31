@@ -256,6 +256,31 @@ describe("buildPartnerPaymentLedger", () => {
     expect(ledger.history[0]).toMatchObject({ isAdvance: true, allocations: [], unappliedAmount: 8000 });
   });
 
+  it("consumes a Jessica advance once when a confirmed batch applies it", () => {
+    const ledger = buildPartnerPaymentLedger({
+      rows: [row({ salesOwner: "jessica", mikeProfit: 0, jessicaCommission: 500 })],
+      kenPayments: [],
+      commissionPayments: [
+        commissionPayment({ id: "advance-1", recipient: "jessica", amount: 200, meta: { advancePayment: true } }),
+        commissionPayment({ id: "batch-1", recipient: "jessica", amount: 300, meta: { advanceApplied: 200 } })
+      ],
+      commissionAllocations: [
+        commissionAllocation({ payment_id: "batch-1", recipient: "jessica", item_key: "jessica:manual:row-1", amount: 500 })
+      ]
+    });
+
+    expect(ledger.people.jessica).toMatchObject({
+      advanceBalance: 0,
+      owed: 0,
+      paid: 500
+    });
+    expect(ledger.history.find((batch) => batch.id === "batch-1")).toMatchObject({
+      amount: 300,
+      advanceApplied: 200,
+      unappliedAmount: 0
+    });
+  });
+
   it("separates Jessica pipeline jobs and excludes paid and Mike-sold jobs", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [

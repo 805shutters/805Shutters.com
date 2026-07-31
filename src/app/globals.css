@@ -13634,8 +13634,25 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
 
 .crm-zelle-actions {
   display: flex;
+  align-items: center;
   justify-content: end;
   gap: 8px;
+}
+
+.crm-zelle-primary-action {
+  display: grid;
+  gap: 6px;
+  max-width: 300px;
+}
+
+.crm-zelle-action-help {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.crm-zelle-action-help--disabled {
+  color: var(--danger);
 }
 
 .crm-zelle-link {
