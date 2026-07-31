@@ -2947,6 +2947,7 @@ export function CrmApp({
           jobs={jobs}
           quotes={quotes}
           events={events}
+          rows={rows}
           onOpenCustomer={(job) => openCustomerFile(job.customer_name)}
         />
       ) : null}

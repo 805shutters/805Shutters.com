@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { MarketingAgentPanel } from "@/components/crm/MarketingAgentPanel";
 import { buildSalesIntelligenceReport, type SalesIntelligenceRange } from "@/lib/crm/sales-intelligence";
-import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
+import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 
 function dateInputValue(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -39,11 +40,13 @@ export function SalesIntelligencePage({
   jobs,
   quotes,
   events,
+  rows,
   onOpenCustomer
 }: {
   jobs: CrmJob[];
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
+  rows: CrmBookkeepingRow[];
   onOpenCustomer: (job: CrmJob) => void;
 }) {
   const [range, setRange] = useState(defaultRange);
@@ -91,6 +94,8 @@ export function SalesIntelligencePage({
           <label>To<input type="date" value={range.end} min={range.start} onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))} /></label>
         </div>
       </header>
+
+      <MarketingAgentPanel jobs={jobs} quotes={quotes} rows={rows} />
 
       <section className="crm-si-kpis" aria-label="Performance summary">
         <article><span>New leads</span><strong>{report.totals.leads}</strong><small>{change === null ? "No prior-period baseline" : `${change >= 0 ? "+" : ""}${change}% vs prior period`}</small></article>
