@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCrmJob, loadCrmDashboardData } from "@/lib/crm/backend";
 import { crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
+import { restrictDashboardPayablesForViewer } from "@/lib/crm/payables-visibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,8 +9,9 @@ export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   try {
-    const { supabase } = await requireCrmUser(request);
-    const response = NextResponse.json(await loadCrmDashboardData(supabase));
+    const { supabase, email } = await requireCrmUser(request);
+    const dashboard = await loadCrmDashboardData(supabase);
+    const response = NextResponse.json(restrictDashboardPayablesForViewer(dashboard, email));
     response.headers.set("Cache-Control", "private, no-store, max-age=0");
     return response;
   } catch (error) {

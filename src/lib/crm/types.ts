@@ -754,6 +754,7 @@ export type CrmKenBuyoutLedger = {
 export type CrmPartnerPaymentLedgerPerson = {
   person: CrmPaymentPerson;
   label: string;
+  earningsAccess: "visible" | "restricted";
   earned: number;
   paid: number;
   owed: number;

@@ -836,6 +836,7 @@ export function buildPartnerPaymentLedger({
       record[person] = {
         person,
         label: partnerLabels[person],
+        earningsAccess: "visible",
         earned,
         paid,
         owed: roundCents(owed - advanceBalance),

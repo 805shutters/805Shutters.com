@@ -11177,6 +11177,7 @@ function PartnerPaymentsView({
   const [weeklyReviewSaved, setWeeklyReviewSaved] = useState(false);
   const activeItems = ledger?.people[activePerson]?.activeItems || [];
   const activePersonLedger = ledger?.people[activePerson];
+  const activePersonRestricted = activePersonLedger?.earningsAccess === "restricted";
   const activeHistory = (ledger?.history || []).filter((batch) => batch.person === activePerson);
   const selectedItems = activeItems.filter((item) => selectedItemKeys.has(item.itemKey));
   const amountDue = Math.max(activePersonLedger?.owed || 0, 0);
@@ -11364,6 +11365,21 @@ function PartnerPaymentsView({
         <div className="crm-bookkeeping-summary-grid crm-payment-person-grid">
           {paymentPeople.map((person) => {
             const personLedger = ledger?.people[person];
+            if (personLedger?.earningsAccess === "restricted") {
+              return (
+                <button
+                  type="button"
+                  className={`crm-bookkeeping-summary-card crm-bookkeeping-summary-card-button ${activePerson === person ? "active" : ""}`}
+                  key={person}
+                  onClick={() => onPersonChange(person)}
+                >
+                  <span>{paymentPersonDisplayName(person)} Payables</span>
+                  <strong>Restricted</strong>
+                  <em>Only your own earnings are available on this login.</em>
+                  <span className="crm-payables-all-time-summary">All-time earnings restricted</span>
+                </button>
+              );
+            }
             const soldEarningDetail =
               person === "mike" || person === "jessica"
                 ? `${personLedger?.soldJobCount || 0} sold / ${toLedgerCurrency(personLedger?.soldEarned)} earning`
@@ -11403,7 +11419,13 @@ function PartnerPaymentsView({
           current amount due and recorded advances.
         </p>
 
-        {activePerson === "mike" || activePerson === "jessica" ? (
+        {activePersonRestricted ? (
+          <div className="crm-empty" role="status">
+            This person&apos;s payable earnings and all-time job details are restricted on your login.
+          </div>
+        ) : null}
+
+        {!activePersonRestricted && (activePerson === "mike" || activePerson === "jessica") ? (
           <CollapsiblePanel title="Record Payment Advance">
             <form className="crm-form" onSubmit={submitAdvance}>
               <label>Person<input value={paymentPersonDisplayName(activePerson)} readOnly /></label>
@@ -11417,14 +11439,14 @@ function PartnerPaymentsView({
           </CollapsiblePanel>
         ) : null}
 
-        <ManualPaymentPanel
+        {!activePersonRestricted ? <ManualPaymentPanel
           person={activePerson}
           amountDue={activePersonLedger?.owed || 0}
           eligibleItemCount={activeItems.length}
           kenReview={kenReview}
           busy={busy}
           onOpenReview={openReview}
-        />
+        /> : null}
 
         {activePerson === "jessica" ? (
           <CollapsiblePanel title="Weekly Jessica Payment Review">

@@ -22,7 +22,7 @@ import { GET, dynamic, revalidate, runtime } from "./route";
 describe("GET CRM dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.requireCrmUser.mockResolvedValue({ supabase: { service: true } });
+    mocks.requireCrmUser.mockResolvedValue({ supabase: { service: true }, email: "805shutters@gmail.com" });
     mocks.loadCrmDashboardData.mockResolvedValue({ bookkeepingRows: [] });
   });
 
