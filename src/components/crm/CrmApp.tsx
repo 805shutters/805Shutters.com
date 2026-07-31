@@ -11582,11 +11582,12 @@ function PartnerPaymentsView({
               <thead>
                 <tr>
                   {activePerson === "ken" ? <th className="crm-jessica-owed-column">Ken Owed</th> : <th aria-label="Select job" />}
+                  {activePerson === "ken" ? <th>Total Contract Amount</th> : null}
                   <th>Customer</th>
                   <th>Closed</th>
                   <th>Status</th>
                   <th>Sold By</th>
-                  <th>Total</th>
+                  {activePerson !== "ken" ? <th>Total</th> : null}
                   {activePerson === "mike" ? <th>Advertising 7%</th> : null}
                   {activePerson !== "ken" ? <th>Owed</th> : null}
                   <th>Paid</th>
@@ -11619,6 +11620,7 @@ function PartnerPaymentsView({
                         />
                       </td>
                     )}
+                    {activePerson === "ken" ? <td>{toLedgerCurrency(item.total)}</td> : null}
                     <td>
                       <strong>{item.customerName}</strong>
                       <span>{item.quoteNumber || item.source.replace("_", " ")}</span>
@@ -11626,7 +11628,7 @@ function PartnerPaymentsView({
                     <td>{formatShortDate(item.closedAt)}</td>
                     <td>{bookkeepingStatusLabelForKey(item.sourceStatus)}</td>
                     <td>{saleOwnerDisplayName(item.salesOwner)}</td>
-                    <td>{toLedgerCurrency(item.total)}</td>
+                    {activePerson !== "ken" ? <td>{toLedgerCurrency(item.total)}</td> : null}
                     {activePerson === "mike" ? (
                       <td className="crm-ledger-money-warn">{toLedgerCurrency(item.advertisingReserve)}</td>
                     ) : null}

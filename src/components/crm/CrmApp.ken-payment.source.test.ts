@@ -28,14 +28,20 @@ describe("Ken Make Payment source contract", () => {
     expect(backend).toContain("atomic idempotent payment function is unavailable");
   });
 
-  it("shows Ken owed first in each active-payable row without a page-level hero", () => {
+  it("shows Ken owed then contract total before customer without a page-level hero", () => {
     expect(source).not.toContain("Ken currently owed");
     expect(source).not.toContain("crm-ken-owed-hero");
     expect(source).toContain('<th className="crm-jessica-owed-column">Ken Owed</th>');
-    expect(source.indexOf('<th className="crm-jessica-owed-column">Ken Owed</th>')).toBeLessThan(
-      source.indexOf("<th>Customer</th>", source.indexOf("crm-ken-job-ledger"))
-    );
+    const kenTable = source.slice(source.indexOf('className={`crm-bookkeeping-table${activePerson === "ken"'));
+    const owedHeader = kenTable.indexOf('<th className="crm-jessica-owed-column">Ken Owed</th>');
+    const totalHeader = kenTable.indexOf("<th>Total Contract Amount</th>");
+    const customerHeader = kenTable.indexOf("<th>Customer</th>");
+    expect(owedHeader).toBeLessThan(totalHeader);
+    expect(totalHeader).toBeLessThan(customerHeader);
     expect(source).toContain("<strong>{toLedgerCurrency(item.remainingAmount)}</strong>");
     expect(source).toContain("<span>{kenPaymentStateDisplay(item)}</span>");
+    expect(kenTable.indexOf("{activePerson === \"ken\" ? <td>{toLedgerCurrency(item.total)}</td> : null}")).toBeLessThan(
+      kenTable.indexOf("<strong>{item.customerName}</strong>")
+    );
   });
 });
