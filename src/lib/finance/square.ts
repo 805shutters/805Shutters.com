@@ -157,6 +157,20 @@ export type SquarePaymentFacts = {
   refundedAmountCents: number;
 };
 
+// Square's TestWebhookSubscription endpoint sends this fixed, synthetic
+// completed-payment fixture. It is not backed by a retrievable Square order and
+// must never enter CRM reconciliation. Keep the match intentionally exact so a
+// real payment can never be skipped because it merely resembles test data.
+export function isSquareWebhookTestPayment(facts: SquarePaymentFacts): boolean {
+  return (
+    facts.squarePaymentId === "hYy9pRFVxpDsO1FB05SunFWUe9JZY" &&
+    facts.orderId === "03O3USaPaAaFnI6kkwB1JxGgBsUZY" &&
+    facts.amountCents === 100 &&
+    facts.currency === "USD" &&
+    facts.paidAt === "2020-11-22T21:16:51.198Z"
+  );
+}
+
 export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | null {
   const e = event as {
     type?: string;

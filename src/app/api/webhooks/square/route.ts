@@ -6,6 +6,7 @@ import {
   fetchSquareOrderFacts,
   getSquareWebhookConfig,
   isSquarePaidPaymentEvent,
+  isSquareWebhookTestPayment,
 } from "@/lib/finance/square";
 import {
   reconcileVerifiedSquareOrderPayment,
@@ -48,6 +49,16 @@ export async function POST(request: NextRequest) {
     if (!facts || facts.amountCents <= 0) continue;
 
     try {
+      if (isSquareWebhookTestPayment(facts)) {
+        results.push({
+          status: "skipped",
+          reason: "Authenticated Square provider test event; no CRM financial record was changed.",
+          quoteId: null,
+          squarePaymentId: facts.squarePaymentId,
+          amount: facts.amountCents / 100,
+        });
+        continue;
+      }
       if (!facts.orderId) {
         results.push({
           status: "skipped",

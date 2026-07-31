@@ -13,9 +13,10 @@ import {
   getSquareWebhookConfig,
   isSquareConfigured,
   isSquarePaidPaymentEvent,
+  isSquareWebhookTestPayment,
 } from "./square";
 
-const URL = "https://www.805shutters.com/api/webhooks/square";
+const URL = "https://www.805shutters.com/api/webhooks/square/";
 const KEY = "whsig_TEST_SIGNING_KEY";
 const BODY = JSON.stringify({
   type: "payment.updated",
@@ -204,6 +205,33 @@ describe("extractSquarePaymentFacts", () => {
   });
   it("returns null when there is no payment object", () => {
     expect(extractSquarePaymentFacts({ type: "ping" })).toBeNull();
+  });
+});
+
+describe("isSquareWebhookTestPayment", () => {
+  const fixture = {
+    squarePaymentId: "hYy9pRFVxpDsO1FB05SunFWUe9JZY",
+    amountCents: 100,
+    currency: "USD",
+    quoteId: null,
+    jobId: null,
+    paymentType: null,
+    orderId: "03O3USaPaAaFnI6kkwB1JxGgBsUZY",
+    paidAt: "2020-11-22T21:16:51.198Z",
+    eventId: "test-event",
+    receiptUrl: null,
+    refundedAmountCents: 0,
+  };
+
+  it("recognizes Square's exact synthetic provider-test fixture", () => {
+    expect(isSquareWebhookTestPayment(fixture)).toBe(true);
+  });
+
+  it("does not skip a real payment that differs in any financial identity field", () => {
+    expect(isSquareWebhookTestPayment({ ...fixture, squarePaymentId: "real-payment" })).toBe(false);
+    expect(isSquareWebhookTestPayment({ ...fixture, orderId: "real-order" })).toBe(false);
+    expect(isSquareWebhookTestPayment({ ...fixture, amountCents: 61107 })).toBe(false);
+    expect(isSquareWebhookTestPayment({ ...fixture, paidAt: "2026-07-30T21:16:51.198Z" })).toBe(false);
   });
 });
 
