@@ -1922,9 +1922,20 @@ export async function sendQuoteToCustomer(
     : { sent: false, skipped: "email not selected", results: [] };
 
   let status = String(quote.status);
+  const sentVia =
+    sms.sent && emailRes.sent ? "both" :
+    sms.sent ? "sms" :
+    emailRes.sent ? "email" :
+    null;
   if (status === "draft") {
-    await supabase.from("crm_quotes").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", quoteId);
+    await supabase.from("crm_quotes").update({
+      status: "sent",
+      sent_at: new Date().toISOString(),
+      sent_via: sentVia,
+    }).eq("id", quoteId);
     status = "sent";
+  } else if (sentVia) {
+    await supabase.from("crm_quotes").update({ sent_via: sentVia }).eq("id", quoteId);
   }
 
   // The job is a forward-only projection of the quote: sending it advances the

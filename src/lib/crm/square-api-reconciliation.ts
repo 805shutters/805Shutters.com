@@ -12,6 +12,7 @@ import {
   reconcileVerifiedSquareOrderPayment,
   type SquareReconcileResult,
 } from "@/lib/crm/square-payments";
+import { scheduleSquareContractReminder } from "@/lib/crm/square-contract-reminders";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -208,6 +209,14 @@ export async function reconcileSquareApiPayment(
       const order = await fetchSquareOrderFacts(payment.orderId);
       if (order.quoteId && order.paymentType) {
         const result = await reconcileVerifiedSquareOrderPayment(supabase, { payment, order });
+        if (result.quoteId && (result.status === "recorded" || result.status === "duplicate")) {
+          result.contractReminder = await scheduleSquareContractReminder(supabase, {
+            quoteId: result.quoteId,
+            jobId: order.jobId,
+            squarePaymentId: payment.squarePaymentId,
+            paidAt: payment.paidAt,
+          });
+        }
         await updateReceipt(supabase, payment, "processed", result);
         return result;
       }
@@ -263,6 +272,14 @@ export async function reconcileSquareApiPayment(
         square_match_evidence: match.candidate.evidence,
       },
     });
+    if (result.quoteId && (result.status === "recorded" || result.status === "duplicate")) {
+      result.contractReminder = await scheduleSquareContractReminder(supabase, {
+        quoteId: result.quoteId,
+        jobId: match.candidate.jobId,
+        squarePaymentId: payment.squarePaymentId,
+        paidAt: payment.paidAt,
+      });
+    }
     await updateReceipt(supabase, payment, "processed", result);
     return result;
   } catch (error) {

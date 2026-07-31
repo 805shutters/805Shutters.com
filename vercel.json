@@ -9,6 +9,10 @@
       "schedule": "*/15 * * * *"
     },
     {
+      "path": "/api/cron/square-contract-reminders",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/overdue-alerts",
       "schedule": "13 17 * * *"
     },

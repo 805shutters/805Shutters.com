@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { CrmBookkeepingPaymentType, CrmQuoteStatus } from "@/lib/crm/types";
 import { SquareOrderFacts, SquarePaymentFacts } from "@/lib/finance/square";
 import { maybeSendCustomerCloseoutForQuote } from "@/lib/crm/customer-closeout";
+import type { SquareContractReminderResult } from "@/lib/crm/square-contract-reminders";
 
 type CrmSupabaseClient = SupabaseClient;
 
@@ -32,6 +33,7 @@ export type SquareReconcileResult = {
   amount: number;
   paymentLabel?: "Deposit" | "Balance payment";
   markedPaid?: boolean;
+  contractReminder?: SquareContractReminderResult;
 };
 
 export type SquareReconcileOptions = {

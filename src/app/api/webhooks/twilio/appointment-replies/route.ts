@@ -2,6 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { forwardCustomerAppointmentReply } from "@/lib/crm/calendar-notifications";
 import { getSupabaseServiceClient } from "@/lib/supabase-server";
+import { isCustomerSmsOptOut } from "@/lib/crm/square-contract-reminders";
+import { toE164 } from "@/lib/notify/twilio";
 
 export const runtime = "nodejs";
 
@@ -30,7 +32,20 @@ export async function POST(request: NextRequest) {
   if (!supabase) return new NextResponse("Database is not configured.", { status: 503 });
 
   try {
-    await forwardCustomerAppointmentReply(supabase, form.get("From") || "", form.get("Body") || "");
+    const from = form.get("From") || "";
+    const body = form.get("Body") || "";
+    const phoneE164 = toE164(from);
+    if (phoneE164 && isCustomerSmsOptOut(body)) {
+      const { error } = await supabase.from("crm_customer_sms_preferences").upsert({
+        phone_e164: phoneE164,
+        do_not_contact: true,
+        opted_out_at: new Date().toISOString(),
+        opt_out_source: "twilio_inbound",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "phone_e164" });
+      if (error) throw new Error(`SMS opt-out could not be persisted: ${error.message}`);
+    }
+    await forwardCustomerAppointmentReply(supabase, from, body);
     return new NextResponse("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response></Response>", {
       headers: { "content-type": "text/xml; charset=utf-8" }
     });
