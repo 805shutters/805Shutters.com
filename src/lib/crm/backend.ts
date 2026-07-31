@@ -4332,8 +4332,15 @@ async function createPartnerPaymentBatchDirect(
   return payment;
 }
 
-function isMissingDatabaseFunction(error: { code?: string; message?: string } | null | undefined) {
-  return error?.code === "PGRST202" || /could not find the function/i.test(error?.message || "");
+function shouldFallbackFromManualKenPaymentRpc(
+  error: { code?: string; message?: string } | null | undefined
+) {
+  if (error?.code === "PGRST202" || /could not find the function/i.test(error?.message || "")) return true;
+
+  // PostgreSQL reports a missing dependency inside the installed v3 wrapper as
+  // 42883, not as PostgREST's PGRST202 endpoint-missing error. Limit this
+  // fallback to the exact v2 dependency so validation failures remain blocking.
+  return error?.code === "42883" && /crm_create_ken_payment_batch_v2/i.test(error?.message || "");
 }
 
 export async function createManualKenPaymentBatchRpc(
@@ -4341,7 +4348,7 @@ export async function createManualKenPaymentBatchRpc(
   rpcPayload: Record<string, unknown>
 ) {
   const hardenedResult = await supabase.rpc("crm_create_manual_ken_payment_batch_v3", rpcPayload);
-  if (!isMissingDatabaseFunction(hardenedResult.error)) return hardenedResult;
+  if (!shouldFallbackFromManualKenPaymentRpc(hardenedResult.error)) return hardenedResult;
 
   // v2 is still atomic, request-id idempotent, and stale-allocation safe. Keep
   // production record-only while the validation-only v3 wrapper rolls out.

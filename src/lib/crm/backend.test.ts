@@ -1117,6 +1117,51 @@ describe("partner payment write rules", () => {
     expect(calls).toEqual(["crm_create_manual_ken_payment_batch_v3", "crm_create_ken_payment_batch_v2"]);
   });
 
+  it("uses the atomic v2 RPC when the installed v3 wrapper reports its v2 dependency missing", async () => {
+    const calls: string[] = [];
+    const supabase = {
+      rpc(name: string) {
+        calls.push(name);
+        return Promise.resolve(
+          name === "crm_create_manual_ken_payment_batch_v3"
+            ? {
+                data: null,
+                error: {
+                  code: "42883",
+                  message: "function public.crm_create_ken_payment_batch_v2(date, date, numeric, text, text, jsonb, jsonb) does not exist"
+                }
+              }
+            : { data: { payment_id: "payment-1", created: true }, error: null }
+        );
+      }
+    } as unknown as Parameters<typeof createManualKenPaymentBatchRpc>[0];
+
+    await expect(createManualKenPaymentBatchRpc(supabase, {})).resolves.toMatchObject({
+      data: { payment_id: "payment-1", created: true },
+      error: null
+    });
+    expect(calls).toEqual(["crm_create_manual_ken_payment_batch_v3", "crm_create_ken_payment_batch_v2"]);
+  });
+
+  it("does not treat unrelated undefined-function errors as an idempotent Ken payment fallback", async () => {
+    const calls: string[] = [];
+    const supabase = {
+      rpc(name: string) {
+        calls.push(name);
+        return Promise.resolve({
+          data: null,
+          error: { code: "42883", message: "function public.some_other_function() does not exist" }
+        });
+      }
+    } as unknown as Parameters<typeof createManualKenPaymentBatchRpc>[0];
+
+    await expect(createManualKenPaymentBatchRpc(supabase, {})).resolves.toMatchObject({
+      data: null,
+      error: { code: "42883" }
+    });
+    expect(calls).toEqual(["crm_create_manual_ken_payment_batch_v3"]);
+  });
+
   it("does not bypass validation errors from the hardened Ken payment RPC", async () => {
     const calls: string[] = [];
     const supabase = {
