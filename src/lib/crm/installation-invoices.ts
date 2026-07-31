@@ -1,4 +1,4 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
   CrmBookkeepingEntry,
@@ -23,6 +23,7 @@ const PAYMENT_COLLECTION_JOB_STATUS: CrmJobStatus = "invoiced";
 const SERVICE_REPORT_COMPLETE_QUOTE_STATUS: CrmQuoteStatus = "installed";
 const SERVICE_REPORT_COMPLETE_JOB_STATUS: CrmJobStatus = "installed";
 const PAYMENT_COLLECTION_NEXT_ACTION = "Collect payment";
+const DEFAULT_SHUTTERS_805_ACCOUNT_ID = "72ccf12a-11c0-4261-8ad0-31af8ad0bbfb";
 
 type GmailHeader = {
   name: string;
@@ -73,12 +74,16 @@ export type InstallationInvoiceCandidate = {
   soldDate: string | null;
   existingInstallationAmount: number;
   existingInstallationMatchStatus: string | null;
+  quoteNumber: string | null;
+  mtsJobNumbers: string[];
 };
 
 export type ExtractedInstallationInvoice = {
   customerName: string | null;
   invoiceAmount: number | null;
   invoiceNumber: string | null;
+  contractNumber: string | null;
+  mtsJobNumber: string | null;
   confidence: number;
   amountConfidence: number;
   text: string;
@@ -151,10 +156,10 @@ type EntryRow = Pick<
 
 type QuoteRow = Pick<
   CrmQuote,
-  "id" | "job_id" | "status" | "quote_total" | "materials_cost" | "sold_by" | "sold_at" | "approved_at" | "ordered_at"
+  "id" | "job_id" | "quote_number" | "status" | "quote_total" | "materials_cost" | "sold_by" | "sold_at" | "approved_at" | "ordered_at"
 >;
 
-type JobRow = Pick<CrmJob, "id" | "customer_name" | "status" | "estimated_total">;
+type JobRow = Pick<CrmJob, "id" | "customer_name" | "status" | "estimated_total" | "meta">;
 type WorkflowPatch = {
   quotePatch: Record<string, unknown> | null;
   jobPatch: Record<string, unknown> | null;
@@ -589,6 +594,25 @@ function extractInvoiceNumber(text: string) {
   return cleanText(match?.[1]);
 }
 
+function normalizeContractNumber(value: string | null | undefined) {
+  const match = String(value || "").toUpperCase().match(/\b805\s*[-#]?\s*(\d{1,6})\b/);
+  return match ? `805-${match[1].padStart(4, "0")}` : null;
+}
+
+function normalizeMtsJobNumber(value: string | null | undefined) {
+  return String(value || "").match(/\b(\d{4}-\d{4})\b/)?.[1] || null;
+}
+
+function extractContractNumber(text: string) {
+  const labeled = text.match(/\b(?:contract|project|805\s+contract)\s*(?:#|number|no\.?)?\s*[:#-]?\s*(805\s*[-#]?\s*\d{1,6})\b/i);
+  return normalizeContractNumber(labeled?.[1] || text.match(/\b805-\d{1,6}\b/i)?.[0]);
+}
+
+function extractMtsJobNumber(text: string) {
+  const labeled = text.match(/\b(?:mts\s+)?job\s*(?:#|number|no\.?)?\s*[:#-]?\s*(\d{4}-\d{4})\b/i);
+  return normalizeMtsJobNumber(labeled?.[1]);
+}
+
 function extractExplicitCustomerName(text: string) {
   const match = text.match(
     /\bcustomer\s+name\s*:\s*([\s\S]{2,140}?)(?=\s+(?:technician|service\s+type|invoice|date|due\s+date|bill\s+to|ship\s+to)\s*:|$)/i
@@ -650,6 +674,8 @@ export function extractInstallationInvoiceDetails(input: {
     customerName,
     invoiceAmount,
     invoiceNumber: extractInvoiceNumber(text),
+    contractNumber: extractContractNumber(text),
+    mtsJobNumber: extractMtsJobNumber(text),
     confidence: Math.max(amountConfidence, customerName ? 0.7 : 0),
     amountConfidence,
     text
@@ -771,8 +797,12 @@ function scoreNameMatch(text: string, candidateName: string, extractedCustomerNa
 export function matchInstallationInvoiceToCandidate(input: {
   text: string;
   extractedCustomerName?: string | null;
+  contractNumber?: string | null;
+  mtsJobNumber?: string | null;
   candidates: InstallationInvoiceCandidate[];
 }): InstallationInvoiceMatch {
+  const contractNumber = normalizeContractNumber(input.contractNumber || extractContractNumber(input.text));
+  const mtsJobNumber = normalizeMtsJobNumber(input.mtsJobNumber || extractMtsJobNumber(input.text));
   const ranked = input.candidates
     .map((candidate) => {
       const priority = candidate.source === "entry" ? 0.02 : candidate.source === "quote" ? 0.01 : 0;
@@ -797,6 +827,19 @@ export function matchInstallationInvoiceToCandidate(input: {
 
   const second = ranked[1];
   if (second && top.confidence - second.confidence < 0.04) {
+    const tied = ranked.filter((item) => top.confidence - item.confidence < 0.04);
+    const safeguarded = tied.filter(({ candidate }) =>
+      (contractNumber && normalizeContractNumber(candidate.quoteNumber) === contractNumber) ||
+      (mtsJobNumber && candidate.mtsJobNumbers.some((value) => normalizeMtsJobNumber(value) === mtsJobNumber))
+    );
+    if (safeguarded.length === 1) {
+      return {
+        candidate: safeguarded[0].candidate,
+        status: "matched",
+        confidence: 1,
+        reason: `Customer name tie resolved by ${contractNumber ? `805 contract ${contractNumber}` : `MTS job ${mtsJobNumber}`}.`
+      };
+    }
     return {
       candidate: top.candidate,
       status: "needs_review",
@@ -805,12 +848,57 @@ export function matchInstallationInvoiceToCandidate(input: {
     };
   }
 
+  const mtsIdentityAvailable = Boolean(
+    mtsJobNumber && input.candidates.some((candidate) => candidate.mtsJobNumbers.length)
+  );
+  const identifierProvided = Boolean(contractNumber || mtsIdentityAvailable);
+  const identifierConfirms =
+    (contractNumber && normalizeContractNumber(top.candidate.quoteNumber) === contractNumber) ||
+    (mtsJobNumber && top.candidate.mtsJobNumbers.some((value) => normalizeMtsJobNumber(value) === mtsJobNumber));
+  if (identifierProvided && !identifierConfirms) {
+    return {
+      candidate: top.candidate,
+      status: "needs_review",
+      confidence: top.confidence,
+      reason: `Customer name matched ${top.candidate.customerName}, but the invoice identifiers contradict or cannot confirm that CRM record.`
+    };
+  }
+
   return {
     candidate: top.candidate,
     status: "matched",
     confidence: top.confidence,
-    reason: `Matched customer name ${top.candidate.customerName}.`
+    reason: identifierConfirms
+      ? `Matched customer name ${top.candidate.customerName}; stable invoice identifier confirmed the record.`
+      : `Matched unique customer name ${top.candidate.customerName}.`
   };
+}
+
+function mtsJobNumbersFromMeta(meta: unknown) {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return [];
+  const record = meta as Record<string, unknown>;
+  const measure = record.technicalMeasure;
+  const values = [record.mts_job_number, record.mtsJobNumber];
+  if (measure && typeof measure === "object" && !Array.isArray(measure)) {
+    values.push((measure as Record<string, unknown>).mts_job_number);
+  }
+  return Array.from(new Set(values.map((value) => normalizeMtsJobNumber(String(value || ""))).filter((value): value is string => Boolean(value))));
+}
+
+async function resolveMtsProjectNumber(mtsJobNumber: string | null) {
+  const url = process.env.MTS_SUPABASE_URL;
+  const serviceRoleKey = process.env.MTS_SUPABASE_SERVICE_ROLE_KEY;
+  if (!mtsJobNumber || !url || !serviceRoleKey) return null;
+  const mts = createClient(url, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { data, error } = await mts
+    .from("jobs")
+    .select("project_number")
+    .eq("account_id", process.env.MTS_805_ACCOUNT_ID || DEFAULT_SHUTTERS_805_ACCOUNT_ID)
+    .eq("job_number", mtsJobNumber)
+    .or("is_deleted.is.null,is_deleted.eq.false")
+    .limit(2);
+  if (error || !data || data.length !== 1) return null;
+  return normalizeContractNumber((data[0] as { project_number?: string | null }).project_number);
 }
 
 function candidateIdentity(candidate: InstallationInvoiceCandidate) {
@@ -927,12 +1015,12 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       .limit(INVOICE_CANDIDATE_LIMIT),
     supabase
       .from("crm_quotes")
-      .select("id,job_id,status,quote_total,materials_cost,sold_by,sold_at,approved_at,ordered_at")
+      .select("id,job_id,quote_number,status,quote_total,materials_cost,sold_by,sold_at,approved_at,ordered_at")
       .in("status", ["sold", "approved", "ordered", "received", "installed", "invoiced", "paid"])
       .limit(500),
     supabase
       .from("crm_jobs")
-      .select("id,customer_name,status,estimated_total")
+      .select("id,customer_name,status,estimated_total,meta")
       .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
       .limit(500)
   ]);
@@ -945,6 +1033,7 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
   const quotes = (quotesResult.data || []) as QuoteRow[];
   const jobs = (jobsResult.data || []) as JobRow[];
   const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const quotesById = new Map(quotes.map((quote) => [quote.id, quote]));
   const entryQuoteIds = new Set(entries.map((entry) => entry.quote_id).filter(Boolean));
   const entryJobIds = new Set(entries.map((entry) => entry.job_id).filter(Boolean));
   const quoteJobIds = new Set(quotes.map((quote) => quote.job_id).filter(Boolean));
@@ -963,7 +1052,9 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       salesOwner: entry.sales_owner,
       soldDate: entry.sold_date,
       existingInstallationAmount: roundMoney(entry.installation_invoice_amount),
-      existingInstallationMatchStatus: entry.installation_match_status
+      existingInstallationMatchStatus: entry.installation_match_status,
+      quoteNumber: quotesById.get(entry.quote_id || "")?.quote_number || null,
+      mtsJobNumbers: mtsJobNumbersFromMeta(entry.job_id ? jobsById.get(entry.job_id)?.meta : null)
     });
   }
 
@@ -982,7 +1073,9 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       salesOwner: quote.sold_by,
       soldDate: quote.sold_at || quote.approved_at || quote.ordered_at || null,
       existingInstallationAmount: 0,
-      existingInstallationMatchStatus: null
+      existingInstallationMatchStatus: null,
+      quoteNumber: quote.quote_number,
+      mtsJobNumbers: mtsJobNumbersFromMeta(job.meta)
     });
   }
 
@@ -999,7 +1092,9 @@ async function loadInvoiceCandidates(supabase: CrmSupabaseClient) {
       salesOwner: null,
       soldDate: null,
       existingInstallationAmount: 0,
-      existingInstallationMatchStatus: null
+      existingInstallationMatchStatus: null,
+      quoteNumber: null,
+      mtsJobNumbers: mtsJobNumbersFromMeta(job.meta)
     });
   }
 
@@ -1026,7 +1121,7 @@ async function loadTargetedInvoiceCandidates(supabase: CrmSupabaseClient, custom
       .limit(100),
     supabase
       .from("crm_jobs")
-      .select("id,customer_name,status,estimated_total")
+      .select("id,customer_name,status,estimated_total,meta")
       .ilike("customer_name", `%${term}%`)
       .in("status", ["sold", "ordered", "installed", "invoiced", "closed"])
       .limit(100)
@@ -1048,7 +1143,9 @@ async function loadTargetedInvoiceCandidates(supabase: CrmSupabaseClient, custom
     salesOwner: entry.sales_owner,
     soldDate: entry.sold_date,
     existingInstallationAmount: roundMoney(entry.installation_invoice_amount),
-    existingInstallationMatchStatus: entry.installation_match_status
+    existingInstallationMatchStatus: entry.installation_match_status,
+    quoteNumber: null,
+    mtsJobNumbers: []
   }));
 
   for (const job of jobs) {
@@ -1064,11 +1161,35 @@ async function loadTargetedInvoiceCandidates(supabase: CrmSupabaseClient, custom
       salesOwner: null,
       soldDate: null,
       existingInstallationAmount: 0,
-      existingInstallationMatchStatus: null
+      existingInstallationMatchStatus: null,
+      quoteNumber: null,
+      mtsJobNumbers: mtsJobNumbersFromMeta(job.meta)
     });
   }
 
   return candidates;
+}
+
+export function isInstallationInvoiceReplay(input: {
+  messageId: string;
+  invoiceNumber: string | null;
+  processedMessageIds: Iterable<string>;
+  processedInvoiceNumbers?: Iterable<string>;
+}) {
+  if (new Set(input.processedMessageIds).has(input.messageId)) return true;
+  if (!input.invoiceNumber) return false;
+  return new Set(input.processedInvoiceNumbers || []).has(input.invoiceNumber);
+}
+
+async function hasProcessedInvoiceNumber(supabase: CrmSupabaseClient, invoiceNumber: string | null) {
+  if (!invoiceNumber) return false;
+  const { data, error } = await supabase
+    .from("crm_installation_invoice_emails")
+    .select("gmail_message_id")
+    .eq("extracted_invoice_number", invoiceNumber)
+    .in("match_status", ["matched", "skipped"])
+    .limit(1);
+  return !error && Boolean(data?.length);
 }
 
 function normalizeOwner(value: string | null | undefined) {
@@ -1605,6 +1726,7 @@ export async function processInstallationInvoiceInbox(
       });
       const isCompletedServiceReport = serviceReport.isCompletedServiceReport;
       let extraction: ExtractedInstallationInvoice | null = null;
+      let authenticatedContractNumber: string | null = null;
       let match: InstallationInvoiceMatch;
       let decision: { status: CrmInstallationInvoiceEmailStatus; reason: string; canApply: boolean };
 
@@ -1632,9 +1754,13 @@ export async function processInstallationInvoiceInbox(
           attachmentText: pdfExtraction.text,
           attachmentNames: names
         });
+        authenticatedContractNumber =
+          extraction.contractNumber || (await resolveMtsProjectNumber(extraction.mtsJobNumber));
         match = matchInstallationInvoiceToCandidate({
           text: extraction.text,
           extractedCustomerName: extraction.customerName,
+          contractNumber: authenticatedContractNumber,
+          mtsJobNumber: extraction.mtsJobNumber,
           candidates
         });
         if (match.status === "unmatched" && extraction.customerName) {
@@ -1643,6 +1769,8 @@ export async function processInstallationInvoiceInbox(
             match = matchInstallationInvoiceToCandidate({
               text: extraction.text,
               extractedCustomerName: extraction.customerName,
+              contractNumber: authenticatedContractNumber,
+              mtsJobNumber: extraction.mtsJobNumber,
               candidates: targetedCandidates
             });
           }
@@ -1660,6 +1788,13 @@ export async function processInstallationInvoiceInbox(
             : null;
         if (selectedTargetMatch) match = selectedTargetMatch;
         decision = autoApplyDecision(match, extraction);
+        if (await hasProcessedInvoiceNumber(supabase, extraction.invoiceNumber)) {
+          decision = {
+            status: "skipped",
+            reason: `Invoice ${extraction.invoiceNumber} was already processed from another Gmail message.`,
+            canApply: false
+          };
+        }
       }
 
       const candidate = match.candidate;
@@ -1714,6 +1849,9 @@ export async function processInstallationInvoiceInbox(
         raw: {
           emailKind: isCompletedServiceReport ? "completed_service_report" : "installation_invoice",
           amountConfidence: extraction?.amountConfidence || null,
+          extractedMtsJobNumber: extraction?.mtsJobNumber || null,
+          extractedContractNumber: extraction?.contractNumber || null,
+          authenticatedContractNumber,
           serviceReportCodAmount: isCompletedServiceReport ? serviceReport.codAmount : null,
           serviceReportPaymentMethod: isCompletedServiceReport ? serviceReport.paymentMethod : null,
           serviceReportDate: isCompletedServiceReport ? serviceReport.reportDate : null,

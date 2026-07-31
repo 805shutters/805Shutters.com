@@ -8,6 +8,7 @@ import {
   extractCompletedServiceReportDetails,
   extractInstallationInvoiceDetails,
   hasInstallationInvoiceGmailAuth,
+  isInstallationInvoiceReplay,
   matchInstallationInvoiceToCandidate,
   matchInstallationInvoiceToTargetCandidate,
   normalizeInstallationInvoiceMailbox,
@@ -52,6 +53,8 @@ function candidate(overrides: Partial<InstallationInvoiceCandidate> = {}): Insta
     soldDate: "2026-06-19",
     existingInstallationAmount: 0,
     existingInstallationMatchStatus: "unmatched",
+    quoteNumber: "805-0001",
+    mtsJobNumbers: [],
     ...overrides
   };
 }
@@ -154,6 +157,17 @@ describe("installation invoice extraction", () => {
     expect(extracted.invoiceNumber).toBe("311657887");
   });
 
+  it("extracts the stable MTS job number from the verified QuickBooks note format", () => {
+    const extracted = extractInstallationInvoiceDetails({
+      subject: "Invoice 874871051 from MTS Installations Inc",
+      attachmentText: "Customer Name: Karen Aquiar\nService Type: Installation\nNote to customer\nJob #4623-9854 - installation"
+    });
+
+    expect(extracted.customerName).toBe("Karen Aquiar");
+    expect(extracted.invoiceNumber).toBe("874871051");
+    expect(extracted.mtsJobNumber).toBe("4623-9854");
+  });
+
   it("extracts completed service reports as completion signals, not installer invoices", () => {
     const report = extractCompletedServiceReportDetails({
       subject: "MTS Installations & Repairs Service Report - COMPLETE",
@@ -199,6 +213,42 @@ describe("installation invoice customer matching", () => {
     expect(match.status).toBe("matched");
     expect(match.candidate?.entryId).toBe("entry-1");
     expect(match.confidence).toBeGreaterThan(0.9);
+  });
+
+  it("uses an authenticated contract identifier to confirm a unique name match", () => {
+    const match = matchInstallationInvoiceToCandidate({
+      text: "Customer Name: Karen Aquiar\nJob #4623-9854 - installation",
+      extractedCustomerName: "Karen Aquiar",
+      contractNumber: "805-0039",
+      mtsJobNumber: "4623-9854",
+      candidates: [candidate({ customerName: "Karen Aquiar", quoteNumber: "805-0039", mtsJobNumbers: ["4623-9854"] })]
+    });
+
+    expect(match.status).toBe("matched");
+    expect(match.candidate?.quoteNumber).toBe("805-0039");
+  });
+
+  it("does not require an MTS job mapping for a straightforward unique name match", () => {
+    const match = matchInstallationInvoiceToCandidate({
+      text: "Customer Name: Karen Aquiar\nJob #4623-9854 - installation",
+      extractedCustomerName: "Karen Aquiar",
+      mtsJobNumber: "4623-9854",
+      candidates: [candidate({ customerName: "Karen Aquiar", quoteNumber: "805-0039", mtsJobNumbers: [] })]
+    });
+
+    expect(match.status).toBe("matched");
+    expect(match.reason).toContain("unique customer name");
+  });
+
+  it("requires review when a unique name conflicts with the stable identifier", () => {
+    const match = matchInstallationInvoiceToCandidate({
+      text: "Customer Name: Karen Aquiar\nJob #4623-9854 - installation",
+      extractedCustomerName: "Karen Aquiar",
+      contractNumber: "805-0099",
+      candidates: [candidate({ customerName: "Karen Aquiar", quoteNumber: "805-0039" })]
+    });
+
+    expect(match.status).toBe("needs_review");
   });
 
   it("matches a CRM customer from the customer name printed in the invoice PDF", () => {
@@ -322,6 +372,18 @@ describe("installation invoice customer matching", () => {
 
     expect(match?.status).toBe("matched");
     expect(match?.candidate?.entryId).toBe("entry-kristen");
+  });
+});
+
+describe("installation invoice replay protection", () => {
+  it("skips the same Gmail message and a forwarded copy of a processed invoice", () => {
+    expect(isInstallationInvoiceReplay({ messageId: "gmail-1", invoiceNumber: "874871051", processedMessageIds: ["gmail-1"] })).toBe(true);
+    expect(isInstallationInvoiceReplay({
+      messageId: "gmail-forwarded",
+      invoiceNumber: "874871051",
+      processedMessageIds: ["gmail-1"],
+      processedInvoiceNumbers: ["874871051"]
+    })).toBe(true);
   });
 });
 
