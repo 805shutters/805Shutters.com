@@ -3237,23 +3237,22 @@ export async function updateCrmQuote(
   // create path and the builder, which only create the entry once sold).
   const maintainEntry = quote.status !== "draft" && quote.status !== "sent";
   let entryCustomerName = "Linked job";
-  let existingEntry:
-    | {
-        customer_name?: unknown;
-        cogs_amount?: unknown;
-        manufacturer_name?: string | null;
-        manufacturer_order_ref?: string | null;
-        manufacturer_order_url?: string | null;
-        manufacturer_document_url?: string | null;
-      }
-    | null = null;
+  type QuoteBookkeepingEntryFacts = {
+    customer_name?: unknown;
+    cogs_amount?: unknown;
+    manufacturer_name?: string | null;
+    manufacturer_order_ref?: string | null;
+    manufacturer_order_url?: string | null;
+    manufacturer_document_url?: string | null;
+  };
+  let existingEntry: QuoteBookkeepingEntryFacts | null = null;
   if (maintainEntry) {
     const { data } = await supabase
       .from("crm_quote_bookkeeping_entries")
       .select("customer_name,cogs_amount,manufacturer_name,manufacturer_order_ref,manufacturer_order_url,manufacturer_document_url")
       .eq("quote_id", id)
       .maybeSingle();
-    existingEntry = data as typeof existingEntry;
+    existingEntry = data as QuoteBookkeepingEntryFacts | null;
     const { data: linkedJob } = quote.job_id
       ? await supabase
           .from("crm_jobs")
