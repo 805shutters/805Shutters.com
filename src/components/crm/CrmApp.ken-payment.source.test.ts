@@ -5,6 +5,7 @@ const source = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
 const backend = readFileSync("src/lib/crm/backend.ts", "utf8");
 const migration = readFileSync("supabase/migrations/20260730090000_ken_payment_batch_idempotency.sql", "utf8");
 const manualMigration = readFileSync("supabase/migrations/20260731173000_harden_manual_ken_payments.sql", "utf8");
+const rpcPrivilegeMigration = readFileSync("supabase/migrations/20260731210000_restrict_ken_payment_batch_rpc.sql", "utf8");
 
 describe("Ken Make Payment source contract", () => {
   it("puts the exact action in the manual record panel and opens review without transferring", () => {
@@ -31,6 +32,9 @@ describe("Ken Make Payment source contract", () => {
     expect(backend).toContain('person === "ken" ? "crm_create_manual_ken_payment_batch_v3"');
     expect(manualMigration).toContain("Manual payment amount must exactly match its payable allocations");
     expect(manualMigration).toContain("crm_ken_payments_manual_reference_unique");
+    expect(rpcPrivilegeMigration).toContain("crm_create_ken_payment_batch_v2");
+    expect(rpcPrivilegeMigration).toContain("from public, anon, authenticated");
+    expect(rpcPrivilegeMigration).toContain("to service_role");
     expect(backend).toContain("atomic idempotent payment function is unavailable");
   });
 
