@@ -4,7 +4,7 @@
 import { VENMO_HANDLE, ZELLE_DESTINATION } from "@/lib/finance/payment-options";
 import { brandIdentity, officialContactLine } from "@/lib/brand-identity";
 
-export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string };
+export type EmailResult = { sent: boolean; skipped?: string; error?: string; id?: string; uncertain?: boolean };
 export type EmailAttachment = {
   filename: string;
   content: string;
@@ -68,7 +68,7 @@ export async function sendEmail(input: {
     return { sent: true, id: data.id };
   } catch (e) {
     console.warn("Resend send threw:", e);
-    return { sent: false, error: e instanceof Error ? e.message : "send failed" };
+    return { sent: false, error: e instanceof Error ? e.message : "send failed", uncertain: true };
   }
 }
 

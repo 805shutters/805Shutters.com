@@ -10,6 +10,25 @@ import { sendSms, toE164 } from "@/lib/notify/twilio";
 type CrmSupabaseClient = SupabaseClient;
 type CrmActor = { email: string; userId?: string };
 export type SquareOrderPaymentType = "deposit" | "balance";
+export type SquarePaymentDeliveryState = "accepted" | "failed" | "unknown";
+
+export class SquarePaymentDeliveryError extends CrmAuthError {
+  constructor(
+    message: string,
+    public readonly deliveryState: Exclude<SquarePaymentDeliveryState, "accepted">,
+    public readonly details: {
+      paymentType: SquareOrderPaymentType;
+      amount: number;
+      recipient: string;
+      url: string;
+      linkId: string;
+      providerMessageId?: string;
+      providerStatus?: string;
+    },
+  ) {
+    super(502, message);
+  }
+}
 
 type LedgerPayment = { amount?: number | string | null; payment_label?: string | null };
 type LedgerCredit = { amount?: number | string | null };
@@ -117,7 +136,11 @@ export async function sendSquareOrderPaymentLink(
     quoteNumber: publicQuote.quoteNumber,
     logoUrl: `${brandIdentity.website}/brand/805-shutters-logo-header.png`,
   });
-  const email = delivery?.channel === "text" ? null : await sendEmail({ to: customerEmail as string, ...mail });
+  const email = delivery?.channel === "text" ? null : await sendEmail({
+    to: customerEmail as string,
+    ...mail,
+    idempotencyKey: delivery?.idempotencyKey ? `square-payment-link-${delivery.idempotencyKey}` : undefined,
+  });
   const sms = delivery?.channel === "text" ? await sendSms({to:phone,body:`805 Shutters ${label.toLowerCase()} payment link (${new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(amount)}): ${link.url}`}) : null;
 
   await recordCrmActivity(supabase, actor, {
@@ -134,18 +157,42 @@ export async function sendSquareOrderPaymentLink(
       squarePaymentLinkId: link.id,
       squarePaymentLinkUrl: link.url,
       emailSent: email?.sent || false,
+      emailProviderMessageId: email?.id || null,
+      emailDeliveryState: email?.sent ? "accepted" : email?.uncertain ? "unknown" : "failed",
       emailError: email?.error || email?.skipped || null,
       smsSent: sms?.sent || false,
+      smsProviderMessageId: sms?.sid || null,
+      smsProviderStatus: sms?.providerStatus || null,
+      smsDeliveryState: sms?.sent ? "accepted" : sms?.uncertain ? "unknown" : "failed",
       smsError: sms?.error || sms?.skipped || null,
     },
   });
 
   if (delivery?.channel === "text" && !sms?.sent) {
-    throw new CrmAuthError(502, sms?.uncertain ? "Text delivery could not be confirmed. Verify before retrying." : "The payment link text could not be sent.");
+    throw new SquarePaymentDeliveryError(
+      sms?.uncertain ? "Text provider acceptance is unknown. Review the audit before retrying." : `The text provider rejected the payment link${sms?.error || sms?.skipped ? `: ${sms.error || sms.skipped}` : "."}`,
+      sms?.uncertain ? "unknown" : "failed",
+      {paymentType,amount,recipient:phone as string,url:link.url,linkId:link.id,providerMessageId:sms?.sid,providerStatus:sms?.providerStatus},
+    );
   }
   if (delivery?.channel === "email" && !email?.sent) {
-    throw new CrmAuthError(502, "The payment link email could not be sent.");
+    throw new SquarePaymentDeliveryError(
+      email?.uncertain ? "Email provider acceptance is unknown. Review the audit before retrying." : `The email provider rejected the payment link${email?.error || email?.skipped ? `: ${email.error || email.skipped}` : "."}`,
+      email?.uncertain ? "unknown" : "failed",
+      {paymentType,amount,recipient:customerEmail as string,url:link.url,linkId:link.id,providerMessageId:email?.id},
+    );
   }
 
-  return { paymentType, amount, recipient: delivery?.channel === "text" ? phone : customerEmail, url: link.url, email, sms };
+  return {
+    paymentType,
+    amount,
+    recipient: delivery?.channel === "text" ? phone : customerEmail,
+    url: link.url,
+    linkId: link.id,
+    deliveryState: "accepted" as const,
+    providerMessageId: delivery?.channel === "text" ? sms?.sid : email?.id,
+    providerStatus: delivery?.channel === "text" ? sms?.providerStatus : "accepted",
+    email,
+    sms,
+  };
 }
