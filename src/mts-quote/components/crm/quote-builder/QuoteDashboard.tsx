@@ -508,9 +508,26 @@ export function QuoteDashboard({
     },
   });
 
-  // Delete quote
+  // CRM quotes are service-role managed, while quote-builder rows can be
+  // removed directly through the signed-in Supabase client.
   const deleteQuote = useMutation({
-    mutationFn: async (quoteId: string) => {
+    mutationFn: async (quote: QuoteTableRow) => {
+      if (quote.source === "crm") {
+        const { data } = await supabase.auth.getSession();
+        const token = data.session?.access_token;
+        if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+        const response = await fetch(`/api/crm/quotes/${encodeURIComponent(quote.id)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as { message?: string } | null;
+          throw new Error(body?.message || "Quote could not be deleted.");
+        }
+        return;
+      }
+
+      const quoteId = quote.sourceQuoteId || quote.id;
       const { error } = await (supabase as any).from("sales_quotes").delete().eq("id", quoteId);
       if (error) throw error;
     },
@@ -588,7 +605,7 @@ export function QuoteDashboard({
           if (quote.salesQuote) setPortfolioQuote(quote.salesQuote);
         }}
         onCopy={(id) => copyQuote.mutate(id)}
-        onDelete={(id) => deleteQuote.mutate(id)}
+        onDelete={(quote) => deleteQuote.mutate(quote)}
         title={FILTER_LABELS[activeFilter]}
       />
 
