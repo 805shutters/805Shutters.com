@@ -760,6 +760,13 @@ export type CrmPartnerPaymentLedgerPerson = {
   advanceBalance: number;
   soldEarned: number;
   soldJobCount: number;
+  allTimeJobSummary: {
+    available: boolean;
+    valueLabel: string;
+    sold: { count: number; total: number };
+    active: { count: number; total: number };
+    closed: { count: number; total: number };
+  };
   jobCount: number;
   activeJobCount: number;
   items: CrmPartnerPaymentLedgerItem[];

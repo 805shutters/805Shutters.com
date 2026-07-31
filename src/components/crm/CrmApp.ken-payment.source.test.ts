@@ -4,12 +4,16 @@ import { describe, expect, it } from "vitest";
 const source = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
 const backend = readFileSync("src/lib/crm/backend.ts", "utf8");
 const migration = readFileSync("supabase/migrations/20260730090000_ken_payment_batch_idempotency.sql", "utf8");
+const manualMigration = readFileSync("supabase/migrations/20260731173000_harden_manual_ken_payments.sql", "utf8");
 
 describe("Ken Make Payment source contract", () => {
-  it("puts the exact action in the Zelle panel and opens review without recording", () => {
+  it("puts the exact action in the manual record panel and opens review without transferring", () => {
     expect(source).toMatch(/<button[^>]+onClick=\{onOpenReview\}[^>]*>\s*Make Payment\s*<\/button>/);
     expect(source).toContain("onClick={onOpenReview}");
     expect(source).toContain("onSubmit={confirmReviewPayment}");
+    expect(source).toContain("Manual Payment Record");
+    expect(source).toContain("No transfer is initiated or suggested.");
+    expect(source).not.toContain("payablesZelleConfig");
   });
 
   it("keeps cancelled and failed reviews from writing paid lines", () => {
@@ -24,7 +28,9 @@ describe("Ken Make Payment source contract", () => {
     expect(migration).toContain("pg_advisory_xact_lock");
     expect(migration).toContain("expectedExplicitPaidAmount");
     expect(migration).toContain("Ken payable allocation changed during confirmation");
-    expect(backend).toContain('person === "ken" ? "crm_create_ken_payment_batch_v2"');
+    expect(backend).toContain('person === "ken" ? "crm_create_manual_ken_payment_batch_v3"');
+    expect(manualMigration).toContain("Manual payment amount must exactly match its payable allocations");
+    expect(manualMigration).toContain("crm_ken_payments_manual_reference_unique");
     expect(backend).toContain("atomic idempotent payment function is unavailable");
   });
 

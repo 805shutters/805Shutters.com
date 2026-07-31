@@ -115,6 +115,8 @@ type PartnerPaymentRequest = {
   item_ids?: string[];
   advance?: boolean;
   payment_request_id?: string;
+  payment_method?: string;
+  payment_reference?: string;
 };
 type PartnerPaymentReceiptResponse = {
   sent: boolean;
@@ -10878,33 +10880,6 @@ function OrderCogsInbox({
 
 const paymentPeople: CrmPaymentPerson[] = ["ken", "mike", "jessica"];
 
-type PayablesZelleConfig = {
-  recipientName: string;
-  zelleIdentifier: string | null;
-  zelleQrUrl: string | null;
-};
-
-const payablesZelleConfig: Record<CrmPaymentPerson, PayablesZelleConfig> = {
-  ken: {
-    recipientName: "Ken",
-    zelleIdentifier:
-      process.env.NEXT_PUBLIC_KEN_ZELLE_RECIPIENT_VERIFIED === "true"
-        ? process.env.NEXT_PUBLIC_KEN_ZELLE_RECIPIENT || null
-        : null,
-    zelleQrUrl: null
-  },
-  mike: {
-    recipientName: "Mike",
-    zelleIdentifier: null,
-    zelleQrUrl: null
-  },
-  jessica: {
-    recipientName: "Jessica",
-    zelleIdentifier: null,
-    zelleQrUrl: null
-  }
-};
-
 function paymentPersonDisplayName(person: CrmPaymentPerson) {
   if (person === "ken") return "Ken";
   if (person === "jessica") return "Jessica";
@@ -11044,7 +11019,7 @@ function sumPartnerRemaining(items: CrmPartnerPaymentLedgerItem[]) {
   return Math.round(items.reduce((sum, item) => sum + item.remainingAmount, 0) * 100) / 100;
 }
 
-function ZellePaymentPanel({
+function ManualPaymentPanel({
   person,
   amountDue,
   eligibleItemCount,
@@ -11059,78 +11034,51 @@ function ZellePaymentPanel({
   busy: boolean;
   onOpenReview: () => void;
 }) {
-  const config = payablesZelleConfig[person];
-  const [copied, setCopied] = useState(false);
-  const zelleIdentifier = config.zelleIdentifier;
-  const zelleQrUrl = config.zelleQrUrl;
-  const jessicaDisabledReasons = [
-    !zelleIdentifier ? "Jessica’s Zelle recipient is not configured." : null,
-    amountDue <= 0 ? "Jessica’s current payable balance must be greater than zero." : null,
+  const recipientName = paymentPersonDisplayName(person);
+  const disabledReasons = [
+    amountDue <= 0 ? `${recipientName}’s current payable balance must be greater than zero.` : null,
     eligibleItemCount === 0 ? "There are no eligible payable entries to review." : null,
     busy ? "Another payment update is currently in progress." : null
   ].filter((reason): reason is string => Boolean(reason));
-  const canReviewJessicaPayment = person === "jessica" && jessicaDisabledReasons.length === 0;
+  const canReviewPayment = disabledReasons.length === 0;
   const kenDisabledReason =
     person === "ken" && kenReview
-      ? kenPaymentDisabledReason({ recipientConfigured: Boolean(zelleIdentifier), review: kenReview, busy })
+      ? kenPaymentDisabledReason({ recipientConfigured: true, review: kenReview, busy })
       : null;
 
-  useEffect(() => {
-    setCopied(false);
-  }, [person]);
-
-  async function copyZelleIdentifier() {
-    if (!zelleIdentifier || typeof navigator === "undefined" || !navigator.clipboard) return;
-    await navigator.clipboard.writeText(zelleIdentifier);
-    setCopied(true);
-  }
-
   return (
-    <section className="crm-zelle-panel" aria-label={`${config.recipientName} Zelle payment`}>
+    <section className="crm-manual-payment-panel" aria-label={`${recipientName} manual payment entry`}>
       <div>
-        <p className="eyebrow">Zelle Payment</p>
-        <h3>{config.recipientName}</h3>
+        <p className="eyebrow">Manual Payment Record</p>
+        <h3>{recipientName}</h3>
       </div>
-      <div className="crm-zelle-facts">
+      <div className="crm-manual-payment-facts">
         <p>
           <span>Current Owed</span>
           <strong>{toLedgerCurrency(amountDue)}</strong>
         </p>
-        <p>
-          <span>Recipient</span>
-          <strong>{zelleIdentifier || "Not configured"}</strong>
-        </p>
+        <p><span>Action</span><strong>Record only</strong></p>
       </div>
-      <div className="crm-zelle-actions">
+      <div className="crm-manual-payment-actions">
         {person === "ken" ? (
-          <div className="crm-zelle-primary-action">
+          <div className="crm-manual-payment-primary-action">
             <button type="button" disabled={Boolean(kenDisabledReason)} onClick={onOpenReview}>
               Make Payment
             </button>
-            <small className={kenDisabledReason ? "crm-zelle-action-help crm-zelle-action-help--disabled" : "crm-zelle-action-help"}>
-              {kenDisabledReason || "Opens a review step; it does not transfer funds."}
+            <small className={kenDisabledReason ? "crm-manual-payment-action-help crm-manual-payment-action-help--disabled" : "crm-manual-payment-action-help"}>
+              {kenDisabledReason || "Opens a manual entry review. No transfer is initiated or suggested."}
             </small>
           </div>
         ) : null}
         {person === "jessica" ? (
-          <div className="crm-zelle-primary-action">
-            <button type="button" disabled={!canReviewJessicaPayment} onClick={onOpenReview}>
+          <div className="crm-manual-payment-primary-action">
+            <button type="button" disabled={!canReviewPayment} onClick={onOpenReview}>
               Process Jessica’s Payments
             </button>
-            <small className={jessicaDisabledReasons.length ? "crm-zelle-action-help crm-zelle-action-help--disabled" : "crm-zelle-action-help"}>
-              {jessicaDisabledReasons.length
-                ? jessicaDisabledReasons.join(" ")
-                : "Opens a review step before any payment is recorded."}
+            <small className={disabledReasons.length ? "crm-manual-payment-action-help crm-manual-payment-action-help--disabled" : "crm-manual-payment-action-help"}>
+              {disabledReasons.length ? disabledReasons.join(" ") : "Opens a manual record review; it never sends money."}
             </small>
           </div>
-        ) : null}
-        <button type="button" className="crm-ghost-button" disabled={!zelleIdentifier} onClick={copyZelleIdentifier}>
-          {zelleIdentifier ? (copied ? "Copied" : "Copy Zelle Info") : "Zelle Not Configured"}
-        </button>
-        {zelleQrUrl ? (
-          <a className="crm-ghost-button crm-zelle-link" href={zelleQrUrl} target="_blank" rel="noreferrer">
-            Open Zelle Link
-          </a>
         ) : null}
       </div>
     </section>
@@ -11218,6 +11166,9 @@ function PartnerPaymentsView({
     { itemKeys: string[]; amount: number; count: number; requestId: string; kenReview: KenPaymentReview | null } | null
   >(null);
   const [reviewDate, setReviewDate] = useState(todayInputValue());
+  const [reviewAmount, setReviewAmount] = useState("");
+  const [reviewMethod, setReviewMethod] = useState("check");
+  const [reviewReference, setReviewReference] = useState("");
   const [reviewNote, setReviewNote] = useState("");
   const [weeklyReviewEnabled, setWeeklyReviewEnabled] = useState(false);
   const [weeklyReviewDay, setWeeklyReviewDay] = useState("5");
@@ -11247,6 +11198,9 @@ function PartnerPaymentsView({
     setSelectedItemKeys(new Set());
     setReview(null);
     setReviewDate(todayInputValue());
+    setReviewAmount("");
+    setReviewMethod("check");
+    setReviewReference("");
     setReviewNote("");
   }, [activePerson]);
 
@@ -11312,6 +11266,9 @@ function PartnerPaymentsView({
       kenReview
     });
     setReviewDate(todayInputValue());
+    setReviewAmount(paymentAmountForItems(reviewItems).toFixed(2));
+    setReviewMethod("check");
+    setReviewReference("");
     setReviewNote("");
   };
 
@@ -11336,11 +11293,13 @@ function PartnerPaymentsView({
     try {
       await onPay({
         person: activePerson,
-        amount: review.amount,
+        amount: Number(reviewAmount),
         paid_on: reviewDate,
         note: reviewNote,
         item_ids: review.itemKeys,
-        payment_request_id: activePerson === "ken" ? review.requestId : undefined
+        payment_request_id: activePerson === "ken" ? review.requestId : undefined,
+        payment_method: reviewMethod,
+        payment_reference: reviewReference
       });
       setReview(null);
       setSelectedItemKeys(new Set());
@@ -11421,14 +11380,28 @@ function PartnerPaymentsView({
                 <span>{paymentPersonDisplayName(person)} Due</span>
                 <strong>{toLedgerCurrency(personLedger?.owed)}</strong>
                 <em>
-                  {personLedger?.activeJobCount || 0} active / {toLedgerCurrency(personLedger?.earned)} earned
+                  {personLedger?.activeJobCount || 0} currently unpaid / {toLedgerCurrency(personLedger?.earned)} payable earned
                 </em>
                 {soldEarningDetail ? <em className="crm-payment-person-sold-earning">{soldEarningDetail}</em> : null}
                 {personLedger?.advanceBalance ? <em>{toLedgerCurrency(personLedger.advanceBalance)} advances recorded</em> : null}
+                {personLedger?.allTimeJobSummary?.available ? (
+                  <span className="crm-payables-all-time-summary">
+                    <b>All-time jobs · {personLedger.allTimeJobSummary.valueLabel}</b>
+                    <small>Sold: {personLedger.allTimeJobSummary.sold.count} · {toLedgerCurrency(personLedger.allTimeJobSummary.sold.total)}</small>
+                    <small>Active sold: {personLedger.allTimeJobSummary.active.count} · {toLedgerCurrency(personLedger.allTimeJobSummary.active.total)}</small>
+                    <small>Closed sold: {personLedger.allTimeJobSummary.closed.count} · {toLedgerCurrency(personLedger.allTimeJobSummary.closed.total)}</small>
+                  </span>
+                ) : <span className="crm-payables-all-time-summary">All-time job summary unavailable</span>}
               </button>
             );
           })}
         </div>
+
+        <p className="crm-payables-summary-definition">
+          All-time Sold includes each exact qualifying sold job once. Active sold has not been completed or paid in full;
+          Closed sold is completed or paid in full. Active sold plus Closed sold equals Sold. These totals are separate from
+          current amount due and recorded advances.
+        </p>
 
         {activePerson === "mike" || activePerson === "jessica" ? (
           <CollapsiblePanel title="Record Payment Advance">
@@ -11438,13 +11411,13 @@ function PartnerPaymentsView({
                 <label>Advance Amount<input name="amount" type="number" min="0.01" step="0.01" required /></label>
                 <label>Paid Date<input name="paid_on" type="date" defaultValue={todayInputValue()} /></label>
               </div>
-              <label>Note<textarea name="note" rows={3} placeholder="Advance payment, check number, Zelle..." /></label>
+              <label>Note<textarea name="note" rows={3} placeholder="Advance payment details" /></label>
               <button type="submit" disabled={busy}>Record Advance</button>
             </form>
           </CollapsiblePanel>
         ) : null}
 
-        <ZellePaymentPanel
+        <ManualPaymentPanel
           person={activePerson}
           amountDue={activePersonLedger?.owed || 0}
           eligibleItemCount={activeItems.length}
@@ -11529,7 +11502,7 @@ function PartnerPaymentsView({
             </div>
             <label>
               Note
-              <textarea name="note" rows={3} placeholder="Check #, Zelle, adjustment..." />
+              <textarea name="note" rows={3} placeholder="Manual payment details or adjustment note" />
             </label>
             <button type="submit" disabled={busy || amountDue <= 0}>
               Save Group Payment & Email PDF
@@ -11715,10 +11688,10 @@ function PartnerPaymentsView({
             </div>
             {activePerson === "jessica" ? (
               <div className="crm-payment-review-details">
-                <div className="crm-zelle-facts">
+                <div className="crm-manual-payment-facts">
                   <p>
-                    <span>Payment recipient</span>
-                    <strong>{payablesZelleConfig.jessica.zelleIdentifier || "Not configured"}</strong>
+                    <span>Payment workflow</span>
+                    <strong>Manual record only</strong>
                   </p>
                   <p>
                     <span>Notification recipient</span>
@@ -11798,19 +11771,37 @@ function PartnerPaymentsView({
             ) : null}
             <form className="crm-form" onSubmit={confirmReviewPayment}>
               <label>
+                Confirmed Amount
+                <input type="number" min="0.01" step="0.01" required value={reviewAmount} onChange={(event) => setReviewAmount(event.target.value)} />
+              </label>
+              <label>
                 Payment Date
-                <input type="date" value={reviewDate} onChange={(event) => setReviewDate(event.target.value)} />
+                <input type="date" required value={reviewDate} onChange={(event) => setReviewDate(event.target.value)} />
+              </label>
+              <label>
+                Payment Method
+                <select required value={reviewMethod} onChange={(event) => setReviewMethod(event.target.value)}>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="ach">ACH</option>
+                  <option value="card">Card</option>
+                  <option value="other">Other manual method</option>
+                </select>
+              </label>
+              <label>
+                Reference
+                <input value={reviewReference} onChange={(event) => setReviewReference(event.target.value)} placeholder="Check number or confirmation reference" />
               </label>
               <label>
                 Note
-                <textarea rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Check #, payment method..." />
+                <textarea rows={3} value={reviewNote} onChange={(event) => setReviewNote(event.target.value)} placeholder="Optional manual payment notes" />
               </label>
               <div className="crm-slot-actions">
                 <button type="button" className="crm-ghost-button" onClick={() => setReview(null)}>
                   Cancel
                 </button>
                 <button type="submit" disabled={busy}>
-                  Save Payment & Send Breakdown
+                  Record Confirmed Manual Payment
                 </button>
               </div>
             </form>

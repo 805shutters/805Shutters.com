@@ -219,7 +219,43 @@ export function buildPartnerPaymentEarnedItems(rows: CrmBookkeepingRow[]) {
 }
 
 function isSoldEarningRow(row: CrmBookkeepingRow) {
-  return row.total > 0 && !isPaidInFullBookkeepingRow(row) && SOLD_EARNING_STATUSES.has(effectiveBookkeepingStatus(row));
+  return row.total > 0 && SOLD_EARNING_STATUSES.has(effectiveBookkeepingStatus(row));
+}
+
+function soldJobIdentity(row: CrmBookkeepingRow) {
+  if (row.jobId) return `job:${row.jobId}`;
+  if (row.quoteId) return `quote:${row.quoteId}`;
+  return `${row.source}:${row.id}`;
+}
+
+function buildAllTimeJobSummary(person: CrmPaymentPerson, rows: CrmBookkeepingRow[]) {
+  const byIdentity = new Map<string, { amount: number; closed: boolean }>();
+  for (const row of rows) {
+    if (!isSoldEarningRow(row)) continue;
+    if (person === "jessica" && row.salesOwner !== "jessica") continue;
+    const amount = partnerPaymentAmountForRow(person, row);
+    if (amount <= 0) continue;
+    const identity = soldJobIdentity(row);
+    const closed = isCompletedPartnerJobStatus(row.jobStatus) || isPaidInFullBookkeepingRow(row);
+    const existing = byIdentity.get(identity);
+    byIdentity.set(identity, {
+      amount: Math.max(existing?.amount || 0, amount),
+      closed: Boolean(existing?.closed || closed)
+    });
+  }
+
+  const summarize = (items: Array<{ amount: number; closed: boolean }>) => ({
+    count: items.length,
+    total: roundCents(items.reduce((sum, item) => sum + item.amount, 0))
+  });
+  const sold = [...byIdentity.values()];
+  return {
+    available: true,
+    valueLabel: `${partnerLabels[person]} qualifying payable value`,
+    sold: summarize(sold),
+    active: summarize(sold.filter((item) => !item.closed)),
+    closed: summarize(sold.filter((item) => item.closed))
+  };
 }
 
 function buildSoldEarningsByPerson(rows: CrmBookkeepingRow[]) {
@@ -229,12 +265,21 @@ function buildSoldEarningsByPerson(rows: CrmBookkeepingRow[]) {
     jessica: { earned: 0, jobCount: 0 }
   };
 
+  const counted = {
+    mike: new Set<string>(),
+    jessica: new Set<string>()
+  };
+
   for (const row of rows) {
     if (!isSoldEarningRow(row)) continue;
 
     for (const person of ["mike", "jessica"] as const) {
+      if (person === "jessica" && row.salesOwner !== "jessica") continue;
+      const identity = soldJobIdentity(row);
+      if (counted[person].has(identity)) continue;
       const amount = partnerPaymentAmountForRow(person, row);
       if (amount <= 0) continue;
+      counted[person].add(identity);
       totals[person].earned = roundCents(totals[person].earned + amount);
       totals[person].jobCount += 1;
     }
@@ -797,6 +842,7 @@ export function buildPartnerPaymentLedger({
         advanceBalance,
         soldEarned: soldEarningsByPerson[person].earned,
         soldJobCount: soldEarningsByPerson[person].jobCount,
+        allTimeJobSummary: buildAllTimeJobSummary(person, rows),
         jobCount: personItems.length,
         activeJobCount: personActive.length,
         items: personItems.sort(compareEarnedItems),

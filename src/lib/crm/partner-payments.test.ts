@@ -481,6 +481,56 @@ describe("buildPartnerPaymentLedger", () => {
     });
   });
 
+  it("counts all-time Jessica sold jobs once by exact job id and partitions active from closed", () => {
+    const paidJessica = row({
+      id: "paid-jessica-row",
+      jobId: "job-jessica-paid",
+      salesOwner: "jessica",
+      jobStatus: "closed",
+      status: "closed",
+      mikeProfit: 300,
+      jessicaCommission: 300
+    });
+    const ledger = buildPartnerPaymentLedger({
+      rows: [
+        paidJessica,
+        { ...paidJessica, id: "duplicate-import-row" },
+        row({
+          id: "active-jessica-row",
+          jobId: "job-jessica-active",
+          salesOwner: "jessica",
+          jobStatus: "sold",
+          status: "sold",
+          isPaidInFull: false,
+          paidTotal: 0,
+          balance: 1000,
+          payments: [],
+          mikeProfit: 400,
+          jessicaCommission: 400
+        }),
+        row({
+          id: "mike-only-row",
+          jobId: "job-mike-only",
+          salesOwner: "mike",
+          jessicaCommission: 500
+        })
+      ],
+      kenPayments: [],
+      commissionPayments: []
+    });
+
+    expect(ledger.people.jessica).toMatchObject({ soldJobCount: 2, soldEarned: 700 });
+    expect(ledger.people.jessica.allTimeJobSummary).toEqual({
+      available: true,
+      valueLabel: "Jessica qualifying payable value",
+      sold: { count: 2, total: 700 },
+      active: { count: 1, total: 400 },
+      closed: { count: 1, total: 300 }
+    });
+    expect(ledger.people.jessica.allTimeJobSummary.active.count + ledger.people.jessica.allTimeJobSummary.closed.count)
+      .toBe(ledger.people.jessica.allTimeJobSummary.sold.count);
+  });
+
   it("mirrors the displayed Mike and Jessica payout amounts instead of re-deriving a split", () => {
     const ledger = buildPartnerPaymentLedger({
       rows: [

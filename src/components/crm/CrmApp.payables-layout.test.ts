@@ -6,9 +6,9 @@ const styles = readFileSync("src/app/globals.css", "utf8");
 const tableStart = source.indexOf("function JessicaJobLedgerTable");
 const tableEnd = source.indexOf("function sumPartnerRemaining", tableStart);
 const tableSource = source.slice(tableStart, tableEnd);
-const zelleStart = source.indexOf("function ZellePaymentPanel");
-const zelleEnd = source.indexOf("function KenBuyoutLedgerBox", zelleStart);
-const zelleSource = source.slice(zelleStart, zelleEnd);
+const manualStart = source.indexOf("function ManualPaymentPanel");
+const manualEnd = source.indexOf("function KenBuyoutLedgerBox", manualStart);
+const manualSource = source.slice(manualStart, manualEnd);
 const paymentsStart = source.indexOf("function PartnerPaymentsView");
 const paymentsSource = source.slice(paymentsStart);
 
@@ -32,23 +32,21 @@ describe("Jessica payables row layout", () => {
     expect(tableSource).toContain("toLedgerCurrency(item.mikeProfit)");
   });
 
-  it("puts Jessica's dedicated payment action in the Zelle panel and opens review only", () => {
-    expect(zelleSource).toContain("Process Jessica’s Payments");
-    expect(zelleSource).toContain("onClick={onOpenReview}");
-    expect(zelleSource).not.toContain("onPay(");
+  it("puts Jessica's dedicated payment action in the manual panel and opens review only", () => {
+    expect(manualSource).toContain("Process Jessica’s Payments");
+    expect(manualSource).toContain("onClick={onOpenReview}");
+    expect(manualSource).not.toContain("onPay(");
     expect(paymentsSource).toContain('activePerson !== "jessica"');
     expect(paymentsSource).toContain("onOpenReview={openReview}");
   });
 
   it("disables Jessica's action with clear help for every safety gate", () => {
-    expect(zelleSource).toContain("!zelleIdentifier");
-    expect(zelleSource).toContain("amountDue <= 0");
-    expect(zelleSource).toContain("eligibleItemCount === 0");
-    expect(zelleSource).toContain("busy");
-    expect(zelleSource).toContain("Jessica’s Zelle recipient is not configured.");
-    expect(zelleSource).toContain("Jessica’s current payable balance must be greater than zero.");
-    expect(zelleSource).toContain("There are no eligible payable entries to review.");
-    expect(zelleSource).toContain('jessicaDisabledReasons.join(" ")');
+    expect(manualSource).toContain("amountDue <= 0");
+    expect(manualSource).toContain("eligibleItemCount === 0");
+    expect(manualSource).toContain("busy");
+    expect(manualSource).toContain("current payable balance must be greater than zero");
+    expect(manualSource).toContain("There are no eligible payable entries to review.");
+    expect(manualSource).toContain('disabledReasons.join(" ")');
   });
 
   it("uses the requested completed-job section title", () => {

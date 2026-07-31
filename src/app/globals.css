@@ -13675,7 +13675,27 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   color: var(--ink);
 }
 
-.crm-zelle-panel {
+.crm-payables-all-time-summary {
+  display: grid;
+  gap: 3px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+}
+
+.crm-payables-all-time-summary b,
+.crm-payables-all-time-summary small { display: block; }
+
+.crm-payables-summary-definition {
+  margin: 0;
+  padding: 0 24px 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.crm-manual-payment-panel {
   display: grid;
   grid-template-columns: minmax(160px, 0.75fr) minmax(280px, 1.5fr) auto;
   gap: 16px;
@@ -13684,13 +13704,13 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   border-bottom: 1px solid var(--line);
 }
 
-.crm-zelle-panel h3 {
+.crm-manual-payment-panel h3 {
   margin: 4px 0 0;
   font-size: 15px;
   font-weight: 900;
 }
 
-.crm-zelle-facts {
+.crm-manual-payment-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
@@ -13698,7 +13718,7 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   border: 1px solid var(--line);
 }
 
-.crm-zelle-facts p {
+.crm-manual-payment-facts p {
   display: grid;
   gap: 5px;
   min-width: 0;
@@ -13707,7 +13727,7 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   background: var(--white);
 }
 
-.crm-zelle-facts span {
+.crm-manual-payment-facts span {
   color: var(--muted);
   font-size: 10px;
   font-weight: 900;
@@ -13715,37 +13735,37 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
   text-transform: uppercase;
 }
 
-.crm-zelle-facts strong {
+.crm-manual-payment-facts strong {
   overflow-wrap: anywhere;
   color: var(--ink);
   font-size: 14px;
   font-weight: 900;
 }
 
-.crm-zelle-actions {
+.crm-manual-payment-actions {
   display: flex;
   align-items: center;
   justify-content: end;
   gap: 8px;
 }
 
-.crm-zelle-primary-action {
+.crm-manual-payment-primary-action {
   display: grid;
   gap: 6px;
   max-width: 300px;
 }
 
-.crm-zelle-action-help {
+.crm-manual-payment-action-help {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
 }
 
-.crm-zelle-action-help--disabled {
+.crm-manual-payment-action-help--disabled {
   color: var(--danger);
 }
 
-.crm-zelle-link {
+.crm-manual-payment-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -14010,16 +14030,16 @@ body.home-page-active:not(.site-header-solid) .brand.brand--exact .brand-logo-ex
     padding-inline: 16px;
   }
 
-  .crm-zelle-panel {
+  .crm-manual-payment-panel {
     grid-template-columns: 1fr;
     padding-inline: 16px;
   }
 
-  .crm-zelle-facts {
+  .crm-manual-payment-facts {
     grid-template-columns: 1fr;
   }
 
-  .crm-zelle-actions {
+  .crm-manual-payment-actions {
     justify-content: start;
   }
 

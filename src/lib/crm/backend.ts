@@ -4366,6 +4366,17 @@ export async function createPartnerPaymentBatch(
   }
   const dashboard = await loadCrmDashboardData(supabase);
   const paymentRequestId = optionalText(payload.payment_request_id ?? payload.paymentRequestId);
+  const paymentMethod = optionalText(payload.payment_method ?? payload.paymentMethod)?.toLowerCase() || null;
+  const paymentReference = optionalText(payload.payment_reference ?? payload.paymentReference);
+  const allowedManualMethods = new Set(["check", "cash", "ach", "card", "other"]);
+  if (person === "ken" && (!paymentMethod || !allowedManualMethods.has(paymentMethod))) {
+    throw new CrmAuthError(400, "Ken manual payment requires a valid payment method.");
+  }
+  if (person === "ken" && paymentReference && dashboard.kenPayments.some((candidate) =>
+    candidate.meta?.manualPaymentReference === paymentReference
+  )) {
+    throw new CrmAuthError(409, "That manual payment reference has already been recorded.");
+  }
   if (person === "ken" && !paymentRequestId) {
     throw new CrmAuthError(400, "Ken payment confirmation requires a unique request ID.");
   }
@@ -4441,6 +4452,9 @@ export async function createPartnerPaymentBatch(
     selectedItemKeys: selectedItems.map((item) => item.itemKey),
     grossPayableAmount,
     advanceApplied,
+    manualPaymentMethod: paymentMethod,
+    manualPaymentReference: paymentReference,
+    manualPaymentConfirmed: true,
     selectedItemAllocations: paymentAllocationMetadata(allocations),
     ...(person === "ken"
       ? {
@@ -4464,7 +4478,7 @@ export async function createPartnerPaymentBatch(
     created_by_email: actor.email,
     meta
   };
-  const rpcName = person === "ken" ? "crm_create_ken_payment_batch_v2" : "crm_create_commission_payment_batch";
+  const rpcName = person === "ken" ? "crm_create_manual_ken_payment_batch_v3" : "crm_create_commission_payment_batch";
   const rpcPayload =
     person === "ken"
       ? {
