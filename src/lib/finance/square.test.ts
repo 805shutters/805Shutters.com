@@ -217,7 +217,7 @@ describe("isSquareWebhookTestPayment", () => {
     jobId: null,
     paymentType: null,
     orderId: "03O3USaPaAaFnI6kkwB1JxGgBsUZY",
-    paidAt: "2020-11-22T21:16:51.198Z",
+    paidAt: "2020-11-22T21:16:51.086Z",
     eventId: "test-event",
     receiptUrl: null,
     refundedAmountCents: 0,

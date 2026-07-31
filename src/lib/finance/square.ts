@@ -167,7 +167,7 @@ export function isSquareWebhookTestPayment(facts: SquarePaymentFacts): boolean {
     facts.orderId === "03O3USaPaAaFnI6kkwB1JxGgBsUZY" &&
     facts.amountCents === 100 &&
     facts.currency === "USD" &&
-    facts.paidAt === "2020-11-22T21:16:51.198Z"
+    facts.paidAt === "2020-11-22T21:16:51.086Z"
   );
 }
 
