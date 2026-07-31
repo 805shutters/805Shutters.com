@@ -119,6 +119,7 @@ export async function reconcileVerifiedSquareOrderPayment(
   const result = data as {
     status?: "recorded" | "duplicate";
     markedPaid?: boolean;
+    paymentIntent?: "deposit" | "balance";
   } | null;
   if (result?.status !== "recorded" && result?.status !== "duplicate") {
     throw new Error("Square reconciliation returned an invalid result.");
@@ -128,7 +129,50 @@ export async function reconcileVerifiedSquareOrderPayment(
     quoteId: verified.quoteId,
     squarePaymentId: input.payment.squarePaymentId,
     amount: verified.amount,
-    paymentLabel: verified.paymentType === "deposit" ? "Deposit" : "Balance payment",
+    paymentLabel: result.paymentIntent === "balance" ? "Balance payment" : "Deposit",
+    markedPaid: Boolean(result.markedPaid),
+  };
+}
+
+export async function reconcileResolvedSquarePayment(
+  supabase: CrmSupabaseClient,
+  input: {
+    payment: SquarePaymentFacts;
+    quoteId: string;
+    jobId: string;
+    paymentType: "deposit" | "balance";
+    audit?: Record<string, unknown>;
+  },
+): Promise<SquareReconcileResult> {
+  const amount = roundMoney(input.payment.amountCents / 100);
+  const { data, error } = await supabase.rpc("reconcile_square_quote_payment", {
+    p_quote_id: input.quoteId,
+    p_job_id: input.jobId,
+    p_square_payment_id: input.payment.squarePaymentId,
+    p_square_order_id: input.payment.orderId,
+    p_payment_intent: input.paymentType,
+    p_amount: amount,
+    p_expected_amount: amount,
+    p_paid_at: paymentDate(input.payment),
+    p_square_event_id: input.payment.eventId,
+    p_receipt_url: input.payment.receiptUrl,
+    p_audit: input.audit || {},
+  });
+  if (error) throw new Error(`Square payment could not be reconciled atomically: ${error.message}`);
+  const result = data as {
+    status?: "recorded" | "duplicate";
+    markedPaid?: boolean;
+    paymentIntent?: "deposit" | "balance";
+  } | null;
+  if (result?.status !== "recorded" && result?.status !== "duplicate") {
+    throw new Error("Square reconciliation returned an invalid result.");
+  }
+  return {
+    status: result.status,
+    quoteId: input.quoteId,
+    squarePaymentId: input.payment.squarePaymentId,
+    amount,
+    paymentLabel: result.paymentIntent === "balance" ? "Balance payment" : "Deposit",
     markedPaid: Boolean(result.markedPaid),
   };
 }

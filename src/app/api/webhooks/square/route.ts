@@ -3,15 +3,12 @@ import { getSupabaseServiceClient } from "@/lib/supabase-server";
 import {
   verifySquareWebhookSignature,
   extractSquarePaymentFacts,
-  fetchSquareOrderFacts,
   getSquareWebhookConfig,
   isSquarePaidPaymentEvent,
   isSquareWebhookTestPayment,
 } from "@/lib/finance/square";
-import {
-  reconcileVerifiedSquareOrderPayment,
-  SquareReconcileResult,
-} from "@/lib/crm/square-payments";
+import { SquareReconcileResult } from "@/lib/crm/square-payments";
+import { reconcileSquareApiPayment } from "@/lib/crm/square-api-reconciliation";
 
 export const runtime = "nodejs";
 
@@ -59,20 +56,10 @@ export async function POST(request: NextRequest) {
         });
         continue;
       }
-      if (!facts.orderId) {
-        results.push({
-          status: "skipped",
-          reason: "Square payment did not identify its originating order.",
-          quoteId: null,
-          squarePaymentId: facts.squarePaymentId,
-          amount: facts.amountCents / 100,
-        });
-        continue;
-      }
-      // Never trust quote/job/intent identifiers copied into the payment event.
-      // Re-read the signed Square order and reconcile only its durable metadata.
-      const order = await fetchSquareOrderFacts(facts.orderId);
-      const result = await reconcileVerifiedSquareOrderPayment(supabase, { payment: facts, order });
+      // Never trust customer, order, quote, job, intent, status, or amount copied
+      // into the event. Re-read the completed payment from Square's API before
+      // matching and recording it.
+      const result = await reconcileSquareApiPayment(supabase, facts);
       results.push(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown Square webhook processing error.";

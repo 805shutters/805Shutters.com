@@ -147,10 +147,14 @@ export type SquarePaymentFacts = {
   squarePaymentId: string;
   amountCents: number;
   currency: string | null;
+  status?: string | null;
   quoteId: string | null;
   jobId: string | null;
   paymentType: string | null;
   orderId: string | null;
+  customerId?: string | null;
+  referenceId?: string | null;
+  note?: string | null;
   paidAt: string | null;
   eventId: string | null;
   receiptUrl: string | null;
@@ -200,6 +204,8 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     refunded_money?: { amount?: number };
     order_id?: string;
     orderId?: string;
+    customer_id?: string;
+    customerId?: string;
     reference_id?: string;
     referenceId?: string;
     created_at?: string;
@@ -207,6 +213,7 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     metadata?: Record<string, string> | null;
     receipt_url?: string;
     receiptUrl?: string;
+    note?: string;
   };
   const id = payment.id || payment.uid;
   if (!id) return null;
@@ -228,14 +235,111 @@ export function extractSquarePaymentFacts(event: unknown): SquarePaymentFacts | 
     squarePaymentId: id,
     amountCents,
     currency,
+    status: payment.status || null,
     quoteId,
     jobId,
     paymentType,
     orderId,
+    customerId: payment.customer_id || payment.customerId || null,
+    referenceId: payment.reference_id || payment.referenceId || null,
+    note: payment.note || null,
     paidAt,
     eventId: e.event_id || e.eventId || null,
     receiptUrl: payment.receipt_url || payment.receiptUrl || null,
     refundedAmountCents: Number(payment.refunded_money?.amount || 0) || 0,
+  };
+}
+
+export async function fetchSquarePaymentFacts(paymentId: string): Promise<SquarePaymentFacts> {
+  const response = await squareApiFetch(`/v2/payments/${encodeURIComponent(paymentId)}`);
+  const data = await squareJson<{ payment?: Record<string, unknown> }>(response, "Square payment lookup");
+  const payment = data.payment;
+  if (!payment) throw new Error("Square payment lookup returned no payment.");
+  const facts = extractSquarePaymentFacts({
+    type: "payment.updated",
+    event_id: null,
+    data: { object: { payment } },
+  });
+  if (!facts) throw new Error("Square payment lookup returned an invalid payment.");
+  return facts;
+}
+
+export async function listRecentCompletedSquarePayments(
+  beginTime: string,
+  limit = 200,
+): Promise<SquarePaymentFacts[]> {
+  const collected: SquarePaymentFacts[] = [];
+  let cursor = "";
+  do {
+    const query = new URLSearchParams({
+      begin_time: beginTime,
+      sort_order: "DESC",
+      limit: String(Math.min(100, Math.max(1, limit - collected.length))),
+    });
+    if (cursor) query.set("cursor", cursor);
+    const response = await squareApiFetch(`/v2/payments?${query.toString()}`);
+    const data = await squareJson<{
+      payments?: Record<string, unknown>[];
+      cursor?: string;
+    }>(response, "Square payments list");
+    for (const payment of data.payments || []) {
+      const facts = extractSquarePaymentFacts({
+        type: "payment.updated",
+        data: { object: { payment } },
+      });
+      if (facts?.status === "COMPLETED" && facts.refundedAmountCents === 0) collected.push(facts);
+      if (collected.length >= limit) break;
+    }
+    cursor = collected.length < limit ? data.cursor || "" : "";
+  } while (cursor);
+  return collected;
+}
+
+export type SquareCustomerFacts = {
+  customerId: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+};
+
+export async function fetchSquareCustomerFacts(customerId: string): Promise<SquareCustomerFacts> {
+  const response = await squareApiFetch(`/v2/customers/${encodeURIComponent(customerId)}`);
+  const data = await squareJson<{
+    customer?: {
+      id?: string;
+      given_name?: string;
+      family_name?: string;
+      company_name?: string;
+      email_address?: string;
+      phone_number?: string;
+      address?: {
+        address_line_1?: string;
+        address_line_2?: string;
+        locality?: string;
+        administrative_district_level_1?: string;
+        postal_code?: string;
+      };
+    };
+  }>(response, "Square customer lookup");
+  const customer = data.customer;
+  if (!customer?.id) throw new Error("Square customer lookup returned no customer.");
+  const personName = [customer.given_name, customer.family_name].filter(Boolean).join(" ").trim();
+  const address = customer.address
+    ? [
+        customer.address.address_line_1,
+        customer.address.address_line_2,
+        customer.address.locality,
+        customer.address.administrative_district_level_1,
+        customer.address.postal_code,
+      ].filter(Boolean).join(" ")
+    : "";
+  return {
+    customerId: customer.id,
+    name: customer.company_name || personName || null,
+    email: customer.email_address || null,
+    phone: customer.phone_number || null,
+    address: address || null,
   };
 }
 
