@@ -5,6 +5,7 @@ import {
   cancelCrmCalendarEvent,
   createCrmJobExpense,
   createCrmQuote,
+  createManualKenPaymentBatchRpc,
   createPartnerPaymentBatch,
   deleteCrmBookkeepingCredit,
   deleteCrmBookkeepingPayment,
@@ -1096,6 +1097,42 @@ describe("quote bookkeeping notes", () => {
 });
 
 describe("partner payment write rules", () => {
+  it("uses the atomic v2 Ken payment RPC when only the v3 validation wrapper is missing", async () => {
+    const calls: string[] = [];
+    const supabase = {
+      rpc(name: string) {
+        calls.push(name);
+        return Promise.resolve(
+          name === "crm_create_manual_ken_payment_batch_v3"
+            ? { data: null, error: { code: "PGRST202", message: "Could not find the function" } }
+            : { data: { payment_id: "payment-1", created: true }, error: null }
+        );
+      }
+    } as unknown as Parameters<typeof createManualKenPaymentBatchRpc>[0];
+
+    await expect(createManualKenPaymentBatchRpc(supabase, {})).resolves.toMatchObject({
+      data: { payment_id: "payment-1", created: true },
+      error: null
+    });
+    expect(calls).toEqual(["crm_create_manual_ken_payment_batch_v3", "crm_create_ken_payment_batch_v2"]);
+  });
+
+  it("does not bypass validation errors from the hardened Ken payment RPC", async () => {
+    const calls: string[] = [];
+    const supabase = {
+      rpc(name: string) {
+        calls.push(name);
+        return Promise.resolve({ data: null, error: { code: "P0001", message: "Manual payment amount must exactly match" } });
+      }
+    } as unknown as Parameters<typeof createManualKenPaymentBatchRpc>[0];
+
+    await expect(createManualKenPaymentBatchRpc(supabase, {})).resolves.toMatchObject({
+      data: null,
+      error: { code: "P0001" }
+    });
+    expect(calls).toEqual(["crm_create_manual_ken_payment_batch_v3"]);
+  });
+
   it("allows only Mike's CRM login to write partner payments", () => {
     expect(() => assertMikePaymentAdmin({ email: "805shutters@gmail.com" })).not.toThrow();
     expect(() => assertMikePaymentAdmin({ email: "jessica@805shutters.com" })).toThrow(CrmAuthError);

@@ -4332,6 +4332,22 @@ async function createPartnerPaymentBatchDirect(
   return payment;
 }
 
+function isMissingDatabaseFunction(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST202" || /could not find the function/i.test(error?.message || "");
+}
+
+export async function createManualKenPaymentBatchRpc(
+  supabase: CrmSupabaseClient,
+  rpcPayload: Record<string, unknown>
+) {
+  const hardenedResult = await supabase.rpc("crm_create_manual_ken_payment_batch_v3", rpcPayload);
+  if (!isMissingDatabaseFunction(hardenedResult.error)) return hardenedResult;
+
+  // v2 is still atomic, request-id idempotent, and stale-allocation safe. Keep
+  // production record-only while the validation-only v3 wrapper rolls out.
+  return supabase.rpc("crm_create_ken_payment_batch_v2", rpcPayload);
+}
+
 export async function createPartnerPaymentBatch(
   supabase: CrmSupabaseClient,
   payload: Record<string, unknown>,
@@ -4501,7 +4517,9 @@ export async function createPartnerPaymentBatch(
           p_allocations: allocations
         };
 
-  const { data: rpcResult, error: rpcError } = await supabase.rpc(rpcName, rpcPayload);
+  const { data: rpcResult, error: rpcError } = person === "ken"
+    ? await createManualKenPaymentBatchRpc(supabase, rpcPayload)
+    : await supabase.rpc(rpcName, rpcPayload);
   const kenRpcResult =
     person === "ken" && rpcResult && typeof rpcResult === "object"
       ? rpcResult as { payment_id?: string; created?: boolean }
