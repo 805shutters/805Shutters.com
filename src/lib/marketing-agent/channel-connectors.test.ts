@@ -5,7 +5,7 @@ import { attributeNormalizedEventsToFunnel, readOnlyChannelAdapters, validateCon
 describe("read-only marketing channel connector contracts", () => {
   it("fails closed without exposing secret values", () => {
     const result = validateConnectorConfiguration("google_ads", { GOOGLE_ADS_CUSTOMER_ID: "805-secret-account" }, []);
-    expect(result.state).toBe("configuration_required");
+    expect(result.state).toBe("grant_required");
     expect(result.missingConfiguration).toContain("GOOGLE_ADS_DEVELOPER_TOKEN");
     expect(JSON.stringify(result)).not.toContain("805-secret-account");
     expect(result.mode).toBe("read_only");

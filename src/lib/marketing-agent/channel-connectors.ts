@@ -38,6 +38,7 @@ type ConnectorContract = {
   requiredConfiguration: readonly string[];
   requiredPermissions: readonly ConnectorReadPermission[];
   mode: "read_only" | "manual_only";
+  unverifiedState: "configuration_required" | "grant_required" | "manual_only";
   knownBlockers: readonly string[];
 };
 
@@ -54,6 +55,7 @@ export const channelConnectorContracts: Record<ChannelConnectorId, ConnectorCont
     ],
     requiredPermissions: ["read_campaigns", "read_reporting"],
     mode: "read_only",
+    unverifiedState: "grant_required",
     knownBlockers: ["Manager-account developer token and OAuth grant have not been verified."]
   },
   yelp: {
@@ -62,6 +64,7 @@ export const channelConnectorContracts: Record<ChannelConnectorId, ConnectorCont
     requiredConfiguration: [],
     requiredPermissions: [],
     mode: "manual_only",
+    unverifiedState: "manual_only",
     knownBlockers: ["Yelp owner reporting is manual-only; no approved reporting or lead-data connector is available."]
   },
   meta: {
@@ -75,6 +78,7 @@ export const channelConnectorContracts: Record<ChannelConnectorId, ConnectorCont
     ],
     requiredPermissions: ["read_campaigns", "read_reporting"],
     mode: "read_only",
+    unverifiedState: "grant_required",
     knownBlockers: ["The existing system user has pixel/dataset access only; ad-account reporting assignment and token are unverified."]
   }
 };
@@ -111,14 +115,12 @@ export function validateConnectorConfiguration(
     verification?.accountId === (connector === "google_ads" ? env.GOOGLE_ADS_CUSTOMER_ID?.replaceAll("-", "") : env.META_AD_ACCOUNT_ID)
   );
   const state: ConnectorValidation["state"] = contract.mode === "manual_only"
-    ? "manual_only"
+    ? contract.unverifiedState
     : forbiddenPermissions.length
     ? "unsafe_permissions"
-    : missingConfiguration.length
-      ? "configuration_required"
-      : missingPermissions.length || !validVerification
-        ? "grant_required"
-        : "verified_read_only";
+    : missingConfiguration.length || missingPermissions.length || !validVerification
+      ? contract.unverifiedState
+      : "verified_read_only";
 
   return {
     connector,
