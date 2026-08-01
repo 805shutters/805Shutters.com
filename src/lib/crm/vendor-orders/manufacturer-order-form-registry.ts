@@ -70,13 +70,39 @@ type RegistryShape = {
 
 const REGISTRY = registryJson as RegistryShape;
 
-const NORMAN_SMARTPRIVACY_PRODUCT_KEY = "smartprivacy_faux";
-
-function isNormanSmartPrivacyKey(value: unknown): boolean {
-  const normalized = key(value);
-  return normalized === NORMAN_SMARTPRIVACY_PRODUCT_KEY
-    || normalized.startsWith(`${NORMAN_SMARTPRIVACY_PRODUCT_KEY}_`);
-}
+const catalogProductRoutes: Record<string, { manufacturer: OrderFormManufacturer; productKey?: string }> = {
+  citylights_aluminum: { manufacturer: "norman", productKey: "citylights_aluminum" },
+  faux_wood: { manufacturer: "norman", productKey: "faux_wood" },
+  honeycomb: { manufacturer: "norman", productKey: "honeycomb" },
+  norman_shutters: { manufacturer: "norman" },
+  palladian_shelf: { manufacturer: "norman", productKey: "palladian_shelf" },
+  perfectsheer: { manufacturer: "norman", productKey: "perfectsheer" },
+  roller: { manufacturer: "norman", productKey: "roller" },
+  roman: { manufacturer: "norman", productKey: "roman" },
+  smartdrape: { manufacturer: "norman", productKey: "smartdrape" },
+  smartfold: { manufacturer: "norman", productKey: "smartfold" },
+  smartprivacy_faux: { manufacturer: "norman", productKey: "smartprivacy_faux" },
+  synchrony_vertical: { manufacturer: "norman", productKey: "synchrony_vertical" },
+  vertical_honeycomb: { manufacturer: "norman", productKey: "vertical_honeycomb" },
+  wood_blinds: { manufacturer: "norman", productKey: "wood_blinds" },
+  onyx_shutters: { manufacturer: "onyx" },
+  lotus_mini_blinds: { manufacturer: "lotus", productKey: "lotus_mini_blinds" },
+  lotus_faux_wood_blinds: { manufacturer: "lotus", productKey: "lotus_faux_wood_blinds" },
+  lotus_roller_shades: { manufacturer: "lotus", productKey: "lotus_roller_shades" },
+  lotus_vertical_blinds: { manufacturer: "lotus", productKey: "lotus_vertical_blinds" },
+  lotus_vinyl_blinds: { manufacturer: "lotus", productKey: "lotus_vinyl_blinds" },
+  polar_interior_roller: { manufacturer: "polar", productKey: "interior_roller" },
+  polar_elite_patio: { manufacturer: "polar", productKey: "elite_patio" },
+  polar_titan_patio: { manufacturer: "polar", productKey: "titan_patio" },
+  polar_mega_exterior: { manufacturer: "polar", productKey: "mega_exterior" },
+  polar_drapery_track: { manufacturer: "polar", productKey: "motorized_drapery_track" },
+  polar_all_seasons_screen: { manufacturer: "polar", productKey: "all_seasons_retractable_screen" },
+  polar_awning_premium_pro: { manufacturer: "polar", productKey: "premium_pro_awning" },
+  polar_awning_premium_plus: { manufacturer: "polar", productKey: "premium_plus_awning" },
+  polar_awning_premium: { manufacturer: "polar", productKey: "premium_awning" },
+  polar_awning_select: { manufacturer: "polar", productKey: "select_awning" },
+  polar_awning_drop_arm: { manufacturer: "polar", productKey: "drop_arm_window_awning" },
+};
 
 const aliases: Record<OrderFormManufacturer, Record<string, string>> = {
   onyx: {
@@ -229,6 +255,8 @@ export function detectOrderFormManufacturer(
   const haystack = [
     source.manufacturer,
     source.manufacturer_name,
+    source.catalog_manufacturer,
+    source.quote_lab_manufacturer,
     source.supplier,
     source.supplier_key,
     source.product_id,
@@ -245,14 +273,19 @@ export function detectOrderFormManufacturer(
   if (haystack.includes("norman") || haystack.includes("woodlore") || haystack.includes("normandy")) return "norman";
   if (haystack.includes("lotus")) return "lotus";
   if (haystack.includes("polar")) return "polar";
-  if ([
+  const catalogRoute = [
     source.product_id,
     source.productId,
     source.program_id,
     source.programId,
+    source.catalog_product_id,
+    source.quote_lab_product_id,
     source.fabric_product_id,
+    source.catalog_program_id,
+    source.quote_lab_program_id,
     source.fabric_program_id,
-  ].some(isNormanSmartPrivacyKey)) return "norman";
+  ].map(key).map((candidate) => catalogProductRoutes[candidate]).find(Boolean);
+  if (catalogRoute) return catalogRoute.manufacturer;
   return null;
 }
 
@@ -261,7 +294,11 @@ function candidateProductKeys(values: OrderFormSourceValues): string[] {
   return [
     source.program_id,
     source.programId,
+    source.catalog_program_id,
+    source.quote_lab_program_id,
     source.fabric_program_id,
+    source.catalog_product_id,
+    source.quote_lab_product_id,
     source.fabric_product_id,
     source.product_id,
     source.productId,
@@ -284,9 +321,14 @@ export function resolveManufacturerOrderForm(
   const entries = REGISTRY.manufacturers[manufacturer] || [];
   const candidates = candidateProductKeys(values);
   for (const candidate of candidates) {
-    const productKey = manufacturer === "norman" && isNormanSmartPrivacyKey(candidate)
-      ? NORMAN_SMARTPRIVACY_PRODUCT_KEY
-      : aliases[manufacturer][candidate] || candidate;
+    const catalogRoute = catalogProductRoutes[candidate];
+    const programProductKey = entries
+      .map((entry) => entry.product_key)
+      .sort((left, right) => right.length - left.length)
+      .find((productKey) => candidate.startsWith(`${productKey}_`));
+    const productKey = catalogRoute?.manufacturer === manufacturer && catalogRoute.productKey
+      ? catalogRoute.productKey
+      : aliases[manufacturer][candidate] || programProductKey || candidate;
     const entry = entries.find((item) => item.product_key === productKey);
     if (entry) return entry;
   }

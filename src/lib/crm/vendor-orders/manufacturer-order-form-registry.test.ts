@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import lotusCatalog from "@/lib/quote/catalog/lotus-west-a26.catalog.json";
+import normanCatalog from "@/lib/quote/catalog/norman-2026.catalog.json";
+import polarCatalog from "@/lib/quote/catalog/polar-shades.catalog.json";
+import shutterCatalog from "@/lib/quote/catalog/shutters-mts.catalog.json";
 
 import {
   buildAgenticOrderManifest,
@@ -107,6 +111,35 @@ describe("manufacturer ordering-form registry", () => {
       manufacturer: "Onyx",
     });
   });
+
+  it("resolves every catalog product that has a dedicated technical-measure form", () => {
+    const products = [
+      ...normanCatalog.products,
+      ...shutterCatalog.products,
+      ...polarCatalog.products.filter((product) => ![
+        "polar_tension_shade",
+        "polar_exterior_clutch_unavailable",
+      ].includes(product.id)),
+      ...lotusCatalog.products,
+    ];
+
+    for (const product of products) {
+      const programs = product.programs.length ? product.programs : [{ id: null }];
+      for (const program of programs) {
+        expect(resolveManufacturerTechnicalMeasureSchema({
+          product_id: product.id,
+          program_id: program.id,
+        }), `${product.id}:${program.id || "no-program"}`).not.toBeNull();
+      }
+    }
+  });
+
+  it.each(["polar_tension_shade", "polar_exterior_clutch_unavailable"])(
+    "does not pretend uncovered catalog product %s has a dedicated form",
+    (productId) => {
+      expect(resolveManufacturerTechnicalMeasureSchema({ product_id: productId })).toBeNull();
+    },
+  );
 
   it("fans a mixed contract into one cover plus one dedicated page per line", () => {
     const manifest = buildAgenticOrderManifest({
