@@ -68,7 +68,7 @@ function fakeSupabase(options: {
 }
 
 describe("soldQuoteSmsRecipients", () => {
-  it("uses configured Michael and Jessica numbers, retains the third recipient, and deduplicates extras", () => {
+  it("uses configured Michael and Jessica numbers, retains Ken, and deduplicates extras", () => {
     expect(
       soldQuoteSmsRecipients({
         MIKE_805_SALES_SMS_NUMBER: "805-555-0200",
@@ -77,10 +77,23 @@ describe("soldQuoteSmsRecipients", () => {
       }),
     ).toEqual([
       { input: "805-555-0200", e164: "+18055550200", role: "primary" },
+      { input: "805-630-0848", e164: "+18056300848", role: "staff" },
       { input: "+1 (805) 555-0300", e164: "+18055550300", role: "staff" },
-      { input: "805-914-4917", e164: "+18059144917", role: "staff" },
       { input: "805-555-0100", e164: "+18055550100", role: "staff" },
       { input: "not-a-phone", e164: null, role: "staff" },
+    ]);
+  });
+
+  it("keeps all three canonical recipients with production Michael and Jessica settings", () => {
+    expect(
+      soldQuoteSmsRecipients({
+        MIKE_805_SALES_SMS_NUMBER: "805-298-5555",
+        JESSICA_805_SALES_SMS_NUMBER: "805-914-4917",
+      }),
+    ).toEqual([
+      { input: "805-298-5555", e164: "+18052985555", role: "primary" },
+      { input: "805-630-0848", e164: "+18056300848", role: "staff" },
+      { input: "805-914-4917", e164: "+18059144917", role: "staff" },
     ]);
   });
 
