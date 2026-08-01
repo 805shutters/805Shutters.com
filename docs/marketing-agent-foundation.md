@@ -54,7 +54,7 @@ Migration `20260731110000_create_governed_marketing_agent.sql` provides four ser
 - `crm_marketing_approvals`: append-only human decisions by approval kind and identity.
 - `crm_marketing_agent_events`: ordered handoffs and audit events, optionally chained to a prior event.
 
-These tables are the persistence model for the embedded Sales Intelligence control room: run history, proposed actions, approvals, outcomes, and handoffs. The foundation migration is deployed in production with row-level security and service-role-only policies. This next local phase does not add or apply a migration: the UI remains read-only and computes safe empty/partial states from existing in-memory dashboard data. No production route, connector fetch, or cron is activated by this phase.
+These tables are the persistence model for the embedded Sales Intelligence control room: run history, proposed actions, approvals, outcomes, and handoffs. The foundation migration is deployed in production with row-level security and service-role-only policies. The authenticated `POST /api/crm/marketing-agent` route derives its evidence only from server-side CRM tables, persists a bounded run and audit event, and currently escalates with `incomplete_source_snapshot` because no channel-reporting or website-analytics snapshot is connected. It accepts no client-supplied metrics and has no provider network calls, connector writes, or cron.
 
 ## Data prerequisites and current gaps
 
@@ -84,7 +84,7 @@ Run the diagnostic offline against dated historical snapshots. A reviewer labels
 ## Phased expansion
 
 1. **Foundation (deployed):** policy, bounded deterministic evaluator, durable schema, tests, documentation, and the embedded Sales Intelligence control room.
-2. **Read-only ingestion contracts and campaign preview (implemented locally):** fail-closed Google, Yelp, and Meta configuration/permission validation; normalized provenance and quarantine handling; exact-ID CRM planning preview; no connector network calls or external actions.
+2. **Read-only ingestion contracts, durable manual runtime, and campaign preview (implemented locally):** fail-closed Google, Yelp, and Meta configuration/permission validation; normalized provenance and quarantine handling; exact-ID CRM planning preview; authenticated server-derived run/audit persistence; no connector network calls or external actions.
 3. **Credentialed read-only ingestion:** after account-owner authorization, add server-only fetchers for approved account IDs, immutable snapshots, freshness checks, and control-room run history. External write scopes remain rejected.
 4. **Creative specialist:** turn approved install assets and observed customer problems into internal briefs, scripts, hooks, and a filming list. Use only assets with documented consent. No publishing.
 5. **Experiment specialist:** propose creative matrices and forecast sample/budget needs. Human approves content, spend, targeting, and launch separately.

@@ -1,14 +1,32 @@
+"use client";
+
+import { useState } from "react";
 import type { CrmBookkeepingRow, CrmJob, CrmQuote } from "@/lib/crm/types";
 import { recommendVenturaCampaign } from "@/lib/marketing-agent/campaign-recommendation";
 import { channelConnectorIds, validateConnectorConfiguration } from "@/lib/marketing-agent/channel-connectors";
 import { initialMarketingAgentSpec } from "@/lib/marketing-agent/governance";
 import { buildMarketingIntelligence } from "@/lib/marketing-agent/sales-intelligence";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 
 export function MarketingAgentPanel({ jobs, quotes, rows }: { jobs: CrmJob[]; quotes: CrmQuote[]; rows: CrmBookkeepingRow[] }) {
+  const [runState, setRunState] = useState<{ pending: boolean; message: string | null }>({ pending: false, message: null });
   const intelligence = buildMarketingIntelligence(jobs, quotes, rows);
   const recommendation = recommendVenturaCampaign(jobs, intelligence);
   const connectors = channelConnectorIds.map((connector) => validateConnectorConfiguration(connector, {}, []));
   const channelLabel = recommendation.proposedChannel === "facebook" ? "Meta/Facebook" : recommendation.proposedChannel === "google" ? "Google" : "Yelp";
+  const runDiagnostic = async () => {
+    setRunState({ pending: true, message: null });
+    const client = getSupabaseBrowserClient();
+    if (!client) return setRunState({ pending: false, message: "CRM authentication is not configured." });
+    const { data } = await client.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return setRunState({ pending: false, message: "CRM session is required." });
+    const response = await fetch("/api/crm/marketing-agent", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    const payload = await response.json().catch(() => ({})) as { result?: { stopReason?: string; missingSources?: string[] }; message?: string };
+    if (!response.ok) return setRunState({ pending: false, message: payload.message || "Run could not be saved." });
+    const missing = payload.result?.missingSources?.join(", ");
+    setRunState({ pending: false, message: missing ? `Escalated safely: missing ${missing}.` : `Completed: ${payload.result?.stopReason || "saved"}.` });
+  };
   return (
     <section className="crm-marketing-agent" aria-labelledby="marketing-agent-title">
       <div className="crm-marketing-agent-head">
@@ -24,6 +42,8 @@ export function MarketingAgentPanel({ jobs, quotes, rows }: { jobs: CrmJob[]; qu
         <strong>Safe by construction</strong>
         <span>No ad access, scheduling, spend, publishing, messages, pricing changes, or production CRM writes.</span>
         <span>Limit: {initialMarketingAgentSpec.limits.maxIterations} iterations · {initialMarketingAgentSpec.limits.maxProposalsPerRun} proposal · {initialMarketingAgentSpec.limits.maxRuntimeSeconds}s</span>
+        <button type="button" onClick={runDiagnostic} disabled={runState.pending}>{runState.pending ? "Running…" : "Run governed diagnostic"}</button>
+        {runState.message ? <span role="status">{runState.message}</span> : null}
       </div>
 
       <div className="crm-agent-channel-grid">

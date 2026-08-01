@@ -25,9 +25,9 @@ describe("Sales Intelligence marketing-agent surface", () => {
     expect(panelSource).toContain("Verifiable stop conditions");
   });
 
-  it("does not expose an execution control", () => {
-    expect(panelSource).not.toContain("onClick=");
-    expect(panelSource).not.toContain("crmFetch");
-    expect(panelSource).not.toContain("fetch(");
+  it("exposes only the authenticated governed diagnostic control", () => {
+    expect(panelSource).toContain("Run governed diagnostic");
+    expect(panelSource).toContain('/api/crm/marketing-agent');
+    expect(panelSource).not.toMatch(/launch campaign|publish ad|change budget/i);
   });
 });
