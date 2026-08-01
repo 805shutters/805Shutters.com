@@ -168,6 +168,9 @@ export function buildCustomerFiles({
   }
 
   for (const file of fileMap.values()) {
+    const latestJob = newestByDate(file.jobs, (job) => job.updated_at || job.created_at);
+    if (latestJob?.phone) file.phone = latestJob.phone;
+
     const snapshot = snapshotTotals.get(file);
     if (snapshot && !file.bookkeepingRows.length && !filesWithSoldJobFinancials.has(file)) {
       file.lifetimeValue = snapshot.lifetimeValue;

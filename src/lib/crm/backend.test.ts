@@ -678,6 +678,54 @@ describe("buildDashboardData", () => {
     expect(data.customerFiles.find((file) => file.customerName === "Legacy Customer")?.phone).toBe("805-555-4343");
   });
 
+  it("keeps a newly updated job phone authoritative after dashboard refresh", () => {
+    const data = buildDashboardData({
+      jobs: [
+        job({
+          id: "updated-phone-job",
+          customer_name: "Phone Update Customer",
+          phone: "805-555-9898",
+          updated_at: "2026-07-31T18:00:00.000Z"
+        })
+      ],
+      quotes: [],
+      events: [],
+      customers: [
+        {
+          id: "customer-stale-phone",
+          created_at: "2026-06-20T00:00:00.000Z",
+          updated_at: "2026-07-30T00:00:00.000Z",
+          source: "crm",
+          display_name: "Phone Update Customer",
+          normalized_name: "phone update customer",
+          phone: "805-555-1212",
+          email: null,
+          address: null,
+          city: null,
+          first_sold_date: null,
+          latest_sold_date: null,
+          latest_status: "new",
+          lifetime_value: 0,
+          open_balance: 0,
+          notes: null,
+          meta: {}
+        }
+      ],
+      products: [],
+      contracts: [],
+      entries: [],
+      payments: [],
+      credits: [],
+      expenses: [],
+      installationInvoiceEmails: [],
+      kenPayments: [],
+      openingBalance: 0,
+      payoffTarget: 500000
+    });
+
+    expect(data.customerFiles.find((file) => file.customerName === "Phone Update Customer")?.phone).toBe("805-555-9898");
+  });
+
   it("counts signed customer contracts as sold even when the quote status is stale", () => {
     const signedAt = "2026-07-02T22:37:35.000Z";
     const data = buildDashboardData({
