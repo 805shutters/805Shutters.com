@@ -49,9 +49,10 @@ export function MarketingAgentPanel({ jobs, quotes, rows }: { jobs: CrmJob[]; qu
         <div className="crm-agent-connector-grid">
           {connectors.map((connector) => (
             <section key={connector.connector}>
-              <header><strong>{connector.label}</strong><span>Configuration required</span></header>
-              <small>Mode: read only · {connector.capabilities.join(", ")}</small>
+              <header><strong>{connector.label}</strong><span>{connector.state.replaceAll("_", " ")}</span></header>
+              <small>Mode: {connector.mode.replaceAll("_", " ")}{connector.capabilities.length ? ` · ${connector.capabilities.join(", ")}` : ""}</small>
               <p>{connector.missingConfiguration.length} configuration values and {connector.missingPermissions.length} read permissions are missing.</p>
+              {connector.blockers.map((blocker) => <p key={blocker}>{blocker}</p>)}
               <details><summary>Required configuration</summary><code>{connector.missingConfiguration.join(" · ")}</code></details>
             </section>
           ))}

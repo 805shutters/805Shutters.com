@@ -98,3 +98,35 @@ export function canExecuteProposal(input: {
   const granted = new Set(input.grantedApprovals);
   return input.requiredApprovals.every((approval) => granted.has(approval));
 }
+
+export type MarketingApprovalRecord = {
+  kind: MarketingApprovalKind;
+  decision: "approved" | "rejected" | "revoked";
+  decidedByAuthUserId: string | null;
+  decidedAt: string;
+};
+
+export function authorizeProposal(input: {
+  status: MarketingProposalStatus;
+  requiredApprovals: readonly MarketingApprovalKind[];
+  approvals: readonly MarketingApprovalRecord[];
+  expiresAt: string | null;
+  now: string;
+}) {
+  const reasons: string[] = [];
+  if (input.status !== "approved") reasons.push("proposal_not_approved");
+  if (!Number.isFinite(Date.parse(input.now))) reasons.push("invalid_evaluation_time");
+  if (!input.expiresAt || !Number.isFinite(Date.parse(input.expiresAt))) reasons.push("missing_or_invalid_expiry");
+  else if (Date.parse(input.expiresAt) <= Date.parse(input.now)) reasons.push("proposal_expired");
+
+  for (const kind of input.requiredApprovals) {
+    const decisions = input.approvals
+      .filter((approval) => approval.kind === kind)
+      .sort((a, b) => Date.parse(b.decidedAt) - Date.parse(a.decidedAt));
+    const latest = decisions[0];
+    if (!latest || latest.decision !== "approved") reasons.push(`approval_missing:${kind}`);
+    else if (!latest.decidedByAuthUserId) reasons.push(`approval_identity_missing:${kind}`);
+    else if (!Number.isFinite(Date.parse(latest.decidedAt))) reasons.push(`approval_time_invalid:${kind}`);
+  }
+  return { authorized: reasons.length === 0, reasons };
+}

@@ -22,12 +22,14 @@ export type ConnectorValidation = {
   connector: ChannelConnectorId;
   channel: PrimaryMarketingChannel;
   label: string;
-  state: "ready" | "configuration_required" | "unsafe_permissions";
+  state: "verified_read_only" | "configuration_required" | "grant_required" | "manual_only" | "unsafe_permissions";
   missingConfiguration: string[];
   missingPermissions: ConnectorReadPermission[];
   forbiddenPermissions: string[];
   capabilities: readonly ConnectorReadPermission[];
-  mode: "read_only";
+  mode: "read_only" | "manual_only";
+  verification: { verifiedAt: string; accountId: string; grantEvidenceId: string } | null;
+  blockers: string[];
 };
 
 type ConnectorContract = {
@@ -35,6 +37,8 @@ type ConnectorContract = {
   label: string;
   requiredConfiguration: readonly string[];
   requiredPermissions: readonly ConnectorReadPermission[];
+  mode: "read_only" | "manual_only";
+  knownBlockers: readonly string[];
 };
 
 export const channelConnectorContracts: Record<ChannelConnectorId, ConnectorContract> = {
@@ -48,47 +52,73 @@ export const channelConnectorContracts: Record<ChannelConnectorId, ConnectorCont
       "GOOGLE_ADS_CLIENT_SECRET",
       "GOOGLE_ADS_REFRESH_TOKEN"
     ],
-    requiredPermissions: ["read_campaigns", "read_reporting"]
+    requiredPermissions: ["read_campaigns", "read_reporting"],
+    mode: "read_only",
+    knownBlockers: ["Manager-account developer token and OAuth grant have not been verified."]
   },
   yelp: {
     channel: "yelp",
     label: "Yelp",
-    requiredConfiguration: ["YELP_BUSINESS_ID", "YELP_REPORTING_CLIENT_ID", "YELP_REPORTING_CLIENT_SECRET"],
-    requiredPermissions: ["read_campaigns", "read_reporting", "read_leads"]
+    requiredConfiguration: [],
+    requiredPermissions: [],
+    mode: "manual_only",
+    knownBlockers: ["Yelp owner reporting is manual-only; no approved reporting or lead-data connector is available."]
   },
   meta: {
     channel: "facebook",
-    label: "Meta Leads",
+    label: "Meta Ads",
     requiredConfiguration: [
       "META_APP_ID",
       "META_APP_SECRET",
-      "META_PAGE_ID",
-      "META_PAGE_ACCESS_TOKEN",
-      "META_LEADS_VERIFY_TOKEN"
+      "META_AD_ACCOUNT_ID",
+      "META_REPORTING_ACCESS_TOKEN"
     ],
-    requiredPermissions: ["read_campaigns", "read_reporting", "read_leads"]
+    requiredPermissions: ["read_campaigns", "read_reporting"],
+    mode: "read_only",
+    knownBlockers: ["The existing system user has pixel/dataset access only; ad-account reporting assignment and token are unverified."]
   }
 };
 
+export type ConnectorVerification = {
+  verifiedAt: string;
+  accountId: string;
+  grantEvidenceId: string;
+};
+
 function configured(env: Record<string, string | undefined>, key: string) {
-  return typeof env[key] === "string" && Boolean(env[key]?.trim());
+  const value = env[key]?.trim();
+  if (!value || /^(set|todo|replace-me|changeme|your[-_])/i.test(value)) return false;
+  if (key === "GOOGLE_ADS_CUSTOMER_ID") return /^\d{10}$/.test(value.replaceAll("-", ""));
+  if (key === "META_AD_ACCOUNT_ID") return /^act_\d+$/.test(value);
+  return value.length >= 8;
 }
 
 export function validateConnectorConfiguration(
   connector: ChannelConnectorId,
   env: Record<string, string | undefined>,
-  grantedPermissions: readonly string[] = []
+  grantedPermissions: readonly string[] = [],
+  verification: ConnectorVerification | null = null
 ): ConnectorValidation {
   const contract = channelConnectorContracts[connector];
   const granted = new Set(grantedPermissions);
   const missingConfiguration = contract.requiredConfiguration.filter((key) => !configured(env, key));
   const missingPermissions = contract.requiredPermissions.filter((permission) => !granted.has(permission));
   const forbiddenPermissions = forbiddenConnectorPermissions.filter((permission) => granted.has(permission));
-  const state = forbiddenPermissions.length
+  const validVerification = Boolean(
+    verification?.accountId.trim() &&
+    verification?.grantEvidenceId.trim() &&
+    Number.isFinite(Date.parse(verification?.verifiedAt || "")) &&
+    verification?.accountId === (connector === "google_ads" ? env.GOOGLE_ADS_CUSTOMER_ID?.replaceAll("-", "") : env.META_AD_ACCOUNT_ID)
+  );
+  const state: ConnectorValidation["state"] = contract.mode === "manual_only"
+    ? "manual_only"
+    : forbiddenPermissions.length
     ? "unsafe_permissions"
-    : missingConfiguration.length || missingPermissions.length
+    : missingConfiguration.length
       ? "configuration_required"
-      : "ready";
+      : missingPermissions.length || !validVerification
+        ? "grant_required"
+        : "verified_read_only";
 
   return {
     connector,
@@ -99,7 +129,9 @@ export function validateConnectorConfiguration(
     missingPermissions,
     forbiddenPermissions,
     capabilities: contract.requiredPermissions,
-    mode: "read_only"
+    mode: contract.mode,
+    verification: validVerification ? verification : null,
+    blockers: state === "verified_read_only" ? [] : [...contract.knownBlockers]
   };
 }
 
@@ -126,6 +158,8 @@ export type NormalizedMarketingEvent = {
     fetchedAt: string;
     permissions: readonly ConnectorReadPermission[];
     exactCrmLink: boolean;
+    grantEvidenceId: string;
+    grantVerifiedAt: string;
   };
 };
 
@@ -155,6 +189,7 @@ type NormalizationContext = {
   fetchedAt: string;
   permissions: readonly ConnectorReadPermission[];
   sourceObject: string;
+  verification?: ConnectorVerification;
 };
 
 function text(value: unknown): string | null {
@@ -180,6 +215,16 @@ function normalizeRows(
     if (!eventType || !["impression", "click", "lead"].includes(eventType)) reasons.push("invalid_event_type");
     if (spendMicros !== null && (!Number.isInteger(spendMicros) || spendMicros < 0)) reasons.push("invalid_spend_micros");
     if (!context.accountId.trim()) reasons.push("missing_account_id");
+    if (contract.mode === "manual_only") reasons.push("connector_manual_only");
+    if (
+      !context.verification ||
+      context.verification.accountId !== context.accountId ||
+      !context.verification.grantEvidenceId.trim() ||
+      !Number.isFinite(Date.parse(context.verification.verifiedAt))
+    ) reasons.push("unverified_account_grant");
+    if (contract.requiredPermissions.some((permission) => !context.permissions.includes(permission))) reasons.push("missing_required_read_permission");
+    if (context.permissions.some((permission) => forbiddenConnectorPermissions.includes(permission as typeof forbiddenConnectorPermissions[number]))) reasons.push("unsafe_permission");
+    if (!context.sourceObject.trim()) reasons.push("missing_source_object");
     if (!Number.isFinite(Date.parse(context.fetchedAt))) reasons.push("invalid_fetched_at");
     if (reasons.length) {
       quarantined.push({ index, reasons });
@@ -208,7 +253,9 @@ function normalizeRows(
         accountId: context.accountId,
         fetchedAt: context.fetchedAt,
         permissions: context.permissions,
-        exactCrmLink: Boolean(crmLeadId)
+        exactCrmLink: Boolean(crmLeadId),
+        grantEvidenceId: context.verification!.grantEvidenceId,
+        grantVerifiedAt: context.verification!.verifiedAt
       }
     });
   });

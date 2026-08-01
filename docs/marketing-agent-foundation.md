@@ -58,6 +58,14 @@ These tables are the persistence model for the embedded Sales Intelligence contr
 
 ## Data prerequisites and current gaps
 
+### Verified connector readiness (2026-07-31)
+
+- **Google Ads — grant required:** the client account is authenticated, but no API Center is available. Reporting remains unavailable until a manager-account developer token, OAuth credentials, exact customer ID, and a separately recorded read-only grant verification exist.
+- **Meta Ads — grant required:** 805 owns the ad account, but the existing CAPI system user is assigned only to the pixel/dataset. No ad-account/Page reporting assignment or usable reporting token has been verified. The existing unsaved Meta draft is outside this system and must not be published or discarded.
+- **Yelp — manual only:** authenticated owner reporting can be reviewed manually. Available integrations are scheduling tools, not a reporting or lead-data connector. Yelp cannot become API-ready by setting environment-shaped strings; it stays manual-only until partner eligibility or an approved ingestion path is documented.
+
+Configuration presence is not live verification. A connector reaches `verified_read_only` only when required configuration, least-privilege permissions, exact account attribution, and a timestamped grant-evidence ID are all present. Imports without matching verification are quarantined. No live credentials or grants were added in this code phase.
+
 The repository captures website leads with UTM fields and sends a Meta `Lead` event when configured. CRM records cover appointments, quotes, sales, installs, bookkeeping payments, and revenue. The missing prerequisite is an exact, durable attribution spine from ad click/campaign and website session to lead, job/customer, quote, install, and collected revenue. Customer reporting must count each exact person once, sold if any exact linked record is sold; phone-only or fuzzy merges are prohibited.
 
 Before historical evaluation:
