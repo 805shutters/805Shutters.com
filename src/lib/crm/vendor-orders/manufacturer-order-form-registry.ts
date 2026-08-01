@@ -70,6 +70,14 @@ type RegistryShape = {
 
 const REGISTRY = registryJson as RegistryShape;
 
+const NORMAN_SMARTPRIVACY_PRODUCT_KEY = "smartprivacy_faux";
+
+function isNormanSmartPrivacyKey(value: unknown): boolean {
+  const normalized = key(value);
+  return normalized === NORMAN_SMARTPRIVACY_PRODUCT_KEY
+    || normalized.startsWith(`${NORMAN_SMARTPRIVACY_PRODUCT_KEY}_`);
+}
+
 const aliases: Record<OrderFormManufacturer, Record<string, string>> = {
   onyx: {
     bassia: "painted_basswood",
@@ -229,12 +237,22 @@ export function detectOrderFormManufacturer(
     source.productType,
     source.program_id,
     source.programId,
+    source.fabric_product_id,
+    source.fabric_program_id,
   ].map(key).join(" ");
 
   if (haystack.includes("onyx")) return "onyx";
   if (haystack.includes("norman") || haystack.includes("woodlore") || haystack.includes("normandy")) return "norman";
   if (haystack.includes("lotus")) return "lotus";
   if (haystack.includes("polar")) return "polar";
+  if ([
+    source.product_id,
+    source.productId,
+    source.program_id,
+    source.programId,
+    source.fabric_product_id,
+    source.fabric_program_id,
+  ].some(isNormanSmartPrivacyKey)) return "norman";
   return null;
 }
 
@@ -243,6 +261,8 @@ function candidateProductKeys(values: OrderFormSourceValues): string[] {
   return [
     source.program_id,
     source.programId,
+    source.fabric_program_id,
+    source.fabric_product_id,
     source.product_id,
     source.productId,
     source.product_type,
@@ -264,7 +284,9 @@ export function resolveManufacturerOrderForm(
   const entries = REGISTRY.manufacturers[manufacturer] || [];
   const candidates = candidateProductKeys(values);
   for (const candidate of candidates) {
-    const productKey = aliases[manufacturer][candidate] || candidate;
+    const productKey = manufacturer === "norman" && isNormanSmartPrivacyKey(candidate)
+      ? NORMAN_SMARTPRIVACY_PRODUCT_KEY
+      : aliases[manufacturer][candidate] || candidate;
     const entry = entries.find((item) => item.product_key === productKey);
     if (entry) return entry;
   }

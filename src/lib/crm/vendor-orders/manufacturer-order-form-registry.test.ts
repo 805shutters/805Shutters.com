@@ -8,6 +8,7 @@ import {
   resolveManufacturerOrderForm,
   technicalMeasureTemplateRelativePath,
 } from "./manufacturer-order-form-registry";
+import { resolveManufacturerTechnicalMeasureSchema } from "./manufacturer-technical-measure-schemas";
 
 describe("manufacturer ordering-form registry", () => {
   it("contains every supported manufacturer product/program", () => {
@@ -52,6 +53,59 @@ describe("manufacturer ordering-form registry", () => {
     [{ manufacturer: "Polar", product_id: "polar", program_id: "premium_pro_awning" }, "polar:premium_pro_awning"],
   ])("routes an exact product to its dedicated form", (values, routingKey) => {
     expect(resolveManufacturerOrderForm(values)?.routing_key).toBe(routingKey);
+  });
+
+  it("routes Nelson's nested SmartPrivacy catalog identifiers to the Norman measure form", () => {
+    const values = {
+      product_id: "faux_wood",
+      program_id: null,
+      details: {
+        product_line: "SmartPrivacy",
+        fabric_product_id: "smartprivacy_faux",
+        fabric_program_id: "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+      },
+    };
+
+    expect(resolveManufacturerOrderForm(values)?.routing_key).toBe("norman:smartprivacy_faux");
+    expect(resolveManufacturerTechnicalMeasureSchema(values)).toMatchObject({
+      routingKey: "norman:smartprivacy_faux",
+      manufacturer: "Norman",
+      productKey: "smartprivacy_faux",
+    });
+  });
+
+  it("keeps a mixed SmartPrivacy and Onyx measure routed per line", () => {
+    const manifest = buildAgenticOrderManifest({
+      customerId: "nelson",
+      quoteId: "805-0169",
+      measureStatus: "measure_required",
+      technicalMeasureSubmitted: false,
+      lines: [
+        {
+          id: "smartprivacy",
+          values: {
+            product_id: "faux_wood",
+            details: {
+              fabric_product_id: "smartprivacy_faux",
+              fabric_program_id: "smartprivacy_faux_2in_and_2_1_2in_slats_cordless",
+            },
+          },
+        },
+        {
+          id: "onyx",
+          values: { product_id: "onyx_shutters", program_id: "poly_composite" },
+        },
+      ],
+    });
+
+    expect(manifest.lineItemPages.map((line) => line.routingKey)).toEqual([
+      "norman:smartprivacy_faux",
+      "onyx:poly_composite",
+    ]);
+    expect(resolveManufacturerTechnicalMeasureSchema(manifest.lineItemPages[1].sourceValues)).toMatchObject({
+      routingKey: "onyx:poly_composite",
+      manufacturer: "Onyx",
+    });
   });
 
   it("fans a mixed contract into one cover plus one dedicated page per line", () => {
