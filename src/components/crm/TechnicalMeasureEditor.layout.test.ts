@@ -50,6 +50,18 @@ describe("technical measure mobile controls", () => {
     expect(styles).toContain(".technical-measure-alert--active");
   });
 
+  it("keeps incomplete-sheet guidance non-blocking during submission", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const service = readFileSync("src/lib/crm/technical-measures.ts", "utf8");
+
+    expect(component).toContain("Optional quality check");
+    expect(component).toContain("Incomplete fields do not prevent submission.");
+    expect(component).toContain("You can still complete and submit this measure.");
+    expect(component).not.toContain("setMessage(compactTechnicalMeasureCompletionSummary(issues));\n        return;");
+    expect(service).not.toContain("validateNormanRollerMeasureForSubmission(form)");
+    expect(service).not.toContain("technicalMeasureCompletionIssues(form)");
+  });
+
   it("uses a customer launch screen and one-line mobile workspace", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");

@@ -10,7 +10,6 @@ import { sendEmail, type EmailResult } from "@/lib/notify/email";
 import {
   enqueueOnyxShutterPreparations,
   enqueueVendorOrderPreparations,
-  validateNormanRollerMeasureForSubmission,
   type VendorOrderPreparationSummary,
 } from "@/lib/crm/vendor-orders/norman-order-preparation";
 import {
@@ -26,11 +25,6 @@ import {
   type ManufacturerTechnicalMeasureSchema,
 } from "@/lib/crm/vendor-orders/manufacturer-technical-measure-schemas";
 import { persistVendorOrderPreparations } from "@/lib/crm/vendor-orders/manufacturer-order-task-store";
-import {
-  compactTechnicalMeasureCompletionSummary,
-  technicalMeasureCompletionIssues,
-  type TechnicalMeasureCompletionIssue,
-} from "@/lib/crm/technical-measure-completion";
 import { normalizeInstallationDurationMinutes } from "@/lib/crm/installation-handoff";
 
 type CrmActor = { email: string; userId?: string; displayName?: string | null };
@@ -1021,31 +1015,6 @@ async function finalizeTechnicalMeasure(
   const installationDurationMinutes = normalizeInstallationDurationMinutes(
     installationDurationMinutesInput,
   );
-  const completionIssues = technicalMeasureCompletionIssues(form);
-  const normanIssues = validateNormanRollerMeasureForSubmission(form);
-  const knownIssueKeys = new Set(completionIssues.map((issue) => `${issue.lineId}:${issue.field}`));
-  for (const issue of normanIssues) {
-    if (!issue.lineId) continue;
-    const lineIndex = form.lines.findIndex((line) => line.id === issue.lineId);
-    if (lineIndex < 0 || knownIssueKeys.has(`${issue.lineId}:${issue.field}`)) continue;
-    const line = form.lines[lineIndex];
-    completionIssues.push({
-      lineId: issue.lineId,
-      lineIndex,
-      lineNumber: lineIndex + 1,
-      room: line.current_values.room || "Window",
-      field: issue.field,
-      label: issue.field.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()),
-      instruction: issue.message,
-    } satisfies TechnicalMeasureCompletionIssue);
-    knownIssueKeys.add(`${issue.lineId}:${issue.field}`);
-  }
-  if (completionIssues.length) {
-    throw new CrmAuthError(
-      409,
-      compactTechnicalMeasureCompletionSummary(completionIssues),
-    );
-  }
   const submittedAt = new Date().toISOString();
   await syncTechnicalMeasureOperationalOverride(supabase, form, submittedAt);
   const { error } = await supabase.from("crm_technical_measure_forms").update({

@@ -676,8 +676,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       setCompletionIssues(issues);
       if (issues.length) {
         setActiveLineIndex(issues[0].lineIndex);
-        setMessage(compactTechnicalMeasureCompletionSummary(issues));
-        return;
+        setMessage(`${compactTechnicalMeasureCompletionSummary(issues)} You can still complete and submit this measure.`);
       }
       if (saved.form.requiresAddendum) {
         setMessage("Review the changes with the customer and collect their signature below.");
@@ -987,7 +986,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                   <div className="technical-measure-alert technical-measure-alert--active" role={lineCompletionIssues.length ? "alert" : "status"}>
                     {lineCompletionIssues.length ? (
                       <>
-                        <strong>Finish this line</strong>
+                        <strong>Optional quality check</strong>
                         <ul>
                           {lineCompletionIssues.map((issue) => (
                             <li key={`${issue.lineId}-${issue.field}`}>
@@ -995,6 +994,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
                             </li>
                           ))}
                         </ul>
+                        <small>Incomplete fields do not prevent submission.</small>
                         {message ? <small>{message}</small> : null}
                       </>
                     ) : message}
