@@ -7,7 +7,8 @@ import {
   normalizeTechnicalMeasureScheduleWindow,
   normalizeTechnicalMeasureLineValues,
   requiresTechnicalMeasureAddendum,
-  soldJobNeedsTechnicalMeasureForm,
+  soldQuoteNeedsTechnicalMeasureForm,
+  technicalMeasureIsArchived,
   technicalMeasureInstallationDuration,
   technicalMeasureDraftDisposition,
   technicalMeasureScheduling,
@@ -141,24 +142,27 @@ describe("technical measure change classification", () => {
 });
 
 describe("technical measure sold-job recovery", () => {
-  const neededMeta = { measure_needed: { status: "needed" } };
-
-  it("identifies a sold required measure with no form", () => {
-    expect(soldJobNeedsTechnicalMeasureForm(
-      { id: "job-1", status: "sold", meta: neededMeta },
+  it("identifies every sold contract with no form regardless of measure-needed state", () => {
+    expect(soldQuoteNeedsTechnicalMeasureForm(
+      { id: "quote-1", job_id: "job-1" },
       new Set(),
     )).toBe(true);
   });
 
-  it("does not recreate an existing form or create one for an unsold job", () => {
-    expect(soldJobNeedsTechnicalMeasureForm(
-      { id: "job-1", status: "sold", meta: neededMeta },
-      new Set(["job-1"]),
+  it("does not recreate an existing contract form or create one without a job", () => {
+    expect(soldQuoteNeedsTechnicalMeasureForm(
+      { id: "quote-1", job_id: "job-1" },
+      new Set(["quote-1"]),
     )).toBe(false);
-    expect(soldJobNeedsTechnicalMeasureForm(
-      { id: "job-2", status: "quoted", meta: neededMeta },
+    expect(soldQuoteNeedsTechnicalMeasureForm(
+      { id: "quote-2", job_id: null },
       new Set(),
     )).toBe(false);
+  });
+
+  it("recognizes archived metadata without deleting the form", () => {
+    expect(technicalMeasureIsArchived({ meta: { archived_at: "2026-08-01T12:00:00.000Z" } })).toBe(true);
+    expect(technicalMeasureIsArchived({ meta: {} })).toBe(false);
   });
 });
 

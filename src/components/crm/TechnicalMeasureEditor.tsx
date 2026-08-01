@@ -2,7 +2,7 @@
 
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
+import { Archive, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight, FileSignature, FileText, Loader2, Mail, MapPin, MessageSquare, Phone, Plus, Ruler, Save, X } from "lucide-react";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import { losAngelesDateString, zonedTimeToUtc } from "@/lib/booking/availability";
 import type {
@@ -75,6 +75,10 @@ function measureScheduleLabel(scheduling: Record<string, unknown> | null) {
   const endAt = typeof scheduling?.scheduled_end_at === "string" ? scheduling.scheduled_end_at : "";
   if (!startAt || !endAt) return "Scheduled measure";
   return `${scheduleTimeFormatter.format(new Date(startAt))} – ${scheduleTimeFormatter.format(new Date(endAt))}`;
+}
+
+function technicalMeasureFormIsArchived(form: TechnicalMeasureForm) {
+  return typeof form.meta.archived_at === "string" && Boolean(form.meta.archived_at.trim());
 }
 
 const PRODUCT_IDS: Record<string, string> = {
@@ -805,6 +809,24 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
     }
   }
 
+  async function restoreArchivedForm() {
+    if (!session || !form) return;
+    setBusy(true); setMessage(null);
+    try {
+      const result = await crmFetch<{ form: TechnicalMeasureForm }>(
+        session,
+        `/api/crm/technical-measures/${form.id}/archive`,
+        { method: "POST", body: JSON.stringify({ archived: false }) },
+      );
+      setForm(result.form);
+      setMessage("Technical measure restored to the technician list.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "The technical measure could not be restored.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openAddendumPdf() {
     if (!session) return;
     setBusy(true); setMessage(null);
@@ -870,6 +892,11 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       </nav>
 
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
+      {technicalMeasureFormIsArchived(form) ? (
+        <div className="technical-measure-alert" role="status">
+          Archived · retained in this customer file for audit history. <button type="button" disabled={busy} onClick={() => void restoreArchivedForm()}>Restore to technician list</button>
+        </div>
+      ) : null}
       {vendorOrderPreparations.map((preparation) => (
         <section className="technical-measure-order-status" data-status={preparation.status} key={`${preparation.manufacturer}:${preparation.taskId}`}>
           <div><span>{String(preparation.manufacturer || "Vendor")} {String(preparation.productType || "order")} preparation</span><strong>{String(preparation.status || "needs_input").replaceAll("_", " ")}</strong></div>
@@ -1233,6 +1260,7 @@ export function TechnicalMeasureList() {
   const [downloadedCount, setDownloadedCount] = useState(0);
   const [schedulingFormId, setSchedulingFormId] = useState<string | null>(null);
   const [scheduleDraft, setScheduleDraft] = useState<ScheduleDraft | null>(null);
+  const [archivingFormId, setArchivingFormId] = useState<string | null>(null);
   useEffect(() => {
     if (!supabase) {
       void (async () => {
@@ -1337,6 +1365,23 @@ export function TechnicalMeasureList() {
       setSchedulingFormId(null);
     }
   }
+  async function archiveForm(formId: string) {
+    if (!session || !window.confirm("Archive this technical measure? It will stay in the customer file and can be restored later.")) return;
+    setArchivingFormId(formId);
+    setQueueMessage(null);
+    try {
+      await crmFetch(session, `/api/crm/technical-measures/${formId}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ archived: true }),
+      });
+      setForms((current) => current.filter((form) => String(form.id) !== formId));
+      setQueueMessage("Technical measure archived. It remains available in the customer file.");
+    } catch (error) {
+      setQueueMessage(error instanceof Error ? error.message : "The technical measure could not be archived.");
+    } finally {
+      setArchivingFormId(null);
+    }
+  }
   function openScheduleDraft(form: Record<string, unknown>) {
     const meta = form.meta as Record<string, unknown> | null;
     const scheduling = meta?.measure_scheduling as Record<string, unknown> | null;
@@ -1414,8 +1459,12 @@ export function TechnicalMeasureList() {
               {schedulingFormId === formId ? <Loader2 className="spin" /> : <Check />}
               {isScheduled ? "Change Schedule" : "Mark Scheduled"}
             </button>
+            <button type="button" disabled={archivingFormId === formId} onClick={() => void archiveForm(formId)}>
+              {archivingFormId === formId ? <Loader2 className="spin" /> : <Archive />}
+              Archive
+            </button>
           </div>
-        ) : null}
+        ) : <div className="technical-measure-queue-actions"><button type="button" disabled={archivingFormId === formId} onClick={() => void archiveForm(formId)}>{archivingFormId === formId ? <Loader2 className="spin" /> : <Archive />}Archive</button></div>}
         <em data-status={status}>{status === "awaiting_signature" ? "Needs signature" : status === "submitted" ? "Completed" : isScheduled ? measureScheduleLabel(scheduling) : "Needs scheduling"}</em>
       </article>
     );

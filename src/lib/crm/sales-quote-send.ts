@@ -86,7 +86,7 @@ export async function markSalesQuoteSold(
   const crmQuoteId = await mirrorSalesQuoteForCustomerSend(supabase, soldSource);
   const crmQuote = await advanceQuoteStatus(supabase, crmQuoteId, "sold", actor);
   await syncTechnicalMeasureDecisionForSoldCrmQuote(supabase, crmQuote, actor, measureDecision, "in_home_sold");
-  const measureForm = measureDecision === "needed" && typeof crmQuote.job_id === "string"
+  const measureForm = typeof crmQuote.job_id === "string"
     ? await ensureTechnicalMeasureForm(supabase, { jobId: crmQuote.job_id, quoteId: crmQuote.id }, actor)
     : null;
   const measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;

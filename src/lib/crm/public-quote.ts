@@ -1386,7 +1386,7 @@ export async function acceptPublicQuote(
         signature,
         soldTotal: pub.total,
       });
-      const measureForm = technicalMeasure === "needed" && soldSync.job
+      const measureForm = soldSync.job
         ? await ensureTechnicalMeasureForm(
             supabase,
             { jobId: soldSync.job.id, quoteId: quote.id },
@@ -1655,7 +1655,7 @@ export async function acceptPublicQuote(
     signature,
     soldTotal,
   });
-  const measureForm = technicalMeasure === "needed" && soldSync.job
+  const measureForm = soldSync.job
     ? await ensureTechnicalMeasureForm(
       supabase,
       { jobId: soldSync.job.id, quoteId: signedQuote.id },

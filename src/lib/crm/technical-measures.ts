@@ -160,6 +160,11 @@ export type TechnicalMeasureForm = {
   scheduling?: TechnicalMeasureScheduling;
 };
 
+export function technicalMeasureIsArchived(form: Pick<TechnicalMeasureForm, "meta"> | Record<string, unknown>) {
+  const meta = "meta" in form ? object(form.meta) : object(form);
+  return Boolean(nullableText(meta.archived_at));
+}
+
 export function technicalMeasureInstallationDuration(
   form: Pick<TechnicalMeasureForm, "meta">,
 ): number | null {
@@ -455,10 +460,21 @@ export function normalizeTechnicalMeasureLineInstanceSort<
 
 async function updateJobMeasureFormMeta(supabase: SupabaseClient, job: CrmJob, formId: string, formStatus: string) {
   const measure = getMeasureNeededMeta(job.meta);
+  const storedForms = Array.isArray((measure as Record<string, unknown>).forms)
+    ? ((measure as Record<string, unknown>).forms as unknown[]).map(object)
+    : [];
+  const legacyFormId = text((measure as Record<string, unknown>).form_id);
+  const savedForms = storedForms.length || !legacyFormId
+    ? storedForms
+    : [{ id: legacyFormId, status: text((measure as Record<string, unknown>).form_status) || "draft" }];
+  const nextForms = [
+    ...savedForms.filter((form) => text(form.id) !== formId),
+    { id: formId, status: formStatus },
+  ];
   await supabase.from("crm_jobs").update({
     meta: {
       ...object(job.meta),
-      [MEASURE_NEEDED_META_KEY]: { ...measure, form_id: formId, form_status: formStatus },
+      [MEASURE_NEEDED_META_KEY]: { ...measure, form_id: formId, form_status: formStatus, forms: nextForms },
     },
   }).eq("id", job.id);
 }
@@ -468,7 +484,7 @@ export async function ensureTechnicalMeasureForm(
   input: { jobId: string; quoteId: string },
   actor: CrmActor,
 ): Promise<TechnicalMeasureForm> {
-  const existing = await supabase.from("crm_technical_measure_forms").select("id").eq("job_id", input.jobId).maybeSingle();
+  const existing = await supabase.from("crm_technical_measure_forms").select("id").eq("quote_id", input.quoteId).maybeSingle();
   if (existing.data?.id) return loadTechnicalMeasureForm(supabase, existing.data.id);
 
   const [built, jobResult, contractResult] = await Promise.all([
@@ -483,7 +499,6 @@ export async function ensureTechnicalMeasureForm(
     const design = selectedDesign(line);
     return design ? [{ line, design }] : [];
   });
-  if (!lines.length) throw new CrmAuthError(409, "The sold contract does not contain measurable line items.");
   const expandedLines = normalizeTechnicalMeasureLineInstanceSort(lines.flatMap(({ line, design }) =>
     expandTechnicalMeasureLineQuantity(line).map((instance) => ({ line, design, instance }))
   ));
@@ -514,7 +529,13 @@ export async function ensureTechnicalMeasureForm(
       technical_measure_line_provenance: lineProvenance,
     },
   }).select("*").single();
-  if (error || !form) throw new CrmAuthError(502, "The technical measure form could not be created.");
+  if (error || !form) {
+    // The quote-level unique constraint closes the read/insert race when the
+    // signing route is retried concurrently.
+    const raced = await supabase.from("crm_technical_measure_forms").select("id").eq("quote_id", input.quoteId).maybeSingle();
+    if (raced.data?.id) return loadTechnicalMeasureForm(supabase, raced.data.id);
+    throw new CrmAuthError(502, "The technical measure form could not be created.");
+  }
 
   const lineRows = expandedLines.map(({ line, design, instance }) => {
     const baseline = {
@@ -532,8 +553,10 @@ export async function ensureTechnicalMeasureForm(
       price_status: design.price_status,
     };
   });
-  const { error: lineError } = await supabase.from("crm_technical_measure_lines").insert(lineRows);
-  if (lineError) throw new CrmAuthError(502, "The technical measure line items could not be created.");
+  if (lineRows.length) {
+    const { error: lineError } = await supabase.from("crm_technical_measure_lines").insert(lineRows);
+    if (lineError) throw new CrmAuthError(502, "The technical measure line items could not be created.");
+  }
   await updateJobMeasureFormMeta(supabase, job, form.id, "draft");
   await recordCrmActivity(supabase, actor, { entityType: "job", entityId: input.jobId, action: "technical_measure.create", metadata: { formId: form.id, quoteId: input.quoteId, lineCount: lineRows.length } });
   return loadTechnicalMeasureForm(supabase, form.id);
@@ -765,21 +788,44 @@ export async function loadTechnicalMeasureForm(supabase: SupabaseClient, formId:
   return decorateForm(formResult.data, linesResult.data || [], addendumResult.data || null);
 }
 
-export async function listTechnicalMeasureForms(supabase: SupabaseClient, jobId?: string | null) {
+export async function listTechnicalMeasureForms(supabase: SupabaseClient, jobId?: string | null, includeArchived = false) {
   let query = supabase.from("crm_technical_measure_forms").select("*").order("updated_at", { ascending: false }).limit(250);
   if (jobId) query = query.eq("job_id", jobId);
   const { data, error } = await query;
   if (error) throw new CrmAuthError(502, "Technical measure forms could not be loaded.");
-  return data || [];
+  return (data || []).filter((form) => includeArchived || !technicalMeasureIsArchived(form));
 }
 
-export function soldJobNeedsTechnicalMeasureForm(
-  job: Pick<CrmJob, "id" | "status" | "meta">,
-  formJobIds: ReadonlySet<string>,
+export async function setTechnicalMeasureArchived(
+  supabase: SupabaseClient,
+  formId: string,
+  archived: boolean,
+  actor: CrmActor,
 ) {
-  return job.status === "sold" &&
-    getMeasureNeededMeta(job.meta).status === "needed" &&
-    !formJobIds.has(job.id);
+  const form = await loadTechnicalMeasureForm(supabase, formId);
+  const archivedAt = archived ? new Date().toISOString() : null;
+  const meta = {
+    ...form.meta,
+    archived_at: archivedAt,
+    archived_by: archived ? actor.email : null,
+    ...(archived ? {} : { restored_at: new Date().toISOString(), restored_by: actor.email }),
+  };
+  const { error } = await supabase.from("crm_technical_measure_forms").update({ meta }).eq("id", formId);
+  if (error) throw new CrmAuthError(502, archived ? "The technical measure could not be archived." : "The technical measure could not be restored.");
+  await recordCrmActivity(supabase, actor, {
+    entityType: "job",
+    entityId: form.job_id,
+    action: archived ? "technical_measure.archive" : "technical_measure.restore",
+    metadata: { formId, quoteId: form.quote_id },
+  });
+  return loadTechnicalMeasureForm(supabase, formId);
+}
+
+export function soldQuoteNeedsTechnicalMeasureForm(
+  quote: { id: string; job_id: string | null },
+  formQuoteIds: ReadonlySet<string>,
+) {
+  return Boolean(quote.job_id) && !formQuoteIds.has(quote.id);
 }
 
 export async function reconcileSoldTechnicalMeasureForms(
@@ -787,47 +833,34 @@ export async function reconcileSoldTechnicalMeasureForms(
   actor: CrmActor,
   jobId?: string | null,
 ) {
-  let jobsQuery = supabase.from("crm_jobs").select("id,status,meta").eq("status", "sold").limit(250);
-  if (jobId) jobsQuery = jobsQuery.eq("id", jobId);
-  const [jobsResult, formsResult] = await Promise.all([
-    jobsQuery,
-    supabase.from("crm_technical_measure_forms").select("job_id"),
-  ]);
-  if (jobsResult.error || formsResult.error) return { created: 0, failed: 0 };
-
-  const formJobIds = new Set((formsResult.data || []).map((row) => String(row.job_id)));
-  const candidates = ((jobsResult.data || []) as Array<Pick<CrmJob, "id" | "status" | "meta">>)
-    .filter((job) => soldJobNeedsTechnicalMeasureForm(job, formJobIds));
-  if (!candidates.length) return { created: 0, failed: 0 };
-
-  const { data: quotes, error: quotesError } = await supabase
+  let quotesQuery = supabase
     .from("crm_quotes")
     .select("id,job_id,signed_at,created_at")
-    .in("job_id", candidates.map((job) => job.id))
     .in("status", ["sold", "approved"])
     .order("signed_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  if (quotesError) return { created: 0, failed: candidates.length };
+    .order("created_at", { ascending: false })
+    .limit(250);
+  if (jobId) quotesQuery = quotesQuery.eq("job_id", jobId);
+  const [quotesResult, formsResult] = await Promise.all([
+    quotesQuery,
+    supabase.from("crm_technical_measure_forms").select("quote_id"),
+  ]);
+  if (quotesResult.error || formsResult.error) return { created: 0, failed: 0 };
 
-  const quoteByJobId = new Map<string, string>();
-  for (const quote of quotes || []) {
-    if (!quoteByJobId.has(String(quote.job_id))) quoteByJobId.set(String(quote.job_id), String(quote.id));
-  }
+  const formQuoteIds = new Set((formsResult.data || []).map((row) => String(row.quote_id)));
+  const candidates = ((quotesResult.data || []) as Array<{ id: string; job_id: string | null }>)
+    .filter((quote) => soldQuoteNeedsTechnicalMeasureForm(quote, formQuoteIds));
+  if (!candidates.length) return { created: 0, failed: 0 };
 
   let created = 0;
   let failed = 0;
-  for (const job of candidates) {
-    const quoteId = quoteByJobId.get(job.id);
-    if (!quoteId) {
-      failed += 1;
-      continue;
-    }
+  for (const quote of candidates) {
     try {
-      await ensureTechnicalMeasureForm(supabase, { jobId: job.id, quoteId }, actor);
+      await ensureTechnicalMeasureForm(supabase, { jobId: quote.job_id!, quoteId: quote.id }, actor);
       created += 1;
     } catch (error) {
       failed += 1;
-      console.error("technical measure reconciliation failed", { jobId: job.id, error });
+      console.error("technical measure reconciliation failed", { jobId: quote.job_id, quoteId: quote.id, error });
     }
   }
   return { created, failed };

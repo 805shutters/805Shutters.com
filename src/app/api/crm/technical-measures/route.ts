@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
       { email, userId: user.id, displayName },
       jobId,
     );
-    const forms = await listTechnicalMeasureForms(supabase, jobId);
+    const includeArchived = request.nextUrl.searchParams.get("includeArchived") === "true";
+    const forms = await listTechnicalMeasureForms(supabase, jobId, includeArchived);
     return NextResponse.json({ forms, reconciliation });
   } catch (error) {
     return crmAuthErrorResponse(error);

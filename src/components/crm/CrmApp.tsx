@@ -10082,16 +10082,19 @@ function CustomerFilesView({
                   <div className="crm-customer-action-strip">
                     {sortedJobs.map((job) => {
                       const measure = getMeasureNeededMeta(job.meta) as Record<string, unknown>;
-                      const formId = typeof measure.form_id === "string" ? measure.form_id : null;
-                      return formId ? (
+                      const savedForms = Array.isArray(measure.forms)
+                        ? measure.forms.flatMap((value) => value && typeof value === "object" && !Array.isArray(value) ? [value as Record<string, unknown>] : [])
+                        : [];
+                      const forms = savedForms.length ? savedForms : (typeof measure.form_id === "string" ? [{ id: measure.form_id, status: measure.form_status }] : []);
+                      return forms.map((savedForm, index) => typeof savedForm.id === "string" ? (
                         <a
                           className="crm-customer-status-button"
-                          href={`/crm/technical-measures/${formId}`}
-                          key={`measure-link-${job.id}`}
+                          href={`/crm/technical-measures/${savedForm.id}`}
+                          key={`measure-link-${job.id}-${savedForm.id}`}
                         >
-                          {measure.form_status === "submitted" ? "View technical measure" : "Complete technical measure"}
+                          {savedForm.status === "submitted" ? "View Technical Measure" : `Technical Measure${forms.length > 1 ? ` ${index + 1}` : ""}`}
                         </a>
-                      ) : null;
+                      ) : null);
                     })}
                     {sortedJobs.map((job) => {
                       const nextStatus = nextJobStatus(job.status);
