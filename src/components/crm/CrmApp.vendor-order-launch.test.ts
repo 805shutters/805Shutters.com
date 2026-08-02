@@ -43,4 +43,13 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).not.toContain('window.open(`/crm/technical-measures/${measureFormId}`');
     expect(source).not.toContain('href={`/crm/technical-measures/${savedForm.id}`}');
   });
+
+  it("shows the selected Ready to Order customer's saved measure in a desktop split pane", () => {
+    expect(source).toContain('payload.metric === "readyToOrder"');
+    expect(source).toContain("<TechnicalMeasurePreviewPane");
+    expect(source).toContain('aria-label={`Saved Technical Measure for ${customerName}`}');
+    expect(source).toContain('title={`${customerName} saved Technical Measure`}');
+    expect(source).toContain('src={url}');
+    expect(source).toContain('crm-global-search-body--contract');
+  });
 });

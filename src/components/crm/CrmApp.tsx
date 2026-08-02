@@ -6265,6 +6265,9 @@ function DrillSearchResultsPanel({
   }, [results, selectedResultId]);
 
   const selectedResult = results.find((result) => result.id === selectedResultId) || results[0] || null;
+  const selectedMeasureUrl = payload.metric === "readyToOrder" && selectedResult?.entry.vendorOrderTask?.formId
+    ? `/crm/measure/${selectedResult.entry.vendorOrderTask.formId}`
+    : null;
   const selectedPayload: DrillPayload | null = selectedResult
     ? {
         ...payload,
@@ -6289,7 +6292,7 @@ function DrillSearchResultsPanel({
       </div>
 
       {results.length ? (
-        <div className="crm-global-search-body">
+        <div className={`crm-global-search-body${selectedMeasureUrl ? " crm-global-search-body--contract" : ""}`}>
           <div className="crm-global-search-results" role="listbox" aria-label={`${payload.title} records`}>
             {results.map((result) => (
               <DashboardRecordCard
@@ -6304,6 +6307,13 @@ function DrillSearchResultsPanel({
               />
             ))}
           </div>
+
+          {selectedResult && selectedMeasureUrl ? (
+            <TechnicalMeasurePreviewPane
+              customerName={selectedResult.entry.customerName || selectedResult.entry.name}
+              url={selectedMeasureUrl}
+            />
+          ) : null}
 
           {selectedResult && selectedPayload ? (
             <div className="crm-global-search-detail">
@@ -6346,6 +6356,20 @@ function DrillSearchResultsPanel({
         <p className="crm-empty">No customers in this segment.</p>
       )}
     </section>
+  );
+}
+
+function TechnicalMeasurePreviewPane({ customerName, url }: { customerName: string; url: string }) {
+  return (
+    <aside className="crm-global-contract-pane" aria-label={`Saved Technical Measure for ${customerName}`}>
+      <div className="crm-global-contract-pane-head">
+        <span>Saved Technical Measure</span>
+        <div className="crm-global-contract-pane-actions">
+          <a href={url} target="_blank" rel="noreferrer">Open full page</a>
+        </div>
+      </div>
+      <iframe title={`${customerName} saved Technical Measure`} src={url} />
+    </aside>
   );
 }
 
