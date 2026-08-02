@@ -10089,7 +10089,7 @@ function CustomerFilesView({
                       return forms.map((savedForm, index) => typeof savedForm.id === "string" ? (
                         <a
                           className="crm-customer-status-button"
-                          href={`/crm/technical-measures/${savedForm.id}`}
+                          href={`/crm/measure/${savedForm.id}`}
                           key={`measure-link-${job.id}-${savedForm.id}`}
                         >
                           {savedForm.status === "submitted" ? "View Technical Measure" : `Technical Measure${forms.length > 1 ? ` ${index + 1}` : ""}`}
