@@ -27,11 +27,15 @@ describe("manufacturer portal capabilities", () => {
     }).automaticEntry).toBe(true);
     expect(manufacturerPortalCapability({
       manufacturer: "Onyx",
+      routingKeys: ["onyx:onyx_us_made_vinyl"],
+    }).automaticEntry).toBe(false);
+    expect(manufacturerPortalCapability({
+      manufacturer: "Onyx",
       routingKeys: ["onyx:vinyl", "norman:roller"],
     }).automaticEntry).toBe(false);
   });
 
-  it.each(["Lotus", "Polar", "Unknown"])("fails closed for %s", (manufacturer) => {
+  it.each(["Polar", "Unknown"])("fails closed for %s", (manufacturer) => {
     const capability = manufacturerPortalCapability({
       manufacturer,
       routingKeys: [`${manufacturer.toLowerCase()}:product`],
@@ -39,6 +43,14 @@ describe("manufacturer portal capabilities", () => {
     });
     expect(capability.automaticEntry).toBe(false);
     expect(capability.reviewBoundary).toBe("saved_draft_only");
+  });
+
+  it("marks every mapped Lotus route ready for packet preparation only", () => {
+    expect(manufacturerPortalCapability({
+      manufacturer: "Lotus",
+      routingKeys: ["lotus:lotus_roller_shades"],
+      sourceKind: "submitted_technical_measure",
+    })).toMatchObject({ automaticEntry: false, documentPreparation: true });
   });
 
   it("fails closed when exact routing is absent", () => {

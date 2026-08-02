@@ -26,6 +26,8 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain('key: "vendor-order-bypass"');
     expect(source).toContain('label: "Mark Ordered"');
     expect(source).toContain('label: "Auto Order"');
+    expect(source).toContain('label: "Enter Order Packet"');
+    expect(source).toContain("never emails or submits");
     expect(source).toContain('"auto_order"');
     expect(source).toContain('http://127.0.0.1:47635/start?');
     expect(source).toContain('it cannot submit the order');

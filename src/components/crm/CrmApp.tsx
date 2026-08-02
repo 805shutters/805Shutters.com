@@ -7577,7 +7577,17 @@ function DrillDetailCard({
           onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "auto_order")
         }
       : null,
-    entry.vendorOrderTask && !portalCapability?.automaticEntry
+    entry.vendorOrderTask && portalCapability?.documentPreparation && entry.vendorOrderTask.orderPacketUrl && onVendorOrderPacket
+      ? {
+          key: "vendor-order-prepare-document",
+          label: "Enter Order Packet",
+          detail: "Prepare the exact manufacturer form for review — never emails or submits",
+          tone: "warning",
+          disabled: busy,
+          onClick: () => onVendorOrderPacket(entry.vendorOrderTask as CrmVendorOrderTask)
+        }
+      : null,
+    entry.vendorOrderTask && !portalCapability?.automaticEntry && !portalCapability?.documentPreparation
       ? {
           key: "vendor-order-adapter-blocked",
           label: "Portal Adapter Blocked",
@@ -7587,7 +7597,7 @@ function DrillDetailCard({
           onClick: () => undefined
         }
       : null,
-    entry.vendorOrderTask?.orderPacketUrl && onVendorOrderPacket
+    entry.vendorOrderTask?.orderPacketUrl && onVendorOrderPacket && !portalCapability?.documentPreparation
       ? {
           key: "view-vendor-order-packet",
           label: "View Order Packet",
