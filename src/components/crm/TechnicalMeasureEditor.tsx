@@ -429,6 +429,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
     setForm(nextForm);
     setLines(nextForm.lines);
     linesRef.current = nextForm.lines;
+    if (desktopWorkspace && nextForm.status === "submitted") setMeasureStarted(true);
     setActiveLineIndex((current) => Math.min(current, Math.max(nextForm.lines.length - 1, 0)));
     setSignerName(nextForm.customer_snapshot.name || "");
     const persistedDuration = persistedInstallationDuration(nextForm);
@@ -956,6 +957,12 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       </> : null}
 
       {measureStarted ? <section className="technical-measure-lines technical-measure-workspace">
+        {desktopWorkspace && form.status === "submitted" ? (
+          <div className="technical-measure-alert technical-measure-alert--active" role="status">
+            <strong>Saved Technical Measure</strong>
+            <span data-status="submitted">Submitted</span>
+          </div>
+        ) : null}
         {lines.map((line, index) => {
           const baseline = line.baseline;
           const current = line.current_values;
