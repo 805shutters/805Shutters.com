@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CrmAuthError, crmAuthErrorResponse, requireCrmUser } from "@/lib/crm/auth";
 import { recordCrmActivity } from "@/lib/crm/backend";
+import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
 
 export const runtime = "nodejs";
 
@@ -79,6 +80,16 @@ export async function PATCH(
     if (!task) throw new CrmAuthError(404, "The manufacturer task was not found.");
     if (!transition.from.includes(String(task.status))) {
       throw new CrmAuthError(409, `This task cannot move from ${task.status} to ${transition.to}.`);
+    }
+    if (action === "auto_order") {
+      const capability = manufacturerPortalCapability({
+        manufacturer: String(task.manufacturer || ""),
+        routingKeys: Array.isArray(task.routing_keys)
+          ? task.routing_keys.filter((value: unknown): value is string => typeof value === "string")
+          : [],
+        sourceKind: typeof task.source_kind === "string" ? task.source_kind : null,
+      });
+      if (!capability.automaticEntry) throw new CrmAuthError(409, capability.reason);
     }
     if (action === "bypass") {
       const [jobResult, quoteResult] = await Promise.all([

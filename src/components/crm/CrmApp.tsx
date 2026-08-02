@@ -57,6 +57,7 @@ import {
 import { getMeasureNeededMeta, isMeasureNeededJob, measureNeededLabel } from "@/lib/crm/measure-needed-state";
 import { calendarTimelineRowRange } from "@/lib/crm/calendar-grid";
 import { buildCalendarOverlapLayout } from "@/lib/crm/calendar-overlap";
+import { manufacturerPortalCapability } from "@/lib/crm/vendor-orders/manufacturer-portal-capabilities";
 import {
   customerBookableSlotKeys,
   type BookingAvailabilityResponse
@@ -7558,8 +7559,15 @@ function DrillDetailCard({
         ...(row?.source === "crm_quote" ? { status: "paid" } : {})
       }
     : null;
+  const portalCapability = entry.vendorOrderTask
+    ? manufacturerPortalCapability({
+        manufacturer: entry.vendorOrderTask.manufacturer,
+        routingKeys: entry.vendorOrderTask.routingKeys,
+        sourceKind: entry.vendorOrderTask.sourceKind
+      })
+    : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
-    entry.vendorOrderTask && ["needs_input", "queued", "failed"].includes(entry.vendorOrderTask.status) && onVendorOrderAction
+    entry.vendorOrderTask && portalCapability?.automaticEntry && ["needs_input", "queued", "failed"].includes(entry.vendorOrderTask.status) && onVendorOrderAction
       ? {
           key: "vendor-order-auto-order",
           label: "Auto Order",
@@ -7567,6 +7575,16 @@ function DrillDetailCard({
           tone: "warning",
           disabled: busy,
           onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "auto_order")
+        }
+      : null,
+    entry.vendorOrderTask && !portalCapability?.automaticEntry
+      ? {
+          key: "vendor-order-adapter-blocked",
+          label: "Portal Adapter Blocked",
+          detail: portalCapability?.reason || "Exact portal mapping is not verified.",
+          tone: "warning",
+          disabled: true,
+          onClick: () => undefined
         }
       : null,
     entry.vendorOrderTask?.orderPacketUrl && onVendorOrderPacket
