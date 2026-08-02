@@ -12,6 +12,9 @@ describe("technical measure mobile controls", () => {
     expect(component).toContain('desktopWorkspace && nextForm.status === "submitted"');
     expect(component).toContain("Saved Technical Measure");
     expect(component).toContain('<span data-status="submitted">Submitted</span>');
+    expect(component).toContain("if (desktopWorkspace) {");
+    expect(component).toContain("hydrate(result.form, false);");
+    expect(component).toContain("if (desktopWorkspace) return;");
   });
   it("uses compact paired dimensions and push-button choices", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");

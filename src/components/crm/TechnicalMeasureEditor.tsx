@@ -453,6 +453,11 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       if (cached) hydrate(applyOfflineTechnicalMeasureDraft(cached, cachedDraft), true);
       if (!activeSession) return;
       const result = await crmFetch<{ form: TechnicalMeasureForm }>(activeSession, `/api/crm/technical-measures/${formId}`);
+      if (desktopWorkspace) {
+        hydrate(result.form, false);
+        await cacheTechnicalMeasureForm(activeOwner, result.form);
+        return;
+      }
       const localDraft = await readCachedTechnicalMeasureDraft(activeOwner, formId);
       const hydrated = applyOfflineTechnicalMeasureDraft(result.form, localDraft);
       hydrate(hydrated, Boolean(localDraft));
@@ -517,6 +522,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
   }, [form, session?.user.email]);
 
   useEffect(() => {
+    if (desktopWorkspace) return;
     async function synchronize() {
       if (!session || !navigator.onLine) return;
       const activeOwner = owner(session);
@@ -554,7 +560,7 @@ export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formI
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, [session?.access_token, formId, workspaceHome]);
+  }, [desktopWorkspace, session?.access_token, formId, workspaceHome]);
 
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
     setMessage(null);
