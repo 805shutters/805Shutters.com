@@ -612,10 +612,10 @@
         "workflow": "Onyx dealer ordering portal",
         "source_url": "https://admin.onyxshutters.com/Login.aspx",
         "source_reference": "Authenticated Onyx portal field sequence",
-        "verification": "portal_mapping_required",
+        "verification": "USER_CONFIRMED_PORTAL_MAPPING; PORTAL_FIELD_RECHECK_REQUIRED",
         "line_item_cardinality": "one_template_instance_per_contract_line_item",
         "order_form_key": "onyx_poly_composite_v1",
-        "portal_material": null
+        "portal_material": "Vinyl"
       },
       {
         "routing_key": "onyx:ash",

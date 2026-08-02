@@ -236,4 +236,22 @@ describe("Onyx agent order packet", () => {
       "Line 1: Onyx US Made Vinyl does not have a verified Onyx portal material mapping.",
     );
   });
+
+  it("preserves Poly Composite source identity while using Vinyl in the Onyx portal", () => {
+    const packet = buildOnyxAgentOrderPacket(context(), [
+      sourceLine({
+        values: values({
+          program_id: "poly_composite",
+          details: { ...values().details, material: "Poly Composite" },
+        }),
+      }),
+    ]);
+
+    expect(packet).toMatchObject({
+      orderFormKey: "onyx_poly_composite_v1",
+      productDisplayName: "Poly Composite",
+      portalMaterial: "Vinyl",
+      portalMappingStatus: "verified",
+    });
+  });
 });

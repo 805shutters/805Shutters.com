@@ -89,8 +89,8 @@ export const ONYX_ORDER_FORM_REGISTRY: Record<string, OnyxOrderFormDefinition> =
     orderFormKey: "onyx_poly_composite_v1",
     quoteProgramKey: "poly_composite",
     displayName: "Poly Composite",
-    portalMaterial: null,
-    mappingStatus: "portal_mapping_required",
+    portalMaterial: "Vinyl",
+    mappingStatus: "verified",
   },
   ash: {
     orderFormKey: "onyx_ash_v1",

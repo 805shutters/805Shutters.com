@@ -110,6 +110,10 @@ describe("manufacturer ordering-form registry", () => {
       routingKey: "onyx:poly_composite",
       manufacturer: "Onyx",
     });
+    expect(resolveManufacturerOrderForm(manifest.lineItemPages[1].sourceValues)).toMatchObject({
+      product_name: "Poly Composite",
+      portal_material: "Vinyl",
+    });
   });
 
   it("resolves every catalog product that has a dedicated technical-measure form", () => {
