@@ -1229,7 +1229,7 @@ export function buildDashboardData({
     commissionSummary,
     partnerPaymentLedger,
     accountability,
-    vendorOrderTasks,
+    vendorOrderTasks: readyToOrderTasks(vendorOrderTasks, liveJobs, liveQuotes, bookkeepingRows),
     summary: buildDashboardSummaryMetrics({
       jobs: jobsWithQuotes,
       quotes: liveQuotes,
@@ -1483,12 +1483,13 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
   const seen = new Set<string>();
   return orders.flatMap((value) => {
     const order = objectMeta(value);
-    const taskId = optionalText(order.taskId);
+    const taskId = optionalText(order.taskId)
+      || (order.status === "queue_failed" && formId ? `measure:${formId}:routing` : null);
     const manufacturer = ["Norman", "Onyx", "Lotus", "Polar"].includes(String(order.manufacturer))
       ? order.manufacturer as CrmVendorOrderTask["manufacturer"]
       : null;
     const productType = optionalText(order.productType);
-    if (!taskId || seen.has(taskId) || !manufacturer || !productType || order.status !== "queued") return [];
+    if (!taskId || seen.has(taskId) || !manufacturer || !productType || !["queued", "queue_failed"].includes(String(order.status))) return [];
     seen.add(taskId);
     const productNames = stringArray(order.productNames);
     return [{
@@ -1501,7 +1502,7 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
       quoteNumber: optionalText(quote.quoteNumber),
       manufacturer,
       productType,
-      status: "queued" as const,
+      status: order.status === "queue_failed" ? "needs_input" as const : "queued" as const,
       sourceKind: "submitted_technical_measure" as const,
       submittedAt,
       message: optionalText(order.message) || `${manufacturer} order entry is ready to start.`,
@@ -1513,6 +1514,35 @@ export function vendorOrderTasksFromRow(value: unknown): CrmVendorOrderTask[] {
       manufacturerOrderRef: null,
     }];
   });
+}
+
+const orderedJobStatuses = new Set<CrmJobStatus>(["ordered", "installed", "invoiced", "closed"]);
+const orderedQuoteStatuses = new Set<CrmQuoteStatus>(["ordered", "received", "installed", "invoiced", "paid"]);
+const orderedBookkeepingStatuses = new Set<CrmBookkeepingStatus>(["ordered", "received", "installed", "invoiced", "paid", "closed"]);
+
+export function readyToOrderTasks(
+  tasks: CrmVendorOrderTask[],
+  jobs: Array<Pick<CrmJob, "id" | "status">>,
+  quotes: Array<Pick<CrmQuote, "id" | "job_id" | "status">>,
+  rows: Array<Pick<CrmBookkeepingRow, "jobId" | "quoteId" | "status">>,
+) {
+  const orderedJobIds = new Set(jobs.filter((job) => orderedJobStatuses.has(job.status)).map((job) => job.id));
+  const orderedQuoteIds = new Set(quotes.filter((quote) => orderedQuoteStatuses.has(quote.status)).map((quote) => quote.id));
+  const orderedRowJobIds = new Set(rows
+    .filter((row) => orderedBookkeepingStatuses.has(row.status))
+    .map((row) => row.jobId)
+    .filter((id): id is string => Boolean(id)));
+  const orderedRowQuoteIds = new Set(rows
+    .filter((row) => orderedBookkeepingStatuses.has(row.status))
+    .map((row) => row.quoteId)
+    .filter((id): id is string => Boolean(id)));
+
+  return tasks.filter((task) =>
+    !orderedJobIds.has(task.jobId)
+    && !orderedRowJobIds.has(task.jobId)
+    && !orderedQuoteIds.has(task.quoteId)
+    && !orderedRowQuoteIds.has(task.quoteId),
+  );
 }
 
 export function vendorOrderTaskFromRow(value: unknown): CrmVendorOrderTask | null {

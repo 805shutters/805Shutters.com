@@ -370,7 +370,10 @@ function SignaturePad({ value, onChange }: { value: SignatureStroke[]; onChange:
   );
 }
 
-export function TechnicalMeasureEditor({ formId }: { formId: string }) {
+export function TechnicalMeasureEditor({ formId, workspace = "mobile" }: { formId: string; workspace?: "mobile" | "desktop" }) {
+  const desktopWorkspace = workspace === "desktop";
+  const workspaceHome = desktopWorkspace ? "/crm" : "/crm/mobile";
+  const measurePath = desktopWorkspace ? `/crm/measure/${formId}` : `/crm/technical-measures/${formId}`;
   const supabase = getSupabaseBrowserClient();
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -532,7 +535,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         if (current.entry.operation === "submit") {
           setMessage("Measure submitted");
           setSubmitSuccess(true);
-          window.setTimeout(() => window.location.assign("/crm/mobile"), 1300);
+          window.setTimeout(() => window.location.assign(workspaceHome), 1300);
         } else {
           setMessage("Saved changes uploaded.");
         }
@@ -550,7 +553,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
     };
-  }, [session?.access_token, formId]);
+  }, [session?.access_token, formId, workspaceHome]);
 
   function updateLine(lineId: string, patch: Partial<TechnicalMeasureLineValues>) {
     setMessage(null);
@@ -725,7 +728,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       await cacheTechnicalMeasureForm(owner(), result.form);
       setMessage("Measure submitted");
       setSubmitSuccess(true);
-      window.setTimeout(() => window.location.assign("/crm/mobile"), 1300);
+      window.setTimeout(() => window.location.assign(workspaceHome), 1300);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Technical measure could not be submitted."); }
     finally { setBusy(false); }
   }
@@ -865,12 +868,12 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
   }
 
   if (authLoading || loading) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><Loader2 className="spin" /><p>Loading technical measure...</p></main>;
-  if (!session && !form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in once while connected to download your measures for offline access.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(`/crm/technical-measures/${formId}`)}`}>Continue with Google</a></main>;
-  if (!form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical measure unavailable</h1>{message ? <p>{message}</p> : null}<a href="/crm/technical-measures">Return to measures</a></main>;
+  if (!session && !form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical Measure</h1><p>Sign in once while connected to download your measures for offline access.</p><a className="technical-measure-primary" href={`/api/crm/oauth/google?redirectTo=${encodeURIComponent(measurePath)}`}>Continue with Google</a></main>;
+  if (!form) return <main className="mts-quote-scope technical-measure-shell technical-measure-centered"><h1>Technical measure unavailable</h1>{message ? <p>{message}</p> : null}<a href={desktopWorkspace ? "/crm" : "/crm/technical-measures"}>Return to {desktopWorkspace ? "CRM" : "measures"}</a></main>;
 
   return (
     <PortalContainerContext.Provider value={scopeElement}>
-    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell${measureStarted ? " technical-measure-shell--active" : ""}`}>
+    <main ref={setScopeElement} className={`mts-quote-scope technical-measure-shell${desktopWorkspace ? " technical-measure-shell--desktop" : ""}${measureStarted ? " technical-measure-shell--active" : ""}`}>
       {(offlineMode || pendingSync) ? (
         <div className="technical-measure-offline-status" data-offline={offlineMode}>
           <span>{offlineMode ? "Offline" : "Saving"}</span>
@@ -879,16 +882,23 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
       ) : null}
       {!measureStarted ? <>
       <header className="technical-measure-header">
-        <a href="/crm/technical-measures" aria-label="Back to technical measures"><ArrowLeft /></a>
+        <a href={desktopWorkspace ? "/crm" : "/crm/technical-measures"} aria-label={desktopWorkspace ? "Back to desktop CRM" : "Back to technical measures"}><ArrowLeft /></a>
         <div><span>{form.quote_snapshot.quoteNumber || "Sold contract"}</span><h1>Technical Measure</h1><p>{form.customer_snapshot.name}</p></div>
         <strong data-status={form.status}>{form.status.replaceAll("_", " ")}</strong>
       </header>
 
-      <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
-        <a href="/crm/mobile"><CalendarDays />Appointments</a>
-        <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
-        <a href="/crm/mobile/quotes"><FileText />Quotes</a>
-      </nav>
+      {desktopWorkspace ? (
+        <nav className="technical-measure-workspaces" aria-label="Desktop CRM workspace">
+          <a href="/crm"><ArrowLeft />CRM Command</a>
+          <a className="active" href={measurePath} aria-current="page"><Ruler />Technical Measure</a>
+        </nav>
+      ) : (
+        <nav className="technical-measure-workspaces" aria-label="Mobile CRM workspaces">
+          <a href="/crm/mobile"><CalendarDays />Appointments</a>
+          <a className="active" href="/crm/technical-measures" aria-current="page"><Ruler />Measures</a>
+          <a href="/crm/mobile/quotes"><FileText />Quotes</a>
+        </nav>
+      )}
 
       {message ? <div className="technical-measure-alert" role="status">{message}</div> : null}
       {technicalMeasureFormIsArchived(form) ? (
@@ -1242,7 +1252,7 @@ export function TechnicalMeasureEditor({ formId }: { formId: string }) {
         /> : null;
       })() : null}
       {submitSuccess ? <div className="technical-measure-submit-success" role="status" aria-live="assertive">
-        <div><Check aria-hidden="true" /><strong>Measure submitted</strong><span>Returning to the mobile dashboard…</span></div>
+        <div><Check aria-hidden="true" /><strong>Measure submitted</strong><span>Returning to the {desktopWorkspace ? "desktop CRM" : "mobile dashboard"}…</span></div>
       </div> : null}
     </main>
     </PortalContainerContext.Provider>

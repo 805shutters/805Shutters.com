@@ -7590,7 +7590,7 @@ function DrillDetailCard({
           label: measureFormComplete ? "View Measure" : "Open Measure",
           detail: measureFormComplete ? "Submitted measure sheet" : "Required before ordering",
           disabled: busy,
-          onClick: () => window.open(`/crm/technical-measures/${measureFormId}`, "_blank", "noopener,noreferrer")
+          onClick: () => window.open(`/crm/measure/${measureFormId}`, "_blank", "noopener,noreferrer")
         }
       : null,
     measureNeededActive

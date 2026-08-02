@@ -2,6 +2,14 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 describe("technical measure mobile controls", () => {
+  it("keeps desktop measure viewing in the desktop CRM workspace", () => {
+    const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
+    const desktopPage = readFileSync("src/app/crm/measure/[id]/page.tsx", "utf8");
+    expect(desktopPage).toContain('workspace="desktop"');
+    expect(component).toContain('aria-label="Desktop CRM workspace"');
+    expect(component).toContain('desktopWorkspace ? "/crm" : "/crm/mobile"');
+    expect(component).toContain('desktopWorkspace ? "desktop CRM" : "mobile dashboard"');
+  });
   it("uses compact paired dimensions and push-button choices", () => {
     const component = readFileSync("src/components/crm/TechnicalMeasureEditor.tsx", "utf8");
     const styles = readFileSync("src/app/globals.css", "utf8");
@@ -41,9 +49,10 @@ describe("technical measure mobile controls", () => {
 
     expect(component).toContain('setMessage("Measure submitted")');
     expect(component).toContain("setSubmitSuccess(true)");
-    expect(component).toContain('window.location.assign("/crm/mobile")');
+    expect(component).toContain("window.location.assign(workspaceHome)");
+    expect(component).toContain('desktopWorkspace ? "/crm" : "/crm/mobile"');
     expect(component).toContain("technical-measure-submit-success");
-    expect(component).toContain("Returning to the mobile dashboard…");
+    expect(component).toContain('desktopWorkspace ? "desktop CRM" : "mobile dashboard"');
     expect(component).toContain("technical-measure-alert--active");
     expect(component).toContain("setMeasureStarted(false)");
     expect(styles).toContain(".technical-measure-submit-success");

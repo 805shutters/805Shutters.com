@@ -36,4 +36,9 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain("URL.createObjectURL(await response.blob())");
     expect(source).toContain("onVendorOrderPacket(entry.vendorOrderTask");
   });
+
+  it("opens View Measure in the desktop CRM measure workspace", () => {
+    expect(source).toContain('window.open(`/crm/measure/${measureFormId}`');
+    expect(source).not.toContain('window.open(`/crm/technical-measures/${measureFormId}`');
+  });
 });

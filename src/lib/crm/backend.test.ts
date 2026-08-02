@@ -18,6 +18,7 @@ import {
   resolveFullPartnerPaymentAmount,
   resolvePartnerPaymentAdvanceOffset,
   resolveQuoteBookkeepingCustomerName,
+  readyToOrderTasks,
   syncRemakeExpense,
   updateCrmBookkeepingCredit,
   updateCrmBookkeepingEntry,
@@ -528,6 +529,25 @@ describe("vendorOrderTaskFromRow", () => {
     expect(vendorOrderTaskFromRow({ ...queuedRow, submitted_at: null })).toBeNull();
   });
 
+  it("keeps a submitted measure visible when routing needs input", () => {
+    expect(vendorOrderTaskFromRow({
+      ...queuedRow,
+      meta: {
+        vendor_order_preparation: {
+          taskId: null,
+          manufacturer: "Onyx",
+          productType: "unresolved",
+          status: "queue_failed",
+          message: "Exact product routing needs review.",
+        },
+      },
+    })).toMatchObject({
+      taskId: "measure:form-123:routing",
+      manufacturer: "Onyx",
+      status: "needs_input",
+    });
+  });
+
   it("fans one submitted measure into one safe dashboard task per manufacturer", () => {
     const preparations = ["Norman", "Onyx", "Lotus", "Polar"].map((manufacturer, index) => ({
       taskId: `${manufacturer.toLowerCase()}:form-123:${index}`,
@@ -581,6 +601,56 @@ describe("vendorOrderTaskFromRow", () => {
       customerName: "Ready Customer",
       lineCount: 2,
     });
+  });
+});
+
+describe("readyToOrderTasks", () => {
+  const task = vendorOrderTaskFromRow({
+    id: "form-ready",
+    job_id: "job-ready",
+    quote_id: "quote-ready",
+    submitted_at: "2026-08-01T20:00:00.000Z",
+    customer_snapshot: { name: "Measure Customer" },
+    quote_snapshot: { quoteNumber: "805-0999" },
+    meta: { vendor_order_preparation: {
+      taskId: "onyx:form-ready:abcdef12",
+      manufacturer: "Onyx",
+      productType: "shutters",
+      status: "queued",
+    } },
+  })!;
+
+  it("includes a submitted-measure task while its job is genuinely ready", () => {
+    expect(readyToOrderTasks(
+      [task],
+      [{ id: task.jobId, status: "sold" }],
+      [{ id: task.quoteId, job_id: task.jobId, status: "sold" }],
+      [],
+    )).toEqual([task]);
+  });
+
+  it("excludes a submitted-measure task after the job is marked ordered", () => {
+    expect(readyToOrderTasks(
+      [task],
+      [{ id: task.jobId, status: "ordered" }],
+      [{ id: task.quoteId, job_id: task.jobId, status: "sold" }],
+      [],
+    )).toEqual([]);
+  });
+
+  it("also excludes it when the linked quote or bookkeeping row records the order", () => {
+    expect(readyToOrderTasks(
+      [task],
+      [{ id: task.jobId, status: "sold" }],
+      [{ id: task.quoteId, job_id: task.jobId, status: "ordered" }],
+      [],
+    )).toEqual([]);
+    expect(readyToOrderTasks(
+      [task],
+      [{ id: task.jobId, status: "sold" }],
+      [{ id: task.quoteId, job_id: task.jobId, status: "sold" }],
+      [{ jobId: task.jobId, quoteId: task.quoteId, status: "ordered" }],
+    )).toEqual([]);
   });
 });
 
