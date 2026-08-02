@@ -30,6 +30,8 @@ describe("manufacturer order lifecycle safety", () => {
   });
 
   it("never exposes an agent action that places or submits an order", () => {
+    expect(route).toContain('auto_order: { from: ["needs_input", "queued", "failed"], to: "queued" }');
+    expect(route).toContain("review-only agent will validate the packet before entering a saved draft");
     expect(route).not.toMatch(/action === ["'](?:place|submit|checkout)["']/);
     expect(migration).toContain("'order_confirmed'");
     expect(migration).not.toContain("'order_placed'");

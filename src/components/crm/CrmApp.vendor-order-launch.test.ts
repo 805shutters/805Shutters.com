@@ -25,6 +25,10 @@ describe("CRM vendor-order launch workflow", () => {
     expect(source).toContain('label: "Confirm Manufacturer Order"');
     expect(source).toContain('key: "vendor-order-bypass"');
     expect(source).toContain('label: "Mark Ordered"');
+    expect(source).toContain('label: "Auto Order"');
+    expect(source).toContain('"auto_order"');
+    expect(source).toContain('http://127.0.0.1:47635/start?');
+    expect(source).toContain('it cannot submit the order');
     expect(source).toContain('detail: "Bypass Codex packet"');
     expect(source).toContain("entry.vendorOrderTask && isAlreadyOrdered && onVendorOrderAction");
     expect(source).toContain('onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "bypass")');

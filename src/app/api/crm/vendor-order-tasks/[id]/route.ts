@@ -4,7 +4,7 @@ import { recordCrmActivity } from "@/lib/crm/backend";
 
 export const runtime = "nodejs";
 
-type Action = "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass";
+type Action = "start" | "auto_order" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass";
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -14,6 +14,9 @@ function object(value: unknown): Record<string, unknown> {
 
 const transitions: Record<Action, { from: string[]; to: string }> = {
   start: { from: ["queued", "review_ready"], to: "processing" },
+  // This only makes a task available to the local, review-only browser worker.
+  // The worker must independently claim it and is prohibited from submitting an order.
+  auto_order: { from: ["needs_input", "queued", "failed"], to: "queued" },
   review_ready: { from: ["processing"], to: "review_ready" },
   retry: { from: ["needs_input", "processing", "review_ready", "failed"], to: "queued" },
   confirm: { from: ["review_ready"], to: "order_confirmed" },
@@ -101,6 +104,8 @@ export async function PATCH(
       status: transition.to,
       message: action === "start"
         ? `${task.manufacturer} portal entry is in progress.`
+        : action === "auto_order"
+          ? `${task.manufacturer} Auto Order was requested. The review-only agent will validate the packet before entering a saved draft.`
         : action === "review_ready"
           ? `${task.manufacturer} order is ready for final review and approved submission.`
           : action === "retry"

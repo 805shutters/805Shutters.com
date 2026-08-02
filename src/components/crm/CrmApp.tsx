@@ -1015,7 +1015,7 @@ export function CrmApp({
 
   async function updateVendorOrderTask(
     task: CrmVendorOrderTask,
-    action: "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
+    action: "start" | "auto_order" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
   ) {
     if (!session || !task.recordId) {
       if (action === "start") return;
@@ -1038,11 +1038,18 @@ export function CrmApp({
         method: "PATCH",
         body: JSON.stringify(payload),
       });
+      if (action === "auto_order") {
+        const query = new URLSearchParams({ taskId: task.taskId, manufacturer: task.manufacturer });
+        const runner = window.open(`http://127.0.0.1:47635/start?${query.toString()}`, "_blank", "noopener,noreferrer");
+        if (!runner) throw new Error("Allow pop-ups for the CRM, then press Auto Order again.");
+      }
       await refresh();
       setDrill(null);
       setMessage(
         action === "confirm"
           ? `${task.manufacturer} order confirmed and removed from Ready to Order.`
+          : action === "auto_order"
+            ? `${task.manufacturer} Auto Order started. The agent will prepare a saved draft only; it cannot submit the order.`
           : action === "bypass"
             ? `${task.manufacturer} packet workflow bypassed. The job remains marked ordered.`
             : `${task.manufacturer} order moved to ${action.replaceAll("_", " ")}.`,
@@ -6215,7 +6222,7 @@ type DrillPanelProps = {
   onVendorOrderEmail?: (task: CrmVendorOrderTask) => void;
   onVendorOrderAction?: (
     task: CrmVendorOrderTask,
-    action: "start" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
+    action: "start" | "auto_order" | "review_ready" | "retry" | "confirm" | "cancel" | "bypass",
   ) => void;
 };
 
@@ -7552,6 +7559,16 @@ function DrillDetailCard({
       }
     : null;
   const workflowCommandOptions: Array<DrillCommandButton | null> = [
+    entry.vendorOrderTask && ["needs_input", "queued", "failed"].includes(entry.vendorOrderTask.status) && onVendorOrderAction
+      ? {
+          key: "vendor-order-auto-order",
+          label: "Auto Order",
+          detail: "Validate and enter a saved portal draft — never submits",
+          tone: "warning",
+          disabled: busy,
+          onClick: () => onVendorOrderAction(entry.vendorOrderTask as CrmVendorOrderTask, "auto_order")
+        }
+      : null,
     entry.vendorOrderTask?.orderPacketUrl && onVendorOrderPacket
       ? {
           key: "view-vendor-order-packet",
