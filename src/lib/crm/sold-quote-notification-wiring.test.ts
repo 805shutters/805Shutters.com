@@ -14,6 +14,15 @@ describe("sold contract business SMS delivery wiring", () => {
     expect(publicQuote).toContain("sendSoldQuoteSmsNotifications");
   });
 
+  it("claims a fresh signed-contract notification before downstream artifacts", () => {
+    const publicQuote = source("./public-quote.ts");
+    const freshNotification = publicQuote.indexOf('source: "public_contract_accept"');
+    const freshArtifacts = publicQuote.lastIndexOf("await syncSignedQuoteArtifacts(");
+    expect(freshNotification).toBeGreaterThan(-1);
+    expect(freshArtifacts).toBeGreaterThan(-1);
+    expect(freshNotification).toBeLessThan(freshArtifacts);
+  });
+
   it("does not turn an internal completed sale into an after-the-fact SMS 502", () => {
     const salesQuoteSend = source("./sales-quote-send.ts");
     expect(salesQuoteSend).toContain('source: "in_home_sold"');

@@ -1640,6 +1640,37 @@ export async function acceptPublicQuote(
     technicalMeasure,
   };
 
+  const measureForm = soldSync.job
+    ? await ensureTechnicalMeasureForm(
+      supabase,
+      { jobId: soldSync.job.id, quoteId: signedQuote.id },
+      { email: "automation:quote_signed" }
+    )
+    : null;
+  shopSmsContact.measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
+
+  if (input.notify !== false) {
+    // Claim the signed-contract notification before fallible artifact and
+    // manufacturer-task convergence. The signature is already durable at this
+    // point, so an unrelated downstream failure must not erase the SMS event.
+    await sendSoldQuoteSmsNotifications(supabase, {
+      quoteId: signedQuote.id,
+      source: "public_contract_accept",
+      buildMessage: (recipient, isPrimary) =>
+        buildSignedShopSmsForRecipient(
+          recipient,
+          printedName,
+          soldTotal,
+          signedPub.depositDue,
+          shopSmsContact,
+          isPrimary,
+        ),
+    });
+    if (customerPhone) {
+      await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
+    }
+  }
+
   await syncSignedQuoteArtifacts(
     supabase,
     signedQuote,
@@ -1655,14 +1686,6 @@ export async function acceptPublicQuote(
     signature,
     soldTotal,
   });
-  const measureForm = soldSync.job
-    ? await ensureTechnicalMeasureForm(
-      supabase,
-      { jobId: soldSync.job.id, quoteId: signedQuote.id },
-      { email: "automation:quote_signed" }
-    )
-    : null;
-  shopSmsContact.measureFormUrl = measureForm ? technicalMeasureFormUrl(measureForm.id) : null;
 
   if (partialPlan && futureQuoteId && futureJobId) {
     await syncFutureQuoteArtifacts(
@@ -1683,25 +1706,6 @@ export async function acceptPublicQuote(
   });
 
   if (input.notify !== false) {
-    // Business notifications are claimed and persisted before provider send.
-    // A delivery failure is visible and retryable without undoing the signature.
-    await sendSoldQuoteSmsNotifications(supabase, {
-      quoteId: signedQuote.id,
-      source: "public_contract_accept",
-      buildMessage: (recipient, isPrimary) =>
-        buildSignedShopSmsForRecipient(
-          recipient,
-          printedName,
-          soldTotal,
-          signedPub.depositDue,
-          shopSmsContact,
-          isPrimary,
-        ),
-    });
-    if (customerPhone) {
-      await sendSms({ to: customerPhone, body: buildSignedCustomerSms(printedName) });
-    }
-
     // Email the shop a copy of the signed contract (best-effort; never blocks signing).
     const shopEmail = process.env.CRM_SIGNED_QUOTE_EMAIL || MIKE_PAYMENT_ADMIN_EMAIL;
     if (shopEmail) {
