@@ -18,6 +18,7 @@ describe("STRESS: every in-range grid cell prices to exactly its catalog value",
   it("sweeps all grid + width-only programs", () => {
     let verified = 0;
     for (const product of catalog.products) {
+      if (product.id.startsWith("polar_")) continue;
       if (product.priceBasis && product.priceBasis !== "suggested_retail") continue;
       for (const prog of product.programs) {
         if (prog.priceAxis === "sqft") continue;
@@ -55,6 +56,7 @@ describe("STRESS: every fabric route resolves to its mapped program", () => {
   it("sweeps all fabric routes", () => {
     let routes = 0;
     for (const product of catalog.products) {
+      if (product.id.startsWith("polar_")) continue;
       if (!product.fabricRouting) continue;
       for (const [fabric, programId] of Object.entries(product.fabricRouting)) {
         const prog = product.programs.find((p) => p.id === programId);

@@ -222,6 +222,15 @@ describe("Onyx shutter order preparation", () => {
     expect(preparations).toHaveLength(4);
     for (const preparation of preparations) {
       expect(preparation.lineCount).toBe(1);
+      if (preparation.manufacturer === "Polar") {
+        expect(preparation).toMatchObject({
+          status: "needs_input",
+          message: expect.stringContaining("QUOTE ONLY"),
+          payload: { safety: "quote_only_no_follow_on_action" },
+        });
+        expect(preparation).not.toHaveProperty("orderPacketUrl");
+        continue;
+      }
       expect(preparation.orderPacketUrl).toBe(
         `/api/crm/vendor-order-packets/quote-1?manufacturer=${preparation.manufacturer.toLowerCase()}&format=html`,
       );

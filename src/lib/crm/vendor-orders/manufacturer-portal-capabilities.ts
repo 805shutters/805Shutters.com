@@ -86,7 +86,7 @@ export function manufacturerPortalCapability(
       automaticEntry: false,
       documentPreparation: false,
       reviewBoundary: "saved_draft_only",
-      reason: "Polar PIC authentication and product-screen selectors must be verified before automatic entry.",
+      reason: "QUOTE ONLY — Polar pricing, document preparation, portal entry, and manufacturer action are disabled.",
     };
   }
 

@@ -24,6 +24,7 @@ import {
   canonicalWholesaleCostAtCell,
   canonicalWholesaleCostPerSqft,
 } from "./wholesale-ledger";
+import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
 
 export type PriceErrorCode =
   | "PRODUCT_SELECTION_REQUIRED"
@@ -333,6 +334,13 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   const warnings: string[] = [];
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
+  if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
+    return fail(
+      "MANUAL_PRICE_REQUIRED",
+      `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`,
+      warnings,
+    );
+  }
   if (product.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual source cost.`, warnings);
   }
@@ -633,6 +641,13 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (!input.productId) return fail("PRODUCT_SELECTION_REQUIRED", "Select a manufacturer and product before pricing this line.", warnings);
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
+  if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
+    return fail(
+      "MANUAL_PRICE_REQUIRED",
+      `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`,
+      warnings,
+    );
+  }
   if (product.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual price because the source does not provide a complete retail grid.`, warnings);
   }

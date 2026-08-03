@@ -31,6 +31,22 @@ describe("signed-contract manufacturer task fan-out", () => {
           reason: null,
         },
         {
+          sourceLineId: "line-3",
+          sourceLineNumber: 3,
+          quantity: 1,
+          routingKey: "polar:interior_roller",
+          productName: "Polar Interior Roller",
+          templateUrl: "/order-form-templates/polar.docx",
+          templatePdfUrl: "/order-form-templates/polar.pdf",
+          schemaUrl: "/order-form-templates/polar.json",
+          technicalMeasureTemplateUrl: "/technical-measure-templates/polar.docx",
+          technicalMeasureTemplatePdfUrl: "/technical-measure-templates/polar.pdf",
+          templateVersion: 1,
+          sourceValues: { product_id: "polar_interior_roller", details: { supplier: "Polar" } },
+          status: "ready",
+          reason: null,
+        },
+        {
           sourceLineId: "line-2",
           sourceLineNumber: 2,
           quantity: 1,
@@ -59,12 +75,18 @@ describe("signed-contract manufacturer task fan-out", () => {
       quoteSnapshot: { quoteNumber: "805-0200", signedAt: "2026-07-27T18:00:00.000Z" },
     };
     const tasks = buildSignedContractVendorOrderPreparations({ manifest, context });
-    expect(tasks.map((task) => task.manufacturer)).toEqual(["Norman", "Onyx"]);
-    expect(tasks.every((task) => task.status === "queued")).toBe(true);
-    expect(tasks.every((task) => task.orderPacketUrl?.includes("format=html"))).toBe(true);
-    expect(tasks.every((task) => (
+    expect(new Set(tasks.map((task) => task.manufacturer))).toEqual(new Set(["Norman", "Onyx", "Polar"]));
+    expect(tasks.filter((task) => task.manufacturer !== "Polar").every((task) => task.status === "queued")).toBe(true);
+    expect(tasks.filter((task) => task.manufacturer !== "Polar").every((task) => task.orderPacketUrl?.includes("format=html"))).toBe(true);
+    expect(tasks.filter((task) => task.manufacturer !== "Polar").every((task) => (
       (task.payload as { customer?: { name?: string } }).customer?.name === "Jane Customer"
     ))).toBe(true);
+    expect(tasks.find((task) => task.manufacturer === "Polar")).toMatchObject({
+      status: "needs_input",
+      message: expect.stringContaining("QUOTE ONLY"),
+      payload: { safety: "quote_only_no_follow_on_action" },
+    });
+    expect(tasks.find((task) => task.manufacturer === "Polar")).not.toHaveProperty("orderPacketUrl");
   });
 
   it("fails closed when a contract line lacks exact routing", () => {

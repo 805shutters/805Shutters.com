@@ -411,6 +411,7 @@ describe("fuzz sweep: no NaN, no negative, no silent wrong price ever escapes", 
       "NA_CELL",
       "INVALID_DIMENSIONS",
       "CUSTOMER_RETAIL_UNDEFINED",
+      "MANUAL_PRICE_REQUIRED",
     ]);
     let priced = 0;
     let errored = 0;

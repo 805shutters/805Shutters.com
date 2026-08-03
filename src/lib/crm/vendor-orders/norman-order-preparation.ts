@@ -193,6 +193,34 @@ export async function enqueueVendorOrderPreparations(
   return Promise.all(Array.from(grouped.entries()).map(async ([manufacturer, lines]) => {
     const routingKeys = Array.from(new Set(lines.map(({ schema }) => schema.routingKey)));
     const productNames = Array.from(new Set(lines.map(({ schema }) => schema.productName)));
+    if (manufacturer === "polar") {
+      const sourceHash = createHash("sha256").update(JSON.stringify({
+        formId: form.id,
+        submittedAt: form.submitted_at,
+        manufacturer,
+        lineIds: lines.map(({ line }) => line.id),
+      })).digest("hex");
+      return {
+        manufacturer: "Polar",
+        productType: productNames.length === 1 ? lines[0].schema.productKey : "mixed",
+        status: "needs_input",
+        taskId: `polar-quote-only:${form.id}:${sourceHash.slice(0, 12)}`,
+        issueCount: lines.length,
+        message: "QUOTE ONLY — Polar pricing, order preparation, and manufacturer action are blocked.",
+        requestedAt,
+        requestedBy: requestedBy || null,
+        sourceHash,
+        routingKeys,
+        productNames,
+        lineCount: lines.length,
+        payload: {
+          schemaVersion: "polar-quote-only.v1",
+          safety: "quote_only_no_follow_on_action",
+          quoteId: form.quote_id,
+          lineIds: lines.map(({ line }) => line.id),
+        },
+      } satisfies VendorOrderPreparationSummary;
+    }
     const portalUrl = manufacturerOrderPortalUrl(manufacturer);
     const orderPacketUrl = `/api/crm/vendor-order-packets/${encodeURIComponent(form.quote_id)}?manufacturer=${encodeURIComponent(manufacturer)}&format=html`;
     const allNormanRoller = manufacturer === "norman"

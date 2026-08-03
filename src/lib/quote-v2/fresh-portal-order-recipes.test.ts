@@ -200,7 +200,11 @@ describe("fresh portal-order recipe integrity", () => {
     );
   });
 
-  it.each(recipes.groups.map((entry) => [entry.id, entry] as const))(
+  it.each(
+    recipes.groups
+      .filter((entry) => entry.manufacturer !== "Polar")
+      .map((entry) => [entry.id, entry] as const),
+  )(
     "%s reproduces the expected fresh V2 allow/block and money contract",
     (_id, recipeGroup) => {
       const quote = reprice(recipeGroup);

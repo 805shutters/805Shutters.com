@@ -241,6 +241,36 @@ describe("Quote V2 structural request parsing", () => {
     expect(isProtectedQuoteV2StructureKey("catalogVersion")).toBe(true);
     expect(isProtectedQuoteV2StructureKey("effectiveDate")).toBe(true);
   });
+
+  it("persists a visible Polar QUOTE ONLY task marker on every design upsert", () => {
+    const parsed = parseSalesQuoteV2StructureBody({
+      expectedRevision: 1,
+      idempotencyKey: "structure:polar:quote-only",
+      operations: [{
+        type: "design.upsert",
+        lineItemId: LINE_ID,
+        designId: DESIGN_ID,
+        variant: "A",
+        selectDesign: true,
+        patch: {
+          supplier: "Polar",
+          optionsJson: { catalog_product_id: "polar_interior_roller" },
+        },
+      }],
+    });
+    expect(parsed.operations[0]).toMatchObject({
+      type: "design.upsert",
+      patch: {
+        supplier: "Polar",
+        optionsJson: {
+          quote_only_status: "QUOTE_ONLY",
+          quote_only_product_id: "polar_interior_roller",
+          quote_only_internal_task: expect.stringContaining("manual Polar quote"),
+          quote_only_blocks: expect.stringContaining("manufacturer_action"),
+        },
+      },
+    });
+  });
 });
 
 describe("Quote V2 structural persistence wrappers", () => {

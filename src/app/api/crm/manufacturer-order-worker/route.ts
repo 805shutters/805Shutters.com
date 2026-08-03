@@ -12,7 +12,7 @@ type Preparation = Record<string, unknown> & {
   payload?: unknown;
 };
 
-const supportedManufacturers = new Set(["Norman", "Onyx", "Lotus", "Polar"]);
+const supportedManufacturers = new Set(["Norman", "Onyx", "Lotus"]);
 
 function object(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)

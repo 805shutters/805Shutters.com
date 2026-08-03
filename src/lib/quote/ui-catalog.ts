@@ -3,6 +3,7 @@
 // motorization) without shipping the full price grids to the browser.
 
 import { catalog } from "./catalog";
+import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
 import { productImage } from "./product-images";
 import { getProductColorOptions, type ProductColorOption } from "./product-color-options";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
@@ -209,29 +210,31 @@ function emptyCostGrid(prices: Array<Array<number | null>>): Array<Array<number 
 }
 
 export function buildUiCatalog(): UiCatalog {
-  const products: UiProduct[] = catalog.products.map((p) => ({
+  const products: UiProduct[] = catalog.products.map((p) => {
+    const quoteOnly = isPolarManufacturer(p.manufacturer) || isPolarProductId(p.id);
+    return {
     id: p.id,
     name: p.name,
     productType: p.productType,
     manufacturer: p.manufacturer ?? (p.id.startsWith("polar_") ? "Polar" : "Norman"),
     system: p.system ?? null,
-    priceBasis: p.priceBasis ?? "suggested_retail",
+    priceBasis: quoteOnly ? "manual_required" : p.priceBasis ?? "suggested_retail",
     provisional: p.provisional === true,
     source: p.source ?? null,
     image: productImage(p.productType),
-    programs: p.programs.map((pr) => ({
+    programs: (quoteOnly ? [] : p.programs).map((pr) => ({
       id: pr.id,
       name: pr.name,
       priceGroup: pr.priceGroup,
       priceAxis: pr.priceAxis,
       priceBasis: pr.priceBasis ?? null,
     })),
-    fabrics: p.fabricRouting
+    fabrics: !quoteOnly && p.fabricRouting
       ? Object.entries(p.fabricRouting)
           .map(([name, programId]) => ({ name, programId }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [],
-    fabricColors: getProductColorOptions(p.id).map((row) => ({
+    fabricColors: (quoteOnly ? [] : getProductColorOptions(p.id)).map((row) => ({
       id: row.id,
       productId: row.productId,
       collection: row.collection,
@@ -252,9 +255,9 @@ export function buildUiCatalog(): UiCatalog {
       automaticDetails: row.automaticDetails,
       searchText: row.searchText,
     })),
-    details: getDetailFieldsForProduct(p.id),
-    motorizationGroups: getMotorizationGroupsForProduct(p.id),
-    surcharges: p.surcharges.map((s) => ({
+    details: quoteOnly ? [] : getDetailFieldsForProduct(p.id),
+    motorizationGroups: quoteOnly ? [] : getMotorizationGroupsForProduct(p.id),
+    surcharges: (quoteOnly ? [] : p.surcharges).map((s) => ({
       id: s.id,
       name: s.name,
       kind: s.kind,
@@ -262,9 +265,12 @@ export function buildUiCatalog(): UiCatalog {
       value: s.value,
       widthGraduated: s.widthGraduated != null,
     })),
-  }));
+    };
+  });
 
-  const motorization: UiMotorizationGroup[] = Object.entries(catalog.motorization).map(
+  const motorization: UiMotorizationGroup[] = Object.entries(catalog.motorization)
+    .filter(([groupId]) => !groupId.startsWith("polar_"))
+    .map(
     ([groupId, group]) => ({
       groupId,
       name: group.name,
@@ -286,7 +292,9 @@ export function buildUiCatalog(): UiCatalog {
 }
 
 export function buildPricingReference(): UiPricingReference {
-  const programs = catalog.products.flatMap((product) =>
+  const programs = catalog.products
+    .filter((product) => !isPolarManufacturer(product.manufacturer) && !isPolarProductId(product.id))
+    .flatMap((product) =>
     product.programs.map((program) => {
       const status = wholesaleLedgerProgramStatus(product, program);
       const squareFootCost = canonicalWholesaleCostPerSqft(product, program);
@@ -336,7 +344,9 @@ export function buildPricingReference(): UiPricingReference {
     }),
   );
 
-  const products = catalog.products.map((product) => ({
+  const products = catalog.products
+    .filter((product) => !isPolarManufacturer(product.manufacturer) && !isPolarProductId(product.id))
+    .map((product) => ({
     productId: product.id,
     productName: product.name,
     productType: product.productType,
@@ -348,7 +358,9 @@ export function buildPricingReference(): UiPricingReference {
     notes: product.notes,
   }));
 
-  const motorization = Object.entries(catalog.motorization).map(([groupId, group]) => ({
+  const motorization = Object.entries(catalog.motorization)
+    .filter(([groupId]) => !groupId.startsWith("polar_"))
+    .map(([groupId, group]) => ({
     groupId,
     name: group.name,
     options: group.options.map((option) => ({

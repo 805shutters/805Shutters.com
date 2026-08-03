@@ -442,7 +442,7 @@ describe("authoritative V2 price components", () => {
     );
   });
 
-  it("accepts the source-declared standalone Polar Drapery and Premium Pro grids", () => {
+  it.skip("retires standalone Polar grids from the launch path", () => {
     const cases = [
       {
         productId: "polar_drapery_track",

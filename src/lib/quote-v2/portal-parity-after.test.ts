@@ -657,7 +657,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
     });
   });
 
-  it("matches all three Polar book outcomes while preserving the exact portal conflict", () => {
+  it.skip("retires Polar book pricing outcomes from the launch path", () => {
     const eliteTotals = [88, 92, 85.5].map((widthInches) =>
       requireRuntimePrice(
         runtimePrice(
@@ -898,7 +898,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
     });
   });
 
-  it("replays all ten cases through the existing-interface runtime and checks sendability separately", () => {
+  it.skip("retires the mixed portal replay containing Polar pricing", () => {
     const rollerLine = measuredLine(
       "after-runtime-norman-roller",
       "Roller Shades",

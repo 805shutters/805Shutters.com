@@ -107,15 +107,17 @@ describe("buildUiCatalog", () => {
     expect(json).not.toContain("wholesale");
   });
 
-  it("exposes Polar choices without exposing internal cost policy", () => {
+  it("exposes Polar choices only as fail-closed quote-only selections", () => {
     const polar = ui.products.filter((product) => product.manufacturer === "Polar");
     expect(polar).toHaveLength(13);
     expect(polar.find((product) => product.id === "polar_interior_roller")).toMatchObject({
       productType: "Roller Shades",
       system: "Interior Roller",
-      priceBasis: "suggested_retail",
+      priceBasis: "manual_required",
     });
-    expect(polar.find((product) => product.id === "polar_tension_shade")?.priceBasis).toBe("manual_required");
+    expect(polar.every((product) => product.priceBasis === "manual_required")).toBe(true);
+    expect(polar.every((product) => product.programs.length === 0)).toBe(true);
+    expect(polar.every((product) => product.motorizationGroups.length === 0)).toBe(true);
   });
 
   it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
@@ -176,10 +178,12 @@ describe("buildPricingReference", () => {
     );
   });
 
-  it("lists every supported manufacturer and preserves blocked dealer-net products", () => {
+  it("lists launch manufacturers and preserves blocked dealer-net products", () => {
     expect(new Set(ref.products.map((product) => product.manufacturer))).toEqual(
-      new Set(["Lotus", "Norman", "Onyx", "Polar"]),
+      new Set(["Lotus", "Norman", "Onyx"]),
     );
+    expect(ref.products.some((product) => product.manufacturer === "Polar")).toBe(false);
+    expect(ref.programs.some((program) => program.manufacturer === "Polar")).toBe(false);
     const lotus = ref.programs.find(
       (program) => program.productId === "lotus_mini_blinds",
     );

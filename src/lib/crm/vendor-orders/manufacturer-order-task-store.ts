@@ -69,6 +69,38 @@ export function buildSignedContractVendorOrderPreparations(input: {
   return Array.from(grouped.entries()).map(([manufacturer, lines]) => {
     const routingKeys = Array.from(new Set(lines.map((line) => line.routingKey).filter((value): value is string => Boolean(value))));
     const productNames = Array.from(new Set(lines.map((line) => line.productName).filter((value): value is string => Boolean(value))));
+    if (manufacturer === "Polar") {
+      const hash = sourceHash({
+        sourceRevision: input.context.sourceRevision,
+        manufacturer,
+        lineIds: lines.map((line) => line.sourceLineId),
+      });
+      return {
+        manufacturer,
+        productType: productNames.length === 1 ? "polar_quote_only" : "mixed",
+        status: "needs_input",
+        taskId: `contract:${input.context.quoteId}:polar-quote-only:${hash.slice(0, 12)}`,
+        issueCount: lines.length,
+        message: "QUOTE ONLY — Polar pricing, order preparation, and manufacturer action are blocked.",
+        requestedAt: new Date().toISOString(),
+        requestedBy: input.requestedBy || null,
+        sourceHash: hash,
+        routingKeys,
+        productNames,
+        lineCount: lines.length,
+        payload: {
+          schemaVersion: "polar-quote-only.v1",
+          safety: "quote_only_no_follow_on_action",
+          source: {
+            kind: input.context.sourceKind,
+            id: input.context.sourceId,
+            revision: input.context.sourceRevision,
+          },
+          quoteId: input.context.quoteId,
+          lineIds: lines.map((line) => line.sourceLineId),
+        },
+      };
+    }
     const registryEntries = routingKeys.map((routingKey) => entries.find((entry) => entry.routing_key === routingKey)).filter(Boolean);
     const manufacturerKey = manufacturer.toLowerCase();
     const portalUrl = manufacturerOrderPortalUrl(manufacturerKey as OrderFormManufacturer);

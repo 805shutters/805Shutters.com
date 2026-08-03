@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
+import {
+  isPolarManufacturer,
+  isPolarProductId,
+  polarQuoteOnlyOptions,
+} from "@/lib/quote/quote-only-policy";
 
 type JsonObject = Record<string, unknown>;
 
@@ -547,6 +552,20 @@ function designPatch(raw: unknown, label: string): JsonObject {
       );
     }
     normalized.optionsJson = options;
+  }
+  const options = (normalized.optionsJson as JsonObject | undefined) ?? {};
+  const productId =
+    typeof options.catalog_product_id === "string"
+      ? options.catalog_product_id
+      : typeof options.product_id === "string"
+        ? options.product_id
+        : "";
+  if (isPolarManufacturer(normalized.supplier as string | null) || isPolarProductId(productId)) {
+    normalized.supplier = "Polar";
+    normalized.optionsJson = {
+      ...options,
+      ...polarQuoteOnlyOptions(productId || "polar_unspecified"),
+    };
   }
   return normalized;
 }
