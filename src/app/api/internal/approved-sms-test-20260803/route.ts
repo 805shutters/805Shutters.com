@@ -31,3 +31,19 @@ export async function POST(request: Request) {
   }
   return NextResponse.json({ sent: results.length, results });
 }
+
+export async function GET(request: Request) {
+  if (request.headers.get("x-805-test-authorization") !== AUTHORIZATION) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!accountSid || !token) return NextResponse.json({ error: "provider not configured" }, { status: 503 });
+  const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json?PageSize=20`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${accountSid}:${token}`).toString("base64")}` },
+    cache: "no-store",
+  });
+  const data = await response.json() as { messages?: Array<{ body?: string; status?: string; error_code?: number | null; sid?: string }> };
+  const messages = (data.messages || []).filter((message) => message.body === BODY).slice(0, 3);
+  return NextResponse.json({ results: messages.map((message) => ({ status: message.status, errorCode: message.error_code || null, messageRef: message.sid?.slice(-6) || null })) });
+}
