@@ -374,8 +374,15 @@ export function buildPricingReference(): UiPricingReference {
     notes: group.notes,
   }));
 
+  const supportedSources = [
+    ...new Set(
+      [...programs.map((program) => program.source), ...products.map((product) => product.source)]
+        .filter((source): source is string => Boolean(source)),
+    ),
+  ];
+
   return {
-    source: catalog.source,
+    source: supportedSources.join(" + ") || "Source-backed manufacturer pricing",
     effectiveDate: catalog.effectiveDate,
     currency: catalog.currency,
     sources: [

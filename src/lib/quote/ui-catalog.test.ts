@@ -184,6 +184,7 @@ describe("buildPricingReference", () => {
     );
     expect(ref.products.some((product) => product.manufacturer === "Polar")).toBe(false);
     expect(ref.programs.some((program) => program.manufacturer === "Polar")).toBe(false);
+    expect(ref.source).not.toContain("Polar");
     const lotus = ref.programs.find(
       (program) => program.productId === "lotus_mini_blinds",
     );
