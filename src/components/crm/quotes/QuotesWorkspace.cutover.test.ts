@@ -4,26 +4,20 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/components/crm/quotes/QuotesWorkspace.legacy", () => ({
-  QuotesWorkspace: () => createElement("div", { "data-testid": "v1-quote-workspace" }, "V1 quote workspace"),
-}));
 vi.mock("@mts/QuoteWorkspace", () => ({
-  QuoteWorkspace: () => createElement("div", { "data-testid": "v4-quote-workspace" }, "V4 quote workspace"),
+  QuoteWorkspace: () => createElement("div", { "data-testid": "july-10-quote-workspace" }, "July 10 quote workspace"),
 }));
 
 const source = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.tsx", import.meta.url)), "utf8");
 const mobileSource = readFileSync(fileURLToPath(new URL("../CrmMobileQuotesApp.tsx", import.meta.url)), "utf8");
 const quoteWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/QuoteWorkspace.tsx", import.meta.url)), "utf8");
-const crmAppSource = readFileSync(fileURLToPath(new URL("../CrmApp.tsx", import.meta.url)), "utf8");
 
-describe("quote-system routing", () => {
-  it("presents an explicit V1/V4 chooser on desktop and mobile", async () => {
-    expect(source).toContain("Open V1 — Reliable fallback");
-    expect(source).toContain("Open V4 — In progress");
-    expect(source).toContain("Switch quote builder");
-    expect(source).toContain("<LegacyQuotesWorkspace");
+describe("July 10 quote-system routing", () => {
+  it("renders the historical quote workspace on desktop and mobile", async () => {
     expect(source).toContain("<QuoteWorkspace");
-    expect(mobileSource).toContain('from "@/components/crm/quotes/QuotesWorkspace"');
+    expect(source).toContain('from "@mts/QuoteWorkspace"');
+    expect(source).not.toContain('from "./QuotesWorkspace.legacy"');
+    expect(mobileSource).toContain('from "@mts/QuoteWorkspace"');
 
     const { QuotesWorkspace } = await import("./QuotesWorkspace");
     const markup = renderToStaticMarkup(createElement(QuotesWorkspace, {
@@ -33,12 +27,10 @@ describe("quote-system routing", () => {
       events: [],
       onChanged: () => undefined,
     }));
-    expect(markup).toContain("Choose a quote builder");
-    expect(markup).toContain("Open V1 — Reliable fallback");
-    expect(markup).toContain("Open V4 — In progress");
+    expect(markup).toContain("July 10 quote workspace");
   });
 
-  it("preserves V4 dashboard, builder, pricing, and contract code for rollback", () => {
+  it("keeps the historical dashboard, builder, pricing, and contract tabs connected", () => {
     expect(quoteWorkspaceSource).toContain('value: "dashboard"');
     expect(quoteWorkspaceSource).toContain('value: "builder"');
     expect(quoteWorkspaceSource).toContain('value: "pricing"');
@@ -47,23 +39,5 @@ describe("quote-system routing", () => {
     expect(quoteWorkspaceSource).toContain("<QuoteBuilder");
     expect(quoteWorkspaceSource).toContain("<PricingGrids");
     expect(quoteWorkspaceSource).toContain("<QuoteContract");
-  });
-
-  it("keeps existing CRM quotes on V1 and explicit V4 open requests on V4", async () => {
-    expect(crmAppSource).toContain("if (quote)");
-    expect(crmAppSource).toContain("setBuilderQuoteId(quoteId)");
-    expect(source).toContain('openRequest?.quoteId ? "v4" : null');
-
-    const { QuotesWorkspace } = await import("./QuotesWorkspace");
-    const markup = renderToStaticMarkup(createElement(QuotesWorkspace, {
-      session: {} as never,
-      jobs: [],
-      quotes: [],
-      events: [],
-      openRequest: { quoteId: "v4-saved-quote", tab: "builder", requestId: 1 },
-      onChanged: () => undefined,
-    }));
-    expect(markup).toContain("V4 quote workspace");
-    expect(markup).not.toContain("Choose a quote builder");
   });
 });
