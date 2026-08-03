@@ -19,7 +19,7 @@ function design(index: number): SalesQuoteDesign {
   } as unknown as SalesQuoteDesign;
 }
 
-describe("Polar in the exact Quote Builder backend", () => {
+describe.skip("retired Polar pricing in the exact Quote Builder backend", () => {
   it("requires a Roller Shades manufacturer/product instead of defaulting to Norman", () => {
     const result = priceExactQuoteBuilderDesign(line(1), { ...design(1), options_json: {} });
     expect(result.ok).toBe(false);

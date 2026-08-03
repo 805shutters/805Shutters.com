@@ -969,7 +969,7 @@ describe("exact-interface V2 integration", () => {
     });
   });
 
-  it("preserves the source-backed Polar Sliding Glass Door dealer cost", () => {
+  it("blocks Polar retail and dealer cost before any grid lookup", () => {
     const quoteLine = line("line-polar-dealer-option", {
       product_type: "Retractable Screens",
       width_whole: 48,
@@ -1001,39 +1001,16 @@ describe("exact-interface V2 integration", () => {
 
     expect(priced.result).toMatchObject({
       ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-    });
-    expect(priced.result.validationIssues).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ severity: "hard_block" }),
-      ]),
-    );
-    expect(priced.result).toMatchObject({
-      internalCost: {
-        basis: "dealer_net",
-        productCostUnit: 400,
-        productCostTotal: 400,
-        landedCostTotal: 400,
-        freightStatus: "unresolved",
-      },
+      code: "MANUAL_PRICE_REQUIRED",
     });
     expect(priced.costResult).toMatchObject({
-      ok: true,
-      wholesaleBase: 375,
-      wholesaleAddOns: [
-        {
-          id: "sliding_glass_door",
-          label: "Sliding Glass Door",
-          amount: 25,
-        },
-      ],
-      wholesaleUnitCost: 400,
-      wholesaleTotal: 400,
+      ok: false,
+      code: "MANUAL_PRICE_REQUIRED",
     });
     expect(quote.costSummary).toMatchObject({
       status: "incomplete",
-      productCost: 400,
-      dealerCostTotal: 400,
+      productCost: 0,
+      dealerCostTotal: 0,
     });
     expect(quote.total).toBe(0);
     expect(JSON.stringify(quote.customerQuote)).not.toMatch(

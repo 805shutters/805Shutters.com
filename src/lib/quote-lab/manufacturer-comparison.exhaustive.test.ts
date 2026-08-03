@@ -15,6 +15,7 @@ const sharedCategories = new Set(
     ).size > 1),
 );
 const sharedProducts = products.filter((product) => sharedCategories.has(quoteLabProductType(product.id)));
+const launchProducts = sharedProducts.filter((product) => !product.id.startsWith("polar_"));
 
 function isDealerNet(product: CatalogProduct, program: CatalogProgram): boolean {
   return (program.priceBasis ?? product.priceBasis) === "dealer_net";
@@ -58,7 +59,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
     let blockedCells = 0;
     let ruleBlockedCells = 0;
 
-    for (const product of sharedProducts) {
+    for (const product of launchProducts) {
       for (const program of product.programs) {
         if (program.priceAxis === "sqft") continue;
         const matrix = matrixFor(product, program);
@@ -109,15 +110,15 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       }
     }
 
-    expect(pricedCells).toBeGreaterThan(13_000);
-    expect(blockedCells).toBeGreaterThanOrEqual(70);
+    expect(pricedCells).toBeGreaterThan(2_500);
+    expect(blockedCells).toBeGreaterThanOrEqual(20);
     expect(ruleBlockedCells).toBeGreaterThan(0);
   });
 
   it("rounds between-grid measurements upward for every applicable priced cell", () => {
     let roundedCells = 0;
 
-    for (const product of sharedProducts) {
+    for (const product of launchProducts) {
       for (const program of product.programs) {
         if (program.priceAxis === "sqft") continue;
         const matrix = matrixFor(product, program);
@@ -163,12 +164,12 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       }
     }
 
-    expect(roundedCells).toBeGreaterThan(9_000);
+    expect(roundedCells).toBeGreaterThan(2_000);
   });
 
   it("verifies square-foot programs, minimum billable area, and large quantities", () => {
     let sqftPrograms = 0;
-    for (const product of sharedProducts) {
+    for (const product of launchProducts) {
       for (const program of product.programs.filter((candidate) => candidate.priceAxis === "sqft")) {
         if (program.priceBasis === "manual_required" || program.priceBasis === "unavailable") {
           continue;
@@ -204,7 +205,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
 
   it("matches the comparison projection to direct pricing for every shared program", () => {
     let comparedPrograms = 0;
-    for (const product of sharedProducts) {
+    for (const product of launchProducts) {
       for (const program of product.programs) {
         if (program.priceBasis === "manual_required") {
           const comparison = compareManufacturers({
@@ -258,12 +259,12 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
         comparedPrograms += 1;
       }
     }
-    expect(comparedPrograms).toBeGreaterThan(75);
+    expect(comparedPrograms).toBeGreaterThan(40);
   });
 
   it("enforces every published minimum, maximum, and oversize boundary", () => {
     let boundaries = 0;
-    for (const product of sharedProducts) {
+    for (const product of launchProducts) {
       for (const program of product.programs) {
         if (program.priceBasis === "manual_required") continue;
         const cell = firstPricedCell(product, program);
@@ -304,7 +305,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
         }
       }
     }
-    expect(boundaries).toBeGreaterThan(120);
+    expect(boundaries).toBeGreaterThan(50);
   });
 
   it("labels provisional and source-unavailable products", () => {

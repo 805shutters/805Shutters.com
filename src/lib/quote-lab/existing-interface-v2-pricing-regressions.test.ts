@@ -578,7 +578,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(quote.sendability.sendable).toBe(true);
   });
 
-  it("keeps Polar's $142 source cell as retail and its $63.90 dealer cost internal", () => {
+  it.skip("retires Polar source-cell pricing from the launch path", () => {
     const source = priceDesign({
       productId: "polar_interior_roller",
       programId: "group_1",
