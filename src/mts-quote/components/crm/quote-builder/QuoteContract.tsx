@@ -54,11 +54,10 @@ import {
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
 import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
-import { getCurrentQuoteSalesOwnerPatch } from "@mts/lib/quoteSalesOwnerSupabase";
-import { send805SoldQuoteNotification } from "@mts/lib/quoteSoldNotification";
 import { QuoteGroupTabs } from "./QuoteGroupTabs";
 import { SendQuoteDialog } from "./SendQuoteDialog";
 import type { SalesQuote, SalesQuoteLineItem, SalesQuoteDesign } from "@mts/types/quote";
+import type { TechnicalMeasureDecision } from "@/lib/crm/measure-needed-state";
 
 const paymentIcons: Record<string, typeof FileText> = {
   check: FileText,
@@ -113,6 +112,7 @@ export function QuoteContract() {
   const [editingInfo, setEditingInfo] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  const [measureDecision, setMeasureDecision] = useState<TechnicalMeasureDecision | "">("");
   const [adminControls, setAdminControls] = useState<QuoteAdminControls>({
     showExtras: false,
     showDiscount: false,
@@ -245,32 +245,36 @@ export function QuoteContract() {
   // Mark as sold
   const markAsSold = useMutation({
     mutationFn: async () => {
-      const salesOwnerPatch =
-        quote?.account_id === ACCOUNT_IDS.SHUTTERS_805 && !quote.sales_owner
-          ? await getCurrentQuoteSalesOwnerPatch()
-          : null;
-      const { error } = await (supabase as any)
-        .from("sales_quotes")
-        .update({
-          status: "sold",
-          signed_at: new Date().toISOString(),
-          ...(salesOwnerPatch || {}),
-        })
-        .eq("id", activeQuoteId!);
-      if (error) throw error;
+      if (!measureDecision) throw new Error("Choose whether a technical measure is needed.");
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+      const response = await fetch(
+        `/api/crm/sales-quotes/${encodeURIComponent(activeQuoteId!)}/sold`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ measureDecision }),
+        },
+      );
+      const result = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "The contract could not be marked sold.");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
-      if (activeQuoteId) {
-        void send805SoldQuoteNotification({
-          supabaseClient: supabase as any,
-          quoteId: activeQuoteId,
-        }).catch((error: Error) => {
-          toast.error(error.message || "Quote marked sold, but sold SMS failed");
-        });
-      }
-      toast.success("Quote marked as sold! Customer card will be created.");
+      toast.success("Quote marked sold and handed off to the CRM workflow.");
       setActiveTab("dashboard");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "The contract could not be marked sold.");
     },
   });
 
@@ -1284,15 +1288,31 @@ export function QuoteContract() {
           </Button>
         </div>
 
-        <Button
-          size="lg"
-          onClick={() => markAsSold.mutate()}
-          disabled={markAsSold.isPending || quote.status === "sold"}
-          className="bg-emerald-600 hover:bg-emerald-700"
-        >
-          <CheckCircle2 className="h-5 w-5 mr-2" />
-          {quote.status === "sold" ? "Already Sold" : "Mark as Sold"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="technical-measure-decision" className="sr-only">
+            Technical measure decision
+          </Label>
+          <select
+            id="technical-measure-decision"
+            value={measureDecision}
+            onChange={(event) => setMeasureDecision(event.target.value as TechnicalMeasureDecision | "")}
+            disabled={markAsSold.isPending || quote.status === "sold"}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="">Technical measure?</option>
+            <option value="needed">Measure needed</option>
+            <option value="not_needed">No measure needed</option>
+          </select>
+          <Button
+            size="lg"
+            onClick={() => markAsSold.mutate()}
+            disabled={markAsSold.isPending || quote.status === "sold" || !measureDecision}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            <CheckCircle2 className="h-5 w-5 mr-2" />
+            {quote.status === "sold" ? "Already Sold" : "Mark as Sold"}
+          </Button>
+        </div>
       </div>
 
       <SendQuoteDialog
