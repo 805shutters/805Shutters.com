@@ -1067,7 +1067,7 @@ export const PALLADIAN_SHELF_PRICING = {
 // ========== NORMAN SHUTTERS PRICING ==========
 export interface ShutterProgram {
   name: string;
-  wholesalePrice: number;
+  wholesalePrice: number | null;
   retailPrice: number;
   tariff: number; // percentage
 }
@@ -1082,52 +1082,48 @@ export const NORMAN_SHUTTER_PROGRAMS: ShutterProgram[] = [
 ];
 
 // ========== ONYX SHUTTERS PRICING ==========
-export const ONYX_RETAIL_MULTIPLIER = 28 / 12;
-
-function calculateOnyxRetailPrice(wholesalePrice: number): number {
-  return Math.round(wholesalePrice * ONYX_RETAIL_MULTIPLIER * 100) / 100;
-}
-
+// Retail rates confirmed by 805 Shutters on 2026-07-27. These are independent
+// business-set $/sqft prices; do not derive one Onyx program from another.
 export const ONYX_SHUTTER_PROGRAMS: ShutterProgram[] = [
   {
     name: "Painted Basswood",
     wholesalePrice: 13.5,
-    retailPrice: 38.0,
+    retailPrice: 35.0,
     tariff: 0,
   },
   {
     name: "Stained Basswood",
     wholesalePrice: 16.5,
-    retailPrice: 42.0,
+    retailPrice: 38.0,
     tariff: 0,
   },
   {
     name: "Secamore",
-    wholesalePrice: 10.95,
-    retailPrice: calculateOnyxRetailPrice(10.95),
+    wholesalePrice: 11.95,
+    retailPrice: 31.0,
     tariff: 0,
   },
   {
     name: "Vinyl",
-    wholesalePrice: 12.0,
+    wholesalePrice: 11.0,
     retailPrice: 31.0,
     tariff: 0,
   },
   {
     name: "VLO Hybrid",
-    wholesalePrice: 12.0,
-    retailPrice: calculateOnyxRetailPrice(12.0),
+    wholesalePrice: 10.35,
+    retailPrice: 29.0,
     tariff: 0,
   },
   {
     name: "Onyx US Made Vinyl",
-    wholesalePrice: 13.65,
-    retailPrice: 33.0,
+    wholesalePrice: 13.6,
+    retailPrice: 32.0,
     tariff: 0,
   },
   {
     name: "Poly Composite",
-    wholesalePrice: 15.0,
+    wholesalePrice: 12.0,
     retailPrice: 31.0,
     tariff: 0,
   },

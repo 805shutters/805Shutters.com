@@ -93,7 +93,7 @@ describe("STRESS: shutter sqft sweep honors the 8 sqft floor and never goes nega
                 expect(Number.isFinite(r.dealerNetUnitCost)).toBe(true);
                 expect(r.dealerNetUnitCost).toBeGreaterThan(0);
                 expect(r.billableSqft).toBeGreaterThanOrEqual(8);
-                const expectedSqft = Math.max((w * h) / 144, 8);
+                const expectedSqft = Math.max(Math.ceil((w * h) / 144), 8);
                 expect(r.billableSqft).toBeCloseTo(expectedSqft, 5);
               }
             } else {
@@ -103,7 +103,7 @@ describe("STRESS: shutter sqft sweep honors the 8 sqft floor and never goes nega
                 expect(Number.isFinite(r.total)).toBe(true);
                 expect(r.total).toBeGreaterThan(0);
                 expect(r.billableSqft).toBeGreaterThanOrEqual(8);
-                const expectedSqft = Math.max((w * h) / 144, 8);
+                const expectedSqft = Math.max(Math.ceil((w * h) / 144), 8);
                 expect(r.billableSqft).toBeCloseTo(expectedSqft, 5);
               }
             }

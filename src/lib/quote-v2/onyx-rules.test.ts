@@ -233,7 +233,7 @@ describe("Onyx documented frame, depth, and tilt boundaries", () => {
     ]);
   });
 
-  it("requires a frame-side count and blocks undocumented window-size frames", () => {
+  it("requires a frame-side count and accepts profile-derived window-size frames", () => {
     const missingSides = validateOnyxShutterRestrictions(
       withConfiguration(selection(), {
         measurement_basis: "window_size",
@@ -253,8 +253,8 @@ describe("Onyx documented frame, depth, and tilt boundaries", () => {
       }),
     );
     expect(matching(undocumented, "onyx.required.frame_sides")).toHaveLength(0);
-    expect(matching(undocumented, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(1);
-    expect(matching(undocumented, "onyx.measurement.window_size_pricing_dimensions")).toHaveLength(0);
+    expect(matching(undocumented, "onyx.measurement.window_size_pricing_unsupported")).toHaveLength(0);
+    expect(matching(undocumented, "onyx.measurement.window_size_pricing_dimensions")).toHaveLength(1);
   });
 
   it("accepts the documented three-sided outside window-size formula", () => {

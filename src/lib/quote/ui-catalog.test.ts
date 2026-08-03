@@ -107,7 +107,7 @@ describe("buildUiCatalog", () => {
     expect(json).not.toContain("wholesale");
   });
 
-  it("exposes Polar choices only as fail-closed quote-only selections", () => {
+  it("exposes Polar as quote-only without exposing pricing or internal cost policy", () => {
     const polar = ui.products.filter((product) => product.manufacturer === "Polar");
     expect(polar).toHaveLength(13);
     expect(polar.find((product) => product.id === "polar_interior_roller")).toMatchObject({
@@ -115,9 +115,15 @@ describe("buildUiCatalog", () => {
       system: "Interior Roller",
       priceBasis: "manual_required",
     });
-    expect(polar.every((product) => product.priceBasis === "manual_required")).toBe(true);
-    expect(polar.every((product) => product.programs.length === 0)).toBe(true);
-    expect(polar.every((product) => product.motorizationGroups.length === 0)).toBe(true);
+    const interior = polar.find(
+      (product) => product.id === "polar_interior_roller",
+    );
+    expect(interior?.fabricMetadata).toEqual([]);
+    expect(interior?.sourcePages).toContain(53);
+    expect(interior?.notes.join(" ")).toMatch(/manual shades before options/i);
+    expect(interior?.programs).toEqual([]);
+    expect(interior?.motorizationGroups).toEqual([]);
+    expect(polar.find((product) => product.id === "polar_tension_shade")?.priceBasis).toBe("manual_required");
   });
 
   it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
@@ -178,18 +184,15 @@ describe("buildPricingReference", () => {
     );
   });
 
-  it("lists launch manufacturers and preserves blocked dealer-net products", () => {
+  it("lists every automated-pricing manufacturer and preserves Lotus send restrictions", () => {
     expect(new Set(ref.products.map((product) => product.manufacturer))).toEqual(
       new Set(["Lotus", "Norman", "Onyx"]),
     );
-    expect(ref.products.some((product) => product.manufacturer === "Polar")).toBe(false);
-    expect(ref.programs.some((program) => program.manufacturer === "Polar")).toBe(false);
-    expect(ref.source).not.toContain("Polar");
     const lotus = ref.programs.find(
       (program) => program.productId === "lotus_mini_blinds",
     );
     expect(lotus).toMatchObject({
-      priceBasis: "dealer_net",
+      priceBasis: "suggested_retail",
       customerPriceEligible: false,
       provenanceStatus: "effective_date_missing",
     });

@@ -40,14 +40,19 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     },
   );
 
-  it("keeps Lotus customer retail blocked after explicit selection", () => {
+  it("prices Lotus customer retail at three times the independent dealer grid", () => {
     const quoteDesign = design({
       quote_lab_product_id: "lotus_mini_blinds",
       quote_lab_program_id: "lotus_amx_1in_aluminum_custom",
     });
     expect(priceExactQuoteBuilderDesign(line("Mini Blinds"), quoteDesign)).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
+      matchedWidth: 30,
+      matchedHeight: 48,
+      base: 72.9,
+      unitPrice: 72.9,
+      total: 72.9,
+      wholesaleBase: 24.3,
     });
     expect(costExactQuoteBuilderDesign(line("Mini Blinds"), quoteDesign)).toMatchObject({
       ok: true,
@@ -75,11 +80,19 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     }); // PDF p105
   });
 
-  it("returns a manual-price error for the unpriced Blackout program", () => {
+  it("prices Blackout from its independent copy of the 1% wholesale grid", () => {
     expect(priceExactQuoteBuilderDesign(line("Roller Shades"), design({
       quote_lab_product_id: "lotus_roller_shades",
       quote_lab_program_id: "lotus_rs_blackout_unpriced",
-    }))).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    }))).toMatchObject({
+      ok: true,
+      matchedWidth: 30,
+      matchedHeight: 48,
+      wholesaleBase: 35.02,
+      base: 105.06,
+      unitPrice: 105.06,
+      total: 105.06,
+    });
   });
 
   it("reprices an exact Lotus FLX configuration on the server but keeps customer send blocked", () => {
@@ -123,8 +136,8 @@ describe("Quote Lab Lotus manufacturer selection", () => {
       ok: true,
       productStatus: "documented_limited",
       wholesaleUnitPrice: 98.4,
-      unitPrice: 223.4,
-      total: 223.4,
+      unitPrice: 295.2,
+      total: 295.2,
     });
     expect(result.designs[0]?.costResult).toMatchObject({
       ok: true,
@@ -143,7 +156,7 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     expect(
       result.sendability.lines[0]?.blockingIssues.map((issue) => issue.ruleId),
     ).toContain("lotus.faux.send_authority_pending");
-    expect(result.customerQuote.total).toBe(223.4);
+    expect(result.customerQuote.total).toBe(295.2);
   });
 
   it("blocks Lotus FLX split repricing until the center width is explicitly entered", () => {
@@ -202,7 +215,7 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     expect(result.sendability.sendable).toBe(false);
   });
 
-  it("blocks every line in a full 40-line Lotus quote until retail policy exists", () => {
+  it("prices every line in a full 40-line Lotus quote with independent x3 retail", () => {
     const lines = Array.from({ length: 40 }, (_, index) => ({
       ...line("Mini Blinds"),
       id: `lotus-line-${index}`,
@@ -218,8 +231,8 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     })) as SalesQuoteDesign[];
     const result = repriceExactQuoteBuilder({ lines, designs, selectedVariantByLine: {} });
     expect(result.designs).toHaveLength(40);
-    expect(result.designs.every((item) => !item.result.ok && item.result.code === "CUSTOMER_RETAIL_UNDEFINED")).toBe(true);
-    expect(result.total).toBe(0);
+    expect(result.designs.every((item) => item.result.ok && item.result.unitPrice === 72.9)).toBe(true);
+    expect(result.total).toBe(2916);
     expect(result.costSummary).toMatchObject({
       status: "incomplete",
       productCost: 972, // PDF p97: $24.30 x 40

@@ -17,6 +17,29 @@ export type QuoteDetailField = {
   customerVisible?: boolean;
 };
 
+export const POLAR_EXTERIOR_GUIDE_FIELD = "polar_exterior_guide_type";
+export const POLAR_EXTERIOR_MOTORIZATION_FIELD =
+  "polar_exterior_motorization_selections";
+export const POLAR_INTERIOR_MOTORIZATION_FIELD =
+  "polar_interior_motorization_selections";
+export const POLAR_INTERIOR_FABRIC_ORIENTATION_FIELD =
+  "polar_interior_fabric_orientation";
+export const POLAR_DRAPERY_MOTORIZATION_FIELD =
+  "polar_drapery_motorization_selections";
+export const POLAR_AWNING_MOTORIZATION_FIELD =
+  "polar_awning_motorization_selections";
+
+const polarExteriorGuideField: QuoteDetailField = {
+  id: POLAR_EXTERIOR_GUIDE_FIELD,
+  label: "Exterior configuration",
+  type: "select",
+  options: [
+    { value: "cable_guide", label: "Cable Guide" },
+    { value: "track", label: "Track" },
+    { value: "rod", label: "Rod" },
+  ],
+};
+
 const yesNo = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
@@ -462,6 +485,9 @@ const shutterFields: QuoteDetailField[] = [
 ];
 
 const productDetails: Record<string, QuoteDetailField[]> = {
+  polar_elite_patio: [polarExteriorGuideField],
+  polar_titan_patio: [polarExteriorGuideField],
+  polar_mega_exterior: [polarExteriorGuideField],
   norman_shutters: [
     ...shutterFields,
     {

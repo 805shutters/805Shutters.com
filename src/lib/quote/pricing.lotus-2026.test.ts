@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { catalog, getProduct } from "./catalog";
 import { priceDealerNetDesign, priceDesign } from "./pricing";
 
-describe("Lotus West A26.v1 dealer-net catalog", () => {
-  it("records the complete source identity and dealer-net boundary", () => {
+describe("Lotus West A26.v1 cost catalog with owner-approved retail", () => {
+  it("records the complete source identity and independent x3 retail policy", () => {
     const source = catalog.sources?.find((item) => item.file === "Lotus.pdf");
     expect(source).toMatchObject({
       title: "Cost Book & Supplier Manual",
@@ -15,7 +15,10 @@ describe("Lotus West A26.v1 dealer-net catalog", () => {
     });
     const lotus = catalog.products.filter((product) => product.manufacturer === "Lotus");
     expect(lotus).toHaveLength(5);
-    expect(lotus.every((product) => product.priceBasis === "dealer_net")).toBe(true);
+    expect(lotus.every((product) => product.priceBasis === "suggested_retail")).toBe(true);
+    expect(lotus.every((product) => product.customerRetailStatus === "verified")).toBe(true);
+    expect(lotus.every((product) => product.retailPolicy?.kind === "cost_multiplier")).toBe(true);
+    expect(lotus.every((product) => product.retailPolicy?.value === 3)).toBe(true);
     expect(lotus.reduce((count, product) => count + (product.stockItems?.length ?? 0), 0)).toBe(3206);
   });
 
@@ -100,7 +103,7 @@ describe("Lotus West A26.v1 dealer-net catalog", () => {
     }
   });
 
-  it("blocks source-directed substitutions and missing Blackout pricing", () => {
+  it("blocks source-directed substitutions and prices Blackout from the owner-approved identical 1% grid", () => {
     expect(priceDealerNetDesign({
       productId: "lotus_vinyl_blinds",
       programId: "lotus_mlx_1in_vinyl_custom",
@@ -112,16 +115,28 @@ describe("Lotus West A26.v1 dealer-net catalog", () => {
       programId: "lotus_rs_blackout_unpriced",
       widthInches: 36,
       heightInches: 60,
-    })).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    })).toMatchObject({ ok: true, dealerNetUnitCost: 47.07 });
+    expect(priceDesign({
+      productId: "lotus_roller_shades",
+      programId: "lotus_rs_blackout_unpriced",
+      widthInches: 36,
+      heightInches: 60,
+    })).toMatchObject({ ok: true, base: 141.21, unitPrice: 141.21 });
   });
 
-  it("blocks customer retail while retaining internal source cost", () => {
+  it("prices customer retail at exactly three times internal source cost", () => {
     expect(priceDesign({
       productId: "lotus_mini_blinds",
       programId: "lotus_amx_1in_aluminum_custom",
       widthInches: 30,
       heightInches: 48,
-    })).toMatchObject({ ok: false, code: "CUSTOMER_RETAIL_UNDEFINED" });
+    })).toMatchObject({ ok: true, base: 72.9, unitPrice: 72.9 });
+    expect(priceDealerNetDesign({
+      productId: "lotus_mini_blinds",
+      programId: "lotus_amx_1in_aluminum_custom",
+      widthInches: 30,
+      heightInches: 48,
+    })).toMatchObject({ ok: true, dealerNetUnitCost: 24.3 });
   });
 
   it("retains dealer-net order rules without treating them as retail", () => {

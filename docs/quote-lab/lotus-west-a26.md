@@ -23,7 +23,7 @@ One top-level category is added: `Vinyl Blinds`.
 | Vinyl Blinds | Lotus Vinyl Blinds | 1-inch Vinyl, 1-inch Vinyl Plus, 2-inch Vinyl Plus |
 | Mini Blinds | Norman or Lotus | Lotus 1-inch Aluminum Mini Blind |
 | Faux Wood Blinds | Norman or Lotus | Seven Lotus smooth, embossed, privacy, color, and slat-size programs |
-| Roller Shades | Norman, Polar, or Lotus | Lotus manual 1% Roller Shade; Blackout advertised but unpriced |
+| Roller Shades | Norman, Polar, or Lotus | Independent Lotus 1% and Blackout Roller Shade grids |
 | Vertical Blinds | Norman or Lotus | Lotus steel/aluminum complete systems, headrails, and vanes |
 
 The existing quote-builder interface is unchanged except for the new category button and the expanded required `Manufacturer / product` selector. A shared category with multiple catalog products never defaults silently.
@@ -31,11 +31,11 @@ The existing quote-builder interface is unchanged except for the new category bu
 ## Transcribed Coverage
 
 - 5 Lotus product families
-- 20 custom-cut programs, including the explicitly unpriced Blackout program
+- 20 custom-cut programs, including the independently identified Blackout program
 - 3,206 stock SKU/color records from pages 5-94
 - 1,496 custom matrix cells from pages 95-108
-- 1,414 priced dealer-net matrix cells
-- 82 blank or source-directed blocked cells
+- 1,494 priced dealer-net matrix cells
+- 86 blank or source-directed blocked cells
 - 1,723 custom matrix SKU codes
 - Crown, Standard, and Designer Faux Wood valances
 - Steel and aluminum headrails, one-way and center-draw systems, and vertical vanes
@@ -69,8 +69,14 @@ These amounts are internal cost verification only and do not become customer ret
 
 ## Source Limits And Uncertainties
 
-- No customer retail multiplier, margin policy, or suggested retail prices are provided. Lotus customer totals return `CUSTOMER_RETAIL_UNDEFINED` until 805 supplies an explicit policy.
-- Blackout Roller Shades appear on page 83, but pages 84-87 and custom matrix page 105 price only 1% fabric. Blackout returns `MANUAL_PRICE_REQUIRED`.
+- The manufacturer book provides no customer retail multiplier or suggested
+  retail prices. On 2026-07-27, 805 supplied the explicit policy that every
+  independent Lotus product model uses customer retail equal to three times
+  its source wholesale grid.
+- Blackout Roller Shades appear on page 83, but pages 84-87 and custom matrix
+  page 105 price only 1% fabric. By owner instruction, Blackout keeps its own
+  independent program/grid identity with the same wholesale cells as the 1%
+  Roller Shade grid and uses the same three-times-wholesale retail rule.
 - Freight cost at or below $2,500 is absent, so landed cost remains incomplete.
 - Stock availability is explicitly variable; catalog inclusion does not prove current warehouse inventory.
 - The custom vertical-vane matrix on page 108 does not define whether each amount is for one vane or a casepack. It is retained as dealer-net source data but not used for customer totals.

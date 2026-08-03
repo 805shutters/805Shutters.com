@@ -610,12 +610,12 @@
       "productType": "shutter",
       "name": "Onyx Shutters",
       "manufacturer": "Onyx",
-      "priceBasis": "dealer_net",
-      "customerRetailStatus": "unverified",
+      "priceBasis": "suggested_retail",
+      "customerRetailStatus": "verified",
       "freightStatus": "unresolved",
       "pages": [],
       "provisional": true,
-      "source": "Onyx dealer-cost evidence received 2026-07-20; customer MSRP and effective date are unverified",
+      "source": "Onyx dealer-cost evidence received 2026-07-20; independent 805 retail rates confirmed by owner 2026-07-27; effective date and product restrictions remain unverified",
       "fabricRouting": null,
       "programs": [
         {
@@ -623,14 +623,13 @@
           "name": "Basswood",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 35.0,
           "costPerSqft": 13.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -638,7 +637,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. $13.50 is dealer cost; customer MSRP is unverified."
+            "8 sq ft minimum billable area. $13.50 is dealer cost. Independent 805 retail rate of $35.00/sqft confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -646,14 +645,13 @@
           "name": "Basswood Stain",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 38.0,
           "costPerSqft": 16.5,
           "minSqft": 8,
           "maxWidth": null,
@@ -661,7 +659,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. $16.50 is dealer cost; customer MSRP is unverified."
+            "8 sq ft minimum billable area. $16.50 is dealer cost. Independent 805 retail rate of $38.00/sqft confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -669,14 +667,13 @@
           "name": "Sycamore",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 31.0,
           "costPerSqft": 11.95,
           "minSqft": 8,
           "maxWidth": null,
@@ -684,7 +681,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. Legacy program id secamore is retained for saved-quote compatibility; the source identity is Sycamore. $11.95 is dealer cost; customer MSRP is unverified."
+            "8 sq ft minimum billable area. Legacy program id secamore is retained for saved-quote compatibility; the source identity is Sycamore. $11.95 is dealer cost. Corrected independent 805 retail rate of $31.00/sqft confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -692,14 +689,13 @@
           "name": "Vinyl",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 31.0,
           "costPerSqft": 11.0,
           "minSqft": 8,
           "maxWidth": null,
@@ -707,7 +703,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. $11.00 is dealer cost; customer MSRP is unverified."
+            "8 sq ft minimum billable area. $11.00 is dealer cost. Independent 805 retail rate of $31.00/sqft confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -715,14 +711,13 @@
           "name": "MDF Hybrid",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 29.0,
           "costPerSqft": 10.35,
           "minSqft": 8,
           "maxWidth": null,
@@ -730,7 +725,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. Legacy program id vlo_hybrid is retained for saved-quote compatibility; the source identity is MDF Hybrid. $10.35 is dealer cost; customer MSRP is unverified."
+            "8 sq ft minimum billable area. Legacy program id vlo_hybrid is retained for saved-quote compatibility; the source identity is MDF Hybrid. $10.35 is dealer cost. Independent 805 retail rate of $29.00/sqft confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -738,14 +733,13 @@
           "name": "Onyx U.S. Made Vinyl",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "dealer_net",
           "sourceId": "onyx-price-screenshot-2026-07-20",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
+          "pricePerSqft": 32.0,
           "costPerSqft": 13.6,
           "minSqft": 8,
           "maxWidth": null,
@@ -753,7 +747,7 @@
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "8 sq ft minimum billable area. $13.60 is dealer cost; the supplied evidence does not establish a $34.00 manufacturer MSRP."
+            "8 sq ft minimum billable area. $13.60 is dealer cost. The independent 805 retail rate is $32.00/sqft, confirmed by owner 2026-07-27."
           ]
         },
         {
@@ -761,21 +755,22 @@
           "name": "Poly Composite",
           "priceGroup": null,
           "priceAxis": "sqft",
-          "priceBasis": "manual_required",
+          "sourceId": "onyx-owner-confirmed-poly-composite-2026-07-27",
           "grid": {
             "widths": [],
             "heights": [],
             "prices": []
           },
-          "pricePerSqft": null,
-          "costPerSqft": null,
+          "pricePerSqft": 31.0,
+          "costPerSqft": 12.0,
           "minSqft": 8,
           "maxWidth": null,
           "maxHeight": null,
           "maxAreaSqft": null,
           "fabricCollections": [],
           "notes": [
-            "Quarantined: the legacy $12.00 dealer-cost value has no pinned sourceId. Manual source verification is required before pricing."
+            "Independent 805 retail rate of $31.00/sqft confirmed by owner 2026-07-27.",
+            "Wholesale cost is $12.00/sqft with the 8 sq ft minimum, carried forward from the owner-confirmed correction already published to the canonical CRM as commit fbcbae5fd52531bf8274fe9e11a46ac925763a59."
           ]
         }
       ],

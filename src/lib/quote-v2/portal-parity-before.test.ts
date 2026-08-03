@@ -247,9 +247,8 @@ describe("portal parity BEFORE source arithmetic", () => {
     const onyx = getProduct("onyx_shutters");
     const program = onyx ? getProgram(onyx, "onyx_us_made_vinyl") : undefined;
     expect(program).toMatchObject({
-      priceBasis: "dealer_net",
       costPerSqft: 13.6,
-      pricePerSqft: null,
+      pricePerSqft: 32,
       minSqft: 8,
     });
     expect(cents(dealer(

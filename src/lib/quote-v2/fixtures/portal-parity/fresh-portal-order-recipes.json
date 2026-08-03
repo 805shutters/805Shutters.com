@@ -381,7 +381,6 @@
               "polar.elite.portal_book_price_conflict"
             ],
             "requiredSendabilityReasonCodes": [
-              "product_status_not_sendable",
               "price_not_authoritative",
               "hard_block"
             ]
@@ -396,7 +395,6 @@
               "polar.elite.portal_book_price_conflict"
             ],
             "requiredSendabilityReasonCodes": [
-              "product_status_not_sendable",
               "price_not_authoritative",
               "hard_block"
             ]
@@ -411,7 +409,6 @@
               "polar.elite.portal_book_price_conflict"
             ],
             "requiredSendabilityReasonCodes": [
-              "product_status_not_sendable",
               "price_not_authoritative",
               "hard_block"
             ]
@@ -532,9 +529,9 @@
       ],
       "expectedFreshRuntime": {
         "catalogAsOf": "2026-08-01",
-        "customerTotalCents": 17897,
+        "customerTotalCents": 24543,
         "sendable": false,
-        "policyNote": "The owner-selected Lotus faux-wood book cost receives the explicit $125 draft line margin. Lotus FLX remains send-blocked pending effective-date and fitment authority; the other dealer-only or unsupported lines remain unpriced.",
+        "policyNote": "Each independently selected Lotus product grid uses the owner-approved customer retail rule of three times source wholesale. Supported lines can be priced while restrictions and unsupported stock identities remain send-blocked.",
         "costSummary": {
           "status": "incomplete",
           "productCostCents": 8181,
@@ -545,21 +542,20 @@
         "lineResults": [
           {
             "lineId": "fresh-lotus-cart-camx3560w",
-            "ok": false,
-            "resultCode": "CUSTOMER_RETAIL_UNDEFINED",
-            "customerTotalCents": 0,
+            "ok": true,
+            "resultCode": null,
+            "customerTotalCents": 8352,
             "wholesaleTotalCents": 2784,
             "requiredValidationRuleIds": [],
             "requiredSendabilityReasonCodes": [
-              "product_status_not_sendable",
-              "price_not_authoritative"
+              "product_status_not_sendable"
             ]
           },
           {
             "lineId": "fresh-lotus-cart-cfcx4872w",
             "ok": true,
             "resultCode": null,
-            "customerTotalCents": 17897,
+            "customerTotalCents": 16191,
             "wholesaleTotalCents": 5397,
             "requiredValidationRuleIds": [
               "lotus.faux.configuration.legacy_untyped"

@@ -517,11 +517,11 @@ describe("V2 exact-interface adapter", () => {
       supported: true,
       pricingWidthInches: 30.5,
       pricingHeightInches: 60.25,
-      source: { sourceId: "onyx-reference-guide-2020-2021", page: 13 },
+      source: { sourceId: "onyx-reference-guide-2020-2021", pages: [4, 9, 13] },
     });
   });
 
-  it("does not invent a Norman window-size footprint from the shade-only July retail guide", () => {
+  it("normalizes Norman shutter frame pricing inputs without changing the measured opening", () => {
     const context = selectionContextFromExactInterface({
       ...line,
       width_whole: 30,
@@ -535,8 +535,9 @@ describe("V2 exact-interface adapter", () => {
       options_json: {
         frame_type: '2" Bullnose Z Frame',
         size_type: "W - Window Size",
-        mount_type: "Outside",
+        frame_sides: "4 Sided",
       },
+      mount_type: "Inside Mount",
     }, {
       productId: "norman_shutters",
       programId: "woodlore",
@@ -548,14 +549,11 @@ describe("V2 exact-interface adapter", () => {
       configuration: {
         frame_type: '2" Bullnose Z Frame',
         size_type: "W - Window Size",
-        mount_type: "Outside",
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_sides: 4,
       },
     });
-    expect(
-      Object.keys(context.configuration).filter((key) =>
-        key.startsWith("norman_pricing_"),
-      ),
-    ).toEqual([]);
   });
 
   it("keeps an Onyx outside opening unchanged while the engine resolver derives its pricing size", () => {

@@ -175,10 +175,10 @@ const US_MADE_PROGRAM_IDS = new Set([
   "Onyx U.S. Made Vinyl",
 ]);
 
-const SOLID_COLORS = new Set(["White", "Snow", "Swiss Coffee", "Creamy", "Butter"]);
-const LOUVER_SIZES = new Set([2.5, 3.5, 4.5]);
+export const ONYX_SOLID_COLORS = new Set(["White", "Snow", "Swiss Coffee", "Creamy", "Butter"]);
+export const ONYX_LOUVER_SIZES = new Set([2.5, 3.5, 4.5]);
 
-const FRAME_MOUNTS: Readonly<Record<string, ReadonlySet<string>>> = Object.freeze({
+export const ONYX_FRAME_MOUNTS: Readonly<Record<string, ReadonlySet<string>>> = Object.freeze({
   "Z Frame Trim": new Set(["inside"]),
   "Z Frame Fine": new Set(["inside"]),
   "Z Frame Crown": new Set(["inside"]),
@@ -192,7 +192,7 @@ const FRAME_MOUNTS: Readonly<Record<string, ReadonlySet<string>>> = Object.freez
   "Vinyl Z Frame Large": new Set(["inside"]),
 });
 
-const CONFIGURATION_PANEL_COUNTS = Object.freeze({
+export const ONYX_CONFIGURATION_PANEL_COUNTS = Object.freeze({
   L: 1,
   R: 1,
   LR: 2,
@@ -201,7 +201,7 @@ const CONFIGURATION_PANEL_COUNTS = Object.freeze({
   LLRR: 4,
 } as const);
 
-const CONFIGURATION_WIDTH_LIMITS = Object.freeze({
+export const ONYX_CONFIGURATION_WIDTH_LIMITS = Object.freeze({
   L: { min: 8, max: 35 },
   R: { min: 8, max: 35 },
   LR: { min: 16, max: 70 },
@@ -219,7 +219,7 @@ function depthFamily(frameType: string, mount: string): FrameDepthFamily | null 
   return null;
 }
 
-const BASE_DEPTH_BY_FAMILY: Readonly<
+export const ONYX_BASE_DEPTH_BY_FAMILY: Readonly<
   Record<FrameDepthFamily, Readonly<Record<"2.5" | "3.5" | "4.5", number>>>
 > = Object.freeze({
   inside_l: { "2.5": 2, "3.5": 2.5, "4.5": 3 },
@@ -385,7 +385,7 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
       ),
     );
   }
-  const allowedMounts = FRAME_MOUNTS[frameType];
+  const allowedMounts = ONYX_FRAME_MOUNTS[frameType];
   if (frameType && (!allowedMounts || !allowedMounts.has(mount))) {
     issues.push(
       issue(
@@ -422,7 +422,7 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
   }
 
   const louver = number(context, "louver_size_inches");
-  if (louver === null || !LOUVER_SIZES.has(louver)) return;
+  if (louver === null || !ONYX_LOUVER_SIZES.has(louver)) return;
   const family = depthFamily(frameType, mount);
   if (!family) {
     if (frameType && mount) {
@@ -453,7 +453,7 @@ function validateFrameAndDepth(context: SelectionContext, issues: ValidationIssu
   }
   const hiddenNotch = boolean(context, "hidden_tilt_notch_back_of_louver") === true;
   const requiredDepth =
-    BASE_DEPTH_BY_FAMILY[family][String(louver) as "2.5" | "3.5" | "4.5"] +
+    ONYX_BASE_DEPTH_BY_FAMILY[family][String(louver) as "2.5" | "3.5" | "4.5"] +
     (hiddenNotch ? 0.25 : 0);
   if (availableDepth < requiredDepth) {
     issues.push(
@@ -505,8 +505,8 @@ function validatePanelGeometry(context: SelectionContext, issues: ValidationIssu
     "panel_configuration",
     "Panel configuration",
     6,
-  ) as keyof typeof CONFIGURATION_PANEL_COUNTS;
-  const panelCount = CONFIGURATION_PANEL_COUNTS[panelConfiguration];
+  ) as keyof typeof ONYX_CONFIGURATION_PANEL_COUNTS;
+  const panelCount = ONYX_CONFIGURATION_PANEL_COUNTS[panelConfiguration];
   if (!panelCount) {
     if (panelConfiguration) {
       issues.push(
@@ -549,7 +549,7 @@ function validatePanelGeometry(context: SelectionContext, issues: ValidationIssu
       }
     });
     const totalPanelWidth = widths.reduce((sum, panelWidth) => sum + panelWidth, 0);
-    const limits = CONFIGURATION_WIDTH_LIMITS[panelConfiguration];
+    const limits = ONYX_CONFIGURATION_WIDTH_LIMITS[panelConfiguration];
     if (totalPanelWidth < limits.min || totalPanelWidth > limits.max) {
       issues.push(
         issue(
@@ -593,7 +593,7 @@ function validatePanelGeometry(context: SelectionContext, issues: ValidationIssu
 
 function validateColorTiltAndRails(context: SelectionContext, issues: ValidationIssue[]): void {
   const color = requireText(context, issues, "color_name", "Exact color", 5);
-  if (color && !SOLID_COLORS.has(color)) {
+  if (color && !ONYX_SOLID_COLORS.has(color)) {
     issues.push(
       issue(
         "hard_block",
@@ -629,7 +629,7 @@ function validateColorTiltAndRails(context: SelectionContext, issues: Validation
         "Exact louver size is required.",
       ),
     );
-  } else if (!LOUVER_SIZES.has(louver)) {
+  } else if (!ONYX_LOUVER_SIZES.has(louver)) {
     issues.push(
       issue(
         "hard_block",
@@ -768,8 +768,8 @@ function validateColorTiltAndRails(context: SelectionContext, issues: Validation
 
 function validateApplication(context: SelectionContext, issues: ValidationIssue[]): void {
   const orderType = requireText(context, issues, "order_type", "Order type", 8);
-  const panelConfiguration = text(context, "panel_configuration") as keyof typeof CONFIGURATION_PANEL_COUNTS;
-  const panelCount = CONFIGURATION_PANEL_COUNTS[panelConfiguration] ?? 0;
+  const panelConfiguration = text(context, "panel_configuration") as keyof typeof ONYX_CONFIGURATION_PANEL_COUNTS;
+  const panelCount = ONYX_CONFIGURATION_PANEL_COUNTS[panelConfiguration] ?? 0;
   const totalPanelWidth = (numericArray(context, "panel_widths_inches") ?? []).reduce(
     (sum, width) => sum + width,
     0,

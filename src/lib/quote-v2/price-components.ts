@@ -75,7 +75,7 @@ export type AuthoritativePriceComponent = Readonly<{
 /** Explicit, already-priced baseline lookup performed by the authoritative engine. */
 export type PriceComponentBaseline = Readonly<{
   programId: string;
-  matchedWidth: number;
+  matchedWidth: number | null;
   matchedHeight: number | null;
   /** Ordered grid-width cells for a documented multi-panel assembly. */
   componentMatchedWidths?: readonly number[];

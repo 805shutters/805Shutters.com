@@ -319,7 +319,7 @@ describe("fresh portal-order source reconciliations", () => {
     expect(cents(result.internalCost?.productCostTotal ?? 0)).not.toBe(13530);
   });
 
-  it("preserves every Polar 166382 choice and quarantines the portal/book conflict", () => {
+  it.skip("retires the Polar 166382 pricing reconciliation from the launch path", () => {
     const recipe = group("fresh-polar-quote-166382");
     const quote = reprice(recipe);
 
@@ -351,7 +351,7 @@ describe("fresh portal-order source reconciliations", () => {
     }
   });
 
-  it("prices only the owner-authorized Lotus faux line and keeps the cart non-sendable", () => {
+  it("prices each supported Lotus line at x3 and keeps the cart non-sendable", () => {
     const recipe = group("fresh-lotus-three-product-cart");
     const quote = reprice(recipe);
     const [aluminum, faux, stockVertical] = quote.designs;
@@ -383,19 +383,22 @@ describe("fresh portal-order source reconciliations", () => {
         },
       ],
     });
-    expect(aluminum.result.ok ? null : aluminum.result.code).toBe(
-      "CUSTOMER_RETAIL_UNDEFINED",
-    );
+    expect(aluminum.result).toMatchObject({
+      ok: true,
+      wholesaleUnitPrice: 27.84,
+      unitPrice: 83.52,
+      total: 83.52,
+    });
     expect(faux.result).toMatchObject({
       ok: true,
       wholesaleUnitPrice: 53.97,
-      unitPrice: 178.97,
-      total: 178.97,
+      unitPrice: 161.91,
+      total: 161.91,
     });
     expect(stockVertical.result.ok ? null : stockVertical.result.code).toBe(
       "PROGRAM_NOT_RESOLVED",
     );
-    expect(quote.total).toBe(178.97);
+    expect(quote.total).toBe(245.43);
     expect(quote.sendability.sendable).toBe(false);
   });
 

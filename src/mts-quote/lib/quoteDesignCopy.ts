@@ -40,6 +40,74 @@ export function getMatchingCopyTargetIds(
     .map((item) => item.id);
 }
 
+export type QuoteCatalogIdentity = {
+  manufacturer: string;
+  productId: string;
+};
+
+export function catalogIdentityForDesign(
+  design: SalesQuoteDesign | null | undefined,
+): QuoteCatalogIdentity | null {
+  if (!design) return null;
+  const options =
+    (design.options_json as Record<string, unknown> | null | undefined) ?? {};
+  const manufacturer = normalizeProductType(
+    design.supplier ??
+      (typeof options.catalog_manufacturer === "string"
+        ? options.catalog_manufacturer
+        : null),
+  );
+  const rawProductId =
+    typeof options.catalog_product_id === "string"
+      ? options.catalog_product_id
+      : typeof options.quote_lab_product_id === "string"
+        ? options.quote_lab_product_id
+        : "";
+  const productId = normalizeProductType(rawProductId);
+  if (!manufacturer || !productId) return null;
+  return { manufacturer, productId };
+}
+
+export function lineItemsHaveMatchingCatalogIdentity(
+  sourceItem: Pick<SalesQuoteLineItem, "id" | "product_type">,
+  targetItem: Pick<SalesQuoteLineItem, "id" | "product_type">,
+  designs: SalesQuoteDesign[],
+) {
+  if (!lineItemsHaveMatchingProductType(sourceItem, targetItem)) return false;
+  const sourceIdentity = catalogIdentityForDesign(
+    resolveSelectedQuoteDesign(
+      designs.filter((design) => design.line_item_id === sourceItem.id),
+    ),
+  );
+  const targetIdentity = catalogIdentityForDesign(
+    resolveSelectedQuoteDesign(
+      designs.filter((design) => design.line_item_id === targetItem.id),
+    ),
+  );
+  return (
+    sourceIdentity !== null &&
+    targetIdentity !== null &&
+    sourceIdentity.manufacturer === targetIdentity.manufacturer &&
+    sourceIdentity.productId === targetIdentity.productId
+  );
+}
+
+export function getMatchingCatalogCopyTargetIds(
+  sourceItem: Pick<SalesQuoteLineItem, "id" | "product_type">,
+  lineItems: Pick<SalesQuoteLineItem, "id" | "product_type">[],
+  designs: SalesQuoteDesign[],
+  targetIds?: string[],
+) {
+  const allowedTargets = targetIds ? new Set(targetIds) : null;
+  return lineItems
+    .filter((item) => {
+      if (item.id === sourceItem.id) return false;
+      if (allowedTargets && !allowedTargets.has(item.id)) return false;
+      return lineItemsHaveMatchingCatalogIdentity(sourceItem, item, designs);
+    })
+    .map((item) => item.id);
+}
+
 export function buildCopiedLineItemPatch(sourceItem: SalesQuoteLineItem) {
   return {
     product_type: sourceItem.product_type,

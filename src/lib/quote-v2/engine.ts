@@ -20,6 +20,7 @@ import {
   createSelectionFingerprint,
   hasHardBlock,
   isProductRuleStatusSendable,
+  type ISODate,
   type ProductRuleStatus,
   type SelectionContext,
   type ValidationIssue,
@@ -28,6 +29,7 @@ import {
   NORMAN_805_DEALER_POLICY,
   normanDealerScheduleForSelection,
 } from "./norman-dealer-policy";
+import { resolveNormanShutterWindowSizePricing } from "./norman-shutter-pricing-size";
 import { resolveOnyxWindowSizePricing } from "./onyx-pricing-size";
 import { productRuleStatusForSelection, validateSelection } from "./rules";
 import { sourceProvenance, type SourceManifestId } from "./source-manifest";
@@ -108,7 +110,6 @@ const DEFAULT_SOURCE_COST_PLUS_MARGIN_PER_LINE = 125;
 const SOURCE_COST_PLUS_PRODUCTS = new Set([
   "faux_wood",
   "smartprivacy_faux",
-  "lotus_faux_wood_blinds",
 ]);
 
 function roundMoney(value: number): number {
@@ -1150,6 +1151,32 @@ function priceComponentSource(
   );
 }
 
+function surchargePriceComponentSource(
+  product: CatalogProduct,
+  surchargeId: string,
+  fallback: ReturnType<typeof priceComponentSource>,
+) {
+  const surcharge = findProductSurcharge(product, surchargeId);
+  const ownerPolicy =
+    product.customerOrderChargePolicy?.surchargeId === surchargeId
+      ? product.customerOrderChargePolicy
+      : null;
+  if (ownerPolicy) {
+    return {
+      sourceId: ownerPolicy.policyId,
+      fileName: "805 Shutters owner-approved pricing policy",
+      revision: ownerPolicy.confirmedDate,
+      effectiveDate: ownerPolicy.confirmedDate as ISODate,
+      sha256: ownerPolicy.policySha256,
+    } satisfies ValidationIssue["source"];
+  }
+  return surcharge?.sourcePages?.length
+    ? sourceProvenance(contractSourceId(product.id), {
+        pages: surcharge.sourcePages,
+      })
+    : fallback;
+}
+
 function motorPriceComponentSource(priceLineId: string) {
   const [, groupId, optionId] = priceLineId.split(":");
   const group = groupId ? catalog.motorization[groupId] : undefined;
@@ -1339,11 +1366,11 @@ function priceComponentInputs(
     }
     const surcharge = findProductSurcharge(product, line.id);
     const oncePerLine = surcharge?.per === "once";
-    const surchargeSource = surcharge?.sourcePages?.length
-      ? sourceProvenance(contractSourceId(product.id), {
-          pages: surcharge.sourcePages,
-        })
-      : pricingSource;
+    const surchargeSource = surchargePriceComponentSource(
+      product,
+      line.id,
+      pricingSource,
+    );
     accessories.push({
       id: `${oncePerLine ? "order" : "accessory"}:${line.id}`,
       label: line.label,
@@ -1541,8 +1568,15 @@ function internalCostFromResult(
   const total = dealerCostOverride?.total ?? result.wholesaleTotal;
   if (unit == null || total == null) return undefined;
   const product = getProduct(result.productId);
+  const program = product ? getProgram(product, result.programId) : undefined;
+  const usesExplicitDealerCost =
+    (program?.grid?.costs?.length ?? 0) > 0 ||
+    program?.costPerSqft != null;
   return {
-    basis: product?.priceBasis === "dealer_net" ? "dealer_net" : "catalog_factor",
+    basis:
+      product?.priceBasis === "dealer_net" || usesExplicitDealerCost
+        ? "dealer_net"
+        : "catalog_factor",
     ...(dealerPolicy
       ? {
           effectiveDealerFactor: dealerPolicy.effectiveDealerFactor,
@@ -1575,13 +1609,22 @@ export function authoritativePriceInputForSelection(
   priceInput: PriceInput,
 ): PriceInput {
   const onyxPricingSize = resolveOnyxWindowSizePricing(selection);
-  return onyxPricingSize.applicable && onyxPricingSize.supported
-    ? {
-        ...priceInput,
-        widthInches: onyxPricingSize.pricingWidthInches!,
-        heightInches: onyxPricingSize.pricingHeightInches!,
-      }
-    : priceInput;
+  if (onyxPricingSize.applicable && onyxPricingSize.supported) {
+    return {
+      ...priceInput,
+      widthInches: onyxPricingSize.pricingWidthInches!,
+      heightInches: onyxPricingSize.pricingHeightInches!,
+    };
+  }
+  const normanPricingSize = resolveNormanShutterWindowSizePricing(selection);
+  if (normanPricingSize.applicable && normanPricingSize.supported) {
+    return {
+      ...priceInput,
+      widthInches: normanPricingSize.pricingWidthInches!,
+      heightInches: normanPricingSize.pricingHeightInches!,
+    };
+  }
+  return priceInput;
 }
 
 /**
@@ -1603,8 +1646,8 @@ export function priceQuoteV2Selection(request: QuoteV2PriceRequest): QuoteV2Pric
   }
 
   // Callers describe the measured opening. The engine alone substitutes a
-  // source-backed Onyx billable footprint after validation, so a direct caller
-  // cannot bypass or duplicate the manufacturer conversion.
+  // source-backed shutter billable footprint after validation, so a direct
+  // caller cannot bypass or duplicate the manufacturer conversion.
   const authoritativePriceInput = authoritativePriceInputForSelection(
     selection,
     priceInput,
@@ -1720,7 +1763,9 @@ export function toCustomerQuotePriceResult(result: QuoteV2PriceResult): Record<s
       catalogVersion: result.catalogVersion,
     };
   }
-  const usesInternalPricingGeometry = result.productId === "onyx_shutters";
+  const usesInternalPricingGeometry =
+    result.productId === "onyx_shutters" ||
+    result.productId === "norman_shutters";
   return {
     ok: true,
     productId: result.productId,

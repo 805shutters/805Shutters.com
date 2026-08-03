@@ -694,6 +694,20 @@ export function selectionContextFromExactInterface(
     alias(configuration, "horizontal_t_post", yesNoBoolean(sourceOptions.horizontal_t_post));
     alias(configuration, "window_application", firstString(sourceOptions, "window_application"));
   }
+  if (input.productId === "norman_shutters") {
+    alias(
+      configuration,
+      "mount_type",
+      canonicalOnyxMount(sourceOptions.shutter_mount_type ?? design.mount_type),
+    );
+    alias(
+      configuration,
+      "measurement_basis",
+      canonicalOnyxMeasurementBasis(sourceOptions.size_type),
+    );
+    delete configuration.frame_sides;
+    alias(configuration, "frame_sides", onyxFrameSides(sourceOptions.frame_sides));
+  }
   const sideBySidePosition = firstString(sourceOptions, "side_by_side_position");
   const normalizedSideBySide = sideBySidePosition
     ?.toLowerCase()

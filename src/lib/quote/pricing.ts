@@ -18,13 +18,14 @@ import {
   catalog,
 } from "./catalog";
 import type { CatalogProduct, CatalogProgram } from "./catalog/types";
+import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
 import { squareFeet } from "./measurements";
 import { getMotorizationGroupsForProduct } from "./product-options";
 import {
   canonicalWholesaleCostAtCell,
   canonicalWholesaleCostPerSqft,
 } from "./wholesale-ledger";
-import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
+import { createShutterSquareFootGrid } from "./shutter-square-foot-grid";
 
 export type PriceErrorCode =
   | "PRODUCT_SELECTION_REQUIRED"
@@ -40,6 +41,8 @@ export type PriceErrorCode =
   | "SURCHARGE_NO_PRICE"
   | "MOTORIZATION_UNKNOWN"
   | "MOTORIZATION_NO_PRICE"
+  | "DISCOUNT_EXCEEDS_MAX"
+  | "CUSTOMER_PRICE_BELOW_COST"
   | "CONFIGURATION_INCOMPLETE"
   | "MANUAL_PRICE_REQUIRED"
   | "CUSTOMER_RETAIL_UNDEFINED"
@@ -96,7 +99,7 @@ export type PriceBreakdown = {
   programId: string;
   programName: string;
   /** Grid cell the measurement rounded up to. */
-  matchedWidth: number;
+  matchedWidth: number | null;
   matchedHeight: number | null;
   /** Grid-width cells used for a multi-component Roller assembly. */
   componentMatchedWidths?: number[];
@@ -264,7 +267,7 @@ function resolveProgram(
 type BaseLookup = {
   cents: number;
   wholesaleCents: number | null;
-  matchedWidth: number;
+  matchedWidth: number | null;
   matchedHeight: number | null;
   sqft?: number;
   billableSqft?: number;
@@ -277,20 +280,63 @@ function lookupBaseCents(
   heightInches: number,
   warnings: string[],
 ): BaseLookup | PriceFailure {
-  // Per-square-foot programs (shutters): base = max(sqft, minSqft) * pricePerSqft.
+  // Shutters select one exact whole-square-foot row from their independent
+  // manufacturer + product grid. Fractional areas always round up.
   if (prog.priceAxis === "sqft") {
     if (prog.pricePerSqft == null) {
       return fail("PROGRAM_NOT_RESOLVED", `${prog.name} is missing pricePerSqft.`, warnings);
     }
-    const sqft = squareFeet(widthInches, heightInches);
-    const billableSqft = Math.max(sqft, prog.minSqft ?? 0);
-    const cents = Math.round(billableSqft * toCents(prog.pricePerSqft));
     const wholesaleRate = canonicalWholesaleCostPerSqft(product, prog);
-    const wholesaleCents =
-      wholesaleRate == null
-        ? null
-        : Math.round(billableSqft * toCents(wholesaleRate.amount));
-    return { cents, wholesaleCents, matchedWidth: widthInches, matchedHeight: heightInches, sqft, billableSqft };
+    const grid = createShutterSquareFootGrid({
+      manufacturer: product.manufacturer ?? product.name,
+      productId: product.id,
+      programId: prog.id,
+      minimumBillableSquareFeet: prog.minSqft ?? 8,
+      retailRatePerSquareFoot: prog.pricePerSqft,
+      wholesaleRatePerSquareFoot: wholesaleRate?.amount ?? null,
+    });
+    const selection = grid.select(widthInches, heightInches);
+    if (selection.row.retailPrice == null) {
+      return fail("CUSTOMER_RETAIL_UNDEFINED", `${prog.name} has no customer square-foot grid.`, warnings);
+    }
+    return {
+      cents: toCents(selection.row.retailPrice),
+      wholesaleCents:
+        selection.row.wholesalePrice == null
+          ? null
+          : toCents(selection.row.wholesalePrice),
+      matchedWidth: widthInches,
+      matchedHeight: heightInches,
+      sqft: selection.actualSquareFeet,
+      billableSqft: selection.row.squareFeet,
+    };
+  }
+
+  if (prog.priceAxis === "height") {
+    const hi = roundUpIndex(prog.grid.heights, heightInches);
+    if (hi < 0) {
+      return fail(
+        "HEIGHT_EXCEEDS_MAX",
+        `Height ${heightInches}" exceeds the largest size (${prog.grid.heights[prog.grid.heights.length - 1]}") for ${prog.name}.`,
+        warnings,
+      );
+    }
+    const matchedHeight = prog.grid.heights[hi];
+    const v = prog.grid.prices[hi]?.[0];
+    if (v == null) {
+      return fail(
+        "NA_CELL",
+        `${prog.name} is not available at height ${matchedHeight}".`,
+        warnings,
+      );
+    }
+    const wholesale = canonicalWholesaleCostAtCell(product, prog, hi, 0);
+    return {
+      cents: toCents(v),
+      wholesaleCents: wholesale == null ? null : toCents(wholesale.amount),
+      matchedWidth: null,
+      matchedHeight,
+    };
   }
 
   const wi = roundUpIndex(prog.grid.widths, widthInches);
@@ -335,11 +381,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
   if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
-    return fail(
-      "MANUAL_PRICE_REQUIRED",
-      `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`,
-      warnings,
-    );
+    return fail("MANUAL_PRICE_REQUIRED", `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`, warnings);
   }
   if (product.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual source cost.`, warnings);
@@ -356,13 +398,10 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   if (program.priceBasis === "unavailable") {
     return fail("PRODUCT_UNAVAILABLE", `${program.name} is unavailable from the pinned source.`, warnings);
   }
-  if ((program.priceBasis ?? product.priceBasis) !== "dealer_net") {
-    return fail(
-      "CUSTOMER_RETAIL_UNDEFINED",
-      `${program.name} is not a dealer-net source program.`,
-      warnings,
-    );
-  }
+  // A program can carry an independently approved customer retail rate and a
+  // separate source-backed dealer cost. Do not force those two money layers
+  // into one price-basis flag; the canonical cost lookup below remains the
+  // authority for whether dealer cost is available.
   if (product.id === "onyx_shutters" && !program.sourceId) {
     return fail(
       "MANUAL_PRICE_REQUIRED",
@@ -433,13 +472,20 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
         warnings,
       );
     }
-    sqft = squareFeet(width, height);
-    billableSqft = Math.max(sqft, program.minSqft ?? 0);
+    const grid = createShutterSquareFootGrid({
+      manufacturer: product.manufacturer ?? product.name,
+      productId: product.id,
+      programId: program.id,
+      minimumBillableSquareFeet: program.minSqft ?? 8,
+      retailRatePerSquareFoot: program.pricePerSqft ?? null,
+      wholesaleRatePerSquareFoot: wholesaleRate.amount,
+    });
+    const selection = grid.select(width, height);
+    sqft = selection.actualSquareFeet;
+    billableSqft = selection.row.squareFeet;
     matchedWidth = width;
     matchedHeight = height;
-    dealerNetBaseCents = Math.round(
-      billableSqft * toCents(wholesaleRate.amount),
-    );
+    dealerNetBaseCents = toCents(selection.row.wholesalePrice!);
   } else {
     if (!program.grid.costs?.length && product.dealerFactor == null) {
       return fail("CUSTOMER_RETAIL_UNDEFINED", `${program.name} has no dealer-net cost grid.`, warnings);
@@ -516,10 +562,27 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
         warnings,
       );
     }
+    const inheritedDealerFactor =
+      surcharge.dealerFactor ?? product.dealerFactor;
+    const ownerOrderCharge =
+      product.customerOrderChargePolicy?.surchargeId === surcharge.id
+        ? product.customerOrderChargePolicy
+        : null;
+    const dealerNetValue =
+      surcharge.dealerNetValue != null &&
+      Number.isFinite(surcharge.dealerNetValue)
+        ? surcharge.dealerNetValue
+        : surcharge.value != null &&
+            Number.isFinite(surcharge.value) &&
+            inheritedDealerFactor != null &&
+            Number.isFinite(inheritedDealerFactor)
+          ? fromCents(
+              Math.round(toCents(surcharge.value) * inheritedDealerFactor),
+            )
+          : null;
     if (
-      surcharge.dealerNetValue == null ||
-      !Number.isFinite(surcharge.dealerNetValue) ||
-      !surcharge.sourceId ||
+      dealerNetValue == null ||
+      (!surcharge.sourceId && !ownerOrderCharge) ||
       surcharge.kind !== "flat" ||
       surcharge.widthGraduated ||
       surcharge.heightGraduated
@@ -534,11 +597,11 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
     let amountCents: number;
     let detail: string | undefined;
     if (surcharge.per === "sqft") {
-      const optionSqft = sqft ?? squareFeet(width, height);
+      const optionSqft = billableSqft ?? Math.ceil(squareFeet(width, height));
       amountCents = Math.round(
-        toCents(surcharge.dealerNetValue) * optionSqft,
+        toCents(dealerNetValue) * optionSqft,
       );
-      detail = `$${surcharge.dealerNetValue}/sq ft x ${optionSqft.toFixed(1)}`;
+      detail = `$${dealerNetValue}/sq ft x ${optionSqft}`;
     } else {
       const automaticUnits =
         surcharge.autoUnits === "width_foot"
@@ -549,9 +612,9 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
       const units = surcharge.per === "once"
         ? 1
         : automaticUnits ?? selectedUnits;
-      amountCents = toCents(surcharge.dealerNetValue) * units;
+      amountCents = toCents(dealerNetValue) * units;
       if (units > 1) {
-        detail = `${surcharge.dealerNetValue} x ${units} ${surcharge.per}s`;
+        detail = `${dealerNetValue} x ${units} ${surcharge.per}s`;
       }
     }
     const billingScope = surcharge.per === "once" ? "once" : "per_window";
@@ -560,7 +623,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
       label: surcharge.name,
       amount: fromCents(amountCents),
       billingScope,
-      sourceId: surcharge.sourceId,
+      sourceId: surcharge.sourceId ?? ownerOrderCharge!.policyId,
       ...(detail ? { detail } : {}),
     });
     if (billingScope === "once") {
@@ -642,11 +705,7 @@ export function priceDesign(input: PriceInput): PriceResult {
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
   if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
-    return fail(
-      "MANUAL_PRICE_REQUIRED",
-      `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`,
-      warnings,
-    );
+    return fail("MANUAL_PRICE_REQUIRED", `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`, warnings);
   }
   if (product.priceBasis === "manual_required") {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} requires a manual price because the source does not provide a complete retail grid.`, warnings);
@@ -813,7 +872,7 @@ export function priceDesign(input: PriceInput): PriceResult {
       : (baseLookup.wholesaleCents ?? 0) * configurationUnits;
   const wholesaleBaseCents = sourceWholesaleBaseCents ?? (dealerFactor == null ? null : Math.round(baseCents * dealerFactor));
   const matchedWidth = componentWidths
-    ? Math.max(...baseLookups.map((lookup) => lookup.matchedWidth))
+    ? Math.max(...baseLookups.map((lookup) => lookup.matchedWidth ?? 0))
     : baseLookup.matchedWidth;
   const matchedHeight = baseLookup.matchedHeight;
   const actualSqft = componentWidths
@@ -888,10 +947,12 @@ export function priceDesign(input: PriceInput): PriceResult {
       }
       detail = `${sc.value}% of base`;
     } else if (sc.per === "sqft") {
-      const sqft = actualSqft ?? (needsHeight ? squareFeet(W, H) : 0);
+      const sqft =
+        billableSqft ??
+        (needsHeight ? Math.ceil(squareFeet(W, H)) : 0);
       amountCents = Math.round(toCents(sc.value) * sqft);
       if (wholesaleBaseCents != null) wholesaleAmountCents = Math.round(amountCents * (sc.dealerFactor ?? dealerFactor ?? 1));
-      detail = `$${sc.value}/sq ft x ${sqft.toFixed(1)}`;
+      detail = `$${sc.value}/sq ft x ${sqft}`;
     } else {
       // Sides (cut-outs) and feet (additional valance foot) are billed per whole
       // unit — never a fractional count (which would yield a fractional charge).
@@ -975,13 +1036,39 @@ export function priceDesign(input: PriceInput): PriceResult {
   const unitCents = baseCents + perWindowCents;
   // Per-line discount: applies to the per-window RETAIL (base + surcharges +
   // motorization) only — never to once charges (e.g. freight) or to wholesale/cost.
-  const discountPercent = Math.min(100, Math.max(0, Number(input.discountPercent) || 0));
+  const requestedDiscountPercent = Math.max(
+    0,
+    Number(input.discountPercent) || 0,
+  );
+  const maxDiscountPercent = product.customerDiscountPolicy?.maxPercent;
+  if (
+    maxDiscountPercent != null &&
+    requestedDiscountPercent > maxDiscountPercent
+  ) {
+    return fail(
+      "DISCOUNT_EXCEEDS_MAX",
+      `${product.name} allows a maximum customer discount of ${maxDiscountPercent}%.`,
+      warnings,
+    );
+  }
+  const discountPercent = Math.min(100, requestedDiscountPercent);
   const discountCents = Math.round((unitCents * discountPercent) / 100);
   const discountedUnitCents = unitCents - discountCents;
   const totalCents = discountedUnitCents * quantity + onceCents;
   const wholesaleUnitCents = wholesaleBaseCents == null ? null : wholesaleBaseCents + wholesalePerWindowCents;
   const wholesaleTotalCents =
     wholesaleUnitCents == null ? null : wholesaleUnitCents * quantity + wholesaleOnceCents;
+  if (
+    wholesaleUnitCents != null &&
+    (discountedUnitCents < wholesaleUnitCents ||
+      (wholesaleTotalCents != null && totalCents < wholesaleTotalCents))
+  ) {
+    return fail(
+      "CUSTOMER_PRICE_BELOW_COST",
+      "The requested discount would reduce the customer price below verified dealer cost.",
+      warnings,
+    );
+  }
 
   return {
     ok: true,
@@ -991,7 +1078,11 @@ export function priceDesign(input: PriceInput): PriceResult {
     matchedWidth,
     matchedHeight,
     ...(componentWidths
-      ? { componentMatchedWidths: baseLookups.map((lookup) => lookup.matchedWidth) }
+      ? {
+          componentMatchedWidths: baseLookups.map(
+            (lookup) => lookup.matchedWidth ?? input.widthInches,
+          ),
+        }
       : {}),
     sqft: actualSqft,
     billableSqft,

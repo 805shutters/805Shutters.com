@@ -52,6 +52,29 @@ export interface RollerShadeOrderReadiness {
   missingFields: string[];
 }
 
+export function getPolarQuoteOnlyHold(quote: SalesQuoteWithItems): {
+  blocked: boolean;
+  lineItems: string[];
+  message: string | null;
+} {
+  const lineItems = (quote.line_items || []).flatMap((item) => {
+    const polar = item.designs?.some((design) =>
+      String(design.supplier ?? "").trim().toLowerCase() === "polar" ||
+      String((design.options_json as Record<string, unknown> | undefined)?.catalog_product_id ?? "")
+        .toLowerCase()
+        .startsWith("polar_")
+    );
+    return polar ? [item.room_name || `Line ${item.sort_order || item.id}`] : [];
+  });
+  return {
+    blocked: lineItems.length > 0,
+    lineItems,
+    message: lineItems.length
+      ? `QUOTE ONLY — Polar follow-on automation is blocked for ${lineItems.join(", ")}.`
+      : null,
+  };
+}
+
 export function getQuoteOrderAgentRun(run: WorkflowRun): QuoteOrderAgentRun | null {
   if (run.workflow_id !== QUOTE_NORMAN_ORDER_WORKFLOW_ID) return null;
 
@@ -118,10 +141,13 @@ export function isQuoteOrderAgentQueueOpen(row: QuoteOrderAgentQueueRow | null |
 export function getRollerShadeOrderReadiness(
   quote: SalesQuoteWithItems
 ): RollerShadeOrderReadiness {
+  const polarHold = getPolarQuoteOnlyHold(quote);
   const lineItems = quote.line_items || [];
   const rollerItems = lineItems.filter((item) => isRollerShadeLineItem(item));
   const applies = rollerItems.length > 0;
   const missingFields: string[] = [];
+
+  if (polarHold.blocked && polarHold.message) missingFields.push(polarHold.message);
 
   if (!applies) {
     return {

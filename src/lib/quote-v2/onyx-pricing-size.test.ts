@@ -32,7 +32,7 @@ function selection(
 }
 
 describe("Onyx inside-mount window-size pricing", () => {
-  it("pins only the three exact binder rows and their total additions", () => {
+  it("pins the named pricing rows and profile-derived additions", () => {
     expect(ONYX_INSIDE_MOUNT_PRICING_ADDITIONS).toEqual({
       "Z Frame Trim": {
         widthAdditionInches: 0.75,
@@ -48,6 +48,21 @@ describe("Onyx inside-mount window-size pricing", () => {
         widthAdditionInches: 4.25,
         fourSidedHeightAdditionInches: 4.25,
         threeSidedHeightAdditionInches: 2.125,
+      },
+      "Z Frame Crest": {
+        widthAdditionInches: 4.25,
+        fourSidedHeightAdditionInches: 4.25,
+        threeSidedHeightAdditionInches: 2.125,
+      },
+      "Vinyl Z Frame Small": {
+        widthAdditionInches: 4,
+        fourSidedHeightAdditionInches: 4,
+        threeSidedHeightAdditionInches: 2,
+      },
+      "Vinyl Z Frame Large": {
+        widthAdditionInches: 5,
+        fourSidedHeightAdditionInches: 5,
+        threeSidedHeightAdditionInches: 2.5,
       },
     });
   });
@@ -69,16 +84,17 @@ describe("Onyx inside-mount window-size pricing", () => {
     });
   });
 
-  it.each(["Z Frame Crest", "VZ Small", "VZ Fine", "Vinyl L Frame"])(
-    "does not infer an undocumented inside pricing row for %s",
-    (frameType) => {
-      expect(onyxInsideMountPricingSize(28.5, 58.25, frameType, 4)).toMatchObject({
-        supported: false,
-        widthAdditionInches: null,
-        pricingWidthInches: null,
-      });
-    },
-  );
+  it.each([
+    ["Z Frame Crest", 4.25],
+    ["VZ Small", 4],
+    ["VZ Large", 5],
+    ["VZ Fine", 2],
+  ] as const)("maps profile-derived inside pricing for %s", (frameType, widthAddition) => {
+    expect(onyxInsideMountPricingSize(28.5, 58.25, frameType, 4)).toMatchObject({
+      supported: true,
+      widthAdditionInches: widthAddition,
+    });
+  });
 
   it.each([
     [0, 58.25],
@@ -130,17 +146,16 @@ describe("Onyx outside-mount window-size pricing", () => {
     });
   });
 
-  it.each(["Vinyl L Frame", "VDecor 2"])(
-    "does not infer an outside addition for a profile absent from the table: %s",
-    (frameType) => {
-      expect(
-        onyxOutsideMountPricingSize(30, 72, frameType, 4),
-      ).toMatchObject({
-        supported: false,
-        widthAdditionInches: null,
-      });
-    },
-  );
+  it.each([
+    ["Vinyl L Frame", 3.5],
+    ["L Frame Bullnose", 3.5],
+    ["VDecor 2", 5.5],
+  ] as const)("maps the outside profile family for %s", (frameType, widthAddition) => {
+    expect(onyxOutsideMountPricingSize(30, 72, frameType, 4)).toMatchObject({
+      supported: true,
+      widthAdditionInches: widthAddition,
+    });
+  });
 });
 
 describe("engine-facing Onyx pricing-size resolution", () => {
@@ -155,7 +170,7 @@ describe("engine-facing Onyx pricing-size resolution", () => {
       pricingHeightInches: 74.75,
       source: {
         sourceId: "onyx-reference-guide-2020-2021",
-        page: 13,
+        pages: [4, 9, 13],
       },
     });
   });

@@ -14,13 +14,13 @@ import {
 
 describe("quote V2 source manifest", () => {
   it("pins every supplied source with a unique immutable identity", () => {
-    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(15);
+    expect(QUOTE_V2_SOURCE_MANIFEST).toHaveLength(16);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.id)).size,
-    ).toBe(15);
+    ).toBe(16);
     expect(
       new Set(QUOTE_V2_SOURCE_MANIFEST.map((source) => source.sha256)).size,
-    ).toBe(15);
+    ).toBe(16);
 
     for (const source of QUOTE_V2_SOURCE_MANIFEST) {
       expect(source.sha256).toMatch(/^[a-f0-9]{64}$/);
@@ -78,6 +78,8 @@ describe("quote V2 source manifest", () => {
         "52eb859d583174c311e9682a09da3c33f8d081b2e772866a40dc025e2dcd0b0e",
       "OnyxProgramBinder2020 (1).pdf":
         "eafb25916b3ff57947596206f05bae4867a7e95d6d46d9c58e2ffd030891f26b",
+      "m. Pricing--3c7eefdef7.pdf":
+        "4e8ea2a3ff8fe52b85b3bfd033cbba6ae4076b3c4302406f2d3f98d7d2ecc7d2",
       "NORMAN PRICING.pdf":
         "fdf0af921d137d778d6890b7afa97342045bd50d05a4838afc116b6c400f3044",
       "Motorization Guide.pdf":

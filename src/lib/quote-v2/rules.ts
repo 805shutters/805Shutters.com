@@ -25,8 +25,10 @@ import { canonicalMotorizationSelectionsFromConfiguration } from "./roller-motor
 import { normanHoneycombV2Source } from "./generated/norman-honeycomb-v2.generated";
 import { validateHoneycombMatrix } from "./honeycomb-matrix";
 import { validateOnyxShutterRestrictions } from "./onyx-rules";
+import { resolveNormanShutterWindowSizePricing } from "./norman-shutter-pricing-size";
 import { validateNormanShadeMotorization } from "./norman-shade-motorization";
 import { lotusFauxWoodProgramProfile } from "./lotus-faux-wood";
+import { catalog as pricingCatalog, getProduct } from "@/lib/quote/catalog";
 
 type RuleSource = {
   sourceId: SourceManifestId;
@@ -60,6 +62,10 @@ const POLAR_DEALER_BOOK: RuleSource = {
 };
 const LOTUS_WEST_A26: RuleSource = {
   sourceId: "lotus-west-a26-v1",
+};
+const NORMAN_SHUTTER_FRAME_PRICING: RuleSource = {
+  sourceId: "norman-shutter-frame-pricing-2026-05",
+  pages: [1, 2, 3],
 };
 
 function programMatchesGroup(programId: string | null, priceGroup: string): boolean {
@@ -269,14 +275,31 @@ function validatePolarElitePortalConflict(
     configValue(context, "operating_system", "lift_system", "operation"),
   );
   const track = normalized(
-    configValue(context, "track_type", "guides", "guide_type"),
+    configValue(
+      context,
+      "polar_exterior_guide_type",
+      "track_type",
+      "guides",
+      "guide_type",
+    ),
   );
+  const polarMotorization =
+    context.configuration.polar_exterior_motorization_selections;
+  const noPolarMotorSelected =
+    !Array.isArray(polarMotorization) || polarMotorization.length === 0;
+  const selectedSurcharges = polarSelectedSurchargeIds(context);
+  const standardTrackSelected =
+    (track.includes("standard") &&
+      (track.includes("nonzipper") || track.includes("track"))) ||
+    (track === "track" &&
+      !selectedSurcharges.some((id) => id.startsWith("vortex_")));
   const exactObservedConfiguration =
     widthIsObserved &&
     fabric.replaceAll(" ", "").includes("suntex90") &&
-    (operation.includes("manual") || operation.includes("gearcrank")) &&
-    track.includes("standard") &&
-    (track.includes("nonzipper") || track.includes("track"));
+    (operation.includes("manual") ||
+      operation.includes("gearcrank") ||
+      noPolarMotorSelected) &&
+    standardTrackSelected;
 
   if (!exactObservedConfiguration) return [];
 
@@ -300,6 +323,787 @@ function validatePolarElitePortalConflict(
       "The exact saved Polar portal quote lists this Elite selection at $905 per unit, while the pinned dealer book produces $961; the option stays quarantined until Polar resolves the source conflict.",
     ),
   ];
+}
+
+const POLAR_EXTERIOR_PRODUCTS = new Set([
+  "polar_elite_patio",
+  "polar_titan_patio",
+  "polar_mega_exterior",
+]);
+
+function polarSelectedSurchargeIds(context: SelectionContext): string[] {
+  const selected = context.options.surcharges;
+  if (!Array.isArray(selected)) return [];
+  return selected.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const id = (entry as Record<string, SelectionValue>).id;
+    return typeof id === "string" ? [id] : [];
+  });
+}
+
+function polarSelectedSurcharges(
+  context: SelectionContext,
+): Array<{ id: string; units: number }> {
+  const selected = context.options.surcharges;
+  if (!Array.isArray(selected)) return [];
+  return selected.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const record = entry as Record<string, SelectionValue>;
+    if (typeof record.id !== "string") return [];
+    const rawUnits = record.units ?? record.quantity;
+    const units =
+      typeof rawUnits === "number" && Number.isFinite(rawUnits)
+        ? rawUnits
+        : typeof rawUnits === "string" && rawUnits.trim()
+          ? Number(rawUnits)
+          : 1;
+    return [{ id: record.id, units }];
+  });
+}
+
+function polarCanonicalSelections(
+  context: SelectionContext,
+  key: string,
+): Array<{ groupId: string; optionId: string }> | null {
+  const raw = context.configuration[key];
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) return null;
+  const parsed = raw.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const record = entry as Record<string, SelectionValue>;
+    return typeof record.groupId === "string" &&
+      typeof record.optionId === "string"
+      ? [{ groupId: record.groupId, optionId: record.optionId }]
+      : [];
+  });
+  return parsed.length === raw.length ? parsed : null;
+}
+
+function validatePolarDraperyConfiguration(
+  context: SelectionContext,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const source = { ...POLAR_DEALER_BOOK, pages: [74, 75, 76, 77] };
+  const programId = context.programId ?? "";
+  if (!/^(pinch_(split|side)_(white|bronze)|ripple_(white|bronze)_(overlap|butt)_(80|100|120)_(split|side))$/.test(programId)) {
+    issues.push(issue("hard_block", "polar.drapery.program.required", source, { programId }, "Select one exact published drapery track program."));
+  }
+  const color = programId.includes("_bronze") ? "bronze" : programId.includes("_white") ? "white" : "";
+  const draw = programId.endsWith("_split") || programId.includes("_split_") ? "split" : programId.endsWith("_side") || programId.includes("_side_") ? "side" : "";
+  const selected = polarSelectedSurcharges(context);
+  const bracketIds = new Set([
+    "bracket_one_touch",
+    "bracket_swivel",
+    "bracket_adjustable_white",
+    "bracket_adjustable_bronze",
+    "bracket_double_white",
+    "bracket_double_bronze",
+  ]);
+  const brackets = selected.filter((entry) => bracketIds.has(entry.id));
+  const requiredBracketCount =
+    context.widthInches <= 96
+      ? 3
+      : 3 + Math.ceil((context.widthInches - 96) / 36);
+  if (
+    brackets.length !== 1 ||
+    !Number.isInteger(brackets[0]?.units) ||
+    brackets[0]?.units !== requiredBracketCount
+  ) {
+    issues.push(issue("hard_block", "polar.drapery.brackets.exact_quantity", { ...POLAR_DEALER_BOOK, page: 74 }, { bracketSelections: brackets, requiredBracketCount }, `Select exactly one published bracket type at the source-required quantity of ${requiredBracketCount}.`));
+  }
+  if (
+    brackets.some((entry) =>
+      entry.id.includes("bronze") ? color !== "bronze" :
+        entry.id.includes("white") ? color !== "white" : false,
+    )
+  ) {
+    issues.push(issue("hard_block", "polar.drapery.brackets.color_mismatch", { ...POLAR_DEALER_BOOK, page: 74 }, { programId, bracketSelections: brackets }, "The selected wall bracket finish must match the published white or bronze track program."));
+  }
+  const selectedIds = new Set(selected.map((entry) => entry.id));
+  if ((selectedIds.has("silent_master_side") && draw !== "side") || (selectedIds.has("silent_master_split") && draw !== "split")) {
+    issues.push(issue("hard_block", "polar.drapery.silent_master.draw_mismatch", { ...POLAR_DEALER_BOOK, page: 74 }, { programId, selectedSurchargeIds: [...selectedIds] }, "The Silent Master carrier must match Side Opening or Split Draw."));
+  }
+  if (selectedIds.has("custom_bend") && !selectedIds.has("curved_packaging")) {
+    issues.push(issue("hard_block", "polar.drapery.curve.packaging_required", { ...POLAR_DEALER_BOOK, page: 74 }, { selectedSurchargeIds: [...selectedIds] }, "A custom curved track requires the separately published curved-track packaging charge."));
+  }
+  const canonical = polarCanonicalSelections(context, "polar_drapery_motorization_selections");
+  const group = pricingCatalog.motorization.polar_drapery_motors;
+  const options = canonical?.flatMap((selection) =>
+    selection.groupId === "polar_drapery_motors"
+      ? group?.options.filter((option) => option.id === selection.optionId) ?? []
+      : [],
+  ) ?? [];
+  if (canonical === null || options.length !== canonical.length) {
+    issues.push(issue("hard_block", "polar.drapery.motorization.unknown", { ...POLAR_DEALER_BOOK, page: 77 }, { polar_drapery_motorization_selections: canonical }, "Every drapery motor and component must be an exact priced page-77 item."));
+  }
+  const motors = options.filter((option) => option.role === "motor");
+  if (motors.length !== 1) {
+    issues.push(issue("hard_block", "polar.drapery.motor.exactly_one", { ...POLAR_DEALER_BOOK, page: 77 }, { selectedMotorIds: motors.map((option) => option.id) }, "Motorized Drapery Track requires exactly one published motor."));
+  }
+  if (motors[0]?.id.startsWith("irismo_") && context.widthInches > 396) {
+    issues.push(issue("hard_block", "polar.drapery.irismo.max_width", { ...POLAR_DEALER_BOOK, pages: [74, 77] }, { widthInches: context.widthInches, motorId: motors[0].id }, "Irismo track length is limited to 396 inches."));
+  }
+  const optionIds = new Set(options.map((option) => option.id));
+  const irismo35Modules = ["irismo_35_rs485_module", "irismo_35_z_wave_module", "irismo_35_zigbee_module", "irismo_sdn_enclosure", "irismo_z_wave_enclosure", "irismo_zigbee_enclosure"];
+  if (irismo35Modules.some((id) => optionIds.has(id)) && motors[0]?.id !== "irismo_35_minidc_dct") {
+    issues.push(issue("hard_block", "polar.drapery.irismo35.module_mismatch", { ...POLAR_DEALER_BOOK, page: 77 }, { motorId: motors[0]?.id ?? null, selectedOptionIds: [...optionIds] }, "Irismo 35 DCT modules/enclosures require the published Irismo 35 Mini DC DCT motor."));
+  }
+  if (optionIds.has("glydea_rs485_module") && !motors[0]?.id.startsWith("glydea_")) {
+    issues.push(issue("hard_block", "polar.drapery.glydea.module_mismatch", { ...POLAR_DEALER_BOOK, page: 77 }, { motorId: motors[0]?.id ?? null }, "The Glydea RS485 module requires a Glydea ULTRA motor."));
+  }
+  if ((optionIds.has("irismo_45_charger") || optionIds.has("irismo_45_battery")) && motors[0]?.id !== "irismo_45_wirefree_rts") {
+    issues.push(issue("hard_block", "polar.drapery.irismo45.accessory_mismatch", { ...POLAR_DEALER_BOOK, page: 77 }, { motorId: motors[0]?.id ?? null }, "Irismo 45 battery items require the Irismo 45 WireFree RTS motor."));
+  }
+  return issues;
+}
+
+const POLAR_AWNING_PRODUCTS = new Set([
+  "polar_awning_premium_pro",
+  "polar_awning_premium_plus",
+  "polar_awning_premium",
+  "polar_awning_select",
+  "polar_awning_drop_arm",
+]);
+
+function validatePolarAwningConfiguration(
+  context: SelectionContext,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const productPage: Record<string, number> = {
+    polar_awning_premium_pro: 165,
+    polar_awning_premium_plus: 167,
+    polar_awning_premium: 169,
+    polar_awning_select: 171,
+    polar_awning_drop_arm: 178,
+  };
+  const page = productPage[context.productId];
+  const source = { ...POLAR_DEALER_BOOK, pages: [page, 173, 176, 177] };
+  const frameColor = normalized(configValue(context, "polar_awning_frame_color", "frame_color"));
+  if (!["white", "sandstone", "ebony", "brown"].includes(frameColor)) {
+    issues.push(issue("hard_block", "polar.awning.frame_color.required", { ...POLAR_DEALER_BOOK, page }, { frameColor: frameColor || null }, "Select a published Polar frame color: White, Sandstone, Ebony, or Brown."));
+  }
+  const selected = polarSelectedSurcharges(context);
+  const selectedIds = new Set(selected.map((entry) => entry.id));
+  if (selectedIds.has("custom_frame_color")) {
+    issues.push(issue("hard_block", "polar.awning.custom_frame.unpriced", { ...POLAR_DEALER_BOOK, page }, { custom_frame_color: true }, "Custom frame color is published without an amount and remains Manual quoting only."));
+  }
+  const motorIds = new Set([
+    "somfy_sunea_cmo_535", "somfy_sunea_cmo_550",
+    "alpha_remote_cmo_50", "somfy_orea_550", "somfy_altus_510",
+    "somfy_altus_535", "somfy_altus_550", "alpha_remote_cassette_50",
+    "alpha_remote_50", "somfy_std_535", "somfy_std_550", "alpha_manual_50",
+  ]);
+  const motors = selected.filter((entry) => motorIds.has(entry.id));
+  const operation = normalized(configValue(context, "polar_awning_operation", "operation"));
+  const motorizedOnly = ["polar_awning_premium_pro", "polar_awning_premium"].includes(context.productId);
+  if (!["manual", "motorized"].includes(operation) || (motorizedOnly && operation !== "motorized")) {
+    issues.push(issue("hard_block", "polar.awning.operation.required", { ...POLAR_DEALER_BOOK, page }, { operation: operation || null }, motorizedOnly ? "This awning is published as motorized; select Motorized." : "Select the published Manual or Motorized operation."));
+  }
+  if ((operation === "motorized" && motors.length !== 1) || (operation === "manual" && motors.length !== 0)) {
+    issues.push(issue("hard_block", "polar.awning.motor.selection", { ...POLAR_DEALER_BOOK, page }, { operation, motorIds: motors.map((entry) => entry.id) }, "Motorized awnings require exactly one compatible published motor; manual awnings cannot include a motor."));
+  }
+  const product = getProduct(context.productId);
+  if (motors.some((entry) => !product?.surcharges.some((surcharge) => surcharge.id === entry.id && surcharge.value != null))) {
+    issues.push(issue("hard_block", "polar.awning.motor.product_mismatch", { ...POLAR_DEALER_BOOK, page }, { motorIds: motors.map((entry) => entry.id) }, "The selected motor is not published for this exact awning model."));
+  }
+  const motorId = motors[0]?.id ?? "";
+  const technology =
+    motorId.includes("sunea_cmo") ? "cmo" :
+      motorId.startsWith("alpha_") ? "alpha" :
+        motorId.includes("std_") ? "standard" :
+          motorId ? "rts" : "";
+  const canonical = polarCanonicalSelections(context, "polar_awning_motorization_selections");
+  const group = pricingCatalog.motorization.polar_awning_controls;
+  const controls = canonical?.flatMap((selection) =>
+    selection.groupId === "polar_awning_controls"
+      ? group?.options.filter((option) => option.id === selection.optionId) ?? []
+      : [],
+  ) ?? [];
+  if (canonical === null || controls.length !== canonical.length) {
+    issues.push(issue("hard_block", "polar.awning.control.unknown", { ...POLAR_DEALER_BOOK, page: 173 }, { polar_awning_motorization_selections: canonical }, "Every awning control, sensor, or cable must be an exact page-173 item."));
+  }
+  const incompatible = controls.filter(
+    (option) =>
+      option.compatibleTechnologies?.length &&
+      !option.compatibleTechnologies.includes(technology as never),
+  );
+  if (incompatible.length > 0 || (operation === "manual" && controls.length > 0)) {
+    issues.push(issue("hard_block", "polar.awning.control.motor_mismatch", { ...POLAR_DEALER_BOOK, page: 173 }, { motorId: motorId || null, incompatibleOptionIds: incompatible.map((option) => option.id) }, "Awning controls, sensors, and cables must match the selected motor family."));
+  }
+  if (
+    motorId.includes("sunea_cmo") &&
+    controls.filter((option) => option.id.startsWith("awning_cmo_fast_")).length !== 1
+  ) {
+    issues.push(issue("hard_block", "polar.awning.cmo.cable_required", { ...POLAR_DEALER_BOOK, pages: [page, 173] }, { motorId, selectedOptionIds: controls.map((option) => option.id) }, "A Sunea CMO motor requires exactly one published CMO fast connector cable."));
+  }
+  const dropValanceAllowed = ["polar_awning_premium", "polar_awning_select"].includes(context.productId);
+  if (selectedIds.has("drop_valance") && (!dropValanceAllowed || context.widthInches > 240 || context.heightInches > 141)) {
+    issues.push(issue("hard_block", "polar.awning.drop_valance.compatibility", { ...POLAR_DEALER_BOOK, page: 177 }, { productId: context.productId, widthInches: context.widthInches, projectionInches: context.heightInches }, "Drop Valance is limited to Premium or Select, 240 inches wide, and 141 inches projection."));
+  }
+  if ((selectedIds.has("premium_fabric") || selectedIds.has("drop_valance_motor")) && !selectedIds.has("drop_valance")) {
+    issues.push(issue("hard_block", "polar.awning.drop_valance.option_requires_base", { ...POLAR_DEALER_BOOK, page: 177 }, { selectedSurchargeIds: [...selectedIds] }, "Premium fabric or Drop Valance motorization requires the published Drop Valance base option."));
+  }
+  if ([...selectedIds].some((id) => id.startsWith("led_arm_") || id === "led_motor_package")) {
+    issues.push(issue("hard_block", "polar.awning.led.arm_count_review", { ...POLAR_DEALER_BOOK, pages: [166, 168, 170, 172, 176] }, { selectedSurchargeIds: [...selectedIds] }, "LED arms are priced per arm, but the exact model/size arm-count matrix is not yet safely encoded; this option remains Manual quoting only."));
+  }
+  return issues;
+}
+
+function validatePolarExteriorConfiguration(
+  context: SelectionContext,
+): ValidationIssue[] {
+  if (!POLAR_EXTERIOR_PRODUCTS.has(context.productId)) return [];
+  const issues: ValidationIssue[] = [];
+  const guide = text(
+    configValue(context, "polar_exterior_guide_type"),
+  ).trim().toLowerCase();
+  const guideSource =
+    context.productId === "polar_elite_patio"
+      ? { ...POLAR_DEALER_BOOK, pages: [90, 94, 96] }
+      : context.productId === "polar_titan_patio"
+        ? { ...POLAR_DEALER_BOOK, pages: [114, 118, 120] }
+        : { ...POLAR_DEALER_BOOK, pages: [141, 145, 147] };
+  if (!["cable_guide", "track", "rod"].includes(guide)) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.guide.required",
+        guideSource,
+        { polar_exterior_guide_type: guide || null },
+        "Select the exact Polar exterior configuration: Cable Guide, Track, or Rod.",
+      ),
+    );
+    return issues;
+  }
+
+  if (guide === "rod" && context.heightInches > 120) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.rod.maximum_height",
+        context.productId === "polar_elite_patio"
+          ? { ...POLAR_DEALER_BOOK, page: 91 }
+          : context.productId === "polar_titan_patio"
+            ? { ...POLAR_DEALER_BOOK, page: 120 }
+            : { ...POLAR_DEALER_BOOK, page: 147 },
+        {
+          polar_exterior_guide_type: guide,
+          heightInches: context.heightInches,
+          maximumHeightInches: 120,
+        },
+        "Polar Rod configuration is limited to a maximum 120-inch shade height.",
+      ),
+    );
+  }
+  if (context.productId === "polar_mega_exterior" && guide === "rod") {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.mega.rod.not_published",
+        { ...POLAR_DEALER_BOOK, page: 141 },
+        { polar_exterior_guide_type: guide },
+        "The Mega product description publishes ZipRite Track, Side Channel, and Cable Guide, but not Rod. Rod requires manufacturer review.",
+      ),
+    );
+  }
+
+  const surchargeIds = polarSelectedSurchargeIds(context);
+  const trackOnlySurcharges = surchargeIds.filter(
+    (id) => id.startsWith("vortex_") || id === "u_channel",
+  );
+  if (trackOnlySurcharges.length > 0 && guide !== "track") {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.track_option.guide_mismatch",
+        guideSource,
+        {
+          polar_exterior_guide_type: guide,
+          trackOnlySurcharges,
+        },
+        "Vortex and U-channel adders apply only to a Track configuration.",
+      ),
+    );
+  }
+
+  const rawMotorization =
+    context.configuration.polar_exterior_motorization_selections;
+  const motorization = Array.isArray(rawMotorization)
+    ? rawMotorization.flatMap((entry) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+        const selected = entry as Record<string, SelectionValue>;
+        return typeof selected.groupId === "string" &&
+          typeof selected.optionId === "string"
+          ? [{ groupId: selected.groupId, optionId: selected.optionId }]
+          : [];
+      })
+    : [];
+  if (
+    rawMotorization !== undefined &&
+    (!Array.isArray(rawMotorization) ||
+      motorization.length !== rawMotorization.length)
+  ) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.motorization.invalid_selection",
+        guideSource,
+        { polar_exterior_motorization_selections: rawMotorization ?? null },
+        "A saved Polar motor/control selection is malformed and must be reselected.",
+      ),
+    );
+  }
+  const selectedMotorIds = motorization
+    .map((selection) => selection.optionId)
+    .filter((optionId) => optionId.includes("motor"));
+  if (selectedMotorIds.length > 1) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.motor.multiple_selected",
+        guideSource,
+        { selectedMotorIds },
+        "Select exactly one Polar motor. Multiple motor charges on one shade are not a valid published configuration.",
+      ),
+    );
+  }
+  if (
+    context.productId === "polar_mega_exterior" &&
+    (selectedMotorIds.length === 0 ||
+      !selectedMotorIds[0]?.includes("525"))
+  ) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.mega.motor.required",
+        { ...POLAR_DEALER_BOOK, pages: [141, 147] },
+        { selectedMotorIds },
+        "Mega Exterior is published as motorized-only with a 525 motor. Select one source-priced 525 motor before pricing.",
+      ),
+    );
+  }
+  const vortexSelected = surchargeIds.some((id) => id.startsWith("vortex_"));
+  if (vortexSelected) {
+    const compatibleVortexMotor = selectedMotorIds.some((id) => {
+      if (context.productId === "polar_mega_exterior") return id.includes("525");
+      if (context.productId === "polar_elite_patio") return id.includes("510");
+      return id.includes("510") || id.includes("525");
+    });
+    if (!compatibleVortexMotor) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.exterior.vortex.minimum_motor",
+          context.productId === "polar_elite_patio"
+            ? { ...POLAR_DEALER_BOOK, pages: [96, 97] }
+            : context.productId === "polar_titan_patio"
+              ? { ...POLAR_DEALER_BOOK, pages: [120, 121] }
+              : { ...POLAR_DEALER_BOOK, page: 147 },
+          { productId: context.productId, selectedMotorIds },
+          context.productId === "polar_mega_exterior"
+            ? "Mega Vortex requires the published 525 motor."
+            : context.productId === "polar_elite_patio"
+              ? "Elite Vortex requires the published 510 motor."
+              : "Titan Vortex requires at least the published 510 motor.",
+        ),
+      );
+    }
+  }
+  if (motorization.length > 0 && selectedMotorIds.length === 0) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.controls.require_motor",
+        guideSource,
+        { polar_exterior_motorization_selections: motorization },
+        "A control or accessory cannot be priced without a source-priced motor selection.",
+      ),
+    );
+  }
+  const rtsControls = motorization
+    .map((selection) => selection.optionId)
+    .filter(
+      (optionId) =>
+        !optionId.includes("motor") &&
+        (optionId.includes("_rts_") ||
+          optionId.startsWith("telis_") ||
+          optionId.startsWith("decoflex_") ||
+          optionId.startsWith("situo_") ||
+          optionId.startsWith("smoove_") ||
+          optionId.startsWith("tahoma_")),
+    );
+  const selectedMotorIsRts = selectedMotorIds.some(
+    (optionId) =>
+      optionId.includes("altus") ||
+      optionId.includes("_rts_") ||
+      optionId.includes("maestria"),
+  );
+  if (rtsControls.length > 0 && !selectedMotorIsRts) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.exterior.rts_control.motor_mismatch",
+        guideSource,
+        { selectedMotorIds, rtsControls },
+        "RTS remotes and controls require a published RTS/Altus/Maestria motor selection.",
+      ),
+    );
+  }
+  return issues;
+}
+
+function polarInteriorMotorization(
+  context: SelectionContext,
+): Array<{ groupId: string; optionId: string }> | null {
+  const raw =
+    context.configuration.polar_interior_motorization_selections;
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw)) return null;
+  const parsed = raw.flatMap((entry) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+    const selection = entry as Record<string, SelectionValue>;
+    return typeof selection.groupId === "string" &&
+      typeof selection.optionId === "string"
+      ? [{ groupId: selection.groupId, optionId: selection.optionId }]
+      : [];
+  });
+  return parsed.length === raw.length ? parsed : null;
+}
+
+function validatePolarInteriorConfiguration(
+  context: SelectionContext,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const source = { ...POLAR_DEALER_BOOK, pages: [20, 22, 23, 24, 25, 26, 40, 41, 42, 43, 47, 48, 50, 51] };
+  const product = getProduct("polar_interior_roller");
+  const fabricName = text(
+    configValue(context, "fabric_collection", "fabric"),
+  );
+  const fabric = product?.fabricMetadata?.find(
+    (candidate) =>
+      normalizeIdentity(candidate.name) === normalizeIdentity(fabricName),
+  );
+  if (!fabric) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.fabric.required",
+        { ...POLAR_DEALER_BOOK, pages: [22, 23, 24, 25] },
+        { fabric_collection: fabricName || null },
+        "Select an exact fabric style published in the Polar Interior Fabric List.",
+      ),
+    );
+  } else {
+    const routedProgram = product?.fabricRouting?.[fabric.name] ?? null;
+    if (context.programId !== routedProgram) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.fabric.program_mismatch",
+          { ...POLAR_DEALER_BOOK, pages: [22, 23, 24, 25] },
+          {
+            fabric_collection: fabric.name,
+            programId: context.programId,
+            expectedProgramId: routedProgram,
+          },
+          "The selected Polar fabric must use its published price group.",
+        ),
+      );
+    }
+    const orientation = text(
+      configValue(
+        context,
+        "polar_interior_fabric_orientation",
+        "fabric_orientation",
+      ),
+    ).toLowerCase();
+    if (!["standard", "railroaded"].includes(orientation)) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.fabric.orientation_required",
+          { ...POLAR_DEALER_BOOK, pages: [22, 23, 24, 25] },
+          { polar_interior_fabric_orientation: orientation || null },
+          "Select Standard or Railroaded fabric orientation.",
+        ),
+      );
+    } else if (
+      orientation === "standard" &&
+      fabric.rollWidthInches != null &&
+      context.widthInches > fabric.rollWidthInches
+    ) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.fabric.standard_roll_width",
+          { ...POLAR_DEALER_BOOK, page: fabric.sourcePage },
+          {
+            fabric_collection: fabric.name,
+            widthInches: context.widthInches,
+            rollWidthInches: fabric.rollWidthInches,
+          },
+          "This width exceeds the selected fabric's published roll width. Choose a source-permitted railroaded orientation or request manual review.",
+        ),
+      );
+    } else if (orientation === "railroaded") {
+      if (!fabric.railroadAllowed) {
+        issues.push(
+          issue(
+            "hard_block",
+            "polar.interior.fabric.railroad_not_allowed",
+            { ...POLAR_DEALER_BOOK, page: fabric.sourcePage },
+            { fabric_collection: fabric.name, railroadAllowed: false },
+            "The selected Polar fabric is published as not railroadable.",
+          ),
+        );
+      }
+      if (
+        fabric.rollWidthInches != null &&
+        context.heightInches > fabric.rollWidthInches
+      ) {
+        issues.push(
+          issue(
+            "hard_block",
+            "polar.interior.fabric.railroad_roll_width",
+            { ...POLAR_DEALER_BOOK, page: fabric.sourcePage },
+            {
+              heightInches: context.heightInches,
+              rollWidthInches: fabric.rollWidthInches,
+            },
+            "The shade height exceeds the fabric roll width when railroaded.",
+          ),
+        );
+      }
+      if (
+        fabric.maxRailroadLengthInches != null &&
+        context.widthInches > fabric.maxRailroadLengthInches
+      ) {
+        issues.push(
+          issue(
+            "hard_block",
+            "polar.interior.fabric.railroad_length",
+            { ...POLAR_DEALER_BOOK, page: fabric.sourcePage },
+            {
+              widthInches: context.widthInches,
+              maxRailroadLengthInches: fabric.maxRailroadLengthInches,
+            },
+            "The shade width exceeds the published maximum railroaded length without a seam; seam pricing is not automated.",
+          ),
+        );
+      }
+    }
+  }
+
+  const liftSystem = text(configValue(context, "lift_system")).toLowerCase();
+  const allowedLiftSystems = [
+    "manual_clutch",
+    "cordless_coulisse",
+    "cordless_zero_gravity",
+    "motorized",
+  ];
+  if (!allowedLiftSystems.includes(liftSystem)) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.lift_system.required",
+        { ...POLAR_DEALER_BOOK, pages: [20, 26, 42, 43, 47, 50, 51] },
+        { lift_system: liftSystem || null },
+        "Select Manual clutch, Coulisse cordless, Zero Gravity cordless, or Motorized.",
+      ),
+    );
+  }
+
+  const motorization = polarInteriorMotorization(context);
+  if (motorization === null) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.motorization.invalid_selection",
+        source,
+        {
+          polar_interior_motorization_selections:
+            context.configuration.polar_interior_motorization_selections ?? null,
+        },
+        "A saved Interior motor/control selection is malformed and must be reselected.",
+      ),
+    );
+  } else {
+    const group = pricingCatalog.motorization.polar_interior_motors;
+    const selectedOptions = motorization.flatMap((selection) => {
+      if (selection.groupId !== "polar_interior_motors") return [];
+      const selected = group?.options.find(
+        (candidate) => candidate.id === selection.optionId,
+      );
+      return selected ? [selected] : [];
+    });
+    if (selectedOptions.length !== motorization.length) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.motorization.unknown_selection",
+          source,
+          { polar_interior_motorization_selections: motorization },
+          "Every motor, control, power supply, cable, or accessory must be an exact priced item from the current Polar book.",
+        ),
+      );
+    }
+    const motors = selectedOptions.filter((option) => option.role === "motor");
+    if (liftSystem === "motorized" && motors.length !== 1) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.motor.exactly_one_required",
+          source,
+          { lift_system: liftSystem, selectedMotorCount: motors.length },
+          "A motorized Interior Roller requires exactly one published motor.",
+        ),
+      );
+    }
+    if (liftSystem !== "motorized" && selectedOptions.length > 0) {
+      issues.push(
+        issue(
+          "hard_block",
+          "polar.interior.motor.manual_conflict",
+          source,
+          { lift_system: liftSystem, selectedOptionIds: selectedOptions.map((option) => option.id) },
+          "Motor, control, power, and motor-accessory selections require the Motorized lift system.",
+        ),
+      );
+    }
+    if (motors.length === 1) {
+      const motor = motors[0];
+      for (const [field, selectedValue, boundary] of [
+        ["minimum_width", context.widthInches, motor.minWidth],
+        ["maximum_width", context.widthInches, motor.maxWidth],
+        ["minimum_height", context.heightInches, motor.minHeight],
+        ["maximum_height", context.heightInches, motor.maxHeight],
+      ] as const) {
+        if (
+          boundary != null &&
+          ((field.startsWith("minimum") && selectedValue < boundary) ||
+            (field.startsWith("maximum") && selectedValue > boundary))
+        ) {
+          issues.push(
+            issue(
+              "hard_block",
+              `polar.interior.motor.${field}`,
+              { ...POLAR_DEALER_BOOK, page: motor.sourcePages?.[0] ?? 42 },
+              { optionId: motor.id, selectedValue, boundary },
+              `The selected motor violates its published ${field.replaceAll("_", " ")}.`,
+            ),
+          );
+        }
+      }
+      for (const selected of selectedOptions.filter(
+        (option) => option.id !== motor.id,
+      )) {
+        if (
+          selected.compatibleTechnologies?.length &&
+          motor.technology &&
+          !selected.compatibleTechnologies.includes(motor.technology)
+        ) {
+          issues.push(
+            issue(
+              "hard_block",
+              "polar.interior.motorization.technology_mismatch",
+              { ...POLAR_DEALER_BOOK, page: selected.sourcePages?.[0] ?? 40 },
+              {
+                motorTechnology: motor.technology,
+                optionId: selected.id,
+                compatibleTechnologies: selected.compatibleTechnologies,
+              },
+              "The selected control, power, cable, or accessory is not published for this motor technology.",
+            ),
+          );
+        }
+      }
+      const selectedIds = new Set(selectedOptions.map((option) => option.id));
+      for (const requiredId of motor.requiredOptionIds ?? []) {
+        if (!selectedIds.has(requiredId)) {
+          issues.push(
+            issue(
+              "hard_block",
+              "polar.interior.motorization.required_component",
+              { ...POLAR_DEALER_BOOK, page: motor.sourcePages?.[0] ?? 50 },
+              { motorId: motor.id, requiredOptionId: requiredId },
+              "The selected motor requires the separately published charging extension cable.",
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  const surchargeIds = polarSelectedSurchargeIds(context);
+  const topTreatments = surchargeIds.filter((id) =>
+    /^(fascia_|head_pocket_|hang_strip$|interior_cassette$)/.test(id),
+  );
+  if (topTreatments.length > 1) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.top_treatment.multiple",
+        { ...POLAR_DEALER_BOOK, page: 26 },
+        { topTreatments },
+        "Select no more than one published fascia, head pocket, hang strip, or cassette.",
+      ),
+    );
+  }
+  const complexAssemblies = surchargeIds.filter(
+    (id) => id.startsWith("coupler_") || id.startsWith("duo_"),
+  );
+  if (complexAssemblies.length > 0) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.multi_band.component_pricing_required",
+        { ...POLAR_DEALER_BOOK, page: 26 },
+        { complexAssemblies },
+        "Coupled and Duo shades require each shade/band to be dimension-priced separately before the bracket adder; this line must be reviewed manually.",
+      ),
+    );
+  }
+  if (context.widthInches >= 120 && surchargeIds.includes("spring_assist")) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.spring_assist.included",
+        { ...POLAR_DEALER_BOOK, page: 26 },
+        { widthInches: context.widthInches, spring_assist: true },
+        "Spring assist is included at 120 inches and wider; remove the separate adder.",
+      ),
+    );
+  }
+  const ralSelections = surchargeIds.filter((id) => id.startsWith("ral_"));
+  if (ralSelections.length > 0) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.ral.approved_color_chart_required",
+        { ...POLAR_DEALER_BOOK, page: 53 },
+        { ralSelections },
+        "The dealer book publishes RAL adders but states that colors outside a separate RAL Powder Coating Color Chart incur additional charges. That approved-color chart is not in the supplied source, so RAL selections require manual source verification.",
+      ),
+    );
+  }
+  const requiredLiftSurcharge =
+    liftSystem === "cordless_coulisse"
+      ? "cordless_coulisse"
+      : liftSystem === "cordless_zero_gravity"
+        ? "cordless_zero_gravity"
+        : null;
+  if (requiredLiftSurcharge && !surchargeIds.includes(requiredLiftSurcharge)) {
+    issues.push(
+      issue(
+        "hard_block",
+        "polar.interior.lift_system.missing_adder",
+        { ...POLAR_DEALER_BOOK, page: 26 },
+        { lift_system: liftSystem, requiredSurchargeId: requiredLiftSurcharge },
+        "The selected cordless lift requires its exact published price adder.",
+      ),
+    );
+  }
+  return issues;
 }
 
 function validateRoller(context: SelectionContext): ValidationIssue[] {
@@ -1461,6 +2265,37 @@ function validateNormanFauxWoodSplit(
   return issues;
 }
 
+function validateNormanShutterFramePricing(
+  context: SelectionContext,
+): ValidationIssue[] {
+  const resolution = resolveNormanShutterWindowSizePricing(context);
+  if (!resolution.applicable || resolution.supported) return [];
+  const selectedValues = {
+    measurement_basis: configValue(context, "measurement_basis") ?? null,
+    mount_type: configValue(context, "mount_type") ?? null,
+    frame_type: configValue(context, "frame_type") ?? null,
+    frame_sides: configValue(context, "frame_sides") ?? null,
+  };
+  const explanationByReason = {
+    not_applicable: "The Norman shutter frame-pricing selection is incomplete.",
+    invalid_dimensions: "Shutter width and height must be positive before frame pricing can be calculated.",
+    missing_frame: "Window-size shutter pricing requires an exact Norman frame.",
+    missing_frame_sides: "Window-size shutter pricing requires three or four framed sides.",
+    mount_frame_mismatch: "The selected Norman frame is not valid for the selected mount type.",
+    unsupported_frame: "The selected Norman frame has no source-backed window-size pricing addition.",
+  } as const;
+  const reason = resolution.reason ?? "unsupported_frame";
+  return [
+    issue(
+      "hard_block",
+      `norman.shutter.frame_pricing.${reason}`,
+      NORMAN_SHUTTER_FRAME_PRICING,
+      selectedValues,
+      explanationByReason[reason],
+    ),
+  ];
+}
+
 export function productRuleStatusForSelection(context: SelectionContext): ProductRuleStatus {
   if (context.productId.startsWith("polar_")) return "manual_quote_required";
   if (context.productId === "vertical_honeycomb") return "manual_quote_required";
@@ -1502,8 +2337,29 @@ export function validateSelection(context: SelectionContext): readonly Validatio
     case "onyx_shutters":
       issues.push(...validateOnyxShutterRestrictions(context));
       break;
+    case "norman_shutters":
+      issues.push(...validateNormanShutterFramePricing(context));
+      break;
     case "polar_elite_patio":
+      issues.push(...validatePolarExteriorConfiguration(context));
       issues.push(...validatePolarElitePortalConflict(context));
+      break;
+    case "polar_titan_patio":
+    case "polar_mega_exterior":
+      issues.push(...validatePolarExteriorConfiguration(context));
+      break;
+    case "polar_interior_roller":
+      issues.push(...validatePolarInteriorConfiguration(context));
+      break;
+    case "polar_drapery_track":
+      issues.push(...validatePolarDraperyConfiguration(context));
+      break;
+    case "polar_awning_premium_pro":
+    case "polar_awning_premium_plus":
+    case "polar_awning_premium":
+    case "polar_awning_select":
+    case "polar_awning_drop_arm":
+      issues.push(...validatePolarAwningConfiguration(context));
       break;
     case "lotus_faux_wood_blinds":
       issues.push(...validateLotusFauxWood(context));

@@ -15,6 +15,12 @@ export const QUOTE_V2_CATALOG_VERSION =
   `805-v2-norman-2026-07-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
 export const QUOTE_V2_ROLLER_PREVIEW_VERSION =
   `805-v2-norman-roller-2026-08-01-${QUOTE_V2_PRICING_POLICY_REVISION}` as const;
+export const QUOTE_V2_POLAR_ALL_SEASONS_VERSION =
+  "805-v2-polar-all-seasons-2026-07-retail-cost-freight-r2" as const;
+export const POLAR_ALL_SEASONS_PRODUCT_ID =
+  "polar_all_seasons_screen" as const;
+export const POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID =
+  "owner_assumed_freight_once_per_quote" as const;
 
 /**
  * Server-owned catalog selection. A browser-provided catalog label is never
@@ -26,6 +32,9 @@ export function quoteV2CatalogVersionFor(
   productId: string,
   asOf: string,
 ): string {
+  if (productId === POLAR_ALL_SEASONS_PRODUCT_ID) {
+    return QUOTE_V2_POLAR_ALL_SEASONS_VERSION;
+  }
   return productId === "roller" && asOf >= "2026-08-01"
     ? QUOTE_V2_ROLLER_PREVIEW_VERSION
     : QUOTE_V2_CATALOG_VERSION;
@@ -96,18 +105,24 @@ export const QUOTE_V2_PRODUCT_STATUS: Readonly<Record<string, ProductCatalogStat
   smartprivacy_faux: "documented_limited",
   wood_blinds: "restriction_source_incomplete",
   polar_interior_roller: "restriction_source_incomplete",
-  polar_elite_patio: "restriction_source_incomplete",
-  polar_titan_patio: "restriction_source_incomplete",
-  polar_mega_exterior: "restriction_source_incomplete",
+  // Dealer-book pages 90-110, 114-139, and 141-162 document the exterior
+  // guide choices, grid-included hardware, priced adders, motorization, and
+  // the guide-specific limits enforced by the V2 rules.
+  polar_elite_patio: "documented_limited",
+  polar_titan_patio: "documented_limited",
+  polar_mega_exterior: "documented_limited",
   polar_drapery_track: "restriction_source_incomplete",
   polar_tension_shade: "manual_quote_required",
-  polar_all_seasons_screen: "restriction_source_incomplete",
+  // The owner-approved flat freight policy is the complete customer-facing
+  // delivery rule. Independent size/configuration validation still fails
+  // closed, so this remains documented_limited rather than globally complete.
+  polar_all_seasons_screen: "documented_limited",
   polar_awning_premium_pro: "restriction_source_incomplete",
   polar_awning_premium_plus: "restriction_source_incomplete",
   polar_awning_premium: "restriction_source_incomplete",
   polar_awning_select: "restriction_source_incomplete",
   polar_awning_drop_arm: "restriction_source_incomplete",
-  polar_exterior_clutch_unavailable: "unavailable",
+  polar_exterior_clutch_unavailable: "manual_quote_required",
   norman_shutters: "restriction_source_incomplete",
   onyx_shutters: "restriction_source_incomplete",
 };

@@ -17,6 +17,7 @@ import {
 } from "./wholesale-ledger";
 import type { WholesaleAuthorityFinding } from "./lotus-authority";
 import type { ProductCatalogStatus } from "@/lib/quote-v2/catalog";
+import type { PricingRestrictionReference } from "./restriction-types";
 
 export type UiProgram = {
   id: string;
@@ -27,6 +28,15 @@ export type UiProgram = {
 };
 
 export type UiFabric = { name: string; programId: string };
+export type UiFabricMetadata = {
+  name: string;
+  priceGroup: string;
+  openness: string;
+  rollWidthInches: number | null;
+  maxRailroadLengthInches: number | null;
+  railroadAllowed: boolean;
+  sourcePage: number;
+};
 
 export type UiFabricColor = Pick<
   ProductColorOption,
@@ -59,6 +69,8 @@ export type UiSurcharge = {
   value: number | null;
   /** True when priced by window width (valances) rather than a flat value. */
   widthGraduated: boolean;
+  /** True when priced by window height rather than a flat value. */
+  heightGraduated: boolean;
 };
 
 export type UiDetailField = QuoteDetailField;
@@ -78,10 +90,13 @@ export type UiProduct = {
   priceBasis: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
+  sourcePages: number[];
+  notes: string[];
   image: string;
   /** Products are chosen by fabric when fabrics is non-empty, else by program. */
   programs: UiProgram[];
   fabrics: UiFabric[];
+  fabricMetadata: UiFabricMetadata[];
   fabricColors: UiFabricColor[];
   details: UiDetailField[];
   motorizationGroups: string[];
@@ -93,6 +108,14 @@ export type UiMotorizationOption = {
   name: string;
   price: number | null;
   priceByProduct?: Record<string, number | null>;
+  role?: "motor" | "control" | "power" | "cable" | "accessory";
+  technology?: "rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha";
+  compatibleTechnologies?: Array<"rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha">;
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  requiredOptionIds?: string[];
 };
 
 export type UiMotorizationGroup = {
@@ -111,12 +134,12 @@ export type UiCatalog = {
 export function resolveMotorizationOptionsForProduct(
   group: UiMotorizationGroup,
   productId: string,
-): Array<{ id: string; name: string; price: number | null }> {
+): UiMotorizationOption[] {
   return group.options.flatMap((option) => {
     const hasProductPrice = Boolean(option.priceByProduct && productId in option.priceByProduct);
     const mapped = hasProductPrice ? option.priceByProduct?.[productId] : option.price;
     if (hasProductPrice && mapped == null) return [];
-    return [{ id: option.id, name: option.name, price: mapped ?? null }];
+    return [{ ...option, price: mapped ?? null }];
   });
 }
 
@@ -189,6 +212,7 @@ export type UiPricingReference = {
   products: UiPricingReferenceProduct[];
   globalSurcharges: UiReferenceSurcharge[];
   motorization: UiPricingReferenceMotorizationGroup[];
+  restrictions?: PricingRestrictionReference;
 };
 
 function projectSurcharge(s: (typeof catalog.products)[number]["surcharges"][number]): UiReferenceSurcharge {
@@ -199,6 +223,7 @@ function projectSurcharge(s: (typeof catalog.products)[number]["surcharges"][num
     per: s.per,
     value: s.value,
     widthGraduated: s.widthGraduated != null,
+    heightGraduated: s.heightGraduated != null,
     appliesTo: s.appliesTo,
     notes: s.notes,
     sourceType: s.sourceType,
@@ -209,10 +234,16 @@ function emptyCostGrid(prices: Array<Array<number | null>>): Array<Array<number 
   return prices.map((row) => row.map(() => null));
 }
 
+function customerSafeCatalogNotes(notes: readonly string[]): string[] {
+  return notes.filter(
+    (note) => !/\b(dealer|wholesale|landed\s*cost|margin|cost\s*factor)\b/i.test(note),
+  );
+}
+
 export function buildUiCatalog(): UiCatalog {
   const products: UiProduct[] = catalog.products.map((p) => {
     const quoteOnly = isPolarManufacturer(p.manufacturer) || isPolarProductId(p.id);
-    return {
+    return ({
     id: p.id,
     name: p.name,
     productType: p.productType,
@@ -221,19 +252,30 @@ export function buildUiCatalog(): UiCatalog {
     priceBasis: quoteOnly ? "manual_required" : p.priceBasis ?? "suggested_retail",
     provisional: p.provisional === true,
     source: p.source ?? null,
+    sourcePages: [...p.pages],
+    notes: customerSafeCatalogNotes(p.notes),
     image: productImage(p.productType),
-    programs: (quoteOnly ? [] : p.programs).map((pr) => ({
+    programs: quoteOnly ? [] : p.programs.map((pr) => ({
       id: pr.id,
       name: pr.name,
       priceGroup: pr.priceGroup,
       priceAxis: pr.priceAxis,
-      priceBasis: pr.priceBasis ?? null,
+      priceBasis: quoteOnly ? "manual_required" : pr.priceBasis ?? null,
     })),
     fabrics: !quoteOnly && p.fabricRouting
       ? Object.entries(p.fabricRouting)
           .map(([name, programId]) => ({ name, programId }))
           .sort((a, b) => a.name.localeCompare(b.name))
       : [],
+    fabricMetadata: (quoteOnly ? [] : p.fabricMetadata ?? []).map((fabric) => ({
+      name: fabric.name,
+      priceGroup: fabric.priceGroup,
+      openness: fabric.openness,
+      rollWidthInches: fabric.rollWidthInches,
+      maxRailroadLengthInches: fabric.maxRailroadLengthInches,
+      railroadAllowed: fabric.railroadAllowed,
+      sourcePage: fabric.sourcePage,
+    })),
     fabricColors: (quoteOnly ? [] : getProductColorOptions(p.id)).map((row) => ({
       id: row.id,
       productId: row.productId,
@@ -264,8 +306,9 @@ export function buildUiCatalog(): UiCatalog {
       per: s.per,
       value: s.value,
       widthGraduated: s.widthGraduated != null,
+      heightGraduated: s.heightGraduated != null,
     })),
-    };
+    });
   });
 
   const motorization: UiMotorizationGroup[] = Object.entries(catalog.motorization)
@@ -279,6 +322,18 @@ export function buildUiCatalog(): UiCatalog {
         name: o.name,
         price: o.price,
         ...(o.priceByProduct ? { priceByProduct: o.priceByProduct } : {}),
+        ...(o.role ? { role: o.role } : {}),
+        ...(o.technology ? { technology: o.technology } : {}),
+        ...(o.compatibleTechnologies
+          ? { compatibleTechnologies: o.compatibleTechnologies }
+          : {}),
+        ...(o.minWidth != null ? { minWidth: o.minWidth } : {}),
+        ...(o.maxWidth != null ? { maxWidth: o.maxWidth } : {}),
+        ...(o.minHeight != null ? { minHeight: o.minHeight } : {}),
+        ...(o.maxHeight != null ? { maxHeight: o.maxHeight } : {}),
+        ...(o.requiredOptionIds
+          ? { requiredOptionIds: o.requiredOptionIds }
+          : {}),
       })),
     }),
   );
@@ -372,17 +427,10 @@ export function buildPricingReference(): UiPricingReference {
     })),
     surcharges: group.surcharges.map(projectSurcharge),
     notes: group.notes,
-  }));
-
-  const supportedSources = [
-    ...new Set(
-      [...programs.map((program) => program.source), ...products.map((product) => product.source)]
-        .filter((source): source is string => Boolean(source)),
-    ),
-  ];
+    }));
 
   return {
-    source: supportedSources.join(" + ") || "Source-backed manufacturer pricing",
+    source: catalog.source,
     effectiveDate: catalog.effectiveDate,
     currency: catalog.currency,
     sources: [

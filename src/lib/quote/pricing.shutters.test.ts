@@ -8,9 +8,8 @@ import {
 import { getProduct, catalog } from "./catalog";
 import { deriveAutomaticSurcharges } from "./automatic-surcharges";
 
-// Shutter pricing is PROVISIONAL (ported from legacy MTS data, pending a current
-// Norman/Onyx guide). These expectations lock the $/sqft math and the 8 sqft floor
-// so a future numbers swap can't silently break the engine.
+// Shutter pricing is $/sqft. Norman and Onyx retail rates are independently
+// approved business prices; source-backed dealer costs remain separate.
 
 function ok(r: PriceResult) {
   if (!r.ok) throw new Error(`expected ok, got ${r.code}: ${r.error}`);
@@ -34,25 +33,32 @@ describe("shutter $/sqft pricing", () => {
       ["Composite", "norman_shutters", "woodlore", 35],
       ["Painted Wood - Norman", "norman_shutters", "normandy_painted", 42],
       ["Stained Wood - Norman", "norman_shutters", "normandy_stained", 46],
+      ["Onyx Basswood", "onyx_shutters", "painted_basswood", 35],
+      ["Onyx Basswood Stain", "onyx_shutters", "stained_basswood", 38],
+      ["Onyx Sycamore", "onyx_shutters", "secamore", 31],
+      ["Onyx Vinyl", "onyx_shutters", "vinyl", 31],
+      ["Onyx MDF Hybrid", "onyx_shutters", "vlo_hybrid", 29],
+      ["Onyx USA Poly", "onyx_shutters", "onyx_us_made_vinyl", 32],
+      ["Onyx Poly Composite", "onyx_shutters", "poly_composite", 31],
     ] as const;
 
     for (const [label, productId, programId, pricePerSqft] of cases) {
       const r = ok(priceDesign({ productId, programId, widthInches: 30, heightInches: 60 }));
       expect(r.sqft, label).toBe(12.5);
-      expect(r.billableSqft, label).toBe(12.5);
-      expect(r.base, label).toBe(12.5 * pricePerSqft);
-      expect(r.total, label).toBe(12.5 * pricePerSqft);
+      expect(r.billableSqft, label).toBe(13);
+      expect(r.base, label).toBe(13 * pricePerSqft);
+      expect(r.total, label).toBe(13 * pricePerSqft);
     }
   });
 
-  it("Norman Woodlore Composite ($35/sqft): 30x60 = 12.5 sqft = $437.50", () => {
+  it("rounds 30x60 from 12.5 sqft up to the Woodlore 13 sqft grid row", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60 }));
     expect(r.sqft).toBe(12.5);
-    expect(r.billableSqft).toBe(12.5);
-    expect(r.base).toBe(437.5);
-    expect(r.wholesaleBase).toBe(163.75);
-    expect(r.wholesaleUnitPrice).toBe(163.75);
-    expect(r.total).toBe(437.5);
+    expect(r.billableSqft).toBe(13);
+    expect(r.base).toBe(455);
+    expect(r.wholesaleBase).toBe(170.3);
+    expect(r.wholesaleUnitPrice).toBe(170.3);
+    expect(r.total).toBe(455);
   });
 
   it("applies the 8 sq ft minimum: Woodlore 24x24 (4 sqft) bills 8 sqft = $280", () => {
@@ -62,17 +68,17 @@ describe("shutter $/sqft pricing", () => {
     expect(r.base).toBe(280);
   });
 
-  it("prices Onyx Basswood dealer cost without inventing customer retail", () => {
+  it("prices Onyx Basswood dealer cost independently from customer retail", () => {
     const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60 }));
     expect(r.sqft).toBe(12.5);
-    expect(r.billableSqft).toBe(12.5);
-    expect(r.dealerNetBaseCost).toBe(168.75);
+    expect(r.billableSqft).toBe(13);
+    expect(r.dealerNetBaseCost).toBe(175.5);
     expect(r.dealerNetOptionLines).toEqual([]);
-    expect(r.dealerNetUnitCost).toBe(168.75);
-    expect(r.dealerNetTotalCost).toBe(168.75);
+    expect(r.dealerNetUnitCost).toBe(175.5);
+    expect(r.dealerNetTotalCost).toBe(175.5);
   });
 
-  it("quarantines Onyx Poly Composite without pinned dealer-cost provenance", () => {
+  it("uses the owner-confirmed $12/sqft Onyx Poly Composite wholesale rate", () => {
     expect(
       priceDealerNetDesign({
         productId: "onyx_shutters",
@@ -80,26 +86,32 @@ describe("shutter $/sqft pricing", () => {
         widthInches: 24,
         heightInches: 24,
       }),
-    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    ).toMatchObject({
+      ok: true,
+      sqft: 4,
+      billableSqft: 8,
+      dealerNetBaseCost: 96,
+      dealerNetUnitCost: 96,
+    });
   });
 
   it("prices Onyx Basswood Stain as dealer cost only", () => {
     const r = dealerOk(priceDealerNetDesign({ productId: "onyx_shutters", programId: "stained_basswood", widthInches: 30, heightInches: 60 }));
-    expect(r.dealerNetUnitCost).toBe(206.25);
+    expect(r.dealerNetUnitCost).toBe(214.5);
   });
 
   it("percent surcharge (Cafe Shutters 30%) applies off the sqft base", () => {
     const r = ok(priceDesign({ productId: "norman_shutters", programId: "woodlore", widthInches: 30, heightInches: 60, surcharges: [{ id: "cafe_shutters" }] }));
-    expect(r.surchargeLines[0].amount).toBe(131.25); // 30% of 437.50
-    expect(r.surchargeLines[0].wholesaleAmount).toBe(49.13); // 30% of 163.75
-    expect(r.unitPrice).toBe(568.75);
-    expect(r.wholesaleUnitPrice).toBe(212.88);
+    expect(r.surchargeLines[0].amount).toBe(136.5); // 30% of the $455 row
+    expect(r.surchargeLines[0].wholesaleAmount).toBe(51.09); // 30% of $170.30
+    expect(r.unitPrice).toBe(591.5);
+    expect(r.wholesaleUnitPrice).toBe(221.39);
   });
 
-  it("does not convert Onyx H3 dealer cost into customer retail", () => {
+  it("does not convert Onyx H3 dealer cost into a customer surcharge", () => {
     expect(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges: [{ id: "hidden_tilt_rod" }] })).toMatchObject({
       ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      code: "SURCHARGE_NO_PRICE",
     });
   });
 
@@ -114,9 +126,9 @@ describe("shutter $/sqft pricing", () => {
       }),
     );
     expect(h2).toMatchObject({
-      dealerNetBaseCost: 168.75,
-      dealerNetUnitCost: 168.75,
-      dealerNetTotalCost: 168.75,
+      dealerNetBaseCost: 175.5,
+      dealerNetUnitCost: 175.5,
+      dealerNetTotalCost: 175.5,
       dealerNetOptionLines: [
         {
           id: "h2_tilt",
@@ -140,19 +152,20 @@ describe("shutter $/sqft pricing", () => {
     );
     expect(h3).toMatchObject({
       sqft: 12.5,
-      dealerNetBaseCost: 168.75,
-      dealerNetUnitCost: 181.25,
+      billableSqft: 13,
+      dealerNetBaseCost: 175.5,
+      dealerNetUnitCost: 188.5,
       quantity: 2,
       dealerNetOnceCost: 0,
-      dealerNetTotalCost: 362.5,
+      dealerNetTotalCost: 377,
       dealerNetOptionLines: [
         {
           id: "hidden_tilt_rod",
           label: "H3 Hidden Gear",
-          amount: 12.5,
+          amount: 13,
           billingScope: "per_window",
           sourceId: "onyx-price-screenshot-2026-07-20",
-          detail: "$1/sq ft x 12.5",
+          detail: "$1/sq ft x 13",
         },
       ],
     });
@@ -189,14 +202,14 @@ describe("shutter $/sqft pricing", () => {
 
   it("prices Norman bypass/bifold track selections from the visible detail options", () => {
     const cases = [
-      [{ panel_config: "bypass" }, "bypass_and_bifold_track_shutters", 175],
-      [{ panel_config: "bifold" }, "bypass_and_bifold_track_shutters", 175],
-      [{ track_system: "bypass_track" }, "bypass_track", 175],
-      [{ track_system: "bifold_180" }, "bifold_180", 175],
-      [{ track_system: "floating_90_bifold" }, "floating_90_bifold", 196.88],
-      [{ track_system: "triple_track" }, "triple_track", 43.75],
-      [{ track_system: "track_only" }, "track_only", 43.75],
-      [{ track_system: "track_header_fascia" }, "track_w_header_and_fascia", 87.5],
+      [{ panel_config: "bypass" }, "bypass_and_bifold_track_shutters", 182],
+      [{ panel_config: "bifold" }, "bypass_and_bifold_track_shutters", 182],
+      [{ track_system: "bypass_track" }, "bypass_track", 182],
+      [{ track_system: "bifold_180" }, "bifold_180", 182],
+      [{ track_system: "floating_90_bifold" }, "floating_90_bifold", 204.75],
+      [{ track_system: "triple_track" }, "triple_track", 45.5],
+      [{ track_system: "track_only" }, "track_only", 45.5],
+      [{ track_system: "track_header_fascia" }, "track_w_header_and_fascia", 91],
     ] as const;
 
     for (const [details, surchargeId, expectedAmount] of cases) {
@@ -227,7 +240,7 @@ describe("shutter $/sqft pricing", () => {
     }
   });
 
-  it("keeps Onyx option mappings but blocks their unsupported customer retail", () => {
+  it("applies Onyx source-defined customer option prices to the confirmed retail base", () => {
     const cases = [
       [{ panel_config: "bypass" }, "close_by_pass_2_tracks", 220],
       [{ panel_config: "bifold" }, "bi_fold", 220],
@@ -240,7 +253,7 @@ describe("shutter $/sqft pricing", () => {
       [{ specialty_shape: "hexagon" }, "hexagon", 220],
       [{ specialty_shape: "circle" }, "circle", 220],
       [{ specialty_shape: "elongated_eyebrow" }, "elongated_eyebrow", 220],
-      [{ specialty_shape: "liberty_arch_panel" }, "liberty_arch_panel", 38],
+      [{ specialty_shape: "liberty_arch_panel" }, "liberty_arch_panel", 36.4],
       [{ specialty_shape: "racked" }, "racked", 140],
       [{ custom_work: "french_door_cutout" }, "french_door_cutout_l_frame_only", 110],
       [{ custom_work: "dishout_cut" }, "dishout_cut_per_cut_1_1_4in_max", 30],
@@ -249,13 +262,11 @@ describe("shutter $/sqft pricing", () => {
       [{ custom_work: "scribe_large" }, "scribe_greater_than_54_cubic_inches_per_piece", 15],
     ] as const;
 
-    for (const [details, surchargeId] of cases) {
+    for (const [details, surchargeId, expectedAmount] of cases) {
       const surcharges = deriveAutomaticSurcharges("onyx_shutters", details);
       expect(surcharges, surchargeId).toEqual([{ id: surchargeId }]);
-      expect(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges })).toMatchObject({
-        ok: false,
-        code: "CUSTOMER_RETAIL_UNDEFINED",
-      });
+      const r = ok(priceDesign({ productId: "onyx_shutters", programId: "painted_basswood", widthInches: 30, heightInches: 60, surcharges }));
+      expect(line(r, surchargeId).amount, surchargeId).toBe(expectedAmount);
     }
   });
 
@@ -300,6 +311,6 @@ describe("shutter fuzz sweep: no NaN / negative ever escapes", () => {
         }
       }
     }
-    expect(priced).toBe(12 * sizes.length);
+    expect(priced).toBe(13 * sizes.length);
   });
 });

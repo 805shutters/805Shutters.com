@@ -312,14 +312,14 @@ describe("priceDesignFields (server-side engine integration)", () => {
     );
   });
 
-  it("blocks customer retail for dealer-only shutter books", () => {
+  it("keeps approved shutter retail and source-backed wholesale separate", () => {
     const fields = priceDesignFields(
       { product_id: "onyx_shutters", program_id: "painted_basswood", fabric: null, surcharges: [], motorization: [] },
       { width_in: 30, height_in: 60 },
     );
-    expect(fields.price_status).toBe("CUSTOMER_RETAIL_UNDEFINED");
-    expect(fields.unit_price).toBe(0);
-    expect(fields.wholesale_unit_price).toBeNull();
+    expect(fields.price_status).toBe("ok");
+    expect(fields.unit_price).toBe(455);
+    expect(fields.wholesale_unit_price).toBe(175.5);
   });
 
   it("marks an out-of-range design with the error code and zero price", () => {

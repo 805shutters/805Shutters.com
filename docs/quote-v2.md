@@ -115,8 +115,10 @@ manufacturer program. `suggested_retail` programs preserve the price-book or
 portal MSRP components and apply customer discounts to that retail ledger.
 `dealer_net` programs do not invent customer retail; they fail with
 `CUSTOMER_RETAIL_UNDEFINED` until an explicit, authoritative retail policy is
-versioned for that manufacturer. Dealer factors are used only for the protected
-internal merchandise-cost ledger. Published shipping, freight, and oversize
+versioned for that manufacturer and product. Lotus is now explicitly
+owner-authorized per independent product model at three times source wholesale.
+Dealer factors are used only for the protected internal merchandise-cost
+ledger. Published shipping, freight, and oversize
 charges are allocated into internal line-item landed cost and are not added
 again as customer retail. An estimated freight value is internal-only and must
 be explicitly labeled estimated.

@@ -872,3 +872,12 @@ export async function initializeExactQuoteLabDatabase(
   await database.initializeV2();
   return database as unknown as QuoteBuilderDatabase;
 }
+
+export async function initializeExactQuoteLabDatabaseFromState(
+  state: QuoteLabState,
+  save?: (state: QuoteLabState) => Promise<void>,
+): Promise<QuoteBuilderDatabase> {
+  const database = new ExactQuoteLabDatabase(structuredClone(state), save);
+  await database.initializeV2();
+  return database as unknown as QuoteBuilderDatabase;
+}

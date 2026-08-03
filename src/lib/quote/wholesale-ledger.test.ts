@@ -139,7 +139,15 @@ describe("canonical wholesale cost ledger", () => {
         widthInches: 24,
         heightInches: 36,
       }),
-    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    ).toMatchObject({
+      ok: true,
+      basis: "dealer_net_sqft",
+      billableSqft: 8,
+      wholesaleBase: 96,
+      wholesaleUnitCost: 96,
+      wholesaleTotal: 96,
+      provenanceStatus: "provisional",
+    });
     expect(
       lookupWholesaleLedgerCost({
         productId: "honeycomb",

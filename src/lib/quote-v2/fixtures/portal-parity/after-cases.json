@@ -109,7 +109,7 @@
     },
     {
       "title": "Dealer-only catalogs",
-      "detail": "Lotus no longer invents customer retail and returns CUSTOMER_RETAIL_UNDEFINED. Onyx remains fail-closed before customer pricing because current restriction evidence is incomplete; its source-backed dealer cost remains authorization-protected."
+      "detail": "Each independent Lotus product grid now uses the owner-approved retail rule of three times source wholesale; customer pricing can succeed while incomplete restrictions still block sending. Onyx remains fail-closed before customer pricing where current evidence is incomplete; its source-backed dealer cost remains authorization-protected."
     },
     {
       "title": "Price components",
@@ -290,64 +290,70 @@
     {
       "id": "lotus-mini-aluminum-17x36",
       "systemAfter": {
-        "status": "customer_retail_blocked",
+        "status": "priced_send_blocked",
         "productStatus": "restriction_source_incomplete",
         "validationStatus": "blocked",
         "sendable": false,
-        "components": [],
-        "customerRetailSubtotalCents": 0,
-        "displayedTotalCents": 0,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "AMX 1-inch Aluminum", "amountCents": 6444 }
+        ],
+        "customerRetailSubtotalCents": 6444,
+        "displayedTotalCents": 6444,
         "internalCost": { "productCents": 2148, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 2148 },
-        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
-        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+        "blockCodes": ["product_status_not_sendable"],
+        "error": "Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions."
       },
-      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 6444, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
       "resolution": {
         "rootCause": "The prior $53.70 customer amount was $21.48 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
-        "change": "Block customer retail and retain $21.48 only in the protected dealer-cost ledger.",
-        "remainingLimitation": "The supplied book and portal expose dealer cost, not customer MSRP."
+        "change": "Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.",
+        "remainingLimitation": "Customer pricing is resolved; complete restriction authority is still required before sending."
       }
     },
     {
       "id": "lotus-faux-wood-bright-white-17x36",
       "systemAfter": {
-        "status": "customer_retail_blocked",
+        "status": "priced_send_blocked",
         "productStatus": "restriction_source_incomplete",
         "validationStatus": "blocked",
         "sendable": false,
-        "components": [],
-        "customerRetailSubtotalCents": 0,
-        "displayedTotalCents": 0,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "FLX 2-inch Faux Wood", "amountCents": 7071 }
+        ],
+        "customerRetailSubtotalCents": 7071,
+        "displayedTotalCents": 7071,
         "internalCost": { "productCents": 2357, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 2357 },
-        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
-        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+        "blockCodes": ["product_status_not_sendable"],
+        "error": "Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions."
       },
-      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 7071, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
       "resolution": {
         "rootCause": "The prior $58.93 customer amount was $23.57 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
-        "change": "Block customer retail and retain $23.57 only in the protected dealer-cost ledger.",
-        "remainingLimitation": "The supplied book exposes dealer cost only. A different 48 x 72 portal item also conflicts with the book and remains quarantined."
+        "change": "Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.",
+        "remainingLimitation": "A different 48 x 72 portal item conflicts with the book and remains quarantined; complete restriction authority is still required before sending."
       }
     },
     {
       "id": "lotus-steel-vertical-35x48",
       "systemAfter": {
-        "status": "customer_retail_blocked",
+        "status": "priced_send_blocked",
         "productStatus": "restriction_source_incomplete",
         "validationStatus": "blocked",
         "sendable": false,
-        "components": [],
-        "customerRetailSubtotalCents": 0,
-        "displayedTotalCents": 0,
+        "components": [
+          { "id": "base_grid", "category": "base_grid", "label": "CV Steel Vertical", "amountCents": 9591 }
+        ],
+        "customerRetailSubtotalCents": 9591,
+        "displayedTotalCents": 9591,
         "internalCost": { "productCents": 3197, "freightCents": 0, "oversizeCents": 0, "processingCents": 0, "landedCents": 3197 },
-        "blockCodes": ["CUSTOMER_RETAIL_UNDEFINED", "product_status_not_sendable"],
-        "error": "Customer retail is unavailable because the source publishes dealer cost only."
+        "blockCodes": ["product_status_not_sendable"],
+        "error": "Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions."
       },
-      "comparisonAfter": { "manufacturerCents": null, "systemCents": 0, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
+      "comparisonAfter": { "manufacturerCents": null, "systemCents": 9591, "differenceCents": null, "percentageBasisPoints": null, "result": "unverified" },
       "resolution": {
         "rootCause": "The prior $79.93 customer amount was $31.97 dealer cost multiplied by 2.5 without a manufacturer MSRP source.",
-        "change": "Block customer retail and retain $31.97 only in the protected dealer-cost ledger.",
-        "remainingLimitation": "The supplied book and portal expose dealer cost, not customer MSRP."
+        "change": "Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.",
+        "remainingLimitation": "Customer pricing is resolved; complete restriction authority is still required before sending."
       }
     },
     {

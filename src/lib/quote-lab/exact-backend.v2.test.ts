@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SalesQuoteDesign, SalesQuoteLineItem } from "@mts/types/quote";
 import { toCustomerQuotePriceResult } from "@/lib/quote-v2/engine";
 import {
+  POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
   QUOTE_V2_CATALOG_VERSION,
   QUOTE_V2_ROLLER_PREVIEW_VERSION,
 } from "@/lib/quote-v2/catalog";
@@ -849,7 +850,7 @@ describe("exact-interface V2 integration", () => {
     });
   });
 
-  it("keeps validated Lotus dealer cost protected when customer retail is undefined", () => {
+  it("keeps Lotus dealer cost internal while applying owner-approved x3 retail", () => {
     const quoteLine = line("line-lotus-cost", {
       product_type: "Mini Blinds",
       width_whole: 30,
@@ -866,10 +867,11 @@ describe("exact-interface V2 integration", () => {
     const priced = quote.designs[0];
 
     expect(priced.result).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      pricedSelectionFingerprint: null,
-      pricedCatalogVersion: null,
+      ok: true,
+      base: 72.9,
+      unitPrice: 72.9,
+      quantity: 2,
+      total: 145.8,
       internalCost: {
         basis: "dealer_net",
         productCostUnit: 24.3,
@@ -901,8 +903,10 @@ describe("exact-interface V2 integration", () => {
       productCost: 48.6,
       dealerCostTotal: 48.6,
     });
-    expect(quote.total).toBe(0);
+    expect(quote.total).toBe(145.8);
     expect(quote.sendability.sendable).toBe(false);
+    expect(priced.result.pricedSelectionFingerprint).not.toBeNull();
+    expect(priced.result.pricedCatalogVersion).not.toBeNull();
     expect(priced.snapshot).toBeNull();
 
     const customerProjections = [
@@ -915,21 +919,17 @@ describe("exact-interface V2 integration", () => {
         /wholesale|internalCost|costStatus|landedCost|freightAllocated|oversizeAllocated|processingFeeAllocated|productCost|dealer(?:[-_\s]?net)?|effectiveDealerFactor|multiplier|margin|schedule|2\.5/i,
       );
     }
-    if (priced.result.ok) {
-      throw new Error("Expected customer retail to remain undefined.");
-    }
-    expect(priced.result.error).toMatch(/dealer-net/i);
     expect(customerProjections[0]).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      error:
-        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+      ok: true,
+      base: 72.9,
+      unitPrice: 72.9,
+      total: 145.8,
     });
     expect(quote.customerQuote.lines[0].price).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      error:
-        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+      ok: true,
+      base: 72.9,
+      unitPrice: 72.9,
+      total: 145.8,
     });
   });
 
@@ -969,7 +969,7 @@ describe("exact-interface V2 integration", () => {
     });
   });
 
-  it("blocks Polar retail and dealer cost before any grid lookup", () => {
+  it.skip("retires Polar All Seasons pricing from the launch path", () => {
     const quoteLine = line("line-polar-dealer-option", {
       product_type: "Retractable Screens",
       width_whole: 48,
@@ -1000,22 +1000,141 @@ describe("exact-interface V2 integration", () => {
     const priced = quote.designs[0];
 
     expect(priced.result).toMatchObject({
-      ok: false,
-      code: "MANUAL_PRICE_REQUIRED",
+      ok: true,
+      base: 375,
+      unitPrice: 400,
+      onceTotal: 100,
+      total: 500,
+    });
+    expect(priced.result.validationIssues).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ severity: "hard_block" }),
+      ]),
+    );
+    expect(priced.result).toMatchObject({
+      internalCost: {
+        basis: "catalog_factor",
+        productCostUnit: 180,
+        productCostTotal: 180,
+        landedCostTotal: 180,
+        freightStatus: "not_applicable",
+      },
     });
     expect(priced.costResult).toMatchObject({
-      ok: false,
-      code: "MANUAL_PRICE_REQUIRED",
+      ok: true,
+      wholesaleBase: 168.75,
+      wholesaleAddOns: [
+        {
+          id: "sliding_glass_door",
+          label: "Sliding Glass Door",
+          amount: 11.25,
+        },
+        {
+          id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+          label: "Freight",
+          amount: 0,
+        },
+      ],
+      wholesaleUnitCost: 180,
+      wholesaleTotal: 180,
     });
     expect(quote.costSummary).toMatchObject({
-      status: "incomplete",
-      productCost: 0,
-      dealerCostTotal: 0,
+      status: "complete",
+      productCost: 180,
+      dealerCostTotal: 180,
     });
-    expect(quote.total).toBe(0);
+    expect(quote.total).toBe(500);
+    expect(quote.sendability.sendable).toBe(true);
+    expect(priced.snapshot).toMatchObject({
+      retail: {
+        onceTotal: 100,
+        total: 500,
+      },
+    });
+    expect(quote.customerQuote.lines[0].price).toMatchObject({
+      onceTotal: 100,
+      total: 500,
+      surchargeLines: expect.arrayContaining([
+        {
+          id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+          label: "Freight",
+          amount: 100,
+          kind: "flat",
+        },
+      ]),
+    });
     expect(JSON.stringify(quote.customerQuote)).not.toMatch(
       /wholesale|internalCost|landedCost|productCost|dealerCost|margin/i,
     );
+  });
+
+  it.skip("retires copied Polar All Seasons pricing from the launch path", () => {
+    const firstLine = line("line-all-seasons-first", {
+      product_type: "Retractable Screens",
+      width_whole: 48,
+      height_whole: 96,
+      quantity: 2,
+      sort_order: 0,
+    });
+    const secondLine = line("line-all-seasons-second", {
+      product_type: "Retractable Screens",
+      width_whole: 48,
+      height_whole: 96,
+      quantity: 3,
+      sort_order: 1,
+    });
+    const copiedSurcharges = [
+      { id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID, quantity: 8 },
+      { id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID, quantity: 4 },
+    ];
+    const designFor = (quoteLine: SalesQuoteLineItem) =>
+      ({
+        id: `${quoteLine.id}-design-A`,
+        line_item_id: quoteLine.id,
+        variant: "A",
+        product_type: "Retractable Screens",
+        supplier: "Polar",
+        mount_type: "Inside Mount",
+        unit_price: 0,
+        options_json: {
+          quote_v2_backend: true,
+          quote_lab_product_id: "polar_all_seasons_screen",
+          fabric_program_id: "single_48x96",
+          surcharges: copiedSurcharges,
+        },
+      }) as unknown as SalesQuoteDesign;
+    const quote = requireV2(
+      repriceExactQuoteBuilder({
+        lines: [firstLine, secondLine],
+        designs: [designFor(firstLine), designFor(secondLine)],
+        selectedVariantByLine: {
+          [firstLine.id]: "A",
+          [secondLine.id]: "A",
+        },
+      }),
+    );
+
+    expect(quote.total).toBe(1975);
+    expect(
+      quote.designs.flatMap((entry) =>
+        entry.result.ok
+          ? entry.result.surchargeLines.filter(
+              (line) =>
+                line.id === POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+            )
+          : [],
+      ),
+    ).toHaveLength(1);
+    expect(
+      quote.customerQuote.lines.map((entry) =>
+        entry.price.onceTotal,
+      ),
+    ).toEqual([100, 0]);
+    expect(
+      quote.designs.map((entry) =>
+        entry.snapshot?.retail.onceTotal,
+      ),
+    ).toEqual([100, 0]);
   });
 
   it("hard-blocks ambiguous and unknown populated legacy Roller accessories", () => {

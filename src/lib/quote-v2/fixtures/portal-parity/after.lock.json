@@ -15,8 +15,8 @@
   "trackedArtifacts": [
     {
       "path": "src/lib/quote-v2/fixtures/portal-parity/after-cases.json",
-      "byteLength": 20733,
-      "sha256": "6fb8480e3be7819d7a6910aa4f1211145f32a3b6494f2f32a1306b2a094d03b4"
+      "byteLength": 21372,
+      "sha256": "ad15f1913976e09533bb45798132f66220cd6010ffa6ffba54c07d30ccc8b4e4"
     },
     {
       "path": "scripts/generate-quote-v2-portal-parity-after.mjs",
@@ -25,8 +25,8 @@
     },
     {
       "path": "docs/quote-v2/portal-parity/after-audit-2026-07-22.md",
-      "byteLength": 35108,
-      "sha256": "b0a7717b7c7fe5a46149ba1cec8ff210ab20a7d3b5c184d3f45b6a4b92886e99"
+      "byteLength": 35357,
+      "sha256": "f0c3ffc2caf58c35d6fa814435c2326f80e4e87609b370d2285f19223a946edf"
     },
     {
       "path": "docs/quote-v2/portal-parity/evidence/norman-roller-portal-capture-2026-07-21.md",

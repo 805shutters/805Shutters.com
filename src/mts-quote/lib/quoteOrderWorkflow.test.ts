@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRollerShadeOrderReadiness } from "./quoteOrderWorkflow";
+import { getPolarQuoteOnlyHold, getRollerShadeOrderReadiness } from "./quoteOrderWorkflow";
 import type { SalesQuoteDesign, SalesQuoteWithItems, QuoteLineItemWithDesigns } from "@mts/types/quote";
 
 function rollerDesign(overrides: Partial<SalesQuoteDesign> = {}): SalesQuoteDesign {
@@ -118,5 +118,29 @@ describe("getRollerShadeOrderReadiness", () => {
 
     expect(readiness.ready).toBe(true);
     expect(readiness.missingFields).not.toContain("Dining Room: remote type");
+  });
+
+  it("creates a visible fail-closed hold for a Polar request", () => {
+    const polarQuote = quote(rollerLine(rollerDesign({
+      supplier: "Polar",
+      unit_price: 0,
+      options_json: {
+        quote_only_status: "QUOTE_ONLY",
+        catalog_product_id: "polar_interior_roller",
+      },
+    })));
+
+    expect(getPolarQuoteOnlyHold(polarQuote)).toEqual({
+      blocked: true,
+      lineItems: ["Dining Room"],
+      message: "QUOTE ONLY — Polar follow-on automation is blocked for Dining Room.",
+    });
+    expect(getRollerShadeOrderReadiness(polarQuote)).toMatchObject({
+      applies: true,
+      ready: false,
+      missingFields: expect.arrayContaining([
+        expect.stringContaining("QUOTE ONLY"),
+      ]),
+    });
   });
 });

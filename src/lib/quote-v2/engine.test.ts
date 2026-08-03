@@ -15,6 +15,12 @@ import {
 } from "./engine";
 import { pruneRollerV2UiSelection } from "./roller-ui-facets";
 
+const POLAR_INTERIOR_MANUAL_CONFIGURATION = {
+  fabric_collection: "SunTex 80 25%",
+  polar_interior_fabric_orientation: "standard",
+  lift_system: "manual_clutch",
+} satisfies SelectionRecord;
+
 function selection(
   productId: string,
   programId: string,
@@ -78,7 +84,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result).not.toHaveProperty("unitPrice");
   });
 
-  it("fails closed when a dealer-net product has no authoritative customer retail", () => {
+  it("applies the owner-approved Lotus x3 retail while preserving dealer cost internally", () => {
     const context = selection(
       "lotus_mini_blinds",
       "lotus_amx_1in_aluminum_custom",
@@ -102,31 +108,25 @@ describe("Quote V2 authoritative pricing engine", () => {
       includeInternalCost: true,
     });
     expect(result).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      pricedSelectionFingerprint: null,
-      pricedCatalogVersion: null,
+      ok: true,
+      base: 72.9,
+      unitPrice: 72.9,
+      quantity: 2,
+      total: 145.8,
+      internalCost: {
+        basis: "dealer_net",
+        productCostUnit: 24.3,
+        productCostTotal: 48.6,
+      },
     });
-    expect(result).not.toHaveProperty("base");
-    expect(result).not.toHaveProperty("total");
-    expect(result).not.toHaveProperty("internalCost");
-
-    const internalDiagnostic = {
-      ...result,
-      error:
-        "Dealer-net cost and margin use the exact dealer schedule factor 0.33.",
-    };
-    expect(internalDiagnostic.error).toMatch(
-      /dealer-net|cost|margin|schedule|0\.33/i,
-    );
-    const customerFailure = toCustomerQuotePriceResult(internalDiagnostic);
-    expect(customerFailure).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      error:
-        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+    const customerResult = toCustomerQuotePriceResult(result);
+    expect(customerResult).toMatchObject({
+      ok: true,
+      base: 72.9,
+      unitPrice: 72.9,
+      total: 145.8,
     });
-    expect(JSON.stringify(customerFailure)).not.toMatch(
+    expect(JSON.stringify(customerResult)).not.toMatch(
       /dealer(?:[-_\s]?net)?|cost|margin|schedule|factor|0\.33/i,
     );
   });
@@ -219,7 +219,7 @@ describe("Quote V2 authoritative pricing engine", () => {
   });
 
   it.skip("retires Polar pricing even when the manufacturer label is forged", () => {
-    const context = selection("polar_interior_roller", "group_1", {}, {
+    const context = selection("polar_interior_roller", "group_2", POLAR_INTERIOR_MANUAL_CONFIGURATION, {
       manufacturerId: "norman",
       widthInches: 30,
       heightInches: 48,
@@ -237,9 +237,9 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(result.ok, JSON.stringify(result, null, 2)).toBe(true);
     if (!result.ok) return;
     expect(result).toMatchObject({
-      base: 142,
-      wholesaleBase: 63.9,
-      total: 142,
+      base: 148,
+      wholesaleBase: 66.6,
+      total: 148,
     });
     expect(result.internalCost).not.toHaveProperty("effectiveDealerFactor");
   });
@@ -1218,8 +1218,9 @@ describe("Quote V2 authoritative pricing engine", () => {
       widthInches: context.widthInches,
       heightInches: context.heightInches,
     })).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
+      base: 256,
+      billableSqft: 8,
     });
   });
 
@@ -1264,24 +1265,52 @@ describe("Quote V2 authoritative pricing engine", () => {
       "engine.selection_price_input.mismatch",
     );
 
-    const unsupported = {
+    const profileDerived = {
       ...context,
       configuration: {
         ...context.configuration,
+        mount_type: "inside",
         frame_type: "VZ Fine",
         frame_source_code: "VZ Fine",
       },
     };
-    expect(authoritativePriceInputForSelection(unsupported, measuredInput)).toBe(
-      measuredInput,
+    expect(authoritativePriceInputForSelection(profileDerived, measuredInput)).toMatchObject({
+      widthInches: 32,
+      heightInches: 73,
+    });
+  });
+
+  it("derives Norman frame-adjusted square footage only inside the pricing engine", () => {
+    const context = selection(
+      "norman_shutters",
+      "woodlore",
+      {
+        measurement_basis: "window_size",
+        mount_type: "inside",
+        frame_type: '3" Crown Z Frame',
+        frame_sides: 4,
+      },
+      { widthInches: 30, heightInches: 60 },
     );
+    const measuredInput = {
+      productId: context.productId,
+      programId: context.programId ?? undefined,
+      widthInches: context.widthInches,
+      heightInches: context.heightInches,
+    };
+
+    expect(authoritativePriceInputForSelection(context, measuredInput)).toMatchObject({
+      widthInches: 34.5,
+      heightInches: 64.5,
+    });
+    expect(context).toMatchObject({ widthInches: 30, heightInches: 60 });
   });
 
   it.skip("retires Polar component pricing from customer payloads", () => {
     const context = selection(
       "polar_interior_roller",
-      "group_1",
-      {},
+      "group_2",
+      POLAR_INTERIOR_MANUAL_CONFIGURATION,
       { widthInches: 30, heightInches: 48 },
     );
     const result = priceQuoteV2Selection({
@@ -1462,8 +1491,8 @@ describe("Quote V2 authoritative pricing engine", () => {
   it.skip("retires the legacy mixed-manufacturer Polar pricing fixture", () => {
     const context = selection(
       "polar_interior_roller",
-      "group_1",
-      {},
+      "group_2",
+      POLAR_INTERIOR_MANUAL_CONFIGURATION,
       { widthInches: 30, heightInches: 48 },
     );
     const result = priceQuoteV2Selection({
@@ -1541,8 +1570,8 @@ describe("Quote V2 authoritative pricing engine", () => {
   it.skip("retires Polar internal-cost projections and snapshots", () => {
     const context = selection(
       "polar_interior_roller",
-      "group_1",
-      {},
+      "group_2",
+      POLAR_INTERIOR_MANUAL_CONFIGURATION,
       { widthInches: 30, heightInches: 48 },
     );
     const result = priceQuoteV2Selection({
@@ -1562,7 +1591,7 @@ describe("Quote V2 authoritative pricing engine", () => {
     expect(serialized).not.toMatch(
       /wholesale|internalCost|costStatus|freightAllocated|processingFee|landedCost/i,
     );
-    expect(serialized).not.toContain("63.9");
+    expect(serialized).not.toContain("66.6");
     expect(serialized).not.toContain("2.5");
 
     const snapshot = createImmutablePriceSnapshot(result);

@@ -9,6 +9,7 @@ import type {
   UiPricingReferenceProgram,
   UiReferenceSurcharge,
 } from "@/lib/quote/ui-catalog";
+import type { RestrictionLegendRow } from "@/lib/quote/restriction-types";
 
 type Props = {
   session: Session;
@@ -99,6 +100,18 @@ function productLabel(product: UiPricingReferenceProduct) {
   return product.productName.replace("Ultimate ", "").replace("Cordless ", "");
 }
 
+function restrictionDimension(
+  value: number | null,
+  range: [number, number] | null,
+  suffix = '"',
+) {
+  if (value != null) return `${value}${suffix}`;
+  if (!range) return "-";
+  return range[0] === range[1]
+    ? `${range[0]}${suffix}`
+    : `${range[0]}-${range[1]}${suffix}`;
+}
+
 export function PricingGuidePanel({ session }: Props) {
   const [reference, setReference] = useState<UiPricingReference | null>(null);
   const [activeManufacturer, setActiveManufacturer] = useState("");
@@ -164,6 +177,10 @@ export function PricingGuidePanel({ session }: Props) {
     manufacturerProducts.find((product) => product.productId === activeProductId) ||
     manufacturerProducts[0];
   const activePrograms = activeProduct ? programsByProduct.get(activeProduct.productId) || [] : [];
+  const activeRestrictions =
+    reference?.restrictions?.rows.filter(
+      (row) => row.productId === activeProduct?.productId,
+    ) ?? [];
   const allPrograms = reference?.programs ?? [];
   const visiblePrograms = allPrograms.filter(
     (program) =>
@@ -288,6 +305,14 @@ export function PricingGuidePanel({ session }: Props) {
         </div>
         {activeProduct.source ? <span>{activeProduct.source}</span> : null}
       </div>
+      {activeProduct.notes.length ? (
+        <section className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+          <strong className="block">Product restriction legend</strong>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {activeProduct.notes.map((note) => <li key={note}>{note}</li>)}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="crm-pricing-programs">
         {activePrograms.map((program) => (
@@ -295,9 +320,119 @@ export function PricingGuidePanel({ session }: Props) {
         ))}
       </div>
 
+      <RestrictionLegend rows={activeRestrictions} />
       <SurchargeTable title="Product Surcharges" surcharges={activeProduct.surcharges} />
       <SurchargeTable title="Global Surcharges" surcharges={reference.globalSurcharges} />
       <MotorizationReference groups={reference.motorization} />
+    </section>
+  );
+}
+
+function RestrictionLegend({ rows }: { rows: RestrictionLegendRow[] }) {
+  const [query, setQuery] = useState("");
+  if (!rows.length) return null;
+  const normalized = query.trim().toLowerCase();
+  const visible = normalized
+    ? rows.filter((row) =>
+        [
+          row.programName,
+          row.fabricCollection,
+          row.fabricType,
+          row.colorCode,
+          row.colorName,
+          ...row.conditions,
+          ...row.notes,
+        ].some((value) => value?.toLowerCase().includes(normalized)),
+      )
+    : rows;
+  return (
+    <section className="crm-pricing-reference-block">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3>Fabric &amp; Product Restriction Legend</h3>
+          <p className="mt-1 text-xs text-slate-600">
+            {rows.length.toLocaleString()} source-backed or explicitly inherited rules.
+            Exact configuration-dependent rows are enforced when dimensions are entered.
+          </p>
+        </div>
+        <label className="text-xs font-bold text-slate-700">
+          Search restrictions
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Fabric, color, program..."
+            className="ml-2 h-9 min-w-56 rounded-md border border-slate-300 bg-white px-3 font-normal"
+          />
+        </label>
+      </div>
+      <div className="crm-pricing-reference-table-wrap mt-3 max-h-[34rem] overflow-auto">
+        <table className="crm-pricing-reference-table">
+          <thead>
+            <tr>
+              <th>Fabric / configuration</th>
+              <th>Program</th>
+              <th>Min W</th>
+              <th>Max W</th>
+              <th>Min H</th>
+              <th>Max H</th>
+              <th>Max area</th>
+              <th>Fabric / railroad</th>
+              <th>Conditions, warning, source</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((row) => (
+              <tr key={row.id}>
+                <td>
+                  <strong>{row.fabricCollection || row.programName || row.productName}</strong>
+                  {row.colorCode || row.colorName ? (
+                    <span className="block text-[11px] text-slate-600">
+                      {[row.colorCode, row.colorName].filter(Boolean).join(" - ")}
+                    </span>
+                  ) : null}
+                  {row.fabricType ? (
+                    <span className="block text-[11px] text-slate-500">{row.fabricType}</span>
+                  ) : null}
+                </td>
+                <td>{row.programName || "-"}</td>
+                <td>{restrictionDimension(row.minWidth, row.minWidthRange)}</td>
+                <td>{restrictionDimension(row.maxWidth, row.maxWidthRange)}</td>
+                <td>{restrictionDimension(row.minHeight, row.minHeightRange)}</td>
+                <td>{restrictionDimension(row.maxHeight, row.maxHeightRange)}</td>
+                <td>{restrictionDimension(row.maxAreaSqft, row.maxAreaRangeSqft, " sqft")}</td>
+                <td>
+                  {row.fabricRollWidth != null ? `${row.fabricRollWidth}" roll` : "-"}
+                  {row.railroadAllowed != null ? (
+                    <span className="block text-[11px] text-slate-600">
+                      Railroad: {row.railroadAllowed ? "allowed" : "not allowed"}
+                      {row.maxRailroadLength != null
+                        ? ` · ${row.maxRailroadLength}" max without seam`
+                        : ""}
+                    </span>
+                  ) : null}
+                </td>
+                <td>
+                  <span>{row.conditions.join(" ") || row.warningBehavior}</span>
+                  <span className="mt-1 block text-[11px] text-slate-500">
+                    {[row.sourceFile, row.sourceLocation, row.effectiveDate]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                  {row.notes.length ? (
+                    <span className="mt-1 block text-[11px] text-slate-600">
+                      {row.notes.join(" ")}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!visible.length ? (
+          <p className="crm-empty">No restriction rows match “{query}”.</p>
+        ) : null}
+      </div>
     </section>
   );
 }

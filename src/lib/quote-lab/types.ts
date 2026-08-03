@@ -104,6 +104,8 @@ export type QuoteLabCatalogProduct = {
   priceBasis?: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable";
   provisional: boolean;
   source: string | null;
+  sourcePages?: number[];
+  notes?: string[];
   programs: Array<{
     id: string;
     name: string;
@@ -111,6 +113,15 @@ export type QuoteLabCatalogProduct = {
     priceBasis?: "suggested_retail" | "dealer_net" | "manual_required" | "unavailable" | null;
   }>;
   fabrics?: Array<{ name: string; programId: string }>;
+  fabricMetadata?: Array<{
+    name: string;
+    priceGroup: string;
+    openness: string;
+    rollWidthInches: number | null;
+    maxRailroadLengthInches: number | null;
+    railroadAllowed: boolean;
+    sourcePage: number;
+  }>;
   surcharges: Array<{
     id: string;
     name: string;
@@ -118,11 +129,24 @@ export type QuoteLabCatalogProduct = {
     per: "unit" | "side" | "foot" | "sqft" | "once";
     value: number | null;
     widthGraduated: boolean;
+    heightGraduated?: boolean;
   }>;
   motorizationGroups: Array<{
     groupId: string;
     name: string;
-    options: Array<{ id: string; name: string; price: number | null }>;
+    options: Array<{
+      id: string;
+      name: string;
+      price: number | null;
+      role?: "motor" | "control" | "power" | "cable" | "accessory";
+      technology?: "rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha";
+      compatibleTechnologies?: Array<"rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha">;
+      minWidth?: number;
+      maxWidth?: number;
+      minHeight?: number;
+      maxHeight?: number;
+      requiredOptionIds?: string[];
+    }>;
   }>;
 };
 

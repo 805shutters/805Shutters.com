@@ -162,11 +162,17 @@ describe("per-line discount", () => {
     expect(off.discountAmount).toBe(Math.round(full.base * 0.1 * 100) / 100);
   });
 
-  it("clamps the discount at 100%", () => {
-    const r = ok(priceDesign({ productId: "honeycomb", programId: HONEYCOMB_9_16, widthInches: 24, heightInches: 36, discountPercent: 200 }));
-    expect(r.discountPercent).toBe(100);
-    expect(r.unitPrice).toBe(0);
-    expect(r.discountAmount).toBe(212);
+  it("fails closed when a discount would reduce customer price below dealer cost", () => {
+    expect(priceDesign({
+      productId: "honeycomb",
+      programId: HONEYCOMB_9_16,
+      widthInches: 24,
+      heightInches: 36,
+      discountPercent: 200,
+    })).toMatchObject({
+      ok: false,
+      code: "CUSTOMER_PRICE_BELOW_COST",
+    });
   });
 
   it("multiplies the discounted unit by quantity in the total", () => {

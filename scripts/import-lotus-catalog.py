@@ -16,6 +16,7 @@ import pdfplumber
 
 EXPECTED_SHA256 = "4e9aba91a601e1212a3e8a1531c361caf033c28ef6ca1fdac3ad6247502a982f"
 EXPECTED_PAGES = 113
+CUSTOMER_RETAIL_MULTIPLIER = 3
 MONEY_RE = re.compile(r"(?<!\d)(\d+)[�.](\d{2})(?!\d)")
 SKU_RE = re.compile(r"\b[A-Z][A-Za-z0-9�]*\d[A-Za-z0-9�]*\b")
 
@@ -173,6 +174,20 @@ def normalize_sku(value: str) -> str:
     return value.replace("�", ".")
 
 
+def customer_retail(cost: float | None) -> float | None:
+    if cost is None:
+        return None
+    return round(cost * CUSTOMER_RETAIL_MULTIPLIER, 2)
+
+
+def add_customer_retail_prices(grid: dict[str, Any]) -> dict[str, Any]:
+    grid["prices"] = [
+        [customer_retail(value) for value in row]
+        for row in grid.get("costs", [])
+    ]
+    return grid
+
+
 def parse_wh_matrix(page: pdfplumber.page.Page, page_number: int, expected_heights: list[int]) -> dict[str, Any]:
     table = page.extract_tables()[1]
     retained = [index for index, value in enumerate(table[0]) if value not in (None, "") or index == 0]
@@ -211,14 +226,14 @@ def parse_wh_matrix(page: pdfplumber.page.Page, page_number: int, expected_heigh
         raise ValueError(
             f"Page {page_number}: expected {len(expected_heights)} matrix rows, found {height_index + 1}"
         )
-    return {
+    return add_customer_retail_prices({
         "widths": widths,
         "heights": expected_heights,
-        "prices": [[None for _ in widths] for _ in expected_heights],
+        "prices": [],
         "costs": costs,
         "skuCodes": skus,
         "cellNotes": cell_notes,
-    }
+    })
 
 
 def parse_width_matrix(page: pdfplumber.page.Page, page_number: int) -> dict[str, Any]:
@@ -231,26 +246,26 @@ def parse_width_matrix(page: pdfplumber.page.Page, page_number: int) -> dict[str
     for cell in row[1 : len(widths) + 1]:
         costs.append(money(cell))
         skus.append([normalize_sku(value) for value in SKU_RE.findall(cell or "")])
-    return {
+    return add_customer_retail_prices({
         "widths": widths,
         "heights": [],
-        "prices": [[None for _ in widths]],
+        "prices": [],
         "costs": [costs],
         "skuCodes": [skus],
-    }
+    })
 
 
 def parse_vane_matrix(page: pdfplumber.page.Page) -> dict[str, Any]:
     table = page.extract_tables()[4]
     heights = [float(number(item)) for item in table[0][1:] if number(item) is not None]
     cells = table[1][1:]
-    return {
+    return add_customer_retail_prices({
         "widths": [],
         "heights": heights,
-        "prices": [[None] for _ in heights],
+        "prices": [],
         "costs": [[money(cell)] for cell in cells],
         "skuCodes": [[[normalize_sku(value) for value in SKU_RE.findall(cell or "")]] for cell in cells],
-    }
+    })
 
 
 def program(program_id: str, name: str, page: int, grid: dict[str, Any], axis: str = "wh") -> dict[str, Any]:
@@ -268,6 +283,7 @@ def program(program_id: str, name: str, page: int, grid: dict[str, Any], axis: s
         "fabricCollections": [],
         "notes": [
             f"Dealer-net custom-cut matrix, PDF p{page}.",
+            "Customer retail is the dealer-net cell multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27.",
             "Measured dimensions round independently to the next matrix cell.",
             "Blank and source-directed substitution cells remain unpriced and block; no automatic substitution is allowed.",
         ],
@@ -301,7 +317,14 @@ def base_product(product_id: str, product_type: str, name: str, pages: list[int]
         "name": name,
         "manufacturer": "Lotus",
         "system": name,
-        "priceBasis": "dealer_net",
+        "priceBasis": "suggested_retail",
+        "customerRetailStatus": "verified",
+        "retailPolicy": {
+            "kind": "cost_multiplier",
+            "value": CUSTOMER_RETAIL_MULTIPLIER,
+            "confirmedBy": "805 Shutters owner",
+            "confirmedDate": "2026-07-27",
+        },
         "dealerFactor": None,
         "freightStatus": "unresolved",
         "pages": pages,
@@ -339,7 +362,7 @@ def build_catalog(pdf_path: Path) -> dict[str, Any]:
             ),
             "lotus_roller_shades": base_product(
                 "lotus_roller_shades", "Roller Shades", "Lotus Roller Shades", list(range(83, 88)) + [105],
-                ["Manual spring roller with 3-inch modern valance and 1/2-inch mitered returns.", "Stated widths receive a 1/8-inch inside-mount deduction (PDF p83).", "The source advertises 1% and Blackout, but only 1% stock and custom-cut prices are supplied."],
+                ["Manual spring roller with 3-inch modern valance and 1/2-inch mitered returns.", "Stated widths receive a 1/8-inch inside-mount deduction (PDF p83).", "The source advertises 1% and Blackout. The 805 Shutters owner confirmed on 2026-07-27 that Blackout uses the same wholesale prices as 1%."],
             ),
             "lotus_vertical_blinds": base_product(
                 "lotus_vertical_blinds", "Vertical Blinds", "Lotus Vertical Blinds", list(range(88, 95)) + [106, 107, 108],
@@ -367,14 +390,24 @@ def build_catalog(pdf_path: Path) -> dict[str, Any]:
         products["lotus_vertical_blinds"]["programs"].append(
             program("lotus_cvv_vertical_vanes_custom", "3.5-inch Vertical Vanes - Custom Cut", 108, parse_vane_matrix(pdf.pages[107]), "height")
         )
-        products["lotus_roller_shades"]["programs"].append(
-            empty_program(
-                "lotus_rs_blackout_unpriced",
-                "Blackout Roller Shade - Source Price Missing",
-                [83],
-                "PDF p83 advertises Blackout but pages 84-87 and custom matrix p105 price only 1% fabric. Manual source price required; never substitute the 1% grid.",
-            )
+        one_percent = next(
+            item
+            for item in products["lotus_roller_shades"]["programs"]
+            if item["id"] == "lotus_rs_1pct_custom"
         )
+        blackout = deepcopy(one_percent)
+        # Retain the original stable id for saved-quote compatibility.
+        blackout["id"] = "lotus_rs_blackout_unpriced"
+        blackout["name"] = "Blackout Roller Shade - Custom Cut"
+        blackout["sourcePages"] = [83, 105]
+        blackout["notes"] = [
+            "PDF p83 and the current Lotus specification sheet state that all RS sizes are available in 1% and Blackout.",
+            "The 805 Shutters owner confirmed on 2026-07-27 that Blackout uses the exact same wholesale grid as 1%.",
+            "Customer retail is the dealer-net cell multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27.",
+            "Measured dimensions round independently to the next matrix cell.",
+            "Blank and source-directed substitution cells remain unpriced and block; no automatic substitution is allowed.",
+        ]
+        products["lotus_roller_shades"]["programs"].append(blackout)
         for product_id, items in stock_items.items():
             products[product_id]["stockItems"] = sorted(items, key=lambda item: (item["sourcePage"], item["programId"], item["sku"]))
 
@@ -399,7 +432,8 @@ def build_catalog(pdf_path: Path) -> dict[str, Any]:
                 {"id": "lotus_small_order", "name": "Small order under $50", "kind": "flat", "per": "once", "value": None, "dealerNetValue": 5, "appliesTo": "Orders with dealer-net merchandise subtotal under $50", "notes": "Dealer-net order rule; PDF p2", "sourceType": "dealer_net", "sourcePages": [2]},
             ],
             "notes": [
-                "All published amounts are dealer-net costs from a supplier cost book; customer retail is undefined.",
+                "All published source amounts are dealer-net costs from a supplier cost book.",
+                "Customer retail for every Lotus product is dealer-net cost multiplied by 3, confirmed by the 805 Shutters owner on 2026-07-27.",
                 "Complimentary prepaid freight applies only above a $2,500 order; freight below that threshold is not priced.",
                 "Stock availability is explicitly subject to change.",
                 "Horizontal stock blinds are 1/2 inch narrower than stated; Roller Shades are 1/8 inch narrower than stated.",

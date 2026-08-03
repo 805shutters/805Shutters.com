@@ -3,6 +3,8 @@ import { findProductSurcharge, getProduct, getProgram } from "./catalog";
 import { priceDealerNetDesign, priceDesign } from "./pricing";
 
 const ONYX_SOURCE_ID = "onyx-price-screenshot-2026-07-20";
+const ONYX_POLY_SOURCE_ID =
+  "onyx-owner-confirmed-poly-composite-2026-07-27";
 
 function onyxProgram(programId: string) {
   const product = getProduct("onyx_shutters");
@@ -12,35 +14,39 @@ function onyxProgram(programId: string) {
   return { product, program };
 }
 
-describe("Onyx dealer-cost evidence", () => {
-  it("stores the six supplied material rows as dealer cost without inventing MSRP", () => {
+describe("Onyx independent retail and dealer-cost evidence", () => {
+  it("stores the seven owner-confirmed retail rates separately from dealer cost", () => {
     const expected = [
-      ["painted_basswood", "Basswood", 13.5],
-      ["stained_basswood", "Basswood Stain", 16.5],
-      ["secamore", "Sycamore", 11.95],
-      ["vlo_hybrid", "MDF Hybrid", 10.35],
-      ["vinyl", "Vinyl", 11],
-      ["onyx_us_made_vinyl", "Onyx U.S. Made Vinyl", 13.6],
+      ["painted_basswood", "Basswood", 35, 13.5],
+      ["stained_basswood", "Basswood Stain", 38, 16.5],
+      ["secamore", "Sycamore", 31, 11.95],
+      ["vlo_hybrid", "MDF Hybrid", 29, 10.35],
+      ["vinyl", "Vinyl", 31, 11],
+      ["onyx_us_made_vinyl", "Onyx U.S. Made Vinyl", 32, 13.6],
+      ["poly_composite", "Poly Composite", 31, 12],
     ] as const;
 
     const product = getProduct("onyx_shutters");
     expect(product).toMatchObject({
-      priceBasis: "dealer_net",
-      customerRetailStatus: "unverified",
+      priceBasis: "suggested_retail",
+      customerRetailStatus: "verified",
       freightStatus: "unresolved",
     });
 
-    for (const [programId, name, costPerSqft] of expected) {
+    for (const [programId, name, pricePerSqft, costPerSqft] of expected) {
       const { program } = onyxProgram(programId);
       expect(program).toMatchObject({
         name,
-        priceBasis: "dealer_net",
-        sourceId: ONYX_SOURCE_ID,
         priceAxis: "sqft",
-        pricePerSqft: null,
+        pricePerSqft,
         costPerSqft,
         minSqft: 8,
       });
+      expect(program.sourceId).toBe(
+        programId === "poly_composite"
+          ? ONYX_POLY_SOURCE_ID
+          : ONYX_SOURCE_ID,
+      );
     }
   });
 
@@ -72,7 +78,7 @@ describe("Onyx dealer-cost evidence", () => {
     });
   });
 
-  it("refuses to present the former $34 policy value as manufacturer retail", () => {
+  it("uses the owner-confirmed $32 USA Poly retail rate", () => {
     expect(
       priceDesign({
         productId: "onyx_shutters",
@@ -81,8 +87,11 @@ describe("Onyx dealer-cost evidence", () => {
         heightInches: 48,
       }),
     ).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
+      sqft: 12,
+      billableSqft: 12,
+      base: 384,
+      total: 384,
     });
   });
 
@@ -104,13 +113,21 @@ describe("Onyx dealer-cost evidence", () => {
     });
   });
 
-  it("quarantines the legacy Poly Composite value without pinned provenance", () => {
+  it("prices Poly Composite retail and owner-confirmed wholesale independently", () => {
     const { program } = onyxProgram("poly_composite");
     expect(program).toMatchObject({
-      priceBasis: "manual_required",
-      costPerSqft: null,
+      pricePerSqft: 31,
+      costPerSqft: 12,
+      sourceId: ONYX_POLY_SOURCE_ID,
     });
-    expect(program).not.toHaveProperty("sourceId");
+    expect(
+      priceDesign({
+        productId: "onyx_shutters",
+        programId: "poly_composite",
+        widthInches: 30,
+        heightInches: 60,
+      }),
+    ).toMatchObject({ ok: true, billableSqft: 13, base: 403, total: 403 });
     expect(
       priceDealerNetDesign({
         productId: "onyx_shutters",
@@ -118,6 +135,12 @@ describe("Onyx dealer-cost evidence", () => {
         widthInches: 30,
         heightInches: 60,
       }),
-    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    ).toMatchObject({
+      ok: true,
+      billableSqft: 13,
+      dealerNetBaseCost: 156,
+      dealerNetUnitCost: 156,
+      dealerNetTotalCost: 156,
+    });
   });
 });

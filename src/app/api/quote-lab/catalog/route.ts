@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
         priceBasis: product.priceBasis,
         provisional: product.provisional,
         source: product.source,
+        sourcePages: product.sourcePages,
+        notes: product.notes,
         programs: product.programs.map((program) => ({
           id: program.id,
           name: program.name,
@@ -37,6 +39,7 @@ export async function GET(request: NextRequest) {
           priceBasis: program.priceBasis,
         })),
         fabrics: product.fabrics,
+        fabricMetadata: product.fabricMetadata,
         surcharges: product.surcharges,
         motorizationGroups: product.motorizationGroups
           .map((groupId) => groupsById.get(groupId))

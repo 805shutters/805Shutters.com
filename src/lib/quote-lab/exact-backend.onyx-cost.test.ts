@@ -49,33 +49,43 @@ describe("exact-interface Onyx dealer cost", () => {
 
     expect(priceExactQuoteBuilderDesign(quoteLine, design)).toMatchObject({
       ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      code: "SURCHARGE_NO_PRICE",
     });
     expect(costExactQuoteBuilderDesign(quoteLine, design)).toMatchObject({
       ok: true,
       basis: "dealer_net",
       productId: "onyx_shutters",
       programId: "painted_basswood",
-      wholesaleBase: 168.75,
+      wholesaleBase: 175.5,
       wholesaleAddOns: [
         {
           id: "hidden_tilt_rod",
           label: "H3 Hidden Gear",
-          amount: 12.5,
+          amount: 13,
         },
       ],
-      wholesaleUnitCost: 181.25,
+      wholesaleUnitCost: 188.5,
       quantity: 2,
-      wholesaleTotal: 362.5,
+      wholesaleTotal: 377,
     });
   });
 
-  it("does not return a cost for quarantined Poly Composite", () => {
+  it("returns the owner-confirmed Poly Composite dealer cost", () => {
     expect(
       costExactQuoteBuilderDesign(
         onyxLine(),
         onyxDesign("poly_composite", { tilt_type: undefined }),
       ),
-    ).toMatchObject({ ok: false, code: "MANUAL_PRICE_REQUIRED" });
+    ).toMatchObject({
+      ok: true,
+      basis: "dealer_net",
+      productId: "onyx_shutters",
+      programId: "poly_composite",
+      wholesaleBase: 156,
+      wholesaleAddOns: [],
+      wholesaleUnitCost: 156,
+      quantity: 1,
+      wholesaleTotal: 156,
+    });
   });
 });

@@ -1,6 +1,13 @@
 import { deriveAutomaticSurcharges } from "@/lib/quote/automatic-surcharges";
 import { catalog, findProductSurcharge, getProduct, listProducts } from "@/lib/quote/catalog";
-import { getMotorizationGroupsForProduct } from "@/lib/quote/product-options";
+import {
+  getMotorizationGroupsForProduct,
+  POLAR_EXTERIOR_GUIDE_FIELD,
+  POLAR_EXTERIOR_MOTORIZATION_FIELD,
+  POLAR_INTERIOR_MOTORIZATION_FIELD,
+  POLAR_DRAPERY_MOTORIZATION_FIELD,
+  POLAR_AWNING_MOTORIZATION_FIELD,
+} from "@/lib/quote/product-options";
 import { priceDealerNetDesign, priceDesign, type MotorizationSelection, type PriceFailure, type PriceInput, type SurchargeSelection } from "@/lib/quote/pricing";
 import { QUOTE_LAB_MAX_LINES } from "@/lib/quote-lab/types";
 import { evaluateSendability } from "@/lib/quote-v2/core";
@@ -14,7 +21,11 @@ import {
   type QuoteV2InternalProductCost,
   type QuoteV2PriceResult,
 } from "@/lib/quote-v2/engine";
-import { quoteV2CatalogVersionFor } from "@/lib/quote-v2/catalog";
+import {
+  POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+  POLAR_ALL_SEASONS_PRODUCT_ID,
+  quoteV2CatalogVersionFor,
+} from "@/lib/quote-v2/catalog";
 import { NORMAN_805_DEALER_POLICY } from "@/lib/quote-v2/norman-dealer-policy";
 import { validateQuoteSelectionRelationships } from "@/lib/quote-v2/quote-rules";
 import {
@@ -125,7 +136,6 @@ function resolveV2ProductId(
   ) {
     return "smartprivacy_faux";
   }
-
   const defaultProductId = DEFAULT_PRODUCT_BY_TYPE[line.product_type];
   if (defaultProductId && getProduct(defaultProductId)) return defaultProductId;
 
@@ -272,6 +282,57 @@ function surchargeSelections(
 }
 
 function legacyMotorizationSelections(productId: string, design: Partial<SalesQuoteDesign>): MotorizationSelection[] {
+  const options =
+    (design.options_json as Record<string, unknown> | undefined) ?? {};
+  if (
+    [
+      "polar_elite_patio",
+      "polar_titan_patio",
+      "polar_mega_exterior",
+    ].includes(productId) &&
+    Array.isArray(options[POLAR_EXTERIOR_MOTORIZATION_FIELD])
+  ) {
+    return (options[POLAR_EXTERIOR_MOTORIZATION_FIELD] as unknown[]).flatMap(
+      (entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const source = entry as Record<string, unknown>;
+        return typeof source.groupId === "string" &&
+          typeof source.optionId === "string"
+          ? [{ groupId: source.groupId, optionId: source.optionId }]
+          : [];
+      },
+    );
+  }
+  if (
+    productId === "polar_interior_roller" &&
+    Array.isArray(options[POLAR_INTERIOR_MOTORIZATION_FIELD])
+  ) {
+    return (options[POLAR_INTERIOR_MOTORIZATION_FIELD] as unknown[]).flatMap(
+      (entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const source = entry as Record<string, unknown>;
+        return typeof source.groupId === "string" &&
+          typeof source.optionId === "string"
+          ? [{ groupId: source.groupId, optionId: source.optionId }]
+          : [];
+      },
+    );
+  }
+  const polarCanonicalField = productId === "polar_drapery_track"
+    ? POLAR_DRAPERY_MOTORIZATION_FIELD
+    : productId.startsWith("polar_awning_")
+      ? POLAR_AWNING_MOTORIZATION_FIELD
+      : null;
+  if (polarCanonicalField && Array.isArray(options[polarCanonicalField])) {
+    return (options[polarCanonicalField] as unknown[]).flatMap((entry) => {
+      if (!entry || typeof entry !== "object") return [];
+      const source = entry as Record<string, unknown>;
+      return typeof source.groupId === "string" &&
+        typeof source.optionId === "string"
+        ? [{ groupId: source.groupId, optionId: source.optionId }]
+        : [];
+    });
+  }
   const values = [design.motor_type, design.remote_type].map(slug).filter(Boolean) as string[];
   if (values.length === 0) return [];
   const selections: MotorizationSelection[] = [];
@@ -372,7 +433,11 @@ export function costExactQuoteBuilderDesign(
   const selectedProgram = product?.programs.find(
     (program) => program.id === input.programId,
   );
-  if ((selectedProgram?.priceBasis ?? product?.priceBasis) === "dealer_net") {
+  if (
+    (selectedProgram?.priceBasis ?? product?.priceBasis) === "dealer_net" ||
+    selectedProgram?.costPerSqft != null ||
+    Boolean(selectedProgram?.grid.costs?.length)
+  ) {
     const result = priceDealerNetDesign(input);
     if (!result.ok) return result;
     return {
@@ -427,6 +492,99 @@ export function priceExactQuoteBuilderDesign(
 ) {
   const productId = resolveProductId(line, design);
   const details = authoritativeDetails(design);
+  if (
+    [
+      "polar_elite_patio",
+      "polar_titan_patio",
+      "polar_mega_exterior",
+    ].includes(productId)
+  ) {
+    const guide = textOption(details, POLAR_EXTERIOR_GUIDE_FIELD);
+    if (!["cable_guide", "track", "rod"].includes(guide ?? "")) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error:
+          "Select the Polar exterior configuration: Cable Guide, Track, or Rod.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+    const heightInches = decimalMeasurement(
+      line.height_whole,
+      line.height_fraction,
+    );
+    if (guide === "rod" && heightInches > 120) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error: "Polar Rod configuration is limited to 120 inches in height.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+    if (productId === "polar_mega_exterior" && guide === "rod") {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error:
+          "Polar Mega does not publish Rod as an available guide configuration.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+    const designOptions =
+      (design.options_json as Record<string, unknown> | undefined) ?? {};
+    const selectedSurchargeIds = Array.isArray(designOptions.surcharges)
+      ? designOptions.surcharges.flatMap((entry) => {
+          if (!entry || typeof entry !== "object") return [];
+          const id = (entry as Record<string, unknown>).id;
+          return typeof id === "string" ? [id] : [];
+        })
+      : [];
+    if (
+      guide !== "track" &&
+      selectedSurchargeIds.some(
+        (id) => id.startsWith("vortex_") || id === "u_channel",
+      )
+    ) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error: "Polar Vortex and U-channel adders require Track configuration.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+    const selectedMotorIds = legacyMotorizationSelections(productId, design)
+      .map((selection) => selection.optionId)
+      .filter((optionId) => optionId.includes("motor"));
+    if (
+      productId === "polar_mega_exterior" &&
+      (selectedMotorIds.length !== 1 ||
+        !selectedMotorIds[0]?.includes("525"))
+    ) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error: "Polar Mega requires exactly one published 525 motor.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+    if (
+      selectedSurchargeIds.some((id) => id.startsWith("vortex_")) &&
+      !selectedMotorIds.some((id) =>
+        productId === "polar_mega_exterior"
+          ? id.includes("525")
+          : productId === "polar_elite_patio"
+            ? id.includes("510")
+            : id.includes("510") || id.includes("525"),
+      )
+    ) {
+      return {
+        ok: false,
+        code: "CONFIGURATION_INCOMPLETE",
+        error: "Select the published Polar Vortex motor before pricing.",
+        warnings: [],
+      } satisfies PriceFailure;
+    }
+  }
   if (productId === "roller") {
     const shadeType = textOption(details, "shade_type");
     const requiredCountField = shadeType === "coupled" || shadeType === "coupled_shades"
@@ -779,6 +937,57 @@ function currentCatalogDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Canonicalize the owner-approved All Seasons order charge after adapting the
+ * browser payload. Copied/stale lines cannot retain duplicate freight entries:
+ * exactly one selected All Seasons line owns the once-per-quote charge.
+ */
+function canonicalAllSeasonsOrderCharge(
+  selection: SelectionContext,
+  priceInput: PriceInput,
+  appliesToThisLine: boolean,
+): { selection: SelectionContext; priceInput: PriceInput } {
+  const selectedSurcharges = Array.isArray(selection.options.surcharges)
+    ? selection.options.surcharges.filter(
+        (entry) =>
+          !entry ||
+          typeof entry !== "object" ||
+          Array.isArray(entry) ||
+          entry.id !== POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+      )
+    : [];
+  const pricedSurcharges = (priceInput.surcharges ?? []).filter(
+    (entry) => entry.id !== POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+  );
+
+  return {
+    selection: {
+      ...selection,
+      options: {
+        ...selection.options,
+        surcharges: appliesToThisLine
+          ? [
+              ...selectedSurcharges,
+              {
+                id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID,
+                quantity: 1,
+              },
+            ]
+          : selectedSurcharges,
+      },
+    },
+    priceInput: {
+      ...priceInput,
+      surcharges: appliesToThisLine
+        ? [
+            ...pricedSurcharges,
+            { id: POLAR_ALL_SEASONS_FREIGHT_SURCHARGE_ID, units: 1 },
+          ]
+        : pricedSurcharges,
+    },
+  };
+}
+
 function repriceExactQuoteBuilderV2(
   input: ExactQuoteBuilderRepriceInput,
   catalogAsOf: ISODate,
@@ -811,6 +1020,11 @@ function repriceExactQuoteBuilderV2(
   });
 
   const lineById = new Map(input.lines.map((line) => [line.id, line]));
+  const allSeasonsOrderChargeLineId =
+    explicitSelections.find(
+      ({ line, design }) =>
+        resolveV2ProductId(line, design) === POLAR_ALL_SEASONS_PRODUCT_ID,
+    )?.line.id ?? null;
   const preparedDesigns = input.designs.map((design) => {
     const line = lineById.get(design.line_item_id);
     if (!line) {
@@ -818,7 +1032,7 @@ function repriceExactQuoteBuilderV2(
     }
     const productId = resolveV2ProductId(line, design);
     const programId = resolveV2ProgramId(productId, design);
-    const selection = adaptExactInterfaceSelection(line, design, {
+    let selection = adaptExactInterfaceSelection(line, design, {
       productId,
       programId,
       catalogAsOf,
@@ -858,10 +1072,75 @@ function repriceExactQuoteBuilderV2(
           rollerMotorization.selections,
       };
     }
+    const polarExteriorMotorization =
+      [
+        "polar_elite_patio",
+        "polar_titan_patio",
+        "polar_mega_exterior",
+      ].includes(productId) &&
+      Array.isArray(
+        designOptions[POLAR_EXTERIOR_MOTORIZATION_FIELD],
+      )
+        ? (
+            designOptions[
+              POLAR_EXTERIOR_MOTORIZATION_FIELD
+            ] as unknown[]
+          ).flatMap((entry) => {
+            if (!entry || typeof entry !== "object") return [];
+            const source = entry as Record<string, unknown>;
+            return typeof source.groupId === "string" &&
+              typeof source.optionId === "string"
+              ? [
+                  {
+                    groupId: source.groupId,
+                    optionId: source.optionId,
+                  },
+                ]
+              : [];
+          })
+        : undefined;
+    const polarInteriorMotorization =
+      productId === "polar_interior_roller" &&
+      Array.isArray(
+        designOptions[POLAR_INTERIOR_MOTORIZATION_FIELD],
+      )
+        ? (
+            designOptions[
+              POLAR_INTERIOR_MOTORIZATION_FIELD
+            ] as unknown[]
+          ).flatMap((entry) => {
+            if (!entry || typeof entry !== "object") return [];
+            const source = entry as Record<string, unknown>;
+            return typeof source.groupId === "string" &&
+              typeof source.optionId === "string"
+              ? [{ groupId: source.groupId, optionId: source.optionId }]
+              : [];
+          })
+        : undefined;
+    const polarAdditionalField =
+      productId === "polar_drapery_track"
+        ? POLAR_DRAPERY_MOTORIZATION_FIELD
+        : productId.startsWith("polar_awning_")
+          ? POLAR_AWNING_MOTORIZATION_FIELD
+          : null;
+    const polarAdditionalMotorization =
+      polarAdditionalField &&
+      Array.isArray(designOptions[polarAdditionalField])
+        ? (designOptions[polarAdditionalField] as unknown[]).flatMap((entry) => {
+            if (!entry || typeof entry !== "object") return [];
+            const source = entry as Record<string, unknown>;
+            return typeof source.groupId === "string" &&
+              typeof source.optionId === "string"
+              ? [{ groupId: source.groupId, optionId: source.optionId }]
+              : [];
+          })
+        : undefined;
     const authoritativeMotorization = rollerMotorization
       ? canonicalMotorizationPriceSelections(rollerMotorization.selections)
-      : undefined;
-    const priceInput = exactPriceInput(
+      : polarExteriorMotorization ??
+        polarInteriorMotorization ??
+        polarAdditionalMotorization;
+    let priceInput = exactPriceInput(
       line,
       design,
       productId,
@@ -869,6 +1148,12 @@ function repriceExactQuoteBuilderV2(
       authoritativeMotorization,
       true,
     );
+    ({ selection, priceInput } = canonicalAllSeasonsOrderCharge(
+      selection,
+      priceInput,
+      productId === POLAR_ALL_SEASONS_PRODUCT_ID &&
+        line.id === allSeasonsOrderChargeLineId,
+    ));
     return {
       line,
       design,

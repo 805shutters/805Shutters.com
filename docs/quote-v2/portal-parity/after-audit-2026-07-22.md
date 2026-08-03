@@ -18,9 +18,9 @@ No manufacturer order was placed, no customer quote was sent, and no production 
 | Polar | Polar Elite Patio | $2,715.00 | $3,243.39 | +$528.39 | $2,883.00 | +$168.00 | 6.19% | FAIL | portal_verified_with_official_book_conflict |
 | Polar | Polar Motorized Drapery Track | $472.00 | $0.00 | -$472.00 | $472.00 | $0.00 | 0.00% | PASS | official_price_book_verified |
 | Polar | Polar Premium Pro Awning | $4,900.00 | $0.00 | -$4,900.00 | $4,900.00 | $0.00 | 0.00% | PASS | official_price_book_verified |
-| Lotus | Lotus Aluminum Mini Blinds | MSRP unverified | $53.70 | not comparable | $0.00 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
-| Lotus | Lotus Faux Wood Blinds | MSRP unverified | $58.93 | not comparable | $0.00 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
-| Lotus | Lotus Vertical Blinds | MSRP unverified | $79.93 | not comparable | $0.00 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
+| Lotus | Lotus Aluminum Mini Blinds | MSRP unverified | $53.70 | not comparable | $64.44 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
+| Lotus | Lotus Faux Wood Blinds | MSRP unverified | $58.93 | not comparable | $70.71 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
+| Lotus | Lotus Vertical Blinds | MSRP unverified | $79.93 | not comparable | $95.91 | not comparable | — | UNVERIFIED | official_dealer_book_verified_msrp_unverified |
 | Onyx | Onyx Shutters | MSRP unverified | $0.00 | not comparable | $0.00 | not comparable | — | UNVERIFIED | dealer_evidence_verified_msrp_unverified |
 
 Pass threshold: no more than $1.00 and 0.25%. A case with no manufacturer MSRP remains UNVERIFIED, never PASS.
@@ -495,30 +495,30 @@ MANUFACTURER SYSTEM / OFFICIAL SOURCE OUTPUT
 - Block/error: Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.
 
 805 SOURCE-PRICE RECONCILIATION — AFTER CORRECTION
-- Status: customer_retail_blocked
+- Status: priced_send_blocked
 - Product/validation status: restriction_source_incomplete / blocked
 - Sendable: no
-- Customer price components: none (fail-closed)
-- Customer retail subtotal: $0.00
-- Grand/displayed total: $0.00
+- AMX 1-inch Aluminum: $64.44 (base_grid)
+- Customer retail subtotal: $64.44
+- Grand/displayed total: $64.44
 - Internal product cost: $21.48
 - Internal freight: $0.00
 - Internal oversize: $0.00
 - Internal processing: $0.00
 - Internal landed cost: $21.48
-- Block codes: `CUSTOMER_RETAIL_UNDEFINED`, `product_status_not_sendable`
-- Block/error: Customer retail is unavailable because the source publishes dealer cost only.
+- Block codes: `product_status_not_sendable`
+- Block/error: Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions.
 
 BEFORE / AFTER RESULT
 - MANUFACTURER SAID: MSRP unverified
 - 805 SAID BEFORE CORRECTION: $53.70
-- 805 SAID AFTER CORRECTION: $0.00
+- 805 SAID AFTER CORRECTION: $64.44
 - BEFORE difference: not comparable / —
 - Remaining difference: not comparable / —
 - RESULT: UNVERIFIED
 - Exact discrepancy/root cause: The prior $53.70 customer amount was $21.48 dealer cost multiplied by 2.5 without a manufacturer MSRP source.
-- Correction: Block customer retail and retain $21.48 only in the protected dealer-cost ledger.
-- Remaining limitation: The supplied book and portal expose dealer cost, not customer MSRP.
+- Correction: Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.
+- Remaining limitation: Customer pricing is resolved; complete restriction authority is still required before sending.
 
 ### Lotus — Lotus Faux Wood Blinds
 
@@ -555,30 +555,30 @@ MANUFACTURER SYSTEM / OFFICIAL SOURCE OUTPUT
 - Block/error: Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.
 
 805 SOURCE-PRICE RECONCILIATION — AFTER CORRECTION
-- Status: customer_retail_blocked
+- Status: priced_send_blocked
 - Product/validation status: restriction_source_incomplete / blocked
 - Sendable: no
-- Customer price components: none (fail-closed)
-- Customer retail subtotal: $0.00
-- Grand/displayed total: $0.00
+- FLX 2-inch Faux Wood: $70.71 (base_grid)
+- Customer retail subtotal: $70.71
+- Grand/displayed total: $70.71
 - Internal product cost: $23.57
 - Internal freight: $0.00
 - Internal oversize: $0.00
 - Internal processing: $0.00
 - Internal landed cost: $23.57
-- Block codes: `CUSTOMER_RETAIL_UNDEFINED`, `product_status_not_sendable`
-- Block/error: Customer retail is unavailable because the source publishes dealer cost only.
+- Block codes: `product_status_not_sendable`
+- Block/error: Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions.
 
 BEFORE / AFTER RESULT
 - MANUFACTURER SAID: MSRP unverified
 - 805 SAID BEFORE CORRECTION: $58.93
-- 805 SAID AFTER CORRECTION: $0.00
+- 805 SAID AFTER CORRECTION: $70.71
 - BEFORE difference: not comparable / —
 - Remaining difference: not comparable / —
 - RESULT: UNVERIFIED
 - Exact discrepancy/root cause: The prior $58.93 customer amount was $23.57 dealer cost multiplied by 2.5 without a manufacturer MSRP source.
-- Correction: Block customer retail and retain $23.57 only in the protected dealer-cost ledger.
-- Remaining limitation: The supplied book exposes dealer cost only. A different 48 x 72 portal item also conflicts with the book and remains quarantined.
+- Correction: Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.
+- Remaining limitation: A different 48 x 72 portal item conflicts with the book and remains quarantined; complete restriction authority is still required before sending.
 
 ### Lotus — Lotus Vertical Blinds
 
@@ -615,30 +615,30 @@ MANUFACTURER SYSTEM / OFFICIAL SOURCE OUTPUT
 - Block/error: Lotus restriction evidence remains incomplete and customer MSRP is not source-defined.
 
 805 SOURCE-PRICE RECONCILIATION — AFTER CORRECTION
-- Status: customer_retail_blocked
+- Status: priced_send_blocked
 - Product/validation status: restriction_source_incomplete / blocked
 - Sendable: no
-- Customer price components: none (fail-closed)
-- Customer retail subtotal: $0.00
-- Grand/displayed total: $0.00
+- CV Steel Vertical: $95.91 (base_grid)
+- Customer retail subtotal: $95.91
+- Grand/displayed total: $95.91
 - Internal product cost: $31.97
 - Internal freight: $0.00
 - Internal oversize: $0.00
 - Internal processing: $0.00
 - Internal landed cost: $31.97
-- Block codes: `CUSTOMER_RETAIL_UNDEFINED`, `product_status_not_sendable`
-- Block/error: Customer retail is unavailable because the source publishes dealer cost only.
+- Block codes: `product_status_not_sendable`
+- Block/error: Customer retail is owner-authorized at three times source wholesale; sending remains blocked pending complete restrictions.
 
 BEFORE / AFTER RESULT
 - MANUFACTURER SAID: MSRP unverified
 - 805 SAID BEFORE CORRECTION: $79.93
-- 805 SAID AFTER CORRECTION: $0.00
+- 805 SAID AFTER CORRECTION: $95.91
 - BEFORE difference: not comparable / —
 - Remaining difference: not comparable / —
 - RESULT: UNVERIFIED
 - Exact discrepancy/root cause: The prior $79.93 customer amount was $31.97 dealer cost multiplied by 2.5 without a manufacturer MSRP source.
-- Correction: Block customer retail and retain $31.97 only in the protected dealer-cost ledger.
-- Remaining limitation: The supplied book and portal expose dealer cost, not customer MSRP.
+- Correction: Apply the owner-approved three-times-wholesale retail rule on this independent Lotus product grid.
+- Remaining limitation: Customer pricing is resolved; complete restriction authority is still required before sending.
 
 ### Onyx — Onyx Shutters
 
@@ -713,7 +713,7 @@ These gaps remain explicit blockers for the affected source paths; they were not
 ## Corrections and unresolved boundaries
 
 - **Manufacturer retail basis:** Suggested-retail/list programs now preserve the source MSRP components. Dealer schedules affect protected cost only; the universal cost-times-2.5 customer calculation was removed.
-- **Dealer-only catalogs:** Lotus no longer invents customer retail and returns CUSTOMER_RETAIL_UNDEFINED. Onyx remains fail-closed before customer pricing because current restriction evidence is incomplete; its source-backed dealer cost remains authorization-protected.
+- **Dealer-only catalogs:** Each independent Lotus product grid now uses the owner-approved retail rule of three times source wholesale; customer pricing can succeed while incomplete restrictions still block sending. Onyx remains fail-closed before customer pricing where current evidence is incomplete; its source-backed dealer cost remains authorization-protected.
 - **Price components:** Base grid, fabric delta, accessories, and operating-system charges reconcile independently and sum to the exact customer total.
 - **Polar standalone grids:** Drapery and awning programs are explicitly standalone grids instead of being misread as price-group upgrades.
 - **Stored-price migration:** The MSRP policy uses new catalog identities; snapshots from the prior markup policy are stale even when their selection fingerprint is unchanged.

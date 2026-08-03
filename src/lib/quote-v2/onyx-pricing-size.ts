@@ -3,7 +3,7 @@ import { sourceProvenance } from "./source-manifest";
 
 const ONYX_PRICING_SIZE_SOURCE = sourceProvenance(
   "onyx-reference-guide-2020-2021",
-  { page: 13 },
+  { pages: [4, 9, 13] },
 );
 
 /**
@@ -26,6 +26,21 @@ export const ONYX_INSIDE_MOUNT_PRICING_ADDITIONS = Object.freeze({
     widthAdditionInches: 4.25,
     fourSidedHeightAdditionInches: 4.25,
     threeSidedHeightAdditionInches: 2.125,
+  }),
+  "Z Frame Crest": Object.freeze({
+    widthAdditionInches: 4.25,
+    fourSidedHeightAdditionInches: 4.25,
+    threeSidedHeightAdditionInches: 2.125,
+  }),
+  "Vinyl Z Frame Small": Object.freeze({
+    widthAdditionInches: 4,
+    fourSidedHeightAdditionInches: 4,
+    threeSidedHeightAdditionInches: 2,
+  }),
+  "Vinyl Z Frame Large": Object.freeze({
+    widthAdditionInches: 5,
+    fourSidedHeightAdditionInches: 5,
+    threeSidedHeightAdditionInches: 2.5,
   }),
 } as const);
 
@@ -61,6 +76,21 @@ const INSIDE_FRAME_ALIASES: Readonly<
   "Z Fine": "Z Frame Fine",
   "Z Frame Crown": "Z Frame Crown",
   "Z Crown": "Z Frame Crown",
+  "Z Crown FS": "Z Frame Crown",
+  "VZ Crown": "Z Frame Crown",
+  "VZ Crown FS": "Z Frame Crown",
+  "Z Frame Crest": "Z Frame Crest",
+  "Z Crest": "Z Frame Crest",
+  "Z Crest FS": "Z Frame Crest",
+  "VZ Crest": "Z Frame Crest",
+  "VZ Crest FS": "Z Frame Crest",
+  "Vinyl Z Frame Small": "Vinyl Z Frame Small",
+  "VZ Small": "Vinyl Z Frame Small",
+  "Vinyl Z Frame Large": "Vinyl Z Frame Large",
+  "VZ Large": "Vinyl Z Frame Large",
+  "Z Fine FS": "Z Frame Fine",
+  "VZ Fine": "Z Frame Fine",
+  "VZ Fine FS": "Z Frame Fine",
 };
 
 const OUTSIDE_FRAME_ALIASES: Readonly<
@@ -68,10 +98,20 @@ const OUTSIDE_FRAME_ALIASES: Readonly<
 > = {
   "L Frame": "L Frame",
   "L Outside": "L Frame",
+  "L Outside FS": "L Frame",
+  "L Frame Bullnose": "L Frame",
+  "L Bullnose Outside": "L Frame",
+  "L Bullnose Outside FS": "L Frame",
+  "Vinyl L Frame": "L Frame",
+  "VL Outside": "L Frame",
+  "VL Outside FS": "L Frame",
   "Decor Frame 2": "Decor Frame 2",
   "Decor 2": "Decor Frame 2",
+  "Decor 2 FS": "Decor Frame 2",
+  "VDecor 2": "Decor Frame 2",
   "Decor Frame 3": "Decor Frame 3",
   "Decor 3": "Decor Frame 3",
+  "Decor 3 FS": "Decor Frame 3",
 };
 
 export type OnyxInternalPricingSize = Readonly<{
@@ -128,7 +168,8 @@ function validOpening(widthInches: number, heightInches: number): boolean {
 
 /**
  * Returns the pricing-only footprint for an inside-mount window-size quote.
- * Unknown frames remain unresolved rather than receiving a generic addition.
+ * Profile-derived rows retain page 4 provenance; named pricing rows are
+ * cross-checked against page 13.
  */
 export function onyxInsideMountPricingSize(
   windowWidthInches: number,

@@ -165,6 +165,37 @@ export type CatalogProduct = {
   customerRetailStatus?: "verified" | "unverified";
   /** Server-only cost policy. Never include this field in customer projections. */
   dealerFactor?: number | null;
+  /**
+   * Owner-authorized customer discount policy. Pricing must reject, never
+   * clamp, a request above the cap or below the protected dealer-cost floor.
+   */
+  customerDiscountPolicy?: {
+    maxPercent: number;
+    floor: "dealer_cost";
+    confirmedBy: string;
+    confirmedDate: string;
+  };
+  /**
+   * Owner-authorized customer charge applied once by the quote-level engine.
+   * This is deliberately separate from manufacturer freight/cost evidence.
+   */
+  customerOrderChargePolicy?: {
+    kind: "flat_once_per_quote";
+    surchargeId: string;
+    amount: number;
+    confirmedBy: string;
+    confirmedDate: string;
+    policyId: string;
+    policySha256: string;
+    statement: string;
+  };
+  /** Owner-approved customer retail policy for a supplier cost catalog. */
+  retailPolicy?: {
+    kind: "cost_multiplier";
+    value: number;
+    confirmedBy: string;
+    confirmedDate: string;
+  };
   freightStatus?: "defined" | "order_level" | "unresolved" | "not_applicable";
   pages: number[];
   /** True when prices are not yet verified against a current price guide. */
@@ -196,6 +227,18 @@ export type CatalogMotorizationOption = {
   id: string;
   name: string;
   price: number | null;
+  /** Source-backed selection role used by product-specific quote validation. */
+  role?: "motor" | "control" | "power" | "cable" | "accessory";
+  /** Exact source technology family, when the dealer book states one. */
+  technology?: "rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha";
+  /** Technology families that the source expressly makes this item compatible with. */
+  compatibleTechnologies?: Array<"rts" | "standard" | "dct" | "rs485" | "z_wave" | "zigbee" | "poe" | "cmo" | "alpha">;
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  /** Source-mandated separately priced components. */
+  requiredOptionIds?: string[];
   /**
    * Per-product retail price (Norman 2026 Retail Guide p7). When present and the product id is
    * a key, this is authoritative — a `null` means NA for that product (not orderable). Product

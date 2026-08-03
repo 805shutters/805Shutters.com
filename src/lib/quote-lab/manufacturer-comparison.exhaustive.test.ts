@@ -183,7 +183,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
           expect(result.ok, `${product.id}/${program.id} sqft`).toBe(true);
           if (!result.ok) continue;
           const sqft = (widthInches * heightInches) / 144;
-          const billableSqft = Math.max(sqft, program.minSqft ?? 0);
+          const billableSqft = Math.max(Math.ceil(sqft), program.minSqft ?? 0);
           if ("dealerNetUnitCost" in result) {
             const expectedCost = Math.round(billableSqft * Math.round((program.costPerSqft ?? 0) * 100)) / 100;
             expect(result.dealerNetUnitCost).toBe(expectedCost);
@@ -200,7 +200,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
         }
       }
     }
-    expect(sqftPrograms).toBe(12);
+    expect(sqftPrograms).toBe(13);
   });
 
   it("matches the comparison projection to direct pricing for every shared program", () => {
@@ -325,7 +325,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       quantity: 1,
     });
     expect(rollers.products.find((product) => product.productId === "polar_exterior_clutch_unavailable")).toMatchObject({
-      priceBasis: "unavailable",
+      priceBasis: "manual_required",
       programs: [],
     });
   });

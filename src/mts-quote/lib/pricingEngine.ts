@@ -15,6 +15,11 @@ import {
   type PriceGrid,
   type ShutterProgram,
 } from "./pricingData";
+import { createShutterSquareFootGrid } from "../../lib/quote/shutter-square-foot-grid";
+import {
+  resolveShutterFramePricing,
+  type ShutterFramePricingResolution,
+} from "../../lib/quote/shutter-frame-pricing";
 import {
   getHoneycombGrid,
   getRollerFabricPriceGroup,
@@ -22,6 +27,8 @@ import {
   getVerticalFabricPriceGroup,
 } from "./quoteConstants";
 import { getMtsGridKeyForCatalogProgram } from "./productColorCatalog";
+import { getProduct, getProgram } from "@/lib/quote/catalog";
+import { isMiniBlindSizeWithinLimits } from "./miniBlindOptions";
 
 /**
  * Round dimension UP to nearest 6"
@@ -111,8 +118,8 @@ export function lookupGridPriceMatch(
 }
 
 /**
- * Calculate price for shutters (per square foot with min 8 sqft)
- * Formula: actualSqft * retailPrice * (1 + tariff/100)
+ * Calculate price for shutters by selecting the next whole-square-foot row
+ * from the program's independent grid (8 sqft minimum).
  * Inputs: widthInches (number), heightInches (number), retailPriceOverride (optional $/sqft)
  * Output: total price in dollars
  *
@@ -125,26 +132,33 @@ export function calculateShutterPrice(
   useRetail = true,
   retailPriceOverride?: number
 ): number {
-  // sqft = (width * height) / 144, minimum 8 sqft
-  const sqft = (widthInches * heightInches) / 144;
-  const actualSqft = Math.max(sqft, 8);
-
   // Use override if provided, otherwise use program's price
   const basePriceDollars =
     retailPriceOverride ?? (useRetail ? program.retailPrice : program.wholesalePrice);
+  if (basePriceDollars == null) {
+    throw new Error(`${program.name} is missing a source-backed wholesale price.`);
+  }
 
-  // Convert to cents for integer arithmetic
+  // Tariff modifies this product's rate before its whole-square-foot row is
+  // selected. No rate is borrowed from a sibling shutter product.
   const basePriceCents = Math.round(basePriceDollars * 100);
   const tariffMultiplier = 100 + program.tariff; // e.g. 108 for 8% tariff
   const priceWithTariffCents = Math.round((basePriceCents * tariffMultiplier) / 100);
-
-  // Total in cents, then convert to dollars at the end
-  const totalCents = Math.round(actualSqft * priceWithTariffCents);
-  return totalCents / 100;
+  const grid = createShutterSquareFootGrid({
+    manufacturer: "Shutter",
+    productId: program.name,
+    programId: program.name,
+    minimumBillableSquareFeet: 8,
+    retailRatePerSquareFoot: priceWithTariffCents / 100,
+    wholesaleRatePerSquareFoot: null,
+  });
+  return grid.select(widthInches, heightInches).row.retailPrice!;
 }
 
 /**
- * Calculate square footage from dimensions (with minimum 8 sqft for shutters)
+ * Calculate shutter square footage. The billable value mirrors the selected
+ * whole-square-foot grid row; callers can request the unrounded measured area
+ * for display/audit.
  */
 export function calculateSqft(
   widthInches: number,
@@ -152,7 +166,7 @@ export function calculateSqft(
   applyMinimum = true
 ): number {
   const sqft = (widthInches * heightInches) / 144;
-  return applyMinimum ? Math.max(sqft, 8) : sqft;
+  return applyMinimum ? Math.max(Math.ceil(sqft), 8) : sqft;
 }
 
 /**
@@ -191,6 +205,56 @@ export interface PriceLookupOptions {
   retailPriceOverride?: number; // optional $/sqft override for shutters
   cellSize?: string; // for honeycomb shades
   fabric?: string; // for fabric-based routing
+  slatSize?: string; // for slat-specific blind size limits
+  frameType?: string;
+  frameSides?: string | number;
+  mountType?: string;
+  measurementBasis?: string;
+}
+
+function canonicalMeasurementBasis(
+  value: string | undefined,
+): "window_size" | "frame_to_frame" | null {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (!normalized) return null;
+  if (normalized.startsWith("w ") || normalized.includes("window")) return "window_size";
+  if (normalized.startsWith("f ") || normalized.includes("frame")) return "frame_to_frame";
+  return null;
+}
+
+function canonicalMount(value: string | undefined): "inside" | "outside" | null {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (normalized === "im" || normalized.includes("inside")) return "inside";
+  if (normalized === "om" || normalized.includes("outside")) return "outside";
+  return null;
+}
+
+export function resolveShutterPricingDimensions(
+  options: Pick<
+    PriceLookupOptions,
+    | "supplier"
+    | "width"
+    | "height"
+    | "frameType"
+    | "frameSides"
+    | "mountType"
+    | "measurementBasis"
+  >,
+): ShutterFramePricingResolution | null {
+  if (options.supplier !== "Norman" && options.supplier !== "Onyx") return null;
+  const measurementBasis = canonicalMeasurementBasis(options.measurementBasis);
+  if (!measurementBasis) return null;
+  const numericSides = Number(options.frameSides);
+  const frameSides = numericSides === 3 || numericSides === 4 ? numericSides : null;
+  return resolveShutterFramePricing({
+    manufacturer: options.supplier,
+    widthInches: options.width,
+    heightInches: options.height,
+    measurementBasis,
+    mountType: canonicalMount(options.mountType),
+    frameType: options.frameType,
+    frameSides,
+  });
 }
 
 function getCatalogGridKey(productType: string, options: PriceLookupOptions): string | null {
@@ -333,7 +397,15 @@ export function getShutterPrice(options: PriceLookupOptions): number | null {
 
   if (!programData) return null;
 
-  return calculateShutterPrice(programData, width, height, true, retailPriceOverride);
+  const framePricing = resolveShutterPricingDimensions(options);
+  if (framePricing && !framePricing.supported) return null;
+  return calculateShutterPrice(
+    programData,
+    framePricing?.pricingWidthInches ?? width,
+    framePricing?.pricingHeightInches ?? height,
+    true,
+    retailPriceOverride,
+  );
 }
 
 // ========================================
@@ -352,6 +424,10 @@ export interface ProductPriceBreakdown {
   matchedWidth?: number;
   matchedHeight?: number;
   builtInAdjustment?: number;
+  pricingWidth?: number;
+  pricingHeight?: number;
+  actualSquareFeet?: number;
+  billableSquareFeet?: number;
   pricingMethod: "grid" | "square-foot" | "none";
 }
 
@@ -389,6 +465,41 @@ function gridBreakdown(
     matchedWidth: match.matchedWidth,
     matchedHeight: match.matchedHeight,
     builtInAdjustment,
+    pricingMethod: "grid",
+  };
+}
+
+function catalogGridBreakdown(
+  options: ProductPricingOptions,
+  productId: string,
+  programId: string
+): ProductPriceBreakdown {
+  const product = getProduct(productId);
+  const program = product ? getProgram(product, programId) : undefined;
+  const gridKey = getMtsGridKeyForCatalogProgram(options.productType, programId) ?? programId;
+
+  if (!program || program.priceAxis !== "wh") {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "none" };
+  }
+
+  const widthIndex = program.grid.widths.findIndex((width) => width >= options.width);
+  const heightIndex = program.grid.heights.findIndex((height) => height >= options.height);
+  if (widthIndex < 0 || heightIndex < 0) {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+  }
+
+  const price = program.grid.prices[heightIndex]?.[widthIndex];
+  if (price === null || price === undefined || price <= 0) {
+    return { productType: options.productType, price: null, gridKey, pricingMethod: "grid" };
+  }
+
+  return {
+    productType: options.productType,
+    price,
+    gridPrice: price,
+    gridKey,
+    matchedWidth: program.grid.widths[widthIndex],
+    matchedHeight: program.grid.heights[heightIndex],
     pricingMethod: "grid",
   };
 }
@@ -435,6 +546,21 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
         gridKey
       );
     }
+    case "Mini Blinds": {
+      if (!isMiniBlindSizeWithinLimits(options.width, options.height, options.slatSize)) {
+        return {
+          productType,
+          price: null,
+          gridKey: "citylights_aluminum",
+          pricingMethod: "grid",
+        };
+      }
+      return catalogGridBreakdown(
+        options,
+        "citylights_aluminum",
+        options.catalogProgramId || "citylights_aluminum_1in_slats_cordless_pgusa"
+      );
+    }
     case "Vertical Blinds": {
       const gridKey =
         getCatalogGridKey(productType, options) ??
@@ -473,9 +599,24 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     }
     case "Shutters": {
       const price = getShutterPrice(options);
+      const framePricing = resolveShutterPricingDimensions(options);
+      const pricingWidth = framePricing?.pricingWidthInches ?? options.width;
+      const pricingHeight = framePricing?.pricingHeightInches ?? options.height;
+      const actualSquareFeet =
+        price === null ? undefined : calculateSqft(pricingWidth, pricingHeight, false);
+      const billableSquareFeet =
+        price === null ? undefined : calculateSqft(pricingWidth, pricingHeight, true);
       return {
         productType,
         price,
+        ...(price !== null
+          ? {
+              pricingWidth,
+              pricingHeight,
+              actualSquareFeet,
+              billableSquareFeet,
+            }
+          : {}),
         pricingMethod: price === null ? "none" : "square-foot",
       };
     }

@@ -604,26 +604,15 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     );
     const result = quote.designs[0].result;
     expect(result).toMatchObject({
-      ok: true,
-      base: 142,
-      wholesaleBase: 63.9,
-      total: 142,
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
       productStatus: "restriction_source_incomplete",
       validationStatus: "blocked",
-      internalCost: {
-        productCostUnit: 63.9,
-        productCostTotal: 63.9,
-      },
     });
-    if (!result.ok) throw new Error(JSON.stringify(result, null, 2));
-    expect(result.components).toEqual(
+    expect(result.validationIssues.map((issue) => issue.ruleId)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({
-          category: "base_grid",
-          catalogAmount: 142,
-          wholesaleAmount: 63.9,
-          customerAmount: 142,
-        }),
+        "polar.interior.fabric.required",
+        "polar.interior.lift_system.required",
       ]),
     );
     expect(quote.sendability.sendable).toBe(false);
@@ -632,7 +621,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     );
   });
 
-  it("keeps the exact Lotus $35.02 dealer cost internal and blocks undefined retail", () => {
+  it("keeps the exact Lotus $35.02 dealer cost internal and applies x3 retail", () => {
     expect(
       priceDealerNetDesign({
         productId: "lotus_roller_shades",
@@ -659,14 +648,14 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     );
     const result = quote.designs[0].result;
     expect(result).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
       productStatus: "restriction_source_incomplete",
       validationStatus: "blocked",
-      pricedSelectionFingerprint: null,
+      base: 105.06,
+      unitPrice: 105.06,
+      total: 105.06,
     });
-    expect(result).not.toHaveProperty("base");
-    expect(result).not.toHaveProperty("total");
+    expect(result.pricedSelectionFingerprint).not.toBeNull();
     expect(result.internalCost).toMatchObject({
       basis: "dealer_net",
       productCostUnit: 35.02,
@@ -680,7 +669,7 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
     expect(quote.sendability.sendable).toBe(false);
   });
 
-  it("pins Onyx U.S. Made Vinyl at $13.60 dealer cost and blocks unverified customer retail", () => {
+  it("pins Onyx U.S. Made Vinyl dealer cost and approved customer retail independently", () => {
     expect(
       priceDealerNetDesign({
         productId: "onyx_shutters",
@@ -701,8 +690,9 @@ describe("pricing assertions retained from the retired Quote Lab controls", () =
         heightInches: 36,
       }),
     ).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
+      ok: true,
+      billableSqft: 8,
+      base: 256,
     });
 
     const quoteLine = line("onyx-line", "Shutters", 24, 36);

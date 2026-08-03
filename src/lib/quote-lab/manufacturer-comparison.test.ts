@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compareManufacturers } from "./manufacturer-comparison";
 
 describe("manufacturer price comparison", () => {
-  it("compares Norman retail and dealer cost with Lotus dealer-net cost at the same size and quantity", () => {
+  it("compares Norman with Lotus owner-approved x3 retail at the same size and quantity", () => {
     const result = compareManufacturers({
       productType: "Faux Wood Blinds",
       widthInches: 35,
@@ -21,14 +21,14 @@ describe("manufacturer price comparison", () => {
     const lotusFlx = lotus?.programs.find((program) => program.programId === "lotus_flx_2in_bright_white_custom");
     expect(lotusFlx).toMatchObject({
       status: "priced",
-      customerRetail: null,
+      customerRetail: { unit: 104.31, total: 208.62 },
       dealerCost: { unit: 34.77, total: 69.54 },
       matchedWidth: 35,
       matchedHeight: 60,
     });
   });
 
-  it("includes every roller manufacturer and preserves manual-price programs", () => {
+  it("includes every roller manufacturer and prices Lotus Blackout from the approved 1% grid", () => {
     const result = compareManufacturers({
       productType: "Roller Shades",
       widthInches: 30,
@@ -41,7 +41,11 @@ describe("manufacturer price comparison", () => {
     const blackout = result.products
       .find((product) => product.productId === "lotus_roller_shades")
       ?.programs.find((program) => program.programId === "lotus_rs_blackout_unpriced");
-    expect(blackout).toMatchObject({ status: "manual_required", customerRetail: null, dealerCost: null });
+    expect(blackout).toMatchObject({
+      status: "priced",
+      customerRetail: { unit: 105.06, total: 105.06 },
+      dealerCost: { unit: 35.02, total: 35.02 },
+    });
   });
 
   it("returns explicit unavailable rows instead of falling back at unsupported dimensions", () => {

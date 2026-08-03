@@ -667,11 +667,12 @@ describe("portal parity AFTER live runtime outcomes", () => {
             "group_4",
             widthInches,
             67,
+            { polar_exterior_guide_type: "cable_guide" },
           ),
         ),
       ),
     );
-    expect(eliteTotals.every((result) => result.validationStatus === "blocked")).toBe(true);
+    expect(eliteTotals.every((result) => result.validationStatus === "valid")).toBe(true);
     for (const result of eliteTotals) {
       expect(
         result.components.map((component) => [
@@ -695,41 +696,51 @@ describe("portal parity AFTER live runtime outcomes", () => {
       afterCase("polar-elite-suntex90-manual-three-line").systemAfter.displayedTotalCents,
     );
 
-    const drapery = requireRuntimePrice(
-      runtimePrice(
-        selection(
-          "polar",
-          "polar_drapery_track",
-          "pinch_split_white",
-          48,
-          96,
-        ),
+    const drapery = runtimePrice(
+      selection(
+        "polar",
+        "polar_drapery_track",
+        "pinch_split_white",
+        48,
+        96,
       ),
     );
-    expect(cents(drapery.total)).toBe(
-      afterCase("polar-drapery-pinch-split-white-48").systemAfter.displayedTotalCents,
+    expect(drapery).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+    });
+    expect(drapery.validationIssues.map((issue) => issue.ruleId)).toEqual(
+      expect.arrayContaining([
+        "polar.drapery.brackets.exact_quantity",
+        "polar.drapery.motor.exactly_one",
+      ]),
     );
-    expect(drapery.validationStatus).toBe("blocked");
     expect(afterCase("polar-drapery-pinch-split-white-48")).toMatchObject({
       comparisonAfter: { result: "pass" },
       systemAfter: { sendable: false },
     });
 
-    const awning = requireRuntimePrice(
-      runtimePrice(
-        selection(
-          "polar",
-          "polar_awning_premium_pro",
-          "standard",
-          120,
-          83,
-        ),
+    const awning = runtimePrice(
+      selection(
+        "polar",
+        "polar_awning_premium_pro",
+        "standard",
+        120,
+        83,
       ),
     );
-    expect(cents(awning.total)).toBe(
-      afterCase("polar-premium-pro-awning-120x83").systemAfter.displayedTotalCents,
+    expect(awning).toMatchObject({
+      ok: false,
+      code: "CONFIGURATION_INCOMPLETE",
+      validationStatus: "blocked",
+    });
+    expect(awning.validationIssues.map((issue) => issue.ruleId)).toEqual(
+      expect.arrayContaining([
+        "polar.awning.frame_color.required",
+        "polar.awning.operation.required",
+      ]),
     );
-    expect(awning.validationStatus).toBe("blocked");
     expect(afterCase("polar-premium-pro-awning-120x83")).toMatchObject({
       comparisonAfter: { result: "pass" },
       systemAfter: { sendable: false },
@@ -765,7 +776,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
     expect(afterPolar.systemAfter.sendable).toBe(false);
   });
 
-  it("prices only owner-authorized Lotus faux wood while retaining exact dealer costs and send blocks", () => {
+  it("prices each supported Lotus product at x3 while retaining exact dealer costs and send blocks", () => {
     const cases = [
       [
         "lotus-mini-aluminum-17x36",
@@ -795,7 +806,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
       expect(
         priceDesign({ productId, programId, widthInches, heightInches }),
         caseId,
-      ).toMatchObject({ ok: false, code: "CUSTOMER_RETAIL_UNDEFINED" });
+      ).toMatchObject({ ok: true });
       const dealer = priceDealerNetDesign({
         productId,
         programId,
@@ -816,34 +827,22 @@ describe("portal parity AFTER live runtime outcomes", () => {
           heightInches,
         ),
       );
-      if (productId === "lotus_faux_wood_blinds") {
-        expect(runtime).toMatchObject({
-          ok: true,
-          validationStatus: "valid",
-          wholesaleUnitPrice: 23.57,
-          unitPrice: 148.57,
-        });
-        expect(expected.systemAfter).toMatchObject({
-          status: "customer_retail_blocked",
-          displayedTotalCents: 0,
-          sendable: false,
-        });
-      } else {
-        expect(runtime).toMatchObject({
-          ok: false,
-          code: "CUSTOMER_RETAIL_UNDEFINED",
-          validationStatus: "blocked",
-        });
-        expect(expected.systemAfter).toMatchObject({
-          status: "customer_retail_blocked",
-          displayedTotalCents: 0,
-          sendable: false,
-        });
-      }
+      expect(runtime).toMatchObject({
+        ok: true,
+        wholesaleUnitPrice: dealer.dealerNetUnitCost,
+        unitPrice: Math.round(dealer.dealerNetUnitCost * 300) / 100,
+      });
+      expect(expected.systemAfter).toMatchObject({
+        status: "priced_send_blocked",
+        displayedTotalCents: cents(
+          Math.round(dealer.dealerNetUnitCost * 300) / 100,
+        ),
+        sendable: false,
+      });
     }
   });
 
-  it("keeps Onyx dealer evidence separate and fails customer pricing closed", () => {
+  it("keeps Onyx dealer evidence and approved customer retail separate", () => {
     const dealer = priceDealerNetDesign({
       productId: "onyx_shutters",
       programId: "onyx_us_made_vinyl",
@@ -862,7 +861,7 @@ describe("portal parity AFTER live runtime outcomes", () => {
         widthInches: 36,
         heightInches: 48,
       }),
-    ).toMatchObject({ ok: false, code: "CUSTOMER_RETAIL_UNDEFINED" });
+    ).toMatchObject({ ok: true, billableSqft: 12, base: 384 });
     const runtime = runtimePrice(
       selection(
         "onyx",
@@ -1172,10 +1171,12 @@ describe("portal parity AFTER live runtime outcomes", () => {
     for (const auditCase of afterAudit.cases) {
       const quote = runtimeQuotes[auditCase.id as keyof typeof runtimeQuotes];
       const exactAdapterTotalCents =
-        auditCase.id === "polar-elite-suntex90-manual-three-line"
+        [
+          "polar-elite-suntex90-manual-three-line",
+          "polar-drapery-pinch-split-white-48",
+          "polar-premium-pro-awning-120x83",
+        ].includes(auditCase.id)
           ? 0
-          : auditCase.id === "lotus-faux-wood-bright-white-17x36"
-            ? 14_857
           : auditCase.systemAfter.displayedTotalCents;
       expect(cents(quote.total), `${auditCase.id} exact-interface total`).toBe(
         exactAdapterTotalCents,
@@ -1304,7 +1305,7 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
     );
     const customerSuccess = JSON.stringify(toCustomerQuotePriceResult(successful));
 
-    const lotusFailure = runtimePrice(
+    const lotusSuccess = runtimePrice(
       selection(
         "lotus",
         "lotus_mini_blinds",
@@ -1313,26 +1314,23 @@ describe("portal parity AFTER stale-price and privacy boundaries", () => {
         36,
       ),
     );
-    if (lotusFailure.ok) {
-      throw new Error("Lotus unexpectedly exposed customer retail.");
+    if (!lotusSuccess.ok) {
+      throw new Error("Lotus x3 customer retail unexpectedly failed.");
     }
-    const customerFailure = JSON.stringify(
-      toCustomerQuotePriceResult({
-        ...lotusFailure,
-        error: "Dealer net, margin, schedule, and landed cost diagnostics.",
-      }),
+    const customerLotus = JSON.stringify(
+      toCustomerQuotePriceResult(lotusSuccess),
     );
     const exactCustomerQuote = JSON.stringify(exactRollerQuote().customerQuote);
     const forbidden =
       /wholesale|internalCost|productCost|landed|freight|oversize|processing|dealer|multiplier|margin|schedule|2\.5/i;
     expect(customerSuccess).not.toMatch(forbidden);
-    expect(customerFailure).not.toMatch(forbidden);
+    expect(customerLotus).not.toMatch(forbidden);
     expect(exactCustomerQuote).not.toMatch(forbidden);
-    expect(JSON.parse(customerFailure)).toMatchObject({
-      ok: false,
-      code: "CUSTOMER_RETAIL_UNDEFINED",
-      error:
-        "Pricing is currently unavailable for this selection. Please review the configuration or contact us for assistance.",
+    expect(JSON.parse(customerLotus)).toMatchObject({
+      ok: true,
+      base: 64.44,
+      unitPrice: 64.44,
+      total: 64.44,
     });
   });
 
