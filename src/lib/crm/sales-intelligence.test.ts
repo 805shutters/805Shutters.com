@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSalesIntelligenceReport } from "@/lib/crm/sales-intelligence";
+import { buildSalesIntelligenceReport, precedingCalendarDayRange, trailingCalendarDayRange } from "@/lib/crm/sales-intelligence";
 import type { CrmJob, CrmQuote } from "@/lib/crm/types";
 
 function job(overrides: Partial<CrmJob>): CrmJob {
@@ -27,6 +27,31 @@ function quote(overrides: Partial<CrmQuote>): CrmQuote {
 }
 
 describe("buildSalesIntelligenceReport", () => {
+  it("uses an inclusive trailing 30 local-calendar-day window across a month boundary", () => {
+    expect(trailingCalendarDayRange(30, new Date(2026, 2, 1, 23, 30))).toEqual({
+      start: "2026-01-31",
+      end: "2026-03-01"
+    });
+  });
+
+  it("keeps 60-day presets rolling across months and handles leap-year dates", () => {
+    expect(trailingCalendarDayRange(60, new Date(2026, 2, 1, 1, 15))).toEqual({
+      start: "2026-01-01",
+      end: "2026-03-01"
+    });
+    expect(trailingCalendarDayRange(30, new Date(2024, 2, 1, 12))).toEqual({
+      start: "2024-02-01",
+      end: "2024-03-01"
+    });
+  });
+
+  it("compares against the immediately preceding equal calendar-day window", () => {
+    expect(precedingCalendarDayRange({ start: "2026-01-31", end: "2026-03-01" })).toEqual({
+      start: "2026-01-01",
+      end: "2026-01-30"
+    });
+  });
+
   it("builds attributable cohort funnel, revenue, rep, and follow-up totals", () => {
     const jobs = [
       job({ lead_source: "Google Ads", status: "sold" }),

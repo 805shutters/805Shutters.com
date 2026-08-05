@@ -3,6 +3,38 @@ import { getLeadSourceFromRecord } from "@/lib/lead-source";
 
 export type SalesIntelligenceRange = { start: string; end: string };
 
+export function localCalendarDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Inclusive local-calendar window: today plus the preceding days - 1 dates. */
+export function trailingCalendarDayRange(days: number, today = new Date()): SalesIntelligenceRange {
+  const duration = Math.max(1, Math.floor(days));
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const start = new Date(end);
+  start.setDate(start.getDate() - duration + 1);
+  return { start: localCalendarDate(start), end: localCalendarDate(end) };
+}
+
+export function precedingCalendarDayRange(range: SalesIntelligenceRange): SalesIntelligenceRange {
+  const [startYear, startMonth, startDay] = range.start.split("-").map(Number);
+  const [endYear, endMonth, endDay] = range.end.split("-").map(Number);
+  const calendarDays = Math.max(
+    1,
+    Math.round(
+      (Date.UTC(endYear, endMonth - 1, endDay) - Date.UTC(startYear, startMonth - 1, startDay)) / 86_400_000
+    ) + 1
+  );
+  const priorEnd = new Date(startYear, startMonth - 1, startDay);
+  priorEnd.setDate(priorEnd.getDate() - 1);
+  const priorStart = new Date(priorEnd);
+  priorStart.setDate(priorStart.getDate() - calendarDays + 1);
+  return { start: localCalendarDate(priorStart), end: localCalendarDate(priorEnd) };
+}
+
 export type SalesLeadDetail = {
   job: CrmJob;
   source: string;
@@ -110,13 +142,7 @@ export function buildSalesIntelligenceReport(
   range: SalesIntelligenceRange,
   now = new Date()
 ): SalesIntelligenceReport {
-  const rangeStart = startOfDay(range.start);
-  const rangeEnd = endOfDay(range.end);
-  const duration = Math.max(86_400_000, rangeEnd - rangeStart + 1);
-  const priorRange = {
-    start: new Date(rangeStart - duration).toISOString().slice(0, 10),
-    end: new Date(rangeStart - 1).toISOString().slice(0, 10)
-  };
+  const priorRange = precedingCalendarDayRange(range);
   const cohort = jobs.filter((job) => inRange(job.created_at, range));
   const priorLeadCount = jobs.filter((job) => inRange(job.created_at, priorRange)).length;
 

@@ -2,18 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { MarketingAgentPanel } from "@/components/crm/MarketingAgentPanel";
-import { buildSalesIntelligenceReport, type SalesIntelligenceRange } from "@/lib/crm/sales-intelligence";
+import { buildSalesIntelligenceReport, trailingCalendarDayRange, type SalesIntelligenceRange } from "@/lib/crm/sales-intelligence";
 import type { CrmBookkeepingRow, CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 
-function dateInputValue(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function defaultRange(): SalesIntelligenceRange {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - 29);
-  return { start: dateInputValue(start), end: dateInputValue(end) };
+  return trailingCalendarDayRange(30);
 }
 
 function currency(value: number) {
@@ -27,13 +20,6 @@ function percent(value: number, total: number) {
 function shortDate(value?: string | null) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
-}
-
-function setPreset(days: number): SalesIntelligenceRange {
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(start.getDate() - days + 1);
-  return { start: dateInputValue(start), end: dateInputValue(end) };
 }
 
 export function SalesIntelligencePage({
@@ -80,18 +66,18 @@ export function SalesIntelligencePage({
         <div>
           <p className="crm-si-eyebrow">Sales performance</p>
           <h2>Sales Intelligence</h2>
-          <p>Trace every lead from its source through follow-up, pipeline progress, outcome, and revenue.</p>
+          <p>Rolling trailing 30-day ledger by default, ending today. Adjust From and Through for a custom inclusive range.</p>
         </div>
         <div className="crm-si-date-controls" aria-label="Reporting period">
           <div className="crm-si-presets">
-            {[7, 30, 90].map((days) => (
-              <button type="button" key={days} onClick={() => setRange(setPreset(days))}>
-                {days} days
+            {[7, 30, 60, 90].map((days) => (
+              <button type="button" key={days} onClick={() => setRange(trailingCalendarDayRange(days))}>
+                Trailing {days} days
               </button>
             ))}
           </div>
           <label>From<input type="date" value={range.start} max={range.end} onChange={(event) => setRange((current) => ({ ...current, start: event.target.value }))} /></label>
-          <label>To<input type="date" value={range.end} min={range.start} onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))} /></label>
+          <label>Through<input type="date" value={range.end} min={range.start} onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))} /></label>
         </div>
       </header>
 
@@ -107,7 +93,7 @@ export function SalesIntelligencePage({
 
       <section className="crm-si-grid crm-si-grid-top">
         <article className="crm-si-card">
-          <div className="crm-si-card-head"><div><span>End-to-end funnel</span><h3>Lead progression</h3></div><small>Selected-period lead cohort</small></div>
+          <div className="crm-si-card-head"><div><span>End-to-end funnel</span><h3>Lead progression</h3></div><small>Inclusive {range.start} through {range.end} lead cohort</small></div>
           <div className="crm-si-funnel">
             {funnel.map((stage, index) => (
               <div key={stage.label}>
