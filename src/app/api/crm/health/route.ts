@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   const supabase = getSupabaseServiceClient();
   const tableChecks: Array<{ table: string; ready: boolean; error?: string }> = [];
+  let partialAcceptanceRpcReady = false;
 
   if (supabase) {
     for (const table of requiredTables) {
@@ -65,13 +66,25 @@ export async function GET(request: NextRequest) {
         error: error ? "missing_or_unavailable" : undefined
       });
     }
+    const { error: partialAcceptanceProbeError } = await supabase.rpc("partition_crm_partial_quote_acceptance", {
+      p_quote_id: "00000000-0000-0000-0000-000000000000",
+      p_share_token: "health-check-no-write",
+      p_selected_line_ids: [],
+      p_line_quantities: [],
+      p_signed_at: "2000-01-01T00:00:00.000Z",
+      p_signature: "health-check",
+      p_printed_name: "health-check",
+      p_current_money: {},
+      p_future_money: {}
+    });
+    partialAcceptanceRpcReady = partialAcceptanceProbeError?.code === "P0002";
   }
 
   const googleOAuth = await getCrmGoogleOAuthStatus(new URL("/crm/", getCanonicalSiteOrigin(request)).toString());
 
   const authConfigured = Boolean(supabaseUrl && anonKey);
   const databaseConfigured = Boolean(supabaseUrl && serviceRoleKey);
-  const migrationsReady = tableChecks.length > 0 && tableChecks.every((check) => check.ready);
+  const migrationsReady = tableChecks.length > 0 && tableChecks.every((check) => check.ready) && partialAcceptanceRpcReady;
   const installationInvoiceTableReady =
     tableChecks.find((check) => check.table === "crm_installation_invoice_emails")?.ready ?? false;
   const installationInvoiceDirectGmailConfigured =
@@ -102,6 +115,7 @@ export async function GET(request: NextRequest) {
     googleProviderEnabled: googleOAuth.enabled,
     googleProviderError: googleOAuth.error,
     migrationsReady,
+    partialAcceptanceRpcReady,
     installationInvoiceGmailConfigured,
     installationInvoiceDirectGmailConfigured,
     installationInvoiceGmailBrokerConfigured,
