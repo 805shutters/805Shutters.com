@@ -98,6 +98,7 @@ describe("squarePaymentLinkRequestBody", () => {
         jobId: "job-1",
         paymentType: "deposit",
         buyerEmail: "customer@example.com",
+        selectedLineIds: ["line-a", "line-b"],
       },
       "LOCATION1",
     );
@@ -128,6 +129,7 @@ describe("createSquarePaymentLink", () => {
       jobId: "job-1",
       paymentType: "deposit",
       buyerEmail: "customer@example.com",
+      selectedLineIds: ["line-a", "line-b"],
     });
 
     expect(link).toEqual({ id: "plink", url: "https://square.link/u/test" });
@@ -143,6 +145,7 @@ describe("createSquarePaymentLink", () => {
           job_id: "job-1",
           payment_type: "deposit",
           expected_amount_cents: "52547",
+          selected_line_ids: "line-a,line-b",
         },
       },
     });
@@ -263,6 +266,7 @@ describe("fetchSquareOrderFacts", () => {
       paymentType: "deposit",
       expectedAmountCents: 50000,
       currency: "USD",
+      selectedLineIds: [],
     });
   });
 });

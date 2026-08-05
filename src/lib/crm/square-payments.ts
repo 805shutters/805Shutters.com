@@ -115,6 +115,7 @@ export async function reconcileVerifiedSquareOrderPayment(
       order_currency: input.order.currency,
       expected_amount_cents: input.order.expectedAmountCents,
       job_identity_source: jobIdentitySource,
+      selected_line_ids: input.order.selectedLineIds || [],
     },
   });
   if (error) throw new Error(`Square payment could not be reconciled atomically: ${error.message}`);

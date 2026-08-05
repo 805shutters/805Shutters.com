@@ -47,6 +47,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
       quoteId: pub.id,
       jobId: quoteIdentity.job_id,
       paymentType: "deposit",
+      selectedLineIds,
     });
     return NextResponse.json({ url: link.url });
   } catch (error) {

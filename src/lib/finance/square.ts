@@ -91,6 +91,7 @@ export type SquarePaymentLinkInput = {
   paymentType: "deposit" | "balance";
   buyerEmail?: string | null;
   idempotencyKey?: string;
+  selectedLineIds?: string[];
 };
 
 export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, locationId: string) {
@@ -108,6 +109,7 @@ export function squarePaymentLinkRequestBody(input: SquarePaymentLinkInput, loca
         job_id: input.jobId,
         payment_type: input.paymentType,
         expected_amount_cents: String(input.amountCents),
+        ...(input.selectedLineIds?.length ? { selected_line_ids: input.selectedLineIds.join(",") } : {}),
       },
       line_items: [{ name: input.title, quantity: "1", base_price_money: { amount: input.amountCents, currency: "USD" } }],
     },
@@ -349,6 +351,7 @@ export type SquareOrderFacts = {
   paymentType: "deposit" | "balance" | null;
   expectedAmountCents: number | null;
   currency: string | null;
+  selectedLineIds?: string[];
 };
 
 export async function fetchSquareOrderFacts(
@@ -393,6 +396,7 @@ export async function fetchSquareOrderFacts(
           ? orderAmount
           : null,
     currency: order?.total_money?.currency || null,
+    selectedLineIds: (meta.selected_line_ids || "").split(",").filter(Boolean),
   };
 }
 

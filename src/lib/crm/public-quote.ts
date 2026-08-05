@@ -49,7 +49,6 @@ import {
   ensureBookkeepingEntry,
   buildSignedQuoteSplitPlan,
   listQuoteVersions,
-  materializeSignedQuoteSelection,
 } from "@/lib/crm/quote-groups";
 import { sendSms } from "@/lib/notify/twilio";
 import { sendSoldQuoteSmsNotifications } from "@/lib/crm/sold-quote-notifications";
@@ -1342,22 +1341,6 @@ export async function acceptPublicQuote(
   if (quote.signed_at) {
     let pub = await loadPublicQuoteByToken(supabase, token);
     if (pub) {
-      const storedSelection = record(record(quote.meta).signed_selection).lineItemIds;
-      const storedPartialAcceptance = record(record(quote.meta).partial_acceptance);
-      if (
-        !storedPartialAcceptance.future_quote_id &&
-        Array.isArray(storedSelection) &&
-        storedSelection.every((id) => typeof id === "string")
-      ) {
-        await materializeSignedQuoteSelection(
-          supabase,
-          quote.id,
-          pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
-          storedSelection as string[],
-        );
-        pub = await loadPublicQuoteByToken(supabase, token);
-        if (!pub) throw new CrmAuthError(404, "This contract link is no longer valid.");
-      }
       const retryPublicQuote = pub;
       const printedName = quote.customer_printed_name || input.printedName || pub.customerName || "Customer";
       const signature = quote.customer_signature || printedName;
@@ -1547,18 +1530,9 @@ export async function acceptPublicQuote(
   const futureQuoteId = "futureQuoteId" in claimed[0] ? claimed[0].futureQuoteId : undefined;
   const futureJobId = "futureJobId" in claimed[0] ? claimed[0].futureJobId : undefined;
 
-  const materializedSelection = selection && !partialPlan
-    ? await materializeSignedQuoteSelection(
-        supabase,
-        quote.id,
-        pub.lines.map((line) => ({ id: line.id, lineItemId: line.lineItemId })),
-        chosenLines.map((line) => line.id),
-      )
-    : null;
-
   // Within a group, the chosen version wins — supersede the unsigned alternatives
   // so they can't also be signed and never get their own bookkeeping entry.
-  const effectiveGroupId = materializedSelection?.groupId || quote.quote_group_id;
+  const effectiveGroupId = quote.quote_group_id;
   if (effectiveGroupId) {
     // Concurrency guard (M6): if a sibling link was signed at nearly the same
     // moment, both per-row claims can succeed. Resolve to a single winner — the
@@ -1592,9 +1566,6 @@ export async function acceptPublicQuote(
       .eq("quote_group_id", effectiveGroupId)
       .neq("id", quote.id)
       .is("signed_at", null);
-    if (materializedSelection?.pendingQuoteId) {
-      archiveSiblings = archiveSiblings.neq("id", materializedSelection.pendingQuoteId);
-    }
     await archiveSiblings;
   }
 
@@ -1611,11 +1582,6 @@ export async function acceptPublicQuote(
       meta: {
         ...record(quote.meta),
         signed_selection: signedSelection,
-        ...(materializedSelection?.pendingQuoteId ? {
-          selection_split_group_id: materializedSelection.groupId,
-          selection_remainder_quote_id: materializedSelection.pendingQuoteId,
-          selection_remainder_quote_label: materializedSelection.pendingLabel,
-        } : {}),
       },
     } : {}),
   };

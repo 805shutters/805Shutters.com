@@ -4660,6 +4660,28 @@ function customerContractPageForEntry(entry: DrillEntry, quote?: CrmQuote): Cust
   };
 }
 
+function futureContractPagesForEntry(entry: DrillEntry, quotes: CrmQuote[]): CustomerSearchPage[] {
+  const contracts = entry.file?.contracts || [];
+  const futureQuoteIds = new Set(
+    contracts
+      .filter((contract) => {
+        const partial = contract.meta?.partial_acceptance as Record<string, unknown> | undefined;
+        return contract.status === "future" || partial?.role === "future";
+      })
+      .map((contract) => contract.quote_id)
+      .filter((id): id is string => Boolean(id))
+  );
+
+  return quotes
+    .filter((quote) => futureQuoteIds.has(quote.id))
+    .map((quote) => ({
+      target: "quotes" as const,
+      label: "Future Contract",
+      quoteId: quote.id,
+      detail: quote.quote_number || quote.quote_label || undefined
+    }));
+}
+
 function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], events: CrmCalendarEvent[]): CustomerSearchPage[] {
   const pages: CustomerSearchPage[] = [{ target: "customers", label: "Customer File" }];
   const jobId = entry.job?.id || entry.jobId || entry.row?.jobId || null;
@@ -4677,6 +4699,8 @@ function customerSearchPagesForEntry(entry: DrillEntry, quotes: CrmQuote[], even
       detail: quote.quote_number || quote.quote_label || undefined
     });
   }
+
+  pages.push(...futureContractPagesForEntry(entry, quotes));
 
   const event = calendarEventForEntry(entry, events);
   if (event) {

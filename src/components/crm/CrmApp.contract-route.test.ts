@@ -13,6 +13,12 @@ describe("CRM customer contract route", () => {
     expect(source).toContain('if (page.quoteId) openQuoteWorkspaceQuote(page.quoteId, "builder")');
   });
 
+  it("exposes an unsent persisted remainder as a Future Contract route", () => {
+    expect(source).toContain('label: "Future Contract"');
+    expect(source).toContain('contract.status === "future" || partial?.role === "future"');
+    expect(source).toContain("pages.push(...futureContractPagesForEntry(entry, quotes))");
+  });
+
   it("provides an explicit X control to close the customer contract preview", () => {
     expect(source).toContain('aria-label="Close customer contract"');
     expect(source).toContain("onClose={() => setSelectedResultId(null)}");
