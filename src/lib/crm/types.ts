@@ -855,6 +855,25 @@ export type CrmVendorOrderTask = {
   manufacturerOrderRef: string | null;
 };
 
+export type CrmActivityEvent = {
+  id: string;
+  created_at: string;
+  actor_auth_user_id?: string | null;
+  actor_email: string | null;
+  entity_type: string;
+  entity_id: string | null;
+  action: string;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
+  metadata: Record<string, unknown>;
+};
+
+export type CrmActivitySnapshot = {
+  activityEvents: CrmActivityEvent[];
+  payments: CrmBookkeepingPayment[];
+  warnings?: string[];
+};
+
 export type CrmDashboardData = {
   jobs: CrmJob[];
   quotes: CrmQuote[];

@@ -41,6 +41,8 @@ import {
   zonedTimeToUtc
 } from "@/lib/booking/availability";
 import {
+  CrmActivityEvent,
+  CrmActivitySnapshot,
   CrmAvailabilitySlot,
   CrmBookkeepingStatus,
   CrmBookkeepingRow,
@@ -1590,6 +1592,35 @@ export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask 
     portalUrl: optionalText(row.portal_url),
     orderPacketUrl: optionalText(row.order_packet_url),
     manufacturerOrderRef: optionalText(row.manufacturer_order_ref),
+  };
+}
+
+export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Promise<CrmActivitySnapshot> {
+  const [activityResult, paymentsResult] = await Promise.all([
+    supabase
+      .from("crm_activity_events")
+      .select("id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata")
+      .order("created_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("crm_quote_bookkeeping_payments")
+      .select("*")
+      .order("paid_at", { ascending: false, nullsFirst: false })
+      .limit(800)
+  ]);
+
+  if (activityResult.error && paymentsResult.error) {
+    throw new CrmAuthError(502, "CRM activity is temporarily unavailable.");
+  }
+
+  const warnings: string[] = [];
+  if (activityResult.error) warnings.push("CRM updates are temporarily unavailable.");
+  if (paymentsResult.error) warnings.push("Payment activity is temporarily unavailable.");
+
+  return {
+    activityEvents: (activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[],
+    payments: (paymentsResult.error ? [] : paymentsResult.data || []) as CrmBookkeepingPayment[],
+    warnings
   };
 }
 

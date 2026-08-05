@@ -22,7 +22,6 @@ import {
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
 import { buildKenPaymentReview, kenPaymentDisabledReason, type KenPaymentReview } from "@/lib/crm/ken-payment-workflow";
-import { buildRecentFinancialActivity } from "@/lib/crm/recent-financial-activity";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getLeadSourceFromRecord, leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -41,6 +40,7 @@ import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
 import { JessicaFeedbackHub } from "@/components/crm/JessicaFeedbackHub";
 import { OrderFormLibrary } from "@/components/crm/OrderFormLibrary";
 import { DashboardRecordCard, dashboardRecordContactFromJob } from "@/components/crm/DashboardRecordCard";
+import { UnifiedActivityFeed } from "@/components/crm/UnifiedActivityFeed";
 import {
   awaitingProductRows,
   balanceDueCompletedRows,
@@ -71,12 +71,14 @@ import {
 } from "@/lib/crm/payment-plan-shared";
 import {
   CrmAccountabilityItem,
+  CrmActivitySnapshot,
   CrmAvailabilitySlot,
   CrmBookkeepingPaymentType,
   CrmBookkeepingRow,
   CrmCalendarEvent,
   CrmCommissionPayment,
   CrmCommissionSummary,
+  CrmCustomer,
   CrmCustomerFile,
   CrmDashboardData,
   CrmInstallationInvoiceEmail,
@@ -858,6 +860,9 @@ export function CrmApp({
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<CrmUser | null>(null);
   const [data, setData] = useState<CrmDashboardData | null>(null);
+  const [activitySnapshot, setActivitySnapshot] = useState<CrmActivitySnapshot | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityRefreshError, setActivityRefreshError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CrmTab>(() => (isKenMode ? "bookkeeping" : initialTab));
   const [activePaymentPerson, setActivePaymentPerson] = useState<CrmPaymentPerson>(initialPaymentPerson);
   const [loading, setLoading] = useState(true);
@@ -867,6 +872,7 @@ export function CrmApp({
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
+  const activityPollAbortRef = useRef<AbortController | null>(null);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
   const crmLoadedRef = useRef(false);
   const [calendarDate, setCalendarDate] = useState(() => losAngelesDateString());
@@ -1144,6 +1150,8 @@ export function CrmApp({
     setSession(null);
     setUser(null);
     setData(null);
+    setActivitySnapshot(null);
+    setActivityRefreshError(null);
   }
 
   async function loadCrm(activeSession: Session) {
@@ -1156,9 +1164,18 @@ export function CrmApp({
       window.location.replace("/crm/ken");
       return;
     }
-    const dashboardResult = await crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs");
+    setActivityLoading(true);
+    const [dashboardResult, activityResult] = await Promise.all([
+      crmFetch<CrmDashboardData>(activeSession, "/api/crm/jobs"),
+      crmFetch<CrmActivitySnapshot>(activeSession, "/api/crm/activity")
+        .then((snapshot) => ({ snapshot, error: null as string | null }))
+        .catch((error: unknown) => ({ snapshot: null, error: crmLoadErrorMessage(error) }))
+    ]);
     setUser(sessionResult);
     setData(dashboardResult);
+    if (activityResult.snapshot) setActivitySnapshot(activityResult.snapshot);
+    setActivityRefreshError(activityResult.error);
+    setActivityLoading(false);
     crmLoadedRef.current = true;
   }
 
@@ -1427,6 +1444,8 @@ export function CrmApp({
         crmLoadedRef.current = false;
         setUser(null);
         setData(null);
+        setActivitySnapshot(null);
+        setActivityRefreshError(null);
       }
     });
 
@@ -1474,6 +1493,47 @@ export function CrmApp({
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!session || isKenMode) return;
+    let cancelled = false;
+
+    const syncActivity = async () => {
+      if (cancelled || busyRef.current) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      activityPollAbortRef.current?.abort();
+      const controller = new AbortController();
+      activityPollAbortRef.current = controller;
+      try {
+        const snapshot = await crmFetch<CrmActivitySnapshot>(session, "/api/crm/activity", { signal: controller.signal });
+        if (cancelled) return;
+        setActivitySnapshot(snapshot);
+        setActivityRefreshError(null);
+      } catch (error) {
+        if (cancelled) return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        // Preserve the last successful activity snapshot so a transient poll
+        // failure never clears or reorders the list someone is reading.
+        setActivityRefreshError(crmLoadErrorMessage(error));
+      } finally {
+        if (activityPollAbortRef.current === controller) activityPollAbortRef.current = null;
+      }
+    };
+
+    const intervalId = window.setInterval(syncActivity, 15000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void syncActivity();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      cancelled = true;
+      activityPollAbortRef.current?.abort();
+      activityPollAbortRef.current = null;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [isKenMode, session]);
 
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2975,7 +3035,11 @@ export function CrmApp({
             quotes={quotes}
             rows={rows}
             files={customerFiles}
+            customers={customers}
             events={events}
+            activitySnapshot={activitySnapshot}
+            activityLoading={activityLoading}
+            activityRefreshError={activityRefreshError}
             installationInvoiceEmails={installationInvoiceEmails}
             partnerPaymentLedger={data?.partnerPaymentLedger}
             activeDrill={commandDrill}
@@ -5678,7 +5742,11 @@ function CommandDashboard({
   quotes,
   rows,
   files,
+  customers,
   events,
+  activitySnapshot,
+  activityLoading,
+  activityRefreshError,
   installationInvoiceEmails,
   partnerPaymentLedger,
   activeDrill,
@@ -5701,7 +5769,11 @@ function CommandDashboard({
   quotes: CrmQuote[];
   rows: CrmBookkeepingRow[];
   files: CrmCustomerFile[];
+  customers: CrmCustomer[];
   events: CrmCalendarEvent[];
+  activitySnapshot: CrmActivitySnapshot | null;
+  activityLoading: boolean;
+  activityRefreshError: string | null;
   installationInvoiceEmails: CrmInstallationInvoiceEmail[];
   partnerPaymentLedger?: CrmPartnerPaymentLedger;
   activeDrill: DrillPayload | null;
@@ -5782,8 +5854,6 @@ function CommandDashboard({
       .sort((a, b) => b.count - a.count);
     return { slices, needsDetails };
   }, [jobs, files]);
-
-  const financialActivity = useMemo(() => buildRecentFinancialActivity(rows), [rows]);
 
   const response = useMemo(() => {
     const measured = jobs
@@ -6028,37 +6098,17 @@ function CommandDashboard({
           )}
         </section>
 
-        <section className="crm-ledger crm-chart-card">
-          <div className="crm-section-head">
-            <div>
-              <p className="eyebrow">Payments</p>
-              <h2>Recent Financial Activity</h2>
-            </div>
-            <strong>{financialActivity.length} received</strong>
-          </div>
-          {financialActivity.length ? (
-            <div className="crm-closeout-list" aria-label="Recent financial activity">
-              {financialActivity.map((activity) => (
-                <button
-                  type="button"
-                  className="crm-closeout-item"
-                  key={activity.id}
-                  title={activity.sourceReference || undefined}
-                  onClick={() => onOpenCustomer(activity.customerName)}
-                >
-                  <span className="crm-closeout-customer">{activity.payerCustomer}</span>
-                  <span className="crm-closeout-meta">
-                    {formatShortDate(activity.date)} · {activity.paymentType}
-                    {activity.payerCustomer !== activity.customerName ? ` · ${activity.customerName}` : ""}
-                  </span>
-                  <span className="crm-closeout-status closed">{toLedgerCurrency(activity.amount)}</span>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="crm-empty">No payments recorded yet.</p>
-          )}
-        </section>
+        <UnifiedActivityFeed
+          snapshot={activitySnapshot}
+          jobs={jobs}
+          quotes={quotes}
+          rows={rows}
+          customers={customers}
+          customerFiles={files}
+          loading={activityLoading}
+          error={activityRefreshError}
+          onOpenCustomer={onOpenCustomer}
+        />
       </div>
 
       {drillPanel(["product", "closing"])}
