@@ -12,7 +12,7 @@ describe("/ai-search-feed.json", () => {
       schemaVersion: "805-ai-search-feed/v1",
       entity: {
         name: site.legalName,
-        serviceArea: "Ventura County"
+        serviceArea: "Ventura County, North Los Angeles County, and Santa Clarita"
       }
     });
     expect(payload.machineReadableFeeds).toEqual(

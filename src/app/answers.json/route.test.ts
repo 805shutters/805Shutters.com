@@ -11,7 +11,7 @@ describe("/answers.json", () => {
       schemaVersion: "805-answer-citations/v1",
       publisher: {
         name: "805 Shutters",
-        serviceArea: "Ventura County"
+        serviceArea: "Ventura County, North Los Angeles County, and Santa Clarita"
       }
     });
     expect(payload.answerCount).toBe(payload.answers.length);
