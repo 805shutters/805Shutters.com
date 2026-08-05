@@ -15090,7 +15090,7 @@ html.mobile-menu-open {
 
 .crm-dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 18px;
 }
@@ -16310,16 +16310,6 @@ html.mobile-menu-open {
   background: var(--white);
 }
 
-@media (max-width: 1200px) {
-  .crm-dashboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .crm-chart-card--response {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (max-width: 1024px) {
   .crm-job-tracking,
   .crm-dashboard,
@@ -16386,10 +16376,6 @@ html.mobile-menu-open {
 @media (max-width: 760px) {
   .crm-dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .crm-chart-card--response {
-    grid-column: auto;
   }
 }
 

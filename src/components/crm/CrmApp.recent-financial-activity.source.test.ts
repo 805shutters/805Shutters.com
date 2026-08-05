@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync("src/components/crm/CrmApp.tsx", "utf8");
+const styles = readFileSync("src/app/globals.css", "utf8");
 const cron = readFileSync("src/app/api/cron/order-cogs/route.ts", "utf8");
 
 describe("CRM unified activity dashboard", () => {
@@ -21,6 +22,13 @@ describe("CRM unified activity dashboard", () => {
     expect(source).toContain("Preserve the last successful activity snapshot");
     expect(source).toContain("activityPollAbortRef.current?.abort()");
     expect(source).toContain("signal: controller.signal");
+  });
+
+  it("keeps the compact analytics together above the full-width activity feed", () => {
+    const dashboard = source.slice(source.indexOf('<div className="crm-dashboard-grid">'));
+    expect(dashboard.indexOf('crm-chart-card--response')).toBeLessThan(dashboard.indexOf('<UnifiedActivityFeed'));
+    expect(styles).toContain("grid-template-columns: repeat(2, minmax(0, 1fr));");
+    expect(styles).toContain(".crm-activity-dashboard { grid-column: 1 / -1;");
   });
 
   it("runs peer-payment ingestion alongside the established production cron", () => {

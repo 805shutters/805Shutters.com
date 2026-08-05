@@ -6098,17 +6098,6 @@ function CommandDashboard({
           )}
         </section>
 
-        <UnifiedActivityFeed
-          snapshot={activitySnapshot}
-          jobs={jobs}
-          quotes={quotes}
-          rows={rows}
-          customers={customers}
-          customerFiles={files}
-          loading={activityLoading}
-          error={activityRefreshError}
-          onOpenCustomer={onOpenCustomer}
-        />
         <section className="crm-ledger crm-chart-card crm-chart-card--response">
           <div className="crm-section-head">
             <div>
@@ -6150,6 +6139,17 @@ function CommandDashboard({
             <p className="crm-empty">No appointments booked yet to measure response time.</p>
           )}
         </section>
+        <UnifiedActivityFeed
+          snapshot={activitySnapshot}
+          jobs={jobs}
+          quotes={quotes}
+          rows={rows}
+          customers={customers}
+          customerFiles={files}
+          loading={activityLoading}
+          error={activityRefreshError}
+          onOpenCustomer={onOpenCustomer}
+        />
       </div>
 
       {drillPanel(["product", "closing", "response"])}
