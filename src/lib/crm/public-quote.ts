@@ -481,6 +481,11 @@ function legacyDesignSnapshot(design: CrmQuoteDesign): {
   };
 }
 
+function customerSelectedLegacyValue(value: string): boolean {
+  const normalized = value.trim().toLocaleLowerCase().replace(/[\s_-]+/g, " ");
+  return !["", "none", "no", "n/a", "na", "not applicable", "not selected", "no valance"].includes(normalized);
+}
+
 function designIsOnyxShutters(design: CrmQuoteDesign): boolean {
   if (design.product_id === "onyx_shutters") return true;
 
@@ -533,7 +538,9 @@ export function describeDesign(design: CrmQuoteDesign): { productName: string; s
   const fabricColorOption = colorRow ? productColorLabel(colorRow) : null;
   if (fabricColorOption && (colorRow?.selectionMode === "fabric" || !styleName)) styleName = fabricColorOption;
   if (!styleName && design.fabric) styleName = design.fabric;
-  const legacyOptions = legacy?.details?.map((detail) => `${detail.label}: ${detail.value}`) ?? [];
+  const legacyOptions = legacy?.details
+    ?.filter((detail) => customerSelectedLegacyValue(detail.value))
+    .map((detail) => `${detail.label}: ${detail.value}`) ?? [];
   const v2ConfigurationOptions = v2CustomerConfigurationOptions(
     details[QUOTE_V2_CUSTOMER_CONFIGURATION_DETAIL],
   );

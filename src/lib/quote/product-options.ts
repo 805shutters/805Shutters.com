@@ -1013,9 +1013,15 @@ export function detailDisplayValue(productId: string, fieldId: string, value: un
   if (field.type === "checkbox") {
     return value === true ? field.label : null;
   }
-  if (typeof value !== "string" || !value) return null;
+  if (typeof value !== "string" || isUnselectedOptionValue(value)) return null;
   const option = field.options?.find((o) => o.value === value);
+  if (option && isUnselectedOptionValue(option.label)) return null;
   return `${field.label}: ${option?.label ?? value}`;
+}
+
+function isUnselectedOptionValue(value: string): boolean {
+  const normalized = value.trim().toLocaleLowerCase().replace(/[\s_-]+/g, " ");
+  return !normalized || ["none", "no", "n/a", "na", "not applicable", "not selected", "no valance"].includes(normalized);
 }
 
 export function isCustomerVisibleDetail(productId: string, fieldId: string): boolean {

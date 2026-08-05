@@ -54,6 +54,18 @@
   opacity: 0.7;
 }
 
+.pricingSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+  gap: 24px;
+  align-items: start;
+  margin: 14px 0 28px;
+  padding: 20px;
+  border: 1px solid #b8b6ae;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
 @media (max-width: 520px) {
   .purchaseSelector {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -72,4 +84,13 @@
   .purchaseHelp {
     text-align: center;
   }
+
+  .pricingSection { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 16px; }
+  .detailsTable, .detailsTable tbody, .detailsTable tr, .detailCell { display: block; width: 100%; }
+  .detailsTableHead { display: none; }
+  .detailsTable tr { box-sizing: border-box; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #d8d8d2 !important; border-radius: 10px; background: #fbfbfa; }
+  .detailCell { box-sizing: border-box; display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; padding: 7px 0 !important; text-align: left !important; }
+  .detailCell::before { content: attr(data-label); color: #5b5b58; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; }
+  .detailCell:not([data-label])::before { content: none; }
+  .detailCell ul { margin-top: 5px !important; padding-left: 16px !important; }
 }

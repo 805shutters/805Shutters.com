@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 
-export function SignQuote({ token, customerName, total, selectedLineIds }: { token: string; customerName: string; total: number; selectedLineIds?: string[] }) {
+export function SignQuote({ token, customerName, total, selectedLineIds, done: doneFromParent, onSigned, placement = "bottom" }: {
+  token: string; customerName: string; total: number; selectedLineIds?: string[];
+  done?: boolean; onSigned?: () => void; placement?: "top" | "bottom";
+}) {
   const [name, setName] = useState(customerName && customerName !== "Valued customer" ? customerName : "");
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const [localDone, setLocalDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
@@ -31,13 +34,16 @@ export function SignQuote({ token, customerName, total, selectedLineIds }: { tok
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.message || body.error || "We couldn't record your signature.");
-      setDone(true);
+      setLocalDone(true);
+      onSigned?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
       setBusy(false);
     }
   }
+
+  const done = doneFromParent ?? localDone;
 
   if (done) {
     return (
@@ -50,7 +56,10 @@ export function SignQuote({ token, customerName, total, selectedLineIds }: { tok
 
   return (
     <div style={{ border: "1px solid #d8d8d2", borderRadius: 10, padding: 20, marginTop: 20 }}>
-      <h3 style={{ marginTop: 0 }}>Approve &amp; sign</h3>
+      <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.65 }}>
+        {placement === "top" ? "Start here" : "Ready to proceed?"}
+      </div>
+      <h3 style={{ marginTop: 0 }}>Review &amp; sign this contract</h3>
       <p style={{ fontSize: 14, opacity: 0.8 }}>
         Type your full legal name to electronically sign and approve this contract. This authorizes the order at the total shown above.
       </p>
@@ -65,7 +74,7 @@ export function SignQuote({ token, customerName, total, selectedLineIds }: { tok
         />
       </label>
       <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginBottom: 16 }}>
-        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 3 }} />
+        <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ flex: "0 0 18px", width: 18, height: 18, marginTop: 2 }} />
         <span>I authorize 805 Shutters to proceed with this order at the total shown, and I understand a deposit may be required.</span>
       </label>
       <button

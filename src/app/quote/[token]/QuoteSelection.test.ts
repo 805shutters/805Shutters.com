@@ -5,7 +5,7 @@ import type { PublicQuote } from "@/lib/crm/public-quote";
 import { DEFAULT_ADJUSTMENTS } from "@/lib/crm/quote-builder";
 import { QuoteSelection } from "./QuoteSelection";
 
-function quoteWithLegacyDetails(): PublicQuote {
+function quoteWithLegacyDetails(signed = true): PublicQuote {
   return {
     token: "test-token",
     id: "quote-1",
@@ -15,7 +15,7 @@ function quoteWithLegacyDetails(): PublicQuote {
     customerPhone: "805-555-1212",
     customerEmail: "test@example.com",
     status: "sent",
-    signed: true,
+    signed,
     signedAt: null,
     lines: [
       {
@@ -82,5 +82,14 @@ describe("QuoteSelection", () => {
     expect(html).toContain("Mount Type: Inside Mount");
     expect(html).toContain("Valance: Cassette");
     expect(html).not.toContain('48&quot; W');
+  });
+
+  it("puts review and sign actions at both ends with pricing before full details", () => {
+    const html = renderToStaticMarkup(createElement(QuoteSelection, { quote: quoteWithLegacyDetails(false) }));
+    expect(html.match(/Review &amp; sign this contract/g)).toHaveLength(2);
+    expect(html.match(/Sign &amp; approve/g)).toHaveLength(2);
+    expect(html.indexOf("Start here")).toBeLessThan(html.indexOf("Contract pricing"));
+    expect(html.indexOf("Contract pricing")).toBeLessThan(html.indexOf("Complete contract"));
+    expect(html.indexOf("Complete contract")).toBeLessThan(html.indexOf("Ready to proceed?"));
   });
 });

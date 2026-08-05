@@ -50,6 +50,15 @@ function design(over: Partial<CrmQuoteDesign>): CrmQuoteDesign {
 }
 
 describe("describeDesign (customer-readable, no internal data leaked)", () => {
+  it("omits non-applicable catalog choices and keeps physically selected details", () => {
+    const d = describeDesign(design({
+      product_id: "roller",
+      details: { mount_type: "inside", control_side: "na", valance: "none" },
+    }));
+    expect(d.options).toContain("Mount: Inside mount");
+    expect(d.options.join(" ")).not.toMatch(/Control side|Valance|N\/A|None/);
+  });
+
   it("names the product and program", () => {
     const d = describeDesign(design({ product_id: "honeycomb", program_id: "honeycomb_9_16in_cordless_single_cell" }));
     expect(d.productName).toContain("Honeycomb");
@@ -373,6 +382,26 @@ describe("projectLine (per-line discount on the contract)", () => {
     expect(line.options).toContain("Lift System: Cordless");
     expect(line.options).toContain("Mount Type: Inside Mount");
     expect(line.options).toContain("Valance: Cassette");
+  });
+
+  it("omits unselected legacy option fields while retaining selected choices", () => {
+    const d = design({
+      product_id: "roller",
+      unit_price: 509.4,
+      price_breakdown: {
+        source: "mts_805_bookkeeping",
+        productType: "Roller Shades",
+        details: [
+          { label: "Mount Type", value: "Inside Mount" },
+          { label: "End Cap", value: "None" },
+          { label: "Control Side", value: "N/A" },
+          { label: "Remote Type", value: "5 Channel" },
+        ],
+      },
+    });
+    const line = projectLine(lineItem({ notes: "Roller Shades", designs: [d] }), true);
+    expect(line.designOptions[0]?.options).toEqual(["Mount Type: Inside Mount", "Remote Type: 5 Channel"]);
+    expect(line.options.join(" ")).not.toMatch(/End Cap|N\/A/);
   });
 
   it("expands quantity into separate customer contract rows", () => {

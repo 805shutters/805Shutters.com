@@ -41,6 +41,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
   const [computing, setComputing] = useState(false);
   const [squareBusy, setSquareBusy] = useState<"deposit" | null>(null);
   const [squareMsg, setSquareMsg] = useState<string | null>(null);
+  const [signedNow, setSignedNow] = useState(false);
   const reqId = useRef(0);
 
   useEffect(() => {
@@ -139,8 +140,31 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </div>
       ) : null}
 
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
-        <thead>
+      {!quote.signed && quote.allPriced ? (
+        <div className="no-print">
+          {selectionEmpty ? <p style={selectionNotice}>Select at least one item below to review pricing and sign this contract.</p> : (
+            <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal}
+              selectedLineIds={selectedLineIds} done={signedNow} onSigned={() => setSignedNow(true)} placement="top" />
+          )}
+        </div>
+      ) : null}
+      {!quote.signed && !quote.allPriced ? <p style={selectionNotice}>A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.</p> : null}
+
+      <section aria-labelledby="contract-pricing-heading" className={styles.pricingSection}>
+        <div>
+          <p style={sectionEyebrow}>Contract pricing</p>
+          <h2 id="contract-pricing-heading" style={sectionHeading}>Your price at a glance</h2>
+          <p style={sectionIntro}>Review the total, deposit, and remaining balance before reading the complete product details.</p>
+        </div>
+        <PricingSummary quote={quote} live={live} computing={computing} />
+      </section>
+
+      <section aria-labelledby="contract-details-heading" style={detailsSection}>
+        <p style={sectionEyebrow}>Complete contract</p>
+        <h2 id="contract-details-heading" style={sectionHeading}>Product and window details</h2>
+        <p style={sectionIntro}>The specifications, quantities, and line pricing below are part of this contract.</p>
+      <table className={styles.detailsTable} style={{ width: "100%", borderCollapse: "collapse", fontSize: 15 }}>
+        <thead className={styles.detailsTableHead}>
           <tr style={{ textAlign: "left", borderBottom: "1px solid #d8d8d2" }}>
             {mode === "some" ? <th style={{ ...th, width: 36 }}></th> : null}
             <th style={th}>Window</th>
@@ -156,15 +180,15 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
             return (
               <tr key={line.id} style={{ borderBottom: "1px solid #eeeeeb", verticalAlign: "top", opacity: dimmed ? 0.4 : 1 }}>
                 {mode === "some" ? (
-                  <td style={{ ...td, width: 36 }}>
+                  <td className={styles.detailCell} data-label="Select" style={{ ...td, width: 36 }}>
                     <input type="checkbox" style={{ width: 18, height: 18, margin: "10px 0 0" }} checked={isChecked} onChange={() => toggle(line.id)} />
                   </td>
                 ) : null}
-                <td style={td}>
+                <td className={styles.detailCell} data-label="Window" style={td}>
                   <strong>{line.room}</strong>
                   {line.discountPercent > 0 ? <span style={discountTag}>{line.discountPercent}% off applied</span> : null}
                 </td>
-                <td style={td}>
+                <td className={styles.detailCell} data-label="Product" style={td}>
                   {line.priceReady ? (
                     <div>
                       {line.showDesignOptions && line.designOptions.length ? (
@@ -211,14 +235,14 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
                     <em style={{ opacity: 0.6 }}>Pricing in progress</em>
                   )}
                 </td>
-                <td style={{ ...td, textAlign: "right" }}>{line.quantity}</td>
-                <td style={{ ...td, textAlign: "right" }}>{line.priceReady ? money(line.lineTotal) : "—"}</td>
+                <td className={styles.detailCell} data-label="Qty" style={{ ...td, textAlign: "right" }}>{line.quantity}</td>
+                <td className={styles.detailCell} data-label="Price" style={{ ...td, textAlign: "right" }}>{line.priceReady ? money(line.lineTotal) : "—"}</td>
               </tr>
             );
           })}
           {quote.lines.length === 0 ? (
             <tr>
-              <td style={td} colSpan={mode === "some" ? 5 : 4}>
+              <td className={styles.detailCell} style={td} colSpan={mode === "some" ? 5 : 4}>
                 <em style={{ opacity: 0.6 }}>This contract is still being prepared.</em>
               </td>
             </tr>
@@ -226,23 +250,7 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
         </tbody>
       </table>
 
-      <div style={{ marginLeft: "auto", marginTop: 20, maxWidth: 320 }}>
-        <Row label="Subtotal" value={money(live.subtotal)} />
-        {quote.fees.map((fee, i) => (
-          <Row key={i} label={fee.name} value={money(fee.amount)} />
-        ))}
-        {live.discount > 0 ? <Row label="Discount" value={`- ${money(live.discount)}`} /> : null}
-        {live.tax > 0 ? <Row label="Tax" value={money(live.tax)} /> : null}
-        {quote.sourceTotalAdjustment ? (
-          <Row label="Contract adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} />
-        ) : null}
-        <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}>
-          <Row label="Total" value={money(live.total)} strong />
-        </div>
-        {live.depositDue > 0 ? <Row label="Deposit" value={money(live.depositDue)} highlight /> : null}
-        {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
-        {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
-      </div>
+      </section>
 
       {paymentOptions && (live.depositDue > 0 || live.balanceDue > 0) ? (
         <div id="payment" className="no-print" style={payBox}>
@@ -350,17 +358,27 @@ export function QuoteSelection({ quote, paymentOptions }: { quote: PublicQuote; 
           {selectionEmpty ? (
             <p style={{ marginTop: 20, color: "#4d4d49" }}>Please select at least one item to purchase.</p>
           ) : (
-            <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal} selectedLineIds={selectedLineIds} />
+            <SignQuote token={quote.token} customerName={quote.customerName} total={acknowledgedTotal}
+              selectedLineIds={selectedLineIds} done={signedNow} onSigned={() => setSignedNow(true)} placement="bottom" />
           )}
         </div>
       ) : null}
-      {!quote.signed && !quote.allPriced ? (
-        <p style={{ marginTop: 20, opacity: 0.7 }}>
-          A few items are still being finalized. We&apos;ll notify you the moment this contract is ready to approve.
-        </p>
-      ) : null}
     </>
   );
+}
+
+function PricingSummary({ quote, live, computing }: { quote: PublicQuote; live: LiveMoney; computing: boolean }) {
+  return <div style={pricingSummary}>
+    <Row label="Subtotal" value={money(live.subtotal)} />
+    {quote.fees.map((fee, i) => <Row key={i} label={fee.name} value={money(fee.amount)} />)}
+    {live.discount > 0 ? <Row label="Discount" value={`- ${money(live.discount)}`} /> : null}
+    {live.tax > 0 ? <Row label="Tax" value={money(live.tax)} /> : null}
+    {quote.sourceTotalAdjustment ? <Row label="Contract adjustment" value={`${quote.sourceTotalAdjustment > 0 ? "" : "- "}${money(Math.abs(quote.sourceTotalAdjustment))}`} /> : null}
+    <div style={{ borderTop: "2px solid #0b0b0b", marginTop: 8, paddingTop: 8 }}><Row label="Total" value={money(live.total)} strong /></div>
+    {live.depositDue > 0 ? <Row label="Deposit" value={money(live.depositDue)} highlight /> : null}
+    {live.balanceDue > 0 ? <Row label="Balance" value={money(live.balanceDue)} /> : null}
+    {computing ? <p style={{ fontSize: 12, opacity: 0.6, margin: "6px 0 0" }}>Updating total…</p> : null}
+  </div>;
 }
 
 function Row({ label, value, strong, highlight }: { label: string; value: string; strong?: boolean; highlight?: boolean }) {
@@ -374,6 +392,12 @@ function Row({ label, value, strong, highlight }: { label: string; value: string
 
 const th = { padding: "8px 6px", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5, opacity: 0.7 } as const;
 const td = { padding: "10px 6px" } as const;
+const selectionNotice = { margin: "0 0 16px", padding: "14px 16px", border: "1px solid #b8b6ae", borderRadius: 10, background: "#f4f4f2", color: "#4d4d49" } as const;
+const pricingSummary = { width: "100%", marginLeft: "auto" } as const;
+const detailsSection = { marginTop: 8 } as const;
+const sectionEyebrow = { margin: "0 0 4px", fontSize: 12, fontWeight: 800, letterSpacing: 0.7, textTransform: "uppercase", opacity: 0.7 } as const;
+const sectionHeading = { margin: 0, fontSize: 24, lineHeight: 1.2 } as const;
+const sectionIntro = { margin: "6px 0 16px", maxWidth: 470, color: "#4d4d49", fontSize: 14, lineHeight: 1.5 } as const;
 const designOptionBox = {
   padding: "8px 10px",
   border: "1px solid #d8d8d2",
