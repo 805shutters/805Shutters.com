@@ -63,23 +63,19 @@ function recipientKey(recipient: SoldQuoteSmsRecipient): string {
 
 /**
  * Michael and Jessica's documented settings replace their established fallback
- * numbers. Ken's established shop number remains required, and the
- * comma-separated shop setting can add recipients. Entries are normalized and
- * deduplicated so a configured fallback is never texted twice.
+ * numbers, and the comma-separated shop setting can add recipients. Entries
+ * are normalized and deduplicated so a configured fallback is never texted
+ * twice.
  */
 export function soldQuoteSmsRecipients(
   env: SoldQuoteRecipientEnv = process.env as SoldQuoteRecipientEnv,
 ): SoldQuoteSmsRecipient[] {
-  const [defaultPrimary, requiredKen, defaultJessica, ...retainedRecipients] =
+  const [defaultPrimary, defaultJessica, ...retainedRecipients] =
     SOLD_QUOTE_NOTIFICATION_RECIPIENTS;
   const raw = [
     {
       input: env.MIKE_805_SALES_SMS_NUMBER || defaultPrimary,
       role: "primary" as const,
-    },
-    {
-      input: requiredKen,
-      role: "staff" as const,
     },
     {
       input: env.JESSICA_805_SALES_SMS_NUMBER || defaultJessica,

@@ -138,7 +138,6 @@ from public.crm_quotes as quote
 cross join (
   values
     ('+18052985555'::text),
-    ('+18056300848'::text),
     ('+18059144917'::text)
 ) as recipient(e164)
 where quote.signed_at is not null

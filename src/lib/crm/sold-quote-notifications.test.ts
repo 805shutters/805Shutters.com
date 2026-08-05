@@ -68,7 +68,7 @@ function fakeSupabase(options: {
 }
 
 describe("soldQuoteSmsRecipients", () => {
-  it("uses configured Michael and Jessica numbers, retains Ken, and deduplicates extras", () => {
+  it("uses configured Michael and Jessica numbers and deduplicates extras", () => {
     expect(
       soldQuoteSmsRecipients({
         MIKE_805_SALES_SMS_NUMBER: "805-555-0200",
@@ -77,14 +77,13 @@ describe("soldQuoteSmsRecipients", () => {
       }),
     ).toEqual([
       { input: "805-555-0200", e164: "+18055550200", role: "primary" },
-      { input: "805-630-0848", e164: "+18056300848", role: "staff" },
       { input: "+1 (805) 555-0300", e164: "+18055550300", role: "staff" },
       { input: "805-555-0100", e164: "+18055550100", role: "staff" },
       { input: "not-a-phone", e164: null, role: "staff" },
     ]);
   });
 
-  it("keeps all three canonical recipients with production Michael and Jessica settings", () => {
+  it("keeps both canonical recipients with production Michael and Jessica settings", () => {
     expect(
       soldQuoteSmsRecipients({
         MIKE_805_SALES_SMS_NUMBER: "805-298-5555",
@@ -92,15 +91,13 @@ describe("soldQuoteSmsRecipients", () => {
       }),
     ).toEqual([
       { input: "805-298-5555", e164: "+18052985555", role: "primary" },
-      { input: "805-630-0848", e164: "+18056300848", role: "staff" },
       { input: "805-914-4917", e164: "+18059144917", role: "staff" },
     ]);
   });
 
-  it("falls back to the three established recipients when env is unset", () => {
+  it("falls back to the established recipients when env is unset", () => {
     expect(soldQuoteSmsRecipients(defaultRecipientEnv)).toEqual([
       { input: "805-298-5555", e164: "+18052985555", role: "primary" },
-      { input: "805-630-0848", e164: "+18056300848", role: "staff" },
       { input: "805-914-4917", e164: "+18059144917", role: "staff" },
     ]);
   });
@@ -145,19 +142,19 @@ describe("sendSoldQuoteSmsNotifications", () => {
       buildMessage: () => "signed",
     }, smsSender);
 
-    expect(smsSender).toHaveBeenCalledTimes(3);
+    expect(smsSender).toHaveBeenCalledTimes(2);
     expect(smsSender).toHaveBeenCalledWith(expect.objectContaining({
       statusCallback: "https://example.com/status",
     }));
     expect(result.every((item) => item.delivery.status === "accepted")).toBe(true);
-    expect(db.updates).toHaveLength(3);
+    expect(db.updates).toHaveLength(2);
     expect(db.updates[0]).toMatchObject({
       status: "accepted",
       provider_message_sid: "SM123",
       provider_status: "accepted",
       last_error: null,
     });
-    expect(db.activities).toHaveLength(3);
+    expect(db.activities).toHaveLength(2);
   });
 
   it("does not send when the atomic claim is unavailable", async () => {
@@ -172,7 +169,7 @@ describe("sendSoldQuoteSmsNotifications", () => {
     }, smsSender);
 
     expect(smsSender).not.toHaveBeenCalled();
-    expect(result).toHaveLength(3);
+    expect(result).toHaveLength(2);
     expect(result.every((item) => item.delivery.persisted === false)).toBe(true);
   });
 

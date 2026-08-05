@@ -1,4 +1,4 @@
-export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-298-5555", "805-630-0848", "805-914-4917"] as const;
+export const SOLD_QUOTE_NOTIFICATION_RECIPIENTS = ["805-298-5555", "805-914-4917"] as const;
 export const SOLD_QUOTE_CONTACT_NOTIFICATION_RECIPIENT = "805-298-5555" as const;
 
 interface SoldQuoteSmsInput {

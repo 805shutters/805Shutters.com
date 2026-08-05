@@ -46,7 +46,7 @@ describe("805 sold quote SMS notification", () => {
   });
 
   it("keeps other recipients on the base sale fields only", () => {
-    expect(build805SoldQuoteSmsMessageForRecipient("805-630-0848", quote, null)).toBe(
+    expect(build805SoldQuoteSmsMessageForRecipient("805-555-0400", quote, null)).toBe(
       build805SoldQuoteSmsMessage(quote, null)
     );
   });
