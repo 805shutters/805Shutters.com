@@ -438,6 +438,7 @@ const cityPages = [
   ["oxnard", "oxnard-ca", "Oxnard"],
   ["port-hueneme", "port-hueneme-ca", "Port Hueneme"],
   ["santa-paula", "santa-paula-ca", "Santa Paula"],
+  ["santa-clarita", "santa-clarita-ca", "Santa Clarita"],
   ["santa-rosa-valley", "santa-rosa-valley-ca", "Santa Rosa Valley"],
   ["simi-valley", "simi-valley-ca", "Simi Valley"],
   ["thousand-oaks", "thousand-oaks-ca", "Thousand Oaks"],
@@ -2559,6 +2560,8 @@ function cityProductPage({
   image: string;
 }): SitePage {
   const label = product.replace("-", " ");
+  const regionalServiceArea =
+    city === "Santa Clarita" ? "North Los Angeles County and Santa Clarita" : "Ventura County";
   const page: SitePage = {
     path,
     title,
@@ -2589,8 +2592,8 @@ function cityProductPage({
       },
       ...legacyProductSections(product, city, label),
       {
-        heading: "Ventura County installation support",
-        body: `805 Shutters serves ${city} and nearby Ventura County communities with measuring, product guidance, ordering, and professional installation. The goal is to help you understand cost, timing, materials, controls, and long-term maintenance before the project moves forward.`
+        heading: `${regionalServiceArea} installation support`,
+        body: `805 Shutters serves ${city} and nearby ${regionalServiceArea} communities with measuring, product guidance, ordering, and professional installation. The goal is to help you understand cost, timing, materials, controls, and long-term maintenance before the project moves forward.`
       }
     ],
     cta: "Schedule a free in-home consultation"

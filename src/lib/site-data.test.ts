@@ -19,4 +19,12 @@ describe("site page quality", () => {
     const page = getPageByPath("/shutters/");
     expect(page?.sections.map((section) => section.heading)).toContain("Before A Project Is Ordered");
   });
+
+  it("publishes Santa Clarita pages with the approved North Los Angeles service context", () => {
+    const page = getPageByPath("/window-treatments/santa-clarita-ca/");
+    expect(page?.h1).toBe("Window Treatments in Santa Clarita");
+    expect(page?.sections.map((section) => section.heading)).toContain(
+      "North Los Angeles County and Santa Clarita installation support"
+    );
+  });
 });
