@@ -38,7 +38,6 @@ const quote = {
   status: "ordered",
   quote_total: 601,
   deposit_required: 300.5,
-  customer_name: "Gloria White",
   customer_email: "glo_jean_w@hotmail.com",
   customer_phone: "8054151940",
   customer_address: "2963 Las Posas Rd Camarillo",
