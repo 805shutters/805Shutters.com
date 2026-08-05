@@ -1,7 +1,15 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageSections } from "@/components/PageSections";
-import { allPages, commercialCityName, getPageBySlug, ogDefaults, site, slugForPath } from "@/lib/site-data";
+import {
+  allPages,
+  commercialCityName,
+  getPageBySlug,
+  ogDefaults,
+  site,
+  slugForPath,
+  type SitePage
+} from "@/lib/site-data";
 import {
   commercialSubPageJsonLd,
   commercialWindowCoveringsJsonLd,
@@ -14,6 +22,30 @@ type PageProps = {
     slug: string[];
   }>;
 };
+
+function isLocalServicePage(path: string) {
+  return /^\/(shutters|shades|blinds|drapery|window-coverings|window-treatments)\/[^/]+\/$/.test(path);
+}
+
+export function pageJsonLdFor(page: SitePage) {
+  if (page.path === "/commercial-window-coverings/") {
+    return commercialWindowCoveringsJsonLd(page);
+  }
+
+  if (page.path.includes("commercial")) {
+    return commercialSubPageJsonLd(page, commercialCityName(page.path));
+  }
+
+  if (page.path === "/faq/") {
+    return faqPageJsonLd(page);
+  }
+
+  if (page.faqs?.length || isLocalServicePage(page.path)) {
+    return servicePageJsonLd(page);
+  }
+
+  return null;
+}
 
 export function generateStaticParams() {
   return allPages
@@ -61,16 +93,7 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound();
   }
 
-  const pageJsonLd =
-    page.path === "/commercial-window-coverings/"
-      ? commercialWindowCoveringsJsonLd(page)
-      : page.path.includes("commercial")
-        ? commercialSubPageJsonLd(page, commercialCityName(page.path))
-        : page.path === "/faq/"
-          ? faqPageJsonLd(page)
-          : page.faqs?.length
-            ? servicePageJsonLd(page)
-            : null;
+  const pageJsonLd = pageJsonLdFor(page);
 
   return (
     <>
