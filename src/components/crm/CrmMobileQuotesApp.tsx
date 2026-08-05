@@ -6,7 +6,7 @@ import { ArrowLeft, CalendarDays, FileText, Ruler } from "lucide-react";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail } from "@/lib/crm/allowed-users";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuoteWorkspace } from "@mts/QuoteWorkspace";
+import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 
 type CrmEmailOtpType = "signup" | "invite" | "magiclink" | "recovery" | "email_change" | "email";
 
@@ -386,10 +386,12 @@ export function CrmMobileQuotesApp() {
         </div>
       </header>
       {message ? <p className="crm-alert">{message}</p> : null}
-      <QuoteWorkspace
-        crmJobs={data?.jobs || []}
-        crmQuotes={data?.quotes || []}
-        crmCalendarEvents={data?.events || []}
+      <QuotesWorkspace
+        session={session}
+        jobs={data?.jobs || []}
+        quotes={data?.quotes || []}
+        events={data?.events || []}
+        onChanged={() => void refresh()}
       />
     </section>
   );
