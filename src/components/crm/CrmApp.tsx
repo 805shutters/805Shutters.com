@@ -1671,19 +1671,10 @@ export function CrmApp({
     const jobId = entry.job?.id || entry.jobId || row?.jobId || null;
     const quoteId = row?.quoteId || null;
     const rowId = row?.id || null;
-    const canPatchQuoteRow = row?.source === "crm_quote" && Boolean(row.quoteId);
-    const fallbackPatch: DrillFieldPatch | null = canPatchQuoteRow
-      ? { row: { status: "ordered" } }
-      : jobId
-        ? { job: { status: "ordered" } }
-        : null;
-
-    if (!fallbackPatch) {
+    if (!jobId && !quoteId && !rowId) {
       setMessage("This card is a customer snapshot. Open the file to edit the source record.");
       return false;
     }
-
-    let fallbackMessage = "Order email pull found no confirmation for this job; marked ordered.";
 
     setBusy(true);
     setMessage("Processing recent order confirmation emails...");
@@ -1715,25 +1706,25 @@ export function CrmApp({
       const appliedTarget = targetEmails.find((email) => email.applied_at || email.match_status === "matched");
       if (appliedTarget) {
         setMessage(
-          `Order email matched. COGS workflow processed ${appliedTarget.extracted_order_number || "the confirmation"} for ${appliedTarget.extracted_customer_name || entry.customerName || entry.name}.`
+          `Order email matched. COGS workflow processed ${appliedTarget.extracted_order_number || "the confirmation"} for ${appliedTarget.extracted_customer_name || entry.customerName || entry.name}. Review the product-line order controls for any outstanding items.`
         );
         return true;
       }
 
-      fallbackMessage =
+      setMessage(
         targetEmails.length > 0
-          ? `Order email found but needs review; marked ordered. ${targetEmails[0].match_reason || "Review COGS email."}`
-          : `Order email pull scanned ${result.scanned} recent confirmations and found no match for this job; marked ordered.`;
+          ? `Order email found but needs review; no product line was marked ordered. ${targetEmails[0].match_reason || "Review COGS email."}`
+          : `Order email pull scanned ${result.scanned} recent confirmations and found no match. No product line was marked ordered.`
+      );
+      return false;
     } catch (error) {
-      fallbackMessage = `Order email pull failed: ${error instanceof Error ? error.message : "unknown error"}. Marked ordered.`;
+      setMessage(
+        `Order email pull failed: ${error instanceof Error ? error.message : "unknown error"}. No product line was marked ordered.`
+      );
+      return false;
     } finally {
       setBusy(false);
     }
-
-    return saveDrillField(entry, {
-      ...fallbackPatch,
-      message: fallbackMessage
-    });
   }
 
   async function findCogsFromDrill(entry: DrillEntry) {
@@ -7305,10 +7296,8 @@ function DrillDetailCard({
   const canMarkComplete =
     canEditJob ||
     Boolean(row && (canEditQuoteRow || row.source !== "crm_quote"));
-  const markOrdered = () => {
+  const checkOrderConfirmations = () => {
     if (onMarkOrdered) return onMarkOrdered(entry);
-    if (canEditQuoteRow) return saveRow({ status: "ordered" }, "Marked ordered.");
-    if (canEditJob) return saveJob({ status: "ordered" }, "Marked ordered.");
     return Promise.resolve(false);
   };
   const markComplete = () => {
@@ -7681,12 +7670,12 @@ function DrillDetailCard({
         : null,
     canMarkOrdered
       ? {
-          key: "mark-ordered",
-          label: "Mark Ordered",
-          detail: "Move to ordered",
+          key: "check-order-confirmations",
+          label: "Check Order Confirmations",
+          detail: "Then order each room and product in Quotes",
           tone: needsOrderHighlight ? "warning" : undefined,
           disabled: busy,
-          onClick: () => void markOrdered()
+          onClick: () => void checkOrderConfirmations()
         }
       : canFindOrderEmail
         ? {
@@ -7695,7 +7684,7 @@ function DrillDetailCard({
             detail: "Start COGS",
             tone: needsOrderHighlight ? "warning" : undefined,
             disabled: busy,
-            onClick: () => void markOrdered()
+            onClick: () => void checkOrderConfirmations()
           }
       : null,
     canMarkComplete

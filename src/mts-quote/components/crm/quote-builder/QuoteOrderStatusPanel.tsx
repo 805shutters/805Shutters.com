@@ -32,14 +32,18 @@ import { getStatusColor, getStatusLabel } from "@mts/lib/quoteStatus";
 import type { SalesQuote, SalesQuoteWithItems, QuoteStatus } from "@mts/types/quote";
 
 interface QuoteOrderStatusPanelProps {
-  quotes: SalesQuote[];
+  quotes: SalesQuoteWithItems[];
   agentRunsByQuoteId?: QuoteOrderAgentRunsByQuoteId;
   agentQueueByQuoteId?: QuoteOrderAgentQueueByQuoteId;
   onOpenQuote: (quote: SalesQuote) => void;
   onOpenContract: (quote: SalesQuote) => void;
-  onMarkOrdered: (quote: SalesQuote, orderRef: string) => void;
+  onMarkLineOrdered: (
+    quote: SalesQuoteWithItems,
+    lineItem: SalesQuoteWithItems["line_items"][number],
+    orderRef: string,
+  ) => void;
   onMoveStatus: (quote: SalesQuote, status: Extract<QuoteStatus, "received" | "installed">) => void;
-  onQueueAgentDraft: (quote: SalesQuote) => void;
+  onQueueAgentDraft?: (quote: SalesQuote) => void;
   isUpdating?: boolean;
   isQueueingAgent?: boolean;
 }
@@ -50,18 +54,21 @@ export function QuoteOrderStatusPanel({
   agentQueueByQuoteId = {},
   onOpenQuote,
   onOpenContract,
-  onMarkOrdered,
+  onMarkLineOrdered,
   onMoveStatus,
   onQueueAgentDraft,
   isUpdating = false,
   isQueueingAgent = false,
 }: QuoteOrderStatusPanelProps) {
-  const pipelineQuotes = useMemo(() => getOrderPipelineQuotes(quotes), [quotes]);
+  const pipelineQuotes = useMemo(
+    () => getOrderPipelineQuotes(quotes) as SalesQuoteWithItems[],
+    [quotes],
+  );
   const counts = useMemo(() => getOrderPipelineCounts(quotes), [quotes]);
   const [orderRefs, setOrderRefs] = useState<Record<string, string>>({});
 
-  const getOrderRef = (quote: SalesQuote) =>
-    orderRefs[quote.id] ?? quote.manufacturer_order_ref ?? "";
+  const getOrderRef = (lineItem: SalesQuoteWithItems["line_items"][number]) =>
+    orderRefs[lineItem.id] ?? lineItem.manufacturer_order_ref ?? "";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -73,8 +80,8 @@ export function QuoteOrderStatusPanel({
             </p>
             <h2 className="mt-1 text-2xl font-bold">Signed quotes moving into production</h2>
             <p className="mt-1 max-w-2xl text-sm text-slate-300">
-              Review sold quotes, record the Norman order reference, and move each job through
-              ordered, received, and installed.
+              Order each room and product independently. Outstanding product lines stay amber
+              until they are ordered or confirmed.
             </p>
           </div>
 
@@ -93,14 +100,13 @@ export function QuoteOrderStatusPanel({
       ) : (
         <div className="divide-y divide-slate-100">
           {pipelineQuotes.map((quote) => {
-            const orderRef = getOrderRef(quote);
             const soldAt = quote.signed_at ? format(new Date(quote.signed_at), "MMM d") : "—";
             const orderedAt = quote.ordered_at ? format(new Date(quote.ordered_at), "MMM d") : null;
             const agentRun = agentRunsByQuoteId[quote.id] ?? null;
             const queueRow = agentQueueByQuoteId[quote.id] ?? null;
             const queueOpen = isQuoteOrderAgentQueueOpen(queueRow);
             const rollerReadiness =
-              "line_items" in quote
+              onQueueAgentDraft && "line_items" in quote
                 ? getRollerShadeOrderReadiness(quote as SalesQuoteWithItems)
                 : null;
             const rollerBlocked = rollerReadiness?.applies && !rollerReadiness.ready;
@@ -141,31 +147,69 @@ export function QuoteOrderStatusPanel({
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                    Norman order ref
-                  </label>
-                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <Input
-                      value={orderRef}
-                      onChange={(event) =>
-                        setOrderRefs((current) => ({ ...current, [quote.id]: event.target.value }))
-                      }
-                      placeholder="Enter order #"
-                      className="h-9 bg-white"
-                    />
-                    {quote.status === "sold" && (
-                      <Button
-                        size="sm"
-                        className="h-9 whitespace-nowrap bg-slate-950 text-white hover:bg-slate-800"
-                        disabled={isUpdating}
-                        onClick={() => onMarkOrdered(quote, orderRef)}
-                      >
-                        <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
-                        Mark Ordered
-                      </Button>
-                    )}
-                  </div>
+                <div className="space-y-3">
+                  {quote.line_items.length === 0 ? (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                      Add product lines before recording an order.
+                    </div>
+                  ) : (
+                    quote.line_items.map((lineItem) => {
+                      const isOutstanding = lineItem.order_status === "outstanding";
+                      const orderRef = getOrderRef(lineItem);
+
+                      return (
+                        <div key={lineItem.id} className="rounded-xl border border-slate-200 p-3">
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <div className="text-sm font-semibold text-slate-950">
+                                {lineItem.room_name || "Unassigned room"}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {lineItem.product_type} · Qty {lineItem.quantity}
+                              </div>
+                            </div>
+                            <span
+                              className={cn(
+                                "rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+                                isOutstanding
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-slate-100 text-slate-700",
+                              )}
+                            >
+                              {isOutstanding ? "Outstanding" : lineItem.order_status}
+                            </span>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                            <Input
+                              value={orderRef}
+                              onChange={(event) =>
+                                setOrderRefs((current) => ({
+                                  ...current,
+                                  [lineItem.id]: event.target.value,
+                                }))
+                              }
+                              placeholder="Vendor order # (optional)"
+                              className="h-9 bg-white"
+                              disabled={!isOutstanding}
+                            />
+                            <Button
+                              size="sm"
+                              variant={isOutstanding ? "default" : "outline"}
+                              className={cn(
+                                "h-9 whitespace-nowrap",
+                                isOutstanding && "bg-amber-500 text-white hover:bg-amber-600",
+                              )}
+                              disabled={isUpdating || !isOutstanding}
+                              onClick={() => onMarkLineOrdered(quote, lineItem, orderRef)}
+                            >
+                              <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
+                              {isOutstanding ? "Mark Ordered" : "Ordered"}
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                   <AgentProof run={agentRun} />
                   <AgentQueueStatus row={queueRow} />
                   <RollerReadinessStatus readiness={rollerReadiness} />
@@ -180,7 +224,7 @@ export function QuoteOrderStatusPanel({
                     <FileSignature className="mr-1.5 h-3.5 w-3.5" />
                     Contract
                   </Button>
-                  {quote.status === "sold" && (
+                  {quote.status === "sold" && onQueueAgentDraft && (
                     <Button
                       variant="outline"
                       size="sm"

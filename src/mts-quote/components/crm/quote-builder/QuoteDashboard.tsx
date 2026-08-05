@@ -10,6 +10,7 @@ import { QuotesTable, type QuoteTableRow } from "./QuotesTable";
 import { NewQuoteDialog, type NewQuoteData } from "./NewQuoteDialog";
 import { ContractsSection } from "./ContractsSection";
 import { QuotePortfolioDialog } from "./QuotePortfolioDialog";
+import { QuoteOrderStatusPanel } from "./QuoteOrderStatusPanel";
 import { Button } from "@mts/components/ui/button";
 import { CalendarDays, Clock, ExternalLink, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -22,7 +23,13 @@ import {
   filterQuotesForStatsTile,
 } from "@mts/lib/quoteDashboardFilters";
 import { formatSales805AppointmentTime, type Sales805Appointment } from "./sales805CalendarUtils";
-import type { SalesQuote } from "@mts/types/quote";
+import type {
+  QuoteLineItemWithDesigns,
+  QuoteStatus,
+  SalesQuote,
+  SalesQuoteWithItems,
+} from "@mts/types/quote";
+import type { ProductLineOrderState } from "@/lib/crm/product-line-ordering";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
 import type { QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
@@ -158,6 +165,77 @@ export function QuoteDashboard({
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data || []) as SalesQuote[];
+    },
+  });
+
+  const orderEligibleQuotes = useMemo(
+    () => quotes.filter((quote) => ["sold", "ordered", "received"].includes(quote.status)),
+    [quotes],
+  );
+  const salesQuoteIds = useMemo(
+    () => orderEligibleQuotes.map((quote) => quote.id),
+    [orderEligibleQuotes],
+  );
+  const { data: orderPanelQuotes = [] } = useQuery({
+    queryKey: ["sales-quote-order-lines", activeAccountId, salesQuoteIds],
+    enabled:
+      activeAccountId === ACCOUNT_IDS.SHUTTERS_805 && salesQuoteIds.length > 0,
+    queryFn: async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+
+      const quoteIdBatches = Array.from(
+        { length: Math.ceil(salesQuoteIds.length / 100) },
+        (_, index) => salesQuoteIds.slice(index * 100, index * 100 + 100),
+      );
+      const [lineResult, stateBodies] = await Promise.all([
+        (supabase as any)
+          .from("sales_quote_line_items")
+          .select("*")
+          .in("quote_id", salesQuoteIds)
+          .order("sort_order", { ascending: true }),
+        Promise.all(
+          quoteIdBatches.map(async (quoteIds) => {
+            const response = await fetch(
+              `/api/crm/sales-quote-order-lines?quoteIds=${encodeURIComponent(quoteIds.join(","))}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            if (!response.ok) {
+              const body = (await response.json().catch(() => null)) as { message?: string } | null;
+              throw new Error(body?.message || "Product-line order status could not be loaded.");
+            }
+            return (await response.json()) as {
+              quotes: Record<string, ProductLineOrderState[]>;
+            };
+          }),
+        ),
+      ]);
+
+      if (lineResult.error) throw lineResult.error;
+      const statesByQuote = Object.assign({}, ...stateBodies.map((body) => body.quotes));
+      const linesByQuote = new Map<string, QuoteLineItemWithDesigns[]>();
+      for (const row of lineResult.data || []) {
+        const state = (statesByQuote[row.quote_id] || []).find(
+          (item: ProductLineOrderState) => item.id === row.id,
+        );
+        const line: QuoteLineItemWithDesigns = {
+          ...row,
+          designs: [],
+          order_status: state?.orderStatus || "outstanding",
+          ordered_at: state?.orderedAt || null,
+          confirmed_at: state?.confirmedAt || null,
+          manufacturer_order_ref: state?.manufacturerOrderRef || null,
+        };
+        linesByQuote.set(row.quote_id, [...(linesByQuote.get(row.quote_id) || []), line]);
+      }
+
+      return orderEligibleQuotes.map(
+        (quote): SalesQuoteWithItems => ({
+          ...quote,
+          line_items: linesByQuote.get(quote.id) || [],
+        }),
+      );
     },
   });
 
@@ -537,6 +615,60 @@ export function QuoteDashboard({
     },
   });
 
+  const markProductLineOrdered = useMutation({
+    mutationFn: async ({
+      quote,
+      lineItem,
+      orderRef,
+    }: {
+      quote: SalesQuoteWithItems;
+      lineItem: QuoteLineItemWithDesigns;
+      orderRef: string;
+    }) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("Your CRM session expired. Sign in again and retry.");
+
+      const response = await fetch("/api/crm/sales-quote-order-lines", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quoteId: quote.id, lineItemId: lineItem.id, orderRef }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        throw new Error(body?.message || "Product line could not be marked ordered.");
+      }
+      return { quote, lineItem };
+    },
+    onSuccess: ({ lineItem }) => {
+      queryClient.invalidateQueries({ queryKey: ["sales-quote-order-lines"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      toast.success(`${lineItem.room_name} ${lineItem.product_type} marked ordered`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const moveOrderStatus = useMutation({
+    mutationFn: async ({ quote, status }: { quote: SalesQuote; status: QuoteStatus }) => {
+      const timestampColumn = status === "received" ? "received_at" : "installed_at";
+      const { error } = await (supabase as any)
+        .from("sales_quotes")
+        .update({ status, [timestampColumn]: new Date().toISOString() })
+        .eq("id", quote.id)
+        .eq("account_id", ACCOUNT_IDS.SHUTTERS_805);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.salesQuotes.all });
+      queryClient.invalidateQueries({ queryKey: ["sales-quote-order-lines"] });
+      toast.success("Order status updated");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const openQuoteRow = (quote: QuoteTableRow, tab: QuoteWorkspaceOpenTab) => {
     const targetId = quoteBuilderTargetId(quote);
     if (!targetId) {
@@ -579,6 +711,25 @@ export function QuoteDashboard({
         onFilterChange={setActiveFilter}
         theme={activeAccount.prefix === "805" ? "bw" : "blue"}
       />
+
+      {activeAccountId === ACCOUNT_IDS.SHUTTERS_805 && (
+        <QuoteOrderStatusPanel
+          quotes={orderPanelQuotes}
+          onOpenQuote={(quote) => {
+            setActiveQuote(quote.id);
+            setActiveTab("builder");
+          }}
+          onOpenContract={(quote) => {
+            setActiveQuote(quote.id);
+            setActiveTab("contract");
+          }}
+          onMarkLineOrdered={(quote, lineItem, orderRef) =>
+            markProductLineOrdered.mutate({ quote, lineItem, orderRef })
+          }
+          onMoveStatus={(quote, status) => moveOrderStatus.mutate({ quote, status })}
+          isUpdating={markProductLineOrdered.isPending || moveOrderStatus.isPending}
+        />
+      )}
 
       {filteredDashboardCalendarAppointments.length > 0 && (
         <Sales805AppointmentMatches

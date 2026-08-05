@@ -90,6 +90,10 @@ export interface SalesQuoteLineItem {
   sort_order: number;
   selected_design_id?: string | null;
   created_at: string;
+  order_status?: "outstanding" | "ordered" | "confirmed";
+  ordered_at?: string | null;
+  confirmed_at?: string | null;
+  manufacturer_order_ref?: string | null;
 }
 
 export interface SalesQuoteDesign {
