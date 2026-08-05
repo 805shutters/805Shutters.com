@@ -49,7 +49,15 @@ describe("structured data", () => {
     expect(business?.contactPoint).toMatchObject({
       "@type": "ContactPoint",
       telephone: site.phone,
-      email: site.email
+      email: site.email,
+      areaServed: site.areas.map((name) => ({ "@type": "City", name }))
+    });
+    expect(business?.potentialAction).toMatchObject({
+      "@type": "ReserveAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${site.baseUrl}/free-window-treatment-consultation/`
+      }
     });
 
     expect(website).toMatchObject({
@@ -57,6 +65,12 @@ describe("structured data", () => {
       "@id": `${site.baseUrl}#website`,
       publisher: {
         "@id": `${site.baseUrl}#local-business`
+      },
+      potentialAction: {
+        "@type": "ReserveAction",
+        target: {
+          urlTemplate: `${site.baseUrl}/free-window-treatment-consultation/`
+        }
       }
     });
   });

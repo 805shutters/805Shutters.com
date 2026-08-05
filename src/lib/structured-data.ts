@@ -141,7 +141,7 @@ export function localBusinessJsonLd() {
           telephone: site.phone,
           email: site.email,
           contactType: "customer service",
-          areaServed: "US-CA",
+          areaServed: areaServed(),
           availableLanguage: "English"
         },
         openingHoursSpecification: [
@@ -202,7 +202,11 @@ export function localBusinessJsonLd() {
               url: `${site.baseUrl}/${service.slug}/`
             }
           }))
-        }
+        },
+        potentialAction: freeConsultationAction(
+          site.baseUrl,
+          "Book a free in-home window treatment consultation"
+        )
       },
       {
         "@type": "WebSite",
@@ -213,7 +217,11 @@ export function localBusinessJsonLd() {
         inLanguage: "en-US",
         publisher: {
           "@id": localBusinessId()
-        }
+        },
+        potentialAction: freeConsultationAction(
+          site.baseUrl,
+          "Request a free in-home window treatment consultation"
+        )
       }
     ]
   };
