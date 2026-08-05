@@ -23,11 +23,13 @@ type QuoteRow = {
   status: string | null;
   quote_total: number | string | null;
   deposit_required: number | string | null;
-  customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
   customer_address: string | null;
 };
+
+export const SQUARE_MATCH_QUOTE_COLUMNS =
+  "id,job_id,quote_number,status,quote_total,deposit_required,customer_email,customer_phone,customer_address" as const;
 
 type JobRow = {
   id: string;
@@ -120,7 +122,7 @@ export function matchSquareApiPayment(input: {
     if (!job) continue;
     const evidence: string[] = [];
     let score = 0;
-    const crmName = quote.customer_name || job.customer_name;
+    const crmName = job.customer_name;
     const crmEmail = quote.customer_email || job.email;
     const crmPhone = quote.customer_phone || job.phone;
     const crmAddress = quote.customer_address || job.address;
@@ -236,7 +238,7 @@ export async function reconcileSquareApiPayment(
 
     const [customer, quotes, jobs, payments, credits] = await Promise.all([
       fetchSquareCustomerFacts(payment.customerId),
-      supabase.from("crm_quotes").select("id,job_id,quote_number,status,quote_total,deposit_required,customer_name,customer_email,customer_phone,customer_address").limit(2000),
+      supabase.from("crm_quotes").select(SQUARE_MATCH_QUOTE_COLUMNS).limit(2000),
       supabase.from("crm_jobs").select("id,customer_name,email,phone,address").limit(2000),
       supabase.from("crm_quote_bookkeeping_payments").select("quote_id,payment_label,amount").limit(5000),
       supabase.from("crm_quote_bookkeeping_credits").select("amount,from_quote_id,to_quote_id").limit(5000),
