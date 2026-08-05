@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { matchSquareApiPayment } from "@/lib/crm/square-api-reconciliation";
+import {
+  SQUARE_MATCH_QUOTE_COLUMNS,
+  matchSquareApiPayment,
+} from "@/lib/crm/square-api-reconciliation";
 import type { SquareCustomerFacts, SquarePaymentFacts } from "@/lib/finance/square";
 
 const payment: SquarePaymentFacts = {
@@ -50,6 +53,20 @@ const job = {
 };
 
 describe("Square API to CRM exact matching", () => {
+  it("only selects customer fields that exist on crm_quotes", () => {
+    expect(SQUARE_MATCH_QUOTE_COLUMNS.split(",")).toEqual([
+      "id",
+      "job_id",
+      "quote_number",
+      "status",
+      "quote_total",
+      "deposit_required",
+      "customer_email",
+      "customer_phone",
+      "customer_address",
+    ]);
+  });
+
   it("classifies a unique exact customer payment for the remaining amount as balance", () => {
     expect(matchSquareApiPayment({
       payment,
