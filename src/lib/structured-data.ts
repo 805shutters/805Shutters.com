@@ -164,10 +164,6 @@ export function localBusinessJsonLd() {
           "@type": "AdministrativeArea",
           name: site.serviceArea
         },
-        address: {
-          "@type": "PostalAddress",
-          ...site.address
-        },
         knowsAbout: [
           "Plantation shutters",
           "Custom shutters",

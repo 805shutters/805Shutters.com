@@ -228,6 +228,10 @@ export default function FreeWindowTreatmentConsultationPage() {
             Compare custom shutters, shades, blinds, drapery, exterior shades, and commercial coverings with a local
             Ventura County team.
           </p>
+          <p className={styles.servicePromise}>
+            Free in-home design consultations. We come to you—bringing samples, expertise, and ideas to your home.
+            Without a retail showroom, we keep the focus on your project and personal service.
+          </p>
           <div className={styles.heroActions}>
             <a className="button primary" href="#consultation-form">
               Request Consultation

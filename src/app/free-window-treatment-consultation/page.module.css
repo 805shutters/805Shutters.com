@@ -61,6 +61,15 @@
   line-height: 1.42;
 }
 
+.servicePromise {
+  max-width: 720px;
+  margin: 14px 0 0;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.58;
+}
+
 .heroActions,
 .finalCta,
 .inlineActions {

@@ -67,14 +67,6 @@ export const site = {
     url: "https://www.google.com/maps?cid=14597332202667384985"
   },
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || "https://www.805shutters.com",
-  locality: "Santa Rosa Valley",
-  address: {
-    streetAddress: "2209 Barbara Dr",
-    addressLocality: "Santa Rosa Valley",
-    addressRegion: "CA",
-    postalCode: "93012",
-    addressCountry: "US"
-  },
   serviceArea: brandIdentity.serviceArea,
   areas: [
     "Camarillo",
@@ -1261,7 +1253,7 @@ const supportPages: SitePage[] = [
       {
         heading: "Local Ventura County Service",
         body:
-          "805 Shutters is based in Santa Rosa Valley and serves Ventura County communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Fillmore, and Oak Park."
+          "805 Shutters serves Ventura County communities including Camarillo, Thousand Oaks, Ventura, Oxnard, Simi Valley, Moorpark, Newbury Park, Westlake Village, Ojai, Port Hueneme, Santa Paula, Fillmore, and Oak Park."
       }
     ]
   },
