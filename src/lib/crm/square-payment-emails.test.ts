@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addGmailMessageLabel,
@@ -5,6 +6,7 @@ import {
   fileProcessedGmailMessage,
   matchSquarePaymentEmail,
   parseSquarePaymentEmail,
+  shouldArchiveSquarePaymentEmail,
   squarePaymentTelegramText,
   squarePaymentEmailQuery,
 } from "@/lib/crm/square-payment-emails";
@@ -187,5 +189,36 @@ describe("Gmail Processed label", () => {
       addLabelIds: ["label-processed"],
       removeLabelIds: ["INBOX"]
     });
+  });
+});
+
+describe("Square payment email archive eligibility", () => {
+  it("archives only a newly recorded, fully audited Square email payment", () => {
+    expect(shouldArchiveSquarePaymentEmail("recorded")).toBe(true);
+  });
+
+  it.each([
+    "unmatched",
+    "ambiguous",
+    "duplicate",
+    "malformed",
+    "failed",
+    "partial",
+  ] as const)("does not archive a %s Square intake outcome", (outcome) => {
+    expect(shouldArchiveSquarePaymentEmail(outcome)).toBe(false);
+  });
+
+  it("archives only after Square persistence and its CRM audit entry", () => {
+    const source = readFileSync(new URL("./square-payment-emails.ts", import.meta.url), "utf8");
+    const archiveCalls = source.match(/await markProcessed\(/g) || [];
+    const reconcile = source.indexOf("const reconciled = await reconcileSquareQuotePayment");
+    const audit = source.indexOf('action: "square_payment_email.reconciled"', reconcile);
+    const archive = source.indexOf("await markProcessed(receipt.gmailMessageId)", audit);
+
+    expect(archiveCalls).toHaveLength(1);
+    expect(reconcile).toBeGreaterThan(-1);
+    expect(audit).toBeGreaterThan(reconcile);
+    expect(archive).toBeGreaterThan(audit);
+    expect(source).not.toContain("await markProcessed(listedMessage.id)");
   });
 });

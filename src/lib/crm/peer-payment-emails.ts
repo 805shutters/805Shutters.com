@@ -32,6 +32,19 @@ export type PeerPaymentReceipt = {
   sourceReference: string;
 };
 
+export type PeerPaymentProcessingOutcome =
+  | "recorded"
+  | "unmatched"
+  | "ambiguous"
+  | "duplicate"
+  | "malformed"
+  | "failed"
+  | "partial";
+
+export function shouldArchivePeerPaymentEmail(outcome: PeerPaymentProcessingOutcome) {
+  return outcome === "recorded";
+}
+
 const PROCESSED_LABEL = "Processed";
 const DEFAULT_MAILBOX = "805shutters@gmail.com";
 
@@ -217,7 +230,6 @@ export async function processPeerPaymentEmails(
       const existing = payments.find((payment) => payment.external_id === listedMessage.id && String(payment.external_source || "").endsWith("_email"));
       if (existing) {
         await ensureExistingPaymentAudit(existing);
-        await markProcessed(listedMessage.id);
         summary.duplicates += 1;
         continue;
       }
@@ -304,7 +316,6 @@ export async function processPeerPaymentEmails(
             throw new CrmAuthError(502, "Concurrent peer payment could not be verified.");
           }
           await ensureExistingPaymentAudit(racedPayment as Record<string, unknown>);
-          await markProcessed(receipt.gmailMessageId);
           summary.duplicates += 1;
           continue;
         }
@@ -321,7 +332,9 @@ export async function processPeerPaymentEmails(
       });
       if (auditError) throw new CrmAuthError(502, "Payment was saved but its audit event could not be recorded.");
 
-      await markProcessed(receipt.gmailMessageId);
+      if (shouldArchivePeerPaymentEmail("recorded")) {
+        await markProcessed(receipt.gmailMessageId);
+      }
       payments.push({
         id: inserted.id,
         quote_id: match.candidate.quoteId,

@@ -26,7 +26,9 @@ type GmailLabel = {
 };
 
 type PaymentRow = {
+  id?: string | null;
   quote_id?: string | null;
+  job_id?: string | null;
   payment_label?: string | null;
   amount?: number | string | null;
   paid_at?: string | null;
@@ -108,6 +110,19 @@ export type SquarePaymentEmailRunResult = {
     reason?: string;
   }>;
 };
+
+export type SquarePaymentEmailProcessingOutcome =
+  | "recorded"
+  | "unmatched"
+  | "ambiguous"
+  | "duplicate"
+  | "malformed"
+  | "failed"
+  | "partial";
+
+export function shouldArchiveSquarePaymentEmail(outcome: SquarePaymentEmailProcessingOutcome) {
+  return outcome === "recorded";
+}
 
 const SQUARE_SENDER = "noreply@messaging.squareup.com";
 const DEFAULT_MAILBOX = "805shutters@gmail.com";
@@ -452,7 +467,7 @@ export async function processSquarePaymentEmails(
   const [quotesResult, jobsResult, paymentsResult, creditsResult, paymentLinkEventsResult] = await Promise.all([
     supabase.from("crm_quotes").select("id,job_id,quote_number,status,quote_total,deposit_required,customer_email").limit(2000),
     supabase.from("crm_jobs").select("id,customer_name,email").limit(2000),
-    supabase.from("crm_quote_bookkeeping_payments").select("quote_id,payment_label,amount,paid_at,external_source,external_id,meta").limit(5000),
+    supabase.from("crm_quote_bookkeeping_payments").select("id,quote_id,job_id,payment_label,amount,paid_at,external_source,external_id,meta").limit(5000),
     supabase.from("crm_quote_bookkeeping_credits").select("amount,from_quote_id,to_quote_id").limit(5000),
     supabase.from("crm_activity_events").select("entity_id,action,metadata").in("action", ["square_deposit_link.send", "square_balance_link.send"]).limit(2000),
   ]);
@@ -476,7 +491,6 @@ export async function processSquarePaymentEmails(
   for (const listedMessage of listed) {
     try {
       if (payments.some((payment) => payment.external_source === "square_email" && payment.external_id === listedMessage.id)) {
-        await markProcessed(listedMessage.id);
         result.duplicates += 1;
         result.results.push({ gmailMessageId: listedMessage.id, status: "duplicate", reason: "Gmail receipt was already recorded." });
         continue;
@@ -512,7 +526,6 @@ export async function processSquarePaymentEmails(
           "square-payment-email-poller-retry",
           receipt.customerEmail
         );
-        await markProcessed(receipt.gmailMessageId);
         result.duplicates += 1;
         result.results.push({
           gmailMessageId: receipt.gmailMessageId,
@@ -553,6 +566,45 @@ export async function processSquarePaymentEmails(
       });
 
       if (reconciled.status === "recorded") {
+        const { data: persistedPayment, error: persistedPaymentError } = await supabase
+          .from("crm_quote_bookkeeping_payments")
+          .select("id,quote_id,job_id")
+          .eq("external_source", "square_email")
+          .eq("external_id", receipt.gmailMessageId)
+          .maybeSingle();
+        if (
+          persistedPaymentError
+          || !persistedPayment?.id
+          || !persistedPayment.job_id
+          || persistedPayment.quote_id !== match.candidate.quoteId
+          || persistedPayment.job_id !== match.candidate.jobId
+        ) {
+          throw new CrmAuthError(502, "Square email payment was saved but could not be durably verified.");
+        }
+
+        const { error: auditError } = await supabase.from("crm_activity_events").insert({
+          actor_email: "square-payment-email-poller",
+          entity_type: "bookkeeping_payment",
+          entity_id: persistedPayment.id,
+          action: "square_payment_email.reconciled",
+          after_data: {
+            quoteId: match.candidate.quoteId,
+            jobId: persistedPayment.job_id || match.candidate.jobId,
+            paymentType: match.candidate.paymentType,
+            amount: receipt.amount,
+            paidDate: receipt.paidDate,
+            customerName: match.candidate.customerName,
+          },
+          metadata: {
+            gmailMessageId: receipt.gmailMessageId,
+            gmailThreadId: receipt.gmailThreadId,
+            sourceReference: `square:gmail:${receipt.gmailMessageId}`,
+          },
+        });
+        if (auditError) {
+          throw new CrmAuthError(502, "Square email payment was saved but its audit event could not be recorded.");
+        }
+
         const telegram = await sendTelegramMessage({
           text: squarePaymentTelegramText({
             customerName: match.candidate.customerName,
@@ -564,9 +616,11 @@ export async function processSquarePaymentEmails(
         });
         if (telegram.sent) result.telegramSent += 1;
         else if (telegram.error) result.telegramErrors += 1;
-      }
 
-      await markProcessed(receipt.gmailMessageId);
+        if (shouldArchiveSquarePaymentEmail("recorded")) {
+          await markProcessed(receipt.gmailMessageId);
+        }
+      }
 
       if (reconciled.status === "recorded") {
         result.recorded += 1;
