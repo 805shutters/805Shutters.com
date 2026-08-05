@@ -22,6 +22,7 @@ import {
   partnerPaymentItemKeyForRow
 } from "@/lib/crm/partner-payments";
 import { buildKenPaymentReview, kenPaymentDisabledReason, type KenPaymentReview } from "@/lib/crm/ken-payment-workflow";
+import { buildRecentFinancialActivity } from "@/lib/crm/recent-financial-activity";
 import { productInterestOptions } from "@/lib/product-interest-options";
 import { getLeadSourceFromRecord, leadSourceOptions } from "@/lib/lead-source";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -5758,16 +5759,7 @@ function CommandDashboard({
     return { slices, needsDetails };
   }, [jobs, files]);
 
-  const closeout = useMemo(() => {
-    const newestFirst = (left: CrmJob, right: CrmJob) =>
-      Date.parse(right.updated_at || right.created_at) - Date.parse(left.updated_at || left.created_at);
-    const oldestFirst = (left: CrmJob, right: CrmJob) =>
-      Date.parse(left.created_at) - Date.parse(right.created_at);
-    return {
-      recentlyClosed: jobs.filter((job) => job.status === "closed").sort(newestFirst),
-      readySoon: jobs.filter((job) => job.status === "installed" || job.status === "invoiced").sort(oldestFirst)
-    };
-  }, [jobs]);
+  const financialActivity = useMemo(() => buildRecentFinancialActivity(rows), [rows]);
 
   const response = useMemo(() => {
     const measured = jobs
@@ -6015,19 +6007,33 @@ function CommandDashboard({
         <section className="crm-ledger crm-chart-card">
           <div className="crm-section-head">
             <div>
-              <p className="eyebrow">Job Closeout</p>
-              <h2>Recently Closed &amp; Up Next</h2>
+              <p className="eyebrow">Payments</p>
+              <h2>Recent Financial Activity</h2>
             </div>
-            <strong>{closeout.readySoon.length} pending</strong>
+            <strong>{financialActivity.length} received</strong>
           </div>
-          <CloseoutList
-            recentlyClosed={closeout.recentlyClosed}
-            readySoon={closeout.readySoon}
-            rows={rows}
-            files={files}
-            onDrill={onDrill}
-            onOpenCustomer={onOpenCustomer}
-          />
+          {financialActivity.length ? (
+            <div className="crm-closeout-list" aria-label="Recent financial activity">
+              {financialActivity.map((activity) => (
+                <button
+                  type="button"
+                  className="crm-closeout-item"
+                  key={activity.id}
+                  title={activity.sourceReference || undefined}
+                  onClick={() => onOpenCustomer(activity.customerName)}
+                >
+                  <span className="crm-closeout-customer">{activity.payerCustomer}</span>
+                  <span className="crm-closeout-meta">
+                    {formatShortDate(activity.date)} · {activity.paymentType}
+                    {activity.payerCustomer !== activity.customerName ? ` · ${activity.customerName}` : ""}
+                  </span>
+                  <span className="crm-closeout-status closed">{toLedgerCurrency(activity.amount)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="crm-empty">No payments recorded yet.</p>
+          )}
         </section>
       </div>
 
@@ -8180,7 +8186,14 @@ function DrillDetailCard({
                     <DrillLedgerLine
                       key={payment.id}
                       title={payment.payment_label || formatPaymentType(payment.payment_type)}
-                      subtitle={[formatPaymentType(payment.payment_type), formatShortDate(payment.paid_at), payment.source].filter(Boolean).join(" / ")}
+                      subtitle={[
+                        formatPaymentType(payment.payment_type),
+                        formatShortDate(payment.paid_at),
+                        payment.source,
+                        payment.external_source && payment.external_id
+                          ? `${payment.external_source}: ${payment.external_id}`
+                          : payment.external_id || payment.external_source
+                      ].filter(Boolean).join(" / ")}
                       amount={toLedgerCurrency(payment.amount)}
                       busy={busy}
                       fields={[
