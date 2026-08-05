@@ -1,3 +1,5 @@
+import { QUOTE_V2_SELECTED_DESIGN_MARKER } from "@/lib/quote-v2/selected-design";
+
 export interface QuoteTotalLineItem {
   id: string;
   quantity?: number | null;
@@ -5,7 +7,21 @@ export interface QuoteTotalLineItem {
 
 export interface QuoteTotalDesign {
   line_item_id?: string | null;
+  variant?: string | null;
   unit_price?: number | null;
+  options_json?: Record<string, unknown> | null;
+  [QUOTE_V2_SELECTED_DESIGN_MARKER]?: boolean;
+}
+
+export type QuoteTotalMode = "legacy" | "authoritative_v2";
+
+export interface QuoteTotalCalculationOptions {
+  /**
+   * Legacy quotes intentionally retain the historical behavior of totaling
+   * every saved A/B/C design. The isolated V2 runtime explicitly opts into one
+   * selected design per line plus any documented once-per-line retail charge.
+   */
+  mode?: QuoteTotalMode;
 }
 
 export interface QuoteExtraFee {
@@ -45,18 +61,78 @@ export const DEFAULT_QUOTE_ADMIN_CONTROLS: QuoteAdminControls = {
   progressPercent: 0,
 };
 
+/**
+ * A quote line may retain A/B/C alternatives, but exactly one design is sold.
+ * V2 projects its persisted selection marker onto reads. Older rows fall back
+ * deterministically to A (and then the first row) without cumulatively billing
+ * every saved alternative.
+ */
+export function resolveQuoteTotalDesign<T extends QuoteTotalDesign>(
+  designs: readonly T[]
+): T | undefined {
+  return (
+    designs.find(
+      (design) => design[QUOTE_V2_SELECTED_DESIGN_MARKER] === true
+    ) ??
+    designs.find((design) => design.variant === "A") ??
+    designs[0]
+  );
+}
+
+export function selectedQuoteTotalDesigns<T extends QuoteTotalDesign>(
+  designs: readonly T[]
+): T[] {
+  const grouped = new Map<string, T[]>();
+
+  designs.forEach((design, index) => {
+    const groupKey = design.line_item_id || `__unassigned_${index}`;
+    const group = grouped.get(groupKey) ?? [];
+    group.push(design);
+    grouped.set(groupKey, group);
+  });
+
+  return Array.from(grouped.values()).flatMap((group) => {
+    const selected = resolveQuoteTotalDesign(group);
+    return selected ? [selected] : [];
+  });
+}
+
+function quoteTotalDesignsForMode<T extends QuoteTotalDesign>(
+  designs: readonly T[],
+  mode: QuoteTotalMode,
+): readonly T[] {
+  if (mode !== "authoritative_v2") return designs;
+  const selected = resolveQuoteTotalDesign(designs);
+  return selected ? [selected] : [];
+}
+
+function authoritativeOnceTotal(design: QuoteTotalDesign | undefined): number {
+  return normalizeMoney(design?.options_json?.authoritative_once_total);
+}
+
 export function calculateLineItemDesignTotal(
   lineItem: QuoteTotalLineItem,
-  designs: QuoteTotalDesign[]
+  designs: QuoteTotalDesign[],
+  options: QuoteTotalCalculationOptions = {},
 ): number {
+  const mode = options.mode ?? "legacy";
   const quantity = normalizeQuantity(lineItem.quantity);
-  const designTotal = designs.reduce((sum, design) => sum + normalizeMoney(design.unit_price), 0);
-  return roundCurrency(designTotal * quantity);
+  const billableDesigns = quoteTotalDesignsForMode(designs, mode);
+  const unitTotal = billableDesigns.reduce(
+    (sum, design) => sum + normalizeMoney(design.unit_price),
+    0,
+  );
+  const onceTotal =
+    mode === "authoritative_v2"
+      ? authoritativeOnceTotal(billableDesigns[0])
+      : 0;
+  return roundCurrency(unitTotal * quantity + onceTotal);
 }
 
 export function calculateQuoteDesignSubtotal(
   lineItems: QuoteTotalLineItem[],
-  designs: QuoteTotalDesign[]
+  designs: QuoteTotalDesign[],
+  options: QuoteTotalCalculationOptions = {},
 ): number {
   const lineItemsById = new Map(lineItems.map((item) => [item.id, item]));
   const designsByLineItemId = new Map<string, QuoteTotalDesign[]>();
@@ -72,29 +148,42 @@ export function calculateQuoteDesignSubtotal(
   designsByLineItemId.forEach((lineDesigns, lineItemId) => {
     const lineItem = lineItemsById.get(lineItemId);
     if (!lineItem) return;
-    total += calculateLineItemDesignTotal(lineItem, lineDesigns);
+    total += calculateLineItemDesignTotal(lineItem, lineDesigns, options);
   });
 
   return roundCurrency(total);
 }
 
-export function hasPricedQuoteDesigns(designs: QuoteTotalDesign[]): boolean {
-  return designs.some((design) => normalizeMoney(design.unit_price) > 0);
+export function hasPricedQuoteDesigns(
+  designs: QuoteTotalDesign[],
+  options: QuoteTotalCalculationOptions = {},
+): boolean {
+  const mode = options.mode ?? "legacy";
+  const billableDesigns =
+    mode === "authoritative_v2"
+      ? selectedQuoteTotalDesigns(designs)
+      : designs;
+  return billableDesigns.some(
+    (design) =>
+      normalizeMoney(design.unit_price) > 0 ||
+      (mode === "authoritative_v2" && authoritativeOnceTotal(design) > 0),
+  );
 }
 
 export function shouldPersistQuoteDesignSubtotal(
   designs: QuoteTotalDesign[],
-  options: { allowZero?: boolean } = {}
+  options: QuoteTotalCalculationOptions & { allowZero?: boolean } = {},
 ): boolean {
-  return options.allowZero === true || hasPricedQuoteDesigns(designs);
+  return options.allowZero === true || hasPricedQuoteDesigns(designs, options);
 }
 
 export function resolveQuoteDisplayTotal(
   storedTotal: number | null | undefined,
   lineItems: QuoteTotalLineItem[],
-  designs: QuoteTotalDesign[]
+  designs: QuoteTotalDesign[],
+  options: QuoteTotalCalculationOptions = {},
 ): number {
-  const calculatedTotal = calculateQuoteDesignSubtotal(lineItems, designs);
+  const calculatedTotal = calculateQuoteDesignSubtotal(lineItems, designs, options);
   if (calculatedTotal > 0) return calculatedTotal;
   return roundCurrency(normalizeMoney(storedTotal));
 }
@@ -180,10 +269,10 @@ export function getQuoteEmailNote(source: unknown): string {
 
 export function getQuoteBuilderNote(source: unknown): string {
   const meta = parseQuoteMeta(source);
-  if (typeof meta.__quoteBuilderNote === "string") return meta.__quoteBuilderNote;
+  if (typeof meta.__quoteBuilderNote === "string") return meta.__quoteBuilderNote.trim();
 
   const maybeQuote = source as { installer_notes?: string | null } | null;
-  return getQuoteCustomerNotes(maybeQuote?.installer_notes) || "";
+  return (getQuoteCustomerNotes(maybeQuote?.installer_notes) || "").trim();
 }
 
 export function getQuoteCustomerNotes(installerNotes: string | null | undefined): string | null {
@@ -208,7 +297,7 @@ function normalizeQuantity(quantity: number | null | undefined): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
-function normalizeMoney(value: number | null | undefined): number {
+function normalizeMoney(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }

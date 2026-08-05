@@ -107,23 +107,24 @@ describe("buildUiCatalog", () => {
     expect(json).not.toContain("wholesale");
   });
 
-  it("exposes Polar as quote-only without exposing pricing or internal cost policy", () => {
+  it("exposes Polar grids while keeping only Tension Shades quote-only", () => {
     const polar = ui.products.filter((product) => product.manufacturer === "Polar");
     expect(polar).toHaveLength(13);
     expect(polar.find((product) => product.id === "polar_interior_roller")).toMatchObject({
       productType: "Roller Shades",
       system: "Interior Roller",
-      priceBasis: "manual_required",
+      priceBasis: "suggested_retail",
     });
     const interior = polar.find(
       (product) => product.id === "polar_interior_roller",
     );
-    expect(interior?.fabricMetadata).toEqual([]);
+    expect(interior?.fabricMetadata.length).toBeGreaterThan(0);
     expect(interior?.sourcePages).toContain(53);
     expect(interior?.notes.join(" ")).toMatch(/manual shades before options/i);
-    expect(interior?.programs).toEqual([]);
-    expect(interior?.motorizationGroups).toEqual([]);
-    expect(polar.find((product) => product.id === "polar_tension_shade")?.priceBasis).toBe("manual_required");
+    expect(interior?.programs).toHaveLength(14);
+    const tension = polar.find((product) => product.id === "polar_tension_shade");
+    expect(tension?.priceBasis).toBe("manual_required");
+    expect(tension?.programs).toEqual([]);
   });
 
   it("exposes Cordless Solar Screen roller programs + solar fabrics (guide p15-16)", () => {
@@ -186,7 +187,7 @@ describe("buildPricingReference", () => {
 
   it("lists every automated-pricing manufacturer and preserves Lotus send restrictions", () => {
     expect(new Set(ref.products.map((product) => product.manufacturer))).toEqual(
-      new Set(["Lotus", "Norman", "Onyx"]),
+      new Set(["Lotus", "Norman", "Onyx", "Polar"]),
     );
     const lotus = ref.programs.find(
       (program) => program.productId === "lotus_mini_blinds",

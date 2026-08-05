@@ -6,6 +6,7 @@ import { ArrowLeft, CalendarDays, FileText, Ruler } from "lucide-react";
 import { KEN_CRM_EMAIL, isAllowedCrmEmail, isKenCrmEmail } from "@/lib/crm/allowed-users";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type { CrmCalendarEvent, CrmCustomer, CrmJob, CrmQuote } from "@/lib/crm/types";
+import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 
 type CrmEmailOtpType = "signup" | "invite" | "magiclink" | "recovery" | "email_change" | "email";
@@ -110,6 +111,7 @@ export function CrmMobileQuotesApp() {
   const [message, setMessage] = useState<string | null>(null);
   const [emailLoginMessage, setEmailLoginMessage] = useState<string | null>(null);
   const [emailLoginBusy, setEmailLoginBusy] = useState(false);
+  const [originalV1QuoteId, setOriginalV1QuoteId] = useState<string | null>(null);
   const sessionIdentityRef = useRef<{ userId: string; accessToken: string } | null>(null);
 
   const configured = Boolean(supabase);
@@ -364,6 +366,15 @@ export function CrmMobileQuotesApp() {
 
   return (
     <section className="crm-mobile-quotes-shell">
+      {originalV1QuoteId ? (
+        <OriginalV1QuoteBuilderPanel
+          session={session}
+          quoteId={originalV1QuoteId}
+          onClose={() => setOriginalV1QuoteId(null)}
+          onChanged={() => void refresh()}
+          onSwitch={setOriginalV1QuoteId}
+        />
+      ) : null}
       <nav className="mobile-crm-workspaces" aria-label="Mobile CRM workspaces">
         <a href="/crm/mobile"><CalendarDays />Appointments</a>
         <a href="/crm/technical-measures"><Ruler />Measures</a>
@@ -391,6 +402,7 @@ export function CrmMobileQuotesApp() {
         jobs={data?.jobs || []}
         quotes={data?.quotes || []}
         events={data?.events || []}
+        onOpenOriginalV1Quote={setOriginalV1QuoteId}
         onChanged={() => void refresh()}
       />
     </section>

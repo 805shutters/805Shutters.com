@@ -242,7 +242,7 @@ import {
   preferredSavedQuoteVariant,
 } from "@/lib/quote-v2/selected-design";
 import { getProduct } from "@/lib/quote/catalog";
-import { isPolarManufacturer, isPolarProductId, polarQuoteOnlyOptions } from "@/lib/quote/quote-only-policy";
+import { isPolarQuoteOnlyProductId, polarQuoteOnlyOptions } from "@/lib/quote/quote-only-policy";
 import {
   getMotorizationGroupsForProduct,
   POLAR_EXTERIOR_GUIDE_FIELD,
@@ -1504,7 +1504,7 @@ export function resolveManufacturerOptionsUiRoute(
       manufacturer: null,
     };
   }
-  if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
+  if (isPolarQuoteOnlyProductId(product.id)) {
     return {
       status: "manual_quote",
       productId: product.id,
@@ -2148,7 +2148,7 @@ export function buildCleanCatalogSelectionOptions(
       current[key] === undefined ? [] : [[key, current[key]]],
     ),
   );
-  const quoteOnly = isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id);
+  const quoteOnly = isPolarQuoteOnlyProductId(product.id);
   return {
     ...preserved,
     quote_lab_product_id: product.id,
@@ -9615,13 +9615,6 @@ function ShadesAndBlindsOptions({
             type: "yes-no",
             noFirst: true,
           },
-          {
-            key: "shim",
-            label: "Shim",
-            field: "json:shim",
-            type: "yes-no",
-            noFirst: true,
-          },
         ];
 
         if (authoritativeV2) {
@@ -10907,13 +10900,6 @@ function ShadesAndBlindsOptions({
                 noFirst: true,
               }]
             : []),
-          {
-            key: "shim",
-            label: "Shim",
-            field: "json:shim",
-            type: "yes-no",
-            noFirst: true,
-          },
         ];
       }
 

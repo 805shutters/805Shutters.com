@@ -513,9 +513,9 @@ describe("V4 all-product exhaustive source reconciliation", () => {
       }),
     ).toMatchObject({ ok: false, code: "PRODUCT_NOT_FOUND" });
     expect(manualPrograms).toBeGreaterThan(0);
-    // Exterior Clutch moved to the reusable owner-approved Manual quoting
-    // state, so this catalog currently has no product intentionally classified
-    // as unavailable.
-    expect(unavailablePrograms).toBe(0);
+    // Tension Shades are quote-only. Exterior Clutch has no usable source
+    // pricing and must remain explicitly unavailable rather than inheriting
+    // the Tension Shade manual-quote exception.
+    expect(unavailablePrograms).toBe(1);
   });
 });

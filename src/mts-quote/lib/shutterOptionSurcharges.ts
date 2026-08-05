@@ -71,33 +71,27 @@ function normalize(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-// Compatibility guard used by the current customer-data send API. These
-// exports do not participate in the restored July 10 builder's surcharge
-// calculation below.
 export function getShutterPanelCount(panelConfig: unknown): number {
   return (text(panelConfig).match(/[lr]/gi) || []).length;
 }
 
 export function getInvisibleTiltPanelRate(design: SalesQuoteDesign | undefined): number | null {
   if (!design) return null;
+
   const options = design.options_json || {};
   const tiltType = text(design.tilt_type);
-  if (
+  const isWoodloreComposite =
     design.supplier === "Norman" &&
     text(options.material_type) === "Composite" &&
     text(options.composite_subtype) === "Woodlore" &&
-    /invisible|clearview/i.test(tiltType)
-  ) {
-    return 15;
-  }
-  if (
+    /invisible|clearview/i.test(tiltType);
+  if (isWoodloreComposite) return 15;
+
+  const isOnyxPolyCompositeH3 =
     design.supplier === "Onyx" &&
     text(design.material) === "Poly Composite" &&
-    /^H3\s*-\s*Hidden Tiltrod In Stile$/i.test(tiltType)
-  ) {
-    return 10;
-  }
-  return null;
+    /^H3\s*-\s*Hidden Tiltrod In Stile$/i.test(tiltType);
+  return isOnyxPolyCompositeH3 ? 10 : null;
 }
 
 export function isInvisibleTiltPanelSelectionMissing(
@@ -107,6 +101,30 @@ export function isInvisibleTiltPanelSelectionMissing(
     getInvisibleTiltPanelRate(design) !== null &&
     getShutterPanelCount(design?.panel_config || design?.options_json?.panel_config) === 0
   );
+}
+
+function addPerPanelInvisibleTiltSurcharge(
+  surcharges: ShutterQuoteSurcharge[],
+  productType: string,
+  design: SalesQuoteDesign
+): boolean {
+  const rate = getInvisibleTiltPanelRate(design);
+  if (rate === null) return false;
+
+  const panelCount = getShutterPanelCount(design.panel_config || design.options_json?.panel_config);
+  if (panelCount === 0) return true;
+
+  const supplierLabel = design.supplier === "Onyx" ? "Onyx H3 Invisible Tilt" : "Woodlore InvisibleTilt";
+  surcharges.push({
+    id: slugifySurcharge(`${productType}-${supplierLabel}-${rate}-per-panel`),
+    name: `${supplierLabel} ($${rate}/panel)`,
+    type: "fixed",
+    value: rate,
+    quantity: panelCount,
+    category: design.supplier === "Onyx" ? "Onyx Shutter Fixed Surcharges" : "Shutter Fixed Surcharges",
+    portalLabel: supplierLabel,
+  });
+  return true;
 }
 
 function getNormanSpecialtySurchargeName(value: string): string | null {
@@ -158,7 +176,9 @@ function addNormanShutterSurcharges(
   if (/offset/i.test(tiltType)) {
     appendByName(surcharges, productType, SHUTTER_FIXED_SURCHARGES, fixedCategory, "Offset Tilt Rod");
   } else if (/invisible|clearview/i.test(tiltType)) {
-    appendByName(surcharges, productType, SHUTTER_FIXED_SURCHARGES, fixedCategory, "InvisibleTilt");
+    if (!addPerPanelInvisibleTiltSurcharge(surcharges, productType, design)) {
+      appendByName(surcharges, productType, SHUTTER_FIXED_SURCHARGES, fixedCategory, "InvisibleTilt");
+    }
   }
 
   if (text(design.hinge_color) === "Stainless Steel") {
@@ -215,6 +235,8 @@ function addOnyxShutterSurcharges(
   const opts = design.options_json || {};
   const percentageCategory = "Onyx Shutter Surcharges";
   const fixedCategory = "Onyx Shutter Fixed Surcharges";
+
+  addPerPanelInvisibleTiltSurcharge(surcharges, productType, design);
 
   if (text(design.tilt_type) === "Offset Tilt Rod") {
     appendByName(surcharges, productType, ONYX_SHUTTER_PERCENTAGE_SURCHARGES, percentageCategory, "Offset Tilt Rod");

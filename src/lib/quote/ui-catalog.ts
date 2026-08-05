@@ -3,7 +3,7 @@
 // motorization) without shipping the full price grids to the browser.
 
 import { catalog } from "./catalog";
-import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
+import { isPolarQuoteOnlyProductId } from "./quote-only-policy";
 import { productImage } from "./product-images";
 import { getProductColorOptions, type ProductColorOption } from "./product-color-options";
 import { getDetailFieldsForProduct, getMotorizationGroupsForProduct, type QuoteDetailField } from "./product-options";
@@ -242,7 +242,7 @@ function customerSafeCatalogNotes(notes: readonly string[]): string[] {
 
 export function buildUiCatalog(): UiCatalog {
   const products: UiProduct[] = catalog.products.map((p) => {
-    const quoteOnly = isPolarManufacturer(p.manufacturer) || isPolarProductId(p.id);
+    const quoteOnly = isPolarQuoteOnlyProductId(p.id);
     return ({
     id: p.id,
     name: p.name,
@@ -348,7 +348,7 @@ export function buildUiCatalog(): UiCatalog {
 
 export function buildPricingReference(): UiPricingReference {
   const programs = catalog.products
-    .filter((product) => !isPolarManufacturer(product.manufacturer) && !isPolarProductId(product.id))
+    .filter((product) => !isPolarQuoteOnlyProductId(product.id))
     .flatMap((product) =>
     product.programs.map((program) => {
       const status = wholesaleLedgerProgramStatus(product, program);
@@ -400,7 +400,7 @@ export function buildPricingReference(): UiPricingReference {
   );
 
   const products = catalog.products
-    .filter((product) => !isPolarManufacturer(product.manufacturer) && !isPolarProductId(product.id))
+    .filter((product) => !isPolarQuoteOnlyProductId(product.id))
     .map((product) => ({
     productId: product.id,
     productName: product.name,

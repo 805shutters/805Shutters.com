@@ -197,6 +197,12 @@ def parse_interior():
                 row = re.match(r'^\s*(\d+)"\s+(.+)$', raw)
                 if current and row and int(row.group(1)) in heights:
                     vals = [int(v.replace(",", "")) for v in re.findall(r"\b\d[\d,]*\b", row.group(2))]
+                    # Continuation pages repeat the width header as a line that
+                    # starts with 156". Since 156 is also a valid height, the
+                    # old parser treated widths 168..288 as retail prices for
+                    # the 156-inch-height row. Never ingest that header.
+                    if int(row.group(1)) == widths[0] and vals[:len(widths) - 1] == widths[1:]:
+                        continue
                     merged[current].setdefault(int(row.group(1)), []).extend(vals[:len(widths)])
     programs = []
     all_widths = left_widths + right_widths

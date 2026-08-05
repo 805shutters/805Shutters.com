@@ -18,7 +18,7 @@ import {
   catalog,
 } from "./catalog";
 import type { CatalogProduct, CatalogProgram } from "./catalog/types";
-import { isPolarManufacturer, isPolarProductId } from "./quote-only-policy";
+import { isPolarQuoteOnlyProductId } from "./quote-only-policy";
 import { squareFeet } from "./measurements";
 import { getMotorizationGroupsForProduct } from "./product-options";
 import {
@@ -380,7 +380,7 @@ export function priceDealerNetDesign(input: PriceInput): DealerNetCostResult {
   const warnings: string[] = [];
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
-  if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
+  if (isPolarQuoteOnlyProductId(product.id)) {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`, warnings);
   }
   if (product.priceBasis === "manual_required") {
@@ -704,7 +704,7 @@ export function priceDesign(input: PriceInput): PriceResult {
   if (!input.productId) return fail("PRODUCT_SELECTION_REQUIRED", "Select a manufacturer and product before pricing this line.", warnings);
   const product = getProduct(input.productId);
   if (!product) return fail("PRODUCT_NOT_FOUND", `Unknown product '${input.productId}'`, warnings);
-  if (isPolarManufacturer(product.manufacturer) || isPolarProductId(product.id)) {
+  if (isPolarQuoteOnlyProductId(product.id)) {
     return fail("MANUAL_PRICE_REQUIRED", `${product.name} is QUOTE ONLY. Polar pricing and follow-on automation are disabled.`, warnings);
   }
   if (product.priceBasis === "manual_required") {

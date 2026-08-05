@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuotesWorkspace as LegacyQuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace.legacy";
+import { OriginalV1QuotesWorkspace } from "@/components/crm/quotes/OriginalV1QuotesWorkspace";
 import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
 
 type QuoteVersion = "v1" | "v4";
@@ -14,17 +14,18 @@ type Props = {
   quotes: CrmQuote[];
   events: CrmCalendarEvent[];
   openRequest?: QuoteWorkspaceOpenRequest | null;
+  onOpenOriginalV1Quote: (quoteId: string) => void;
   onOpenCrmQuote?: (quoteId: string, tab?: QuoteWorkspaceOpenTab) => void;
   onOpenCalendarDate?: (date: string) => void;
   onChanged: () => void;
 };
 
 export function QuotesWorkspace({
-  session,
   jobs,
   quotes,
   events,
   openRequest,
+  onOpenOriginalV1Quote,
   onOpenCalendarDate,
   onOpenCrmQuote,
   onChanged,
@@ -40,10 +41,10 @@ export function QuotesWorkspace({
       <section className="crm-panel" aria-labelledby="quote-version-heading">
         <p className="eyebrow">Build Quote</p>
         <h2 id="quote-version-heading">Choose a quote builder</h2>
-        <p>Both builders remain available. Use V1 whenever V4 is not working reliably.</p>
+        <p>Open the unchanged original builder for V1 quotes, or use the separate V4 system.</p>
         <div className="crm-form-actions">
           <button type="button" className="button primary" onClick={() => setVersion("v1")}>
-            Open V1 — Reliable fallback
+            Open original V1
           </button>
           <button type="button" className="button secondary" onClick={() => setVersion("v4")}>
             Open V4 — In progress
@@ -56,13 +57,13 @@ export function QuotesWorkspace({
   return (
     <div>
       <div className="crm-form-actions" aria-label="Quote builder version">
-        <strong>{version === "v1" ? "V1 quote builder" : "V4 quote builder"}</strong>
+          <strong>{version === "v1" ? "Original V1 quote builder" : "V4 quote builder"}</strong>
         <button type="button" className="button secondary" onClick={() => setVersion(null)}>
           Switch quote builder
         </button>
       </div>
       {version === "v1" ? (
-        <LegacyQuotesWorkspace session={session} jobs={jobs} quotes={quotes} onChanged={onChanged} />
+        <OriginalV1QuotesWorkspace quotes={quotes} onOpenQuote={onOpenOriginalV1Quote} />
       ) : (
         <QuoteWorkspace
           crmJobs={jobs}

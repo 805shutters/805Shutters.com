@@ -24,7 +24,7 @@ import {
   QUOTE_V2_SELECTED_DESIGN_MARKER,
   resolveSelectedQuoteDesign,
 } from "@/lib/quote-v2/selected-design";
-import { isPolarManufacturer, isPolarProductId } from "@/lib/quote/quote-only-policy";
+import { isPolarQuoteOnlyProductId } from "@/lib/quote/quote-only-policy";
 import { Textarea } from "@mts/components/ui/textarea";
 import {
   AlertTriangle,
@@ -1793,7 +1793,7 @@ export function QuoteBuilder() {
       typeof design.options_json?.catalog_product_id === "string"
         ? design.options_json.catalog_product_id
         : null;
-    return isPolarManufacturer(design.supplier) || isPolarProductId(productId);
+    return isPolarQuoteOnlyProductId(productId);
   });
   const stackedLineItemIdSet = new Set(stackedLineItemIds);
   const stackedLineItems = lineItems.filter((item) => stackedLineItemIdSet.has(item.id));

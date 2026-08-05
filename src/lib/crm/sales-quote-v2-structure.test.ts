@@ -254,7 +254,7 @@ describe("Quote V2 structural request parsing", () => {
         selectDesign: true,
         patch: {
           supplier: "Polar",
-          optionsJson: { catalog_product_id: "polar_interior_roller" },
+          optionsJson: { catalog_product_id: "polar_tension_shade" },
         },
       }],
     });
@@ -264,9 +264,9 @@ describe("Quote V2 structural request parsing", () => {
         supplier: "Polar",
         optionsJson: {
           quote_only_status: "QUOTE_ONLY",
-          quote_only_product_id: "polar_interior_roller",
+          quote_only_product_id: "polar_tension_shade",
           quote_only_internal_task: expect.stringContaining("manual Polar quote"),
-          quote_only_blocks: expect.stringContaining("manufacturer_action"),
+          quote_only_blocks: expect.arrayContaining(["manufacturer_action"]),
         },
       },
     });

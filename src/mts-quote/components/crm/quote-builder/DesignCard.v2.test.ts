@@ -80,10 +80,11 @@ describe("V2 exact-interface contract", () => {
   });
 
   it("persists an auditable Polar QUOTE ONLY task and zero price", () => {
-    const polar = catalogProduct("polar_interior_roller", "Polar", [], {
-      name: "Polar Interior Roller",
-      system: "Interior Roller",
-      priceBasis: "suggested_retail",
+    const polar = catalogProduct("polar_tension_shade", "Polar", [], {
+      name: "Polar Tension Shade",
+      productType: "Tension Shades",
+      system: "Tension Shade",
+      priceBasis: "manual_required",
     });
     expect(buildCatalogSelectionPatch({}, polar)).toMatchObject({
       supplier: "Polar",
@@ -348,7 +349,7 @@ describe("V2 exact-interface contract", () => {
           { catalog_product_id: productId },
         ),
       ).toEqual({
-        status: "manual_quote",
+        status: "supported",
         productId,
         manufacturer: "Polar",
       });
@@ -360,7 +361,7 @@ describe("V2 exact-interface contract", () => {
         { catalog_product_id: "polar_interior_roller" },
       ),
     ).toEqual({
-      status: "manual_quote",
+      status: "supported",
       productId: "polar_interior_roller",
       manufacturer: "Polar",
     });
@@ -379,11 +380,22 @@ describe("V2 exact-interface contract", () => {
           { catalog_product_id: productId },
         ),
       ).toEqual({
-        status: "manual_quote",
+        status: "supported",
         productId,
         manufacturer: "Polar",
       });
     }
+    expect(
+      resolveManufacturerOptionsUiRoute(
+        { supplier: "Polar" } as SalesQuoteDesign,
+        "Tension Shades",
+        { catalog_product_id: "polar_tension_shade" },
+      ),
+    ).toEqual({
+      status: "manual_quote",
+      productId: "polar_tension_shade",
+      manufacturer: "Polar",
+    });
   });
 
   it("keeps Control Type expanded and clears incompatible motors at manufacturer changes", () => {

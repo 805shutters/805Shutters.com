@@ -6,7 +6,6 @@ import { resolveManufacturerOptionsUiRoute } from "@mts/components/crm/quote-bui
 
 const products = [
   ["polar_tension_shade", "Tension Shades"],
-  ["polar_exterior_clutch_unavailable", "Roller Shades"],
 ] as const;
 
 describe("reusable manual-quote-only product state", () => {

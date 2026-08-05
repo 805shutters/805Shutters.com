@@ -97,6 +97,63 @@
   text-rendering: optimizeLegibility;
 }
 
+.mts-quote-scope .mts-measure-whole-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mts-quote-scope .mts-measure-dialog {
+  grid-template-rows: auto minmax(0, 1fr);
+  width: calc(100vw - 1rem);
+  height: calc(100dvh - 1rem);
+  max-width: 760px;
+  max-height: calc(100dvh - 1rem);
+  overflow: hidden;
+}
+
+.mts-quote-scope .mts-measure-dialog-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-anchor: none;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+.mts-quote-scope .mts-measure-whole-button {
+  min-width: 0;
+  height: 36px;
+  padding: 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 6px;
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.mts-quote-scope .mts-measure-whole-button:hover,
+.mts-quote-scope .mts-measure-whole-button:focus-visible,
+.mts-quote-scope .mts-measure-whole-button--selected {
+  border-color: hsl(var(--foreground));
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+
+@media (min-width: 640px) {
+  .mts-quote-scope .mts-measure-whole-grid {
+    gap: 8px;
+  }
+
+  .mts-quote-scope .mts-measure-whole-button {
+    height: 40px;
+    font-size: 14px;
+  }
+}
+
 /* ---- Scoped preflight (Tailwind v3 preflight essentials, confined to scope) ---- */
 .mts-quote-scope *,
 .mts-quote-scope ::before,
@@ -382,6 +439,15 @@
 .mts-quote-scope .quote-command-tabs {
   overflow-x: auto;
   scrollbar-width: thin;
+}
+
+.mts-quote-scope .quote-alternative-bar {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.mts-quote-scope .quote-alternative-bar > div {
+  min-width: max-content;
 }
 
 .mts-quote-scope .quote-add-controls {
@@ -1318,6 +1384,107 @@
   line-height: 1.14;
 }
 
+.mts-quote-scope .quote-line-manufacturer-stamp {
+  --manufacturer-stamp-background: #f4f2ed;
+  --manufacturer-stamp-border: #57534e;
+  --manufacturer-stamp-color: #292524;
+  display: inline-flex;
+  max-width: 236px;
+  overflow: hidden;
+  min-height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 2px solid var(--manufacturer-stamp-border);
+  border-radius: 6px;
+  background: var(--manufacturer-stamp-background);
+  color: var(--manufacturer-stamp-color);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.62),
+    0 4px 10px rgb(15 23 42 / 0.10);
+  font-family: var(--font-body, var(--font-sans));
+  line-height: 1;
+  text-transform: uppercase;
+  transform: rotate(-0.7deg);
+  white-space: nowrap;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp-caption {
+  padding-right: 6px;
+  border-right: 1px solid currentColor;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  opacity: 0.68;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp-name {
+  display: block;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-overflow: ellipsis;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--stacked {
+  min-height: 18px;
+  min-width: 0;
+  max-width: 58px;
+  overflow: hidden;
+  gap: 0;
+  padding: 0 4px;
+  border-width: 1px;
+  border-radius: 4px;
+  box-shadow: none;
+  transform: none;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--stacked
+  .quote-line-manufacturer-stamp-caption {
+  display: none;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--stacked
+  .quote-line-manufacturer-stamp-name {
+  max-width: 48px;
+  font-size: 8px;
+  letter-spacing: 0.04em;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--norman {
+  --manufacturer-stamp-background: #f3efe6;
+  --manufacturer-stamp-border: #514b3f;
+  --manufacturer-stamp-color: #26231e;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--lotus {
+  --manufacturer-stamp-background: #edf5ee;
+  --manufacturer-stamp-border: #276749;
+  --manufacturer-stamp-color: #1c4b35;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--polar {
+  --manufacturer-stamp-background: #edf6fb;
+  --manufacturer-stamp-border: #176b91;
+  --manufacturer-stamp-color: #12516f;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--onyx {
+  --manufacturer-stamp-background: #18181b;
+  --manufacturer-stamp-border: #050505;
+  --manufacturer-stamp-color: #ffffff;
+}
+
+.mts-quote-scope .quote-line-manufacturer-stamp--mts {
+  --manufacturer-stamp-background: #edf2f8;
+  --manufacturer-stamp-border: #233c64;
+  --manufacturer-stamp-color: #172b4d;
+}
+
 .mts-quote-scope .quote-line-card-add-size {
   display: inline-flex;
   min-height: 32px;
@@ -1709,6 +1876,33 @@
   .mts-quote-scope .quote-line-card-size-divider {
     font-size: 18px;
     line-height: 1.18;
+  }
+
+  .mts-quote-scope .quote-line-manufacturer-stamp {
+    min-height: 28px;
+    gap: 5px;
+    padding: 0 7px;
+    transform: none;
+  }
+
+  .mts-quote-scope .quote-line-manufacturer-stamp-caption {
+    padding-right: 5px;
+    font-size: 7px;
+  }
+
+  .mts-quote-scope .quote-line-manufacturer-stamp-name {
+    font-size: 10px;
+  }
+
+  .mts-quote-scope .quote-line-manufacturer-stamp--stacked {
+    min-height: 18px;
+    gap: 0;
+    padding: 0 4px;
+  }
+
+  .mts-quote-scope .quote-line-manufacturer-stamp--stacked
+    .quote-line-manufacturer-stamp-name {
+    font-size: 8px;
   }
 
   .mts-quote-scope .quote-line-product-type-badge {

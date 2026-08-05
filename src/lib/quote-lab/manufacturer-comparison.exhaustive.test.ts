@@ -325,7 +325,7 @@ describe("exhaustive shared-manufacturer pricing audit", () => {
       quantity: 1,
     });
     expect(rollers.products.find((product) => product.productId === "polar_exterior_clutch_unavailable")).toMatchObject({
-      priceBasis: "manual_required",
+      priceBasis: "unavailable",
       programs: [],
     });
   });

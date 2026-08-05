@@ -34,6 +34,7 @@ import {
 } from "@/lib/booking/availability";
 import { AddressAutocomplete } from "@/components/address/AddressAutocomplete";
 import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
+import { QuoteBuilderPanel as OriginalV1QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
 import { QuotesWorkspace } from "@/components/crm/quotes/QuotesWorkspace";
 import { CommercialWorkspace } from "@/components/crm/CommercialWorkspace";
 import { SalesIntelligencePage } from "@/components/crm/SalesIntelligencePage";
@@ -883,6 +884,7 @@ export function CrmApp({
   const [reschedulingCalendarEvent, setReschedulingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [cancelingCalendarEvent, setCancelingCalendarEvent] = useState<CrmCalendarEvent | null>(null);
   const [builderQuoteId, setBuilderQuoteId] = useState<string | null>(null);
+  const [builderVersion, setBuilderVersion] = useState<"current" | "original-v1">("current");
   const [quoteWorkspaceOpenRequest, setQuoteWorkspaceOpenRequest] = useState<QuoteWorkspaceOpenRequest | null>(null);
   const [drill, setDrill] = useState<DrillPayload | null>(null);
   const [focusCustomer, setFocusCustomer] = useState<string | null>(null);
@@ -930,7 +932,10 @@ export function CrmApp({
     // convert, reprice, or replace its saved configuration.
     if (quote) {
       if (tab === "contract") void openQuoteContract(quoteId);
-      else setBuilderQuoteId(quoteId);
+      else {
+        setBuilderVersion("current");
+        setBuilderQuoteId(quoteId);
+      }
       return;
     }
 
@@ -941,6 +946,11 @@ export function CrmApp({
       tab,
       requestId: (request?.requestId || 0) + 1
     }));
+  }
+
+  function openOriginalV1Quote(quoteId: string) {
+    setBuilderVersion("original-v1");
+    setBuilderQuoteId(quoteId);
   }
 
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {
@@ -2895,13 +2905,23 @@ export function CrmApp({
   return (
     <div className="crm-app-shell">
       {builderQuoteId && session ? (
-        <QuoteBuilderPanel
-          session={session}
-          quoteId={builderQuoteId}
-          onClose={() => setBuilderQuoteId(null)}
-          onChanged={refresh}
-          onSwitch={setBuilderQuoteId}
-        />
+        builderVersion === "original-v1" ? (
+          <OriginalV1QuoteBuilderPanel
+            session={session}
+            quoteId={builderQuoteId}
+            onClose={() => setBuilderQuoteId(null)}
+            onChanged={refresh}
+            onSwitch={setBuilderQuoteId}
+          />
+        ) : (
+          <QuoteBuilderPanel
+            session={session}
+            quoteId={builderQuoteId}
+            onClose={() => setBuilderQuoteId(null)}
+            onChanged={refresh}
+            onSwitch={setBuilderQuoteId}
+          />
+        )
       ) : null}
       <header className="crm-topbar">
         <div className="crm-logo-lockup">
@@ -2989,6 +3009,7 @@ export function CrmApp({
           quotes={quotes}
           events={events}
           onChanged={refresh}
+          onOpenOriginalV1Quote={openOriginalV1Quote}
           onOpenCalendarDate={(date) => {
             setCalendarDate(date);
             setCalendarView("week");
@@ -3382,7 +3403,10 @@ export function CrmApp({
             quotes={quotes}
             onUpdate={updateQuote}
             busy={busy}
-            onOpenBuilder={setBuilderQuoteId}
+            onOpenBuilder={(quoteId) => {
+              setBuilderVersion("current");
+              setBuilderQuoteId(quoteId);
+            }}
             onOpenContract={openQuoteContract}
           />
         </section>

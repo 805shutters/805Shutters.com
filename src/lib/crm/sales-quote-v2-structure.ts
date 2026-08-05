@@ -1,8 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CrmAuthError } from "@/lib/crm/auth";
 import {
-  isPolarManufacturer,
-  isPolarProductId,
+  isPolarQuoteOnlyProductId,
   polarQuoteOnlyOptions,
 } from "@/lib/quote/quote-only-policy";
 
@@ -560,7 +559,7 @@ function designPatch(raw: unknown, label: string): JsonObject {
       : typeof options.product_id === "string"
         ? options.product_id
         : "";
-  if (isPolarManufacturer(normalized.supplier as string | null) || isPolarProductId(productId)) {
+  if (isPolarQuoteOnlyProductId(productId)) {
     normalized.supplier = "Polar";
     normalized.optionsJson = {
       ...options,

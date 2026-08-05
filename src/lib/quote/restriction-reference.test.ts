@@ -89,7 +89,7 @@ describe("pricing restriction reference", () => {
       reference.rows.find(
         (row) => row.productId === "polar_exterior_clutch_unavailable",
       )?.authority,
-    ).toBe("manual_quote");
+    ).toBe("unavailable");
   });
 
   it("projects the normalized Onyx frame, panel, overlap, and application rules", () => {

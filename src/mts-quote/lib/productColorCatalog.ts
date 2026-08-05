@@ -14,6 +14,8 @@ import {
   type ProductColorOption,
 } from "@/lib/quote/product-color-options";
 import { isHoneycombDealerColorAvailable } from "./honeycombDealerFabrics";
+import { VERTICAL_COLORS } from "./quoteConstants";
+import { normanHoneycombV2Source } from "@/lib/quote-v2/generated/norman-honeycomb-v2.generated";
 
 export {
   PRODUCT_COLOR_CODE_DETAIL,
@@ -34,6 +36,119 @@ type ProductColorSearchOptions = {
   includeUnavailable?: boolean;
   limit?: number;
 };
+
+function isAuthoritativeV2(optionsJson: Record<string, unknown>): boolean {
+  return optionsJson.quote_v2_backend === true;
+}
+
+const V2_VERTICAL_PROGRAM_BY_COLLECTION: Readonly<Record<string, string>> = {
+  Classic: "synchrony_vertical_synchrony_vertical_blind_price_group_1_pg1",
+  "S-Curved": "synchrony_vertical_synchrony_vertical_blind_price_group_2_pg2",
+  Sandblasted: "synchrony_vertical_synchrony_vertical_blind_price_group_2_pg2",
+  Flaxen: "synchrony_vertical_synchrony_vertical_blind_price_group_3_pg3",
+  Adobe: "synchrony_vertical_synchrony_vertical_blind_price_group_3_pg3",
+  Shantung: "synchrony_vertical_synchrony_vertical_blind_price_group_3_pg3",
+  Linen: "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
+  Grasscloth: "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
+  Willow: "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
+  "Faux Wood": "synchrony_vertical_synchrony_vertical_blind_price_group_4_pg4",
+};
+
+const authoritativeV2VerticalRows: ProductColorOption[] = VERTICAL_COLORS.map(
+  (label, index) => {
+    const match = label.match(/^(.*?) Collection: (.+)$/);
+    const colorName = match?.[1] ?? label;
+    const collection = match?.[2] ?? "";
+    const programId = V2_VERTICAL_PROGRAM_BY_COLLECTION[collection] ?? null;
+    return {
+      id: `quote-v2:synchrony:${collection}:${colorName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      productId: "synchrony_vertical",
+      collection,
+      publicCollection: collection,
+      fabricType: "Vertical vane",
+      // The guide does not print stable color codes; collection + name is the
+      // source identity, so the name is retained in the code slot as well.
+      colorCode: colorName,
+      colorName,
+      publicColorName: colorName,
+      frStatus: "",
+      imageUrl: "",
+      sourcePage: "Vertical Blinds Guide.pdf#page=9",
+      sourcePageModified: null,
+      sourceNote: "Pinned V2 Synchrony active-color catalog",
+      programId,
+      selectionMode: "program",
+      requiresProgram: !programId,
+      available: true,
+      automaticDetails: {},
+      searchText: `${collection} ${colorName} ${programId ?? ""} ${index}`.toLowerCase(),
+    };
+  },
+);
+
+const verticalHoneycombCodes = new Set(
+  normanHoneycombV2Source.verticalColors.flatMap((row) => [
+    row.customerColorCode.toUpperCase(),
+    row.factoryColorCode.toUpperCase(),
+  ]),
+);
+const skylightHoneycombCodes = new Set(
+  normanHoneycombV2Source.motorizedSkylightColors.flatMap((row) => [
+    row.customerColorCode.toUpperCase(),
+    row.factoryColorCode.toUpperCase(),
+  ]),
+);
+
+function exactHoneycombColor(colorCode: string, collection?: string | null) {
+  const wanted = colorCode.trim().toUpperCase();
+  const matches = normanHoneycombV2Source.activeColors.filter(
+    (row) =>
+      row.customerColorCode.toUpperCase() === wanted ||
+      row.factoryColorCode.toUpperCase() === wanted,
+  );
+  if (collection) {
+    const exactCollection = matches.filter(
+      (row) => normalize(row.family) === normalize(collection),
+    );
+    if (exactCollection.length === 1) return exactCollection[0];
+  }
+  // Never pick the first row if a future catalog reuses an active code.
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function honeycombWorkbookCellSize(cellSize: string): string {
+  const selected = normalize(cellSize);
+  return selected.includes("smartfit") || selected.includes("decoflex")
+    ? normalize('3/8" Single Cell')
+    : selected;
+}
+
+export function getV2HoneycombFabricFamiliesForCellSize(
+  cellSize: string | null | undefined,
+): string[] {
+  if (!cellSize) return [];
+  const wanted = honeycombWorkbookCellSize(cellSize);
+  return [
+    ...new Set(
+      normanHoneycombV2Source.activeColors
+        .filter((row) =>
+          row.cellSizes.some(
+            (size) => honeycombWorkbookCellSize(size) === wanted,
+          ),
+        )
+        .map((row) => row.family),
+    ),
+  ];
+}
+
+function authoritativeRowsFor(
+  productType: string | null | undefined,
+  optionsJson: Record<string, unknown>,
+): ProductColorOption[] | null {
+  if (!isAuthoritativeV2(optionsJson)) return null;
+  if (productType === "Vertical Blinds") return authoritativeV2VerticalRows;
+  return null;
+}
 
 const HONEYCOMB_PROGRAMS_BY_CELL_SIZE: Record<string, string[]> = {
   "9/16": ["honeycomb_9_16in_cordless_single_cell"],
@@ -85,6 +200,7 @@ const PRODUCT_TYPE_TO_COLOR_PRODUCT: Record<string, string[]> = {
   "Sheer Shades": ["perfectsheer"],
   "Smart Drapes": ["smartdrape"],
   "Vertical Blinds": ["synchrony_vertical"],
+  "Mini Blinds": ["citylights_aluminum"],
   "Wood Blinds": ["wood_blinds"],
 };
 
@@ -116,7 +232,7 @@ export function supportsMtsProductColorSearch(
   }
 
   if (field === "json:color") {
-    return ["Faux Wood Blinds", "Wood Blinds"].includes(productType ?? "");
+    return ["Mini Blinds", "Faux Wood Blinds", "Wood Blinds"].includes(productType ?? "");
   }
 
   if (field === "json:vertical_color") {
@@ -131,10 +247,44 @@ export function getMtsProductColorRows(
   optionsJson: Record<string, unknown> = {},
   searchOptions: ProductColorSearchOptions = {},
 ): ProductColorOption[] {
+  const authoritativeRows = authoritativeRowsFor(productType, optionsJson);
   const productIds = getMtsProductColorProductIds(productType, optionsJson);
-  const rows = productIds.flatMap((productId) => getProductColorOptions(productId));
+  const rows = authoritativeRows ?? productIds.flatMap((productId) => getProductColorOptions(productId));
   return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions).map((row) =>
     contextualizeMtsProductColorRow(productType, optionsJson, row)
+  );
+}
+
+/**
+ * True only when an active color remains selectable in the complete current
+ * context. Cascading UI controls use this to clear evidence that became stale
+ * after an application, cell-size, or operating-system change.
+ */
+export function isMtsProductColorCodeAvailableForContext(
+  productType: string | null | undefined,
+  optionsJson: Record<string, unknown>,
+  colorCode: string | null | undefined,
+): boolean {
+  const wanted = normalize(colorCode);
+  if (!wanted) return false;
+  return getMtsProductColorRows(productType, optionsJson).some(
+    (row) => normalize(row.colorCode) === wanted,
+  );
+}
+
+export function isMtsProductColorSelectionAvailableForContext(
+  productType: string | null | undefined,
+  optionsJson: Record<string, unknown>,
+  collection: string | null | undefined,
+  colorCode: string | null | undefined,
+): boolean {
+  const wantedCollection = normalize(collection);
+  const wantedCode = normalize(colorCode);
+  if (!wantedCollection || !wantedCode) return false;
+  return getMtsProductColorRows(productType, optionsJson).some(
+    (row) =>
+      normalize(row.collection) === wantedCollection &&
+      normalize(row.colorCode) === wantedCode,
   );
 }
 
@@ -145,13 +295,22 @@ export function searchMtsProductColors(
   searchOptions: ProductColorSearchOptions = {},
 ): ProductColorOption[] {
   const limit = searchOptions.limit ?? 60;
+  const authoritativeRows = authoritativeRowsFor(productType, optionsJson);
   const productIds = getMtsProductColorProductIds(productType, optionsJson);
-  const rows = productIds.flatMap((productId) =>
-    searchProductColorOptions(productId, query, {
-      includeUnavailable: searchOptions.includeUnavailable ?? true,
-      limit: 500,
-    }),
-  );
+  const normalizedQuery = normalizeProductColorSearch(query);
+  const rows = authoritativeRows
+    ? authoritativeRows.filter((row) =>
+        normalizedQuery
+          .split(" ")
+          .filter(Boolean)
+          .every((part) => row.searchText.includes(part)),
+      )
+    : productIds.flatMap((productId) =>
+        searchProductColorOptions(productId, query, {
+          includeUnavailable: searchOptions.includeUnavailable ?? true,
+          limit: 500,
+        }),
+      );
   return filterMtsProductColorRows(productType, optionsJson, rows, searchOptions)
     .map((row) => contextualizeMtsProductColorRow(productType, optionsJson, row))
     .slice(0, limit);
@@ -163,6 +322,8 @@ export function findMtsProductColorById(
   id: string | null | undefined,
 ): ProductColorOption | null {
   if (!id) return null;
+  const authoritative = authoritativeRowsFor(productType, optionsJson)?.find((row) => row.id === id);
+  if (authoritative) return authoritative;
   const explicitProductId = stringOption(optionsJson, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
   const productIds = explicitProductId ? [explicitProductId] : getMtsProductColorProductIds(productType, optionsJson);
   for (const productId of productIds) {
@@ -180,6 +341,13 @@ export function findMtsProductColorBySelection(
   colorName?: string | null,
 ): ProductColorOption | null {
   if (!collection || !colorCode) return null;
+  const authoritative = authoritativeRowsFor(productType, optionsJson)?.find(
+    (row) =>
+      normalize(row.collection) === normalize(collection) &&
+      normalize(row.colorCode) === normalize(colorCode) &&
+      (!colorName || normalize(row.colorName) === normalize(colorName)),
+  );
+  if (authoritative) return authoritative;
   const explicitProductId = stringOption(optionsJson, PRODUCT_COLOR_PRODUCT_ID_DETAIL);
   const productIds = explicitProductId ? [explicitProductId] : getMtsProductColorProductIds(productType, optionsJson);
   for (const productId of productIds) {
@@ -204,6 +372,10 @@ export function getMtsProductColorFieldLabel(
 
 export function getMtsProductColorValue(row: ProductColorOption): string {
   return productColorLabel(row);
+}
+
+export function getVerticalFabricGroupSelection(collection: string): string {
+  return normalize(collection) === "classic" ? "Classic collection" : collection;
 }
 
 export function getMtsProductColorProgramLabel(productType: string, programId: string | null | undefined): string {
@@ -283,6 +455,12 @@ export function getMtsGridKeyForCatalogProgram(
     return programId.startsWith("wood_blinds_") ? "ultimate" : PRODUCT_COLOR_UNKNOWN_GRID;
   }
 
+  if (productType === "Mini Blinds") {
+    return programId.startsWith("citylights_aluminum_")
+      ? "citylights_aluminum"
+      : PRODUCT_COLOR_UNKNOWN_GRID;
+  }
+
   if (productType === "Sheer Shades") {
     return programId.startsWith("perfectsheer_") ? "light_filtering" : PRODUCT_COLOR_UNKNOWN_GRID;
   }
@@ -322,6 +500,12 @@ function rowMatchesMtsContext(
 ): boolean {
   switch (productType) {
     case "Roman Shades": {
+      if (
+        isAuthoritativeV2(optionsJson) &&
+        normalize(row.colorCode) === "f1090"
+      ) {
+        return false;
+      }
       const selectedCategory = stringOption(optionsJson, "roman_fabric_category");
       if (selectedCategory && normalize(row.collection) !== normalize(selectedCategory)) {
         return false;
@@ -346,7 +530,41 @@ function rowMatchesMtsContext(
       // Norman's dealer form only offers certain fabrics/colors per shade
       // size — mirror that with the captured availability data (permissive
       // when the data has no entry for the size).
-      if (
+      if (isAuthoritativeV2(optionsJson)) {
+        const exactColor = exactHoneycombColor(row.colorCode);
+        if (
+          selectedCellSize &&
+          (!exactColor ||
+            !exactColor.cellSizes.some(
+              (size) =>
+                honeycombWorkbookCellSize(size) ===
+                honeycombWorkbookCellSize(selectedCellSize),
+            ))
+        ) {
+          return false;
+        }
+        // Once an operating system is selected, remove Sheer colors from
+        // ordinary shades. Norman only documents these five colors as the
+        // sheer layer of a Day & Night configuration. Leave the unselected
+        // state permissive so the existing choose-in-any-order workflow stays
+        // intact; the authoritative validator still fails closed at pricing.
+        const liftSystem = stringOption(optionsJson, "lift_system");
+        if (
+          liftSystem &&
+          normalize(exactColor?.family) === "sheer" &&
+          !normalize(liftSystem).includes("day night")
+        ) {
+          return false;
+        }
+        const application = stringOption(optionsJson, "honeycomb_application");
+        const code = row.colorCode.trim().toUpperCase();
+        if (application === "Patio Door Vertical" && !verticalHoneycombCodes.has(code)) {
+          return false;
+        }
+        if (application === "Motorized Skylights" && !skylightHoneycombCodes.has(code)) {
+          return false;
+        }
+      } else if (
         selectedCellSize &&
         !isHoneycombDealerColorAvailable(selectedCellSize, row.colorCode, lightControl)
       ) {
@@ -365,6 +583,10 @@ function rowMatchesMtsContext(
     case "Vertical Blinds": {
       const fabricGroup = stringOption(optionsJson, "fabric_group");
       return !fabricGroup || normalizeVerticalCollection(row.collection) === normalizeVerticalCollection(fabricGroup);
+    }
+    case "Mini Blinds": {
+      const slatSize = stringOption(optionsJson, "slat_size");
+      return !slatSize || row.fabricType.includes(slatSize);
     }
     default:
       return true;
@@ -407,14 +629,25 @@ function contextualizeMtsProductColorRow(
   row: ProductColorOption,
 ): ProductColorOption {
   if (productType !== "Honeycomb Shades") return row;
+  const exactColor = isAuthoritativeV2(optionsJson)
+    ? exactHoneycombColor(row.colorCode)
+    : undefined;
   const selectedCellSize = stringOption(optionsJson, "cell_size");
   const programId = getHoneycombContextProgram(row, selectedCellSize);
-  if (!programId || programId === row.programId) return row;
+  const effectiveProgramId = programId ?? row.programId;
+  if ((!programId || programId === row.programId) && !exactColor) return row;
   return {
     ...row,
-    programId,
-    requiresProgram: false,
-    searchText: `${row.searchText} ${programId} ${getMtsGridKeyForCatalogProgram(productType, programId) ?? ""}`,
+    ...(exactColor
+      ? {
+          collection: exactColor.family,
+          publicCollection: exactColor.family,
+          fabricType: exactColor.family,
+        }
+      : {}),
+    programId: effectiveProgramId,
+    requiresProgram: !effectiveProgramId,
+    searchText: `${row.searchText} ${effectiveProgramId ?? ""} ${getMtsGridKeyForCatalogProgram(productType, effectiveProgramId) ?? ""}`,
   };
 }
 

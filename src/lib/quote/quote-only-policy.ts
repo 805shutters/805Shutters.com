@@ -8,6 +8,10 @@ export function isPolarProductId(value: unknown): boolean {
   return String(value ?? "").trim().toLowerCase().startsWith("polar_");
 }
 
+export function isPolarQuoteOnlyProductId(value: unknown): boolean {
+  return String(value ?? "").trim().toLowerCase() === "polar_tension_shade";
+}
+
 export function polarQuoteOnlyOptions(productId: string) {
   return {
     quote_only_status: POLAR_QUOTE_ONLY_STATUS,

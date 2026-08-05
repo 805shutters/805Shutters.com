@@ -26,7 +26,8 @@ describe("CRM customer contract route", () => {
 
   it("opens historical CRM quotes in the unchanged original builder", () => {
     expect(source).toContain('if (tab === "contract") void openQuoteContract(quoteId)');
-    expect(source).toContain("else setBuilderQuoteId(quoteId)");
+    expect(source).toContain('setBuilderVersion("current")');
+    expect(source).toContain("<OriginalV1QuoteBuilderPanel");
     expect(source).not.toContain("readOnlyLegacyQuoteId");
     expect(source).not.toContain("Historical quote opened read-only");
   });

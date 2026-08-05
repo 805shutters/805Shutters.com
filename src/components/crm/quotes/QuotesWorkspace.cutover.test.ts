@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/components/crm/quotes/QuotesWorkspace.legacy", () => ({
-  QuotesWorkspace: () => createElement("div", { "data-testid": "v1-quote-workspace" }, "V1 quote workspace"),
+vi.mock("@/components/crm/quotes/OriginalV1QuotesWorkspace", () => ({
+  OriginalV1QuotesWorkspace: () => createElement("div", { "data-testid": "v1-quote-workspace" }, "Original V1 quote workspace"),
 }));
 vi.mock("@mts/QuoteWorkspace", () => ({
   QuoteWorkspace: () => createElement("div", { "data-testid": "v4-quote-workspace" }, "V4 quote workspace"),
@@ -15,13 +16,14 @@ const source = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.tsx", impor
 const mobileSource = readFileSync(fileURLToPath(new URL("../CrmMobileQuotesApp.tsx", import.meta.url)), "utf8");
 const quoteWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/QuoteWorkspace.tsx", import.meta.url)), "utf8");
 const crmAppSource = readFileSync(fileURLToPath(new URL("../CrmApp.tsx", import.meta.url)), "utf8");
+const originalV1BuilderSource = readFileSync(fileURLToPath(new URL("../quote-v1/QuoteBuilderPanel.tsx", import.meta.url)));
 
 describe("quote-system routing", () => {
   it("presents an explicit V1/V4 chooser on desktop and mobile", async () => {
-    expect(source).toContain("Open V1 — Reliable fallback");
+    expect(source).toContain("Open original V1");
     expect(source).toContain("Open V4 — In progress");
     expect(source).toContain("Switch quote builder");
-    expect(source).toContain("<LegacyQuotesWorkspace");
+    expect(source).toContain("<OriginalV1QuotesWorkspace");
     expect(source).toContain("<QuoteWorkspace");
     expect(mobileSource).toContain('from "@/components/crm/quotes/QuotesWorkspace"');
 
@@ -31,11 +33,19 @@ describe("quote-system routing", () => {
       jobs: [],
       quotes: [],
       events: [],
+      onOpenOriginalV1Quote: () => undefined,
       onChanged: () => undefined,
     }));
     expect(markup).toContain("Choose a quote builder");
-    expect(markup).toContain("Open V1 — Reliable fallback");
+    expect(markup).toContain("Open original V1");
     expect(markup).toContain("Open V4 — In progress");
+  });
+
+  it("keeps the pre-redesign V1 builder byte-for-byte unchanged", () => {
+    expect(createHash("sha256").update(originalV1BuilderSource).digest("hex"))
+      .toBe("3a5f2fc90452f956ad7b5ef729e15e69bedb29ec651b3c3dfd74c43e49d09373");
+    expect(crmAppSource).toContain("<OriginalV1QuoteBuilderPanel");
+    expect(crmAppSource).toContain('builderVersion === "original-v1"');
   });
 
   it("preserves V4 dashboard, builder, pricing, and contract code for rollback", () => {
@@ -61,6 +71,7 @@ describe("quote-system routing", () => {
       quotes: [],
       events: [],
       openRequest: { quoteId: "v4-saved-quote", tab: "builder", requestId: 1 },
+      onOpenOriginalV1Quote: () => undefined,
       onChanged: () => undefined,
     }));
     expect(markup).toContain("V4 quote workspace");

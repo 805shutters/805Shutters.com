@@ -36,10 +36,10 @@ function miniBlindDesign(): SalesQuoteDesign {
 }
 
 describe("getQuoteDesignDetails", () => {
-  it("uses the original fabric-color label for legacy mini-blind data", () => {
+  it("labels CityLights mini-blind colors as colors on customer output", () => {
     const details = getQuoteDesignDetails(miniBlindDesign());
 
-    expect(details).toContainEqual({ label: "Fabric Color", value: "7024 - Pure White" });
+    expect(details).toContainEqual({ label: "Color", value: "7024 - Pure White" });
     expect(details).toContainEqual({ label: "Slat Size", value: '1"' });
   });
 });
