@@ -40,6 +40,26 @@ describe("installer form sold-path delivery", () => {
     expect(salesQuoteSend).toContain("const installerForm = await createAndSendInstallerForm");
   });
 
+  it("treats installer delivery as mandatory after contract signing even when other notifications are suppressed", () => {
+    const invariant = publicQuote.indexOf(
+      "Installer delivery is a signed-contract invariant",
+    );
+    const delivery = publicQuote.indexOf(
+      "await createAndSendInstallerForm(supabase, signedQuote.id)",
+      invariant,
+    );
+    const signedReturn = publicQuote.indexOf(
+      "return { ok: true, alreadySigned: false",
+      delivery,
+    );
+    const tail = publicQuote.slice(invariant, signedReturn);
+
+    expect(invariant).toBeGreaterThan(-1);
+    expect(delivery).toBeGreaterThan(invariant);
+    expect(signedReturn).toBeGreaterThan(delivery);
+    expect(tail).not.toContain("if (input.notify !== false)");
+  });
+
   it("retries the handoff from submitted Technical Measure completion", () => {
     const technicalMeasures = source("./technical-measures.ts");
     expect(technicalMeasures).toContain(

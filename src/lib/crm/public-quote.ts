@@ -1690,12 +1690,13 @@ export async function acceptPublicQuote(
       });
       await sendEmail({ to: shopEmail, subject: mail.subject, html: mail.html, text: mail.text });
     }
-
-    // Every newly sold job gets a price-redacted installation packet and a
-    // live line-item exception/sign-off form for MTS Installations.
-    const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
-    await createAndSendInstallerForm(supabase, signedQuote.id);
   }
+
+  // Installer delivery is a signed-contract invariant, not an optional
+  // notification. The notify flag only suppresses customer/shop messages in
+  // controlled flows; it must never suppress the MTS installation packet.
+  const { createAndSendInstallerForm } = await import("@/lib/crm/installer-forms");
+  await createAndSendInstallerForm(supabase, signedQuote.id);
 
   return { ok: true, alreadySigned: false, ...(futureQuoteId ? { futureQuoteId, futureJobId } : {}) };
 }
