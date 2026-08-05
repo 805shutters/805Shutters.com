@@ -82,7 +82,8 @@ export const site = {
     "Port Hueneme",
     "Santa Paula",
     "Oak Park",
-    "Fillmore"
+    "Fillmore",
+    "Santa Clarita"
   ]
 };
 

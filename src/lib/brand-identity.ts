@@ -10,7 +10,7 @@ export const brandIdentity = {
   smsHref: "sms:+18058069344",
   email: "805@805shutters.com",
   emailHref: "mailto:805@805shutters.com",
-  serviceArea: "Ventura County",
+  serviceArea: "Ventura County, North Los Angeles County, and Santa Clarita",
   nonAffiliationStatement:
     "805 Shutters is not affiliated with other similarly named window-treatment companies."
 } as const;
