@@ -6109,53 +6109,50 @@ function CommandDashboard({
           error={activityRefreshError}
           onOpenCustomer={onOpenCustomer}
         />
+        <section className="crm-ledger crm-chart-card crm-chart-card--response">
+          <div className="crm-section-head">
+            <div>
+              <p className="eyebrow">Response Time</p>
+              <h2>Lead → Appointment</h2>
+            </div>
+            <strong>{response.count ? `${response.avg.toFixed(1)} days avg` : "—"}</strong>
+          </div>
+          {response.count ? (
+            <div className="crm-bars">
+              {response.buckets.map((bucket) => {
+                const count = bucket.list.length;
+                return (
+                  <button
+                    type="button"
+                    key={bucket.label}
+                    className="crm-bar-row"
+                    disabled={!count}
+                    onClick={() =>
+                      count &&
+                      onDrill({
+                        title: `Response: ${bucket.label}`,
+                        subtitle: "Lead to booked appointment",
+                        placement: "response",
+                        entries: jobsToEntries(bucket.list, rows, { files })
+                      })
+                    }
+                  >
+                    <span className="crm-bar-label">{bucket.label}</span>
+                    <span className="crm-bar-track">
+                      <span className="crm-bar-fill" style={{ width: `${(count / responseMax) * 100}%` }} />
+                    </span>
+                    <span className="crm-bar-count">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="crm-empty">No appointments booked yet to measure response time.</p>
+          )}
+        </section>
       </div>
 
-      {drillPanel(["product", "closing"])}
-
-      <section className="crm-ledger crm-chart-card">
-        <div className="crm-section-head">
-          <div>
-            <p className="eyebrow">Response Time</p>
-            <h2>Lead → Appointment</h2>
-          </div>
-          <strong>{response.count ? `${response.avg.toFixed(1)} days avg` : "—"}</strong>
-        </div>
-        {response.count ? (
-          <div className="crm-bars">
-            {response.buckets.map((bucket) => {
-              const count = bucket.list.length;
-              return (
-                <button
-                  type="button"
-                  key={bucket.label}
-                  className="crm-bar-row"
-                  disabled={!count}
-                  onClick={() =>
-                    count &&
-                    onDrill({
-                      title: `Response: ${bucket.label}`,
-                      subtitle: "Lead to booked appointment",
-                      placement: "response",
-                      entries: jobsToEntries(bucket.list, rows, { files })
-                    })
-                  }
-                >
-                  <span className="crm-bar-label">{bucket.label}</span>
-                  <span className="crm-bar-track">
-                    <span className="crm-bar-fill" style={{ width: `${(count / responseMax) * 100}%` }} />
-                  </span>
-                  <span className="crm-bar-count">{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="crm-empty">No appointments booked yet to measure response time.</p>
-        )}
-      </section>
-
-      {drillPanel(["response"])}
+      {drillPanel(["product", "closing", "response"])}
     </section>
   );
 }
