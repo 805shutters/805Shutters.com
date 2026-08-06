@@ -402,7 +402,6 @@ export function CrmMobileQuotesApp() {
         jobs={data?.jobs || []}
         quotes={data?.quotes || []}
         events={data?.events || []}
-        onOpenOriginalV1Quote={(quoteId) => window.location.assign(`/crm/quote/${quoteId}`)}
         onChanged={() => void refresh()}
       />
     </section>

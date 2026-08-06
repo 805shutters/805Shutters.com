@@ -948,10 +948,6 @@ export function CrmApp({
     }));
   }
 
-  function openOriginalV1Quote(quoteId: string) {
-    window.location.assign(`/crm/quote/${quoteId}`);
-  }
-
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {
     const customerName = entry.customerName || entry.name;
     setDrill(null);
@@ -3008,7 +3004,6 @@ export function CrmApp({
           quotes={quotes}
           events={events}
           onChanged={refresh}
-          onOpenOriginalV1Quote={openOriginalV1Quote}
           onOpenCalendarDate={(date) => {
             setCalendarDate(date);
             setCalendarView("week");
