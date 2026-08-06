@@ -233,6 +233,21 @@ never archives. A failed archive leaves a labeled inbox message for the next
 run to retry. The first run uses the same inbox query, so it safely files the
 existing matching backlog as well as later arrivals.
 
+The LinkedIn profile filing job runs separately every ten minutes through
+`.github/workflows/linkedin-profile-filing.yml`. It considers only exact mail
+from `messages-noreply@linkedin.com` to `805shutters@gmail.com` that contains
+the LinkedIn `email_pymk_02` template marker, a `/comm/in/` profile link, and
+the explicit People You May Know subscription footer. This excludes LinkedIn
+updates, general notifications, message alerts, and non-LinkedIn mail.
+
+Recognized profile recommendations remain in the inbox when the whole word
+`shutters` appears case-insensitively in the subject or recommendation content.
+LinkedIn's standard account footer is excluded from that scan because it
+identifies every email recipient as `Owner at 805 Shutters`. Other recognized
+profile recommendations are labeled `805/LinkedIn Profiles Archived`, the
+label is verified, `INBOX` is removed, and the final state is verified.
+Unreadable, malformed, and unrecognized messages fail safe and remain visible.
+
 Until `GMAIL_805_CLIENT_ID`, `GMAIL_805_CLIENT_SECRET`,
 `GMAIL_805_REFRESH_TOKEN`, and `SUPABASE_SERVICE_ROLE_KEY` are populated
 locally/Vercel-side, the puller can be deployed but cannot read the 805 mailbox

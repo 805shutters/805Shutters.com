@@ -1,0 +1,28 @@
+name: File LinkedIn profile recommendations
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: linkedin-profile-filing
+  cancel-in-progress: false
+
+jobs:
+  file-linkedin-profiles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Label and archive irrelevant LinkedIn profiles
+        env:
+          LINKEDIN_PROFILE_CRON_SECRET: ${{ secrets.LINKEDIN_PROFILE_CRON_SECRET || secrets.MTS_COMPLETED_REPORT_CRON_SECRET || secrets.INSTALLATION_INVOICE_CRON_SECRET || secrets.CRON_SECRET }}
+        run: |
+          test -n "${LINKEDIN_PROFILE_CRON_SECRET}"
+          curl --fail-with-body --silent --show-error \
+            --retry 2 \
+            --connect-timeout 15 \
+            --max-time 120 \
+            --request POST \
+            --header "Authorization: Bearer ${LINKEDIN_PROFILE_CRON_SECRET}" \
+            https://www.805shutters.com/api/cron/linkedin-profile-filing/

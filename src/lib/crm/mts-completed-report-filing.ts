@@ -267,8 +267,9 @@ async function gmailJson<T>(accessToken: string, path: string, fetchImpl: FetchL
   return (await response.json().catch(() => ({}))) as T;
 }
 
-export function createMtsCompletedReportGmailClient(
+export function createFilingGmailClient(
   accessToken: string,
+  gmailQuery: string,
   fetchImpl: FetchLike = fetch
 ): MtsCompletedReportGmailClient {
   return {
@@ -276,7 +277,7 @@ export function createMtsCompletedReportGmailClient(
       const ids: string[] = [];
       let pageToken: string | undefined;
       do {
-        const params = new URLSearchParams({ q: MTS_COMPLETED_REPORT_GMAIL_QUERY, maxResults: "100" });
+        const params = new URLSearchParams({ q: gmailQuery, maxResults: "100" });
         if (pageToken) params.set("pageToken", pageToken);
         const page = await gmailJson<{
           messages?: Array<{ id?: string }>;
@@ -337,4 +338,11 @@ export function createMtsCompletedReportGmailClient(
       );
     },
   };
+}
+
+export function createMtsCompletedReportGmailClient(
+  accessToken: string,
+  fetchImpl: FetchLike = fetch
+): MtsCompletedReportGmailClient {
+  return createFilingGmailClient(accessToken, MTS_COMPLETED_REPORT_GMAIL_QUERY, fetchImpl);
 }
