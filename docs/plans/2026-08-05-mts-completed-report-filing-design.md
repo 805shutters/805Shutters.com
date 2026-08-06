@@ -6,7 +6,7 @@ Automatically file completed MTS Installations service reports delivered to `805
 
 ## Approved approach
 
-Run a dedicated Codex automation every ten minutes in the 805 Shutters Official project. The job uses the connected Gmail account, independently of the existing customer-inquiry monitor and the production CRM email poller.
+Run a dedicated GitHub Actions job every ten minutes in the 805 Shutters Official project. The job calls a protected production route that uses the existing 805 Gmail authorization, independently of the customer-inquiry monitor and the production CRM email poller.
 
 The job shortlists inbox messages by exact sender and recipient, then inspects each message before modifying it. A message qualifies only when all of these checks pass:
 

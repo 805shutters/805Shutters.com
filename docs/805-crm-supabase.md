@@ -33,6 +33,7 @@ INSTALLATION_INVOICE_MAILBOX=805shutters@gmail.com
 INSTALLATION_INVOICE_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d ("MTS Installations" OR "Service Report" OR "work reported complete" OR "COD collected" OR invoice OR "amount due" OR "balance due" OR "invoice total")'
 INSTALLATION_INVOICE_GMAIL_MAX_RESULTS=50
 INSTALLATION_INVOICE_CRON_SECRET=<optional-cron-secret>
+MTS_COMPLETED_REPORT_CRON_SECRET=<optional-dedicated-secret; falls back to installation invoice or shared cron secret>
 ORDER_COGS_MAILBOX=805shutters@gmail.com
 ORDER_COGS_GMAIL_QUERY='to:805shutters@gmail.com newer_than:30d (order OR receipt OR confirmation OR invoice OR "order total" OR "grand total")'
 ORDER_COGS_GMAIL_MAX_RESULTS=50
@@ -204,8 +205,22 @@ The puller:
 Use this Gmail OAuth scope for `GMAIL_805_REFRESH_TOKEN`:
 
 ```text
-https://www.googleapis.com/auth/gmail.readonly
+https://www.googleapis.com/auth/gmail.modify
 ```
+
+The completed-report filing job runs independently every ten minutes through
+`.github/workflows/mts-completed-report-filing.yml`. It accepts only mail from
+`noreply@mtsinstallationsandrepairs.com` to `805shutters@gmail.com` with an
+approved completion subject, a positive completion signal, and a completed
+service-report PDF. Scheduled, incomplete, malformed, and ambiguous messages
+remain in the inbox.
+
+Qualified messages are first labeled `805/MTS Completed Reports`. The job
+verifies that label before removing `INBOX`, then verifies that the label
+remains and `INBOX` is absent. A failed label operation never archives. A
+failed archive leaves a labeled inbox message for the next run to retry. The
+first run uses the same inbox query, so it safely files the existing matching
+backlog as well as later arrivals.
 
 Until `GMAIL_805_CLIENT_ID`, `GMAIL_805_CLIENT_SECRET`,
 `GMAIL_805_REFRESH_TOKEN`, and `SUPABASE_SERVICE_ROLE_KEY` are populated

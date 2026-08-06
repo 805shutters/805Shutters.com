@@ -290,7 +290,7 @@ export async function getBrokeredGmailAccessToken(mailbox: string) {
   throw new CrmAuthError(502, `805 Gmail token broker failed: ${lastDetail}`);
 }
 
-async function getGmailAccessToken() {
+export async function get805GmailAccessToken() {
   const credentials = googleOAuthCredentials();
   if (!credentials) {
     const accessToken = await getBrokeredGmailAccessToken(normalizedMailbox());
@@ -1652,7 +1652,7 @@ export async function processInstallationInvoiceInbox(
   const mailbox = normalizedMailbox(options.mailbox);
   const query = resolveInstallationInvoiceGmailQuery(mailbox, options.query || process.env.INSTALLATION_INVOICE_GMAIL_QUERY);
   const maxResults = maxResultsValue(options.maxResults);
-  const accessToken = await getGmailAccessToken();
+  const accessToken = await get805GmailAccessToken();
   const messageRefs = options.messageIds?.length
     ? options.messageIds.map((id) => ({ id }))
     : await listGmailMessageIds(accessToken, query, maxResults);
