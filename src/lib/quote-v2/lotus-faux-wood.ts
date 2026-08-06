@@ -87,6 +87,21 @@ export function lotusFauxWoodProgramProfile(
   );
 }
 
+export function lotusFauxWoodProgramProfiles(): readonly LotusFauxWoodProgramProfile[] {
+  return Object.values(LOTUS_FAUX_WOOD_PROGRAM_PROFILES);
+}
+
+export function lotusFauxWoodProgramProfileForCode(
+  programCode: string | null | undefined,
+): LotusFauxWoodProgramProfile | null {
+  if (!programCode) return null;
+  return (
+    lotusFauxWoodProgramProfiles().find(
+      (profile) => profile.programCode === programCode,
+    ) ?? null
+  );
+}
+
 export function lotusFauxWoodConfigurationForProgram(
   programId: string | null | undefined,
 ): Record<string, unknown> {

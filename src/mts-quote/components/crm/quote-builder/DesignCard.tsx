@@ -231,6 +231,8 @@ import {
   isLotusFauxWoodProductId,
   lotusFauxWoodConfigurationForProgram,
   lotusFauxWoodProgramProfile,
+  lotusFauxWoodProgramProfileForCode,
+  lotusFauxWoodProgramProfiles,
 } from "@/lib/quote-v2/lotus-faux-wood";
 import {
   ROLLER_MOTORIZATION_SELECTIONS_KEY,
@@ -9468,6 +9470,23 @@ function ShadesAndBlindsOptions({
       return;
     }
 
+    if (lotusFauxWood && field === "json:product_line") {
+      const profile = lotusFauxWoodProgramProfileForCode(
+        typeof value === "string" ? value : null,
+      );
+      if (!profile) return;
+      onUpdateFields({
+        supplier: "Lotus",
+        options_json: {
+          ...currentJson,
+          quote_lab_program_id: profile.programId,
+          catalog_program_id: profile.programId,
+          ...lotusFauxWoodConfigurationForProgram(profile.programId),
+        },
+      });
+      return;
+    }
+
     if (
       productType === "Faux Wood Blinds" &&
       authoritativeV2 &&
@@ -10786,7 +10805,9 @@ function ShadesAndBlindsOptions({
               label: "Lotus Program",
               field: "json:product_line",
               type: "buttons",
-              options: profile ? ([profile.programCode] as const) : ([] as const),
+              options: lotusFauxWoodProgramProfiles().map(
+                (program) => program.programCode,
+              ),
             },
             {
               key: "color",
