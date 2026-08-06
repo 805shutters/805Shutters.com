@@ -16,6 +16,7 @@ const source = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.tsx", impor
 const mobileSource = readFileSync(fileURLToPath(new URL("../CrmMobileQuotesApp.tsx", import.meta.url)), "utf8");
 const quoteWorkspaceSource = readFileSync(fileURLToPath(new URL("../../../mts-quote/QuoteWorkspace.tsx", import.meta.url)), "utf8");
 const crmAppSource = readFileSync(fileURLToPath(new URL("../CrmApp.tsx", import.meta.url)), "utf8");
+const standaloneSource = readFileSync(fileURLToPath(new URL("./QuoteBuilderStandalone.tsx", import.meta.url)), "utf8");
 const originalV1BuilderSource = readFileSync(fileURLToPath(new URL("../quote-v1/QuoteBuilderPanel.tsx", import.meta.url)));
 
 describe("quote-system routing", () => {
@@ -46,6 +47,13 @@ describe("quote-system routing", () => {
       .toBe("3a5f2fc90452f956ad7b5ef729e15e69bedb29ec651b3c3dfd74c43e49d09373");
     expect(crmAppSource).toContain("<OriginalV1QuoteBuilderPanel");
     expect(crmAppSource).toContain('builderVersion === "original-v1"');
+  });
+
+  it("routes V1 selections through the original full-page builder", () => {
+    expect(crmAppSource).toContain("window.location.assign(`/crm/quote/${quoteId}`)");
+    expect(mobileSource).toContain("window.location.assign(`/crm/quote/${quoteId}`)");
+    expect(standaloneSource).toContain('from "@/components/crm/quote-v1/QuoteBuilderPanel"');
+    expect(standaloneSource).not.toContain("embedded");
   });
 
   it("preserves V4 dashboard, builder, pricing, and contract code for rollback", () => {

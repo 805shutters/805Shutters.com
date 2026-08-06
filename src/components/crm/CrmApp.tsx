@@ -949,8 +949,7 @@ export function CrmApp({
   }
 
   function openOriginalV1Quote(quoteId: string) {
-    setBuilderVersion("original-v1");
-    setBuilderQuoteId(quoteId);
+    window.location.assign(`/crm/quote/${quoteId}`);
   }
 
   function openCustomerSearchPage(page: CustomerSearchPage, entry: DrillEntry) {

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
-import { QuoteBuilderPanel } from "@/components/crm/QuoteBuilderPanel";
+import { QuoteBuilderPanel } from "@/components/crm/quote-v1/QuoteBuilderPanel";
 
 /** Dedicated full-page quote builder. Gets the Supabase session client-side
  *  (same as CrmApp), renders the builder full-screen (no CRM chrome). The X
@@ -41,7 +41,6 @@ export function QuoteBuilderStandalone({ quoteId }: { quoteId: string }) {
     <QuoteBuilderPanel
       session={session}
       quoteId={quoteId}
-      embedded
       onClose={() => router.push("/crm")}
       onSwitch={(id) => router.push(`/crm/quote/${id}`)}
     />
