@@ -22,7 +22,8 @@ const activityTabs: Array<{ value: UnifiedActivityFilter; label: string }> = [
   { value: "payments", label: "Payments" },
   { value: "updates", label: "Updates" },
   { value: "notes", label: "Notes" },
-  { value: "follow_ups", label: "Follow-ups" }
+  { value: "follow_ups", label: "Follow-ups" },
+  { value: "signed_contracts", label: "Signed contracts" }
 ];
 
 const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -91,6 +92,7 @@ export function UnifiedActivityFeed({
     () => buildUnifiedActivityFeed({
       activityEvents: snapshot?.activityEvents || [],
       payments: snapshot?.payments || [],
+      signedContracts: snapshot?.signedContracts || [],
       rows,
       jobs,
       quotes,

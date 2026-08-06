@@ -5,7 +5,7 @@ describe("UnifiedActivityFeed", () => {
   it("renders one filtered feed with the approved activity tabs and row fields", () => {
     const source = readFileSync("src/components/crm/UnifiedActivityFeed.tsx", "utf8");
 
-    for (const label of ["All activity", "Payments", "Updates", "Notes", "Follow-ups"]) {
+    for (const label of ["All activity", "Payments", "Updates", "Notes", "Follow-ups", "Signed contracts"]) {
       expect(source).toContain(label);
     }
     expect(source).toContain("event.source");

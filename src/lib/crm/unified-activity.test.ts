@@ -184,14 +184,44 @@ describe("unified CRM activity", () => {
       { id: "1", category: "payment" },
       { id: "2", category: "note" },
       { id: "3", category: "follow_up" },
-      { id: "4", category: "update" }
+      { id: "4", category: "update" },
+      { id: "5", category: "signed_contract" }
     ];
 
-    expect(filterUnifiedActivity(feed as never, "all").map((event) => event.id)).toEqual(["1", "2", "3", "4"]);
+    expect(filterUnifiedActivity(feed as never, "all").map((event) => event.id)).toEqual(["1", "2", "3", "4", "5"]);
     expect(filterUnifiedActivity(feed as never, "payments").map((event) => event.id)).toEqual(["1"]);
     expect(filterUnifiedActivity(feed as never, "notes").map((event) => event.id)).toEqual(["2"]);
     expect(filterUnifiedActivity(feed as never, "follow_ups").map((event) => event.id)).toEqual(["3"]);
     expect(filterUnifiedActivity(feed as never, "updates").map((event) => event.id)).toEqual(["4"]);
+    expect(filterUnifiedActivity(feed as never, "signed_contracts").map((event) => event.id)).toEqual(["5"]);
+  });
+
+  it("lists signed customers newest first and suppresses duplicate signing audit rows", () => {
+    const feed = buildUnifiedActivityFeed({
+      jobs: [
+        { id: "job-old", customer_name: "Older Customer" },
+        { id: "job-new", customer_name: "Newest Customer" }
+      ],
+      quotes: [
+        { id: "quote-old", job_id: "job-old", customer_name: "Older Customer" },
+        { id: "quote-new", job_id: "job-new", customer_name: "Newest Customer" }
+      ],
+      rows: [],
+      customers: [],
+      payments: [],
+      signedContracts: [
+        { id: "quote-old", job_id: "job-old", signed_at: "2026-08-04T18:00:00.000Z", customer_printed_name: "Older Customer", quote_number: "Q-100" },
+        { id: "quote-new", job_id: "job-new", signed_at: "2026-08-05T18:00:00.000Z", customer_printed_name: "Newest Customer", quote_number: "Q-101" }
+      ],
+      activityEvents: [
+        { id: "duplicate", created_at: "2026-08-05T18:00:01.000Z", actor_email: "customer:Newest Customer", entity_type: "quote", entity_id: "quote-new", action: "customer.sign", before_data: null, after_data: null, metadata: {} }
+      ]
+    } as never);
+
+    const signed = filterUnifiedActivity(feed, "signed_contracts");
+    expect(signed.map((event) => event.customerName)).toEqual(["Newest Customer", "Older Customer"]);
+    expect(signed.map((event) => event.description)).toEqual(["Contract Q-101 signed", "Contract Q-100 signed"]);
+    expect(feed.filter((event) => event.entityId === "quote-new")).toHaveLength(1);
   });
 
   it("uses creation time to order same-day ledger payments without changing the paid date", () => {

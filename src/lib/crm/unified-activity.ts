@@ -8,8 +8,8 @@ import type {
   CrmQuote
 } from "@/lib/crm/types";
 
-export type UnifiedActivityCategory = "payment" | "update" | "note" | "follow_up";
-export type UnifiedActivityFilter = "all" | "payments" | "updates" | "notes" | "follow_ups";
+export type UnifiedActivityCategory = "payment" | "update" | "note" | "follow_up" | "signed_contract";
+export type UnifiedActivityFilter = "all" | "payments" | "updates" | "notes" | "follow_ups" | "signed_contracts";
 
 export type UnifiedActivityEvent = {
   id: string;
@@ -31,6 +31,7 @@ export type UnifiedActivityEvent = {
 type UnifiedActivityInput = {
   activityEvents: CrmActivityEvent[];
   payments: CrmBookkeepingPayment[];
+  signedContracts: Array<Pick<CrmQuote, "id" | "job_id" | "signed_at" | "customer_printed_name" | "quote_number">>;
   rows: CrmBookkeepingRow[];
   jobs: CrmJob[];
   quotes: CrmQuote[];
@@ -240,6 +241,8 @@ function paymentCustomer(payment: CrmBookkeepingPayment, maps: ReturnType<typeof
 export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedActivityEvent[] {
   const maps = buildCustomerMaps(input);
   const canonicalPaymentIds = new Set(input.payments.map((payment) => payment.id));
+  const signedContractsInput = input.signedContracts || [];
+  const signedQuoteIds = new Set(signedContractsInput.map((contract) => contract.id));
   const payments = input.payments.map((payment): UnifiedActivityEvent => {
     const source = paymentSource(payment);
     const customer = paymentCustomer(payment, maps);
@@ -261,7 +264,32 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
     };
   });
 
+  const signedContracts = signedContractsInput.flatMap((contract): UnifiedActivityEvent[] => {
+    if (!contract.signed_at) return [];
+    const customerName = maps.quoteCustomers.get(contract.id) ||
+      maps.jobs.get(contract.job_id)?.customer_name ||
+      contract.customer_printed_name ||
+      "Unlinked customer";
+    return [{
+      id: `signed-contract:${contract.id}`,
+      sourceId: contract.id,
+      timestamp: contract.signed_at,
+      category: "signed_contract",
+      source: "Contract",
+      customerName,
+      displayCustomer: customerName,
+      typeLabel: "Signed contract",
+      description: contract.quote_number ? `Contract ${contract.quote_number} signed` : "Contract signed",
+      amount: null,
+      actorEmail: null,
+      entityType: "quote",
+      entityId: contract.id,
+      sortAt: contract.signed_at
+    }];
+  });
+
   const activity = input.activityEvents.flatMap((event): UnifiedActivityEvent[] => {
+    if (event.entity_type === "quote" && event.entity_id && signedQuoteIds.has(event.entity_id) && event.action.toLowerCase() === "customer.sign") return [];
     if (
       event.entity_type === "bookkeeping_payment" &&
       event.entity_id &&
@@ -287,7 +315,7 @@ export function buildUnifiedActivityFeed(input: UnifiedActivityInput): UnifiedAc
     }];
   });
 
-  return [...payments, ...activity].sort((left, right) =>
+  return [...payments, ...signedContracts, ...activity].sort((left, right) =>
     sortTimestamp(right.sortAt) - sortTimestamp(left.sortAt) || right.id.localeCompare(left.id)
   );
 }
@@ -298,6 +326,7 @@ export function filterUnifiedActivity(feed: UnifiedActivityEvent[], filter: Unif
     filter === "payments" ? "payment" :
     filter === "notes" ? "note" :
     filter === "follow_ups" ? "follow_up" : "update";
+  if (filter === "signed_contracts") return feed.filter((event) => event.category === "signed_contract");
   return feed.filter((event) => event.category === category);
 }
 

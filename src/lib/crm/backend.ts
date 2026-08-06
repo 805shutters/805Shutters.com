@@ -1596,7 +1596,7 @@ export function vendorOrderTaskFromDraftRow(value: unknown): CrmVendorOrderTask 
 }
 
 export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Promise<CrmActivitySnapshot> {
-  const [activityResult, paymentsResult] = await Promise.all([
+  const [activityResult, paymentsResult, signedContractsResult] = await Promise.all([
     supabase
       .from("crm_activity_events")
       .select("id,created_at,actor_auth_user_id,actor_email,entity_type,entity_id,action,before_data,after_data,metadata")
@@ -1606,20 +1606,28 @@ export async function loadCrmActivitySnapshot(supabase: CrmSupabaseClient): Prom
       .from("crm_quote_bookkeeping_payments")
       .select("*")
       .order("paid_at", { ascending: false, nullsFirst: false })
-      .limit(800)
+      .limit(800),
+    supabase
+      .from("crm_quotes")
+      .select("id,job_id,signed_at,customer_printed_name,quote_number")
+      .not("signed_at", "is", null)
+      .order("signed_at", { ascending: false, nullsFirst: false })
+      .limit(1000)
   ]);
 
-  if (activityResult.error && paymentsResult.error) {
+  if (activityResult.error && paymentsResult.error && signedContractsResult.error) {
     throw new CrmAuthError(502, "CRM activity is temporarily unavailable.");
   }
 
   const warnings: string[] = [];
   if (activityResult.error) warnings.push("CRM updates are temporarily unavailable.");
   if (paymentsResult.error) warnings.push("Payment activity is temporarily unavailable.");
+  if (signedContractsResult.error) warnings.push("Signed contract activity is temporarily unavailable.");
 
   return {
     activityEvents: (activityResult.error ? [] : activityResult.data || []) as CrmActivityEvent[],
     payments: (paymentsResult.error ? [] : paymentsResult.data || []) as CrmBookkeepingPayment[],
+    signedContracts: (signedContractsResult.error ? [] : signedContractsResult.data || []) as CrmActivitySnapshot["signedContracts"],
     warnings
   };
 }
