@@ -28,6 +28,9 @@
       ],
       "@mts/*": [
         "./src/mts-quote/*"
+      ],
+      "@mts-v1/*": [
+        "./src/mts-quote-v1/*"
       ]
     }
   },
