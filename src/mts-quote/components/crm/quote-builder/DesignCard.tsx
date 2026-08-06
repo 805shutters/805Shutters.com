@@ -3569,10 +3569,7 @@ export function getStandardShutterGridOptions(
       },
     ];
 
-    if (
-      authoritativeV2 &&
-      String(onyxOptions.size_type || "") === "W - Window Size"
-    ) {
+    if (String(onyxOptions.size_type || "") === "W - Window Size") {
       const frameTypeIndex = options.findIndex(
         (option) => option.field === "json:frame_type",
       );
@@ -3814,8 +3811,7 @@ export function getStandardShutterGridOptions(
       type: "buttons",
       options: frameOptions,
     },
-    ...(authoritativeV2 &&
-    String(normanOptions.size_type || "") === "W - Window Size"
+    ...(String(normanOptions.size_type || "") === "W - Window Size"
       ? [
           {
             key: "frame_sides",
@@ -4505,6 +4501,10 @@ export function DesignCard({
     authoritativeV2 && typeof currentOptions.authoritative_price_error === "string"
       ? currentOptions.authoritative_price_error.trim()
       : "";
+  const legacyPricingBlockReason =
+    !authoritativeV2 && typeof currentOptions.pricing_block_reason === "string"
+      ? currentOptions.pricing_block_reason.trim()
+      : "";
   const discountPercent = Number(currentOptions.discount_percent) || 0;
   const hasDiscount = Boolean(currentDesign && discountPercent > 0);
 
@@ -4546,7 +4546,7 @@ export function DesignCard({
   const handleVariantChange = (variant: string) => {
     userSelectedVariantRef.current = true;
     setActiveVariant(variant);
-    if (authoritativeV2 && designs.some((design) => design.variant === variant)) {
+    if (designs.some((design) => design.variant === variant)) {
       onUpdateDesign({
         line_item_id: lineItem.id,
         variant,
@@ -5194,6 +5194,7 @@ export function DesignCard({
           unit_price: calculatedPrice,
           options_json: {
             ...opts,
+            pricing_block_reason: null,
             base_price: basePrice,
             surcharge_total: surchargeTotal,
             pricing_method: priceBreakdown.pricingMethod,
@@ -5216,6 +5217,38 @@ export function DesignCard({
                   discount_amount: discount.discountAmount,
                 }
               : {}),
+          },
+        });
+      }
+    } else if (isShutters) {
+      const frameResolution = resolveShutterPricingDimensions({
+        supplier: currentDesign.supplier || undefined,
+        width: widthInches,
+        height: heightInches,
+        frameType: opts?.frame_type as string | undefined,
+        frameSides: opts?.frame_sides as string | number | undefined,
+        mountType:
+          (opts?.onyx_mount as string | undefined) ||
+          currentDesign.mount_type ||
+          undefined,
+        measurementBasis: opts?.size_type as string | undefined,
+      });
+      const pricingBlockReason =
+        frameResolution && !frameResolution.supported
+          ? frameResolution.reason || "incomplete_shutter_configuration"
+          : "incomplete_shutter_configuration";
+      if (
+        Number(currentDesign.unit_price) !== 0 ||
+        opts.pricing_block_reason !== pricingBlockReason
+      ) {
+        updateFields({
+          unit_price: 0,
+          options_json: {
+            ...opts,
+            base_price: 0,
+            surcharge_total: 0,
+            pricing_method: "none",
+            pricing_block_reason: pricingBlockReason,
           },
         });
       }
@@ -5667,6 +5700,23 @@ export function DesignCard({
               <span>Authoritative pricing blocked</span>
             </div>
             <p className="mt-1">{authoritativePriceError}</p>
+          </div>
+        )}
+
+        {legacyPricingBlockReason && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900"
+          >
+            <div className="flex items-center gap-2 font-bold">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>Pricing blocked</span>
+            </div>
+            <p className="mt-1">
+              {legacyPricingBlockReason === "missing_frame_sides"
+                ? "Choose whether the shutter frame has 3 or 4 sides before pricing."
+                : "Complete the shutter product and frame configuration before pricing."}
+            </p>
           </div>
         )}
 

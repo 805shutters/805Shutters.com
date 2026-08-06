@@ -22,6 +22,8 @@ import {
 } from "@/lib/quote-lab/types";
 import {
   QUOTE_V2_SELECTED_DESIGN_MARKER,
+  hasCompletePersistedDesignSelections,
+  projectPersistedDesignSelections,
   resolveSelectedQuoteDesign,
 } from "@/lib/quote-v2/selected-design";
 import { isPolarQuoteOnlyProductId } from "@/lib/quote/quote-only-policy";
@@ -608,30 +610,41 @@ export function QuoteBuilder() {
 
     const { data: latestLineItems, error: lineItemsError } = await (supabase as any)
       .from("sales_quote_line_items")
-      .select("id, quantity")
+      .select("id, quantity, selected_design_id")
       .eq("quote_id", activeQuoteId);
     if (lineItemsError) throw lineItemsError;
 
     const latestLineItemIds = (latestLineItems ?? []).map((item: SalesQuoteLineItem) => item.id);
     let latestDesigns: Pick<
       SalesQuoteDesign,
-      "line_item_id" | "variant" | "unit_price" | "options_json"
+      "id" | "line_item_id" | "variant" | "unit_price" | "options_json"
     >[] = [];
 
     if (latestLineItemIds.length > 0) {
       const { data: designRows, error: designsError } = await (supabase as any)
         .from("sales_quote_designs")
-        .select("line_item_id, variant, unit_price, options_json")
+        .select("id, line_item_id, variant, unit_price, options_json")
         .in("line_item_id", latestLineItemIds);
       if (designsError) throw designsError;
       latestDesigns = designRows ?? [];
     }
 
-    const totalMode = authoritativeV2 ? "authoritative_v2" : "legacy";
-    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], latestDesigns, {
+    const projectedDesigns = projectPersistedDesignSelections(
+      latestDesigns as SalesQuoteDesign[],
+      latestLineItems ?? [],
+    );
+    const totalMode =
+      authoritativeV2 ||
+      hasCompletePersistedDesignSelections(
+        latestLineItems ?? [],
+        latestDesigns as SalesQuoteDesign[],
+      )
+        ? "authoritative_v2"
+        : "legacy";
+    const total = calculateQuoteDesignSubtotal(latestLineItems ?? [], projectedDesigns, {
       mode: totalMode,
     });
-    if (!shouldPersistQuoteDesignSubtotal(latestDesigns, { ...options, mode: totalMode })) return;
+    if (!shouldPersistQuoteDesignSubtotal(projectedDesigns, { ...options, mode: totalMode })) return;
 
     const { error: quoteError } = await (supabase as any)
       .from("sales_quotes")
@@ -703,15 +716,7 @@ export function QuoteBuilder() {
         .in("line_item_id", lineItemIds);
       if (error) throw error;
       const rows = (data || []) as SalesQuoteDesign[];
-      if (!authoritativeV2) return rows;
-      const selectedByLine = new Map(
-        lineItems.map((line) => [line.id, line.selected_design_id ?? null]),
-      );
-      return rows.map((design) => ({
-        ...design,
-        [QUOTE_V2_SELECTED_DESIGN_MARKER]:
-          selectedByLine.get(design.line_item_id) === design.id,
-      }));
+      return projectPersistedDesignSelections(rows, lineItems);
     },
     enabled: lineItemIds.length > 0,
   });
@@ -962,11 +967,12 @@ export function QuoteBuilder() {
         sort_order: lineItems.length,
       });
       if (error) throw error;
+      const designId = crypto.randomUUID();
       const { error: designError } = await (supabase as any)
         .from("sales_quote_designs")
         .upsert(
           {
-            id: crypto.randomUUID(),
+            id: designId,
             line_item_id: lineItemId,
             variant: "A",
             product_type: item.product_type,
@@ -980,6 +986,17 @@ export function QuoteBuilder() {
           .delete()
           .eq("id", lineItemId);
         throw designError;
+      }
+      const { error: selectionError } = await (supabase as any)
+        .from("sales_quote_line_items")
+        .update({ selected_design_id: designId })
+        .eq("id", lineItemId);
+      if (selectionError) {
+        await (supabase as any)
+          .from("sales_quote_line_items")
+          .delete()
+          .eq("id", lineItemId);
+        throw selectionError;
       }
     },
     onSuccess: async () => {
@@ -1312,10 +1329,19 @@ export function QuoteBuilder() {
         );
         return;
       }
-      const { error } = await (supabase as any).from("sales_quote_designs").upsert(design, {
-        onConflict: "line_item_id,variant",
-      });
+      const { data: savedDesign, error } = await (supabase as any)
+        .from("sales_quote_designs")
+        .upsert(design, { onConflict: "line_item_id,variant" })
+        .select("id")
+        .single();
       if (error) throw error;
+      if (!savedDesign?.id) throw new Error("Saved design selection did not return an ID.");
+      const { error: selectionError } = await (supabase as any)
+        .from("sales_quote_line_items")
+        .update({ selected_design_id: savedDesign.id })
+        .eq("id", design.line_item_id);
+      if (selectionError) throw selectionError;
+      return savedDesign.id as string;
     },
     onMutate: async (design) => {
       await queryClient.cancelQueries({ queryKey: designsQueryKey });
@@ -1327,17 +1353,15 @@ export function QuoteBuilder() {
         );
 
         const markSelected = (rows: SalesQuoteDesign[]) =>
-          authoritativeV2
-            ? rows.map((row) =>
-                row.line_item_id === design.line_item_id
-                  ? {
-                      ...row,
-                      [QUOTE_V2_SELECTED_DESIGN_MARKER]:
-                        row.variant === design.variant,
-                    }
-                  : row,
-              )
-            : rows;
+          rows.map((row) =>
+            row.line_item_id === design.line_item_id
+              ? {
+                  ...row,
+                  [QUOTE_V2_SELECTED_DESIGN_MARKER]:
+                    row.variant === design.variant,
+                }
+              : row,
+          );
 
         if (index === -1) {
           return markSelected([
@@ -1371,6 +1395,9 @@ export function QuoteBuilder() {
       }
       queryClient.invalidateQueries({
         queryKey: designsQueryKey,
+      });
+      queryClient.invalidateQueries({
+        queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
         queryKey: quoteQueryKey,

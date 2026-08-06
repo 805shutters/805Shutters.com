@@ -825,7 +825,7 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('aria-label="Authoritative price"');
     expect(source).toContain("if (authoritativeV2) return;");
     expect(source).toContain("Authoritative pricing blocked");
-    expect(source).toContain("authoritativeV2 && designs.some");
+    expect(source).toContain("if (designs.some((design) => design.variant === variant))");
     expect(source).toContain("{!authoritativeV2 && (\n            <SurchargePicker");
     expect(source).toContain("function SurchargePicker(");
   });
@@ -1357,7 +1357,7 @@ describe("V2 exact-interface contract", () => {
     expect(source).toContain('field: `json:onyx_t_post_${tPostIndex}_position_inches`');
   });
 
-  it("requires Onyx frame sides only for an authoritative window-size selection", () => {
+  it("requires Onyx frame sides for every window-size pricing path", () => {
     const fields = (
       sizeType: "W - Window Size" | "F - Frame to Frame",
       authoritativeV2: boolean,
@@ -1370,7 +1370,7 @@ describe("V2 exact-interface contract", () => {
 
     expect(fields("W - Window Size", true)).toContain("json:frame_sides");
     expect(fields("F - Frame to Frame", true)).not.toContain("json:frame_sides");
-    expect(fields("W - Window Size", false)).not.toContain("json:frame_sides");
+    expect(fields("W - Window Size", false)).toContain("json:frame_sides");
   });
 
   it("distinguishes an explicitly entered zero from a cleared numeric field", () => {

@@ -47,10 +47,15 @@ import {
   buildQuoteInstallerNotesMeta,
   getQuoteEmailNote,
   parseQuoteAdminControls,
+  selectedQuoteTotalDesigns,
   shouldPersistQuoteDesignSubtotal,
   type QuoteAdminControls,
   type QuoteExtraFee,
 } from "@mts/lib/quoteTotals";
+import {
+  hasCompletePersistedDesignSelections,
+  projectPersistedDesignSelections,
+} from "@/lib/quote-v2/selected-design";
 import { getAccountName, ACCOUNT_IDS } from "@mts/lib/accounts";
 import { PAYMENT_METHODS, getQuoteColor } from "@mts/lib/quoteConstants";
 import { getLineItemProductImage } from "@mts/lib/quoteProductImages";
@@ -77,6 +82,20 @@ function hasOnyxShutterProducts(
 
     return supplier === "onyx" && productType === "shutters";
   });
+}
+
+function effectiveContractDesigns(
+  lineItems: SalesQuoteLineItem[],
+  designs: SalesQuoteDesign[],
+): { designs: SalesQuoteDesign[]; selectionAware: boolean } {
+  if (!hasCompletePersistedDesignSelections(lineItems, designs)) {
+    return { designs, selectionAware: false };
+  }
+  const projected = projectPersistedDesignSelections(designs, lineItems);
+  return {
+    designs: selectedQuoteTotalDesigns(projected),
+    selectionAware: true,
+  };
 }
 
 // Account-specific contract header branding
@@ -283,7 +302,10 @@ export function QuoteContract() {
     quoteDesigns: SalesQuoteDesign[],
     controls: QuoteAdminControls
   ) => {
-    const controlledSubtotal = calculateQuoteDesignSubtotal(items, quoteDesigns);
+    const effective = effectiveContractDesigns(items, quoteDesigns);
+    const controlledSubtotal = calculateQuoteDesignSubtotal(items, effective.designs, {
+      mode: effective.selectionAware ? "authoritative_v2" : "legacy",
+    });
     return calculateQuoteTotalBreakdown(controlledSubtotal, controls).total;
   };
 
@@ -295,7 +317,12 @@ export function QuoteContract() {
       }),
     };
 
-    if (shouldPersistQuoteDesignSubtotal(designs)) {
+    const effective = effectiveContractDesigns(lineItems, designs);
+    if (
+      shouldPersistQuoteDesignSubtotal(effective.designs, {
+        mode: effective.selectionAware ? "authoritative_v2" : "legacy",
+      })
+    ) {
       updates.total_amount = calculateControlledTotal(lineItems, designs, controls);
     }
 
@@ -464,7 +491,10 @@ export function QuoteContract() {
   });
 
   // Calculate totals with admin controls
-  const subtotal = calculateQuoteDesignSubtotal(lineItems, designs);
+  const effectiveActiveDesigns = effectiveContractDesigns(lineItems, designs);
+  const subtotal = calculateQuoteDesignSubtotal(lineItems, effectiveActiveDesigns.designs, {
+    mode: effectiveActiveDesigns.selectionAware ? "authoritative_v2" : "legacy",
+  });
   const totals = calculateQuoteTotalBreakdown(subtotal, adminControls);
   const totalAmount = totals.total;
 
@@ -478,7 +508,9 @@ export function QuoteContract() {
   const companyName = quote ? getAccountName(quote.account_id) : "805 Shutters";
   const headerInfo = quote ? CONTRACT_HEADERS[quote.account_id] : undefined;
   const contractLineItems = hasMultipleQuotes ? allGroupLineItems : lineItems;
-  const contractDesigns = hasMultipleQuotes ? allGroupDesigns : designs;
+  const contractDesigns = hasMultipleQuotes
+    ? allGroupDesigns
+    : effectiveActiveDesigns.designs;
   const includesOnyxShutters = hasOnyxShutterProducts(contractLineItems, contractDesigns);
   const workmanshipWarrantyNumber = includesOnyxShutters ? 3 : 2;
   const serviceFeesNumber = workmanshipWarrantyNumber + 1;
@@ -802,10 +834,14 @@ export function QuoteContract() {
         const gqLineItems = hasMultipleQuotes
           ? allGroupLineItems.filter((li) => li.quote_id === gq.id)
           : lineItems;
-        const gqDesigns = hasMultipleQuotes
+        const rawGqDesigns = hasMultipleQuotes
           ? allGroupDesigns.filter((d) => gqLineItems.some((li) => li.id === d.line_item_id))
           : designs;
-        const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns);
+        const effectiveGqDesigns = effectiveContractDesigns(gqLineItems, rawGqDesigns);
+        const gqDesigns = effectiveGqDesigns.designs;
+        const gqSubtotal = calculateQuoteDesignSubtotal(gqLineItems, gqDesigns, {
+          mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
+        });
         const gqTotals = calculateQuoteTotalBreakdown(gqSubtotal, adminControls);
         const gqDiscountAmt = gqTotals.discountAmount;
         const gqTaxAmt = gqTotals.taxAmount;
@@ -833,7 +869,9 @@ export function QuoteContract() {
             <CardContent className="space-y-3">
               {gqLineItems.map((item) => {
                 const itemDesigns = gqDesigns.filter((d) => d.line_item_id === item.id);
-                const itemTotal = calculateLineItemDesignTotal(item, itemDesigns);
+                const itemTotal = calculateLineItemDesignTotal(item, itemDesigns, {
+                  mode: effectiveGqDesigns.selectionAware ? "authoritative_v2" : "legacy",
+                });
                 const productImage = getLineItemProductImage(item, itemDesigns);
                 const itemDimensions = formatDimensionsOrNull(item);
                 return (
