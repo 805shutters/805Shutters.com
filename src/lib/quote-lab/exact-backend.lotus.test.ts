@@ -215,6 +215,53 @@ describe("Quote Lab Lotus manufacturer selection", () => {
     expect(result.sendability.sendable).toBe(false);
   });
 
+  it("reprices Miguel's complete three-blind FTX opening through the saved builder interface", () => {
+    const splitLine = {
+      ...line("Faux Wood Blinds"),
+      room_name: "Bedroom 1",
+      width_whole: 94,
+      width_fraction: "1/2",
+      height_whole: 34,
+      height_fraction: "1/4",
+    };
+    const splitDesign = {
+      ...design({
+        quote_v2_backend: true,
+        catalog_product_id: "lotus_faux_wood_blinds",
+        quote_lab_product_id: "lotus_faux_wood_blinds",
+        catalog_program_id: "lotus_ftx_2in_snow_white_custom",
+        quote_lab_program_id: "lotus_ftx_2in_snow_white_custom",
+        lotus_configuration_version: "lotus-faux-v2",
+        lotus_program_code: "FTX",
+        product_line: "FTX",
+        slat_size: '2"',
+        color: "Snow White",
+        lotus_finish: "Smooth",
+        lotus_blind_count: 3,
+        lotus_blind_1_width_inches: 31.5,
+        lotus_blind_2_width_inches: 31.5,
+        lotus_blind_3_width_inches: 31.5,
+      }),
+      product_type: "Faux Wood Blinds",
+      supplier: "Lotus",
+      mount_type: "Inside Mount",
+    } as SalesQuoteDesign;
+    const result = repriceExactQuoteBuilder({
+      lines: [splitLine],
+      designs: [splitDesign],
+      selectedVariantByLine: { [splitLine.id]: "A" },
+    });
+    expect(result.designs[0]?.result).toMatchObject({
+      ok: true,
+      unitPrice: 202.35,
+      total: 202.35,
+    });
+    expect(result.designs[0]?.costResult).toMatchObject({
+      ok: true,
+      wholesaleUnitCost: 80.94,
+    });
+  });
+
   it("prices every line in a full 40-line Lotus quote with independent x3 retail", () => {
     const lines = Array.from({ length: 40 }, (_, index) => ({
       ...line("Mini Blinds"),

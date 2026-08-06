@@ -2508,6 +2508,18 @@ function stripPriceFreezeMetadata(options: Record<string, unknown>): Record<stri
   return rest;
 }
 
+function lotusFauxWoodComponentWidths(
+  options: Record<string, unknown>,
+): readonly number[] | undefined {
+  if (Number(options.lotus_blind_count) !== 3) return undefined;
+  const widths = [1, 2, 3].map((index) =>
+    Number(options[`lotus_blind_${index}_width_inches`]),
+  );
+  return widths.every((width) => Number.isFinite(width) && width > 0)
+    ? widths
+    : undefined;
+}
+
 function withoutFabricMetadata(
   options: Record<string, unknown>,
   keys: FabricMetadataKeys,
@@ -4706,7 +4718,9 @@ export function DesignCard({
       stringOption(currentOptions, "quote_lab_program_id") ||
       stringOption(currentOptions, PRODUCT_COLOR_PROGRAM_DETAIL),
     fabricName: currentDesign?.fabric,
-    widthInches: widthIn,
+    widthInches: Math.max(
+      ...(lotusFauxWoodComponentWidths(currentOptions) ?? [widthIn]),
+    ),
     heightInches: heightIn,
   });
   const manufacturerSpecWarnings = [
@@ -4903,6 +4917,7 @@ export function DesignCard({
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
+      componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
@@ -4999,6 +5014,7 @@ export function DesignCard({
       cellSize,
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined,
+      componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
     const basePrice = priceBreakdown.price;
     if (basePrice === null) return;
@@ -5150,6 +5166,7 @@ export function DesignCard({
       cellSize, // Pass cell size for honeycomb routing
       slatSize: opts?.slat_size as string | undefined,
       fabric: currentDesign.fabric || undefined, // Pass fabric for all fabric-based routing
+      componentWidthsInches: lotusFauxWoodComponentWidths(opts),
     });
     const basePrice = priceBreakdown.price;
 

@@ -39,4 +39,24 @@ describe("legacy quote display isolation for Lotus faux wood", () => {
       pricingMethod: "none",
     });
   });
+
+  it("sums three independent FTX grid cells for a split opening", () => {
+    const result = getProductPriceBreakdown({
+      productType: "Faux Wood Blinds",
+      supplier: "Lotus",
+      productLine: "FTX",
+      catalogProgramId: "lotus_ftx_2in_snow_white_custom",
+      width: 94.5,
+      height: 34.25,
+      componentWidthsInches: [31.5, 31.5, 31.5],
+    });
+
+    expect(result).toMatchObject({
+      price: 202.35,
+      gridPrice: 202.35,
+      matchedWidth: 35,
+      matchedHeight: 36,
+      pricingMethod: "grid",
+    });
+  });
 });

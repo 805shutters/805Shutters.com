@@ -195,6 +195,7 @@ export function applyFixedSurcharges(basePrice: number, fixedAmounts: number[]):
 export interface PriceLookupOptions {
   width: number; // inches
   height: number; // inches
+  componentWidthsInches?: readonly number[];
   priceGroup?: string;
   productLine?: string;
   fabricGroup?: string;
@@ -513,6 +514,55 @@ function catalogGridBreakdown(
   };
 }
 
+function catalogComponentGridBreakdown(
+  options: ProductPricingOptions,
+  productId: string,
+  programId: string,
+): ProductPriceBreakdown {
+  const componentWidths = options.componentWidthsInches?.filter(
+    (width) => Number.isFinite(width) && width > 0,
+  );
+  if (!componentWidths?.length) {
+    return catalogGridBreakdown(options, productId, programId);
+  }
+
+  const components = componentWidths.map((width) =>
+    catalogGridBreakdown(
+      { ...options, width, componentWidthsInches: undefined },
+      productId,
+      programId,
+    ),
+  );
+  if (components.some((component) => component.price === null)) {
+    return {
+      productType: options.productType,
+      price: null,
+      gridKey: programId,
+      pricingMethod: "grid",
+    };
+  }
+
+  const price =
+    Math.round(
+      components.reduce((sum, component) => sum + (component.price ?? 0), 0) * 100,
+    ) / 100;
+  const matchedWidths = components.flatMap((component) =>
+    component.matchedWidth === undefined ? [] : [component.matchedWidth],
+  );
+  const matchedHeights = components.flatMap((component) =>
+    component.matchedHeight === undefined ? [] : [component.matchedHeight],
+  );
+  return {
+    productType: options.productType,
+    price,
+    gridPrice: price,
+    gridKey: programId,
+    ...(matchedWidths.length ? { matchedWidth: Math.max(...matchedWidths) } : {}),
+    ...(matchedHeights.length ? { matchedHeight: Math.max(...matchedHeights) } : {}),
+    pricingMethod: "grid",
+  };
+}
+
 export function getProductPriceBreakdown(options: ProductPricingOptions): ProductPriceBreakdown {
   const { productType } = options;
 
@@ -583,7 +633,7 @@ export function getProductPriceBreakdown(options: ProductPricingOptions): Produc
     case "Faux Wood Blinds": {
       if (options.supplier?.trim().toLowerCase() === "lotus") {
         return options.catalogProgramId
-          ? catalogGridBreakdown(
+          ? catalogComponentGridBreakdown(
               options,
               "lotus_faux_wood_blinds",
               options.catalogProgramId,
