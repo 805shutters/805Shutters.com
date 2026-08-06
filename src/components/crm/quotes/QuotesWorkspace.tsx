@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import type { CrmCalendarEvent, CrmJob, CrmQuote } from "@/lib/crm/types";
-import { QuoteWorkspace, type QuoteWorkspaceOpenRequest, type QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
-
-type QuoteVersion = "v1" | "v4";
+import type { QuoteWorkspaceOpenRequest, QuoteWorkspaceOpenTab } from "@mts/QuoteWorkspace";
+import { QuotesWorkspace as HistoricalQuotesWorkspace } from "./QuotesWorkspace.legacy";
 
 type Props = {
   session: Session;
@@ -18,37 +16,19 @@ type Props = {
   onChanged: () => void;
 };
 
-export function QuotesWorkspace({
-  jobs,
-  quotes,
-  events,
-  openRequest,
-  onOpenCalendarDate,
-  onOpenCrmQuote,
-  onChanged,
-}: Props) {
-  const [version, setVersion] = useState<QuoteVersion>("v1");
-
+/**
+ * Restore the historical CRM quote experience used before the quote-workspace
+ * cutover. Stored V2/V4 records and source remain untouched; this is a
+ * reversible route-only change. Existing quotes continue to open the dedicated
+ * /crm/quote/[id] editor, whose Copy Current action preserves saved snapshots.
+ */
+export function QuotesWorkspace({ session, jobs, quotes, onChanged }: Props) {
   return (
-    <div>
-      <div className="crm-form-actions" aria-label="Quote builder version">
-        <strong>{version === "v1" ? "V1 quote builder" : "V4 quote builder"}</strong>
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => setVersion(version === "v1" ? "v4" : "v1")}
-        >
-          {version === "v1" ? "Open V4 — In progress" : "Return to V1"}
-        </button>
-      </div>
-      <QuoteWorkspace
-        crmJobs={jobs}
-        crmQuotes={quotes}
-        crmCalendarEvents={events}
-        openRequest={openRequest}
-        onOpenCrmCalendarDate={onOpenCalendarDate}
-        onOpenCrmQuote={onOpenCrmQuote}
-      />
-    </div>
+    <HistoricalQuotesWorkspace
+      session={session}
+      jobs={jobs}
+      quotes={quotes}
+      onChanged={onChanged}
+    />
   );
 }
