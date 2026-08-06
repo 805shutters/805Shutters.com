@@ -1007,6 +1007,9 @@ export function QuoteBuilder() {
         queryKey: lineItemsQueryKey,
       });
       queryClient.invalidateQueries({
+        queryKey: designsQueryKey,
+      });
+      queryClient.invalidateQueries({
         queryKey: quoteQueryKey,
       });
     },
