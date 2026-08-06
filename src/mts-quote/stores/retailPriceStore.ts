@@ -5,8 +5,40 @@ import { NORMAN_SHUTTER_PROGRAMS, ONYX_SHUTTER_PROGRAMS } from "@mts/lib/pricing
 // Key format: "supplier:programName" e.g. "Onyx:Painted Basswood"
 type RetailPriceKey = string;
 
+const ONYX_POLY_COMPOSITE_KEY = "Onyx:Poly Composite";
+const STALE_ONYX_POLY_COMPOSITE_CENTS = 2900;
+
 function makeKey(supplier: string, program: string): RetailPriceKey {
   return `${supplier}:${program}`;
+}
+
+/**
+ * The V4 builder can retain a stale $29/sqft value under the independent Onyx
+ * Poly Composite key. Drop only that known-bad value so the
+ * source-backed $31/sqft program default is used; preserve every other staff
+ * override.
+ */
+export function sanitizeRetailPriceOverrides(
+  overrides: Record<RetailPriceKey, number> | null | undefined,
+): Record<RetailPriceKey, number> {
+  const next = { ...(overrides ?? {}) };
+  if (next[ONYX_POLY_COMPOSITE_KEY] === STALE_ONYX_POLY_COMPOSITE_CENTS) {
+    delete next[ONYX_POLY_COMPOSITE_KEY];
+  }
+  return next;
+}
+
+export function resolveRetailPrice(
+  supplier: string,
+  program: string,
+  overrides: Record<RetailPriceKey, number> | null | undefined,
+): number | null {
+  const key = makeKey(supplier, program);
+  const sanitized = sanitizeRetailPriceOverrides(overrides);
+  const overrideCents = sanitized[key];
+  return overrideCents === undefined
+    ? getDefaultRetailPrice(supplier, program)
+    : Math.round(overrideCents) / 100;
 }
 
 interface RetailPriceStore {
@@ -40,15 +72,8 @@ export const useRetailPriceStore = create<RetailPriceStore>()(
     (set, get) => ({
       overrides: {},
 
-      getRetailPrice: (supplier, program) => {
-        const key = makeKey(supplier, program);
-        const overrideCents = get().overrides[key];
-        if (overrideCents !== undefined) {
-          // Convert cents back to dollars: integer division then restore decimals
-          return Math.round(overrideCents) / 100;
-        }
-        return getDefaultRetailPrice(supplier, program);
-      },
+      getRetailPrice: (supplier, program) =>
+        resolveRetailPrice(supplier, program, get().overrides),
 
       setRetailPrice: (supplier, program, priceDollars) => {
         const key = makeKey(supplier, program);
@@ -71,6 +96,14 @@ export const useRetailPriceStore = create<RetailPriceStore>()(
     }),
     {
       name: "retail-price-overrides",
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState ?? {}) as Partial<RetailPriceStore>;
+        return {
+          ...currentState,
+          ...persisted,
+          overrides: sanitizeRetailPriceOverrides(persisted.overrides),
+        };
+      },
     }
   )
 );

@@ -7,6 +7,7 @@ import {
   resolveShutterPricingDimensions,
 } from "./pricingEngine";
 import { NORMAN_SHUTTER_PROGRAMS, ONYX_SHUTTER_PROGRAMS } from "./pricingData";
+import { resolveRetailPrice } from "../stores/retailPriceStore";
 
 describe("MTS quote shutter square-foot defaults", () => {
   it("shows the same whole-square-foot row selected by pricing", () => {
@@ -20,6 +21,23 @@ describe("MTS quote shutter square-foot defaults", () => {
     const poly = ONYX_SHUTTER_PROGRAMS.find((program) => program.name === "Poly Composite");
     expect(poly?.wholesalePrice).toBe(12);
     expect(poly && calculateShutterPrice(poly, 30, 60, false)).toBe(156);
+  });
+
+  it("migrates the stale $29 Poly Composite override before calculating retail", () => {
+    const retailPriceOverride = resolveRetailPrice("Onyx", "Poly Composite", {
+      "Onyx:Poly Composite": 2900,
+    });
+
+    expect(retailPriceOverride).toBe(31);
+    expect(
+      getShutterPrice({
+        supplier: "Onyx",
+        program: "Poly Composite",
+        width: 94.5,
+        height: 34.25,
+        retailPriceOverride: retailPriceOverride ?? undefined,
+      }),
+    ).toBe(713);
   });
 
   it("uses the configured shutter retail square-foot rates", () => {
