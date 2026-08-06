@@ -13,6 +13,7 @@ const legacySource = readFileSync(fileURLToPath(new URL("./QuotesWorkspace.legac
 const standaloneSource = readFileSync(fileURLToPath(new URL("./QuoteBuilderStandalone.tsx", import.meta.url)), "utf8");
 const builderSource = readFileSync(fileURLToPath(new URL("../QuoteBuilderPanel.tsx", import.meta.url)), "utf8");
 const groupSource = readFileSync(fileURLToPath(new URL("../../../lib/crm/quote-groups.ts", import.meta.url)), "utf8");
+const globalStyles = readFileSync(fileURLToPath(new URL("../../../app/globals.css", import.meta.url)), "utf8");
 
 describe("historical quote-system routing", () => {
   it("renders the real historical workspace instead of relabeling the newer workspace", async () => {
@@ -43,5 +44,13 @@ describe("historical quote-system routing", () => {
     expect(builderSource).toMatch(/onClick=\{\(\) => createVersion\(false\)\}[^>]*>\s*Add Quote/s);
     expect(groupSource).toContain("await cloneQuoteBuilderRows(supabase, source, createdId, undefined, true, true)");
     expect(groupSource).toContain("if (preserveQuoteTotals) return");
+  });
+
+  it("keeps the historical product strip readable on mobile", () => {
+    expect(builderSource).toContain('className={embedded ? "quote-builder-product-row quote-builder-product-row--embedded"');
+    expect(builderSource).toContain('className="quote-builder-product-tile"');
+    expect(globalStyles).toContain(".quote-builder-product-row--embedded");
+    expect(globalStyles).toContain("overflow-x: auto");
+    expect(globalStyles).toContain("flex: 0 0 118px !important");
   });
 });

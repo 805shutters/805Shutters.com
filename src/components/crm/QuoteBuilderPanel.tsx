@@ -840,12 +840,15 @@ export function QuoteBuilderPanel({
                 <button type="button" onClick={onClose} aria-label="Close quote builder" style={{ ...xBtn, width: 28, height: 28, fontSize: 14, borderRadius: 6 }} title="Exit to CRM">✕</button>
               </div>
             ) : null}
-            <div style={embedded ? { ...productRow, paddingRight: 36 } : productRow}>
+            <div
+              className={embedded ? "quote-builder-product-row quote-builder-product-row--embedded" : "quote-builder-product-row"}
+              style={embedded ? { ...productRow, paddingRight: 36 } : productRow}
+            >
               <span style={productGroupLabel}>Product Type</span>
               {productTypes.map((t) => {
                 const active = t.type === activeType;
                 return (
-                  <button key={t.type} type="button" onClick={() => setActiveType(t.type)}
+                  <button key={t.type} type="button" className="quote-builder-product-tile" onClick={() => setActiveType(t.type)}
                     style={{ ...productTile, marginLeft: -1, marginTop: -1, ...(active ? { background: "#2f4a3c", borderColor: "#2f4a3c", color: "#ffffff" } : { background: "#eef4e8", borderColor: "#c8d8bf", color: "#203624" }) }}>
                     <span style={productTileLabel}>{t.label}</span>
                   </button>
