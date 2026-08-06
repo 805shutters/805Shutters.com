@@ -11654,7 +11654,7 @@ function ShadesAndBlindsOptions({
           role="alert"
         >
           <strong>Lotus pricing is draft-only.</strong>{" "}
-          The selected West A26.v1 source program records the FLX identity,
+          The selected West A26.v1 source program records the exact selected program identity,
           dimensions, mount, and manufacturer wholesale grid. Draft retail is
           wholesale plus the selected internal line margin, with a complete
           audit trail. Sending remains blocked because the supplied book states
